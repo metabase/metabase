@@ -699,8 +699,8 @@
            query-processor
            search
            settings
-           util
-           warehouse-schema}
+           sync
+           util}
    :model-exports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
@@ -1676,6 +1676,7 @@
            query-processor
            request
            search
+           sync
            util
            view-log
            warehouse-schema}
@@ -2138,6 +2139,7 @@
   {:team "Graphy"
    :api  #{metabase.sync.api
            metabase.sync.core
+           metabase.sync.field-values
            metabase.sync.init
            metabase.sync.schedules
            metabase.sync.task.sync-databases
@@ -2674,6 +2676,7 @@
            lib
            models
            query-processor
+           sync
            util
            warehouse-schema}
    :model-imports #{:model/Database

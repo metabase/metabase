@@ -23,6 +23,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -30,7 +31,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -231,7 +231,7 @@
       (log/info "Referenced Fields in Dashboard params have changed: Was:" old-param-field-ids
                 "Is Now:" new-param-field-ids
                 "Newly Added:" newly-added-param-field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
+      (sync.field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
 
 (defn add-dashcards!
   "Add Cards to a Dashboard.

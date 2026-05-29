@@ -11,6 +11,7 @@
    [metabase.query-processor.core :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.queue :as queue]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -44,7 +45,7 @@
                          (mapcat (fn [batch]
                                    (t2/select :model/Field :id [:in batch])))
                          (filter field-values/field-should-have-field-values?)))]
-    (field-values/sync-fields-grouped-by-table! fields)))
+    (sync.field-values/sync-fields-grouped-by-table! fields)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
   (queue/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!

@@ -578,12 +578,12 @@
              (field-values/persist-field-values! field {:id 1 :values ["a"] :has_more_values false} [])))
       (is (false? (t2/exists? :model/FieldValues :field_id field-id :type :full))))))
 
-;;; ---------------------------------- UNION DISTINCT bulk path ----------------------------------
+;;; ---------------------------------- UNION DISTINCT primitive ----------------------------------
 
 (defn- sql-test-drivers
-  "Normal drivers that generate SQL. `union-distinct-values` builds and runs a SQL query, so it
+  "Normal drivers that generate SQL. `run-distinct-batch` builds and runs a SQL query, so it
   only applies to SQL drivers — non-SQL drivers (e.g. Mongo) go through the per-field fallback
-  in `sync-fields-grouped-by-table!` and aren't exercised by these direct-call tests."
+  at the sync layer and aren't exercised by these direct-call tests."
   []
   (into #{}
         (filter #(isa? driver/hierarchy % :sql))
@@ -612,13 +612,14 @@
     (is (= "raw" (#'field-values/decode-value :type/Float "raw")))
     (is (= "anything" (#'field-values/decode-value :type/SomeMadeUpType "anything")))))
 
-(deftest ^:mb/driver-tests ^:sync union-distinct-values-integration-test
-  (testing "UNION path returns correct distinct values for each field"
+(deftest ^:mb/driver-tests ^:sync run-distinct-batch-integration-test
+  (testing "run-distinct-batch returns correct distinct values for each field"
     (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
-        (let [fields  [(t2/select-one :model/Field :id (mt/id :people :state))
+        (let [table   (t2/select-one :model/Table :id (mt/id :people))
+              fields  [(t2/select-one :model/Field :id (mt/id :people :state))
                        (t2/select-one :model/Field :id (mt/id :people :source))]
-              results (field-values/union-distinct-values (mt/id :people) fields)]
+              results (field-values/run-distinct-batch table fields)]
           (is (map? results) "Returns a map keyed by field-id")
           (is (= (set (map :id fields)) (set (keys results))))
           (testing "people.state distinct values"
@@ -631,68 +632,22 @@
               (is (seq values))
               (is (every? string? values)))))))))
 
-(deftest union-distinct-empty-fields-returns-nil-test
-  (testing "Empty fields seq → nil"
-    (is (nil? (field-values/union-distinct-values 1 [])))
-    (is (nil? (field-values/union-distinct-values 1 nil)))))
-
-(deftest ^:mb/driver-tests ^:sync union-distinct-batches-large-field-set-test
-  (testing "Field count > *batch-size* is broken into multiple queries"
-    (mt/test-drivers (sql-test-drivers)
-      (mt/dataset test-data
-        (binding [field-values/*batch-size* 2]
-          (let [fields  (vec (t2/select :model/Field
-                                        :table_id (mt/id :people)
-                                        :active true
-                                        :visibility_type "normal"
-                                        {:order-by [[:name :asc]]}))
-                results (field-values/union-distinct-values (mt/id :people) fields)]
-            (is (= (count fields) (count results))
-                "Every field appears in the result map even though queries were batched")))))))
-
-(deftest sync-fields-grouped-by-table!-test
-  (testing "End-to-end: fetches via UNION, persists via persist-field-values!, returns status keywords"
-    (mt/dataset test-data
-      (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :people :state)
-                                           :type     :full
-                                           :values   ["XX" "YY"]
-                                           :has_more_values false}]
-        (let [field   (t2/select-one :model/Field :id (mt/id :people :state))
-              results (field-values/sync-fields-grouped-by-table! [field])]
-          (is (= 1 (count results)))
-          (is (#{::field-values/fv-created
-                 ::field-values/fv-updated
-                 ::field-values/fv-skipped} (first results))
-              "Returns a status keyword for each field, not an exception")
-          (testing "After sync, FieldValues row reflects the real distinct set"
-            (let [fv     (t2/select-one :model/FieldValues
-                                        :field_id (mt/id :people :state)
-                                        :type     :full)
-                  states (set (:values fv))]
-              (is (contains? states "CA"))
-              (is (not (contains? states "XX")) "Stale seeded values were replaced"))))))))
-
-(deftest sync-fields-grouped-by-table!-empty-input-test
-  (testing "Empty/nil input → nil (no work)"
-    (is (nil? (field-values/sync-fields-grouped-by-table! [])))
-    (is (nil? (field-values/sync-fields-grouped-by-table! nil)))))
-
-(deftest ^:mb/driver-tests ^:sync union-distinct-matches-per-field-test
-  (testing "UNION-DISTINCT returns the same value set per column as the existing per-field DISTINCT path"
+(deftest ^:mb/driver-tests ^:sync run-distinct-batch-matches-per-field-test
+  (testing "run-distinct-batch returns the same value set per column as the per-field DISTINCT path"
     ;; Only check fields whose distinct count is below the per-column LIMIT. For columns that hit
     ;; the cap, both paths return a valid subset but the warehouse is free to pick *which* 1000
     ;; — the subsets may differ across paths/engines without either being wrong.
     (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
-        (let [fields (mapv #(t2/select-one :model/Field :id (mt/id :people %))
+        (let [table  (t2/select-one :model/Table :id (mt/id :people))
+              fields (mapv #(t2/select-one :model/Field :id (mt/id :people %))
                            [:state :source])
               per-field-results (into {}
                                       (map (fn [f]
                                              (let [v (-> (field-values/distinct-values f) :values)]
-                                               ;; distinct-values returns rows as 1-tuples
                                                [(:id f) (set (map first v))])))
                                       fields)
-              union-results     (field-values/union-distinct-values (mt/id :people) fields)]
+              union-results     (field-values/run-distinct-batch table fields)]
           (doseq [field fields]
             (testing (format "field %s (%s)" (:name field) (name (:base_type field)))
               (let [expected (get per-field-results (:id field))
@@ -701,15 +656,14 @@
                     (format "UNION distinct values differ from per-field DISTINCT for %s on %s"
                             (:name field) (name driver/*driver*)))))))))))
 
-(deftest ^:mb/driver-tests ^:sync union-distinct-values-cross-driver-test
-  (testing "UNION ALL distinct-values fetcher produces correct results on every supported SQL driver"
+(deftest ^:mb/driver-tests ^:sync run-distinct-batch-cross-driver-test
+  (testing "run-distinct-batch produces correct results on every supported SQL driver"
     (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
-        (let [state-field  (t2/select-one :model/Field :id (mt/id :people :state))
+        (let [table        (t2/select-one :model/Table :id (mt/id :people))
+              state-field  (t2/select-one :model/Field :id (mt/id :people :state))
               source-field (t2/select-one :model/Field :id (mt/id :people :source))
-              results      (field-values/union-distinct-values
-                            (mt/id :people)
-                            [state-field source-field])]
+              results      (field-values/run-distinct-batch table [state-field source-field])]
           (testing "Result map is keyed by field-id with :values / :raw-count entries"
             (is (map? results))
             (is (= #{(:id state-field) (:id source-field)} (set (keys results)))))

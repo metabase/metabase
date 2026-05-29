@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
@@ -14,7 +15,7 @@
   "Run `f` with the on-demand FieldValues update entry points stubbed out to just record which
    field names would have been refreshed. Returns the set of updated Field names.
 
-   On-demand uses [[field-values/sync-fields-grouped-by-table!]] on SQL drivers and falls
+   On-demand uses [[sync.field-values/sync-fields-grouped-by-table!]] on SQL drivers and falls
    back to [[field-values/create-or-update-full-field-values!]] on non-SQL drivers; the mock
    covers both so behavioural tests work regardless of the temp database's driver."
   [f]
@@ -22,7 +23,7 @@
     (mt/with-dynamic-fn-redefs [field-values/create-or-update-full-field-values!
                                 (fn [field & _]
                                   (swap! updated-field-names conj (:name field)))
-                                field-values/sync-fields-grouped-by-table!
+                                sync.field-values/sync-fields-grouped-by-table!
                                 (fn [fields]
                                   (swap! updated-field-names into (map :name fields)))]
       (f updated-field-names)

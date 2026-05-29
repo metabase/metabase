@@ -28,7 +28,6 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.app-db.core :as app-db]
-   [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -650,12 +649,21 @@
       (first arms)
       {:union-all arms})))
 
-(defn- run-batch
-  "Execute one batched UNION query and aggregate rows by `field_name`. Returns
-  `{field-id → {:values [decoded …] :raw-count N}}` with all input fields pre-seeded so fields
-  with zero distinct values still appear."
-  [driver db-id table fields]
-  (let [hsql           (build-union driver table fields)
+(defn run-distinct-batch
+  "Execute one UNION ALL query covering `fields` from one `table`. The caller is responsible for
+  ensuring `(count fields)` ≤ [[*batch-size*]] (the per-query arm cap) and that all `fields`
+  belong to `table`.
+
+  Returns `{field-id → {:values [decoded …] :raw-count N}}` with all input fields pre-seeded so
+  fields with zero distinct values still appear. Each field's `:values` is capped at
+  [[*distinct-limit*]] by the per-arm `LIMIT`.
+
+  Does NOT swallow exceptions — callers wrap with `metabase.sync.util/with-error-handling`
+  (or equivalent) to decide log-and-continue vs abort semantics."
+  [table fields]
+  (let [db-id          (:db_id table)
+        driver         (:engine (t2/select-one :model/Database :id db-id))
+        hsql           (build-union driver table fields)
         [sql & params] (sql.qp/format-honeysql driver hsql)
         result         (qp/process-query
                         {:database db-id
@@ -671,118 +679,6 @@
                     (update-in [(:id field) :raw-count] (fnil inc 0)))))
             (into {} (map (fn [f] [(:id f) {:values [] :raw-count 0}])) fields)
             rows)))
-
-(defn- sql-driver-for-table? [table]
-  (let [driver (:engine (t2/select-one :model/Database :id (:db_id table)))]
-    (isa? driver/hierarchy driver :sql)))
-
-(defn- persist-bulk-results!
-  "For each field in `fields`, look up its results in `results` (from `union-distinct-values`),
-  apply `limit-values` to cap by char length and dedupe, then persist via `persist-field-values!`.
-  `fvs-map` is a {field-id → existing FieldValues row or nil} map for the comparison step.
-  Returns a sequence of `::fv-created`/`::fv-updated`/`::fv-skipped`/`::fv-deleted` keywords
-  (one per field)."
-  [fields fvs-map results]
-  (mapv (fn [field]
-          (let [field-id    (u/the-id field)
-                existing-fv (get fvs-map field-id)
-                raw-values  (get-in results [field-id :values] [])]
-            (persist-field-values! field existing-fv raw-values)))
-        fields))
-
-(defn union-distinct-values
-  "Fetch distinct values for multiple fields from the same `table-id` using SQL `UNION ALL`.
-  Batches `fields` into groups of [[*batch-size*]] to keep query text small. Returns
-
-      {field-id -> {:values [...] :raw-count N}}
-
-  where `:raw-count` is the number of rows that field's arm produced (≤ [[*distinct-limit*]]).
-  The caller decides `has_more_values` from `:raw-count` and applies any further
-  char-length capping (e.g. via `limit-values`).
-
-  Does NOT swallow exceptions — callers are expected to wrap this in
-  `metabase.sync.util/with-error-handling` (or equivalent) so the sync framework can decide
-  whether to log-and-continue or abort the run."
-  [table-id fields]
-  (when (seq fields)
-    (let [table  (t2/select-one :model/Table :id table-id)
-          db-id  (:db_id table)
-          driver (:engine (t2/select-one :model/Database :id db-id))]
-      (into {}
-            (comp (partition-all *batch-size*)
-                  (mapcat #(run-batch driver db-id table %)))
-            fields))))
-
-(defn sync-fields-grouped-by-table!
-  "Sync FieldValues for `fields`, grouping by `:table_id` and using the UNION path on SQL drivers
-  (one query per table) or a per-field DISTINCT fallback on non-SQL drivers (e.g. Mongo).
-
-  `fields` does not need to be pre-grouped by table; the function groups them. Callers that
-  need to skip inactive FieldValues should filter before calling.
-
-  Returns a sequence of status keywords (one per field). Does not catch exceptions — callers
-  wanting log-and-continue semantics should wrap each table-group in their own error handler."
-  [fields]
-  (when (seq fields)
-    (let [fvs-map  (batched-get-latest-full-field-values (map u/the-id fields))
-          by-table (group-by :table_id fields)]
-      (into []
-            (mapcat (fn [[table-id table-fields]]
-                      (let [table (t2/select-one :model/Table :id table-id)]
-                        (if (sql-driver-for-table? table)
-                          (persist-bulk-results! table-fields fvs-map
-                                                 (union-distinct-values table-id table-fields))
-                          ;; Non-SQL driver: per-field DISTINCT via existing path
-                          (mapv (fn [field]
-                                  (create-or-update-full-field-values!
-                                   field :field-values (get fvs-map (u/the-id field))))
-                                table-fields)))))
-            by-table))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  On Demand                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- table-ids->table-id->is-on-demand?
-  "Given a collection of `table-ids` return a map of Table ID to whether or not its Database is subject to 'On Demand'
-  FieldValues updating. This means the FieldValues for any Fields belonging to the Database should be updated only
-  when they are used in new Dashboard or Card parameters."
-  [table-ids]
-  (let [table-ids            (set table-ids)
-        table-id->db-id      (when (seq table-ids)
-                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
-        db-id->is-on-demand? (when (seq table-id->db-id)
-                               (t2/select-pk->fn :is_on_demand 'Database
-                                                 :id [:in (set (vals table-id->db-id))]))]
-    (into {} (for [table-id table-ids]
-               [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
-
-(def ^:private ^:dynamic *on-demand-select-batch-size*
-  "Chunk size when fetching :model/Field rows for on-demand updates. Keeps a single SQL `IN (…)`
-  clause under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
-  500)
-
-(defn update-field-values-for-on-demand-dbs!
-  "Update the FieldValues for any Fields with `field-ids` if the Field should have FieldValues and it belongs to a
-  Database that is set to do 'On-Demand' syncing.
-
-  Groups fields by table and uses the UNION-distinct path (one warehouse query per table) on SQL
-  drivers; non-SQL drivers fall back to per-field queries."
-  [field-ids]
-  (let [fields (when (seq field-ids)
-                 (->> field-ids
-                      (partition-all *on-demand-select-batch-size*)
-                      (mapcat (fn [batch]
-                                (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
-                                            :semantic_type :visibility_type :table_id :has_field_values]
-                                           :id [:in batch])))
-                      (filter field-should-have-field-values?)))
-        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
-        on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
-    (when (seq on-demand-fields)
-      (log/debugf "Updating FieldValues for %d on-demand fields across %d tables"
-                  (count on-demand-fields) (count (set (map :table_id on-demand-fields))))
-      (sync-fields-grouped-by-table! on-demand-fields))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Serialization                                                     |

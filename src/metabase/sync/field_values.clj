@@ -24,30 +24,10 @@
 
 (defn- result->delta [result]
   (cond
-    (instance? Exception result)
-    {:errors 1}
-
-    (= ::field-values/fv-created result)
-    {:created 1}
-
-    (= ::field-values/fv-updated result)
-    {:updated 1}
-
-    (= ::field-values/fv-deleted result)
-    {:deleted 1}))
-
-(defn- update-field-value-stats-count [counts-map result]
-  (if (instance? Exception result)
-    (update counts-map :errors inc)
-    (case result
-      ::field-values/fv-created
-      (update counts-map :created inc)
-      ::field-values/fv-updated
-      (update counts-map :updated inc)
-      ::field-values/fv-deleted
-      (update counts-map :deleted inc)
-
-      counts-map)))
+    (instance? Exception result)        {:errors 1}
+    (= ::field-values/fv-created result) {:created 1}
+    (= ::field-values/fv-updated result) {:updated 1}
+    (= ::field-values/fv-deleted result) {:deleted 1}))
 
 (defn- table->fields-to-scan
   [table]
@@ -67,47 +47,74 @@
   - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)"
   {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0})
 
-(defn- update-field-values-for-table-union!
-  "Bulk-fetch distinct values for `fields-to-sync` via one UNION ALL query, then persist per field.
-  If the bulk query fails, every field in the batch is reported as an error (no per-field
-  fallback — by design)."
-  [table fields-to-sync fvs-map]
-  (when (seq fields-to-sync)
-    (let [n-fields  (count fields-to-sync)
-          n-queries (count (partition-all field-values/*batch-size* fields-to-sync))
-          results   (sync-util/with-error-handling
-                     (format "Error fetching union distinct values for %s" (sync-util/name-for-logging table))
-                      (field-values/union-distinct-values (u/the-id table) fields-to-sync))
-          outcome-counts (if (or (nil? results) (instance? Throwable results))
-                           (assoc empty-counts :errors n-fields)
-                           (reduce (fn [counts field]
-                                     (let [field-id    (u/the-id field)
-                                           existing-fv (get fvs-map field-id)
-                                           raw-values  (get-in results [field-id :values] [])
-                                           result      (sync-util/with-error-handling
-                                                        (format "Error updating field values for %s"
-                                                                (sync-util/name-for-logging field))
-                                                         (field-values/persist-field-values!
-                                                          field existing-fv raw-values))]
-                                       (update-field-value-stats-count counts result)))
-                                   empty-counts
-                                   fields-to-sync))]
-      (assoc outcome-counts :probed n-fields :queries n-queries))))
+(defn- fetch-distinct-for-table
+  "Run all UNION batches for `fields` from `table`. Returns
+   `{:results {field-id -> {:values [...]}}, :queries <int>, :failed-fields #{field-id ...}}`.
 
-(defn- update-field-values-for-table-per-field!
-  "Sequential per-field fallback for non-SQL drivers that can't run the UNION query (e.g. Mongo).
-  Matches master's behavior — one DISTINCT per field, no batching."
-  [_table fields-to-sync fvs-map]
-  (reduce (fn [counts field]
-            (let [existing-fv (get fvs-map (u/the-id field))
-                  result      (sync-util/with-error-handling
-                               (format "Error updating field values for %s"
-                                       (sync-util/name-for-logging field))
-                                (field-values/create-or-update-full-field-values!
-                                 field :field-values existing-fv))]
-              (merge-with + counts (result->delta result) {:probed 1 :queries 1})))
-          empty-counts
-          fields-to-sync))
+   Per-batch failures are caught via `sync-util/with-error-handling` — recoverable errors
+   contribute the batch's field-ids to `:failed-fields` and the loop continues; non-recoverable
+   errors propagate out and abort the sync."
+  [table fields]
+  (reduce (fn [acc batch]
+            (let [batch-result (sync-util/with-error-handling
+                                (format "Error fetching union distinct values for %s"
+                                        (sync-util/name-for-logging table))
+                                 (field-values/run-distinct-batch table batch))
+                  acc'         (update acc :queries inc)]
+              (if (instance? Throwable batch-result)
+                (update acc' :failed-fields into (map :id batch))
+                (update acc' :results into batch-result))))
+          {:results {} :queries 0 :failed-fields #{}}
+          (partition-all field-values/*batch-size* fields)))
+
+(defn- sync-fields-for-table!
+  "Fetch distinct values for `fields` from `table` and persist them via
+  `field-values/persist-field-values!`. SQL drivers batch via UNION ALL; non-SQL drivers fall
+  back to one query per field. Returns a counts map of outcomes."
+  [table fields fvs-map]
+  (when (seq fields)
+    (if (sql-driver? table)
+      (let [{:keys [results queries failed-fields]} (fetch-distinct-for-table table fields)]
+        (reduce (fn [counts field]
+                  (let [field-id (u/the-id field)
+                        delta    (if (contains? failed-fields field-id)
+                                   {:errors 1}
+                                   (let [raw-values (get-in results [field-id :values] [])
+                                         result     (sync-util/with-error-handling
+                                                     (format "Error updating field values for %s"
+                                                             (sync-util/name-for-logging field))
+                                                      (field-values/persist-field-values!
+                                                       field (get fvs-map field-id) raw-values))]
+                                     (result->delta result)))]
+                    (merge-with + counts delta {:probed 1})))
+                (merge-with + empty-counts {:queries queries})
+                fields))
+      (reduce (fn [counts field]
+                (let [result (sync-util/with-error-handling
+                              (format "Error updating field values for %s"
+                                      (sync-util/name-for-logging field))
+                               (field-values/create-or-update-full-field-values!
+                                field :field-values (get fvs-map (u/the-id field))))]
+                  (merge-with + counts (result->delta result) {:probed 1 :queries 1})))
+              empty-counts
+              fields))))
+
+(defn sync-fields-grouped-by-table!
+  "Sync FieldValues for `fields`, grouping by `:table_id`. SQL drivers use the UNION batch path;
+  non-SQL drivers use the per-field path. Returns the aggregated counts across all tables.
+
+  Callers that need to skip inactive FieldValues should filter before calling. Non-recoverable
+  errors propagate out and abort."
+  [fields]
+  (when (seq fields)
+    (let [fvs-map  (field-values/batched-get-latest-full-field-values (map u/the-id fields))
+          by-table (group-by :table_id fields)]
+      (transduce (map (fn [[table-id table-fields]]
+                        (let [table (t2/select-one :model/Table :id table-id)]
+                          (sync-fields-for-table! table table-fields fvs-map))))
+                 (completing (partial merge-with +))
+                 empty-counts
+                 by-table))))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
@@ -123,7 +130,7 @@
                                                  (format "Error clearing field values for %s"
                                                          (sync-util/name-for-logging field))
                                                   (clear-field-values-for-field! field))]
-                                     (update-field-value-stats-count counts result)))
+                                     (merge-with + counts (result->delta result))))
                                  empty-counts
                                  to-clear)
         fvs-map          (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
@@ -145,10 +152,8 @@
                                         :else
                                         true)))
                                   to-sync)
-        sync-counts      (if (sql-driver? table)
-                           (update-field-values-for-table-union!     table fields-to-sync fvs-map)
-                           (update-field-values-for-table-per-field! table fields-to-sync fvs-map))]
-    (merge-with + clear-counts sync-counts)))
+        sync-counts      (sync-fields-for-table! table fields-to-sync fvs-map)]
+    (merge-with + clear-counts (or sync-counts empty-counts))))
 
 (mu/defn- update-field-values-for-database!
   [database :- i/DatabaseInstance]
@@ -162,6 +167,47 @@
 
 (defn- delete-expired-advanced-field-values-summary [{:keys [deleted]}]
   (format "Deleted %d expired advanced fieldvalues" deleted))
+
+(defn- table-ids->table-id->is-on-demand?
+  "Given a collection of `table-ids` return a map of Table ID to whether or not its Database is subject to 'On Demand'
+  FieldValues updating. This means the FieldValues for any Fields belonging to the Database should be updated only
+  when they are used in new Dashboard or Card parameters."
+  [table-ids]
+  (let [table-ids            (set table-ids)
+        table-id->db-id      (when (seq table-ids)
+                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
+        db-id->is-on-demand? (when (seq table-id->db-id)
+                               (t2/select-pk->fn :is_on_demand 'Database
+                                                 :id [:in (set (vals table-id->db-id))]))]
+    (into {} (for [table-id table-ids]
+               [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
+
+(def ^:private ^:dynamic *on-demand-select-batch-size*
+  "Chunk size when fetching :model/Field rows for on-demand updates. Keeps a single SQL `IN (…)`
+  clause under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+  500)
+
+(defn update-field-values-for-on-demand-dbs!
+  "Update the FieldValues for any Fields with `field-ids` if the Field should have FieldValues and it belongs to a
+  Database that is set to do 'On-Demand' syncing.
+
+  Groups fields by table and uses the UNION-distinct path (one warehouse query per table) on SQL
+  drivers; non-SQL drivers fall back to per-field queries."
+  [field-ids]
+  (let [fields (when (seq field-ids)
+                 (->> field-ids
+                      (partition-all *on-demand-select-batch-size*)
+                      (mapcat (fn [batch]
+                                (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                                            :semantic_type :visibility_type :table_id :has_field_values]
+                                           :id [:in batch])))
+                      (filter field-values/field-should-have-field-values?)))
+        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
+        on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
+    (when (seq on-demand-fields)
+      (log/debugf "Updating FieldValues for %d on-demand fields across %d tables"
+                  (count on-demand-fields) (count (set (map :table_id on-demand-fields))))
+      (sync-fields-grouped-by-table! on-demand-fields))))
 
 (defn- delete-expired-advanced-field-values-for-field!
   [field]

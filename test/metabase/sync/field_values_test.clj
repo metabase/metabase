@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.sync.core :as sync]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -298,9 +299,54 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       ;; we throw ConnectException, which is a non-recoverable exception. Mock the SQL-path fetcher
-      ;; (union-distinct-values) since that's what the H2 sync path will call.
-      (mt/with-dynamic-fn-redefs [field-values/union-distinct-values (fn [& _] (throw (java.net.ConnectException.)))]
+      ;; (run-distinct-batch) since that's what the H2 sync path will call.
+      (mt/with-dynamic-fn-redefs [field-values/run-distinct-batch (fn [& _] (throw (java.net.ConnectException.)))]
         (is (=?
              {:steps [["delete-expired-advanced-field-values" {}]
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}
              (sync/update-field-values! (data/db))))))))
+
+;;; ---------------------------------- sync-fields-grouped-by-table! ----------------------------------
+
+(deftest ^:mb/driver-tests ^:sync sync-fields-grouped-by-table!-test
+  (testing "End-to-end: fetches via UNION, persists via persist-field-values!, returns counts"
+    (mt/dataset test-data
+      (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :people :state)
+                                           :type     :full
+                                           :values   ["XX" "YY"]
+                                           :has_more_values false}]
+        (let [field  (t2/select-one :model/Field :id (mt/id :people :state))
+              counts (sync.field-values/sync-fields-grouped-by-table! [field])]
+          (is (map? counts) "Returns a counts map")
+          (is (= 1 (:probed counts)))
+          (testing "After sync, FieldValues row reflects the real distinct set"
+            (let [fv     (t2/select-one :model/FieldValues
+                                        :field_id (mt/id :people :state)
+                                        :type     :full)
+                  states (set (:values fv))]
+              (is (contains? states "CA"))
+              (is (not (contains? states "XX")) "Stale seeded values were replaced"))))))))
+
+(deftest sync-fields-grouped-by-table!-empty-input-test
+  (testing "Empty/nil input → nil (no work)"
+    (is (nil? (sync.field-values/sync-fields-grouped-by-table! [])))
+    (is (nil? (sync.field-values/sync-fields-grouped-by-table! nil)))))
+
+(deftest ^:mb/driver-tests ^:sync union-batching-test
+  (testing "Field count > *batch-size* is broken into multiple queries; every field's counts are accounted for"
+    (mt/dataset test-data
+      ;; Sync-fields-grouped-by-table! expects callers to pre-filter to FV-eligible fields, so we do the
+      ;; same here. Otherwise we'd create phantom FieldValues rows for fields that shouldn't have them,
+      ;; which leak into subsequent tests in this namespace.
+      (binding [field-values/*batch-size* 2]
+        (let [fields (vec (filter field-values/field-should-have-field-values?
+                                  (t2/select :model/Field
+                                             :table_id (mt/id :people)
+                                             :active true
+                                             :visibility_type "normal"
+                                             {:order-by [[:name :asc]]})))
+              counts (sync.field-values/sync-fields-grouped-by-table! fields)]
+          (is (= (count fields) (:probed counts))
+              "Every field is reported as probed even though queries were batched")
+          (is (>= (:queries counts) 2)
+              "More fields than *batch-size* should produce more than one query"))))))
