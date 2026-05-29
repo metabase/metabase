@@ -14,6 +14,23 @@
   (let [venues (some #(when (= "VENUES" (u/upper-case-en (:name %))) %) (:tables response))]
     (set (map (comp u/upper-case-en :name) (:fields venues)))))
 
+(defn- recompute-native-sandbox-metadata!
+  "Native sandbox cards populate `result_metadata` asynchronously. Compute + save it synchronously so tests
+  don't race the `metabase.queries.models.card.metadata/metadata-sync-wait-ms` window. Mirrors the dance in
+  metabase-enterprise.sandbox.api.table-test/native-query-metadata-test."
+  [group]
+  (let [card (t2/select-one :model/Card
+                            {:select [:c.id :c.dataset_query :c.entity_id :c.card_schema]
+                             :from   [[:sandboxes :s]]
+                             :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
+                                      [:report_card :c] [:= :c.id :s.card_id]]
+                             :where  [:= :pg.id (u/the-id group)]})
+        {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
+                                            (:dataset_query card))]
+    (if metadata
+      (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
+      (card.metadata/save-metadata-async! metadata-future card))))
+
 (deftest database-metadata-respects-column-sandbox-test
   (testing "GET /api/database/:id/metadata excludes columns hidden by a column-restricting sandbox."
     (met/with-gtaps! {:gtaps      {:venues
@@ -37,8 +54,7 @@
             "Admin sees every venues column regardless of the GTAP")))))
 
 (deftest database-metadata-without-restricted-columns-test
-  (testing "If a GTAP card exposes ALL columns of the sandboxed table, every column is returned (no over-filtering).
-           Pins the no-restriction code path inside batch-filter-sandboxed-fields."
+  (testing "If a GTAP card exposes ALL columns of the sandboxed table, every column is returned (no over-filtering)."
     (met/with-gtaps! {:gtaps      {:venues {:query      {:database (mt/id)
                                                          :type     :query
                                                          :query    {:source-table (mt/id :venues)}}
@@ -77,20 +93,21 @@
                                     :query      (mt/native-query
                                                  {:query "SELECT CATEGORY_ID, ID, NAME from venues;"})}}
                       :attributes {:cat 50}}
-      ;; Native sandbox cards populate result_metadata asynchronously. Manually compute + save so the test
-      ;; doesn't race the metadata-sync-wait-ms (1.5s) window. Mirrors the dance in
-      ;; metabase-enterprise.sandbox.api.table-test/native-query-metadata-test.
-      (let [card (t2/select-one :model/Card
-                                {:select [:c.id :c.dataset_query :c.entity_id :c.card_schema]
-                                 :from   [[:sandboxes :s]]
-                                 :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
-                                          [:report_card :c] [:= :c.id :s.card_id]]
-                                 :where  [:= :pg.id (u/the-id &group)]})
-            {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
-                                                (:dataset_query card))]
-        (if metadata
-          (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-          (card.metadata/save-metadata-async! metadata-future card)))
+      (recompute-native-sandbox-metadata! &group)
       (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))]
+        (is (= #{"CATEGORY_ID" "ID" "NAME"}
+               (venues-field-names response)))))))
+
+(deftest database-include-tables-fields-native-sandbox-test
+  (testing "GET /api/database/:id?include=tables.fields excludes sandbox-hidden columns for a native sandbox card
+           (native-by-name filtering through the get-database-hydrate-include code path)"
+    (met/with-gtaps! {:gtaps      {:venues
+                                   {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                                    :query      (mt/native-query
+                                                 {:query "SELECT CATEGORY_ID, ID, NAME from venues;"})}}
+                      :attributes {:cat 50}}
+      (recompute-native-sandbox-metadata! &group)
+      (let [response (mt/user-http-request :rasta :get 200
+                                           (format "database/%d?include=tables.fields" (mt/id)))]
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (venues-field-names response)))))))

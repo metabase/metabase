@@ -1291,12 +1291,15 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     });
   });
 
-  describe("Column-restricting sandbox: hide hidden columns from metadata endpoints", () => {
-    // All tests here use a sandbox source card that exposes only a subset of columns from
-    // the sandboxed table. Future column-leak repros for other endpoints should be added
-    // as it() cases inside this describe.
+  describe("Column-restricting sandbox: hide hidden columns in the Data Reference UI", () => {
+    // The sandbox source card exposes only a subset of the sandboxed table's columns.
+    // Pure-API assertions for the metadata endpoints live in the backend test
+    // metabase-enterprise.sandbox.api.database-test; add UI repros here as it() cases.
 
     const PEOPLE_VISIBLE_COLS = ["ID", "NAME", "EMAIL"];
+    const PEOPLE_HIDDEN_COLS = new Set(Object.keys(PEOPLE)).difference(
+      new Set(PEOPLE_VISIBLE_COLS),
+    );
 
     beforeEach(() => {
       H.restore();
@@ -1304,12 +1307,13 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       H.activateToken("pro-self-hosted");
       preparePermissions();
 
-      // Sandbox PEOPLE with a native query exposing only ID, NAME, EMAIL — hides
-      // ADDRESS, BIRTH_DATE, CITY, LATITUDE, LONGITUDE, PASSWORD, SOURCE, STATE, ZIP,
-      // CREATED_AT.
+      // Sandbox PEOPLE with a native query exposing only PEOPLE_VISIBLE_COLS;
+      // every other column (PEOPLE_HIDDEN_COLS) must be hidden everywhere.
       H.createNativeQuestion({
         name: "Sandbox source — people subset",
-        native: { query: "SELECT id, name, email FROM people" },
+        native: {
+          query: `SELECT ${PEOPLE_VISIBLE_COLS.join(", ")} FROM people`,
+        },
       }).then(({ body: card }) => {
         cy.sandboxTable({
           table_id: PEOPLE_ID,
@@ -1332,34 +1336,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         PEOPLE_VISIBLE_COLS.forEach((name) =>
           cy.findAllByText(name).should("exist"),
         );
-        ["ADDRESS", "BIRTH_DATE", "LATITUDE", "PASSWORD"].forEach((name) =>
+        PEOPLE_HIDDEN_COLS.forEach((name) =>
           cy.findByText(name).should("not.exist"),
         );
       });
-    });
-
-    it("GET /api/database/:id/metadata excludes sandbox-hidden columns", () => {
-      cy.request(`/api/database/${SAMPLE_DB_ID}/metadata`).then(({ body }) => {
-        const people = body.tables.find(
-          (t) => t.name.toUpperCase() === "PEOPLE",
-        );
-        const fieldNames = people.fields.map((f) => f.name.toUpperCase());
-        expect(fieldNames).to.have.members(PEOPLE_VISIBLE_COLS);
-        expect(fieldNames).not.to.include("PASSWORD");
-        expect(fieldNames).not.to.include("ADDRESS");
-      });
-    });
-
-    it("GET /api/database/:id?include=tables.fields excludes sandbox-hidden columns", () => {
-      cy.request(`/api/database/${SAMPLE_DB_ID}?include=tables.fields`).then(
-        ({ body }) => {
-          const people = body.tables.find(
-            (t) => t.name.toUpperCase() === "PEOPLE",
-          );
-          const fieldNames = people.fields.map((f) => f.name.toUpperCase());
-          expect(fieldNames).to.have.members(PEOPLE_VISIBLE_COLS);
-        },
-      );
     });
   });
 });
