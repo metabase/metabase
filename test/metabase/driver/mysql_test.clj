@@ -15,6 +15,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -1077,3 +1078,24 @@
 
          "webapp@localhost"
          "SET ROLE 'webapp'@'localhost';")))))
+
+(deftest ^:synchronized cancel-slow-mysql-query-via-query-timeout-test
+  (mt/test-driver :mysql
+    (testing "Slow MySQL query is cancelled server-side when *query-timeout-ms* elapses (GHY-3266)"
+      ;; `SELECT SLEEP(60)` would normally take 60s. With `*query-timeout-ms*` of 2s the canceled-chan timer fires
+      ;; (and `Statement.setQueryTimeout` also fires); both reach the MariaDB Connector/J `.cancel()` path which
+      ;; issues `KILL QUERY` on a side connection. The query should error within a few seconds, not run to
+      ;; completion. Cancellation evidence: the query throws AND finishes far short of 60s. We don't assert on the
+      ;; exception message because QP output-schema middleware wraps the underlying SQLException — the timing is
+      ;; the load-bearing assertion.
+      (binding [driver.settings/*query-timeout-ms* 2000]
+        (let [timer   (u/start-timer)
+              query   (mt/native-query {:query "SELECT SLEEP(60) AS s"})
+              result  (try
+                        (qp/process-query query)
+                        (catch Throwable e e))
+              elapsed (u/since-ms timer)]
+          (is (instance? Throwable result)
+              "query should throw rather than completing normally")
+          (is (< elapsed 30000)
+              (format "query should be cancelled well before SLEEP(60) completes naturally — took %.0f ms" elapsed)))))))

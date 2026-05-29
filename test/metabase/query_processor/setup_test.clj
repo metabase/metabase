@@ -60,20 +60,17 @@
     ;; driver listener for the value and on a regular chan one of them consumes it, breaking the other.
     (binding [driver.settings/*query-timeout-ms* 60000]
       (let [external-chan (a/chan)
-            seen          (promise)
             slow-f        (fn [_query]
                             (a/>!! qp.pipeline/*canceled-chan* ::external-cancel)
                             ;; give the timer's go-block a moment to (incorrectly) consume the message
-                            (Thread/sleep 100)
-                            (deliver seen (a/<!! (a/timeout 200))))]
+                            (Thread/sleep 300))]
         (binding [qp.pipeline/*canceled-chan* external-chan]
           (let [f (#'qp.setup/do-with-canceled-chan slow-f)
                 ;; consume from the external chan on a separate thread, mimicking what a driver's cancel listener
                 ;; does. If the timer consumed the message, this take will time out.
                 taken (future (a/alts!! [external-chan (a/timeout 1000)]))]
             (f {:type :internal})
-            @seen
-            (let [[v p] @taken]
+            (let [[v p] (deref taken 2000 [::deref-timed-out ::deref-timed-out])]
               (is (identical? external-chan p)
                   "the external listener should win the take, not time out")
               (is (= ::external-cancel v)

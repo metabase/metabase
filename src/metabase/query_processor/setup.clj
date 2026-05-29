@@ -200,7 +200,7 @@
     (a/go
       (let [timeout-ch (a/timeout timeout-ms)
             [_ port]   (a/alts! [done-ch timeout-ch])]
-        (when (= port timeout-ch)
+        (when (identical? port timeout-ch)
           (log/warnf "Query exceeded timeout of %d ms; canceling" timeout-ms)
           (a/put! canceled-chan ::timeout))))))
 
@@ -216,7 +216,7 @@
             (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan* done-ch)
             (f query)))
         (finally
-          (a/close! done-ch))))))
+          (a/put! done-ch ::query-finished))))))
 
 (def ^:private setup-middleware
   "Setup middleware has the signature
