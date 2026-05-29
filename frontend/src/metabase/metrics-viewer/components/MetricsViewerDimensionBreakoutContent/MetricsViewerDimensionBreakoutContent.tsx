@@ -110,7 +110,11 @@ export function MetricsViewerDimensionBreakoutContent({
       }
     }
     return null;
-  }, [dimensionBreakout, modifiedDefinitionsBySlotIndex]);
+  }, [
+    dimensionBreakout.dimensionMapping,
+    dimensionBreakout.type,
+    modifiedDefinitionsBySlotIndex,
+  ]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
