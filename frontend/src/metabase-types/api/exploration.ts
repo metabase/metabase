@@ -61,6 +61,17 @@ export interface UpdateExplorationRequest {
   collection_position?: number | null;
 }
 
+export interface CancelExplorationThreadRequest {
+  explorationId: ExplorationId;
+  threadId: ExplorationThreadId;
+}
+
+export interface CancelExplorationThreadResponse {
+  id: ExplorationThreadId;
+  canceled_at: string | null;
+  completed_at: string | null;
+}
+
 export interface ExplorationThreadMetric {
   id: number;
   exploration_thread_id: ExplorationThreadId;
@@ -95,10 +106,15 @@ export interface ExplorationQueryTimelineInterestingness {
   interestingness_score: number | null;
 }
 
-export type ExplorationQueryStatus = "pending" | "running" | "done" | "error";
+export type ExplorationQueryStatus =
+  | "pending"
+  | "running"
+  | "done"
+  | "error"
+  | "canceled";
 
 export const SETTLED_EXPLORATION_QUERY_STATUSES: ReadonlySet<ExplorationQueryStatus> =
-  new Set(["done", "error"]);
+  new Set(["done", "error", "canceled"]);
 
 export function isSettledExplorationQueryStatus(
   status: ExplorationQueryStatus,
@@ -177,17 +193,9 @@ export interface ExplorationQueryGroup {
   query_ids: ExplorationQueryId[];
 }
 
-/**
- * Combined status for a group of queries:
- * - `running` while any query is still pending or running
- * - `error` once every query has settled and at least one errored
- * - `done` once every query has settled and none errored
- */
-export type ExplorationQueryGroupStatus = "running" | "error" | "done";
-
 export function getExplorationQueryGroupStatus(
   queries: ExplorationQuery[],
-): ExplorationQueryGroupStatus {
+): ExplorationQueryStatus {
   if (
     queries.length === 0 ||
     queries.some((q) => !isSettledExplorationQueryStatus(q.status))
@@ -196,6 +204,9 @@ export function getExplorationQueryGroupStatus(
   }
   if (queries.some((q) => q.status === "error")) {
     return "error";
+  }
+  if (queries.some((q) => q.status === "canceled")) {
+    return "canceled";
   }
   return "done";
 }
@@ -222,6 +233,7 @@ export interface ExplorationThread {
   position: number;
   started_at: string | null;
   completed_at: string | null;
+  canceled_at: string | null;
   entity_id: string;
   created_at: string;
   updated_at: string;

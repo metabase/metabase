@@ -20,6 +20,7 @@ export function PotentiallyInterestingMarker() {
         w="0.375rem"
         h="0.375rem"
         bg="interesting"
+        bdrs="50%"
         className={S.indicator}
       />
     </Tooltip>

@@ -216,7 +216,7 @@ export function ExplorationPage({
       const prev = prevThreadCompletedAt.current.get(thread.id);
       const justCompleted = prev === null && thread.completed_at != null;
       prevThreadCompletedAt.current.set(thread.id, thread.completed_at);
-      if (!justCompleted) {
+      if (!justCompleted || thread.canceled_at != null) {
         continue;
       }
       const autoDoc = thread.documents?.find(
@@ -360,6 +360,9 @@ export function ExplorationPage({
           {
             ...document,
             isAiSummary: document.id === thread.ai_summary_document_id,
+            isCanceled:
+              document.id === thread.ai_summary_document_id &&
+              thread.canceled_at != null,
           },
         ]),
       ),

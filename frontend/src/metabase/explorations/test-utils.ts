@@ -104,6 +104,7 @@ export function createThread(
     entity_id: "thrd00000000000000001",
     created_at: "2026-04-30T00:00:00Z",
     updated_at: "2026-04-30T00:00:00Z",
+    canceled_at: null,
     ...overrides,
   };
 }
@@ -114,6 +115,7 @@ export interface CreateExplorationOpts {
   documents?: ExplorationDocument[];
   /** Thread chat prompt — set when the exploration was created with LLM context. */
   prompt?: string | null;
+  thread?: Partial<ExplorationThread>;
 }
 
 export function createExploration({
@@ -121,6 +123,7 @@ export function createExploration({
   groups,
   documents = [],
   prompt = null,
+  thread: threadOverrides = {},
 }: CreateExplorationOpts = {}): Exploration {
   const finalGroups: ExplorationQueryGroup[] = groups ?? [
     {
@@ -162,6 +165,7 @@ export function createExploration({
         groups: finalGroups,
         documents,
         prompt,
+        ...threadOverrides,
       }),
     ],
   };

@@ -115,6 +115,26 @@ function ExplorationGroupVisualizationBody(
     );
   }
 
+  if (queries.some((q) => q.status === "canceled")) {
+    return (
+      <>
+        <ExplorationVisualizationHeader name={groupName} />
+        <Stack
+          align="center"
+          justify="center"
+          flex={1}
+          gap="sm"
+          ta="center"
+          role="alert"
+          aria-live="polite"
+        >
+          <Icon name="octagon_alert" c="icon-primary" size={32} />
+          <Text fw="bold">{t`Research was stopped.`}</Text>
+        </Stack>
+      </>
+    );
+  }
+
   if (queries.some((q) => !isSettledExplorationQueryStatus(q.status))) {
     return (
       <ExplorationChartSkeleton

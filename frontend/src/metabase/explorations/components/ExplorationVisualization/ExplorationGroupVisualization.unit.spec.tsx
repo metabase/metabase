@@ -173,6 +173,18 @@ describe("ExplorationGroupVisualization", () => {
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
+  it("renders the stopped pane when any query was canceled", () => {
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "OK", status: "done" }),
+        createQuery({ id: 102, name: "Stopped", status: "canceled" }),
+      ],
+    });
+
+    expect(screen.getByText("Research was stopped.")).toBeInTheDocument();
+    expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
+  });
+
   it("renders one skeleton per query while any query is unsettled", () => {
     setup({
       queries: [

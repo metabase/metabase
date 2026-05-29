@@ -1,4 +1,6 @@
 import type {
+  CancelExplorationThreadRequest,
+  CancelExplorationThreadResponse,
   CreateExplorationRequest,
   Dataset,
   DocumentId,
@@ -71,6 +73,17 @@ export const explorationApi = Api.injectEndpoints({
           listTag("exploration"),
         ]),
     }),
+    cancelExplorationThread: builder.mutation<
+      CancelExplorationThreadResponse,
+      CancelExplorationThreadRequest
+    >({
+      query: ({ threadId }) => ({
+        method: "POST",
+        url: `/api/exploration/thread/${threadId}/cancel`,
+      }),
+      invalidatesTags: (_, error, { explorationId }) =>
+        invalidateTags(error, [idTag("exploration", explorationId)]),
+    }),
     getExplorationQueryResult: builder.query<Dataset, ExplorationQueryId>({
       query: (id) => ({
         method: "GET",
@@ -125,6 +138,7 @@ export const {
   useCreateExplorationMutation,
   useUpdateExplorationMutation,
   useDeleteExplorationMutation,
+  useCancelExplorationThreadMutation,
   useGetExplorationQueryResultQuery,
   useCreateExplorationDocumentMutation,
   useAppendChartToDocumentMutation,

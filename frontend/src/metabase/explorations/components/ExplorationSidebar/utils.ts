@@ -4,6 +4,7 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type {
   DocumentId,
   Exploration,
+  ExplorationId,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryGroupId,
@@ -20,6 +21,8 @@ import type { SelectedEntityId } from "../../pages/ExplorationPage";
 
 export interface ExplorationTreeHeading {
   type: "heading";
+  explorationId?: ExplorationId;
+  thread?: ExplorationThread;
 }
 
 export interface ExplorationTreeQueryGroup {
@@ -63,6 +66,8 @@ export function getExplorationSidebarTree(
       icon: "empty",
       data: {
         type: "heading",
+        explorationId: exploration.id,
+        thread,
       },
       children: getExplorationQueryTree(thread),
     };
@@ -234,17 +239,28 @@ function getExplorationDocumentTree(
         data: {
           type: "document",
           id: document.id,
-          status:
-            document.id === thread.ai_summary_document_id &&
-            thread.started_at != null &&
-            thread.completed_at == null
-              ? "running"
-              : "done",
+          status: getExplorationDocumentStatus(document.id, thread),
           parent_id: "documents",
         },
       };
     });
   });
+}
+
+function getExplorationDocumentStatus(
+  documentId: DocumentId,
+  thread: ExplorationThread,
+) {
+  if (documentId !== thread.ai_summary_document_id) {
+    return "done";
+  }
+  if (thread.canceled_at != null) {
+    return "canceled";
+  }
+  if (thread.completed_at != null) {
+    return "done";
+  }
+  return "running";
 }
 
 function getExplorationThreadName(thread: ExplorationThread, index: number) {

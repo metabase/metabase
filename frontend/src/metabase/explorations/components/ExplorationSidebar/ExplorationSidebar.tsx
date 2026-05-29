@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import {
   explorationApi,
+  useCancelExplorationThreadMutation,
   useUpdateExplorationMutation,
 } from "metabase/api/exploration";
 import { EditableText } from "metabase/common/components/EditableText";
@@ -20,15 +21,21 @@ import {
   QUERY_INTERESTINGNESS_SCORE_THRESHOLD,
 } from "metabase/explorations/constants";
 import {
+  ActionIcon,
   Box,
   Ellipsified,
   Icon,
   type IconProps,
   Loader,
+  Menu,
   Stack,
-  UnstyledButton,
 } from "metabase/ui";
-import type { Exploration, ExplorationQueryStatus } from "metabase-types/api";
+import type {
+  Exploration,
+  ExplorationId,
+  ExplorationQueryStatus,
+  ExplorationThreadId,
+} from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
@@ -190,6 +197,7 @@ export function ExplorationSidebar({
       <Box className={S.tree}>
         <Tree
           ref={treeRef}
+          role="tree"
           data={tree}
           selectedId={selectedEntityId?.id}
           TreeNode={TreeNode}
@@ -232,7 +240,9 @@ function ExplorationTreeHeading({
   depth,
 }: ExplorationTreeHeadingProps) {
   return (
-    <UnstyledButton
+    <Box
+      role="group"
+      aria-label={item.name}
       aria-expanded={isExpanded}
       className={S.treeRow}
       onClick={onToggleExpand}
@@ -246,7 +256,68 @@ function ExplorationTreeHeading({
       <Ellipsified flex={1} size="md" lh="1.5rem">
         {item.name}
       </Ellipsified>
-    </UnstyledButton>
+      <ExplorationThreadMenu item={item} />
+    </Box>
+  );
+}
+
+function ExplorationThreadMenu({
+  item,
+}: {
+  item: ITreeNodeItem<ExplorationTreeHeading>;
+}) {
+  const [cancelThread] = useCancelExplorationThreadMutation();
+  const [sendToast] = useToast();
+
+  const handleCancelThread = useCallback(
+    async (explorationId: ExplorationId, threadId: ExplorationThreadId) => {
+      const { error } = await cancelThread({ explorationId, threadId });
+      if (error) {
+        sendToast({
+          message: t`Failed to stop`,
+        });
+      }
+    },
+    [cancelThread, sendToast],
+  );
+
+  if (!item.data?.explorationId || !item.data?.thread) {
+    return null;
+  }
+  const { explorationId, thread } = item.data;
+  const menuItems = [];
+
+  if (thread.completed_at == null) {
+    menuItems.push(
+      <Menu.Item
+        key="stop"
+        onClick={() => handleCancelThread(explorationId, thread.id)}
+      >
+        {t`Stop running`}
+      </Menu.Item>,
+    );
+  }
+
+  if (menuItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <Menu>
+      <Menu.Target>
+        <ActionIcon
+          size="1.25rem"
+          mr="-0.25rem"
+          c="icon-primary"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Icon name="ellipsis" size="1rem" />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
+        {menuItems}
+      </Menu.Dropdown>
+    </Menu>
   );
 }
 
@@ -297,7 +368,8 @@ function ExplorationTreeItem({
     <ForwardRefLink
       ref={itemRef}
       to={getSelectedEntityIdUrl(entityId)}
-      role="listitem"
+      role="treeitem"
+      aria-selected={isSelected}
       className={cx(S.treeRow, {
         [S.treeRowSelected]: isSelected,
       })}
@@ -332,6 +404,11 @@ function ExplorationTreeItemIcon({
   }
   if (status === "error") {
     return <Icon name="warning" c="error" aria-label={t`Failed to generate`} />;
+  }
+  if (status === "canceled") {
+    return (
+      <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
+    );
   }
   return <Icon {...iconProps} c="text-secondary" aria-label={t`Ready`} />;
 }

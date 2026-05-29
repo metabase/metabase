@@ -1,3 +1,4 @@
+import type { JSONContent } from "@tiptap/core";
 import { useCallback, useEffect } from "react";
 import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
@@ -45,6 +46,7 @@ import { ExplorationDocumentSkeleton } from "./ExplorationDocumentSkeleton";
 
 export type ExplorationDocumentWithIsAiSummary = ExplorationDocument & {
   isAiSummary: boolean;
+  isCanceled: boolean;
 };
 
 interface ExplorationDocumentProps {
@@ -62,6 +64,8 @@ export function ExplorationDocument({
   childTargetId,
   route,
 }: ExplorationDocumentProps) {
+  const { isAiSummary, isCanceled } = document;
+
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -154,7 +158,7 @@ export function ExplorationDocument({
               fw="bold"
               fz="h3"
               lh="h3"
-              isDisabled={!canWrite || isSaving || document.isAiSummary}
+              isDisabled={!canWrite || isSaving || isAiSummary}
               p={0}
               flex={1}
               maxLength={DOCUMENT_TITLE_MAX_LENGTH}
@@ -204,9 +208,13 @@ export function ExplorationDocument({
               onEditorReady={setEditorInstance}
               onCardEmbedsChange={updateCardEmbeds}
               onQuestionSelect={handleQuestionSelect}
-              initialContent={documentContent}
+              initialContent={
+                isCanceled
+                  ? getCanceledAiSummaryDocumentContent()
+                  : documentContent
+              }
               onChange={handleChange}
-              editable={canWrite && !isSaving && !document.isAiSummary}
+              editable={canWrite && !isSaving && isAiSummary}
               isLoading={isDocumentLoading}
               editorContainerRef={editorContainerRef}
             />
@@ -259,4 +267,26 @@ export function ExplorationDocument({
       )}
     </>
   );
+}
+
+function getCanceledAiSummaryDocumentContent(): JSONContent {
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: t`AI Summary generation was stopped.`,
+            marks: [
+              {
+                type: "italic",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
 }
