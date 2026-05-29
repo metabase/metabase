@@ -55,9 +55,7 @@ The CLI is built to be driven by an AI coding agent like Claude Code. Instead of
 
 ### The metabase-cli skill
 
-The [metabase-cli skill](https://github.com/metabase/agent-skills/tree/main/skills/metabase-cli) teaches your agent the CLI's conventions: how to authenticate, pick a profile, validate queries before running them, and more.
-
-Once installed, you can run:
+The [metabase-cli skill](https://github.com/metabase/agent-skills/tree/main/skills/metabase-cli) teaches your agent the CLI's conventions. Once installed, you can run:
 
 ```
 /metabase-cli Create a dashboard summarizing this month's signups by plan.
