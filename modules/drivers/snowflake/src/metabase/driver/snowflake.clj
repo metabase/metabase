@@ -1065,9 +1065,6 @@
   [workspace]
   (format "MB_ISOLATION_ROLE_%s" (:id workspace)))
 
-(defn- quote-schema [s] (sql.u/quote-name :snowflake :schema s))
-(defn- quote-field  [s] (sql.u/quote-name :snowflake :field s))
-
 (defmethod driver/init-workspace-isolation! :snowflake
   [_driver database workspace]
   (let [details          (driver.conn/effective-details database)

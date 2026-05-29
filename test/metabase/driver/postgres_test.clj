@@ -2479,7 +2479,7 @@
                     (testing "fails and names the unmemberable owner"
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
-                           #"ALTER DEFAULT PRIVILEGES"
+                           #"not a member of \d+ role"
                            (postgres/assert-can-alter-default-privileges! user-spec schema))))
                     (testing "passes once the current_user becomes a member of the owner role"
                       (jdbc/execute! admin-spec
