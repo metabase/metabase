@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import CS from "metabase/css/core/index.css";
 import {
-  Box,
+  Ellipsified,
   FixedSizeIcon,
   Group,
   Loader,
@@ -45,7 +45,9 @@ export function InfoPanelField({
   );
   const isExternalFk = field.fk_target_table_id != null && targetNode == null;
 
-  const fieldName = <Box className={S.fieldName}>{field.name}</Box>;
+  const fieldName = (
+    <Ellipsified className={S.fieldName}>{field.name}</Ellipsified>
+  );
 
   return (
     <Group className={cx(S.fieldRow, CS.textWrap)} gap="sm" wrap="nowrap">
@@ -68,7 +70,14 @@ export function InfoPanelField({
         <Loader size="xs" data-testid="schema-viewer-info-panel-fetch-loader" />
       )}
       {targetNode != null && (
-        <Group gap="xs" wrap="nowrap" flex="1 1 auto" h="100%" miw={0}>
+        <Group
+          gap="xs"
+          wrap="nowrap"
+          flex="1 1 auto"
+          h="100%"
+          miw={0}
+          maw="50%"
+        >
           <Text c="text-tertiary" lh={1} fz="1rem">
             →
           </Text>
@@ -77,11 +86,11 @@ export function InfoPanelField({
             c="brand"
             onClick={() => onZoomToNode(targetNode.id)}
           >
-            <Group align="end" gap={4} wrap="nowrap" w="100%">
+            <Group align="end" gap={4} flex="0 0 auto" wrap="nowrap" w="100%">
               <FixedSizeIcon name="table" size={14} />
-              <span className={S.targetName}>
+              <Ellipsified>
                 {formatTargetTableName(selectedNode, targetNode)}
-              </span>
+              </Ellipsified>
             </Group>
           </UnstyledButton>
         </Group>

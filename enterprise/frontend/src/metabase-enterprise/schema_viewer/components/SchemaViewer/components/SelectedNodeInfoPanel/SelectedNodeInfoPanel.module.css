@@ -14,16 +14,28 @@
     pointer-events: all;
   }
 
-  .fieldName {
-    flex: 0 1 auto;
-    white-space: nowrap;
+  .fieldRow {
+    overflow: hidden;
   }
 
   .fkLink {
+    overflow: hidden;
     line-height: 1;
 
     &:hover span {
       text-decoration: underline;
     }
+  }
+
+  .fieldName,
+  .targetName {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fieldName {
+    max-width: 50%;
   }
 }
