@@ -4,14 +4,13 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useSetting } from "metabase/common/hooks";
-import { Icon, Text } from "metabase/ui";
+import { Card, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
 
 import {
   BillingExternalLink,
-  BillingInfoCard,
   BillingInfoRowContainer,
   BillingInternalLink,
 } from "./BillingInfo.styled";
@@ -121,7 +120,7 @@ export const BillingInfoTable = ({
   return (
     <>
       <SettingHeader id="billing" title={t`Billing`} />
-      <BillingInfoCard flat>
+      <Card mt="md" p={0} radius="md" withBorder>
         {billingInfo.content?.map((lineItem, index, arr) => (
           <BillingInfoRow
             key={lineItem.name}
@@ -129,7 +128,7 @@ export const BillingInfoTable = ({
             extraPadding={arr.length === index + 1}
           />
         ))}
-      </BillingInfoCard>
+      </Card>
       {airgap_enabled && <StillNeedHelp />}
     </>
   );
