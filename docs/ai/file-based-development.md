@@ -9,14 +9,16 @@ summary: "Use a coding agent and the Metabase CLI to create Metabase content, th
 
 Metabase content like questions and dashboards can be serialized as YAML files. You can edit those YAML files by hand, sure, but now that we have actual genies, you can just ask the genies to create the content for you (call it "lamp-rubbing development").
 
-With this set up, a typical workflow with a development instance of Metabase would be:
+With this set up, a typical workflow using an agent with a development instance of Metabase would be:
 
-- Prompt the agent with `/metabase-cli {your prompt here}`
+- Prompt the agent with `/metabase-cli Create a dashboard based on the sales table.`
 - Agent creates questions and a dashboard.
-- You view them in your dev instance.
-- Iterate either in Metabase or via the agent until you're happy with the dashboard.
-- Commit your changes and push them up to your repo.
-- Remote sync pulls the changes into your production Metabase.
+- You view the dashboard in your dev instance.
+- Iterate either in your Metabase or via the agent until you're happy with the dashboard.
+- Use remote sync to push your changes to a repo.
+- Create a PR.
+- Merge the changes.
+- Once merged, your production Metabase pulls in the changes via remote sync.
 
 ## The agent-driven development toolkit
 
@@ -46,7 +48,7 @@ Once you have these set up, you can step through the example workflow.
 
 1. Set up a Metabase instance to check your work before pushing changes to production. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
 
-2. Create an [API key](../people-and-groups/api-keys.md#create-an-api-key) in this development Metabase and assign it to the Data Analyst Group.
+2. Create an [API key](../people-and-groups/api-keys.md#create-an-api-key) in this development Metabase and assign it to the Admin group, so the agent can create content and work with remote sync.
 
 3. We also recommend turning off the sample content and usage analytics, so they don't pollute the data model. If you're using a [docker compose file](../installation-and-operation/running-metabase-on-docker.md), add these [environment variables](../configuring-metabase/environment-variables.md):
 
@@ -133,7 +135,7 @@ If you've enabled [auto-sync](../installation-and-operation/remote-sync.md#pulli
 
 Since the agent creates content directly in Metabase, undoing its work may mean cleaning up in two places:
 
-- **In Metabase**: archive the items the agent created. Pushing a previous commit via remote sync won't delete any content in your Metabase; you have to delete the content manually (or ask the agent to delete the content via `/metabase-cli`.
+- **In Metabase**: archive the items the agent created. Pushing a previous commit via remote sync won't delete any content in your Metabase; you have to delete the content manually (or ask the agent to delete the content via `/metabase-cli`).
 - **If you've pushed changes to your repo**: you'll also need to use `git` to revert your YAML files to the last good commit.
 
 ## Further reading
