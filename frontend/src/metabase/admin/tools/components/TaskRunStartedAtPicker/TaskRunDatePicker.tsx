@@ -42,14 +42,13 @@ export const TaskRunDatePicker = ({
   placeholder,
   onChange,
 }: TaskRunDatePickerProps) => {
+  const isIncludeTodayAllowed = (value: TaskRunDateFilterOption | null) =>
+    value !== null && value !== "thisday";
+
   const emit = (
     next: TaskRunDateFilterOption | null,
     nextIncludeToday: boolean,
-  ) =>
-    onChange(
-      next,
-      next === null || next === "thisday" ? false : nextIncludeToday,
-    );
+  ) => onChange(next, isIncludeTodayAllowed(next) && nextIncludeToday);
 
   const [opened, setOpened] = useState<boolean>(false);
   /**
@@ -68,7 +67,7 @@ export const TaskRunDatePicker = ({
   ];
 
   const selectedLabel = options.find((option) => option.value === value)?.label;
-  const includeTodayAllowed = value !== null && value !== "thisday";
+  const includeTodayAllowed = isIncludeTodayAllowed(value);
 
   const displayLabel = (() => {
     if (!selectedLabel) {
