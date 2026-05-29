@@ -660,6 +660,8 @@
 (defn- lock! [dataset-name]
   (setup-locks!)
   (loop [tries 0]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "[Snowflake] locking attempt" tries "on" dataset-name)
     (let [locked? (with-write-stmt! try-lock! dataset-name)]
       (when (< 1000 tries)
         (throw (Exception. "could not acquire snowflake lock")))
@@ -668,6 +670,8 @@
         (recur (inc tries))))))
 
 (defn- unlock! [dataset-name ^java.sql.Statement stmt]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println "[Snowflake] unlocking" dataset-name)
   (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
                               dataset-name)))
 
@@ -678,8 +682,10 @@
    {:write? false}
    (fn [^java.sql.Connection conn]
      (loop [tries 0]
-       (when (< 1000 tries)
-        (throw (Exception. "could not acquire snowflake read lock")))
+       #_{:clj-kondo/ignore [:discouraged-var]}
+       (println "[Snowflake] read-locking attempt" tries "on" dataset-name)
+       (when (< 2000 tries)
+         (throw (Exception. "could not acquire snowflake read lock")))
        (when (with-open [stmt (.createStatement conn)]
                (.next (.executeQuery stmt (format "SELECT at FROM
                                                    metabase_test_tracking.PUBLIC.locks
