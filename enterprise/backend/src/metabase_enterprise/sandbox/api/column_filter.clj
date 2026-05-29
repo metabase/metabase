@@ -38,10 +38,8 @@
   (let [sandboxes (filter (comp table-ids :table_id) (perms/sandboxes-for-user))
         card-ids  (into #{} (keep :card_id) sandboxes)]
     (if (seq card-ids)
-      (let [cards-by-id (into {}
-                              (map (juxt :id identity))
-                              (t2/select [:model/Card :id :dataset_query :result_metadata :card_schema]
-                                         :id [:in card-ids]))]
+      (let [cards-by-id (t2/select-pk->fn identity [:model/Card :id :dataset_query :result_metadata :card_schema]
+                                          :id [:in card-ids])]
         (into {}
               (keep (fn [{:keys [table_id card_id]}]
                       (when-let [card (get cards-by-id card_id)]
