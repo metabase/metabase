@@ -9,6 +9,7 @@ import type {
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
@@ -27,6 +28,7 @@ import S from "./MetricSearchPanel.module.css";
 type MetricSearchPanelProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState | null;
   onFormulaEntitiesChange: (
     entities: MetricsViewerFormulaEntity[],
     slotMapping?: Map<number, number>,
@@ -45,6 +47,7 @@ type MetricSearchPanelProps = {
 export function MetricSearchPanel({
   definitions,
   formulaEntities,
+  activeDimensionBreakout,
   onFormulaEntitiesChange,
   selectedMetrics,
   metricColors,
@@ -140,6 +143,7 @@ export function MetricSearchPanel({
           <MetricSearch
             definitions={definitions}
             formulaEntities={formulaEntities}
+            activeDimensionBreakout={activeDimensionBreakout}
             onFormulaEntitiesChange={onFormulaEntitiesChange}
             selectedMetrics={selectedMetrics}
             metricColors={metricColors}

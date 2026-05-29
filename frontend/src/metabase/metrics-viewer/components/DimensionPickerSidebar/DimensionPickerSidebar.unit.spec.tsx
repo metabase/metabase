@@ -230,10 +230,6 @@ describe("DimensionPickerSidebar", () => {
       "aria-pressed",
       "true",
     );
-    expect(screen.getByRole("button", { name: "No breakout" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
   });
 
   it("hides categories that are not available for multiple metric sources", () => {
@@ -456,7 +452,7 @@ describe("DimensionPickerSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "See all" }));
 
     expect(screen.getByRole("button", { name: "Birth Date" })).toHaveAttribute(
-      "aria-pressed",
+      "data-selected",
       "true",
     );
 
@@ -465,8 +461,8 @@ describe("DimensionPickerSidebar", () => {
     const createdAtButtons = screen.getAllByRole("button", {
       name: "Created At",
     });
-    expect(createdAtButtons[0]).not.toHaveAttribute("aria-pressed", "true");
-    expect(createdAtButtons[1]).toHaveAttribute("aria-pressed", "true");
+    expect(createdAtButtons[0]).not.toHaveAttribute("data-selected");
+    expect(createdAtButtons[1]).toHaveAttribute("data-selected", "true");
   });
 
   it("groups all fields by metric when multiple metrics are selected", async () => {

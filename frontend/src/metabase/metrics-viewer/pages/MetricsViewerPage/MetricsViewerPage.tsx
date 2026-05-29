@@ -109,6 +109,7 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
         <MetricSearchPanel
           definitions={definitions}
           formulaEntities={formulaEntities}
+          activeDimensionBreakout={activeDimensionBreakout}
           onFormulaEntitiesChange={setFormulaEntities}
           selectedMetrics={selectedMetrics}
           metricColors={sourceColors}
