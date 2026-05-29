@@ -20,6 +20,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.impl :as data.impl]
@@ -654,6 +655,32 @@
                 (is (true? (t2/select-one-fn :database_require_filter :model/Table :name table-name :db_id (mt/id)))))
               (finally
                 (drop-table-if-exists! table-name)))))))))
+
+(deftest ^:synchronized sync-fields-grouped-by-table!-on-partitioned-bigquery-table-test
+  (testing "Partitioned BigQuery tables that require a partition filter can't go through
+            run-distinct-batch directly (it bypasses the metadata-from-qp middleware that
+            injects the partition filter). sync-fields-grouped-by-table! should detect this
+            via can-batch-distinct? and fall back to the per-field path, which does go through
+            the middleware. The distinct values must still come back correctly."
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/dataset native-dataset
+        (let [category-field-id (u/auto-retry 1
+                                  (try (mt/id :fv_partitioned_table :category)
+                                       (catch Exception e
+                                         (sync/sync-database! (mt/db) {:scan :schema})
+                                         (throw e))))
+              category-field    (t2/select-one :model/Field :id category-field-id)
+              table             (t2/select-one :model/Table :id (:table_id category-field))]
+          (testing "Dispatcher identifies this as a non-batch-able table"
+            (is (false? (#'sync.field-values/can-batch-distinct? table))))
+          (testing "Distinct values come back correctly via the fallback per-field path"
+            (t2/update! :model/Field category-field-id {:has_field_values :list})
+            (t2/delete! :model/FieldValues :field_id category-field-id)
+            (sync.field-values/sync-fields-grouped-by-table! [category-field])
+            (is (= #{"coffee" "tea" "matcha"}
+                   (set (:values (t2/select-one :model/FieldValues
+                                                :field_id category-field-id
+                                                :type :full)))))))))))
 
 (deftest search-field-from-table-requires-a-filter-test
   (testing "#40673"

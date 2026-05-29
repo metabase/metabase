@@ -306,6 +306,20 @@
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}
              (sync/update-field-values! (data/db))))))))
 
+;;; ---------------------------------- can-batch-distinct? ----------------------------------
+
+(deftest can-batch-distinct?-test
+  (testing "SQL driver with :nested-queries and no required filter → batch path"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table table {:db_id db-id, :name "t", :database_require_filter false}]
+      (is (true? (#'sync.field-values/can-batch-distinct? table)))))
+  (testing "Tables with :database_require_filter true (e.g. partitioned BigQuery) fall back to per-field"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table table {:db_id db-id, :name "t", :database_require_filter true}]
+      (is (false? (#'sync.field-values/can-batch-distinct? table))
+          "Partitioned tables that require a WHERE on the partition column can't go through the
+           native UNION ALL path because it bypasses add-required-filters-if-needed middleware"))))
+
 ;;; ---------------------------------- sync-fields-grouped-by-table! ----------------------------------
 
 (deftest ^:mb/driver-tests ^:synchronized sync-fields-grouped-by-table!-test
