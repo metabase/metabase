@@ -48,7 +48,7 @@ export const BulkActionBarPortal = ({
         isNavbarOpen={isNavbarOpen}
         className={cx(className, Animation.popToast)}
       >
-        <Box component={ToastCard} dark data-testid="toast-card" {...props}>
+        <Box component={ToastCard} data-testid="toast-card" {...props}>
           {message && <Text color="text-primary-inverse">{message}</Text>}
           <Flex gap="sm" align="center">
             {children}
