@@ -57,9 +57,7 @@ x.com")
   :audit      :getter
   :export?    true
   :setter     (fn [new-value]
-                (let [disabling? (not (if (string? new-value)
-                                        (setting/string->boolean new-value)
-                                        new-value))]
+                (let [disabling? (not (cond-> new-value (string? new-value) setting/string->boolean))]
                   (when (and disabling?
                              config/ee-available?
                              (when-let [custom-viz-enabled?

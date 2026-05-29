@@ -143,6 +143,13 @@
   parse-allowed-resource-hosts
   (memoize parse-allowed-resource-hosts*))
 
+(defn- bracket-ipv6-host
+  "`URI#getHost` returns IPv6 literals unbracketed, but CSP origins require the brackets."
+  [host]
+  (if (and (str/includes? host ":") (not (str/starts-with? host "[")))
+    (str "[" host "]")
+    host))
+
 (defn- font-file-src->origin
   "Extract the `scheme://host[:port]` origin from a custom font file `src` URL, or nil if it is
   blank, relative, or unparseable."
@@ -151,13 +158,7 @@
     (try
       (let [uri    (URI. src)
             scheme (.getScheme uri)
-            host   (.getHost uri)
-            ;; URI#getHost strips IPv6 brackets, but CSP origins require bracketed IPv6 literals.
-            host   (if (and host
-                            (str/includes? host ":")
-                            (not (str/starts-with? host "[")))
-                     (str "[" host "]")
-                     host)
+            host   (some-> uri .getHost bracket-ipv6-host)
             port   (.getPort uri)]
         (when (and scheme host)
           (str scheme "://" host (when (pos? port) (str ":" port)))))
