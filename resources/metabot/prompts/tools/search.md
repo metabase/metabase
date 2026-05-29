@@ -44,8 +44,9 @@ Each search should focus on a single conceptual area to maximize result quality.
 
 `entity_types`:
 - Optionally filter the results to specific data source types.
-- Leave empty to search broadly across all available entity types.
-- Use filtering when the user explicitly requests a specific type or when context makes it clear which types are relevant.
+- Leave empty to search broadly across all available entity types — this is almost always the right choice.
+- Users often use terms like "table", "entity", "question", "card", "query", or "data source" loosely and interchangeably. Do NOT filter by entity type just because one of these words appears in the user's query.
+- Only filter entity_types when the user is unambiguously asking to restrict results to a specific type (e.g., "show me only dashboards", "list all metrics — nothing else").
 
 `limit`:
 - Optional. The maximum number of results to return. Defaults to 10 and is capped at 50.

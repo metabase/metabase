@@ -47,8 +47,9 @@ Each search should focus on a single conceptual area to maximize result quality.
 
 `entity_types`:
 - Optionally filter the results to specific data source types (tables or models).
-- Leave empty to search across both tables and models.
-- Use filtering when the user explicitly requests a specific type or when context makes it clear which types are relevant.
+- Leave empty to search across both tables and models — this is almost always the right choice.
+- Users often use "table" loosely to mean any queryable data source, including models. Do NOT filter by entity type just because the word "table" appears in the user's query.
+- Only filter entity_types when the user is unambiguously asking to restrict results to a specific type (e.g., "show me only models", "raw tables only — not models").
 
 `limit`:
 - Optional. The maximum number of results to return. Defaults to 10 and is capped at 50.
@@ -71,14 +72,14 @@ What tables do we have for orders and customers?
 "semantic_queries": ["order data and transactions", "purchase and sales orders"],
 "keyword_queries": ["order", "orders", "purchase", "transaction"],
 "database_id": 123,
-"entity_types": ["table"]
+"entity_types": []
 </search_call_1>
 
 <search_call_2>
 "semantic_queries": ["customer information and profiles", "client and user data"],
 "keyword_queries": ["customer", "client", "user", "account"],
 "database_id": 123,
-"entity_types": ["table"]
+"entity_types": []
 </search_call_2>
 </example>
 
