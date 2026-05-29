@@ -74,6 +74,15 @@
                   (transforms.u/source-tables-readable? instance)
                   (perms/has-db-transforms-permission? api/*current-user-id* source-db-id))))))
 
+(defn- orphan-query?
+  "True when the query map has its `:database` key explicitly set to nil — the
+  signature of a transform body whose source database has been deleted (e.g.
+  imported from a serdes export of an orphan). We preserve such bodies verbatim
+  rather than running them through MBQL normalization, which requires a database."
+  [q]
+  (or (and (contains? q :database) (nil? (:database q)))
+      (and (contains? q "database") (nil? (get q "database")))))
+
 (defn transform-source-out
   "Deserialize a transform source map from JSON storage format.
   Normalizes queries and keywordizes type fields."
@@ -81,7 +90,7 @@
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
-      (m/update-existing :query lib-be/normalize-query)
+      (m/update-existing :query (fn [q] (if (orphan-query? q) q (lib-be/normalize-query q))))
       (m/update-existing :source-incremental-strategy #(update-keys % keyword))
       (m/update-existing :source-tables (fn [st] (mapv #(update-keys % keyword) st)))
       (m/update-existing :type keyword)))
@@ -90,7 +99,10 @@
   "Serialize a transform source map for JSON storage."
   [m]
   (-> m
-      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
+      (m/update-existing :query (fn [q]
+                                  (if (orphan-query? q)
+                                    q
+                                    ((comp lib/prepare-for-serialization lib-be/normalize-query) q))))
       mi/json-in))
 
 (t2/deftransforms :model/Transform
@@ -110,7 +122,10 @@
     (collection/check-allowed-content :model/Transform collection_id))
   (let [target-db-id (transforms-base.i/target-db-id transform)
         valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))]
-    (when-not valid-db-id?
+    ;; Don't warn when target-db-id is nil — that's an orphan source (e.g. a
+    ;; serdes-imported transform whose source database is missing), not a
+    ;; misconfiguration. Only warn when an id is supplied but invalid.
+    (when (and target-db-id (not valid-db-id?))
       (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform
         (assoc-in [:target :database] target-db-id)
