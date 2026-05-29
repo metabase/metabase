@@ -244,7 +244,7 @@ describe("scenarios > question > download", () => {
       ORDERS.ID,
       {
         "base-type": "type/BigInteger",
-        "join-alias": "Orders",
+        "join-alias": "Orders_2",
       },
     ];
     const totalLeftRef = [
@@ -259,7 +259,7 @@ describe("scenarios > question > download", () => {
       ORDERS.TOTAL,
       {
         "base-type": "type/Float",
-        "join-alias": "Orders",
+        "join-alias": "Orders_2",
       },
     ];
 
@@ -275,7 +275,7 @@ describe("scenarios > question > download", () => {
             {
               fields: [totalRightRef],
               strategy: "left-join",
-              alias: "Orders",
+              alias: "Orders_2",
               condition: ["=", idLeftRef, idRightRef],
               "source-table": ORDERS_ID,
             },

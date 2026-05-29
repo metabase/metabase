@@ -89,15 +89,15 @@ const tableQuestionWithSelfJoinAndFields = {
       {
         "source-table": ORDERS_ID,
         fields: [
-          ["field", ORDERS.ID, { "join-alias": "Orders" }],
-          ["field", ORDERS.TAX, { "join-alias": "Orders" }],
+          ["field", ORDERS.ID, { "join-alias": "Orders_2" }],
+          ["field", ORDERS.TAX, { "join-alias": "Orders_2" }],
         ],
         condition: [
           "=",
           ["field", ORDERS.USER_ID, null],
-          ["field", ORDERS.ID, { "join-alias": "Orders" }],
+          ["field", ORDERS.ID, { "join-alias": "Orders_2" }],
         ],
-        alias: "Orders",
+        alias: "Orders_2",
       },
     ],
     limit: 5,
@@ -452,7 +452,7 @@ describe("scenarios > visualizations > table column settings", () => {
 
       const testData = {
         column: "Tax",
-        columnName: "Orders → Tax",
+        columnName: "Orders_2 → Tax",
         table: "orders 2",
         needsScroll: false,
       };
