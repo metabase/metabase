@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import type { DimensionPickerSidebarCategory } from "metabase/metrics-viewer/utils";
@@ -23,12 +24,16 @@ export function CategoryButton({
   onConfigure,
 }: CategoryButtonProps) {
   return (
-    <Flex className={S.categoryRow} data-expanded={isExpanded}>
+    <Flex
+      className={cx(S.categoryRow, {
+        [S.expanded]: isExpanded,
+        [S.selected]: isSelected,
+      })}
+    >
       <UnstyledButton
         className={S.categoryItem}
-        data-selected={isSelected}
-        aria-label={item.name}
         aria-pressed={isSelected}
+        aria-label={item.name}
         onClick={onClick}
       >
         <Icon className={S.itemIcon} name={item.icon} size={16} />

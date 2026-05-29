@@ -94,6 +94,10 @@ export function MetricsViewerDimensionBreakoutContent({
   );
 
   const definitionForControls = useMemo((): MetricDefinition | null => {
+    if (dimensionBreakout.type === "scalar") {
+      return modifiedDefinitionsBySlotIndex.values().next().value ?? null;
+    }
+
     for (const key of getObjectKeys(dimensionBreakout.dimensionMapping)) {
       const slotIndex = Number(key);
       const modDef = modifiedDefinitionsBySlotIndex.get(slotIndex);
@@ -106,7 +110,11 @@ export function MetricsViewerDimensionBreakoutContent({
       }
     }
     return null;
-  }, [dimensionBreakout.dimensionMapping, modifiedDefinitionsBySlotIndex]);
+  }, [
+    dimensionBreakout.dimensionMapping,
+    dimensionBreakout.type,
+    modifiedDefinitionsBySlotIndex,
+  ]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
