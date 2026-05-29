@@ -3,6 +3,7 @@ import type {
   SourceColorMap,
 } from "metabase/metrics-viewer/types";
 import type {
+  DimensionPickerItem,
   DimensionPickerSection,
   SourceDisplayInfo,
 } from "metabase/metrics-viewer/utils";
@@ -61,6 +62,57 @@ function mergeSectionsByName(sections: DimensionPickerSection[]) {
   return mergedSections;
 }
 
+function getSourceSlotIndices(
+  metricSlots: MetricSlot[],
+  sourceId: MetricSourceId,
+) {
+  return new Set(
+    metricSlots
+      .filter((slot) => slot.sourceId === sourceId)
+      .map((slot) => slot.slotIndex),
+  );
+}
+
+function scopeItemToSlotIndices(
+  item: DimensionPickerItem,
+  slotIndices: Set<number>,
+) {
+  const dimensionMapping = Object.fromEntries(
+    Object.entries(item.dimensionBreakoutInfo.dimensionMapping).filter(
+      ([slotIndex]) => slotIndices.has(Number(slotIndex)),
+    ),
+  );
+
+  if (Object.keys(dimensionMapping).length === 0) {
+    return null;
+  }
+
+  return {
+    ...item,
+    dimensionBreakoutInfo: {
+      ...item.dimensionBreakoutInfo,
+      dimensionMapping,
+    },
+  };
+}
+
+function scopeSectionsToSource(
+  sections: DimensionPickerSection[],
+  metricSlots: MetricSlot[],
+  sourceId: MetricSourceId,
+) {
+  const slotIndices = getSourceSlotIndices(metricSlots, sourceId);
+
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items
+        .map((item) => scopeItemToSlotIndices(item, slotIndices))
+        .filter((item): item is DimensionPickerItem => item != null),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
 export function buildAllFieldsMetricGroups({
   sections,
   sourceOrder,
@@ -81,13 +133,18 @@ export function buildAllFieldsMetricGroups({
       const matchingSections = sections.filter(
         (section) => section.isShared || section.sourceId === sourceId,
       );
+      const scopedSections = scopeSectionsToSource(
+        matchingSections,
+        metricSlots,
+        sourceId,
+      );
 
       return {
         key: sourceId,
         name: sourceDataById[sourceId]?.name ?? sourceId,
         colors:
           metricSlot != null ? sourceColors[metricSlot.entityIndex] : undefined,
-        sections: mergeSectionsByName(matchingSections),
+        sections: mergeSectionsByName(scopedSections),
       };
     })
     .filter((group) => group.sections.length > 0);

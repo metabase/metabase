@@ -197,6 +197,91 @@ describe("DimensionPickerSidebar", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("hides categories that are not available for multiple metric sources", () => {
+    setup({
+      dimensions: {
+        shared: [
+          {
+            icon: "location",
+            dimensionBreakoutInfo: {
+              type: "geo",
+              label: "Country",
+              dimensionMapping: {
+                0: "dim-country",
+                1: "second-dim-country",
+              },
+            },
+          },
+        ],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "location",
+              dimensionBreakoutInfo: {
+                type: "geo",
+                label: "Billing Address Country",
+                dimensionMapping: { 0: "dim-billing-address-country" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Feedback, Count" },
+      },
+    });
+
+    expect(screen.getByRole("button", { name: "Country" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Billing Address Country" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps unshared fields available from See all", async () => {
+    setup({
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "location",
+              dimensionBreakoutInfo: {
+                type: "geo",
+                label: "Billing Address Country",
+                dimensionMapping: { 0: "dim-billing-address-country" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Feedback, Count" },
+      },
+    });
+
+    expect(screen.getByText("No shared dimensions found")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    expect(screen.getByText("All fields")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Billing Address Country" }),
+    ).toBeInTheDocument();
+  });
+
   it("updates the active time dimensionBreakout with the clicked time field from all fields", async () => {
     const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
       setup({ dimensionBreakout: timeDimensionBreakout });
@@ -209,6 +294,140 @@ describe("DimensionPickerSidebar", () => {
       label: "Order Date",
       dimensionMapping: { 0: "dim-order-date" },
     });
+  });
+
+  it("preserves other metric mappings when selecting an aggregate field from See all", async () => {
+    const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
+      setup({
+        dimensionBreakout: {
+          id: "dim-created-at",
+          type: "time",
+          label: "Created At",
+          display: "line",
+          dimensionMapping: {
+            0: "dim-created-at",
+            1: "second-dim-created-at",
+          },
+          projectionConfig: {},
+        },
+        dimensions: {
+          shared: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: {
+                  0: "dim-created-at",
+                  1: "second-dim-created-at",
+                },
+              },
+            },
+          ],
+          bySource: {
+            [SOURCE_ID]: [
+              {
+                icon: "calendar",
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Birth Date",
+                  dimensionMapping: { 0: "dim-birth-date" },
+                },
+              },
+            ],
+            [SECOND_SOURCE_ID]: [],
+          },
+        },
+        slots: [
+          { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+          { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+        ],
+        sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+        sources: {
+          [SOURCE_ID]: { type: "metric", name: "Revenue" },
+          [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
+        },
+      });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+    await userEvent.click(screen.getByRole("button", { name: "Birth Date" }));
+
+    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalledWith({
+      label: "Birth Date",
+      dimensionMapping: {
+        0: "dim-birth-date",
+        1: "second-dim-created-at",
+      },
+    });
+    expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
+  });
+
+  it("marks metric-scoped See all dimensions as selected", async () => {
+    setup({
+      dimensionBreakout: {
+        id: "dim-birth-date",
+        type: "time",
+        label: "Birth Date",
+        display: "line",
+        dimensionMapping: {
+          0: "dim-birth-date",
+          1: "second-dim-created-at",
+        },
+        projectionConfig: {},
+      },
+      dimensions: {
+        shared: [
+          {
+            icon: "calendar",
+            dimensionBreakoutInfo: {
+              type: "time",
+              label: "Created At",
+              dimensionMapping: {
+                0: "dim-created-at",
+                1: "second-dim-created-at",
+              },
+            },
+          },
+        ],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Birth Date",
+                dimensionMapping: { 0: "dim-birth-date" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
+      },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    expect(screen.getByRole("button", { name: "Birth Date" })).toHaveAttribute(
+      "data-selected",
+      "true",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Total Orders" }));
+
+    const createdAtButtons = screen.getAllByRole("button", {
+      name: "Created At",
+    });
+    expect(createdAtButtons[0]).not.toHaveAttribute("data-selected");
+    expect(createdAtButtons[1]).toHaveAttribute("data-selected", "true");
   });
 
   it("groups all fields by metric when multiple metrics are selected", async () => {

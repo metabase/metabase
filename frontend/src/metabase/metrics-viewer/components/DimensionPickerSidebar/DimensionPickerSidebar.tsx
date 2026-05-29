@@ -38,6 +38,7 @@ import { CategoryItem } from "./components/CategoryItem";
 import {
   filterSections,
   getSelectedCategoryKey,
+  hasMatchingDimensions,
   hasSameDimensions,
   isCategorySelected,
 } from "./utils";
@@ -78,15 +79,20 @@ export function DimensionPickerSidebar({
     null,
   );
 
-  const categories = useMemo(
-    () =>
-      buildDimensionPickerSidebarCategories({
-        availableDimensions,
-        sourceOrder: metricSourceOrder,
-        sourceDataById: metricSourceDataById,
-      }),
-    [availableDimensions, metricSourceOrder, metricSourceDataById],
-  );
+  const categories = useMemo(() => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions,
+      sourceOrder: metricSourceOrder,
+      sourceDataById: metricSourceDataById,
+    });
+
+    return filterSharedCategories(categories, metricSlots);
+  }, [
+    availableDimensions,
+    metricSourceOrder,
+    metricSourceDataById,
+    metricSlots,
+  ]);
 
   const sections = useMemo(
     () =>
@@ -108,6 +114,11 @@ export function DimensionPickerSidebar({
     activeDimensionBreakout,
   );
   const showAllFields = mode === "all" || searchText.trim() !== "";
+  const hasAllFields = sections.length > 0;
+  const showSeeAll = !showAllFields && hasAllFields;
+  const defaultEmptyStateText = hasMultipleMetricSources(metricSlots)
+    ? t`No shared dimensions found`
+    : t`No fields found`;
 
   const handleSelect = (item: DimensionPickerItem) => {
     if (hasSameDimensions(item, activeDimensionBreakout)) {
@@ -131,6 +142,32 @@ export function DimensionPickerSidebar({
 
     onSelectDimensionBreakout(item.dimensionBreakoutInfo);
     trackMetricsViewerDimensionSelected();
+  };
+
+  const handleAllFieldsSelect = (item: DimensionPickerItem) => {
+    if (hasMatchingDimensions(item, activeDimensionBreakout)) {
+      return;
+    }
+
+    const dimensionBreakoutConfig = getDimensionBreakoutConfig(
+      item.dimensionBreakoutInfo.type,
+    );
+    if (
+      activeDimensionBreakout.type === item.dimensionBreakoutInfo.type &&
+      dimensionBreakoutConfig.matchMode === "aggregate"
+    ) {
+      onUpdateActiveDimensionBreakout({
+        dimensionMapping: {
+          ...activeDimensionBreakout.dimensionMapping,
+          ...item.dimensionBreakoutInfo.dimensionMapping,
+        },
+        label: item.dimensionBreakoutInfo.label,
+      });
+      trackMetricsViewerDimensionSelected();
+      return;
+    }
+
+    handleSelect(item);
   };
 
   const handleCategorySelect = (category: DimensionPickerSidebarCategory) => {
@@ -242,7 +279,7 @@ export function DimensionPickerSidebar({
             metricSourceDataById={metricSourceDataById}
             sourceColors={sourceColors}
             metricSlots={metricSlots}
-            onSelect={handleSelect}
+            onSelect={handleAllFieldsSelect}
           />
         )}
         {showFieldsByCategory && (
@@ -280,24 +317,60 @@ export function DimensionPickerSidebar({
                   />
                 );
               })}
-              <Button
-                mr="auto"
-                mt="sm"
-                onClick={handleSeeAll}
-                size="sm"
-                variant="subtle"
-              >
-                {t`See all`}
-              </Button>
             </Stack>
           </Stack>
         )}
         {!showAllFields && !showFieldsByCategory && (
           <Text c="text-secondary" ta="center" py="lg">
-            {t`No fields found`}
+            {defaultEmptyStateText}
           </Text>
+        )}
+        {showSeeAll && (
+          <Button
+            mr="auto"
+            mt="sm"
+            onClick={handleSeeAll}
+            size="sm"
+            variant="subtle"
+          >
+            {t`See all`}
+          </Button>
         )}
       </ScrollArea>
     </Box>
   );
+}
+
+function filterSharedCategories(
+  categories: DimensionPickerSidebarCategory[],
+  metricSlots: MetricSlot[],
+) {
+  if (!hasMultipleMetricSources(metricSlots)) {
+    return categories;
+  }
+
+  return categories.filter(
+    (category) => getMappedMetricSourceCount(category, metricSlots) >= 2,
+  );
+}
+
+function hasMultipleMetricSources(metricSlots: MetricSlot[]) {
+  return new Set(metricSlots.map((slot) => slot.sourceId)).size > 1;
+}
+
+function getMappedMetricSourceCount(
+  category: DimensionPickerSidebarCategory,
+  metricSlots: MetricSlot[],
+) {
+  const mappedSourceIds = new Set<MetricSourceId>();
+
+  for (const slot of metricSlots) {
+    if (
+      category.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex] != null
+    ) {
+      mappedSourceIds.add(slot.sourceId);
+    }
+  }
+
+  return mappedSourceIds.size;
 }
