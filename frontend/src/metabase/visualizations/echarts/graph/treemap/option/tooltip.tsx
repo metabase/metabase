@@ -15,6 +15,7 @@ export function getTreemapTooltipOption(
   colors: Record<string, string>,
   formatValue: (value: number) => string,
   containerRef: React.RefObject<HTMLDivElement>,
+  getViewRootId: () => string | null,
   groupingHeader?: string,
 ): TooltipOption {
   return {
@@ -28,16 +29,21 @@ export function getTreemapTooltipOption(
       if (id == null) {
         return "";
       }
-      const context = getTreemapTooltipContext(tree, id, groupingHeader);
+      const context = getTreemapTooltipContext(
+        tree,
+        id,
+        getViewRootId(),
+        groupingHeader,
+      );
       if (context == null) {
         return "";
       }
 
-      const parentColor = context.parentNode
-        ? colors[String(context.parentNode.rawName)]
-        : undefined;
+      // In the drilled-in sub-group view every sibling shares the parent's
+      // color, so per-row markers would be identical and redundant — omit them.
+      // In the overview each top-level group keeps its own color.
       const getColor = (node: TreemapNode) =>
-        context.parentNode ? parentColor : colors[String(node.rawName)];
+        context.parentNode ? undefined : colors[String(node.rawName)];
 
       return reactNodeToHtmlString(
         <EChartsTooltip

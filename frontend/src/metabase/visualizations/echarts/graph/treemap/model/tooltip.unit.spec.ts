@@ -33,27 +33,62 @@ describe("getTreemapNodeId", () => {
 });
 
 describe("getTreemapTooltipContext", () => {
-  it("resolves a top-level id to the whole forest as siblings", () => {
-    const context = getTreemapTooltipContext(TWO_LEVEL, "0", "Category");
+  describe("overview (not drilled in)", () => {
+    it("resolves a top-level id to the whole forest, focused on that group", () => {
+      const context = getTreemapTooltipContext(
+        TWO_LEVEL,
+        "0",
+        null,
+        "Category",
+      );
 
-    expect(context?.header).toBe("Category");
-    expect(context?.siblings).toBe(TWO_LEVEL);
-    expect(context?.focusedNode).toBe(TWO_LEVEL[0]);
-    expect(context?.parentNode).toBeUndefined();
+      expect(context?.header).toBe("Category");
+      expect(context?.siblings).toBe(TWO_LEVEL);
+      expect(context?.focusedNode).toBe(TWO_LEVEL[0]);
+      expect(context?.parentNode).toBeUndefined();
+    });
+
+    it("resolves a sub-group id to the forest, focused on its top-level group", () => {
+      const context = getTreemapTooltipContext(
+        TWO_LEVEL,
+        "0-1",
+        null,
+        "Category",
+      );
+
+      expect(context?.header).toBe("Category");
+      expect(context?.siblings).toBe(TWO_LEVEL);
+      expect(context?.focusedNode).toBe(TWO_LEVEL[0]);
+      expect(context?.parentNode).toBeUndefined();
+    });
+
+    it("returns null for an unknown top-level id", () => {
+      expect(getTreemapTooltipContext(TWO_LEVEL, "9", null)).toBeNull();
+    });
   });
 
-  it("resolves a leaf id to its parent's children, header = parent name", () => {
-    const context = getTreemapTooltipContext(TWO_LEVEL, "0-1", "Category");
+  describe("drilled into a group", () => {
+    it("resolves a sub-group id to the drilled group's children", () => {
+      const context = getTreemapTooltipContext(
+        TWO_LEVEL,
+        "0-1",
+        "0",
+        "Category",
+      );
 
-    expect(context?.header).toBe("Phones");
-    expect(context?.siblings).toBe(TWO_LEVEL[0].children);
-    expect(context?.focusedNode).toBe(TWO_LEVEL[0].children?.[1]);
-    expect(context?.parentNode).toBe(TWO_LEVEL[0]);
-  });
+      expect(context?.header).toBe("Phones");
+      expect(context?.siblings).toBe(TWO_LEVEL[0].children);
+      expect(context?.focusedNode).toBe(TWO_LEVEL[0].children?.[1]);
+      expect(context?.parentNode).toBe(TWO_LEVEL[0]);
+    });
 
-  it("returns null for an unknown id", () => {
-    expect(getTreemapTooltipContext(TWO_LEVEL, "9")).toBeNull();
-    expect(getTreemapTooltipContext(TWO_LEVEL, "0-9")).toBeNull();
+    it("returns null when the drilled group has no children", () => {
+      expect(getTreemapTooltipContext(TWO_LEVEL, "1-0", "1")).toBeNull();
+    });
+
+    it("returns null for an unknown sub-group id", () => {
+      expect(getTreemapTooltipContext(TWO_LEVEL, "0-9", "0")).toBeNull();
+    });
   });
 });
 
@@ -62,7 +97,7 @@ describe("getTreemapTooltipModel", () => {
     ({ Phones: "#aaaaaa", Tablets: "#bbbbbb" })[node.displayName];
 
   it("builds one row per sibling with name, formatted value, and percent of total", () => {
-    const context = getTreemapTooltipContext(TWO_LEVEL, "0", "Category")!;
+    const context = getTreemapTooltipContext(TWO_LEVEL, "0", null, "Category")!;
     const model = getTreemapTooltipModel(context, getColor, formatValue);
 
     expect(model.header).toBe("Category");
@@ -81,7 +116,7 @@ describe("getTreemapTooltipModel", () => {
   });
 
   it("adds a Total footer when there is more than one sibling", () => {
-    const context = getTreemapTooltipContext(TWO_LEVEL, "0", "Category")!;
+    const context = getTreemapTooltipContext(TWO_LEVEL, "0", null, "Category")!;
     const model = getTreemapTooltipModel(context, getColor, formatValue);
 
     expect(model.footer).toMatchObject({
@@ -93,7 +128,7 @@ describe("getTreemapTooltipModel", () => {
     const single: TreemapTree = [
       { rawName: "A", displayName: "A", value: 5, rowIndices: [0] },
     ];
-    const context = getTreemapTooltipContext(single, "0")!;
+    const context = getTreemapTooltipContext(single, "0", null)!;
     const model = getTreemapTooltipModel(context, () => undefined, formatValue);
 
     expect(model.footer).toBeUndefined();
@@ -105,7 +140,7 @@ describe("getTreemapTooltipModel", () => {
       { rawName: "A", displayName: "A", value: 0, rowIndices: [0] },
       { rawName: "B", displayName: "B", value: 0, rowIndices: [1] },
     ];
-    const context = getTreemapTooltipContext(zero, "0")!;
+    const context = getTreemapTooltipContext(zero, "0", null)!;
     const model = getTreemapTooltipModel(context, () => undefined, formatValue);
 
     expect(model.rows[0].values[1]).toBe(formatPercent(0));

@@ -27,21 +27,28 @@ export function getTreemapNodeId(
 export function getTreemapTooltipContext(
   tree: TreemapTree,
   id: string,
+  viewRootId: string | null,
   groupingHeader?: string,
 ): TreemapTooltipContext | null {
   const [rootPart, leafPart] = id.split("-");
-  const root = tree[Number(rootPart)];
-  if (root == null) {
-    return null;
+
+  // Overview (not drilled in): every element — top-level box or sub-group box —
+  // shows the top-level summary, highlighting the hovered element's top-level
+  // group. The leaf segment of `id` is intentionally ignored here.
+  if (viewRootId == null) {
+    const focusedNode = tree[Number(rootPart)];
+    if (focusedNode == null) {
+      return null;
+    }
+    return { header: groupingHeader, siblings: tree, focusedNode };
   }
 
-  if (leafPart == null) {
-    return { header: groupingHeader, siblings: tree, focusedNode: root };
-  }
-
-  const siblings = root.children;
+  // Drilled into a top-level group: show that group's sub-group breakdown,
+  // highlighting the hovered sub-group.
+  const root = tree[Number(viewRootId)];
+  const siblings = root?.children;
   const focusedNode = siblings?.[Number(leafPart)];
-  if (siblings == null || focusedNode == null) {
+  if (root == null || siblings == null || focusedNode == null) {
     return null;
   }
 

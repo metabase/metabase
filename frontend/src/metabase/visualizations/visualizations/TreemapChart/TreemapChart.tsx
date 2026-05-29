@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
@@ -9,6 +9,7 @@ import {
   getTreemapData,
 } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
+import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
 import {
@@ -20,6 +21,9 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./events";
 
+// Stable fallback so `useChartEvents` deps don't churn while chartData is null.
+const EMPTY_TREE: TreemapTree = [];
+
 export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -28,6 +32,10 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
+  // `null` = overview (initial 2-level view); `"0".."N-1"` = drilled into that
+  // top-level group. Tracked from `treemaproottonode` events (see events.ts);
+  // read live by the tooltip formatter.
+  const viewRootIdRef = useRef<string | null>(null);
 
   const chartData = useMemo(() => {
     const cols = rawSeriesWithRemappings[0]?.data?.cols ?? [];
@@ -55,6 +63,7 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
         colors,
         formatters.value,
         containerRef,
+        () => viewRootIdRef.current,
         treemapColumns.grouping.column.display_name,
       ),
     };
@@ -67,7 +76,18 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
   const hasChildren = Boolean(
     chartData?.tree.some((node) => node.children != null),
   );
-  const { eventHandlers } = useChartEvents(chartRef, hasChildren);
+  const { eventHandlers } = useChartEvents(
+    chartRef,
+    hasChildren,
+    chartData?.tree ?? EMPTY_TREE,
+    viewRootIdRef,
+  );
+
+  // A new dataset re-renders the chart at the absolute root, so reset the
+  // tracked view root to the overview.
+  useEffect(() => {
+    viewRootIdRef.current = null;
+  }, [chartData]);
 
   useCloseTooltipOnScroll(chartRef);
 
