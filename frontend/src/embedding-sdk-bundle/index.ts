@@ -48,6 +48,7 @@ import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
 import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
+import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
 
@@ -81,6 +82,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   validateFunctionSchema,
   MetabotSubscriber,
   executeAction,
+  queryQuestion,
 };
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package
