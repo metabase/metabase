@@ -161,7 +161,6 @@
     ;; For (almost) all v1 data paths, we simply extract the base path (e.g. "/db/1/schema/PUBLIC/table/1/")
     ;; and construct new v2 paths by adding prefixes to the base path.
     [(str "/data" base-path) (str "/query" base-path)]
-
     ;; For the specific v1 path that grants full data access but no native query access, we add a
     ;; /schema/ suffix to the corresponding v2 query permission path.
     (when-let [db-id (second (re-find #"^/db/(\d+)/schema/$" v1-path))]
@@ -389,7 +388,7 @@
                                   :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
                                   :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
                        (group-by :tab_position)
-                               ;; sort by tab position
+                       ;; sort by tab position
                        (sort-by first))
         cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
     (loop [position+cards tab+cards
@@ -541,11 +540,11 @@
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:and
-                                                 ;; only include cards with field refs in column_settings
+                                                    ;; only include cards with field refs in column_settings
                                                     [:or
                                                      [:like :object "%ref\\\\\",[\\\\\"field%"]
                                                      [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                 ;; only include cards with joins
+                                                    ;; only include cards with joins
                                                     [:like :object "%joins%"]
                                                     [:= :model "Card"]]})))
   ;; Reverse migration
@@ -778,13 +777,13 @@
                                                    (m/map-vals
                                                     #(select-keys % ["click_behavior"])
                                                     column_settings)))
-                             ;; select click behavior top level and in column settings
+                              ;; select click behavior top level and in column settings
                               (select-keys ["column_settings" "click_behavior"])
                               (remove-nil-keys)))
         fix-top-level   (fn [toplevel]
                           (if (= (get toplevel "click") "link")
                             (assoc toplevel
-                                  ;; add new shape top level
+                                   ;; add new shape top level
                                    "click_behavior"
                                    {"type"         (get toplevel "click")
                                     "linkType"     "url"
@@ -794,11 +793,11 @@
                           (reduce-kv
                            (fn [m col field-settings]
                              (assoc m col
-                                   ;; add the click stuff under the new click_behavior entry or keep the
-                                   ;; field settings as is
+                                    ;; add the click stuff under the new click_behavior entry or keep the
+                                    ;; field settings as is
                                     (if (and (= (get field-settings "view_as") "link")
                                              (contains? field-settings "link_template"))
-                                     ;; remove old shape and add new shape under click_behavior
+                                      ;; remove old shape and add new shape under click_behavior
                                       (assoc field-settings
                                              "click_behavior"
                                              {"type"             (get field-settings "view_as")
@@ -810,23 +809,23 @@
                            column-settings))
         fixed-card      (-> (if (contains? dashcard "click")
                               (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
-                             ;; behavior added
+                              ;; behavior added
                               (fix-top-level card))
                             (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
-                           ;; the settings tree
+                            ;; the settings tree
                             existing-fixed)
         fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
         final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
-                            ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
-                            ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
-                            ;; doesn't have link text
+                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
+                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
+                             ;; doesn't have link text
                              (walk/postwalk (fn [form]
                                               (if (map? form)
                                                 (into {} (for [[k v] form
                                                                :when (if (seqable? v)
-                                                                      ;; remove keys with empty maps. must be postwalk
+                                                                       ;; remove keys with empty maps. must be postwalk
                                                                        (seq v)
-                                                                      ;; remove nils
+                                                                       ;; remove nils
                                                                        (some? v))]
                                                            [k v]))
                                                 form))))]
@@ -1059,7 +1058,6 @@
       (run! migrate! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
                                           :where  [:= :model "Card"]}))))
-
   (case (db-type*)
     :postgres
     (t2/query ["UPDATE revision
@@ -1183,7 +1181,7 @@
   true)
 
 (define-migration CreateSampleContent)
-  ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
+;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
 
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
@@ -1486,7 +1484,7 @@
 (defn- json-column-key-like-clause
   [key column]
   [:or [:like column (str "%\\\\\"" key "\\\\\"%")]
-       ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+   ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
    [:like column (str "%\\\\\\\"" key "\\\\\\\"%")]])
 
 (defn- update-legacy-column-keys-in-card-viz-settings

@@ -95,6 +95,7 @@
    "MetabotMessage"
    "MetabotPermissions"
    "MetabotSourceFeedback"
+   "MetabotUsedTable"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"
@@ -135,6 +136,7 @@
    "SemanticSearchTokenTracking"
    "Session"
    "SupportAccessGrantLog"
+   "TableRemapping"
    "TaskHistory"
    "TaskRun"
    "Tenant"
@@ -145,4 +147,6 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"])
+   "ViewLog"
+   "Workspace"
+   "WorkspaceDatabase"])

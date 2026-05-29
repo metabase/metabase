@@ -6,6 +6,8 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
+  PLUGIN_SCHEMA_VIEWER,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
@@ -18,12 +20,14 @@ import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout
 import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
+import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import {
   DependenciesUpsellPage,
   DependencyDiagnosticsUpsellPage,
   LibraryUpsellPage,
+  SchemaViewerUpsellPage,
 } from "./upsells/pages";
 
 export function getDataStudioRoutes(
@@ -48,6 +52,9 @@ export function getDataStudioRoutes(
         </Route>
         <Route path="transforms" component={TransformsSectionLayout}>
           {getDataStudioTransformRoutes()}
+        </Route>
+        <Route component={WorkspacesSectionLayout}>
+          {PLUGIN_WORKSPACES.getDataStudioRoutes()}
         </Route>
         {getDataStudioGlossaryRoutes()}
         {PLUGIN_LIBRARY.isEnabled ? (
@@ -74,6 +81,13 @@ export function getDataStudioRoutes(
             path="dependency-diagnostics"
             component={DependencyDiagnosticsUpsellPage}
           />
+        )}
+        {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
+          <Route path="schema-viewer">
+            {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
+          </Route>
+        ) : (
+          <Route path="schema-viewer" component={SchemaViewerUpsellPage} />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>

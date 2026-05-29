@@ -570,7 +570,6 @@
   (defmethod print-method klass
     [t writer]
     ((get-method print-dup klass) t writer))
-
   (defmethod print-dup klass
     [t ^java.io.Writer writer]
     (.write writer (clojure.core/format "#t \"%s\"" (str t)))))

@@ -52,9 +52,7 @@ const BrowseSchemasContainer = ({
         <Flex maw="64rem" mx="auto" w="100%" direction="column">
           {schemas.length === 1 ? (
             <TableBrowser
-              schemas={schemas}
               params={params}
-              slug={slug}
               dbId={dbId}
               schemaName={schemas[0].name}
               // hide the schema since there's only one

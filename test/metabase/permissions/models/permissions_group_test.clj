@@ -158,7 +158,6 @@
                    :perms/manage-table-metadata :no
                    :perms/manage-database :no}}}
                 (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id))))))
-
       (mt/with-temp [:model/Database         {db-id :id}    {}]
         (mt/with-no-data-perms-for-all-users!
           (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
@@ -170,7 +169,8 @@
                    :perms/download-results :no
                    :perms/manage-table-metadata :no
                    :perms/manage-database :no
-                   :perms/transforms :no}}}
+                   :perms/transforms :no
+                   :perms/workspaces :no}}}
                 (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))))))))
 
 (deftest hydrate-members-tests
@@ -191,13 +191,11 @@
                                 (into {} results)
                                 (update-vals results (fn [members]
                                                        (set (map #(select-keys % [:id :is_group_manager]) members))))))]
-
       (testing "hydrate members only return active users for each group"
         (is (= {group-id-1 #{{:id user-1-g1}
                              {:id user-2-g1}}
                 group-id-2 #{{:id user-1-g2}}}
                (group-id->members))))
-
       (testing "return is_group_manager for each group if premium features are enabled"
         (when config/ee-available?
           (mt/with-premium-features #{:advanced-permissions}

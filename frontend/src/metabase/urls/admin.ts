@@ -70,6 +70,10 @@ export function editDatabaseWritableConnection(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/write-data`;
 }
 
+export function editDatabaseAdminConnection(databaseId: DatabaseId) {
+  return `/admin/databases/${databaseId}/admin`;
+}
+
 type DataModelParams = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName | null;
@@ -160,11 +164,11 @@ export function adminToolsHelp() {
   return "/admin/tools/help";
 }
 
-export function adminToolsTasksBase() {
+export function adminToolsTasks() {
   return "/admin/tools/tasks";
 }
 export function adminToolsTasksList() {
-  return `${adminToolsTasksBase()}/list`;
+  return `${adminToolsTasks()}/list`;
 }
 
 export function adminToolsTaskDetails(taskId: number) {
@@ -172,7 +176,7 @@ export function adminToolsTaskDetails(taskId: number) {
 }
 
 export function adminToolsTasksRuns() {
-  return `${adminToolsTasksBase()}/runs`;
+  return `${adminToolsTasks()}/runs`;
 }
 
 export function adminToolsTaskRunDetails(runId: number) {

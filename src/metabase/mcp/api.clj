@@ -9,21 +9,23 @@
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
+   [metabase.mcp.core :as mcp]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [oidc-provider.store :as oidc.store]
    [throttle.core :as throttle])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
-   (java.net URI)
    (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
@@ -65,16 +67,33 @@
   (jsonrpc-response
    id
    {:protocolVersion protocol-version
-    :capabilities    {:tools {} :resources {}}
+    :capabilities    {:tools {:listChanged true} :resources {}}
     :serverInfo      server-info}))
 
-(defn- handle-tools-list [id _params token-scopes]
-  (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes)}))
+(defn- mcp-app-ui-capability?
+  "Return true if initialize params advertise support for MCP Apps HTML resources."
+  [params]
+  ;; `json/decode+kw` preserves the slash in the JSON extension key `"io.modelcontextprotocol/ui"` as the
+  ;; namespaced keyword `:io.modelcontextprotocol/ui`.
+  (contains?
+   (set (get-in params [:capabilities :extensions :io.modelcontextprotocol/ui :mimeTypes]))
+   "text/html;profile=mcp-app"))
+
+(defn- handle-tools-list [id _params session-id token-scopes]
+  (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
+    (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes {:supports-mcp-ui?
+                                                                     supports-mcp-ui?})})))
 
 (defn- handle-tools-call [id params session-id token-scopes]
   (let [tool-name (:name params)
-        arguments (or (:arguments params) {})]
-    (jsonrpc-response id (mcp.tools/call-tool token-scopes session-id tool-name arguments))))
+        arguments (or (:arguments params) {})
+        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
+    (jsonrpc-response id (mcp.tools/call-tool token-scopes
+                                              session-id
+                                              tool-name
+                                              arguments
+                                              {:supports-mcp-ui?
+                                               supports-mcp-ui?}))))
 
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
@@ -101,7 +120,7 @@
   (try
     (case method
       "notifications/initialized" nil
-      "tools/list"                (handle-tools-list id params token-scopes)
+      "tools/list"                (handle-tools-list id params session-id token-scopes)
       "tools/call"                (handle-tools-call id params session-id token-scopes)
       "resources/list"            (handle-resources-list id params token-scopes)
       "resources/read"            (handle-resources-read id params session-id token-scopes)
@@ -150,18 +169,40 @@
 
 ;;; ------------------------------------------------- Validation --------------------------------------------------
 
+(defn- normalize-domain
+  "Extract and lowercase the domain from a URL or Host-style header value.
+   Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
+   Uses `try-parse-url` (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
+   are expected and shouldn't spam the error logs."
+  [url]
+  (some-> url str mw.security/try-parse-url :domain u/lower-case-en))
+
+(defn- same-origin-host? [origin host]
+  (let [origin-domain (normalize-domain origin)]
+    (and (some? origin-domain) (= origin-domain (normalize-domain host)))))
+
+(defn- approved-mcp-origin? [origin]
+  ;; Pre-lowercase both inputs so DNS hostname matching is case-insensitive (per RFC) and so mixed-case
+  ;; schemes still match `try-parse-url`'s lowercase-only `https?|app|capacitor` regex.
+  (boolean
+   (or (mcp/sandbox-origin? origin)
+       (when-let [approved-origins (not-empty (mcp/cors-origins))]
+         (when-let [origin-url (mw.security/try-parse-url (u/lower-case-en origin))]
+           (some (fn [approved-origin]
+                   (and (mw.security/approved-domain? (:domain origin-url) (:domain approved-origin))
+                        (mw.security/approved-protocol? (:protocol origin-url) (:protocol approved-origin))
+                        (mw.security/approved-port? (:port origin-url) (:port approved-origin))))
+                 (mw.security/parse-approved-origins (u/lower-case-en approved-origins))))))))
+
 (defn- validate-origin
   "Validate the Origin header to prevent DNS rebinding attacks (MCP spec requirement).
-   Returns a 403 response if Origin is present and doesn't match the request's Host header.
-   Non-browser clients that omit the Origin header are allowed through."
+   Returns a 403 response if Origin is present and is neither same-host nor an explicitly configured
+   MCP app origin. Non-browser clients that omit the Origin header are allowed through."
   [request]
   (when-let [origin (get-in request [:headers "origin"])]
     (let [host (get-in request [:headers "host"])]
-      (when-not (try
-                  (let [origin-host (.getHost (URI. origin))
-                        request-host (first (str/split (str host) #":"))]
-                    (= origin-host request-host))
-                  (catch Exception _ false))
+      (when-not (or (same-origin-host? origin host)
+                    (approved-mcp-origin? origin))
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
 (defn- require-valid-session
@@ -206,7 +247,10 @@
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (= "initialize" (:method body)))
-      (let [session-id    (mcp.session/create! user-id)
+      (let [params           (:params body)
+            supports-mcp-ui? (mcp-app-ui-capability? params)
+            session-id       (mcp.session/create! user-id {:supports-mcp-ui?
+                                                           supports-mcp-ui?})
             init-response (handle-initialize (:id body) (:params body))]
         (if (accepts-sse? request)
           (sse-response [init-response] {"Mcp-Session-Id" session-id})
@@ -232,10 +276,18 @@
               :else
               (json-response 200 responses))))))))
 
+(def ^:private tools-list-changed-notification
+  {:jsonrpc "2.0" :method "notifications/tools/list_changed"})
+
 (defn- handle-get
-  "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
+  "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
+   Polls the tool manifest hash on each keepalive tick — if the visible tool set has
+   changed since the previous tick, emits an MCP `notifications/tools/list_changed`
+   message so the client knows to refetch `tools/list`. Stateless: each connection
+   tracks its own last-seen hash; no shared registry."
   [user-id request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])
+        token-scopes (:token-scopes request)
         {:keys [error]} (require-valid-session user-id session-id)]
     (cond
       (some? error)
@@ -248,12 +300,16 @@
                    :status       200}
                   [os canceled-chan]
                    (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-                     (loop []
+                     (loop [last-hash (mcp.tools/tools-hash token-scopes)]
                        (when-not (a/poll! canceled-chan)
                          (.write writer ": keepalive\n\n")
                          (.flush writer)
                          (Thread/sleep 30000)
-                         (recur)))))]
+                         (let [current-hash (mcp.tools/tools-hash token-scopes)]
+                           (when (not= current-hash last-hash)
+                             (.write writer ^String (sse-body [tools-list-changed-notification]))
+                             (.flush writer))
+                           (recur current-hash))))))]
         (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete

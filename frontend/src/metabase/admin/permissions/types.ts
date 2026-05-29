@@ -77,6 +77,7 @@ export enum DataPermissionType {
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
   TRANSFORMS = "transforms",
+  WORKSPACES = "workspaces",
   COLLECTIONS = "collections",
 }
 

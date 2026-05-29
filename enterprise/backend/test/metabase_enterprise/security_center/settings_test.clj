@@ -36,19 +36,15 @@
                               {:value [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]})
         (is (= [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]
                (mt/user-http-request :crowberto :get 200 "setting/security-center-email-recipients"))))
-
       (testing "rejects null"
         (mt/user-http-request :crowberto :put 400 "setting/security-center-email-recipients"
                               {:value nil}))
-
       (testing "rejects empty list"
         (mt/user-http-request :crowberto :put 400 "setting/security-center-email-recipients"
                               {:value []}))
-
       (testing "non-superuser gets 403"
         (mt/user-http-request :rasta :put 403 "setting/security-center-email-recipients"
                               {:value [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]}))))
-
   (testing "requires premium feature"
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :put 500 "setting/security-center-email-recipients"
@@ -61,24 +57,20 @@
         (mt/with-temporary-setting-values [slack-token-valid? false]
           (mt/user-http-request :crowberto :put 400 "setting/security-center-slack-channel"
                                 {:value "#security"})))
-
       (testing "superuser can set channel when Slack is configured"
         (mt/with-temporary-setting-values [slack-token-valid? true]
           (mt/user-http-request :crowberto :put 204 "setting/security-center-slack-channel"
                                 {:value "#security"})
           (is (= "#security"
                  (mt/user-http-request :crowberto :get 200 "setting/security-center-slack-channel")))))
-
       (testing "superuser can set to null (disable Slack)"
         (mt/user-http-request :crowberto :put 204 "setting/security-center-slack-channel"
                               {:value nil})
         (mt/user-http-request :crowberto :get 204 "setting/security-center-slack-channel"))
-
       (testing "non-superuser gets 403"
         (mt/with-temporary-setting-values [slack-token-valid? true]
           (mt/user-http-request :rasta :put 403 "setting/security-center-slack-channel"
                                 {:value "#security"})))))
-
   (testing "requires premium feature"
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :put 500 "setting/security-center-slack-channel"

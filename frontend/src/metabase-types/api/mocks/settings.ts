@@ -102,6 +102,7 @@ export const createMockTokenFeatures = (
   audit_app: false,
   cache_granular_controls: false,
   dependencies: false,
+  "schema-viewer": false,
   disable_password_login: false,
   cloud_custom_smtp: false,
   content_translation: false,
@@ -150,6 +151,7 @@ export const createMockTokenFeatures = (
   writable_connection: false,
   admin_security_center: false,
   ai_controls: false,
+  workspaces: false,
   ...opts,
 });
 
@@ -174,6 +176,8 @@ export const createMockSettings = (
   "custom-viz-plugin-dev-mode-enabled": false,
   "allowed-iframe-hosts": "*",
   "anon-tracking-enabled": false,
+  "metaplow-tracking-enabled": false,
+  "metaplow-url": null,
   "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],
@@ -383,6 +387,7 @@ export const createMockSettings = (
   "metabot-limit-unit": "tokens",
   "metabot-limit-reset-rate": "monthly",
   "metabot-quota-reached-message": null,
+  "ai-usage-max-retention-days": 180,
   "metabot-chat-system-prompt": null,
   "metabot-nlq-system-prompt": null,
   "metabot-sql-system-prompt": null,

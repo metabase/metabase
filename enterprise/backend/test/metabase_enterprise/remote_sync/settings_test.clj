@@ -70,7 +70,6 @@
             (is (false? @git-check-called?) "Git validation should not be called for non-git settings")
             (is (false? (settings/remote-sync-transforms)))
             (is (false? (settings/remote-sync-auto-import))))))))
-
   (testing "Partial updates with git-related settings do trigger git validation"
     (let [git-check-called? (atom false)]
       (with-redefs [settings/check-git-settings! (fn [_]
@@ -84,7 +83,6 @@
             (settings/check-and-update-remote-settings! {:remote-sync-type :read-write})
             (is (true? @git-check-called?) "Git validation should be called when updating type")
             (is (= :read-write (settings/remote-sync-type))))
-
           (testing "Updating remote-sync-branch triggers git validation"
             (reset! git-check-called? false)
             (settings/check-and-update-remote-settings! {:remote-sync-branch "develop"})
@@ -158,7 +156,6 @@
           (is (= "file://env/url.git" (settings/remote-sync-url)))
           (is (= "env-token" (settings/remote-sync-token)))
           (is (= "env-branch" (settings/remote-sync-branch)))))))
-
   (testing "Non-env-sourced settings are still updated normally"
     (with-redefs [settings/check-git-settings! (constantly true)]
       (mt/with-temporary-setting-values [:remote-sync-url nil

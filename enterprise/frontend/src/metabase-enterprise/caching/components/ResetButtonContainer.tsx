@@ -2,18 +2,14 @@ import { useFormikContext } from "formik";
 import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Form, useFormContext } from "metabase/forms";
+import { Form, FormSubmitButton, useFormContext } from "metabase/forms";
 import { Box, Flex, Group, Icon, Loader, Text } from "metabase/ui";
 
-import { ResetAllFormSubmitButton } from "./ResetButtonContainer.styled";
+import S from "./ResetButtonContainer.module.css";
 
 export const ResetButtonContainer = () => {
   return (
-    <Box
-      pb="1rem"
-      mt="auto"
-      style={{ marginInlineStart: "auto", marginInlineEnd: "1.5rem" }}
-    >
+    <Box pb="md" mt="auto" ms="auto" me="lg">
       <ResetAllToDefaultButtonFormBody />
     </Box>
   );
@@ -38,8 +34,8 @@ const ResetAllToDefaultButtonFormBody = () => {
     <>
       <Form>
         <Flex justify="flex-end">
-          <ResetAllFormSubmitButton
-            px="1rem"
+          <FormSubmitButton
+            px="md"
             py=".75rem"
             lh="1"
             onClick={(e) => {
@@ -65,7 +61,7 @@ const ResetAllToDefaultButtonFormBody = () => {
               </Text>
             }
             variant="subtle"
-            highlightOnHover={status === "idle"}
+            className={status === "idle" ? S.highlightOnHover : undefined}
           />
         </Flex>
       </Form>

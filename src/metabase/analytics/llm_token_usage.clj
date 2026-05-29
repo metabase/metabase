@@ -2,7 +2,7 @@
   "LLM token usage tracking for Snowplow and Prometheus."
   (:require
    [metabase.analytics-interface.core :as analytics]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.event :as analytics.event]
    [metabase.analytics.util :as analytics.util]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -34,24 +34,24 @@
            estimated-costs-usd user-id duration-ms source tag session-id profile
            hashed-metabase-license-token]}
    :- SnowplowArgs]
-  (snowplow/track-event! :snowplow/token_usage
-                         {:hashed-metabase-license-token (or hashed-metabase-license-token
-                                                             (analytics.util/hashed-metabase-token-or-uuid))
-                          :request-id                    request-id
-                          :model-id                      model-id
-                          :total-tokens                  total-tokens
-                          :prompt-tokens                 prompt-tokens
-                          :completion-tokens             completion-tokens
-                          :cache-creation-tokens         cache-creation-tokens
-                          :cache-read-tokens             cache-read-tokens
-                          :estimated-costs-usd           estimated-costs-usd
-                          :user-id                       user-id
-                          :duration-ms                   (some-> duration-ms long)
-                          :source                        source
-                          :tag                           tag
-                          :session-id                    session-id
-                          :profile                       profile}
-                         user-id))
+  (analytics.event/track-event! :snowplow/token_usage
+                                {:hashed-metabase-license-token (or hashed-metabase-license-token
+                                                                    (analytics.util/hashed-metabase-token-or-uuid))
+                                 :request-id                    request-id
+                                 :model-id                      model-id
+                                 :total-tokens                  total-tokens
+                                 :prompt-tokens                 prompt-tokens
+                                 :completion-tokens             completion-tokens
+                                 :cache-creation-tokens         cache-creation-tokens
+                                 :cache-read-tokens             cache-read-tokens
+                                 :estimated-costs-usd           estimated-costs-usd
+                                 :user-id                       user-id
+                                 :duration-ms                   (some-> duration-ms long)
+                                 :source                        source
+                                 :tag                           tag
+                                 :session-id                    session-id
+                                 :profile                       profile}
+                                user-id))
 
 (def ^:private PrometheusArgs
   [:map
