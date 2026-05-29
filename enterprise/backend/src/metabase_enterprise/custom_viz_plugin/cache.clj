@@ -43,7 +43,7 @@
 ;; The uploaded archive has the same layout as the previous git-sourced plugins:
 ;;   metabase-plugin.json  (manifest, at the archive root)
 ;;   dist/index.js         (the JS bundle)
-;;   dist/assets/*         (static assets)
+;;   dist/assets/<icon>    (the manifest icon — the only servable asset)
 
 (def ^:private ^:const bundle-rel-path "index.js")
 
@@ -71,10 +71,10 @@
   (* 5 max-bundle-bytes))
 
 (def ^:const ^:private max-entries
-  "Cap on entry count in a bundle archive. A real plugin has a manifest, the JS
-   bundle, and a handful of image assets; 256 leaves plenty of slack without
-   inviting denial-of-service via metadata-only entries."
-  256)
+  "Cap on entry count in a bundle archive. A real plugin is just the manifest, the
+   JS bundle, and the icon (plus a couple of directory entries); 16 leaves slack
+   without inviting denial-of-service via metadata-only entries."
+  16)
 
 (def ^:private untgz-opts
   {:max-uncompressed-bytes max-uncompressed-bytes
