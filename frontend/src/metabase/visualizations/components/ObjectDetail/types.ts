@@ -47,12 +47,14 @@ export interface ObjectDetailProps {
   showHeader?: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
-  fetchTableFks: (id: number) => void;
-  loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
-  followForeignKey: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
-  viewPreviousObjectDetail: () => void;
-  viewNextObjectDetail: () => void;
-  closeObjectDetail: () => void;
+  // Host-injected (query builder modal path). Omitted on dashboards/embedding,
+  // where the registered "object" viz is purely presentational.
+  fetchTableFks?: (id: number) => void;
+  loadObjectDetailFKReferences?: (opts: { objectId: ObjectId }) => void;
+  followForeignKey?: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
+  viewPreviousObjectDetail?: () => void;
+  viewNextObjectDetail?: () => void;
+  closeObjectDetail?: () => void;
   onActionSuccess?: () => void;
   className?: string;
   isDashboard: boolean;
