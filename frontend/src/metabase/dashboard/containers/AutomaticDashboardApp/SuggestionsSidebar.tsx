@@ -3,10 +3,9 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Card } from "metabase/common/components/Card";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, Title, Tooltip } from "metabase/ui";
+import { Box, Card, Flex, Icon, Title, Tooltip } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import type { IconName, RelatedDashboardXRays } from "metabase-types/api";
 
@@ -67,7 +66,7 @@ const SuggestionsList = ({
                 className={cx(CS.hoverParent, CS.hoverVisibility, S.ItemLink)}
                 onClick={() => trackSuggestedXRayClicked(suggestionKey)}
               >
-                <Card className={CS.p2} hoverable>
+                <Card p="md" radius="md" withBorder>
                   <Flex align="center">
                     <Icon
                       name={RELATED_CONTENT[suggestionKey].icon}
