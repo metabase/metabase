@@ -4,8 +4,12 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.transforms.test-util :as transforms.tu]))
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.test-util :as transforms.tu]
+   [toucan2.core :as t2]))
 
 (deftest compile-transform-contract-test
   (testing "compile-transform should return [sql params] format"
@@ -183,3 +187,26 @@
                   "rows-affected must be a bare int, not a nested map")
               (is (= 3 (:rows-affected append-result))
                   "the INSERT...SELECT path reports the flat, true insert count"))))))))
+
+(deftest run-transform!-rows-affected-reflects-rows-written-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms-basic}
+      (let [schema  (t2/select-one-fn :schema :model/Table (mt/id :venues))
+            written (->> (mt/mbql-query venues {:aggregation [[:count]]})
+                         qp/process-query mt/rows ffirst)]
+        (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema :name "rows_affected_probe" :database (mt/id)}]
+          (let [transform {:source {:type "query" :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}
+                           :target target}
+                details   {:db-id          (mt/id)
+                           :database       (mt/db)
+                           :transform-type :table
+                           :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                           :query          (transforms-base.u/compile-source transform nil)
+                           :output-schema  (:schema target)
+                           :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}
+                result    (driver/run-transform! driver/*driver* details {})]
+            (is (== written (:rows-affected result))
+                (format (str "%s: run-transform! :rows-affected (%s) should equal the %s rows the CTAS wrote. "
+                             "An unreliable CTAS row count breaks the incremental-rows metric — "
+                             "file a follow-up issue for this driver and exclude it here.")
+                        driver/*driver* (pr-str (:rows-affected result)) written))))))))
