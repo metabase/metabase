@@ -195,6 +195,27 @@
   [group-id]
   (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id (u/the-id group-id)))
 
+(defn hidden-tenant-group-ids
+  "Returns the subset of `group-ids` that are tenant groups while the Tenants feature is disabled
+  (i.e. invisible to API consumers right now). Returns an empty set if the feature is enabled, or
+  if no supplied IDs are tenant groups."
+  [group-ids]
+  (if (or (setting/get :use-tenants) (empty? group-ids))
+    #{}
+    (set (t2/select-pks-vec :model/PermissionsGroup
+                            {:where [:and
+                                     [:in :id (set (map u/the-id group-ids))]
+                                     [:= :is_tenant_group true]]}))))
+
+(defn check-tenant-groups-visible!
+  "Throws a 400 if any of `group-ids` is a tenant group while the Tenants feature is disabled.
+  The error payload includes the offending IDs under `[:errors :tenant-group-ids]`."
+  [group-ids]
+  (when-let [offending (seq (hidden-tenant-group-ids group-ids))]
+    (throw (ex-info (tru "Tenant groups are not editable while the Tenants feature is disabled.")
+                    {:status-code 400
+                     :errors      {:tenant-group-ids (sort offending)}}))))
+
 (defn- group-id->num-members
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
   groups.)"

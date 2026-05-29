@@ -566,6 +566,10 @@
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
     true                                    (sql.helpers/where (status-clause status include-deactivated))
+    ;; Hide tenant users entirely when the Tenants feature is disabled. They are deactivated when the setting flips
+    ;; off, so the default :status filter usually catches them; this extra clause covers callers that pass
+    ;; :include-deactivated or :status "all".
+    (not (setting/get :use-tenants))        (sql.helpers/where [:= :core_user.tenant_id nil])
     ;; don't send the internal user
     (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                           (sql.helpers/where (query-clause query))

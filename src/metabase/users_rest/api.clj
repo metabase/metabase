@@ -397,9 +397,11 @@
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
-  (-> (api/check-404 (users/fetch-user :id id))
-      (t2/hydrate :user_group_memberships)
-      add-structured-attributes))
+  (let [user (api/check-404 (users/fetch-user :id id))]
+    (api/check-404 (or (nil? (:tenant_id user)) (perms/use-tenants)))
+    (-> user
+        (t2/hydrate :user_group_memberships)
+        add-structured-attributes)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
