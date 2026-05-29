@@ -101,7 +101,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 }
 
 // Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot)
-// and wires the `cancelDeferred` to RTK Query's `.abort()`. Translates aborts
+// and wires the `signal` to RTK Query's `.abort()`. Translates aborts
 // into the `{ isCancelled: true }` shape that the legacy fetch helper threw,
 // so existing error-handling code (e.g. queryErrored) keeps working.
 let adhocDatasetQueryCounter = 0;
@@ -110,7 +110,7 @@ export async function runAdhocDatasetQuery(
   card,
   metadata,
   body,
-  cancelDeferred,
+  signal,
 ) {
   // Dynamic import to avoid a module-init cycle: `metabase/api/dataset` pulls
   // in `metabase/api` → `metabase/redux/user` → `metabase/redux/query-builder`
@@ -138,10 +138,18 @@ export async function runAdhocDatasetQuery(
   );
 
   let isCancelled = false;
-  cancelDeferred?.promise.then(() => {
+  const onAbort = () => {
     isCancelled = true;
     action.abort?.();
-  });
+  };
+  // The signal may already be aborted by the time we get here (e.g. the
+  // user cancelled while we were awaiting the dynamic import above). In
+  // that case the "abort" event already fired and a listener won't run.
+  if (signal?.aborted) {
+    onAbort();
+  } else {
+    signal?.addEventListener("abort", onAbort, { once: true });
+  }
 
   return action
     .unwrap()
@@ -162,7 +170,7 @@ export async function runQuestionQuery(
   question,
   {
     dispatch,
-    cancelDeferred,
+    signal,
     isDirty = false,
     token,
     ignoreCache = false,
@@ -197,7 +205,7 @@ export async function runQuestionQuery(
           card,
           question.metadata(),
         )(queryParams, {
-          cancelled: cancelDeferred.promise,
+          signal,
         }),
       ),
     ];
@@ -210,7 +218,7 @@ export async function runQuestionQuery(
         card,
         question.metadata(),
         { ...question.datasetQuery(), parameters },
-        cancelDeferred,
+        signal,
       ),
     ),
   ];

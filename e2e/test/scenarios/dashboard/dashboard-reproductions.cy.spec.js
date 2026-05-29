@@ -205,13 +205,16 @@ describe("issue 12926", () => {
         cy.visit(`/dashboard/${dashboard_id}`);
       });
 
+      // The query is deliberately slowed, so it is still in-flight here.
+      // The API client uses fetch, so cancelling the query aborts its
+      // AbortController rather than calling XMLHttpRequest.abort().
       cy.window().then((win) => {
-        cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
+        cy.spy(win.AbortController.prototype, "abort").as("queryAbort");
       });
 
       removeCard();
 
-      cy.get("@xhrAbort").should("have.been.calledOnce");
+      cy.get("@queryAbort").should("have.been.called");
     });
 
     it("should re-fetch the query when doing undo on the removal", () => {
