@@ -55,6 +55,7 @@ export function appendQueryParameters(
 
 export async function getResponseBody(response: Response): Promise<unknown> {
   if (response.status === 202) {
+    // HTTP 202 - Accepted
     // Streaming endpoints (queries, downloads) commit HTTP 202 up front, so a
     // post-commit failure can't change the status line — it's signalled by a
     // small {_status: N} JSON body. The only bodies possible on a 202 are JSON (a
@@ -70,15 +71,16 @@ export async function getResponseBody(response: Response): Promise<unknown> {
     }
   }
 
-  const text = await response.text();
-  if (text === "") {
+  if (response.status === 204) {
+    // HTTP 204 - No Content
     return null;
   }
 
   if (isJson(response)) {
-    return JSON.parse(text);
+    return response.json();
   }
-  return text;
+
+  return response.text();
 }
 
 function isJson(response: Response): boolean {
