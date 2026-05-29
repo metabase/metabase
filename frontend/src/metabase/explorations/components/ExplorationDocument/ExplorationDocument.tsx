@@ -214,7 +214,7 @@ export function ExplorationDocument({
                   : documentContent
               }
               onChange={handleChange}
-              editable={canWrite && !isSaving && isAiSummary}
+              editable={canWrite && !isSaving && !isAiSummary}
               isLoading={isDocumentLoading}
               editorContainerRef={editorContainerRef}
             />
