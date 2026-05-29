@@ -75,12 +75,14 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
             value={startedAt}
             includeToday={includeToday}
             placeholder={t`Filter by started at`}
-            onChange={(startedAt, includeToday) =>
+            onChange={(nextStartedAt, nextIncludeToday) =>
               patchUrlState({
-                "started-at": startedAt,
-                "include-today": includeToday,
-                "entity-type": null,
-                "entity-id": null,
+                "started-at": nextStartedAt,
+                "include-today": nextIncludeToday,
+                ...(nextStartedAt !== startedAt && {
+                  "entity-type": null,
+                  "entity-id": null,
+                }),
                 page: 0,
               })
             }
