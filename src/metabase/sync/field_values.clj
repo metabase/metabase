@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
@@ -33,12 +34,16 @@
   [table]
   (t2/select :model/Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
 
-(defn- sql-driver?
-  "Does this `table`'s database use a SQL-derived driver? Determines whether we can use the
-  single-query UNION path or have to fall back to per-field DISTINCT queries (e.g. for Mongo)."
+(defn- can-batch-distinct?
+  "Can this `table`'s database support the UNION ALL distinct-batch query? Requires both a
+  SQL-derived driver (so HoneySQL compilation works) and the `:nested-queries` feature (each
+  UNION arm is wrapped as a subquery in `FROM`). Drivers without one or the other fall back
+  to the per-field path."
   [table]
-  (let [engine (:engine (t2/select-one :model/Database :id (:db_id table)))]
-    (isa? driver/hierarchy engine :sql)))
+  (let [database (t2/select-one :model/Database :id (:db_id table))
+        engine   (:engine database)]
+    (and (isa? driver/hierarchy engine :sql)
+         (driver.u/supports? engine :nested-queries database))))
 
 (def ^:private empty-counts
   "Initial counter map for a sync run.
@@ -91,7 +96,7 @@
   back to one query per field via the portable MBQL path. Returns a counts map of outcomes."
   [table fields fvs-map]
   (when (seq fields)
-    (let [{:keys [results queries failed-fields]} (if (sql-driver? table)
+    (let [{:keys [results queries failed-fields]} (if (can-batch-distinct? table)
                                                     (fetch-distinct-for-table table fields)
                                                     (fetch-distinct-per-field fields))]
       (reduce (fn [counts field]
