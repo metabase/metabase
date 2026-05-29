@@ -2,19 +2,15 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
-;; All tests in this ns exercise set/clear-instance-workspace!, which are gated on :workspaces
-;; (see GHY-3685). Enable the feature for every test in this ns.
 (use-fixtures :each (fn [thunk]
-                      (mt/with-premium-features #{:workspaces}
-                        (try
-                          (thunk)
-                          (finally
-                            (ws/clear-instance-workspace!))))))
+                      (try
+                        (thunk)
+                        (finally
+                          (ws/clear-instance-workspace!)))))
 
 (deftest workspace-mode?-false-when-setting-empty-test
   (testing "workspace-mode? is false when no :workspace section has been loaded"
