@@ -13,6 +13,10 @@ import type { EditableDashboard } from "embedding-sdk-bundle/components/public/d
 import type { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard/StaticDashboard";
 import type {
+  QueryMetricParams,
+  QueryMetricResult,
+} from "embedding-sdk-bundle/lib/query-metric";
+import type {
   QueryQuestionParams,
   QueryQuestionResult,
 } from "embedding-sdk-bundle/lib/query-question";
@@ -71,6 +75,9 @@ type ReduxStoreUtilityFunctionExports = {
   >;
   queryQuestion: ReduxStoreUtilityFunction<
     (params: QueryQuestionParams) => Promise<QueryQuestionResult>
+  >;
+  queryMetric: ReduxStoreUtilityFunction<
+    (params: QueryMetricParams) => Promise<QueryMetricResult>
   >;
 };
 

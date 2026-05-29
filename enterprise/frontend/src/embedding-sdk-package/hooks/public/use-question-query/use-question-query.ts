@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 import type {
   SdkQuestionId,
   SqlParameterValues,
@@ -9,13 +8,16 @@ import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
+import type { InferSchema, QueryData, QuestionSchema } from "../data-schema";
+import { getSchemaId, mapQueryData } from "../data-schema";
+
 export type UseQuestionQueryOptions = {
   initialSqlParameters?: SqlParameterValues;
   enabled?: boolean;
 };
 
-export type UseQuestionQueryResult = {
-  data: QueryQuestionResult | null;
+export type UseQuestionQueryResult<TQuestion = unknown> = {
+  data: QueryData<InferSchema<TQuestion, Record<string, unknown>>> | null;
   isLoading: boolean;
   error: unknown;
   refetch: () => Promise<void>;
@@ -30,10 +32,12 @@ export type UseQuestionQueryResult = {
  * @function
  * @category useQuestionQuery
  */
-export const useQuestionQuery = (
-  questionId: SdkQuestionId | null,
+export const useQuestionQuery = <
+  TQuestion extends QuestionSchema | SdkQuestionId = SdkQuestionId,
+>(
+  question: TQuestion | null,
   { initialSqlParameters, enabled = true }: UseQuestionQueryOptions = {},
-): UseQuestionQueryResult => {
+): UseQuestionQueryResult<TQuestion> => {
   const {
     state: {
       internalProps: { reduxStore },
@@ -47,7 +51,10 @@ export const useQuestionQuery = (
   const queryQuestion =
     getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.queryQuestion;
 
-  const [data, setData] = useState<QueryQuestionResult | null>(null);
+  const questionId = getSchemaId(question) as SdkQuestionId | null;
+
+  const [data, setData] =
+    useState<UseQuestionQueryResult<TQuestion>["data"]>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -77,7 +84,7 @@ export const useQuestionQuery = (
         initialSqlParameters: initialSqlParametersRef.current,
       });
 
-      setData(nextResult);
+      setData(mapQueryData(nextResult));
     } catch (err) {
       setError(err);
       setData(null);
