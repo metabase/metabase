@@ -4,8 +4,7 @@
   every later layer (governance / temporal / metrics / subscores /
   attribution) consumes.
 
-  See `notes/bot-1569/quality-score-impl.md` §B for the contract. The
-  high-level shape returned by [[normalize]]:
+  The high-level shape returned by [[normalize]]:
 
   ```clojure
   {:conversation-id Long
@@ -28,11 +27,10 @@
     literal string `\"table\"` (etc.) per `entity-usage/entity-types`.
 
   - **Iteration index is monotonic across the whole conversation.** The
-    impl plan describes the boundary signal in terms of a single
-    assistant row's `:data` (a `:tool-input` after a streak of
-    `:tool-output`s = the LLM was called again). The natural extension
-    across rows is: the first part of each new assistant row is also a
-    new LLM call. The total-iterations derivation in §D
+    boundary signal is a single assistant row's `:data` (a `:tool-input`
+    after a streak of `:tool-output`s = the LLM was called again). The
+    natural extension across rows is: the first part of each new assistant
+    row is also a new LLM call. The total-iterations derivation
     (`(inc (max iteration-index))`) only makes sense under that monotonic
     reading."
   (:require
@@ -161,7 +159,7 @@
 (defn- after-output?
   "Parts whose appearance after an LLM emission marks that the agent loop
   has executed tools and is about to call the LLM again. Combined with
-  [[llm-emitted?]] this gives the impl plan's boundary signal: a
+  [[llm-emitted?]] this gives the boundary signal: a
   `:tool-input` (or `:text`) following a `:tool-output` opens a new
   iteration."
   [part]
@@ -321,7 +319,7 @@
 
 (defn- prompt-context-block
   "Locate the `{:type \"prompt-context\" ...}` block on a persisted user
-  row's `:data`. Per the BOT-1569 contract it lives at `data[1]`, but
+  row's `:data`. It normally lives at `data[1]`, but
   scan the whole vector so we degrade gracefully if a future shape
   change moves it."
   [user-row]

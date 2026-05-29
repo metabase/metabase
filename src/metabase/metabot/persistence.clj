@@ -23,9 +23,8 @@
   "Subset of `:structured-output` that must survive persistence. The first
   five keys are consumed by `metabase-enterprise.metabot-analytics.queries`
   to surface generated queries on the admin detail page. `:entity-usage` is
-  the structured per-call entity record described in
-  `notes/bot-1569/impl-plan-v2.md` §A — populated by tools (§A.6) and read
-  by downstream observability consumers. `:artifact-valid` is the authoring
+  the structured per-call entity record populated by tools and read by
+  downstream observability consumers. `:artifact-valid` is the authoring
   tools' outcome stamp (true = produced a valid artifact, false = invalid),
   read by the quality pipeline's `artifact-validity-share` metric."
   [:query-id :query-content :query :database :chart-type
@@ -128,8 +127,6 @@
 ;;; `{:type "prompt-context" ...}` block — so the user message remains
 ;;; `data[0]` (the existing single-element shape) and chat rendering stays
 ;;; unchanged (the block falls through `convert-content-block` to nil).
-;;;
-;;; See `notes/bot-1569/impl-plan-v2.md` §B for the strategy.
 
 (def ^:private viewing-item-keep-keys
   "Top-level keys preserved when projecting a `:user_is_viewing` item for
@@ -403,13 +400,12 @@
                            :error        (safe-encode-error error)}
                     slack-msg-id (assoc :slack_msg_id slack-msg-id)
                     channel-id   (assoc :channel_id channel-id)))
-      ;; Quality-score pipeline (BOT-1515). Runs in the same transaction so
+      ;; Quality-score pipeline. Runs in the same transaction so
       ;; a scoring UPDATE failure rolls back atomically with the message
       ;; UPDATE rather than leaving the conversation row half-updated; the
       ;; outer try/catch is defense-in-depth for any throw that escapes the
       ;; inner guard in `score-conversation!` (e.g. a Throwable raised
-      ;; before the guard's try block is entered). Log-only at MVP — see
-      ;; `notes/bot-1569/quality-score-impl.md` §H.
+      ;; before the guard's try block is entered).
       (try
         (quality.core/score-conversation! conversation-id)
         (catch Throwable t

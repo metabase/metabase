@@ -467,12 +467,7 @@
               (stamp-artifact-valid false)))))
     (catch Exception e
       (if (:agent-error? (ex-data e))
-        ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
-        ;; URI-in-source-table, …). Relay `(ex-message e)` verbatim and stamp the artifact
-        ;; invalid: the failed authoring attempt is visible to the quality score's
-        ;; artifact-validity-share without overloading the tool-output `:error` channel (which
-        ;; means "the tool machinery crashed"). The LLM reads the same guidance and
-        ;; self-corrects on the next turn exactly as before.
+        ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
         (-> (entity-usage-on-result {:output (ex-message e)} empty-entity-usage)
             (stamp-artifact-valid false))
         ;; Genuine unexpected failure — keep full stacktrace. Still an authoring miss (no valid

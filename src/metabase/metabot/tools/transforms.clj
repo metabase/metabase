@@ -283,8 +283,7 @@
          true))
       (catch Exception e
         (if (:agent-error? (ex-data e))
-          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
-          ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
+          ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
           (-> (entity-usage-on-result {:output (ex-message e)} base-eu)
               (stamp-artifact-valid false))
           (do

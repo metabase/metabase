@@ -146,8 +146,6 @@
 (def ^:private finish-reason->terminal-state
   "Map the agent loop's `finish-reason` keyword to the persisted
   terminal-state categorical consumed by the quality-score temporal layer.
-  See `notes/bot-1569/quality-score-impl.md` §I (Terminal-state plumbing)
-  for the rationale behind each projection.
 
   `:empty-response` represents the rare degenerate case where the LLM call
   returned zero AISDK parts; treated as `:error` for concern-signal
@@ -166,7 +164,7 @@
   temporal layer.
 
   Unknown / future reasons fall through to `error`, the conservative
-  classification for concern-signal #6 (Termination)."
+  classification for the termination signal."
   [reason]
   (let [terminal (get finish-reason->terminal-state reason :error)]
     {:type      :data

@@ -138,9 +138,7 @@
 
 (defn- entity-usage-on-result
   "Attach an `:entity-usage` map under `:structured-output`, preserving any
-  structured-output already present. Mirrors the helper in
-  `metabase.metabot.tools.transforms` / `tools.charts` — kept inline here so
-  metadata tools stay self-contained."
+  structured-output already present."
   [result entity-usage]
   (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
 

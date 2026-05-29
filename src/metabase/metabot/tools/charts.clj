@@ -18,7 +18,7 @@
 (def ^:private empty-entity-usage
   "Authoring chart tools take memory-only refs (query_id, chart_id), not appdb
   entity ids — so `:entity-usage` is always empty. The constant is kept so the
-  validator (per Phase 1 of bot-1569) sees a well-formed channel on every path."
+  validator sees a well-formed channel on every path."
   {:input [] :output []})
 
 (defn- attach-entity-usage

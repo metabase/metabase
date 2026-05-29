@@ -61,10 +61,7 @@
   "A conversation is pre-foundation iff it shows no sign of having run the
   instrumented agent loop — no `:entity-usage` populated by any tool call,
   no `prompt-context` block on any user row, and no `terminal_state` data
-  part on any assistant row. Any one of the three is enough to score: a
-  clean pure-chat turn that emitted a `terminal_state` part is scoreable
-  (its Execution Health stands alone), while genuinely old
-  pre-instrumentation rows lack all three and stay sentinelled."
+  part on any assistant row."
   [normalized]
   (and (not (has-entity-usage? normalized))
        (not (has-prompt-context? normalized))
@@ -173,8 +170,7 @@
   per-assistant-row attribution is updated separately (and only on the
   real-score path — sentinel paths leave `quality_attribution` NULL).
 
-  One UPDATE per assistant row; revisit with a bulk update if profiling
-  shows the per-row cost matters."
+  One UPDATE per assistant row."
   [conversation-id result]
   (t2/update! :model/MetabotConversation conversation-id
               {:quality_score     (:quality_score result)
@@ -186,13 +182,13 @@
 (defn score-conversation!
   "Compute and persist the quality score for `conversation-id`.
 
-  Return contract (stable across phases):
+  Return contract:
 
     number    — clean composite score in `[0, 1]`
     :sentinel — sentinel breakdown written; `quality_score` stays NULL
     nil       — throw caught by the inner safety guard, no UPDATE fired.
 
-  The inner try/catch is log-only; operational telemetry is a follow-up.
+  The inner try/catch is log-only.
   Callers in `metabase.metabot.persistence/finalize-assistant-turn!` add
   an outer try/catch as defense in depth."
   [conversation-id]

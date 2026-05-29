@@ -670,7 +670,7 @@
 
 ;; ----- Entity-usage derivation -----
 ;;
-;; `read_resource` is the hybrid tool in the §A.6 categorization — its URIs are
+;; `read_resource` is a hybrid tool — its URIs are
 ;; inputs (the entity the agent asked to dereference) and the surfaced content
 ;; carries outputs (the entity itself plus any related entities the response
 ;; exposes). The helpers below pure-derive `:entity-usage` from the parsed
@@ -699,7 +699,7 @@
    - Sub-resource URIs (`metabase://table/3/derived`)         → `[{:type \"table\" :id 3}]`
    - Leaf field URIs (`metabase://table/3/fields/42`,
      `metabase://metric/6/dimensions/dim-1`) emit both the parent and the
-     leaf field — matching the `get_field_values` Phase 3c convention.
+     leaf field — matching the `get_field_values` convention.
      Non-integer leaf ids (e.g. composite `c75/17`) are skipped — they
      don't refer to a real `metabase_field` row."
   [segments uri]
@@ -733,7 +733,7 @@
    collection in a `get-table-details`/`get-card-details`/`get-metric-details`
    structured-output. Only integer `:field_id`s are emitted — string aliases
    from aggregation/expression columns don't refer to real `metabase_field`
-   rows (mirrors the Phase 3c convention for `list_available_fields`)."
+   rows (mirrors the convention for `list_available_fields`)."
   [fields]
   (->> fields
        (keep (fn [{:keys [field_id]}]

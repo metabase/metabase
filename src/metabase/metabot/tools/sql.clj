@@ -150,10 +150,7 @@
              false))))
       (catch Exception e
         (if (:agent-error? (ex-data e))
-          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp the artifact
-          ;; invalid so the failed authoring attempt feeds `artifact-validity-share`, not the
-          ;; tool-output `:error` channel (machinery failure). The LLM reads the same guidance
-          ;; and self-corrects.
+          ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
           (-> (entity-usage-on-result {:output (ex-message e)} entity-usage)
               (stamp-artifact-valid false))
           (do
@@ -256,8 +253,7 @@
              false))))
       (catch Exception e
         (if (:agent-error? (ex-data e))
-          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
-          ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
+          ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
           (-> (entity-usage-on-result {:output (ex-message e)} (entity-usage-for-sql existing-db nil))
               (stamp-artifact-valid false))
           (do
@@ -317,8 +313,7 @@
              false))))
       (catch Exception e
         (if (:agent-error? (ex-data e))
-          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
-          ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
+          ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
           (-> (entity-usage-on-result {:output (ex-message e)} entity-usage)
               (stamp-artifact-valid false))
           (do
