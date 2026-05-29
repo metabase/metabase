@@ -549,6 +549,7 @@ const StrategySelector = ({
         onChange={(value) => value && setFieldValue("type", value)}
         allowDeselect={false}
         aria-labelledby={headingId}
+        data-testid="cache-strategy-select"
         classNames={{ option: S.option }}
         renderOption={({ option }) => {
           const strategy = availableStrategies[option.value];
