@@ -44,14 +44,14 @@ While this sandboxing limits the damage a plugin can do, you still need to revie
 
 ## Adding a custom visualization
 
-Once you've built the custom visualizations](../../developers-guide/custom-visualizations.md):
+Once you've [built the custom visualization](../../developers-guide/custom-visualizations.md):
 
 1. In Metabase, go to **Admin** > **Settings** > **Custom visualizations** > **Manage visualizations**.
 2. Click **Add** and drag the `.tgz` file into the upload area (or click to browse for it).
 3. Click **Add visualization**.
 
 - Bundles must be smaller than 5 MB.
-- Each plugin lists the Metabase versions it supports (for example, "Requires Metabase >=1.62"). If your Metabase is older than the plugin requires, Metabase rejects the upload.
+- Each plugin lists the Metabase versions it supports (for example, "Requires Metabase >=1.62"). Metabase accepts the upload regardless of version, but the plugin only becomes available if your Metabase version is compatible.
 - The **Manage visualizations** page shows each plugin's icon, name, the first eight characters of the bundle's hash, and its required Metabase version range, so you can tell which version is installed.
 
 ## Managing custom visualizations

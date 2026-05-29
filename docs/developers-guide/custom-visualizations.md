@@ -92,12 +92,12 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 }
 ```
 
-| Field              | Description                                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `name`             | Unique identifier for the plugin. Has to match the `id` your visualization returns.                                |
-| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically. |
-| `assets`           | Other static files to bundle (images and JSON only). Reference them in code with `getAssetUrl()`.                  |
-| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).    |
+| Field              | Description                                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles. It doesn't have to match the `id` your visualization returns. |
+| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically.                                                                                                                     |
+| `assets`           | Other static files to bundle (images and JSON only). Reference them in code with `getAssetUrl()`.                                                                                                       |
+| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                                         |
 
 ## Defining a visualization
 
@@ -156,17 +156,17 @@ export default createVisualization;
 
 ### Visualization definition properties
 
-| Property                 | Type                                | Description                                                                                                                                              |
-| ------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                     | `string`                            | Unique identifier. Has to match `name` in `metabase-plugin.json`.                                                                                        |
-| `getName()`              | `() => string`                      | Display name for the visualization.                                                                                                                      |
-| `minSize`                | `{ width, height }`                 | Minimum size on a dashboard grid.                                                                                                                        |
-| `defaultSize`            | `{ width, height }`                 | Default size on a dashboard grid.                                                                                                                        |
-| `noHeader`               | `boolean`                           | When `true`, hides the default card title and description header.                                                                                        |
-| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export for this visualization. Disabled by default.                                                                          |
-| `checkRenderable`        | `(series, settings) => void`        | Throw here to signal the visualization can't render with the current data or settings. Metabase shows the error message to the person viewing the chart. |
-| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created with `defineSetting()`.                                                                                               |
-| `VisualizationComponent` | `React.ComponentType`               | The interactive React component that renders the visualization in questions and dashboards.                                                              |
+| Property                 | Type                                | Description                                                                                                                                                                                     |
+| ------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                     | `string`                            | Identifier for the visualization definition. It doesn't have to match `name` in `metabase-plugin.json` — the example plugin uses the name `"Calendar Heatmap"` and the id `"calendar-heatmap"`. |
+| `getName()`              | `() => string`                      | Display name for the visualization.                                                                                                                                                             |
+| `minSize`                | `{ width, height }`                 | Minimum size on a dashboard grid.                                                                                                                                                               |
+| `defaultSize`            | `{ width, height }`                 | Default size on a dashboard grid.                                                                                                                                                               |
+| `noHeader`               | `boolean`                           | When `true`, hides the default card title and description header.                                                                                                                               |
+| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export for this visualization. Disabled by default.                                                                                                                 |
+| `checkRenderable`        | `(series, settings) => void`        | Throw here to signal the visualization can't render with the current data or settings. Metabase shows the error message to the person viewing the chart.                                        |
+| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created with `defineSetting()`.                                                                                                                                      |
+| `VisualizationComponent` | `React.ComponentType`               | The interactive React component that renders the visualization in questions and dashboards.                                                                                                     |
 
 ### Props passed to your component
 
@@ -192,7 +192,7 @@ const [{ data }] = series;
 const total = data.rows.reduce((sum, [value]) => sum + Number(value), 0);
 ```
 
-To classify a column without matching type strings by hand, use the column-type predicates the SDK exports — `isNumeric`, `isDate`, `isCurrency`, `isLatitude`, `isPK`, and more — each of which takes a `Column`:
+To classify a column without matching type strings by hand, use the column-type predicates the SDK exports — `isNumeric`, `isDate`, `isString`, `isBoolean`, `isCurrency`, `isLatitude`, `isCoordinate`, `isFK`, `isPK`, `isCategory`, `isURL`, and more — each of which takes a `Column`:
 
 ```tsx
 import { isNumeric } from "@metabase/custom-viz";
@@ -220,7 +220,11 @@ Your component receives `onClick` and `onHover`. Call them with an object that i
   onMouseMove={(event) =>
     onHover({
       element: event.currentTarget,
-      data: cols.map((col, i) => ({ col, value: row[i], key: col.display_name })),
+      data: cols.map((col, i) => ({
+        col,
+        value: row[i],
+        key: col.display_name,
+      })),
     })
   }
   onMouseLeave={() => onHover(null)}
@@ -253,23 +257,23 @@ settings: {
 
 Settings can depend on each other. `getDefault`, `getValue`, `getProps`, and `isValid` all receive the current `series` and resolved `settings`, so one setting's default or options can react to another's value. Declare those relationships with `readDependencies` (resolve these first), `writeDependencies` (persist these alongside this one), and `eraseDependencies` (reset these when this one changes) so Metabase recomputes everything in the right order.
 
-| Property                       | Description                                                                         |
-| ------------------------------ | ----------------------------------------------------------------------------------- |
-| `id`                           | Unique key — has to match the key in your `Settings` type.                          |
-| `title`                        | Label shown in the sidebar.                                                         |
+| Property                       | Description                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `id`                           | Unique key — has to match the key in your `Settings` type.                                       |
+| `title`                        | Label shown in the sidebar.                                                                      |
 | `getSection()`                 | Function returning the section the setting appears under (for example, `"Data"` or `"Display"`). |
-| `group`                        | Sub-heading within a section for grouping related settings.                         |
-| `index`                        | Display order within a group.                                                       |
-| `inline`                       | When `true`, renders the widget on the same line as `title` (handy for `"toggle"`). |
-| `widget`                       | Built-in widget name (see below).                                                   |
-| `getDefault(series, settings)` | Computes the default value when none is stored.                                     |
-| `getValue(series, settings)`   | Always-computed value — overrides the stored value on every render.                 |
-| `getProps(series, settings)`   | Returns widget-specific props.                                                      |
-| `isValid(series, settings)`    | Return `false` to discard a stored value and fall back to `getDefault`.             |
-| `readDependencies`             | Setting IDs that have to resolve before this one.                                   |
-| `writeDependencies`            | Setting IDs whose current values are persisted when this setting changes.           |
-| `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                              |
-| `persistDefault`               | When `true`, writes the value from `getDefault` to stored settings on first render. |
+| `group`                        | Sub-heading within a section for grouping related settings.                                      |
+| `index`                        | Display order within a group.                                                                    |
+| `inline`                       | When `true`, renders the widget on the same line as `title` (handy for `"toggle"`).              |
+| `widget`                       | Built-in widget name (see below).                                                                |
+| `getDefault(series, settings)` | Computes the default value when none is stored.                                                  |
+| `getValue(series, settings)`   | Always-computed value — overrides the stored value on every render.                              |
+| `getProps(series, settings)`   | Returns widget-specific props.                                                                   |
+| `isValid(series, settings)`    | Return `false` to discard a stored value and fall back to `getDefault`.                          |
+| `readDependencies`             | Setting IDs that have to resolve before this one.                                                |
+| `writeDependencies`            | Setting IDs whose current values are persisted when this setting changes.                        |
+| `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                                           |
+| `persistDefault`               | When `true`, writes the value from `getDefault` to stored settings on first render.              |
 
 ### Built-in widgets
 
@@ -345,13 +349,15 @@ When your visualization is ready, run:
 npm run build
 ```
 
-This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and any whitelisted `dist/assets/*` files, and has to come in under 5 MB. You don't need to commit `dist/`.
+This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and any whitelisted `dist/assets/*` files, and has to come in under 5 MB (5 MiB). The packaging step also rejects an archive whose uncompressed contents exceed 25 MiB. You don't need to commit `dist/`.
 
 Upload the `.tgz` file in **Admin** > **Settings** > **Custom visualizations** > **Manage visualizations** > **Add**. See [Custom visualizations](../questions/visualizations/custom.md) for more on uploading and managing plugins.
 
 ## Versioning and compatibility
 
-The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`. If you upload a bundle to a Metabase older than its range allows, the plugin won't install; if a running instance later falls outside the range — after a downgrade, say — the plugin stops loading, and cards that used it fall back to a default visualization until the instance is back in range.
+The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`. Write the range against the full version number (`">=1.62.0"`), not a bare major version (`">=62"`), which won't match.
+
+Metabase accepts the upload regardless of version, but a plugin only loads when the running instance falls within its range. If the instance is outside the range — whether the plugin needs a newer version, or a later downgrade moves the instance out of range — the plugin doesn't appear in the visualization picker, and cards that used it fall back to a default visualization until the instance is back in range.
 
 ## Sandbox restrictions
 
