@@ -1,14 +1,12 @@
-import cx from "classnames";
 import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
-import { Card } from "metabase/common/components/Card";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Label } from "metabase/common/components/type/Label";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Text } from "metabase/ui";
+import { Box, Card, Flex, Text } from "metabase/ui";
 import type { UserLoginHistoryItem } from "metabase-types/api";
 
 interface FormattedLoginItem extends UserLoginHistoryItem {
@@ -17,10 +15,7 @@ interface FormattedLoginItem extends UserLoginHistoryItem {
 }
 
 const LoginHistoryItem = ({ item }: { item: FormattedLoginItem }) => (
-  <Card
-    className={cx(CS.my2, CS.py1)}
-    style={{ paddingLeft: 20, paddingRight: 20 }}
-  >
+  <Card px="20px" py="sm" my="md" radius="md" withBorder>
     <Flex align="flex-start">
       <div>
         <Label>
