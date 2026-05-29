@@ -425,8 +425,13 @@ describe("scenarios > data studio > library > metrics", () => {
         .contains("Trusted Orders Metric")
         .click();
 
+      cy.log("Wait for metric detail page to load");
+      cy.url().should("include", "/metric/");
+      cy.findByTestId("metric-header", { timeout: 30000 }).should(
+        "be.visible",
+      );
+
       cy.log("Open caching modal from more options menu");
-      H.DataStudio.Metrics.header().should("be.visible");
       H.DataStudio.Metrics.openCachingModal();
 
       cy.log("Change the setting and save");
