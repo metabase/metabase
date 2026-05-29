@@ -8,7 +8,15 @@ import {
 } from "metabase/api/exploration";
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Anchor, Box, Icon, Menu, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Anchor,
+  Box,
+  Icon,
+  Menu,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DocumentId, ExplorationThread } from "metabase-types/api";
 
@@ -119,6 +127,10 @@ export function GroupDocumentMenu({
     [explorationThread],
   );
 
+  // if only a single chart, don't make the user pick it
+  const isSingleChart = charts.length === 1;
+  const chartToUse = isSingleChart ? charts[0] : selectedChart;
+
   return (
     <Menu
       position="bottom-end"
@@ -129,12 +141,14 @@ export function GroupDocumentMenu({
       closeOnItemClick={false}
     >
       <Menu.Target>
-        <ActionIcon aria-label={t`Add to document`}>
-          <Icon name="document" c="icon-primary" />
-        </ActionIcon>
+        <Tooltip label={t`Add to document`}>
+          <ActionIcon aria-label={t`Add to document`}>
+            <Icon name="document" c="icon-primary" />
+          </ActionIcon>
+        </Tooltip>
       </Menu.Target>
       <Menu.Dropdown>
-        {selectedChart == null ? (
+        {chartToUse == null ? (
           <>
             <Menu.Label>{t`Pick a chart`}</Menu.Label>
             <Box className={CS.overflowYAuto} mah="50vh">
@@ -154,26 +168,30 @@ export function GroupDocumentMenu({
           </>
         ) : (
           <>
-            <Menu.Item
-              leftSection={<Icon name="chevronleft" c="icon-primary" />}
-              onClick={() => setSelectedChart(null)}
-            >
-              {t`Back`}
-            </Menu.Item>
-            <Menu.Divider />
+            {!isSingleChart && (
+              <>
+                <Menu.Item
+                  leftSection={<Icon name="chevronleft" c="icon-primary" />}
+                  onClick={() => setSelectedChart(null)}
+                >
+                  {t`Back`}
+                </Menu.Item>
+                <Menu.Divider />
+              </>
+            )}
             <Menu.Label>{t`Add to`}</Menu.Label>
             {documents.map((document) => (
               <Menu.Item
                 key={document.id}
                 leftSection={<Icon name="document" c="icon-primary" />}
-                onClick={() => handleAppend(selectedChart, document.id)}
+                onClick={() => handleAppend(chartToUse, document.id)}
               >
                 {document.name}
               </Menu.Item>
             ))}
             <Menu.Item
               leftSection={<Icon name="add" c="icon-primary" />}
-              onClick={() => handleCreateAndAppend(selectedChart)}
+              onClick={() => handleCreateAndAppend(chartToUse)}
             >
               {t`New document`}
             </Menu.Item>

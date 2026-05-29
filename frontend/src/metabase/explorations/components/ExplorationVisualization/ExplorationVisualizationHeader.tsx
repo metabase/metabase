@@ -6,7 +6,6 @@ import type {
   TimelineId,
 } from "metabase-types/api";
 
-import { DocumentMenu } from "./DocumentMenu";
 import { GroupDocumentMenu } from "./GroupDocumentMenu";
 import { TimelineDropdown } from "./TimelineDropdown";
 import type { ExplorationChartForDocumentEmbed } from "./utils";
@@ -39,12 +38,7 @@ export function ExplorationVisualizationHeader({
     showDocumentMenu &&
     explorationThread &&
     chartsForEmbed &&
-    chartsForEmbed.length > 1;
-  const showSingleDocumentMenu =
-    showDocumentMenu &&
-    !showGroupDocumentMenu &&
-    explorationThread &&
-    chartsForEmbed?.length === 1;
+    chartsForEmbed.length > 0;
 
   return (
     <Group h="2rem" justify="space-between" style={{ flexShrink: 0 }}>
@@ -67,12 +61,6 @@ export function ExplorationVisualizationHeader({
         {showGroupDocumentMenu && (
           <GroupDocumentMenu
             charts={chartsForEmbed}
-            explorationThread={explorationThread}
-          />
-        )}
-        {showSingleDocumentMenu && (
-          <DocumentMenu
-            chart={chartsForEmbed[0]}
             explorationThread={explorationThread}
           />
         )}

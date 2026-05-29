@@ -271,4 +271,75 @@ describe("GroupDocumentMenu", () => {
       });
     });
   });
+
+  describe("single chart", () => {
+    const singleChart = [
+      makeChart({
+        queryIds: [101],
+        label: "Revenue (US)",
+        display: "area",
+        visualization_settings: { "graph.show_values": true },
+      }),
+    ];
+
+    it("opens straight to the document picker — no chart list or Back", async () => {
+      setup({ charts: singleChart });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add to document" }),
+      );
+
+      expect(await screen.findByText("Add to")).toBeInTheDocument();
+      expect(screen.getByText("Notes")).toBeInTheDocument();
+      expect(screen.getByText("New document")).toBeInTheDocument();
+      expect(screen.queryByText("Pick a chart")).not.toBeInTheDocument();
+      expect(screen.queryByText("Revenue (US)")).not.toBeInTheDocument();
+      expect(screen.queryByText("Back")).not.toBeInTheDocument();
+    });
+
+    it("appends the lone chart without a chart-selection step", async () => {
+      setup({ charts: singleChart });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add to document" }),
+      );
+      await userEvent.click(await screen.findByText("Notes"));
+
+      await waitFor(() => {
+        expect(mockAppend).toHaveBeenCalledTimes(1);
+      });
+      expect(mockAppend).toHaveBeenCalledWith({
+        threadId: 7,
+        documentId: 11,
+        exploration_query_ids: [101],
+        display: "area",
+        visualization_settings: { "graph.show_values": true },
+      });
+    });
+
+    it("New document creates a doc and appends the lone chart", async () => {
+      setup({ charts: singleChart });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add to document" }),
+      );
+      await userEvent.click(await screen.findByText("New document"));
+
+      await waitFor(() => {
+        expect(mockCreate).toHaveBeenCalledWith({
+          threadId: 7,
+          explorationId: 99,
+        });
+      });
+      await waitFor(() => {
+        expect(mockAppend).toHaveBeenCalledWith({
+          threadId: 7,
+          documentId: 22,
+          exploration_query_ids: [101],
+          display: "area",
+          visualization_settings: { "graph.show_values": true },
+        });
+      });
+    });
+  });
 });
