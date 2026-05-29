@@ -1,10 +1,9 @@
 import cx from "classnames";
 import { memo } from "react";
 
-import { Card } from "metabase/common/components/Card";
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
-import { Ellipsified, Icon } from "metabase/ui";
+import { Card, Ellipsified, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import { ListItemLink, Root } from "./ListItem.styled";
@@ -32,10 +31,12 @@ const ListItemInner = ({
 }: ListItemProps) => {
   const card = (
     <Card
-      hoverable
-      className={cx(CS.mb2, CS.p3, CS.bgWhite, CS.rounded, CS.bordered)}
+      p="lg"
+      mb="md"
+      w="680px"
+      radius="md"
+      withBorder
       data-testid="data-reference-list-item"
-      style={{ width: "680px" }}
     >
       <div className={cx(S.item)}>
         <div className={S.itemIcons}>
