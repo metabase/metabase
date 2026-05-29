@@ -1,20 +1,28 @@
 (ns metabase.query-processor.pivot
-  "Pivot table query processor. Determines a bunch of different subqueries to run, then runs them one by one on the data
-  warehouse and concatenates the result rows together, sort of like the way [[clojure.core/lazy-cat]] works. This is
-  dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
-  instead of running like 10 separate queries? -- Cam
+  "Pivot table query processor. Two execution strategies are available:
 
-  Note that this namespace is mostly responsible for generating the series of different queries to run and doing QP
-  magic to combine the results together.
+  1. **Legacy multi-query path** ([[run-pivot-query-multi]]): generates one subquery per breakout combination
+     (powerset of pivot rows/cols), runs them sequentially, and stitches the results together with an
+     application-level `pivot-grouping` bitmask column. Works with every driver.
+
+  2. **Native single-query path** ([[run-native-pivot-query]]): for drivers that declare the
+     `:native-pivot-tables` feature, a single SQL query with `GROUPING SETS` (or the driver's equivalent) produces
+     all subtotal levels at once. The driver is responsible for returning a `\"pivot-grouping\"` column containing
+     an integer bitmask. This path is driver-agnostic at the QP level -- any driver that fulfills the contract can
+     use it.
+
+  [[run-pivot-query]] dispatches between the two paths based on [[native-pivot-supported?]].
 
   Post-processing middleware to add the `pivot-grouping` column to results and to massage result rows into a standard
   shape lives in [[metabase.query-processor.pivot.middleware]]."
   (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
    [medley.core :as m]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
@@ -26,6 +34,7 @@
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
+   [metabase.query-processor.pivot.middleware :as pivot.middleware]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
@@ -35,7 +44,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [empty? every? get-in mapv not-empty select-keys some update-keys]]))
+   [metabase.util.performance :refer [empty? every? get-in mapv not-empty select-keys some update-keys]])
+  (:import
+   (java.util.concurrent ConcurrentLinkedQueue)))
 
 (set! *warn-on-reflection* true)
 
@@ -481,6 +492,10 @@
            :qp.pivot/num-remapped-breakouts   num-remapped-breakouts
            :qp.pivot/remapped-indexes         remap)))
 
+(def ^:dynamic *force-legacy-pivot*
+  "When true, [[run-pivot-query]] always uses the legacy multi-query path. Used by tests to compare native vs legacy results."
+  false)
+
 (def ^:dynamic ^:private *pivot-max-result-rows*
   "Maximum number of result rows for each pivot sub-query. Divided by the number of aggregations since each aggregation
   adds a column to the output, so fewer rows are needed to fill the pivot table."
@@ -495,9 +510,151 @@
       (quot *pivot-max-result-rows* num-aggs)
       *pivot-max-result-rows*)))
 
+(defn- has-window-fn-aggregation?
+  "Window function aggregations cannot be computed correctly in a single GROUPING SETS query; use legacy pivot."
+  [query]
+  (let [window-fn-tags #{:offset :cum-count :cum-sum}]
+    (some (fn [clause]
+            (and (vector? clause) (window-fn-tags (first clause))))
+          (lib/aggregations query))))
+
+(mu/defn native-pivot-supported? :- :boolean
+  "Does the database for this query support computing pivot subtotals in a single database-native query?
+  Returns true when the driver declares `:native-pivot-tables`. The actual SQL construct used (e.g. `GROUPING SETS`,
+  `WITH ROLLUP`) is driver-specific and opaque to this namespace."
+  [query :- [:map
+             [:database {:optional true} [:maybe ::lib.schema.id/database]]]]
+  (boolean
+   (when-let [database (u/ignore-exceptions (lib.metadata/database query))]
+     (when-let [driver (driver.u/database->driver database)]
+       (driver.u/supports? driver :native-pivot-tables database)))))
+
+(defn- find-pivot-grouping-index
+  "Return the index of the pivot-grouping column in `cols`, or nil if not found."
+  [cols]
+  (first (keep-indexed (fn [i col] (when (= (:name col) "pivot-grouping") i)) cols)))
+
+(defn- vec-remove-at
+  "Remove the element at `idx` from vector `v`."
+  [v idx]
+  (into (subvec v 0 idx) (subvec v (inc idx))))
+
+(defn- vec-insert-at
+  "Insert `val` at `idx` in vector `v`."
+  [v idx val]
+  (into (conj (subvec v 0 idx) val) (subvec v idx)))
+
+(defn- strip-pivot-grouping-from-row
+  "Remove the `pivot-grouping` column at `idx` from `row`, enqueueing its original database value."
+  [idx ^ConcurrentLinkedQueue grouping-queue row]
+  (let [row-v (vec row)]
+    (.offer grouping-queue (nth row-v idx))
+    (vec-remove-at row-v idx)))
+
+(mu/defn- run-native-pivot-query
+  "Run a pivot query using a single database-native query. This function is **driver-agnostic** -- it works for any
+  driver that declares the `:native-pivot-tables` feature. The contract is:
+
+  * The driver produces all subtotal levels in one query (e.g. via `GROUPING SETS` or equivalent).
+  * The driver returns one extra column named `\"pivot-grouping\"` containing an integer bitmask that encodes which
+    breakout columns are active for each row (see [[metabase.query-processor.pivot.common/group-bitmask]]).
+
+  **Why the `*reduce*` strip/restore dance is needed:**
+
+  The post-processing middleware chain (specifically `annotate/add-column-info`) compares driver-returned columns
+  against the columns Lib calculates from the query structure. Lib knows nothing about the synthetic
+  `pivot-grouping` column, so the count would mismatch and throw. To avoid this:
+
+  1. We bind [[qp.pipeline/*reduce*]] to intercept the driver's metadata and rows, stripping out the
+     `pivot-grouping` column before the post-processing middleware chain sees them.
+  2. We wrap the outermost `rff` so that after all middleware has processed, `pivot-grouping` is re-inserted into
+     the final metadata and every row at its original position.
+
+  Data flow:
+
+      Driver returns [breakouts... pivot-grouping aggs...]
+        -> *reduce* binding strips pivot-grouping
+        -> post-processing middleware sees [breakouts... aggs...] (matches Lib expectation)
+        -> wrapped-rff re-inserts pivot-grouping
+        -> final output: [breakouts... pivot-grouping aggs...]  (matches frontend expectation)"
+  [query        :- ::qp.schema/any-query
+   rff          :- ::qp.schema/rff
+   pivot-opts   :- ::pivot-opts
+   pivot-limit  :- [:maybe nat-int?]]
+  (let [original-query query
+        all-breakout-combinations (breakout-combinations (count (lib/breakouts query))
+                                                         (:pivot-rows pivot-opts)
+                                                         (:pivot-cols pivot-opts)
+                                                         (:show-row-totals pivot-opts)
+                                                         (:show-column-totals pivot-opts))
+        query        (-> query
+                         (assoc :qp.pivot/native-pivot? true
+                                :qp.pivot/breakout-combinations all-breakout-combinations)
+                         (assoc-in [:info :pivot/original-query] original-query)
+                         ;; GROUPING SETS returns many aggregated rows; do not apply the unaggregated row limit.
+                         (update :constraints dissoc :max-results-bare-rows)
+                         ;; A stage `:limit` applies to the single GROUPING SETS query and can drop subtotal rows;
+                         ;; legacy pivot runs one query per combination so each can return rows independently.
+                         (lib/limit nil)
+                         remove-non-aggregation-order-bys)
+        grouping-queue (ConcurrentLinkedQueue.)
+        pivot-col-info (volatile! nil)
+        row-count      (volatile! 0)
+        wrapped-rff  (fn [metadata]
+                       (if-let [{:keys [pivot-idx pivot-col]} @pivot-col-info]
+                         (let [restored-metadata (update metadata :cols #(vec-insert-at (vec %) pivot-idx pivot-col))
+                               rf (rff restored-metadata)]
+                           (fn native-pivot-restore-rf
+                             ([] (rf))
+                             ([result]
+                              (let [result (rf result)]
+                                (cond-> result
+                                  (and pivot-limit (>= @row-count pivot-limit) (map? result))
+                                  (assoc-in [:data :pivot_rows_truncated] @row-count))))
+                             ([result row]
+                              (vswap! row-count inc)
+                              (rf result
+                                  (vec-insert-at (vec row)
+                                                 pivot-idx
+                                                 (.poll grouping-queue))))))
+                         (rff metadata)))]
+    (log/debugf "Running native pivot query:\n%s" (u/pprint-to-str query))
+    (binding [qp.pipeline/*reduce*
+              (let [orig-reduce qp.pipeline/*reduce*]
+                (fn native-pivot-reduce [rff metadata reducible-rows]
+                  (let [cols (vec (:cols metadata))
+                        idx  (find-pivot-grouping-index cols)]
+                    (if (nil? idx)
+                      (orig-reduce rff metadata reducible-rows)
+                      (do
+                        (vreset! pivot-col-info {:pivot-idx idx
+                                                 :pivot-col (merge pivot.middleware/pivot-grouping-column-metadata
+                                                                   (nth cols idx))})
+                        (let [stripped-metadata (update metadata :cols #(vec-remove-at (vec %) idx))
+                              stripped-rows     (eduction
+                                                 (map (partial strip-pivot-grouping-from-row idx grouping-queue))
+                                                 reducible-rows)]
+                          (orig-reduce rff stripped-metadata stripped-rows)))))))]
+      (qp/process-query (cond-> query
+                          (seq (:info query)) qp/userland-query)
+                        wrapped-rff))))
+
+(mu/defn- run-pivot-query-multi
+  "Run a pivot query using multiple subqueries (legacy path). One subquery is generated per breakout combination
+  and they are executed sequentially; the `pivot-grouping` bitmask column is synthesized at the application level
+  by [[metabase.query-processor.pivot.middleware/add-pivot-grouping]]. Used when the driver does not declare
+  `:native-pivot-tables`."
+  [query        :- ::qp.schema/any-query
+   rff          :- ::qp.schema/rff
+   pivot-opts   :- ::pivot-opts
+   pivot-limit  :- [:maybe nat-int?]]
+  (let [all-queries (generate-queries query pivot-opts)]
+    (process-multiple-queries all-queries rff pivot-limit)))
+
 (mu/defn run-pivot-query
-  "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
-  yourself."
+  "Run the pivot query. Dispatches to [[run-native-pivot-query]] when the driver supports `:native-pivot-tables`,
+  otherwise falls back to [[run-pivot-query-multi]]. You are expected to wrap this call in
+  [[metabase.query-processor.streaming/streaming-response]] yourself."
   ([query]
    (run-pivot-query query nil))
 
@@ -517,6 +674,9 @@
                            (assoc-in [:constraints :max-results] pivot-limit)
                            (cond-> (get-in query [:constraints :max-results-bare-rows])
                              (update-in [:constraints :max-results-bare-rows] min pivot-limit))
-                           add-canonical-col-info)
-           all-queries (generate-queries query pivot-opts)]
-       (process-multiple-queries all-queries rff pivot-limit)))))
+                           add-canonical-col-info)]
+       (if (and (not *force-legacy-pivot*)
+                (native-pivot-supported? query)
+                (not (has-window-fn-aggregation? query)))
+         (run-native-pivot-query query rff pivot-opts pivot-limit)
+         (run-pivot-query-multi query rff pivot-opts pivot-limit))))))

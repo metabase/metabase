@@ -2083,9 +2083,11 @@
   "Return the keys present in an MBQL `inner-query` in the order they should be processed."
   [inner-query]
   ;; sort first by any known top-level clauses according to the `top-level-application-clause-order` defined above,
-  ;; then sort any unknown clauses by name.
-  (sort-by (fn [clause] [(get top-level-clause-application-order clause Integer/MAX_VALUE) clause])
-           (keys inner-query)))
+  ;; then sort any unknown clauses by name. Ignore namespaced keys (e.g. `:qp.pivot/*`) that are metadata for driver
+  ;; hooks but not top-level MBQL clauses.
+  (let [clause-keys (remove namespace (keys inner-query))]
+    (sort-by (fn [clause] [(get top-level-clause-application-order clause Integer/MAX_VALUE) clause])
+             clause-keys)))
 
 (defn- format-honeysql-2 [driver dialect honeysql-form]
   ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]

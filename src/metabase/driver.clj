@@ -878,6 +878,20 @@
     ;; Does this driver support the workspace feature
     :workspace
     ;;
+    ;; Does this driver support computing pivot table subtotals in a single database-native query instead of the
+    ;; default multi-query path?
+    ;;
+    ;; Contract: the driver's SQL compilation must produce a result set with:
+    ;;   1. All breakout columns (NULLs for aggregated dimensions in subtotal rows).
+    ;;   2. A column named "pivot-grouping" containing an integer bitmask from the SQL `GROUPING()` function
+    ;;      (or equivalent), indicating which breakouts are active per row.
+    ;;   3. All aggregation columns.
+    ;;
+    ;; The QP-level logic in `metabase.query-processor.pivot/run-native-pivot-query` is driver-agnostic; only the
+    ;; SQL generation layer is driver-specific.  See `metabase.driver.postgres.pivot` for the reference
+    ;; implementation using `GROUPING SETS`.
+    :native-pivot-tables
+    ;;
     ;; Does this driver support table references in native queries -- for example, "select * from {{table}}" where
     ;; `{{table}}` gets replaced by a reference to a table.
     :parameters/table-reference})

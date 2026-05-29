@@ -45,6 +45,8 @@
 
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
+                              ;; Native pivot SQL is Postgres-only for now; inherited from :postgres parent otherwise.
+                              :native-pivot-tables              false
                               :database-routing                 true
                               :describe-default-expr            false
                               :describe-fields                  true

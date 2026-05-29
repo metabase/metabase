@@ -9,7 +9,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [empty? mapv]]))
 
-(def ^:private pivot-column-gropuing-metadata
+(def pivot-grouping-column-metadata
+  "Column metadata for the synthetic `pivot-grouping` column (legacy path and native restore)."
   {:name                     "pivot-grouping"
    :display_name             "pivot-grouping"
    :lib/desired-column-alias "pivot-grouping"
@@ -20,7 +21,7 @@
   (vec
    (concat
     (take num-breakouts cols)
-    [pivot-column-gropuing-metadata]
+    [pivot-grouping-column-metadata]
     (drop num-breakouts cols))))
 
 (defn add-pivot-grouping
@@ -31,16 +32,25 @@
   discarded.
 
   * Splice the [[metabase.query-processor.pivot.common/group-bitmask]] into each row in the same position as the pivot
-    column grouping metadata."
-  [{unremapped-breakout-combination :qp.pivot/unremapped-breakout-combination
-    num-remapped-breakouts          :qp.pivot/num-remapped-breakouts
-    num-unremapped-breakouts        :qp.pivot/num-unremapped-breakouts
-    :as                             _subquery}
-   rff]
-  (if-not unremapped-breakout-combination
+    column grouping metadata.
+
+  For native pivot queries (drivers that declare `:native-pivot-tables`), the `pivot-grouping` column is computed by
+  the database and the strip/restore logic in [[metabase.query-processor.pivot/run-native-pivot-query]] handles
+  metadata splicing, so this middleware is a no-op."
+  [subquery rff]
+  (cond
+    (:qp.pivot/native-pivot? subquery)
     rff
+
+    (not (:qp.pivot/unremapped-breakout-combination subquery))
+    rff
+
+    :else
     (fn rff' [metadata]
-      (let [metadata'     (m/update-existing metadata :cols add-column-grouping-metadata num-remapped-breakouts)
+      (let [num-remapped-breakouts   (:qp.pivot/num-remapped-breakouts subquery)
+            num-unremapped-breakouts (:qp.pivot/num-unremapped-breakouts subquery)
+            unremapped-breakout-combination (:qp.pivot/unremapped-breakout-combination subquery)
+            metadata'     (m/update-existing metadata :cols add-column-grouping-metadata num-remapped-breakouts)
             rf            (rff metadata')
             group-bitmask (pivot.common/group-bitmask num-unremapped-breakouts unremapped-breakout-combination)
             xform         (map (fn [row]
@@ -106,40 +116,8 @@
             (get canonical-index->subquery-index i))
           (range num-remapped-cols))))
 
-(mu/defn- full-breakout-combination :- ::pivot.common/breakout-combination
-  "Returns the breakout combination corresponding to `breakout-combination` belonging to the base query (the one without
-  remapped fields) accounting for the field remapping specified by `remap`.
-
-  To produce the breakout combination for the real query, the target indexes have to be included whenever a source
-  index is selected, we have to shift the indexes before which a mapped index is inserted."
-  [{breakout-combination :qp.pivot/remapped-breakout-combination
-    remap                :qp.pivot/remapped-indexes
-    :as                  _subquery} :- [:map
-                                        [:qp.pivot/remapped-breakout-combination ::pivot.common/breakout-combination]
-                                        [:qp.pivot/remapped-indexes              ::pivot.common/remapped-indexes]]]
-  (if (or (empty? remap)
-          (empty? breakout-combination))
-    breakout-combination
-    (let [limit    (apply max breakout-combination)
-          selected (set breakout-combination)
-          inserted (set (vals remap))]
-      (loop [index 0, offset 0, combination #{}]
-        (if (> index limit)
-          (-> combination sort vec)
-          (let [offset        (cond-> offset
-                                (inserted (+ index offset)) inc)
-                spliced-index (+ index offset)
-                selected?     (selected index)
-                mapped-index  (when selected?
-                                (remap spliced-index))]
-            (recur (inc index)
-                   offset
-                   (cond-> combination
-                     selected?    (conj spliced-index)
-                     mapped-index (into (take-while some? (iterate remap mapped-index)))))))))))
-
 (mu/defn- column-mapping [subquery :- :map]
-  (let [full-breakout-combination (full-breakout-combination subquery)]
+  (let [full-breakout-combination (pivot.common/full-breakout-combination subquery)]
     (column-mapping-for-subquery subquery full-breakout-combination)))
 
 (mu/defn- row-mapping-fn :- [:=> [:cat ::row] ::row]
@@ -162,9 +140,13 @@
 
 (defn project-pivot-subquery-rows
   "For Pivot QP subqueries, adjust the shape of the rows to match the shape of rows in the original query, splicing in
-  `nil` values as needed."
+  `nil` values as needed.
+
+  Not needed for native pivot queries (`:native-pivot-tables` drivers) where the database returns all breakout columns
+  in every row (NULLs included), so no row-shape adjustment is required."
   [query rff]
-  (if-not (:qp.pivot/remapped-breakout-combination query)
+  (if (or (:qp.pivot/native-pivot? query)
+          (not (:qp.pivot/remapped-breakout-combination query)))
     rff
     (fn rff' [metadata]
       (let [rf             (rff metadata)

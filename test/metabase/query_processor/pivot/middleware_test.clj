@@ -1,11 +1,11 @@
 (ns metabase.query-processor.pivot.middleware-test
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor.pivot.middleware :as qp.pivot.middleware]))
+   [metabase.query-processor.pivot.common :as pivot.common]))
 
 (deftest ^:parallel full-breakout-combination-test
   (letfn [(combo [breakout-combination remaps]
-            (#'qp.pivot.middleware/full-breakout-combination
+            (pivot.common/full-breakout-combination
              {:qp.pivot/remapped-breakout-combination breakout-combination
               :qp.pivot/remapped-indexes              remaps}))]
     (is (= []
