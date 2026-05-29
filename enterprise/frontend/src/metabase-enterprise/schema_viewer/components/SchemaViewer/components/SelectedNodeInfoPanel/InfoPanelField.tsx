@@ -45,7 +45,7 @@ export function InfoPanelField({
   );
   const isExternalFk = field.fk_target_table_id != null && targetNode == null;
 
-  const fieldName = <Box className={S.fieldName}>{field.display_name}</Box>;
+  const fieldName = <Box className={S.fieldName}>{field.name}</Box>;
 
   return (
     <Group className={cx(S.fieldRow, CS.textWrap)} gap="sm" wrap="nowrap">
