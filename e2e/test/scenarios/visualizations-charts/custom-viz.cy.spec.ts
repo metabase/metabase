@@ -2528,10 +2528,6 @@ describe("sandbox", () => {
   });
 
   it("blocks forbidden apis in widget settings", () => {
-    H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
-    cy.signInAsAdmin();
-    H.updateSetting("custom-viz-enabled", true);
     H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
 
     H.createQuestion(
