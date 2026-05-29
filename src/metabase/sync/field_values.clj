@@ -110,21 +110,22 @@
               fields))))
 
 (defn sync-fields-grouped-by-table!
-  "Sync FieldValues for `fields`, grouping by `:table_id`. SQL drivers use the UNION batch path;
+  "Sync FieldValues for `fields`, grouping by `:table_id`. Filters to FV-eligible fields via
+  `field-should-have-field-values?` before dispatching. SQL drivers use the UNION batch path;
   non-SQL drivers use the per-field path. Returns the aggregated counts across all tables.
 
-  Callers that need to skip inactive FieldValues should filter before calling. Non-recoverable
-  errors propagate out and abort."
+  Non-recoverable errors propagate out and abort."
   [fields]
-  (when (seq fields)
-    (let [fvs-map  (field-values/batched-get-latest-full-field-values (map u/the-id fields))
-          by-table (group-by :table_id fields)]
-      (transduce (map (fn [[table-id table-fields]]
-                        (let [table (t2/select-one :model/Table :id table-id)]
-                          (sync-fields-for-table! table table-fields fvs-map))))
-                 (completing (partial merge-with +))
-                 empty-counts
-                 by-table))))
+  (let [eligible (filter field-values/field-should-have-field-values? fields)]
+    (when (seq eligible)
+      (let [fvs-map  (field-values/batched-get-latest-full-field-values (map u/the-id eligible))
+            by-table (group-by :table_id eligible)]
+        (transduce (map (fn [[table-id table-fields]]
+                          (let [table (t2/select-one :model/Table :id table-id)]
+                            (sync-fields-for-table! table table-fields fvs-map))))
+                   (completing (partial merge-with +))
+                   empty-counts
+                   by-table)))))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
@@ -210,8 +211,7 @@
                       (mapcat (fn [batch]
                                 (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
                                             :semantic_type :visibility_type :table_id :has_field_values]
-                                           :id [:in batch])))
-                      (filter field-values/field-should-have-field-values?)))
+                                           :id [:in batch])))))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
         on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
     (when (seq on-demand-fields)

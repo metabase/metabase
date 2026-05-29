@@ -14,7 +14,6 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.queue :as queue]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
@@ -43,8 +42,7 @@
                     (->> field-ids
                          (partition-all *invalidate-select-batch-size*)
                          (mapcat (fn [batch]
-                                   (t2/select :model/Field :id [:in batch])))
-                         (filter field-values/field-should-have-field-values?)))]
+                                   (t2/select :model/Field :id [:in batch])))))]
     (sync.field-values/sync-fields-grouped-by-table! fields)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]

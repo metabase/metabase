@@ -2677,8 +2677,7 @@
            models
            query-processor
            sync
-           util
-           warehouse-schema}
+           util}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues

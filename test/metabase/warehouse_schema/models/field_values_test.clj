@@ -612,7 +612,7 @@
     (is (= "raw" (#'field-values/decode-value :type/Float "raw")))
     (is (= "anything" (#'field-values/decode-value :type/SomeMadeUpType "anything")))))
 
-(deftest ^:mb/driver-tests ^:sync run-distinct-batch-integration-test
+(deftest ^:mb/driver-tests run-distinct-batch-integration-test
   (testing "run-distinct-batch returns correct distinct values for each field"
     (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
@@ -632,7 +632,7 @@
               (is (seq values))
               (is (every? string? values)))))))))
 
-(deftest ^:mb/driver-tests ^:sync run-distinct-batch-matches-per-field-test
+(deftest ^:mb/driver-tests run-distinct-batch-matches-per-field-test
   (testing "run-distinct-batch returns the same value set per column as the per-field DISTINCT path"
     ;; Only check fields whose distinct count is below the per-column LIMIT. For columns that hit
     ;; the cap, both paths return a valid subset but the warehouse is free to pick *which* 1000
@@ -656,7 +656,7 @@
                     (format "UNION distinct values differ from per-field DISTINCT for %s on %s"
                             (:name field) (name driver/*driver*)))))))))))
 
-(deftest ^:mb/driver-tests ^:sync run-distinct-batch-cross-driver-test
+(deftest ^:mb/driver-tests run-distinct-batch-cross-driver-test
   (testing "run-distinct-batch produces correct results on every supported SQL driver"
     (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data

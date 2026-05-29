@@ -308,7 +308,7 @@
 
 ;;; ---------------------------------- sync-fields-grouped-by-table! ----------------------------------
 
-(deftest ^:mb/driver-tests ^:sync sync-fields-grouped-by-table!-test
+(deftest ^:mb/driver-tests sync-fields-grouped-by-table!-test
   (testing "End-to-end: fetches via UNION, persists via persist-field-values!, returns counts"
     (mt/dataset test-data
       (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :people :state)
@@ -332,21 +332,18 @@
     (is (nil? (sync.field-values/sync-fields-grouped-by-table! [])))
     (is (nil? (sync.field-values/sync-fields-grouped-by-table! nil)))))
 
-(deftest ^:mb/driver-tests ^:sync union-batching-test
+(deftest ^:mb/driver-tests union-batching-test
   (testing "Field count > *batch-size* is broken into multiple queries; every field's counts are accounted for"
     (mt/dataset test-data
-      ;; Sync-fields-grouped-by-table! expects callers to pre-filter to FV-eligible fields, so we do the
-      ;; same here. Otherwise we'd create phantom FieldValues rows for fields that shouldn't have them,
-      ;; which leak into subsequent tests in this namespace.
       (binding [field-values/*batch-size* 2]
-        (let [fields (vec (filter field-values/field-should-have-field-values?
-                                  (t2/select :model/Field
-                                             :table_id (mt/id :people)
-                                             :active true
-                                             :visibility_type "normal"
-                                             {:order-by [[:name :asc]]})))
-              counts (sync.field-values/sync-fields-grouped-by-table! fields)]
-          (is (= (count fields) (:probed counts))
-              "Every field is reported as probed even though queries were batched")
+        (let [fields           (vec (t2/select :model/Field
+                                               :table_id (mt/id :people)
+                                               :active true
+                                               :visibility_type "normal"
+                                               {:order-by [[:name :asc]]}))
+              eligible-count   (count (filter field-values/field-should-have-field-values? fields))
+              counts           (sync.field-values/sync-fields-grouped-by-table! fields)]
+          (is (= eligible-count (:probed counts))
+              "Every FV-eligible field is reported as probed; sync-fields-grouped-by-table! drops the rest")
           (is (>= (:queries counts) 2)
               "More fields than *batch-size* should produce more than one query"))))))
