@@ -372,7 +372,7 @@ export class LegacyApi extends EventEmitter {
           // so callers don't have to handle "the response was empty" via
           // per-endpoint `transformResponse` workarounds.
           let responseBody: Response | string | null | undefined =
-            xhr.responseText === "" ? null : xhr.responseText;
+            xhr.status === 204 ? null : xhr.responseText;
 
           if (options.json && xhr.responseText !== "") {
             try {
@@ -474,7 +474,7 @@ export class LegacyApi extends EventEmitter {
           // so callers don't have to handle "the response was empty" via
           // per-endpoint `transformResponse` workarounds.
           let body: string | Response | null | undefined =
-            bodyText === "" ? null : bodyText;
+            response.status === 204 ? null : bodyText;
 
           if (options.json && bodyText !== "") {
             try {
