@@ -20,7 +20,9 @@ import { ORDERS_PRODUCTS_ACCESS } from "./test_roles";
  */
 
 export const SAMPLE_DB_ID = 1;
-export const SAMPLE_DB_SCHEMA_ID = "1:PUBLIC";
+// SQLite reports no schema for the sample DB, so the encoded schema id is `<db-id>:`
+// (empty schema name) rather than H2's `1:PUBLIC`. See generateSchemaId().
+export const SAMPLE_DB_SCHEMA_ID = "1:";
 
 // Use only for e2e helpers and custom commands. Never in e2e tests directly!
 // The ids of these tables are determined by our sync processes, especially the result of (metabase.driver.sql-jdbc.sync.describe-database/describe-database)
