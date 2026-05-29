@@ -1,10 +1,14 @@
 (ns metabase.parameters.chain-filter-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -581,6 +585,155 @@
       (is (= {:values          []
               :has_more_values false}
              (chain-filter-search venues.category_id {venues.price 4} "zzzzz"))))))
+
+;;; ------------ Structural invariant: tight inner-stage :fields per join (#74154) ------------
+;;;
+;;; Two failure modes the invariant rules out:
+;;;
+;;;   - UNDER-projection — a column the query references via this join is missing from the
+;;;     inner :fields. SQL won't compile (or projects the wrong shape) and the query returns
+;;;     wrong/missing values.
+;;;
+;;;   - OVER-projection — the inner :fields contains a column nothing references. SQL
+;;;     compiles fine and values are correct, but we're materializing columns we don't need
+;;;     — the OOM root cause behind #74154.
+
+(defn- referenced-field-ids-by-source-table
+  "Return `{table-id #{field-id ...}}` — for every field-id referenced anywhere in `query`, bucket by its `:table-id`."
+  [query]
+  (let [fids (lib/all-field-ids query)
+        cols (lib.metadata/bulk-metadata query :metadata/column fids)]
+    (reduce (fn [m {:keys [table-id id]}]
+              (cond-> m
+                table-id (update table-id (fnil conj #{}) id)))
+            {} cols)))
+
+(defn- inner-projection-by-source-table
+  "Return `{table-id #{field-id ...}}` — the field-ids each join's inner-stage `:fields` projects, keyed by the join's
+  source-table-id."
+  [query]
+  (into {}
+        (for [a-join (lib/joins query)
+              :let [tid (:id (lib/joined-thing query a-join))]
+              :when tid]
+          ;; Structural read into the inner stage: the projection list is the thing under test.
+          [tid (set (keep (fn [clause]
+                            (when (lib.util/clause-of-type? clause :field)
+                              (let [id (last clause)]
+                                (when (pos-int? id) id))))
+                          (:fields (first (:stages a-join)))))])))
+
+(defn- projection-violations
+  "Return a seq of diagnostic maps (one per offending join) or nil if the invariant holds:
+  inner-stage `:fields` equals the set of field-ids the query references that live on that
+  join's source table."
+  [query]
+  (let [refs (referenced-field-ids-by-source-table query)
+        proj (inner-projection-by-source-table query)]
+    (not-empty
+     (vec
+      (for [tid (sort (keys proj))
+            :let [r (get refs tid #{})
+                  p (get proj tid #{})]
+            :when (not= r p)]
+        {:source-table-id         tid
+         :referenced              r
+         :projected               p
+         :missing-from-projection (set/difference r p)
+         :extra-in-projection     (set/difference p r)})))))
+
+(defn- mbql-for
+  "Build the chain-filter MBQL query for a given field/original/constraints triple."
+  [field-id original-field-id constraints]
+  (#'chain-filter/chain-filter-mbql-query
+   field-id
+   (when (seq constraints)
+     (vec (for [[fid v] constraints]
+            (shorthand->constraint fid v))))
+   (when original-field-id {:original-field-id original-field-id})))
+
+(defn- sql-over-projections
+  "Return a map of `{table-id {:declared #{…} :actual #{…} :extra #{…}}}` for any joined Table whose compiled-SQL
+  field references aren't a subset of the MBQL inner-stage `:fields` for that join. Returns nil if the SQL is tight."
+  [query]
+  (let [driver    (t2/select-one-fn :engine :model/Database :id (:database query))
+        sql       (:query (qp.compile/compile query))
+        nq        (lib/native-query query sql)
+        sql-refs  (reduce (fn [m {:keys [table-id id]}]
+                            (update m table-id (fnil conj #{}) id))
+                          {}
+                          (sql-tools/referenced-fields driver nq))
+        mbql-proj (inner-projection-by-source-table query)]
+    (not-empty
+     (into {}
+           (for [[tid declared] mbql-proj
+                 :let [actual (get sql-refs tid #{})
+                       extra  (set/difference actual declared)]
+                 :when (seq extra)]
+             [tid {:declared declared, :actual actual, :extra extra}])))))
+
+(defn- check-tight-projections
+  "Run both the MBQL-level and SQL-level invariants on a chain-filter query."
+  [query]
+  (testing "MBQL: each join's inner-stage :fields equals the fields referenced on its source table"
+    (is (nil? (projection-violations query))))
+  (testing "SQL: the compiled query references no joined-Table columns outside MBQL :fields"
+    (is (nil? (sql-over-projections query)))))
+
+;;; Scenarios that exercise the join-building paths in `chain-filter-mbql-query`. Each
+;;; `:build` thunk runs inside `mt/dataset test-data` so `mt/id` resolves correctly.
+(def ^:private projection-scenarios
+  [{:label "no-joins"
+    :build #(mbql-for (mt/id :categories :name) nil nil)}
+   {:label "fk-remap-only (#74154)"
+    :build #(mbql-for (mt/id :categories :name) (mt/id :venues :category_id) nil)}
+   {:label "fk-remap + same-table constraint"
+    :build #(mbql-for (mt/id :categories :name) (mt/id :venues :category_id)
+                      {(mt/id :venues :price) 4})}
+   {:label "constraint only, reverse-direction join"
+    :build #(mbql-for (mt/id :categories :name) nil {(mt/id :venues :price) 4})}
+   {:label "constraint on a different joined table"
+    :build #(mbql-for (mt/id :venues :name) nil {(mt/id :categories :name) "BBQ"})}
+   {:label "multi-hop chain (categories→venues→checkins→users)"
+    :build #(mbql-for (mt/id :categories :name) nil
+                      {(mt/id :users :name) "Charles Lindbergh"})}
+   {:label "multi-hop + multi-table constraints"
+    :build #(mbql-for (mt/id :categories :name) nil
+                      {(mt/id :venues :price) 4
+                       (mt/id :users :name) "Charles Lindbergh"})}])
+
+(deftest ^:parallel tight-projections-test
+  (mt/dataset test-data
+    (doseq [{:keys [label build]} projection-scenarios]
+      (testing label
+        (check-tight-projections (build))))))
+
+(deftest ^:sequential chain-filter-preserves-required-partition-filter-on-joined-table-test
+  ;; `add-required-filters-if-needed` runs at the END of `chain-filter-mbql-query`, after
+  ;; joins are built. For tables that require partition filters (currently BigQuery
+  ;; partitioned tables), it adds a `[:> partition-col <epoch>]` clause referencing the joined
+  ;; Table's partition column via the join alias.
+  ;;
+  ;; A fix that narrows the join's projection up front — and doesn't account for filters added
+  ;; later — silently elides the partition filter, because the joined-Table column it would
+  ;; reference is no longer in `visible-columns`. That's a behavior regression on BigQuery:
+  ;; the partition filter master would have emitted is missing from the SQL.
+  ;;
+  ;; This test pins the contract: after the full chain-filter pipeline runs, the joined-Table
+  ;; alias must reference the partition column. Any fix that drops the filter or fails to
+  ;; project the column will fail this test.
+  (mt/dataset test-data
+    (let [venues-id     (mt/id :venues)
+          partition-fid (mt/id :venues :price)]
+      (mt/with-temp-vals-in-db :model/Table venues-id {:database_require_filter true}
+        (mt/with-temp-vals-in-db :model/Field partition-fid {:database_partitioned true}
+          (let [q    (mbql-for (mt/id :categories :name)
+                               (mt/id :venues :category_id)
+                               nil)
+                refs (get (referenced-field-ids-by-source-table q) venues-id)]
+            (is (contains? refs partition-fid)
+                (str "expected refs on venues (table " venues-id ") to include "
+                     partition-fid " (venues.price); got " refs))))))))
 
 ;; Detail: Key (entity_id)=(6nmVTpCpKFRkZJigvqSVm) already exists.
 (deftest use-cached-field-values-test

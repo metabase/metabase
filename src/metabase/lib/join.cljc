@@ -515,6 +515,14 @@
                                           fields)))]
     (u/assoc-dissoc joinable :fields fields)))
 
+(mu/defn with-join-stage-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the first (inner) stage of `a-join` from `cols`, a coll of column metadatas. Pass
+  `nil` or an empty coll to drop the explicit projection. Inner-stage analogue of [[with-join-fields]]."
+  [a-join :- ::lib.join.util/partial-join
+   cols   :- [:maybe [:sequential some?]]]
+  (let [refs (not-empty (mapv lib.ref/ref cols))]
+    (update-in a-join [:stages 0] u/assoc-dissoc :fields refs)))
+
 (defn- select-home-column
   [home-cols cond-fields]
   (when (seq cond-fields)

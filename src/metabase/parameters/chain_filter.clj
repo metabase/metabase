@@ -73,6 +73,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
@@ -403,6 +404,27 @@
    query
    joins))
 
+(mu/defn- tighten-join-projections :- ::lib.schema/query
+  "Narrow each join's inner-stage `:fields` to exactly the field-ids `query` references whose `:table-id` matches the
+  join's source table."
+  [query :- ::lib.schema/query]
+  (let [joins (lib/joins query)]
+    (if (empty? joins)
+      query
+      ;; Bucket by `:table-id`, not by join alias: aliases are stage-scoped and the same string can recur in nested
+      ;; scopes referring to different things. Table-id is the field's natural grain.
+      (let [field-ids   (lib/all-field-ids query)
+            cols        (lib.metadata/bulk-metadata query :metadata/column field-ids)
+            cols-by-tid (group-by :table-id cols)]
+        (lib.util/update-query-stage
+         query 0
+         update :joins
+         (fn [joins]
+           (mapv (fn [a-join]
+                   (let [tid (:id (lib/joined-thing query a-join))]
+                     (lib/with-join-stage-fields a-join (get cols-by-tid tid))))
+                 joins)))))))
+
 (mr/def ::options
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.
   [:map {:closed true}
@@ -473,7 +495,11 @@
                                 (lib/order-by field))
                 (not original-field) (lib/breakout field))
         (add-filters source-table-id joined-table-ids constraints)
-        schema.metadata-queries/add-required-filters-if-needed)))
+        schema.metadata-queries/add-required-filters-if-needed
+        ;; Runs LAST so it picks up joined-table field refs injected by middleware above (e.g. BigQuery partition
+        ;; filters). Without an explicit projection here the join's inner stage gets expanded to every column on the
+        ;; joined Table by add-implicit-clauses, OOM'ing on wide fact tables (#74154).
+        tighten-join-projections)))
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 
