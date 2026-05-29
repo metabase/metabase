@@ -42,6 +42,7 @@ export type {
   AnyActionResult,
   UseActionResult,
 } from "./hooks/public/use-action";
+export { useQuestionQuery } from "./hooks/public/use-question-query";
 
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
@@ -160,6 +161,11 @@ export type {
   SqlParameterValues,
   SdkActionId,
 } from "embedding-sdk-bundle/types";
+export type {
+  UseQuestionQueryOptions,
+  UseQuestionQueryResult,
+} from "./hooks/public/use-question-query";
+export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 
 export type {
   EmbeddingEntityType,
