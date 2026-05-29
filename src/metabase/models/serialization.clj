@@ -1291,11 +1291,6 @@
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [x]
-  ;; Strip transient runtime keys (e.g. `:lib.convert/converted?` and `:lib/transformation-added-base-type`) that get
-  ;; added when a legacy query is normalized to MBQL 5 on read. Without this, whether a query happened to be stored as
-  ;; legacy MBQL or MBQL 5 in the app DB would leak into the serialized output, producing spurious git-sync diffs
-  ;; (GHY-3728). This is the same normalization applied before persisting a query to the app DB, so it's idempotent for
-  ;; queries that are already in serialized form.
   (let [x (cond-> x
             (and (map? x) (= :mbql/query (:lib/type x)))
             lib/prepare-for-serialization)]
