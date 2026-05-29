@@ -16,11 +16,16 @@
 
 (use-fixtures :each
   (fn [thunk]
-    (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-      (try
-        (thunk)
-        (finally
-          (ws/clear-instance-workspace!))))))
+    ;; Default to `:workspaces` enabled for tests in this ns — most exercise
+    ;; `apply-workspace-section!` which calls `set-instance-workspace!` (gated on
+    ;; `:workspaces`, see GHY-3685). Tests that need the feature *absent* override
+    ;; with their own `mt/with-premium-features` block.
+    (mt/with-premium-features #{:workspaces}
+      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
+        (try
+          (thunk)
+          (finally
+            (ws/clear-instance-workspace!)))))))
 
 (defn- load-fixture-by-driver [driver]
   (-> (str "metabase_enterprise/workspaces/resources/workspace_config_" (name driver) ".yml")
@@ -152,6 +157,42 @@
               {:version 1
                :config {:users [{:first_name "X" :last_name "Y"
                                  :email "x@example.com" :password "pw"}]}})))))))
+
+(deftest workspace-section-requires-workspaces-feature-test
+  (testing ":workspace section needs the :workspaces feature in addition to :config-text-file"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+        (mt/with-premium-features #{:config-text-file}
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Workspaces is a paid feature"
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config {:workspace (workspace-section "ws-test-db")}}))))))))
+
+(deftest workspace-section-loads-with-workspaces-feature-test
+  (testing ":workspace section loads cleanly when both :config-text-file and :workspaces are present"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (mt/with-premium-features #{:config-text-file :workspaces}
+          (advanced-config.file/initialize!
+           {:version 1
+            :config {:workspace (workspace-section "ws-test-db")}})
+          (is (= "New workspace" (:name (ws/instance-workspace)))
+              "the workspace section should have been applied")
+          (is (= {:schema "mb__isolation_44490_1933"}
+                 (ws/db-workspace-namespace db-id))))))))
+
+(deftest workspaces-gate-is-scoped-to-workspace-section-test
+  (testing "without :workspaces, other non-:workspace sections still load (gate is :workspace-scoped)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-premium-features #{:config-text-file}
+        (advanced-config.file/initialize!
+         {:version 1
+          :config {:users [{:first_name "X" :last_name "Y"
+                            :email "x@example.com" :password "pw"}]}})
+        (is (nil? (ws/instance-workspace))
+            "no workspace section means no workspace state was set")))))
 
 ;;; ----------------------------------------- per-driver shapes -----------------------------------------
 ;;;

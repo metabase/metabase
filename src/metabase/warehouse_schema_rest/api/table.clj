@@ -440,10 +440,8 @@
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
   (try
-    (let [_result (upload/update-csv! options)]
-      {:status 200
-       ;; There is scope to return something more interesting.
-       :body   nil})
+    (upload/update-csv! options)
+    api/generic-204-no-content
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)

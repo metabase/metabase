@@ -104,6 +104,7 @@
    "MetabotMessage"
    "MetabotPermissions"
    "MetabotSourceFeedback"
+   "MetabotUsedTable"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"

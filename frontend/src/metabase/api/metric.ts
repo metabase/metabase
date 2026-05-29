@@ -20,7 +20,7 @@ import {
   provideMetricListTags,
   provideMetricTags,
 } from "./tags/utils";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 export const metricApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -30,7 +30,7 @@ export const metricApi = Api.injectEndpoints({
         url: "/api/metric",
       }),
       providesTags: (response) => provideMetricListTags(response?.data ?? []),
-      onQueryStarted: hydrateLegacyEntities<GetMetricListResponse>(
+      onQueryStarted: hydrateMetadataStore<GetMetricListResponse>(
         [MetricSchema],
         (response) => response.data,
       ),
@@ -41,7 +41,7 @@ export const metricApi = Api.injectEndpoints({
         url: `/api/metric/${id}`,
       }),
       providesTags: (metric) => (metric ? provideMetricTags(metric) : []),
-      onQueryStarted: hydrateLegacyEntities(MetricSchema),
+      onQueryStarted: hydrateMetadataStore(MetricSchema),
     }),
     getMetricDimensionValues: builder.query<
       GetMetricDimensionValuesResponse,

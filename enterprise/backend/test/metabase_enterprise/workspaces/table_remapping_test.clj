@@ -29,15 +29,17 @@
 
 (defn- with-provisioned-workspace-db!
   "Set the `instance-workspace` setting so `db-workspace-namespace` returns
-   `{:schema output-schema}` for `db-id`, run `f`, clear it on the way out."
+   `{:schema output-schema}` for `db-id`, run `f`, clear it on the way out.
+   Enables `:workspaces` for the duration."
   [db-id output-schema f]
-  (try
-    (ws/set-instance-workspace! {:name "table-remapping-test-ws"
-                                 :databases {db-id {:input_schemas ["_"]
-                                                    :output        {:schema output-schema}}}})
-    (f)
-    (finally
-      (ws/clear-instance-workspace!))))
+  (mt/with-premium-features #{:workspaces}
+    (try
+      (ws/set-instance-workspace! {:name "table-remapping-test-ws"
+                                   :databases {db-id {:input_schemas ["_"]
+                                                      :output        {:schema output-schema}}}})
+      (f)
+      (finally
+        (ws/clear-instance-workspace!)))))
 
 (deftest remap-table-returns-nil-when-no-mapping-test
   (clean-db-fixture!
@@ -136,15 +138,17 @@
   "Variant of `with-provisioned-workspace-db!` that takes a full
    `::table-namespace` map (`{:db ?, :schema ?}`) instead of just a schema
    string. Used to exercise cross-DB workspaces (SQL Server / BigQuery) where
-   the to-side `:db` slot must flow through to the `TableRemapping` row."
+   the to-side `:db` slot must flow through to the `TableRemapping` row.
+   Enables `:workspaces` for the duration."
   [db-id output-namespace f]
-  (try
-    (ws/set-instance-workspace! {:name "ws-3-slot"
-                                 :databases {db-id {:input_schemas ["_"]
-                                                    :output        output-namespace}}})
-    (f)
-    (finally
-      (ws/clear-instance-workspace!))))
+  (mt/with-premium-features #{:workspaces}
+    (try
+      (ws/set-instance-workspace! {:name "ws-3-slot"
+                                   :databases {db-id {:input_schemas ["_"]
+                                                      :output        output-namespace}}})
+      (f)
+      (finally
+        (ws/clear-instance-workspace!)))))
 
 (deftest add-transform-target-mapping!-flows-both-slots-from-namespace-test
   (testing "When the workspace output namespace populates :db, both slots flow into the TableRemapping row"

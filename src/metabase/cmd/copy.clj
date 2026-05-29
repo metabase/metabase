@@ -136,6 +136,7 @@
     :model/MetabotMessage
     :model/MetabotFeedback
     :model/MetabotSourceFeedback
+    :model/MetabotUsedTable
     :model/MetabotPrompt
     ;; 62+
     :model/Exploration

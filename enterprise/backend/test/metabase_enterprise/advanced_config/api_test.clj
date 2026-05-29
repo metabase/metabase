@@ -58,7 +58,7 @@
                                          :databases {(keyword db-name) {:input_schemas ["public"]
                                                                         :output        {:schema "ws_uploaded"}}}}}}]
       (try
-        (mt/with-premium-features #{:config-text-file}
+        (mt/with-premium-features #{:config-text-file :workspaces}
           (mt/with-temporary-setting-values [config-from-file-sync-databases false]
             (with-redefs [metabase.driver.util/can-connect-with-details? (constantly true)]
               (mt/user-http-request :crowberto :post 204 "ee/advanced-config/"
@@ -72,6 +72,22 @@
                 (is (= "Uploaded Workspace" (:name stored)))
                 (is (= {:schema "ws_uploaded"} (get-in stored [:databases (:id db) :output])))))))
         (finally
-          (ws/clear-instance-workspace!)
+          ;; `clear-instance-workspace!` is gated on `:workspaces` (see GHY-3685); this
+          ;; cleanup must be allowed to run regardless of what features the test enabled.
+          (mt/with-premium-features #{:workspaces}
+            (ws/clear-instance-workspace!))
           (when-let [db-id (t2/select-one-pk :model/Database :name db-name :engine "postgres")]
             (t2/delete! :model/Database db-id)))))))
+
+(deftest workspace-section-rejected-without-workspaces-feature-test
+  (testing "POST /api/ee/advanced-config returns 402 when :workspace section requires :workspaces"
+    (let [payload {:version 1
+                   :config  {:workspace {:name      "Rejected Workspace"
+                                         :databases {:some-db {:input_schemas ["public"]
+                                                               :output        {:schema "ws_rejected"}}}}}}]
+      (mt/with-premium-features #{:config-text-file}
+        (mt/assert-has-premium-feature-error
+         "Workspaces"
+         (mt/user-http-request :crowberto :post 402 "ee/advanced-config/"
+                               (first (multipart (yaml-bytes payload)))
+                               (second (multipart (yaml-bytes payload)))))))))

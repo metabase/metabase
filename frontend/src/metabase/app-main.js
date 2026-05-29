@@ -32,7 +32,7 @@ if (isWithinIframe() && !IFRAMED_IN_SELF) {
 
 init(mainReducers, getRoutes, (store) => {
   // received a 401 response
-  api.on("401", (url) => {
+  api.on(401, (url) => {
     if (url.indexOf("/api/user/current") >= 0) {
       return;
     }
@@ -50,7 +50,7 @@ init(mainReducers, getRoutes, (store) => {
   });
 
   // received a 403 response
-  api.on("403", (url) => {
+  api.on(403, (url) => {
     if (NOT_AUTHORIZED_TRIGGERS.some((regex) => regex.test(url))) {
       return store.dispatch(setErrorPage({ status: 403 }));
     }

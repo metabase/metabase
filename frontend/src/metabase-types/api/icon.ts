@@ -72,6 +72,7 @@ export type IconName =
   | "database"
   | "database_routing"
   | "dependencies"
+  | "dependent"
   | "data_studio"
   | "dash"
   | "dashboard"

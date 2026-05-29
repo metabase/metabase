@@ -73,5 +73,29 @@ describe("DataSelectorFieldPicker", () => {
       expect(screen.getByText("Product ID")).toBeInTheDocument();
       expect(screen.getByLabelText("More info")).toBeInTheDocument();
     });
+
+    it("keeps the search box visible and shows an empty state when no field matches the search (metabase#74670)", () => {
+      render(
+        <DataSelectorFieldPicker
+          {...props}
+          selectedTable={{ display_name: "Orders" } as Table}
+          fields={[
+            checkNotNull(metadata.field(ORDERS.ID)),
+            checkNotNull(metadata.field(ORDERS.TOTAL)),
+          ]}
+        />,
+      );
+
+      fireEvent.change(screen.getByPlaceholderText("Find..."), {
+        target: { value: "xyznonexistent" },
+      });
+
+      // the search box must stay visible so the user can correct the query
+      expect(screen.getByPlaceholderText("Find...")).toBeInTheDocument();
+      // and an empty state should explain why no fields are shown
+      expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+      expect(screen.queryByText("ID")).not.toBeInTheDocument();
+      expect(screen.queryByText("Total")).not.toBeInTheDocument();
+    });
   });
 });
