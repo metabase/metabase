@@ -163,6 +163,38 @@
           (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
             orders-id products-id))))))
 
+(deftest publish-tables-does-not-move-already-published-upstream-test
+  (mt/with-premium-features #{:library}
+    (testing "POST /api/ee/data-studio/table/publish-tables leaves already-published upstream tables in place (UXW-4169)"
+      (mt/with-temp [:model/Collection {coll-x :id}         {:type collection/library-data-collection-type}
+                     :model/Collection {coll-y :id}         {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}          {}
+                     ;; Products already published in collection X
+                     :model/Table      {products-id :id}    {:db_id db-id :name "products"
+                                                             :is_published true :collection_id coll-x}
+                     :model/Field      _                    {:table_id products-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {prod-name-f :id}    {:table_id products-id :name "name"
+                                                             :semantic_type :type/Name :base_type :type/Text}
+                     ;; Orders (unpublished) remaps to products
+                     :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published false}
+                     :model/Field      _                    {:table_id orders-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {product-fk :id}     {:table_id orders-id :name "product_id"
+                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     :model/Dimension  _                    {:field_id product-fk
+                                                             :human_readable_field_id prod-name-f
+                                                             :type :external}]
+        (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                              {:table_ids     [orders-id]
+                               :collection_id coll-y})
+        (testing "the selected table is published into the target collection"
+          (is (=? {:is_published true :collection_id coll-y}
+                  (t2/select-one [:model/Table :is_published :collection_id] orders-id))))
+        (testing "the already-published upstream table stays in its original collection"
+          (is (=? {:is_published true :collection_id coll-x}
+                  (t2/select-one [:model/Table :is_published :collection_id] products-id))))))))
+
 (deftest publish-tables-recursive-upstream-test
   (mt/with-premium-features #{:library}
     (testing "POST /api/ee/data-studio/table/publish-tables publishes recursive upstream dependencies"
