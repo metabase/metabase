@@ -1,4 +1,5 @@
 (ns metabase.xrays.api.automagic-dashboards-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.xrays.api.automagic-dashboards-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -77,7 +78,6 @@
 (deftest table-xray-test
   (testing "GET /api/automagic-dashboards/table/:id"
     (is (some? (api-call! "table/%s" [(mt/id :venues)]))))
-
   (testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth"
     (is (some? (api-call! "table/%s/rule/example/indepth" [(mt/id :venues)])))))
 
@@ -143,13 +143,11 @@
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
                    (is (some? (api-call! "question/%s" [card-id] #(revoke-collection-permissions! collection-id))))))
-
                (fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id/cell/:cell-query"
                    (is (some? (api-call! "question/%s/cell/%s"
                                          [card-id cell-query]
                                          #(revoke-collection-permissions! collection-id))))))
-
                (fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id/cell/:cell-query/rule/example/indepth"
                    (is (some? (api-call! "question/%s/cell/%s/rule/example/indepth"
@@ -172,13 +170,11 @@
                 [(fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id"
                      (is (some? (api-call! "model/%s" [card-id] #(revoke-collection-permissions! collection-id))))))
-
                  (fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id/cell/:cell-query"
                      (is (some? (api-call! "model/%s/cell/%s"
                                            [card-id cell-query]
                                            #(revoke-collection-permissions! collection-id))))))
-
                  (fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id/cell/:cell-query/rule/example/indepth"
                      (is (some? (api-call! "model/%s/cell/%s/rule/example/indepth"
@@ -218,10 +214,8 @@
                     [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call! "adhoc/%s" [query]))))
-
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query"
       (is (some? (api-call! "adhoc/%s/cell/%s" [query cell-query]))))
-
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query/rule/example/indepth"
       (is (some? (api-call! "adhoc/%s/cell/%s/rule/example/indepth" [query cell-query]))))))
 

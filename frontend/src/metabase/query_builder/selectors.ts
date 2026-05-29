@@ -5,9 +5,9 @@ import dayjs from "dayjs";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
+import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
-import { Timelines } from "metabase/entities/timelines";
 import {
   isQuestionDirty,
   isQuestionRunnable,
@@ -112,7 +112,6 @@ export const getParameterValues = (state: State) => state.qb.parameterValues;
 
 export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
-export const getEntities = (state: State) => state.entities;
 export const getVisibleTimelineEventIds = (state: State) =>
   state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = (state: State) =>
@@ -595,7 +594,11 @@ export const getCanZoomPreviousRow = createSelector(
 export const getCanZoomNextRow = createSelector(
   [getQueryResults, getZoomedObjectRowIndex],
   (queryResults, rowIndex) => {
-    if (!Array.isArray(queryResults) || !queryResults.length) {
+    if (
+      !Array.isArray(queryResults) ||
+      !queryResults.length ||
+      !queryResults[0].data
+    ) {
       return;
     }
     const rowCount = queryResults[0].data.rows.length;
@@ -829,12 +832,13 @@ export const getTimeseriesXDomain = createSelector(
   },
 );
 
+const selectListTimelines = timelineApi.endpoints.listTimelines.select({
+  include: "events",
+});
+
 export const getFetchedTimelines = createSelector(
-  [getEntities],
-  (entities): Timeline[] => {
-    const entityQuery = { include: "events" };
-    return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
-  },
+  [selectListTimelines],
+  (result): Timeline[] => result.data ?? [],
 );
 
 export const getTransformedTimelines = createSelector(

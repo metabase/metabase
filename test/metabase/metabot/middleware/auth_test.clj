@@ -41,7 +41,7 @@
       (assoc :body (java.io.ByteArrayInputStream. (.getBytes body "UTF-8")))))
 
 (deftest verify-slack-request-test
-  (with-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
+  (mt/with-dynamic-fn-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
     (testing "Valid signature w/ signing secret configured"
       (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
         (let [body      "test-body"
@@ -49,7 +49,6 @@
               signature (compute-slack-signature body timestamp test-signing-secret)
               result    (wrapped-slack-handler (slack-request body timestamp signature))]
           (is (true? (:slack/validated? result))))))
-
     (testing "Invalid signature"
       (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
         (let [body      "test-body"
@@ -57,14 +56,12 @@
               signature "v0=invalid-signature"
               result    (wrapped-slack-handler (slack-request body timestamp signature))]
           (is (false? (:slack/validated? result))))))
-
     (testing "No signature header present - request passes through unchanged"
       (let [body    "test-body"
             request (-> (ring.mock/request :post "/anyurl")
                         (assoc :body (java.io.ByteArrayInputStream. (.getBytes ^String body "UTF-8"))))
             result  (wrapped-slack-handler request)]
         (is (not (contains? result :slack/validated?)))))
-
     (testing "No signing secret configured"
       (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret nil]
         (let [body      "test-body"
@@ -83,7 +80,7 @@
 
 (deftest verify-slack-request-timestamp-validation-test
   (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
-    (with-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
+    (mt/with-dynamic-fn-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
       (testing "Replay attack prevention - rejects timestamps outside 5 minute window"
         (doseq [[expected offset-or-val description]
                 [[true  0     "current time"]

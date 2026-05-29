@@ -1,9 +1,5 @@
-import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/public/lib/types";
-import type { IconName } from "metabase/ui";
 import type { CurrencyStyle } from "metabase/utils/formatting";
+import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { ClickBehavior } from "./click-behavior";
@@ -11,12 +7,14 @@ import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
   DashCardId,
   Dashboard,
+  DashboardCardSize,
   DashboardId,
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
+import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
@@ -429,6 +427,7 @@ export interface CreateCardRequest {
   collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
+  size?: DashboardCardSize;
 }
 
 export interface CreateCardFromCsvRequest {

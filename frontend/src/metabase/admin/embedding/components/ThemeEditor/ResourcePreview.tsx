@@ -99,7 +99,14 @@ export function ResourcePreview({
       pos="relative"
       style={{ backgroundColor: theme?.colors?.background }}
     >
-      {createElement(componentName, attributes)}
+      {/* `key` forces a remount when chart colors change. The embed runtime
+          propagates other theme keys via CSS variables, but chart colors are
+          applied through a module-level side effect on mount, so already-rendered
+          charts don't pick up updates without a full remount. */}
+      {createElement(componentName, {
+        ...attributes,
+        key: JSON.stringify(theme.colors?.charts),
+      })}
 
       {isLoading && (
         <Box

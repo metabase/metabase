@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
@@ -186,21 +187,22 @@
 
 (deftest openrouter-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
-    (with-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
+    (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
       (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-byok"
                                          llm.settings/llm-proxy-base-url    "https://proxy.example"]
         (testing "Prefers BYOK over ai proxy"
           (with-redefs [self.core/sse-reducible identity
+                        debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://openrouter.ai/api/v1/chat/completions"
                      :headers {"Authorization" "Bearer sk-or-v1-byok"}
                      :body    string?}
                     (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
-
         (testing "Uses ai proxy when explicitly requested"
           (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
             (with-redefs [self.core/sse-reducible identity
+                          debug/capture-stream    (fn [r _] r)
                           http/request            (fn [req] {:body req})]
               (is (=? {:method  :post
                        :url     "https://proxy.example/openrouter/v1/chat/completions"
@@ -208,14 +210,12 @@
                        :body    string?}
                       (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]
                                                   :ai-proxy? true}))))))
-
         (testing "Does not fall back to ai proxy when BYOK is missing"
           (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenRouter API key is set"
                  (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
-
         (testing "Throws an error if nothing is defined"
           (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil
                                              llm.settings/llm-proxy-base-url    nil]

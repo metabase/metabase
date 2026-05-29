@@ -2,7 +2,42 @@
 /** eslint-disable-next-line import/no-commonjs */
 const esmPackages = require("./jest.esm-packages.js");
 
+const swcJestTransform = [
+  "@swc/jest",
+  {
+    jsc: {
+      // Jest runs on Node so we can target a modern engine and skip a bunch
+      // of polyfills/transforms that `env.targets: ["defaults"]` would emit.
+      target: "es2022",
+      loose: true,
+      parser: {
+        syntax: "typescript",
+        tsx: true,
+      },
+      transform: {
+        react: {
+          runtime: "automatic",
+        },
+      },
+      experimental: {
+        plugins: [
+          ["@swc-contrib/mut-cjs-exports", {}],
+          ["@swc/plugin-emotion", { sourceMap: false }],
+        ],
+      },
+    },
+    module: {
+      type: "commonjs",
+    },
+    sourceMaps: "inline",
+    minify: false,
+  },
+];
+
 const baseConfig = {
+  transform: {
+    "^.+\\.[jt]sx?$": swcJestTransform,
+  },
   moduleNameMapper: {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
     // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
@@ -67,8 +102,10 @@ const baseConfig = {
   ],
   modulePathIgnorePatterns: [
     "<rootDir>/target/cljs_release/.*",
+    "<rootDir>/target/classes/.*",
     "<rootDir>/resources/frontend_client",
     "<rootDir>/.*/__mocks__",
+    "<rootDir>/enterprise/frontend/src/custom-viz",
   ],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
@@ -138,6 +175,7 @@ const config = {
         "<rootDir>/frontend/src/embedding-sdk-shared",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
+        "<rootDir>/enterprise/frontend/src/custom-viz",
         "<rootDir>/frontend/lint/tests",
       ],
     },
@@ -145,6 +183,7 @@ const config = {
       displayName: "lint-rules",
       testMatch: ["<rootDir>/frontend/lint/tests/**/*.unit.spec.js"],
       testEnvironment: "node",
+      transform: baseConfig.transform,
       transformIgnorePatterns: baseConfig.transformIgnorePatterns,
     },
   ],

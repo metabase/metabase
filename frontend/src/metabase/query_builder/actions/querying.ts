@@ -15,7 +15,6 @@ import {
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
-import { defer } from "metabase/utils/promise";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -158,17 +157,18 @@ export const runQuestionQuery = ({
     }
 
     const startTime = new Date();
-    const cancelQueryDeferred = defer();
+    const cancelQueryController = new AbortController();
 
     apiRunQuestionQuery(question, {
-      cancelDeferred: cancelQueryDeferred,
+      dispatch,
+      signal: cancelQueryController.signal,
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
     })
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
       .catch((error) => dispatch(queryErrored(startTime, error)));
 
-    dispatch({ type: RUN_QUERY_TYPE, payload: { cancelQueryDeferred } });
+    dispatch({ type: RUN_QUERY_TYPE, payload: { cancelQueryController } });
   };
 };
 
@@ -263,9 +263,9 @@ export const queryErrored = createThunkAction(
 export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
   const isRunning = getIsRunning(getState());
   if (isRunning) {
-    const { cancelQueryDeferred } = getState().qb;
-    if (cancelQueryDeferred) {
-      cancelQueryDeferred.resolve();
+    const { cancelQueryController } = getState().qb;
+    if (cancelQueryController) {
+      cancelQueryController.abort();
     }
     dispatch(setDocumentTitle(""));
 

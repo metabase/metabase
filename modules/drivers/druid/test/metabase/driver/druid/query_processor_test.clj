@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.druid.query-processor-test
   "Some tests to make sure the Druid Query Processor is generating sane Druid queries when compiling MBQL."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.druid.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.druid.query-processor-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
@@ -8,6 +10,8 @@
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.druid.query-processor :as druid.qp]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.timeseries-test.util :as tqpt]
@@ -85,7 +89,14 @@
               [:or
                [:= [:field 1 nil] "toucan"]
                [:= [:field 2 nil] "threecan"]]))
-          ":or filters with no temporal filters should return nil"))))
+          ":or filters with no temporal filters should return nil"))
+    (testing :not
+      (is (= ["2015-10-04T00:00:00Z/2015-10-11T00:00:00Z"]
+             (filter-clause->intervals
+              [:not
+               [:or
+                [:< dt-field (str->absolute-dt "2015-10-04T00:00:00Z")]
+                [:>= dt-field (str->absolute-dt "2015-10-11T00:00:00Z")]]]))))))
 
 (defn- do-query->native [query]
   (driver/with-driver :druid
@@ -445,7 +456,6 @@
              (druid-query-returning-rows
                {:aggregation [[:+ [:count $id] [:sum $venue_price]]]
                 :breakout    [$venue_price]}))))
-
     (testing "post-aggregation math w/ 3 args: count + sum + count"
       (is (= [["1"  663.0]
               ["2" 2460.0]
@@ -457,7 +467,6 @@
                                [:sum $venue_price]
                                [:count $venue_price]]]
                 :breakout    [$venue_price]}))))
-
     (testing "post-aggregation math w/ a constant: count * 10"
       (is (= [["1" 2210.0]
               ["2" 6150.0]
@@ -466,7 +475,6 @@
              (druid-query-returning-rows
                {:aggregation [[:* [:count $id] 10]]
                 :breakout    [$venue_price]}))))
-
     (testing "nested post-aggregation math: count + (count * sum)"
       (is (= [["1"  49062.0]
               ["2" 757065.0]
@@ -477,7 +485,6 @@
                                [:count $id]
                                [:* [:count $id] [:sum $venue_price]]]]
                 :breakout    [$venue_price]}))))
-
     (testing "post-aggregation math w/ avg: count + avg"
       (is (= [["1"  721.8506787330316]
               ["2" 1116.388617886179]
@@ -486,7 +493,6 @@
              (druid-query-returning-rows
                {:aggregation [[:+ [:count $id] [:avg $id]]]
                 :breakout    [$venue_price]}))))
-
     (testing "aggregation with math inside the aggregation :scream_cat:"
       (is (= [["1"  442.0]
               ["2" 1845.0]
@@ -495,7 +501,6 @@
              (druid-query-returning-rows
                {:aggregation [[:sum [:+ $venue_price 1]]]
                 :breakout    [$venue_price]}))))
-
     (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"
       (is (= [["1" -998.0]
               ["2" -995.0]
@@ -595,7 +600,6 @@
                        (compiled query)))
                 (is (= [931 1 "Kinaree Thai Bistro"]
                        (mt/first-row (qp/process-query query))))))
-
             (testing "topN query"
               (let [query (mt/mbql-query checkins
                             {:aggregation [[:count]]
@@ -606,7 +610,6 @@
                        (compiled query)))
                 (is (= ["1" 221]
                        (mt/first-row (qp/process-query query))))))
-
             (testing "groupBy query"
               (let [query (mt/mbql-query checkins
                             {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
@@ -620,7 +623,6 @@
                          :count       ["Bar" "Felipinho Asklepios" 8]
                          :venue_price ["Mexican" "Conchúr Tihomir" 4])
                        (mt/first-row (qp/process-query query))))))
-
             (testing "timeseries query"
               (let [query (mt/mbql-query checkins
                             {:aggregation [[:count]]
@@ -634,24 +636,21 @@
                        (mt/first-row (qp/process-query query))))))))))))
 
 (deftest ^:parallel parse-filter-test
-  (mt/test-driver :druid
-    (testing "parse-filter should generate the correct filter clauses"
-      (tqpt/with-flattened-dbdef
-        (mt/with-metadata-provider (mt/id)
-          (tools.macro/macrolet [(parse-filter [filter-clause]
-                                   `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
-            (testing "normal non-compound filters should work as expected"
-              (is (= {:type :selector, :dimension "venue_price", :value 2}
-                     (parse-filter [:= $venue_price [:value 2 {:base_type :type/Integer}]]))))
-            (testing "temporal filters should get stripped out"
-              (is (= nil
-                     (parse-filter [:>= !default.timestamp [:absolute-datetime #t "2015-09-01T00:00Z[UTC]" :default]])))
-              (is (= {:type :selector, :dimension "venue_category_name", :value "Mexican"}
-                     (parse-filter
-                      [:and
-                       [:= $venue_category_name [:value "Mexican" {:base_type :type/Text}]]
-
-                       [:< !default.timestamp [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))))
+  (testing "parse-filter should generate the correct filter clauses"
+    (mt/with-metadata-provider meta/metadata-provider
+      (tools.macro/macrolet [(parse-filter [filter-clause]
+                               `(#'druid.qp/parse-filter (lib.tu.macros/$ids :checkins ~filter-clause)))]
+        (testing "normal non-compound filters should work as expected"
+          (is (= {:type :selector, :dimension "PRICE", :value 2}
+                 (parse-filter [:= $venues.price [:value 2 {:base_type :type/Integer}]]))))
+        (testing "temporal filters should get stripped out"
+          (is (= nil
+                 (parse-filter [:>= !checkins.date [:absolute-datetime #t "2015-09-01T00:00Z[UTC]" :default]])))
+          (is (= {:type :selector, :dimension "NAME", :value "Mexican"}
+                 (parse-filter
+                  [:and
+                   [:= $categories.name [:value "Mexican" {:base_type :type/Text}]]
+                   [:< !checkins.date [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))
 
 (deftest ^:parallel multiple-filters-test
   (mt/test-driver :druid

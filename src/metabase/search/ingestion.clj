@@ -140,7 +140,7 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         :legacy_input (json/encode (dissoc m :pinned :view_count :last_viewed_at :native_query :dataset_query))
+                         :legacy_input (json/encode (apply dissoc m search.spec/legacy-input-excluded-keys))
                          :searchable_text (searchable-text m)
                          :embeddable_text (embeddable-text m)))]
     (merge fn-results sql-results)))
@@ -192,13 +192,13 @@
       (sql.helpers/where where-clause)))
 
 (defn- spec-index-reducible [search-model & [where-clause]]
+  ;; Joins in the spec (e.g. card → revision on most_recent = true) can produce duplicate rows when the
+  ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
+  ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (spec-index-query-where search-model where-clause)
        mdb/streaming-reducible-query
-       (eduction (cond-> (map #(assoc % :model search-model))
-                   ;; It's possible to get redundant entries from the indexed-entities table.
-                   ;; We deduplicate only that model to avoid an unbounded set over all documents.
-                   (= "indexed-entity" search-model)
-                   (comp (m/distinct-by (juxt :id :model)))))))
+       (eduction (comp (map #(assoc % :model search-model))
+                       (m/distinct-by (juxt :id :model))))))
 
 (defn- search-items-reducible []
   (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
@@ -221,7 +221,11 @@
                ([result m]
                 (if-let [doc (try
                                (->document m)
-                               (catch Throwable t
+                               (catch InterruptedException ie
+                                 (.interrupt (Thread/currentThread))
+                                 (throw ie))
+                               (catch Exception t
+                                 (analytics/inc! :metabase-search/index-documents-skipped {:model (:model m)})
                                  (let [n (vswap! failures inc)]
                                    (cond
                                      (<= n max-document-error-logs)
@@ -323,7 +327,6 @@
               ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
               ;; Long-term, we should find a better approach to knowing what to purge.
               to-delete (remove indexed-pairs passed-documents)]
-
           (update! documents to-delete))
         {}))))
 

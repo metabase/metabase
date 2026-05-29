@@ -13,13 +13,15 @@
   "Returns :query-builder permission if table is published and user has collection access.
   Tables published into the root collection (collection_id=nil) are accessible to all users."
   :feature :library
-  [perm-type table-id]
+  [user-id perm-type table-id]
   (when (and (= perm-type :perms/create-queries)
              (t2/exists? :model/Table
                          {:where [:and
                                   [:= :id table-id]
                                   [:= :is_published true]
-                                  (collection/visible-collection-filter-clause :collection_id)]}))
+                                  (collection/visible-collection-filter-clause
+                                   :collection_id {} {:current-user-id user-id
+                                                      :is-superuser?   (perms/is-superuser? user-id)})]}))
     :query-builder))
 
 (defenterprise user-has-any-published-table-permission?

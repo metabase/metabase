@@ -8,7 +8,7 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Box, type IconName } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";
@@ -21,6 +21,7 @@ import {
 import type {
   ColumnSettingDefinition,
   VisualizationDefinition,
+  VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
@@ -33,7 +34,7 @@ import {
   isString,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, Series } from "metabase-types/api";
+import type { DatasetColumn, IconName, Series } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";
 import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
@@ -52,7 +53,7 @@ const vizDefinition: VisualizationDefinition = {
   isSensible: () => true,
 
   settings: {
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     "list.entity_icon": {
       getDefault: () => null,
     },
@@ -263,7 +264,8 @@ export const ListViz = ({
   onVisualizationClick,
   queryBuilderMode,
   isDashboard,
-}: VisualizationProps) => {
+  onZoomRow,
+}: VisualizationProps & VisualizationPassThroughProps) => {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const isShowingListViewConfiguration = useSelector(
@@ -385,6 +387,7 @@ export const ListViz = ({
           onSortClick={handleSort}
           entityType={entityType}
           isInteractive={queryBuilderMode !== "dataset"}
+          onZoomRow={onZoomRow}
         />
       )}
     </Box>

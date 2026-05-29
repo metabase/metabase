@@ -21,13 +21,13 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
-import type { IconName } from "metabase/ui";
 import {
   Group,
   Button as NewButton,
   Modal as NewModal,
   Text,
 } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import {
   clearSaveError as clearPermissionsSaveError,

@@ -2,6 +2,7 @@
   "Tests for public sharing endpoints for Documents.
 
   These tests verify that public document endpoints work correctly."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.public-sharing-rest.api-documents-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.documents.test-util :as documents.test-util]
@@ -74,19 +75,16 @@
         (let [result (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
           (testing "response includes cards field"
             (is (contains? result :cards)))
-
           (testing "cards are returned as a map keyed by card ID"
             (is (map? (:cards result)))
             (is (= 2 (count (:cards result))))
             (is (contains? (:cards result) card1-id))
             (is (contains? (:cards result) card2-id)))
-
           (testing "cards contain expected metadata"
             (is (= "Card 1" (get-in result [:cards card1-id :name])))
             (is (= "Card 2" (get-in result [:cards card2-id :name])))
             (is (= card1-id (get-in result [:cards card1-id :id])))
             (is (= card2-id (get-in result [:cards card2-id :id]))))
-
           (testing "cards do not include sensitive fields"
             (is (not (contains? (get-in result [:cards card1-id]) :collection_id)))
             (is (not (contains? (get-in result [:cards card1-id]) :creator_id)))))))))
@@ -98,7 +96,6 @@
         (mt/with-temp [:model/Document document (document-with-public-link {})]
           (is (= "An error occurred."
                  (mt/client :get 400 (str "public/document/" (:public_uuid document)))))))))
-
   (testing "Returns 404 if the Document doesn't exist"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (is (= "Not found."
@@ -156,7 +153,6 @@
                                                   {})]
             (is (= 200 (:status response)))
             (is (= "text/csv" (get-in response [:headers "Content-Type"])))))
-
         (testing "Can export card results as JSON"
           (let [response (mt/client-full-response :post (format "public/document/%s/card/%d/json"
                                                                 (:public_uuid document)

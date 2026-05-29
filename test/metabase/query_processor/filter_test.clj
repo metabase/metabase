@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.filter-test
   "Tests for the `:filter` clause."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.filter-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.filter-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -641,7 +643,25 @@
                    (mt/run-mbql-query escaping_table
                      {:filter   [:contains $string1 lit]
                       :order-by [[:asc $id]]
-                      :limit    8})))))))))
+                      :limit    8}))))))
+      (testing "two literal contains filters"
+        (let [mp            (mt/metadata-provider)
+              id-field      (lib.metadata/field mp (mt/id :escaping_table :id))
+              string1-field (lib.metadata/field mp (mt/id :escaping_table :string1))
+              query         (-> (lib/query mp (lib.metadata/table mp (mt/id :escaping_table)))
+                                (lib/filter (lib/and
+                                             (lib/contains string1-field "\\")
+                                             (lib/contains string1-field "%")))
+                                (lib/order-by id-field)
+                                (lib/with-fields [id-field string1-field])
+                                (lib/limit 8))]
+          (is (= [[10 "_many%\\escapes"]
+                  [11 "more%___%esca\\pes%"]
+                  [12 "%backslash\\%before_percent_"]
+                  [13 "\\backslash\\_before%underscore\\"]]
+                 (mt/formatted-rows
+                  [int identity]
+                  (qp/process-query query)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             NESTED AND/OR CLAUSES                                              |

@@ -104,7 +104,6 @@ function createTestMetadata() {
     ],
   });
 
-  // @ts-expect-error - mock metric works just as well as a real one
   metadata.metrics = {
     [testMetric.id]: testMetric,
   };

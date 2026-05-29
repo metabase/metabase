@@ -4,11 +4,11 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -54,42 +54,6 @@
   (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
-(defn- store-aiservice-messages!
-  "Store messages that are going from ai-service"
-  [conversation-id profile-id ip-address embed-url messages]
-  (let [finish   (let [m (u/last messages)]
-                   (when (= (:_type m) :FINISH_MESSAGE)
-                     m))
-        state    (u/seek #(and (= (:_type %) :DATA)
-                               (= (:type %) "state"))
-                         messages)
-        messages (-> (remove #(or (= % state) (= % finish)) messages)
-                     vec)
-        ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
-    (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (fn [existing]
-                                (cond-> {}
-                                  (nil? existing)               (assoc :user_id api/*current-user-id*)
-                                  state                         (assoc :state state)
-                                  (nil? (:ip_address existing)) (assoc :ip_address ip-address)
-                                  (nil? (:embed_url existing))  (assoc :embed_url embed-url))))
-    ;; NOTE: this will need to be constrained at some point, see BOT-386
-    (t2/insert! :model/MetabotMessage
-                {:conversation_id conversation-id
-                 :user_id         api/*current-user-id*
-                 :data            messages
-                 :usage           (:usage finish)
-                 :role            (:role (first messages))
-                 :profile_id      profile-id
-                 :external_id     (str (random-uuid))
-                 :total_tokens    (->> (vals (:usage finish))
-                                       ;; NOTE: this filter is supporting backward-compatible usage format, can be
-                                       ;; removed when ai-service does not give us `completionTokens` in `usage`
-                                       (filter map?)
-                                       (map #(+ (:prompt %) (:completion %)))
-                                       (apply +))
-                 :ai_proxied      (boolean ai-proxy?)})))
-
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
 
@@ -97,18 +61,23 @@
   When `canceled-chan` is provided, polls it before each write and returns `reduced`
   to stop the pipeline when the client has disconnected. Also catches EofException
   (client closed connection) and converts it to `reduced` so the pipeline shuts down
-  cleanly without triggering upstream retries."
-  [^java.io.OutputStream os canceled-chan]
+  cleanly without triggering upstream retries.
+
+  `canceled?` is a `volatile!` flipped to `true` when the writer detects a
+  disconnect or canceled-chan signal to mark the assistant turn as `finished=false`."
+  [^java.io.OutputStream os canceled-chan canceled?]
   (fn
     ([] nil)
     ([_] nil)
     ([acc ^String line]
      (if (and canceled-chan (a/poll! canceled-chan))
-       (reduced acc)
+       (do (vreset! canceled? true)
+           (reduced acc))
        (try
          (.write os (.getBytes (str line "\n") "UTF-8"))
          (.flush os)
          (catch org.eclipse.jetty.io.EofException _
+           (vreset! canceled? true)
            (reduced acc)))))))
 
 (defn- native-agent-streaming-request
@@ -122,20 +91,32 @@
   connection, the pipeline stops via `reduced` and collected parts are still persisted.
 
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
-  part at the end of the stream with full LLM request/response data per iteration."
-  [{:keys [metabot-id profile-id message context history conversation-id state debug? ip-address embed-url]}]
+  part at the end of the stream with full LLM request/response data per iteration.
+
+  `:assistant-msg-id` is the PK of the placeholder assistant row created by
+  [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
+  `:external-id` is the assistant row's `external_id`, threaded into the AI-SDK
+  line protocol so the client can correlate streamed messages with feedback."
+  [{:keys [metabot-id profile-id message context history conversation-id state debug?
+           assistant-msg-id external-id]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
-        messages         (concat history [message])
-        external-id      (str (random-uuid))]
+        messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
+            canceled?  (volatile! false)
+            ;; Captures throwables that escape the agent loop's own `catch Exception`
+            ;; (e.g. setup-phase throws before the reducible is constructed, `Error`
+            ;; subclasses, or failures from the agent's recovery `rf` write). Without
+            ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
+            ;; from a clean success.
+            thrown     (volatile! nil)
             ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
                                                        :external-id external-id}))]
         (try
           (transduce xf
-                     (streaming-writer-rf os canceled-chan)
+                     (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
                       (cond-> {:messages      messages
                                :state         state
@@ -145,45 +126,77 @@
                                :tracking-opts {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
+            (vreset! canceled? true)
             (log/debug "Client disconnected during native agent streaming"))
+          (catch Throwable t
+            ;; `Throwable` (not `Exception`) so `Error` subclasses (OOM, etc.) still
+            ;; get captured into the row before they propagate. Don't re-throw: the
+            ;; HTTP 202 has already been committed and `streaming-response` will close
+            ;; the socket cleanly when this body fn returns. The error is fully
+            ;; captured in the row via the `finally` below and in the log here.
+            (vreset! thrown t)
+            (log/error t "Native agent stream failed"
+                       {:conversation-id conversation-id
+                        :assistant-msg-id assistant-msg-id
+                        :external-id     external-id}))
           (finally
             (try
-              (metabot.persistence/store-native-parts!
-               conversation-id profile-id
-               (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
-               :ip-address  ip-address
-               :embed-url   embed-url
-               :external-id external-id)
+              (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
+                    aborted?       @canceled?
+                    thrown-ex      @thrown
+                    ;; Precedence: aborted > thrown > streamed `:error`.
+                    ;;   - aborted: client is gone, no point recording why — they can't see it.
+                    ;;   - thrown:  more authoritative than any partial streamed error.
+                    ;;   - streamed: today's behavior for adapter/tool errors.
+                    error-data     (cond
+                                     aborted? nil
+                                     thrown-ex (metabot.persistence/throwable->error-payload thrown-ex)
+                                     :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
+                (metabot.persistence/finalize-assistant-turn!
+                 conversation-id assistant-msg-id combined-parts
+                 :profile-id profile-id
+                 :finished?  (not aborted?)
+                 :error      error-data))
               (catch Exception e
-                (log/error e "Failed to persist native agent parts"
-                           {:conversation-id conversation-id
-                            :external-id     external-id})))))))))
+                (log/error e "Failed to finalize assistant turn"
+                           {:conversation-id  conversation-id
+                            :assistant-msg-id assistant-msg-id
+                            :external-id      external-id})))))))))
 
 (defn streaming-request
-  "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]} ip-address embed-url]
+  "Handles an incoming request, making all required tool invocation, LLM call loops, etc.
+
+  `request-info` is a map of `{:origin :referer :user-agent :ip-address}`. We split
+  it into:
+    - `hostname`: extracted from the origin URL, always recorded.
+    - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
+  [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
         _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
-        debug?     (and config/is-dev? (boolean debug))]
+        debug?     (and config/is-dev? (boolean debug))
+        hostname   (analytics.core/extract-hostname (:origin request-info))
+        pii-info   (analytics.core/pii-fields-from request-info)]
     (check-conversation-access! conversation_id)
-    (store-aiservice-messages! conversation_id profile-id ip-address embed-url [message])
-
-    (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
-    (native-agent-streaming-request
-     {:metabot-id      metabot-id
-      :profile-id      profile-id
-      :message         message
-      :context         context
-      :history         history
-      :conversation-id conversation_id
-      :state           state
-      :debug?          debug?
-      :ip-address      ip-address
-      :embed-url       embed-url})))
+    (let [{:keys [assistant-msg-id assistant-external-id]}
+          (metabot.persistence/start-turn! conversation_id profile-id message
+                                           :hostname hostname
+                                           :pii-info pii-info)]
+      (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
+      (native-agent-streaming-request
+       {:metabot-id       metabot-id
+        :profile-id       profile-id
+        :message          message
+        :context          context
+        :history          history
+        :conversation-id  conversation_id
+        :state            state
+        :debug?           debug?
+        :assistant-msg-id assistant-msg-id
+        :external-id      assistant-external-id}))))
 
 (defn- legacy->modern-query
   [query]
@@ -229,15 +242,18 @@
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)
-  (let [body* (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)]
-    (streaming-request body* (request/ip-address req) (request/referer req))))
+  (let [body*          (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)
+        embed-referrer (get-in req [:headers "x-metabase-embed-referrer"])
+        request-info   {:origin     embed-referrer
+                        :referer    embed-referrer
+                        :user-agent (get-in req [:headers "user-agent"])
+                        :ip-address (request/ip-address req)}]
+    (streaming-request body* request-info)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/feedback"
-  "Persist Metabot feedback locally and proxy it to Harbormaster."
+(api.macros/defendpoint :post "/feedback"  :- [:map
+                                               [:status [:= 204]]
+                                               [:body :nil]]
+  "Persist Metabot feedback."
   [_route-params
    _query-params
    body :- [:map
@@ -254,6 +270,22 @@
                      "Cannot submit feedback. The license token and/or Store API URL are missing!")
       (catch Exception e
         (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
+  api/generic-204-no-content)
+
+(api.macros/defendpoint :post "/source-feedback" :- [:map
+                                                     [:status [:= 204]]
+                                                     [:body :nil]]
+  "Persist Metabot source feedback."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:metabot_id   ms/PositiveInt]
+            [:message_id   ms/NonBlankString]
+            [:source_id    ms/PositiveInt]
+            [:source_type  [:enum "table" "card" "model"]]
+            [:positive     :boolean]]]
+  (metabot.config/check-metabot-enabled!)
+  (metabot.feedback/persist-source-feedback! body)
   api/generic-204-no-content)
 
 (def ^:private metabot-provider-schema

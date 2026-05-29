@@ -1,9 +1,11 @@
 import fetchMock from "fetch-mock";
 
+import { getStore } from "__support__/entities-store";
 import { createMockEntitiesState } from "__support__/store";
+import { Api } from "metabase/api";
+import { mainReducers } from "metabase/reducers-main";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { defer } from "metabase/utils/promise";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -83,10 +85,21 @@ function getQueryEndpointPath(question: Question) {
     : `path:/api/card/${question.id()}/query`;
 }
 
+function getRtkStore() {
+  return getStore(
+    { ...mainReducers, [Api.reducerPath]: Api.reducer },
+    createMockState(),
+    [Api.middleware],
+  );
+}
+
 async function setupRunQuestionQuery(question: Question) {
   const mockResult = createMockDataset();
   fetchMock.post(getQueryEndpointPath(question), mockResult);
-  const result = await runQuestionQuery(question, { cancelDeferred: defer() });
+  const result = await runQuestionQuery(question, {
+    dispatch: getRtkStore().dispatch,
+    signal: new AbortController().signal,
+  });
   return { result, mockResult };
 }
 
@@ -216,7 +229,8 @@ describe("metabase/services > runQuestionQuery", () => {
       });
 
       const result = await runQuestionQuery(question, {
-        cancelDeferred: defer(),
+        dispatch: getRtkStore().dispatch,
+        signal: new AbortController().signal,
       });
 
       // 4xx errors should be returned as successful responses with error data
@@ -237,7 +251,8 @@ describe("metabase/services > runQuestionQuery", () => {
       });
 
       const result = await runQuestionQuery(question, {
-        cancelDeferred: defer(),
+        dispatch: getRtkStore().dispatch,
+        signal: new AbortController().signal,
       });
 
       // 4xx errors should be returned as successful responses with error data
@@ -254,10 +269,57 @@ describe("metabase/services > runQuestionQuery", () => {
 
       // 5xx errors should still throw
       await expect(
-        runQuestionQuery(question, { cancelDeferred: defer() }),
+        runQuestionQuery(question, {
+          dispatch: getRtkStore().dispatch,
+          signal: new AbortController().signal,
+        }),
       ).rejects.toMatchObject({
         status: 500,
       });
+    });
+
+    it("rejects with { isCancelled: true } when cancelDeferred resolves (ad-hoc question)", async () => {
+      // Guards the RTK Query cancellation path: resolving `cancelDeferred`
+      // must abort the underlying `/api/dataset` request and reject with
+      // the legacy `{ isCancelled: true }` shape that `queryErrored` and
+      // other callers rely on.
+      const question = createMockAdHocQuestion();
+      fetchMock.post(
+        getQueryEndpointPath(question),
+        new Promise(() => undefined),
+      );
+
+      const controller = new AbortController();
+      const runPromise = runQuestionQuery(question, {
+        dispatch: getRtkStore().dispatch,
+        signal: controller.signal,
+      });
+
+      controller.abort();
+
+      await expect(runPromise).rejects.toEqual({ isCancelled: true });
+    });
+
+    it("normalizes plain-text 4xx error bodies into a structured error result (EMB-1659)", async () => {
+      // Embed API checks (e.g. `/api/embed/card/:token/query`) reject with a
+      // plain-text body when a locked param is missing from the JWT. Without
+      // normalization the result reaches the visualization as a bare string,
+      // so `result?.error` is undefined and the UI falls through to an empty
+      // state instead of showing the message.
+      const question = createMockSavedQuestion();
+      const errorMessage = "You must specify a value for category in the JWT.";
+
+      fetchMock.post(getQueryEndpointPath(question), {
+        status: 400,
+        body: errorMessage,
+      });
+
+      const result = await runQuestionQuery(question, {
+        dispatch: getRtkStore().dispatch,
+        signal: new AbortController().signal,
+      });
+
+      expect(result).toEqual([{ error: errorMessage, status: 400 }]);
     });
   });
 });

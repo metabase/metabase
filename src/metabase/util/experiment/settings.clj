@@ -9,6 +9,7 @@
   (deferred-tru "Enable or disable all code experiments. When disabled, only the production code path runs.")
   :type       :boolean
   :default    false
+  :doc        false
   :visibility :admin
   :export?    false
   :audit      :getter)

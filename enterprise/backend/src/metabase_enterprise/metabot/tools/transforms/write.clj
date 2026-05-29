@@ -76,14 +76,11 @@
                               source_database       (assoc-in [:source :source-database] source_database)
                               source_tables         (assoc-in [:source :source-tables] source_tables)
                               true                  (assoc-in [:source :body] new-python))]
-
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)
       (swap! memory-atom assoc-in [:state :transforms (str transform_id)] suggested-transform))
-
     (log/debug "Python transform written" {:transform-id transform_id
                                            :python-length (count new-python)})
-
     {:structured-output {:transform suggested-transform
                          :thinking thinking
                          :message "Transform Python code updated successfully."}

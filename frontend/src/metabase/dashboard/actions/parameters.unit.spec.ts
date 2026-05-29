@@ -254,7 +254,6 @@ describe("setParameterMapping", () => {
           },
         }),
         entities: {
-          actions: {},
           collections: {},
           dashboards: {},
           databases: {},
@@ -275,7 +274,6 @@ describe("setParameterMapping", () => {
           metrics: {},
           snippets: {},
           questions: {},
-          groups: {},
         },
       });
       const store = setup(state);
@@ -372,7 +370,6 @@ describe("setParameterMapping", () => {
           },
         }),
         entities: {
-          actions: {},
           collections: {},
           dashboards: {},
           databases: {},
@@ -390,7 +387,6 @@ describe("setParameterMapping", () => {
           metrics: {},
           snippets: {},
           questions: {},
-          groups: {},
         },
       });
       const store = setup(state);

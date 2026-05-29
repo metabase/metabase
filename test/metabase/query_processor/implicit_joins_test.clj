@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.implicit-joins-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.implicit-joins-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

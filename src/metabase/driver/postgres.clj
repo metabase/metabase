@@ -25,6 +25,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -55,7 +56,12 @@
   postgres.ddl/keep-me
   sql.pg-ops/keep-me)
 
-(driver/register! :postgres, :parent :sql-jdbc)
+;; Inherit from `::like-escape-char-built-in/like-escape-char-built-in` because Postgres's
+;; default `LIKE` escape character is already `\`, so an explicit `ESCAPE '\'` clause is
+;; redundant *and* the literal `'\'` is unparseable by the PG JDBC driver when the server has
+;; `standard_conforming_strings = off` (#73721).
+(driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :postgres-mbql5, :parent #{:postgres :sql-mbql5})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
@@ -105,7 +111,7 @@
                  :database-replication]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
-    (= driver :postgres)))
+    (or (= driver :postgres) (= driver :postgres-mbql5))))
 
 (defmethod driver/escape-entity-name-for-metadata :postgres [_driver entity-name]
   (when entity-name
@@ -219,7 +225,6 @@
               driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
-
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
@@ -348,7 +353,7 @@
                [[:and
                  [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
                  [:= :is_nullable [:inline "NO"]]
-                  ;;_ IS_AUTOINCREMENT from: https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1852-L1856
+                 ;;_ IS_AUTOINCREMENT from: https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1852-L1856
                  [:not [:or
                         [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
                         [:!= :is_identity [:inline "NO"]]]]]
@@ -603,22 +608,37 @@
                                                   expr)]]
     (h2x/with-database-type-info expr "timestamp")))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :convert-timezone]
+  [driver [_ _opts arg target-timezone source-timezone]]
+  ((get-method sql.qp/->honeysql [:postgres :convert-timezone])
+   driver [:convert-timezone arg target-timezone source-timezone]))
+
 (defmethod sql.qp/->honeysql [:postgres :value]
-  [driver value]
-  (let [[_ raw-value {base-type :base_type, database-type :database_type}] value]
-    (when (some? raw-value)
-      (condp #(isa? %2 %1) base-type
-        :type/PostgresBitString (h2x/cast :varbit raw-value)
-        :type/IPAddress    (h2x/cast :inet raw-value)
-        :type/PostgresEnum (if (quoted? database-type)
-                             (h2x/cast database-type raw-value)
-                             (h2x/quoted-cast database-type raw-value))
-        ((get-method sql.qp/->honeysql [:sql-jdbc :value])
-         driver value)))))
+  [driver [_ raw-value {base-type :base_type database-type :database_type}]]
+  (when (some? raw-value)
+    (condp #(isa? %2 %1) base-type
+      :type/PostgresBitString (h2x/cast :varbit raw-value)
+      :type/IPAddress    (h2x/cast :inet raw-value)
+      :type/PostgresEnum (if (quoted? database-type)
+                           (h2x/cast database-type raw-value)
+                           (h2x/quoted-cast database-type raw-value))
+      ((get-method sql.qp/->honeysql [:sql-jdbc :value])
+       driver [:value raw-value {:base_type base-type :database_type database-type}]))))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :value]
+  [driver [_ {:keys [base-type effective-type database-type]} raw-value]]
+  ((get-method sql.qp/->honeysql [:postgres :value])
+   driver [:value raw-value {:base_type      base-type
+                             :effective_type effective-type
+                             :database_type  database-type}]))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
-  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :median]
+  [driver [_ _opts arg]]
+  ((get-method sql.qp/->honeysql [:postgres :median]) driver [:median arg]))
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
@@ -676,19 +696,30 @@
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :regex-match-first]
+  [driver [_ _opts arg pattern]]
+  ((get-method sql.qp/->honeysql [:postgres :regex-match-first]) driver [:regex-match-first arg pattern]))
+
 (defmethod sql.qp/->honeysql [:postgres :split-part]
   [driver [_ text divider position]]
   (let [position (sql.qp/->honeysql driver position)]
     [:case
      [:< position 1]
      ""
-
      :else
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :split-part]
+  [driver [_ _opts text divider position]]
+  ((get-method sql.qp/->honeysql [:postgres :split-part]) driver [:split-part text divider position]))
 
 (defmethod sql.qp/->honeysql [:postgres :text]
   [driver [_ value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :text]
+  [driver [_ _opts value]]
+  ((get-method sql.qp/->honeysql [:postgres :text]) driver [:text value]))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
@@ -730,13 +761,22 @@
   ```clj
   [::json-query [::h2x/identifier :field [\"boop\" \"bleh\"]] \"bigint\" [\"meh\"]]
   =>
-  [\"(boop.bleh#>> array[?]::text[])::bigint\" \"meh\"]
-  ```"
+  [\"(boop.bleh#>> (array[?]::text[]))::bigint\" \"meh\"]
+  ```
+
+  The path argument is wrapped in an extra pair of parentheses so the `::text[]`
+  cast is unambiguously bound to `array[...]` rather than to the result of `#>>`.
+  Postgres' grammar gives `::` higher precedence than `#>>` so the parens are
+  redundant for Postgres itself, but `sqlglot` (used by
+  [[metabase.driver.sql/validate-impersonated-query*]] to canonicalize impersonated
+  native SQL) parses `parent #>> array[?]::text[]` as `(parent #>> array[?])::text[]`
+  and re-emits it with the cast wrapping the wrong expression — which then makes
+  Postgres reject the query at execution. See #73776."
   [_fn [parent-identifier field-type names]]
   (let [names-text-array                 (into [::text-array] names)
         [parent-id-sql & parent-id-args] (sql/format-expr parent-identifier {:nested true})
         [path-sql & path-args]           (sql/format-expr names-text-array {:nested true})]
-    (into [(format "(%s#>> %s)::%s" parent-id-sql path-sql field-type)]
+    (into [(format "(%s#>> (%s))::%s" parent-id-sql path-sql field-type)]
           cat
           [parent-id-args path-args])))
 
@@ -785,6 +825,10 @@
       :else
       identifier)))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :field]
+  [driver [_ opts id-or-name]]
+  ((get-method sql.qp/->honeysql [:postgres :field]) driver [:field id-or-name opts]))
+
 ;; Postgres is not happy with JSON fields which are in group-bys or order-bys
 ;; being described twice instead of using the alias.
 ;; Therefore, force the alias, but only for JSON fields to avoid ambiguity.
@@ -807,10 +851,28 @@
              (select-keys unqualified #{:group-by}))
       qualified)))
 
+(defmethod sql.qp/apply-top-level-clause
+  [:postgres-mbql5 :breakout]
+  [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
+  (let [stored-field-ids (map last breakout-fields)
+        stored-fields    (map #(when (integer? %)
+                                 (driver-api/field (driver-api/metadata-provider) %))
+                              stored-field-ids)
+        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                                  driver clause honeysql-form)
+        qualified        (parent-method query)
+        unqualified      (parent-method (update query
+                                                :breakout
+                                                #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
+    (if (some driver-api/json-field? stored-fields)
+      (merge qualified
+             (select-keys unqualified #{:group-by}))
+      qualified)))
+
 (defn- order-by-is-json-field?
-  [clause]
-  (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
-        stored-field-id (-> clause (second) (second))
+  [clause n]
+  (let [is-aggregation? (= (-> clause (nth n) (first)) :aggregation)
+        stored-field-id (-> clause (nth n) (nth n))
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
                           (driver-api/field (driver-api/metadata-provider) stored-field-id))]
     (and
@@ -819,17 +881,33 @@
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
-  (let [new-clause (if (order-by-is-json-field? clause)
+  (let [new-clause (if (order-by-is-json-field? clause 1)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)]
     ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :desc]
+  [driver clause]
+  (let [new-clause (if (order-by-is-json-field? clause 2)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)
+        [_ opts ordered-clause] new-clause]
+    ((get-method sql.qp/->honeysql [:sql :desc]) driver [:desc ordered-clause opts])))
+
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
-  (let [new-clause (if (order-by-is-json-field? clause)
+  (let [new-clause (if (order-by-is-json-field? clause 1)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)]
     ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :asc]
+  [driver clause]
+  (let [new-clause (if (order-by-is-json-field? clause 2)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)
+        [_ opts ordered-clause] new-clause]
+    ((get-method sql.qp/->honeysql [:sql :asc]) driver [:asc ordered-clause opts])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -946,7 +1024,6 @@
       (m/assoc-some :sslcert (driver-api/secret-value-as-file! :postgres db-details "ssl-client-cert"))
       ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
       (assoc :sslpassword (or (driver-api/secret-value-as-string :postgres db-details "ssl-key-password") ""))
-
       (as-> params ;; from outer cond->
             (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
                     :ssl-use-client-auth)
@@ -1358,6 +1435,182 @@
   [conn username]
   (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
 
+(defn- public-create-grant?
+  "True if `schema-name` grants CREATE to the PUBLIC pseudo-role on PostgreSQL.
+
+   When this is the case, REVOKE-ing CREATE from the workspace user is a no-op:
+   the user still inherits CREATE through PUBLIC, can create tables in input
+   schemas, and the resulting orphaned objects make `DROP USER` fail at
+   deprovisioning time. Workspace isolation can't enforce read-only on input
+   schemas in this state.
+
+   Historical default on PostgreSQL ≤14; PostgreSQL 15 changed the default to
+   drop CREATE for PUBLIC on `public`. Redshift uses a different check (see
+   the redshift driver) because it can't cast `aclitem[]` to text."
+  [conn schema-name]
+  (let [{:keys [acl]} (first (jdbc/query conn ["SELECT nspacl::text AS acl FROM pg_namespace WHERE nspname = ?" schema-name]))]
+    (boolean
+     (when (and acl (> (count acl) 1))
+       ;; nspacl text form: `{<grantee>=<perms>/<grantor>,...}`. PUBLIC entries
+       ;; have an empty grantee, so they appear as `=<perms>/<grantor>` after
+       ;; the opening `{` or after a comma.
+       (re-find #"(?:^\{|,)=[^/]*C" acl)))))
+
+(defn raise-public-create-grant!
+  "Throw the standard ex-info for the public-CREATE-grant pre-condition. Shared
+   between drivers (Postgres uses [[public-create-grant?]]; Redshift uses its
+   own check via `SVV_SCHEMA_PRIVILEGES`)."
+  [schema-name]
+  (throw (ex-info (format (str "Schema \"%s\" grants CREATE to PUBLIC; workspace isolation cannot "
+                               "enforce input-schema read-only until this is revoked. Run:\n\n"
+                               "    REVOKE CREATE ON SCHEMA %s FROM PUBLIC;\n\n"
+                               "then retry workspace provisioning.")
+                          schema-name schema-name)
+                  {:status-code 412
+                   :schema schema-name})))
+
+(defn assert-no-public-create-grant!
+  "Throws when `schema-name` has CREATE granted to PUBLIC on PostgreSQL. Called
+   from `grant-workspace-read-access!` for each input schema being granted —
+   we want this check per-schema (only the schemas actually used as inputs
+   matter), not a blanket check on `public` at init time."
+  [conn schema-name]
+  (when (public-create-grant? conn schema-name)
+    (raise-public-create-grant! schema-name)))
+
+(defn schema-missing-usage-grant-option?
+  "True when the current PostgreSQL user does not hold `USAGE WITH GRANT OPTION`
+   on `schema-name`. Without it, our `GRANT USAGE ON SCHEMA … TO <user>` silently
+   no-ops and the workspace user can't resolve table names at all."
+  [conn schema-name]
+  (let [row (first (jdbc/query
+                    conn
+                    ["SELECT has_schema_privilege(current_user, ?, 'USAGE WITH GRANT OPTION') AS can_grant"
+                     schema-name]))]
+    (not (:can_grant row))))
+
+(defn raise-missing-usage-grant-option!
+  "Throw the standard ex-info for the schema-USAGE-grant-option pre-condition."
+  [schema-name]
+  (throw (ex-info (format (str "User lacks USAGE WITH GRANT OPTION on schema \"%s\"; workspace "
+                               "provisioning cannot grant USAGE to the workspace user. Have the "
+                               "schema owner run:\n\n"
+                               "    GRANT USAGE ON SCHEMA \"%s\" TO CURRENT_USER WITH GRANT OPTION;\n\n"
+                               "then retry workspace provisioning.")
+                          schema-name schema-name)
+                  {:status-code 412
+                   :schema      schema-name})))
+
+(defn assert-has-usage-grant-option!
+  "Throws when the current PostgreSQL user lacks `USAGE WITH GRANT OPTION` on
+   `schema-name`. Called from `grant-workspace-read-access!` per input schema."
+  [conn schema-name]
+  (when (schema-missing-usage-grant-option? conn schema-name)
+    (raise-missing-usage-grant-option! schema-name)))
+
+(defn tables-missing-grant-option
+  "Return objects in `schema-name` for which the current PostgreSQL user does
+   *not* hold `SELECT WITH GRANT OPTION`. Probes tables, partitioned tables,
+   views, materialized views, and foreign tables — the same `relkind`s touched
+   by `GRANT SELECT ON ALL TABLES IN SCHEMA`. `GRANT` silently no-ops on objects
+   the connection user can't re-grant, so we check up front to fail fast."
+  [conn schema-name]
+  (jdbc/query
+   conn
+   [(str "SELECT n.nspname AS schema, c.relname AS object "
+         "FROM pg_class c "
+         "JOIN pg_namespace n ON n.oid = c.relnamespace "
+         "WHERE n.nspname = ? "
+         "  AND c.relkind IN ('r','p','v','m','f') "
+         "  AND NOT has_table_privilege(current_user, c.oid, 'SELECT WITH GRANT OPTION') "
+         "ORDER BY c.relname")
+    schema-name]))
+
+(defn raise-missing-grant-option!
+  "Throw the standard ex-info for the SELECT-WITH-GRANT-OPTION pre-condition,
+   naming the objects the current user cannot re-grant SELECT on."
+  [schema-name objects]
+  (let [qualified (map #(format "\"%s\".\"%s\"" (:schema %) (:object %)) objects)]
+    (throw (ex-info (format (str "User lacks SELECT WITH GRANT OPTION on %d object(s) in schema "
+                                 "\"%s\": %s. Workspace provisioning cannot grant SELECT to the "
+                                 "workspace user on these objects. Have the object owner run:\n\n"
+                                 "    GRANT SELECT ON ALL TABLES IN SCHEMA \"%s\" TO CURRENT_USER WITH GRANT OPTION;\n\n"
+                                 "then retry workspace provisioning.")
+                            (count objects) schema-name (str/join ", " qualified) schema-name)
+                    {:status-code 412
+                     :schema      schema-name
+                     :objects     (vec qualified)}))))
+
+(defn assert-has-grant-option!
+  "Throws when the current PostgreSQL user lacks `SELECT WITH GRANT OPTION` on
+   any table/view in `schema-name`. Called from `grant-workspace-read-access!`
+   per input schema alongside [[assert-no-public-create-grant!]] — without the
+   grant option, our `GRANT SELECT ON ALL TABLES IN SCHEMA` silently skips the
+   objects and the workspace user can't read them."
+  [conn schema-name]
+  (when-let [missing (seq (tables-missing-grant-option conn schema-name))]
+    (raise-missing-grant-option! schema-name missing)))
+
+(defn unmemberable-owners-in-schema
+  "Return distinct roles owning objects in `schema-name` that the current
+   PostgreSQL user is *not* a member of. `ALTER DEFAULT PRIVILEGES` (without
+   `FOR ROLE`) only affects future objects created by the connection user, so
+   tables created by any of these owner roles won't receive the workspace
+   user's default SELECT — even if the statement runs without error.
+
+   PostgreSQL-only: the query relies on `pg_has_role`'s implicit overload
+   resolution (`name, oid, text`), which Redshift's planner rejects."
+  [conn schema-name]
+  (jdbc/query
+   conn
+   [(str "SELECT DISTINCT pg_get_userbyid(c.relowner) AS owner "
+         "FROM pg_class c "
+         "JOIN pg_namespace n ON n.oid = c.relnamespace "
+         "WHERE n.nspname = ? "
+         "  AND c.relkind IN ('r','p','v','m','f') "
+         "  AND NOT pg_has_role(current_user, c.relowner, 'MEMBER') "
+         "ORDER BY owner")
+    schema-name]))
+
+(defn raise-unmemberable-default-priv-owners!
+  "Throw the standard ex-info for the ALTER-DEFAULT-PRIVILEGES pre-condition,
+   naming the owner roles we cannot target with `FOR ROLE`."
+  [schema-name owners]
+  (let [owner-names (map :owner owners)]
+    (throw (ex-info (format (str "Current user is not a member of %d role(s) that own objects in "
+                                 "schema \"%s\": %s. `ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\"` "
+                                 "cannot cover future objects created by these roles, so the "
+                                 "workspace user would lose access to new tables. Grant role "
+                                 "membership to the current user (e.g. `GRANT \"<owner>\" TO "
+                                 "CURRENT_USER`), then retry workspace provisioning.")
+                            (count owners) schema-name (str/join ", " owner-names) schema-name)
+                    {:status-code 412
+                     :schema      schema-name
+                     :owners      (vec owner-names)}))))
+
+(defn assert-can-alter-default-privileges!
+  "Throws when objects in `schema-name` are owned by roles the current user
+   isn't a member of, since our `ALTER DEFAULT PRIVILEGES IN SCHEMA …` (without
+   `FOR ROLE`) can't extend the workspace user's default SELECT to future
+   objects created by those roles."
+  [conn schema-name]
+  (when-let [missing (seq (unmemberable-owners-in-schema conn schema-name))]
+    (raise-unmemberable-default-priv-owners! schema-name missing)))
+
+;;; Isolation limit, checked at grant time in [[grant-workspace-read-access!]] via
+;;; [[assert-no-public-create-grant!]]: PostgreSQL's permission model lets a user
+;;; receive privileges either directly or through PUBLIC (the implicit pseudo-role
+;;; every login is a member of). REVOKE-ing CREATE from a specific user only
+;;; removes their *direct* grant — it can't override a PUBLIC grant. So if any
+;;; input schema (most commonly `public` itself, on PostgreSQL ≤14 where that
+;;; was the default) grants CREATE to PUBLIC, the workspace user inherits it
+;;; transitively and our isolation contract leaks: the user can create tables
+;;; in input schemas, becoming their owner, which then makes `DROP USER` fail
+;;; at deprovisioning. The probe at grant time fails fast with a 412 so the
+;;; cluster admin can run `REVOKE CREATE ON SCHEMA <name> FROM PUBLIC` before
+;;; retrying. PostgreSQL 15+ removed the permissive default on `public`, so
+;;; fresh PG15 clusters typically pass; PG14 and earlier need the manual revoke.
+
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
   (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
@@ -1381,7 +1634,10 @@
                        ;; grant role membership to admin so DROP OWNED BY works during cleanup
                        (format "GRANT \"%s\" TO CURRENT_USER" (:user read-user))]]
             (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))
+          (try
+            (.executeBatch ^Statement stmt)
+            (catch Throwable t
+              (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
     {:schema           schema-name
      :database_details read-user}))
 
@@ -1398,27 +1654,38 @@
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
+(defn- grant-workspace-read-access-sqls
+  "Build the sequence of SQL statements that grant `username` read access to every
+  table in each schema named in `schemas`. Per source schema we emit three
+  statements: USAGE on the schema, SELECT on all existing tables in the schema,
+  and an ALTER DEFAULT PRIVILEGES covering future tables created by the granting
+  role."
+  [username schemas]
+  (let [qu             (sql.u/quote-name :postgres :field username)
+        source-schemas (set schemas)]
+    (mapcat (fn [s]
+              (let [qs (sql.u/quote-name :postgres :schema s)]
+                [(format "GRANT USAGE ON SCHEMA %s TO %s" qs qu)
+                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" qs qu)
+                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" qs qu)]))
+            source-schemas)))
+
 (defmethod driver/grant-workspace-read-access! :postgres
-  [_driver database workspace tables]
+  [_driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
-        qu             (sql.u/quote-name :postgres :field username)
-        ;; Collect all unique source schemas that contain the tables we need to grant access to
-        source-schemas (into #{} (keep :schema) tables)
-        ;; Grant USAGE on source schemas, then SELECT on each table
-        ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
-        sqls           (concat
-                        ;; USAGE on each source schema containing tables we're granting access to
-                        (for [s source-schemas]
-                          (format "GRANT USAGE ON SCHEMA %s TO %s"
-                                  (sql.u/quote-name :postgres :schema s) qu))
-                        ;; SELECT on each table
-                        (for [{s :schema, t :name} tables]
-                          (if (str/blank? s)
-                            (format "GRANT SELECT ON TABLE %s TO %s"
-                                    (sql.u/quote-name :postgres :table t) qu)
-                            (format "GRANT SELECT ON TABLE %s.%s TO %s"
-                                    (sql.u/quote-name :postgres :schema s)
-                                    (sql.u/quote-name :postgres :table t) qu))))]
+        source-schemas (set schemas)
+        ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
+        ;; the comment block above [[init-workspace-isolation! :postgres]] for the
+        ;; isolation hole this catches. We probe per-schema so only the schemas
+        ;; actually used as inputs need to be locked down — schemas the workspace
+        ;; never touches can keep their default ACLs.
+        _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+                         (doseq [s source-schemas]
+                           (assert-no-public-create-grant!       check-conn s)
+                           (assert-has-usage-grant-option!       check-conn s)
+                           (assert-has-grant-option!             check-conn s)
+                           (assert-can-alter-default-privileges! check-conn s)))
+        sqls           (grant-workspace-read-access-sqls username schemas)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]

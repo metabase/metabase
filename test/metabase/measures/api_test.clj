@@ -1,5 +1,6 @@
 (ns metabase.measures.api-test
   "Tests for /api/measure endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.measures.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
@@ -39,7 +40,6 @@
 (deftest authentication-test
   (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "measure")))
-
   (is (= (get api.response/response-unauthentic :body)
          (client/client :put 401 "measure/13"))))
 
@@ -57,18 +57,14 @@
   (testing "POST /api/measure"
     (is (=? {:errors {:name "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :post 400 "measure" {})))
-
     (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
             (mt/user-http-request :crowberto :post 400 "measure" {:name "abc"})))
-
     (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
             (mt/user-http-request :crowberto :post 400 "measure" {:name     "abc"
                                                                   :table_id "foobar"})))
-
     (is (=? {:errors {:definition "Value must be a map."}}
             (mt/user-http-request :crowberto :post 400 "measure" {:name     "abc"
                                                                   :table_id 123})))
-
     (is (=? {:errors {:definition "Value must be a map."}}
             (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
                                                                   :table_id   123
@@ -108,14 +104,11 @@
   (testing "PUT /api/measure/:id"
     (is (=? {:errors {:name "nullable value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "measure/1" {:name "" :revision_message "abc"})))
-
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "measure/1" {:name "abc"})))
-
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "measure/1" {:name             "abc"
                                                                    :revision_message ""})))
-
     (is (=? {:errors {:definition "nullable map"}}
             (mt/user-http-request :crowberto :put 400 "measure/1" {:name             "abc"
                                                                    :revision_message "123"

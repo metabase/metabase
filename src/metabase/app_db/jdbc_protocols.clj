@@ -178,7 +178,7 @@
 ;;;; [[next.jdbc]] and Toucan 2 mappings
 
 (extend-protocol next.jdbc.prepare/SettableParameter
-   ;; DB's don't seem to handle Instant correctly so convert it to an OffsetDateTime with zone offset = 0
+  ;; DB's don't seem to handle Instant correctly so convert it to an OffsetDateTime with zone offset = 0
   Instant
   (set-parameter [t stmt i]
     (jdbc/set-parameter (t/offset-date-time t (t/zone-offset 0)) stmt i))

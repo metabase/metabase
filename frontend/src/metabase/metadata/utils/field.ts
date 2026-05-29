@@ -22,7 +22,10 @@ import { getSchemaDisplayName } from "./schema";
  * there's no logic on FE to reliably decide whether two columns are comparable. Trying to come up with that in ad-hoc
  * manner could disable some cases that users may depend on.
  */
-export function areFieldsComparable(field1: Field, field2: Field): boolean {
+export function areFieldsComparable(
+  field1: Pick<Field, "effective_type">,
+  field2: Pick<Field, "effective_type">,
+): boolean {
   return field1.effective_type === "type/MongoBSONID" ||
     field2.effective_type === "type/MongoBSONID"
     ? field1.effective_type === field2.effective_type
@@ -30,7 +33,17 @@ export function areFieldsComparable(field1: Field, field2: Field): boolean {
 }
 
 export function canCoerceFieldType(field: Field): boolean {
-  return !isTypeFK(field.semantic_type) && is_coerceable(field.base_type);
+  // GHY-3388: also surface the cast UI when the field is in a state the user
+  // needs to fix from the UI — either coercion_strategy is already set (so they
+  // can clear or change it) or effective_type has drifted away from base_type
+  // (so they can repair via toggle on/off, which clears the coercion and resets
+  // effective_type=base_type via PUT /api/field/:id).
+  return (
+    field.coercion_strategy != null ||
+    (field.effective_type != null &&
+      field.effective_type !== field.base_type) ||
+    (!isTypeFK(field.semantic_type) && is_coerceable(field.base_type))
+  );
 }
 
 export function getRawTableFieldId(field: Field): FieldId {

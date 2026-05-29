@@ -21,7 +21,6 @@
       (is (str/includes? (:chart-content result) "bar"))
       (is (str/starts-with? (:chart-link result) "metabase://chart/"))
       (is (contains? result :instructions))))
-
   (testing "creates chart with different types"
     (let [queries-state {"q-456" {:query-id "q-456"
                                   :sql "SELECT COUNT(*) FROM users"
@@ -33,7 +32,6 @@
                        :queries-state queries-state})]
           (is (= chart-type (:chart-type result))
               (str "Chart type " chart-type " should be set correctly"))))))
-
   (testing "throws error for invalid chart type"
     (let [queries-state {"q-789" {:query-id "q-789"
                                   :query-content "SELECT 1"
@@ -45,7 +43,6 @@
             {:query-id "q-789"
              :chart-type :invalid-type
              :queries-state queries-state})))))
-
   (testing "throws error when query not found"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo

@@ -1,3 +1,5 @@
+import cx from "classnames";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
@@ -7,7 +9,7 @@ import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
@@ -17,8 +19,28 @@ import { useConfirmIfFormIsDirty } from "../hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "../hooks/useSaveStrategy";
 import type { UpdateTargetId } from "../types";
 
-import { Panel, RoundedBox } from "./StrategyEditorForDatabases.styled";
+import S from "./StrategyEditorForDatabases.module.css";
 import { StrategyForm } from "./StrategyForm";
+
+/** Rounded outer container for the two-column launcher + form layout. */
+function RoundedBox({
+  children,
+  twoColumns,
+}: {
+  children: ReactNode;
+  twoColumns?: boolean;
+}) {
+  return (
+    <Box
+      w="100%"
+      maw={twoColumns ? "100%" : "30rem"}
+      bd="2px solid var(--mb-color-border)"
+      className={cx(S.roundedBox, { [S.roundedBoxTwoColumns]: twoColumns })}
+    >
+      {children}
+    </Box>
+  );
+}
 
 export const StrategyEditorForDatabases: React.FC = () => {
   const { canOverrideRootStrategy } = PLUGIN_CACHING;
@@ -132,7 +154,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
       h="calc(100vh - 7rem)"
     >
       {confirmationModal}
-      <Flex gap="xl" style={{ overflow: "hidden" }}>
+      <Flex gap="xl" className={S.scrollableLayout}>
         <RoundedBox twoColumns={canOverrideRootStrategy}>
           {canOverrideRootStrategy && (
             <PLUGIN_CACHING.StrategyFormLauncherPanel
@@ -144,7 +166,14 @@ export const StrategyEditorForDatabases: React.FC = () => {
               shouldShowResetButton={shouldShowResetButton}
             />
           )}
-          <Panel hasLeftBorder={canOverrideRootStrategy}>
+          <Box
+            component="section"
+            bg="background-primary"
+            h="100%"
+            className={cx(S.formPanel, {
+              [S.formPanelWithLeftBorder]: canOverrideRootStrategy,
+            })}
+          >
             {targetId !== null && (
               <StrategyForm
                 targetId={targetId}
@@ -157,7 +186,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
                 shouldShowName={targetId !== rootId}
               />
             )}
-          </Panel>
+          </Box>
         </RoundedBox>
         <UpsellCacheConfig location="performance-data_cache" />
       </Flex>

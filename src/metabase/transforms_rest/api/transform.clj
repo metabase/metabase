@@ -170,7 +170,6 @@
   (transforms.core/check-database-feature body)
   (transforms.core/check-feature-enabled! body)
   (transforms.core/validate-incremental-column-type! body)
-
   (api/check (not (transforms-base.u/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
@@ -286,6 +285,9 @@
    The transform must already be fetched and validated."
   [transform]
   (transforms.core/check-feature-enabled! transform)
+  (api/check (not (transforms.core/transform-locked? transform))
+             [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
+                   :error-code "metabase_transforms_locked"}])
   (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.core/execute! transform {:start-promise start-promise
@@ -308,7 +310,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (run-transform! (api/write-check :model/Transform id)))
+  (run-transform! (api/read-check :model/Transform id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."

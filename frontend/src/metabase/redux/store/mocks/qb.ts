@@ -64,7 +64,7 @@ export const createMockQueryBuilderState = (
   queryStatus: "complete",
   queryResults: null,
   queryStartTime: null,
-  cancelQueryDeferred: null,
+  cancelQueryController: null,
 
   card: null,
   originalCard: null,

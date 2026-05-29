@@ -4,10 +4,18 @@ import { findWhere } from "underscore";
 import { rootId } from "metabase/admin/performance/constants/simple";
 import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
-import { FixedSizeIcon, Flex, Title, Tooltip, useHover } from "metabase/ui";
+import {
+  Box,
+  Button,
+  FixedSizeIcon,
+  Flex,
+  Title,
+  Tooltip,
+  useHover,
+} from "metabase/ui";
 import type { CacheConfig } from "metabase-types/api";
 
-import { PolicyToken, StyledLauncher } from "./StrategyFormLauncher.styled";
+import S from "./StrategyFormLauncher.module.css";
 
 export type StrategyFormLauncherProps = {
   forId: number;
@@ -38,7 +46,7 @@ export const StrategyFormLauncher = ({
   const strategy = savedStrategy ?? rootStrategy;
   const isBeingEdited = targetId === forId;
 
-  const { hovered, ref: hoveredRef } = useHover<HTMLDivElement>();
+  const { hovered, ref: hoveredRef } = useHover<HTMLElement>();
 
   const buttonVariant =
     isBeingEdited || hovered
@@ -66,29 +74,31 @@ export const StrategyFormLauncher = ({
   const shouldDisableTooltip = !inheritsRootStrategy;
 
   return (
-    <StyledLauncher
-      ref={hoveredRef as any}
+    <Box
+      ref={hoveredRef}
+      className={S.launcher}
+      data-for-root={forRoot}
+      data-inherits-root={inheritsRootStrategy}
       aria-label={ariaLabel}
       onClick={launchForm}
-      forRoot={forRoot}
-      inheritsRootStrategy={inheritsRootStrategy}
       data-testid={`strategy-form-launcher${
         shouldDisableTooltip ? "" : "-with-tooltip"
       }`}
     >
-      <Flex gap="0.5rem" c="text-secondary" align="center">
+      <Flex gap="sm" c="text-secondary" align="center">
         <FixedSizeIcon name={forRoot ? "star" : "database"} c="inherit" />
         <Title c="inherit" order={6}>
           {title}
         </Title>
       </Flex>
-      <Flex wrap="nowrap" lh="1.5rem" gap=".5rem">
+      <Flex wrap="nowrap" lh="1.5rem" gap="sm">
         <Tooltip
           position="bottom"
           disabled={shouldDisableTooltip}
           label={t`Using default policy`}
         >
-          <PolicyToken
+          <Button
+            className={S.token}
             onClick={launchForm}
             variant={buttonVariant}
             fw={forRoot || inheritsRootStrategy ? "normal" : "bold"}
@@ -98,9 +108,9 @@ export const StrategyFormLauncher = ({
             radius="7rem"
           >
             {shortStrategyLabel}
-          </PolicyToken>
+          </Button>
         </Tooltip>
       </Flex>
-    </StyledLauncher>
+    </Box>
   );
 };

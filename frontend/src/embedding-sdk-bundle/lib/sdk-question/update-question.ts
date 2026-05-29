@@ -7,7 +7,6 @@ import { createRawSeries } from "metabase/query_builder/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Deferred } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
@@ -34,7 +33,7 @@ interface UpdateQuestionParams {
   shouldStartAdHocQuestion: boolean;
 
   queryResults?: any[];
-  cancelDeferred?: Deferred;
+  signal?: AbortSignal;
   isGuestEmbed: boolean;
   token: EntityToken | null | undefined;
 
@@ -54,7 +53,7 @@ export const updateQuestionSdk =
       originalQuestion,
       nextParameterValues,
       shouldStartAdHocQuestion,
-      cancelDeferred,
+      signal,
       queryResults,
       optimisticUpdateQuestion: onQuestionChange,
       shouldRunQueryOnQuestionChange = false,
@@ -131,7 +130,8 @@ export const updateQuestionSdk =
         token,
         originalQuestion,
         parameterValues: nextParameterValues,
-        cancelDeferred,
+        signal,
+        dispatch,
       });
     }
 

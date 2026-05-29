@@ -14,8 +14,7 @@ export const StepRoot = styled.section<Props>`
   border-radius: 0.5rem;
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
-  background-color: ${(props) =>
-    color(props.isCompleted ? "background-primary" : "background-secondary")};
+  background-color: ${color("background-primary")};
 `;
 
 export const StepTitle = styled.div<Props>`

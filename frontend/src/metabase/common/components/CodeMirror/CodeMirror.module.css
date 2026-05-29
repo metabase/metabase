@@ -128,7 +128,7 @@
 
         &:hover,
         &[aria-selected="true"] {
-          background-color: var(--mb-color-background-secondary);
+          background-color: var(--mb-color-background-hover);
           color: var(--mb-color-text-primary);
         }
       }

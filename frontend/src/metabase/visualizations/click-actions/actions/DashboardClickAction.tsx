@@ -1,3 +1,5 @@
+import { selectTab } from "metabase/redux/dashboard";
+import type { Dispatch } from "metabase/redux/store";
 import {
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
@@ -5,9 +7,7 @@ import {
   getDashboardDrillTab,
   getDashboardDrillType,
   getDashboardDrillUrl,
-} from "metabase/dashboard/utils/dashboard-click-drill";
-import { selectTab } from "metabase/redux/dashboard";
-import type { Dispatch } from "metabase/redux/store";
+} from "metabase/visualizations/click-actions/lib/dashboard-click-drill";
 import type {
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
@@ -91,9 +91,14 @@ function getAction(
 
 export const DashboardClickAction: LegacyDrill = ({
   question,
+  settings,
   clicked = {},
 }): AlwaysDefaultClickAction[] => {
-  const type = getDashboardDrillType(clicked);
+  const clickObject: ClickObject = clicked.settings
+    ? clicked
+    : { ...clicked, settings };
+  const type = getDashboardDrillType(clickObject);
+
   if (!type) {
     return [];
   }
@@ -102,7 +107,7 @@ export const DashboardClickAction: LegacyDrill = ({
     {
       name: "click_behavior",
       defaultAlways: true,
-      ...getAction(type, question, clicked),
+      ...getAction(type, question, clickObject),
     },
   ];
 };

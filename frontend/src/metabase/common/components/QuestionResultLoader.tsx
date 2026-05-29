@@ -2,9 +2,8 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEffectOnce } from "react-use";
 
+import { useDispatch } from "metabase/redux";
 import { runQuestionQuery } from "metabase/services";
-import type { Deferred } from "metabase/utils/promise";
-import { defer } from "metabase/utils/promise";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 
@@ -51,11 +50,12 @@ export function QuestionResultLoader({
   collectionPreview,
   children,
 }: QuestionResultLoaderProps) {
+  const dispatch = useDispatch();
   const [results, setResults] = useState<Dataset[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  const cancelDeferredRef = useRef<Deferred | null>(null);
+  const cancelControllerRef = useRef<AbortController | null>(null);
   const questionRef = useRef<Question | null | undefined>(question);
 
   const loadResult = useCallback(
@@ -72,14 +72,15 @@ export function QuestionResultLoader({
       }
 
       try {
-        cancelDeferredRef.current = defer();
+        cancelControllerRef.current = new AbortController();
 
         setLoading(true);
         setResults((prev) => (keepPrevious ? prev : null));
         setError(null);
 
         const queryResults = await runQuestionQuery(questionToLoad, {
-          cancelDeferred: cancelDeferredRef.current,
+          dispatch,
+          signal: cancelControllerRef.current.signal,
           collectionPreview,
         });
 
@@ -94,7 +95,7 @@ export function QuestionResultLoader({
         setError(err);
       }
     },
-    [collectionPreview],
+    [dispatch, collectionPreview],
   );
 
   // A function to pass to the child to allow the component to call `loadResult` again
@@ -106,7 +107,7 @@ export function QuestionResultLoader({
   const cancel = useCallback(() => {
     if (loading) {
       setLoading(false);
-      cancelDeferredRef.current?.resolve();
+      cancelControllerRef.current?.abort();
     }
   }, [loading]);
 

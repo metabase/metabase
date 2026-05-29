@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.pulse-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.pulse-test]}}}}}}
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.data.csv :as csv]
@@ -106,11 +107,9 @@
               (testing "ad-hoc query"
                 (is (= 22
                        (count (mt/rows (qp/process-query query))))))
-
               (testing "in a Saved Question"
                 (is (= 22
                        (count (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))))))
-
             (testing "Pulse should be sandboxed"
               (is (= 22
                      (count (mt/rows (alert-results! query))))))))))))
@@ -187,17 +186,14 @@
             (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
-
             (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                    (-> (mt/user-http-request :rasta :get 200 (format "pulse/%d" pulse-id))
                        vector
                        recipient-ids))))
-
           (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
             (is (= [(mt/user->id :rasta)]
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
-
             (is (= [(mt/user->id :rasta)]
                    (-> (mt/user-http-request :rasta :get 200 (format "pulse/%d" pulse-id))
                        vector
@@ -213,22 +209,18 @@
                                                            :details      {:emails "asdf@metabase.com"}}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
-
       (mt/with-test-user :rasta
         (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
           ;; Rasta, a sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]}))
-
         ;; Check that both Rasta and Crowberto are still recipients
         (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                (->> (#'api.pulse/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort)))
-
         (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})
-
           ;; Crowberto should now be removed as a recipient
           (is (= [(mt/user->id :rasta)]
                  (->> (#'api.pulse/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort))))))))

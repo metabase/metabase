@@ -4,7 +4,6 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
-   [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.api.common :as api]
@@ -16,29 +15,37 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private SubScore
-  "Either a computed sub-score (`:measurement` + `:score`) or an uncomputed one (`:error`)."
-  [:or
-   [:map {:closed true}
-    [:measurement number?]
-    [:score       nat-int?]]
-   [:map {:closed true}
-    [:measurement nil?]
-    [:score       nil?]
-    [:error       string?]]])
+(def ^:private Rating
+  "A rating band label drawn from `complexity-bands`."
+  [:enum "low" "medium" "high"])
 
-(def ^:private Catalog
-  "One catalog's total + per-component breakdown.
-  `:total` is nil when any sub-score couldn't be computed — failures cascade through aggregates."
-  [:map
-   [:total [:maybe nat-int?]]
-   [:components
-    [:map
-     [:entity_count      SubScore]
-     [:name_collisions   SubScore]
-     [:synonym_pairs     SubScore]
-     [:field_count       SubScore]
-     [:repeated_measures SubScore]]]])
+(def ^:private Failure
+  "Sub-score that couldn't be computed; carries only the failure message.
+  (Named `Failure` rather than `Error` to avoid shadowing `java.lang.Error`.)"
+  [:map {:closed true}
+   [:error string?]])
+
+(def ^:private Leaf
+  "Computed leaf sub-score with a raw `:measurement` and its weighted `:score`."
+  [:map {:closed true}
+   [:measurement  number?]
+   [:score        nat-int?]
+   [:rating       [:maybe Rating]]
+   [:rating_label [:maybe string?]]])
+
+(def ^:private Grouping
+  "Internal node whose `:score` is the rolled-up sum of its `:components` children."
+  [:map {:closed true}
+   [:score        [:maybe nat-int?]]
+   [:rating       [:maybe Rating]]
+   [:rating_label [:maybe string?]]
+   [:components   [:map-of :keyword [:ref ::node]]]])
+
+(def ^:private Node
+  "Recursive score node: a [[Failure]], a [[Leaf]], or a [[Grouping]] whose children are themselves Nodes."
+  [:schema
+   {:registry {::node [:or Failure Leaf Grouping]}}
+   [:ref ::node]])
 
 (def ^:private EmbeddingModelMeta
   "Identifies the embedding model backing the synonym calculations, so benchmark consumers can pin to it.
@@ -51,12 +58,13 @@
 (def ^:private ComplexityScoresResponse
   "Full response body for `GET /api/ee/data-complexity-score/complexity`."
   [:map
-   [:library  Catalog]
-   [:universe Catalog]
-   [:metabot  Catalog]
+   [:library  Node]
+   [:universe Node]
+   [:metabot  Node]
    [:meta
     [:map
      [:formula_version   pos-int?]
+     [:format_version    pos-int?]
      [:synonym_threshold number?]
      [:calculated_at {:optional true} some?]
      [:embedding_model {:optional true} EmbeddingModelMeta]]]])
@@ -86,14 +94,9 @@
           result      (complexity/complexity-scores
                        (assoc (synonym-source/complexity-scores-opts)
                               :metabot-scope (metabot-scope/internal-metabot-scope)))
-          stored      (data-complexity-score/record-score! fingerprint result)]
-      ;; Advance the last-published fingerprint iff Snowplow actually accepted the event — mirrors
-      ;; the scheduled path's gate in `task.complexity-score/run-scoring!`. Without this, a
-      ;; superuser-triggered recalculation leaves the setting stale and the next boot would
-      ;; redundantly re-score even though a valid snapshot was just persisted.
-      (when (::complexity/snowplow-published? (meta result))
-        (settings/data-complexity-scoring-last-fingerprint! fingerprint))
-      (m.util/deep-snake-keys (or stored result)))
+          stored      (data-complexity-score/record-score! fingerprint "appdb" result)]
+      (task.complexity-score/maybe-advance-last-fingerprint! fingerprint result)
+      (m.util/deep-snake-keys (complexity/decorate-with-ratings (or stored result))))
     (finally
       (.set api-scoring-running? false))))
 
@@ -109,6 +112,7 @@
   (if force-recalculation?
     (force-recalculate-score!)
     (api/check-404 (some-> (data-complexity-score/latest-score (task.complexity-score/current-fingerprint))
+                           complexity/decorate-with-ratings
                            m.util/deep-snake-keys)
                    (tru "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."))))
 

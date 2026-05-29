@@ -36,9 +36,7 @@
 
 (defn- delete-conversations!
   [conversation-ids]
-  (let [conversation-ids (vec conversation-ids)]
-    (t2/delete! :model/MetabotMessage {:where [:in :conversation_id conversation-ids]})
-    (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]})))
+  (t2/delete! :model/MetabotConversation {:where [:in :id (vec conversation-ids)]}))
 
 (defn- insert-feedback!
   [{:keys [message-id user-id positive issue-type freeform created-at updated-at]}]
@@ -194,21 +192,88 @@
           (is (= 3 (:total response)))
           (is (= [] (:data response))))))))
 
-(deftest list-conversations-sorting-test
-  (with-list-conversations-fixture!
-    (fn [{:keys [response-path convo-1 convo-2 convo-3]}]
-      (let [response (mt/user-http-request :crowberto :get 200
-                                           (format "%s&sort_by=message_count&sort_dir=asc" response-path))]
-        (is (= [convo-3 convo-1 convo-2] (map :conversation_id (:data response))))))))
+(defn- with-sortable-conversations-fixture!
+  "Seeds three conversations differentiated across every sortable column: user
+   (first_name/last_name), profile_id, ip_address, created_at, message_count,
+   and total_tokens. Tests pick a sort key and verify the order of the
+   convo-a / convo-m / convo-z handles. Seeded into a private 2026 date window
+   so a `date` filter isolates them from any other rows in the test app DB.
 
-(deftest list-conversations-sorting-desc-test
-  (testing "sort-dir=desc reverses the sort order — same fixture as the asc test"
-    (with-list-conversations-fixture!
-      (fn [{:keys [response-path convo-1 convo-2 convo-3]}]
-        (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "%s&sort_by=message_count&sort_dir=desc" response-path))]
-          (is (= [convo-2 convo-1 convo-3]
-                 (map :conversation_id (:data response)))))))))
+   Each sort key yields a distinct permutation, so a bug that ignored `sort_by`
+   and always returned `created_at` order would fail five of the six cases.
+
+   Designed orderings (asc):
+     created_at:    (a, m, z)   jan-1 / jan-2 / jan-3
+     user:          (m, a, z)   first_name Alice / Ben / Chloe
+     profile_id:    (z, a, m)   1-profile / 2-profile / 3-profile
+     ip_address:    (z, m, a)   10.0.0.1 / 10.0.0.2 / 10.0.0.3
+     message_count: (m, z, a)   counts 1, 2, 3
+     total_tokens:  (a, z, m)   tokens 10, 20, 30"
+  [thunk]
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {user-a :id} {:email      "metabot-analytics-sort-a@metabase.com"
+                                             :first_name "Ben"
+                                             :last_name  "Anderson"}
+                   :model/User {user-m :id} {:email      "metabot-analytics-sort-m@metabase.com"
+                                             :first_name "Alice"
+                                             :last_name  "Mason"}
+                   :model/User {user-z :id} {:email      "metabot-analytics-sort-z@metabase.com"
+                                             :first_name "Chloe"
+                                             :last_name  "Zane"}]
+      (let [base-path     "ee/metabot-analytics/conversations"
+            response-path (str base-path "?date=2026-01-01~2026-01-31")
+            convo-a       (str (random-uuid))
+            convo-m       (str (random-uuid))
+            convo-z       (str (random-uuid))
+            jan-1         (offset-date-time "2026-01-01T00:00:00Z")
+            jan-2         (offset-date-time "2026-01-02T00:00:00Z")
+            jan-3         (offset-date-time "2026-01-03T00:00:00Z")
+            jan-4         (offset-date-time "2026-01-04T00:00:00Z")
+            seed-msg!     (fn [convo-id profile-id tokens]
+                            (insert-message! {:conversation-id convo-id
+                                              :created-at      jan-4
+                                              :role            "assistant"
+                                              :profile-id      profile-id
+                                              :total-tokens    tokens
+                                              :data            [{:role "assistant" :content "hi"}]}))]
+        (try
+          (insert-conversation! {:conversation-id convo-a :user-id user-a
+                                 :created-at jan-1 :ip-address "10.0.0.3"})
+          (insert-conversation! {:conversation-id convo-m :user-id user-m
+                                 :created-at jan-2 :ip-address "10.0.0.2"})
+          (insert-conversation! {:conversation-id convo-z :user-id user-z
+                                 :created-at jan-3 :ip-address "10.0.0.1"})
+          (seed-msg! convo-a "2-profile" 4)
+          (seed-msg! convo-a "2-profile" 3)
+          (seed-msg! convo-a "2-profile" 3)
+          (seed-msg! convo-m "3-profile" 30)
+          (seed-msg! convo-z "1-profile" 10)
+          (seed-msg! convo-z "1-profile" 10)
+          (thunk {:response-path response-path
+                  :convo-a       convo-a
+                  :convo-m       convo-m
+                  :convo-z       convo-z})
+          (finally
+            (delete-conversations! [convo-a convo-m convo-z])))))))
+
+(deftest list-conversations-sort-test
+  (with-sortable-conversations-fixture!
+    (fn [{:keys [response-path convo-a convo-m convo-z]}]
+      (doseq [[sort-by asc-order]
+              [["created_at"    [convo-a convo-m convo-z]]
+               ["user"          [convo-m convo-a convo-z]]
+               ["profile_id"    [convo-z convo-a convo-m]]
+               ["ip_address"    [convo-z convo-m convo-a]]
+               ["message_count" [convo-m convo-z convo-a]]
+               ["total_tokens"  [convo-a convo-z convo-m]]]]
+        (testing (str "sort_by=" sort-by " &sort_dir=asc")
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (str response-path "&sort_by=" sort-by "&sort_dir=asc"))]
+            (is (= asc-order (map :conversation_id (:data response))))))
+        (testing (str "sort_by=" sort-by " &sort_dir=desc")
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (str response-path "&sort_by=" sort-by "&sort_dir=desc"))]
+            (is (= (reverse asc-order) (map :conversation_id (:data response))))))))))
 
 (deftest list-conversations-invalid-sort-test
   (with-list-conversations-fixture!
@@ -324,7 +389,6 @@
                             :profile-id      "internal"
                             :total-tokens    8
                             :data            [{:type "text" :text "hi there"}]})
-
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))]
             (is (= conversation-id (:conversation_id response)))
@@ -399,7 +463,6 @@
                                               {:type   "tool-output"
                                                :id     "call-failed"
                                                :result {:output "<result>SQL query construction failed.</result>"}}]})
-
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))
                 queries  (:queries response)]
@@ -523,9 +586,10 @@
   {:type "tool-output" :id call-id :result {:output "ok"}})
 
 (defn- with-query-count-fixture!
-  "Seed conversations that exercise `:query_count` (create_sql_query and
-   construct_notebook_query). Edit/replace tools and unrelated tools are
-   included to verify they are excluded from the count."
+  "Seed conversations that exercise `:query_count` for every query-generation
+   tool — create_sql_query, edit_sql_query, replace_sql_query, and
+   construct_notebook_query. Non-query tool calls (search) are sprinkled in
+   to verify they don't bump `:query_count`."
   [thunk]
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-query-count@metabase.com"
@@ -545,11 +609,11 @@
           (insert-conversation! {:conversation-id convo-mixed
                                  :user-id         test-user-id
                                  :created-at      mar-2
-                                 :summary         "one create + one notebook across messages"})
+                                 :summary         "create + edit + notebook across messages"})
           (insert-conversation! {:conversation-id convo-edits
                                  :user-id         test-user-id
                                  :created-at      mar-3
-                                 :summary         "only edit/replace — should not count"})
+                                 :summary         "only edit/replace — counted as queries"})
           ;; convo-none: only a search, no new-query tools.
           (insert-message! {:conversation-id convo-none
                             :created-at      mar-1
@@ -558,14 +622,16 @@
                             :total-tokens    5
                             :data            [(search-input-block "call-s")
                                               (search-output-block "call-s")]})
-          ;; convo-mixed: one create_sql_query in msg 1, one construct_notebook_query
-          ;; in msg 2 alongside an excluded edit_sql_query.
+          ;; convo-mixed: one search + create_sql_query in msg 1, then one edit_sql_query
+          ;; and one construct_notebook_query in msg 2 — three counted queries.
           (insert-message! {:conversation-id convo-mixed
                             :created-at      mar-2
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    10
-                            :data            [(query-tool-input-block "call-a" "create_sql_query")
+                            :data            [(search-input-block "call-mixed-s")
+                                              (search-output-block "call-mixed-s")
+                                              (query-tool-input-block "call-a" "create_sql_query")
                                               (query-tool-output-block "call-a")]})
           (insert-message! {:conversation-id convo-mixed
                             :created-at      mar-2
@@ -576,13 +642,15 @@
                                               (query-tool-output-block "call-b")
                                               (query-tool-input-block "call-c" "construct_notebook_query")
                                               (query-tool-output-block "call-c")]})
-          ;; convo-edits: only edit + replace — both excluded from :query_count.
+          ;; convo-edits: search + edit + replace
           (insert-message! {:conversation-id convo-edits
                             :created-at      mar-3
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    4
-                            :data            [(query-tool-input-block "call-e" "edit_sql_query")
+                            :data            [(search-input-block "call-edits-s")
+                                              (search-output-block "call-edits-s")
+                                              (query-tool-input-block "call-e" "edit_sql_query")
                                               (query-tool-output-block "call-e")
                                               (query-tool-input-block "call-r" "replace_sql_query")
                                               (query-tool-output-block "call-r")]})
@@ -596,14 +664,14 @@
 (deftest query-count-test
   (with-query-count-fixture!
     (fn [{:keys [test-user-id convo-none convo-mixed convo-edits]}]
-      (testing "list endpoint: counts create_sql_query + construct_notebook_query, excludes edit/replace"
+      (testing "list endpoint: counts every query-generation tool (incl. edit/replace), excludes non-query tools like search"
         (let [response (mt/user-http-request :crowberto :get 200
                                              (format "ee/metabot-analytics/conversations?user_id=%s" test-user-id))
               by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
-          (is (= {convo-none 0, convo-mixed 2, convo-edits 0}
+          (is (= {convo-none 0, convo-mixed 3, convo-edits 2}
                  (update-vals by-id :query_count)))))
       (testing "detail endpoint surfaces the same counts"
-        (doseq [[convo expected] [[convo-none 0] [convo-mixed 2] [convo-edits 0]]]
+        (doseq [[convo expected] [[convo-none 0] [convo-mixed 3] [convo-edits 2]]]
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" convo))]
             (is (= expected (:query_count response))

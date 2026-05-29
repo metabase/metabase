@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.druid.client-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.druid.client-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
@@ -23,7 +24,6 @@
                                                 (a/>!! running-chan ::running)
                                                 (Thread/sleep 5000)
                                                 (throw (Exception. "Don't actually run!")))]
-
             (let [futur (future (qp/process-query query))]
               ;; wait for query to start running, then kill the thread running the query
               (a/go
@@ -59,10 +59,10 @@
                           :dbname         "test"
                           :host           "http://localhost"
                           :tunnel-enabled true
-                         ;; we want to use a bogus port here on purpose -
-                         ;; so that locally, it gets a ConnectionRefused,
-                         ;; and in CI it does too. Apache's SSHD library
-                         ;; doesn't wrap every exception in an SshdException
+                          ;; we want to use a bogus port here on purpose -
+                          ;; so that locally, it gets a ConnectionRefused,
+                          ;; and in CI it does too. Apache's SSHD library
+                          ;; doesn't wrap every exception in an SshdException
                           :tunnel-port    21212
                           :tunnel-user    "bogus"}]
              (driver.u/can-connect-with-details? engine details :throw-exceptions))
@@ -95,7 +95,6 @@
            (get-auth-header get-request)
            (get-auth-header post-request)
            (get-auth-header delete-request)) "basic auth header included with successfully"))
-
   (let [no-auth-basic false
         get-request    (test-request druid.client/GET no-auth-basic)
         post-request   (test-request druid.client/POST no-auth-basic)

@@ -1,4 +1,10 @@
-name: Release 1 - Build Release Artifact
+# Builds a fresh release JAR from scratch at a given commit.
+#
+# You should almost never have to use this. The normal release flow relies on a
+# commit that has already been built and tested on its branch — see
+# `tag-for-release.yml`, which tags that existing JAR. Building from scratch
+# here is only for exceptional cases.
+name: Release 0 - Build Release Artifact
 run-name: Build ${{ inputs.version }}
 
 on:
@@ -17,7 +23,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -25,7 +31,7 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Send build start message
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -45,25 +51,17 @@ jobs:
             }).catch(console.error);
 
   trigger-milestone-check:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 5
-    needs: start-message
-    steps:
-      - name: trigger pre-release milestone check
-        uses: actions/github-script@v7
-        with:
-          script: | # js
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'release-milestone-check.yml',
-              ref: '${{ github.ref }}',
-              inputs: {
-                commit: '${{ inputs.commit }}',
-                version: '${{ inputs.version }}',
-              }
-            });
-
+    # Posts a Slack FYI about issues that still need review for this release.
+    # Informational only — nothing depends on it, so it never blocks the release.
+    needs: [check-version, check-commit]
+    permissions:
+      contents: read
+      issues: read
+    uses: ./.github/workflows/release-milestone-check.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.commit }}
 
   check-version:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -79,7 +77,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -87,7 +85,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: canonical_version
       with:
         script: | # js
@@ -122,7 +120,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - name: Check out the code to verify the release branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
         sparse-checkout: |
@@ -131,7 +129,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Branch
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: release_branch
       with:
         result-encoding: string
@@ -157,7 +155,7 @@ jobs:
       node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
       build_process: ${{ fromJson(steps.dependencies.outputs.result).build_process }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -165,7 +163,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get build dependencies
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: dependencies
       with:
         script: | # js
@@ -182,6 +180,23 @@ jobs:
             node_version: requirements.node,
             build_process,
           };
+
+  manage-milestones:
+    # Close the milestone we're about to ship and open the next one BEFORE building,
+    # so any PRs that merge while the build is in flight are tagged with the next
+    # milestone (not the one about to be released).
+    #
+    # Sequenced after trigger-milestone-check so that the check sees the milestone
+    # in its open state. milestone-check is informational and must never block, so
+    # we run regardless of its outcome; only preflight failures suppress this.
+    needs: [check-version, check-commit, trigger-milestone-check]
+    if: ${{ !cancelled() && needs.check-version.result == 'success' && needs.check-commit.result == 'success' }}
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/release-milestone-manage.yml
+    with:
+      version: ${{ inputs.version }}
 
   build-uberjar-for-release:
     needs: [check-version, check-commit, get-build-requirements]
@@ -203,16 +218,16 @@ jobs:
 
         echo "VERSION=$version" >> $GITHUB_ENV
     - name: Setup Java ${{ needs.get-build-requirements.outputs.java_version }}
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5.2.0
       with:
         distribution: 'temurin'
         java-version: ${{ needs.get-build-requirements.outputs.java_version }}
     - name: Setup Node.js ${{ needs.get-build-requirements.outputs.node_version }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6.4.0
       with:
         node-version: ${{ needs.get-build-requirements.outputs.node_version }}.x
     - name: Check out the code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ github.event.inputs.commit }}
     - name: Prepare front-end environment
@@ -237,7 +252,7 @@ jobs:
       run: sha256sum ./metabase.jar > SHA256.sum
       shell: bash
     - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
         path: |

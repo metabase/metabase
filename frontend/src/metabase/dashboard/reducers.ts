@@ -1,11 +1,11 @@
 import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
 import { assoc, chain, merge, updateIn } from "icepick";
 
-import { Actions } from "metabase/entities/actions";
-import { Questions } from "metabase/entities/questions";
+import { actionApi } from "metabase/api";
 import { combineReducers } from "metabase/redux";
+import { CARD_UPDATED } from "metabase/redux/cards";
 import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
-import type { Card, WritebackAction } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import {
   REMOVE_CARD_FROM_DASH,
@@ -181,31 +181,19 @@ const dashcards = createReducer(
       .addCase<
         string,
         { type: string; payload: { object: Card | null | undefined } }
-      >(
-        Questions.actionTypes.UPDATE,
-        (state, { payload: { object: card } }) => {
-          if (!card) {
-            return;
-          }
-          Object.values(state).forEach((dashcard) => {
-            if (dashcard.card?.id === card.id) {
-              Object.assign(dashcard.card, card);
-            }
-          });
-        },
-      )
-      .addCase<
-        string,
-        {
-          type: string;
-          payload: { object: WritebackAction | null | undefined };
+      >(CARD_UPDATED, (state, { payload: { object: card } }) => {
+        if (!card) {
+          return;
         }
-      >(
-        Actions.actionTypes.UPDATE,
-        (state, { payload: { object: action } }) => {
-          if (!action) {
-            return;
+        Object.values(state).forEach((dashcard) => {
+          if (dashcard.card?.id === card.id) {
+            Object.assign(dashcard.card, card);
           }
+        });
+      })
+      .addMatcher(
+        actionApi.endpoints.updateAction.matchFulfilled,
+        (state, { payload: action }) => {
           Object.values(state).forEach((dashcard) => {
             if (!("action" in dashcard) || dashcard.action?.id !== action.id) {
               return;

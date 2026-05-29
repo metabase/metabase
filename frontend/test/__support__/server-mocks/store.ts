@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 
 import {
   createMockCloudAddOns,
-  mockAdvancedTransformsAddOn,
+  mockAdvancedTransformsCloudAddOn,
 } from "metabase-types/api/mocks/add-ons";
 import type { AddOnProductType } from "metabase-types/api/store";
 
@@ -52,7 +52,7 @@ export function setupBillingEndpoints({
     ...(hasAdvancedTransformsAddOn
       ? [
           {
-            ...mockAdvancedTransformsAddOn,
+            ...mockAdvancedTransformsCloudAddOn,
             billing_period_months: billingPeriodMonths,
           },
         ]

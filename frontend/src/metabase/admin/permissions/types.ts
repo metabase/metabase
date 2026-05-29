@@ -2,9 +2,8 @@ import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 
 import type { State } from "metabase/redux/store";
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { GroupId } from "metabase-types/api";
+import type { GroupId, IconName } from "metabase-types/api";
 import {
   DataPermission,
   DataPermissionValue,
@@ -78,6 +77,7 @@ export enum DataPermissionType {
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
   TRANSFORMS = "transforms",
+  WORKSPACES = "workspaces",
   COLLECTIONS = "collections",
 }
 

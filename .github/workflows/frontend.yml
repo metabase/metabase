@@ -9,6 +9,9 @@ on:
       skip-lint:
         type: boolean
         default: false
+      skip-custom-viz:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       skip:
@@ -17,6 +20,10 @@ on:
         default: false
       skip-lint:
         description: "Skip linting jobs (oxfmt, eslint, css variables check)"
+        type: boolean
+        default: false
+      skip-custom-viz:
+        description: "Skip custom-viz package tests"
         type: boolean
         default: false
 
@@ -30,7 +37,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -40,7 +47,7 @@ jobs:
         uses: ./.github/actions/get-cache-keys
         id: get-cache-keys
       - name: Restore ESLint cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ github.workspace}}/.eslintcache
           key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
@@ -61,7 +68,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -84,7 +91,7 @@ jobs:
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -113,11 +120,35 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Run frontend timezones tests
         run: bun run test-timezones
+
+  # The custom-viz package is an isolated Bun workspace under
+  # enterprise/frontend/src/custom-viz
+  fe-custom-viz:
+    if: ${{ !inputs.skip-custom-viz }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: enterprise/frontend/src/custom-viz
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Type-check
+        run: bun run type-check
+      - name: Lint
+        run: bun run lint
+      - name: Build CLI
+        run: bun run build
+      - name: Run tests
+        run: bun run test
 
   fe-tests-result:
     needs:
@@ -125,6 +156,7 @@ jobs:
       - fe-type-check
       - fe-tests-unit
       - fe-tests-timezones
+      - fe-custom-viz
     if: always() && !cancelled()
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
@@ -132,7 +164,7 @@ jobs:
       needs: ${{ toJson(needs) }}
     steps:
       - name: Check frontend job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sandbox.api.dashboard-test
   "Tests for special behavior of `/api/metabase/dashboard` endpoints in the Metabase Enterprise Edition."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.dashboard-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
@@ -81,19 +82,16 @@
         (testing "when getting values"
           (let [get-values (fn [user]
                              (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-values-url dashboard-id "abc")))]
-
             (is (> (-> (get-values :crowberto) :values count) 3))
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (get-values :rasta)))))
-
         (testing "when search values"
           (let [search (fn [user]
                          (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-search-url dashboard-id "abc" "bbq")))]
             (is (= {:values          [["BBQ"]]
                     :has_more_values false}
                    (search :crowberto)))
-
             (is (= {:values          []
                     :has_more_values false}
                    (search :rasta)))))))))

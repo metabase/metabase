@@ -2,7 +2,7 @@
 import { css } from "@emotion/react";
 
 export const rootStyle = css`
-  font-family: var(--mb-default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family);
   font-weight: 400;
   font-style: normal;
   color: var(--mb-color-text-primary);

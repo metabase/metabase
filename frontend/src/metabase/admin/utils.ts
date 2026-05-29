@@ -3,6 +3,7 @@ import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { shouldShowTenantsUpsell } from "metabase/admin/people/selectors";
 import { connect, metabaseReduxContext } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { AdminPath } from "metabase/redux/store/admin";
@@ -60,7 +61,7 @@ export const createTenantsRouteGuard = () => {
     allowRedirectBack: false,
     authenticatedSelector: (state) =>
       getAdminPaths(state)?.find((path) => path.key === "people") != null &&
-      getSetting(state, "use-tenants"),
+      (getSetting(state, "use-tenants") || shouldShowTenantsUpsell(state)),
     redirectAction: routerActions.replace,
     context: metabaseReduxContext,
   });

@@ -1,5 +1,5 @@
+import api from "metabase/api/legacy-client";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import api from "metabase/utils/api";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 type InternalEmbeddingConfig = {

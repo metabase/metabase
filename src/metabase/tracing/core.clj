@@ -18,6 +18,7 @@
      MB_TRACING_GROUPS=qp,api  MB_TRACING_SERVICE_NAME=metabase-prod-1"
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.tracing.attributes :as trace-attrs]
    [metabase.tracing.settings :as tracing.settings]
    [metabase.util.log :as log]
@@ -243,6 +244,37 @@
 
 ;;; ------------------------------------------------ Primary Macro -------------------------------------------------
 
+(def ^:private ^:dynamic *span-attrs*
+  "Atom of attrs already written to the active `with-span`. Used by [[add-span-attrs!]] to detect duplicate writes; nil outside a `with-span`."
+  nil)
+
+(defn- merge-attrs-and-detect-duplicates!
+  "Merge `attrs` into `*span-attrs*` and return the subset that should be written to the active span. Any key already in the atom is a duplicate: throws in dev/test, drops with a `log/warn` in prod. Returns `attrs` unchanged when `*span-attrs*` is unbound (outside `with-span`)."
+  [attrs]
+  (if-let [span-attrs *span-attrs*]
+    (let [snapshot   @span-attrs
+          duplicates (filterv #(contains? snapshot %) (keys attrs))
+          new-attrs  (apply dissoc attrs duplicates)]
+      (when (seq duplicates)
+        (if (or config/is-dev? config/is-test?)
+          (throw (ex-info (format "Span attribute already set: %s" (pr-str duplicates))
+                          {:duplicates duplicates
+                           :existing   (select-keys snapshot duplicates)
+                           :new        (select-keys attrs duplicates)}))
+          (log/warnf "Span attribute already set, dropping duplicate writes: %s"
+                     (pr-str duplicates))))
+      (swap! span-attrs merge new-attrs)
+      new-attrs)
+    attrs))
+
+(defn add-span-attrs!
+  "Enrich the active OTel span with `attrs` mid-execution. No-op if `group` is disabled or `attrs` is empty. Re-writing a key already on the span is a duplicate: throws in dev/test, dropped (with `log/warn`) in prod."
+  [group attrs]
+  (when (and (group-enabled? group) (seq attrs))
+    (let [new-attrs (merge-attrs-and-detect-duplicates! attrs)]
+      (when (seq new-attrs)
+        (span/add-span-data! {:attributes new-attrs})))))
+
 (defmacro with-span
   "Create an OTel span if tracing is enabled for `group`.
 
@@ -263,27 +295,29 @@
        (process-query query))"
   [group span-name attrs & body]
   `(if (group-enabled? ~group)
-     (let [prev-trace-id# (ThreadContext/get "trace_id")
+     (let [attrs#         ~attrs
+           prev-trace-id# (ThreadContext/get "trace_id")
            prev-span-id#  (ThreadContext/get "span_id")
            root-span?#    (nil? prev-span-id#)]
-       (span/with-span! {:name ~span-name :attributes ~attrs}
-         (inject-trace-id-into-mdc!)
-         ;; For root spans (no parent in MDC), set Pyroscope profiling context.
-         ;; Nested child spans skip this — the root's context covers all samples.
-         (when root-span?#
-           (let [^Span span#                   (Span/current)
-                 ^SpanContext ctx#              (.getSpanContext span#)
-                 span-id#                       (.getSpanId ctx#)]
-             (set-pyroscope-context! span# span-id# ~span-name)))
-         (try
-           ~@body
-           (finally
-             (when root-span?#
-               (clear-pyroscope-context!))
-             (if prev-trace-id#
-               (do (ThreadContext/put "trace_id" prev-trace-id#)
-                   (ThreadContext/put "span_id" prev-span-id#))
-               (clear-trace-id-from-mdc!))))))
+       (binding [*span-attrs* (atom attrs#)]
+         (span/with-span! {:name ~span-name :attributes attrs#}
+           (inject-trace-id-into-mdc!)
+           ;; For root spans (no parent in MDC), set Pyroscope profiling context.
+           ;; Nested child spans skip this — the root's context covers all samples.
+           (when root-span?#
+             (let [^Span span#                   (Span/current)
+                   ^SpanContext ctx#              (.getSpanContext span#)
+                   span-id#                       (.getSpanId ctx#)]
+               (set-pyroscope-context! span# span-id# ~span-name)))
+           (try
+             ~@body
+             (finally
+               (when root-span?#
+                 (clear-pyroscope-context!))
+               (if prev-trace-id#
+                 (do (ThreadContext/put "trace_id" prev-trace-id#)
+                     (ThreadContext/put "span_id" prev-span-id#))
+                 (clear-trace-id-from-mdc!)))))))
      (do ~@body)))
 
 ;;; -------------------------------------------- SDK Lifecycle -------------------------------------------------

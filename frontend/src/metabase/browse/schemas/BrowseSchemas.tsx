@@ -1,25 +1,39 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { TableBrowser } from "metabase/browse/tables/TableBrowser";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
+import { NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Databases } from "metabase/entities/databases";
-import { Schemas } from "metabase/entities/schemas";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionItem } from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 
 import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
 
+type Schema = { id: string; name: string };
+
+const DatabaseName = ({ id }: { id: DatabaseId | null | undefined }) => {
+  const { data: database } = useGetDatabaseQuery(
+    id != null ? { id } : skipToken,
+  );
+  return <>{database?.name ?? ""}</>;
+};
+
 const BrowseSchemasContainer = ({
   schemas,
   params,
 }: {
-  schemas: CollectionItem[];
+  schemas: Schema[];
   params: any;
 }) => {
   const { slug } = params;
@@ -38,9 +52,7 @@ const BrowseSchemasContainer = ({
         <Flex maw="64rem" mx="auto" w="100%" direction="column">
           {schemas.length === 1 ? (
             <TableBrowser
-              schemas={schemas}
               params={params}
-              slug={slug}
               dbId={dbId}
               schemaName={schemas[0].name}
               // hide the schema since there's only one
@@ -52,7 +64,7 @@ const BrowseSchemasContainer = ({
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
-                    { title: <Databases.Name id={dbId} /> },
+                    { title: <DatabaseName id={dbId} /> },
                   ]}
                 />
               </Flex>
@@ -82,8 +94,29 @@ const BrowseSchemasContainer = ({
   );
 };
 
-export const BrowseSchemas = Schemas.loadList({
-  query: (state: any, { params: { slug } }: { params: { slug: string } }) => ({
-    dbId: Urls.extractEntityId(slug),
-  }),
-})(BrowseSchemasContainer);
+export const BrowseSchemas = ({ params }: { params: { slug: string } }) => {
+  const dbId = Urls.extractEntityId(params.slug);
+
+  if (dbId == null) {
+    return <NotFound />;
+  }
+
+  return <BrowseSchemasForDatabase dbId={dbId} params={params} />;
+};
+
+const BrowseSchemasForDatabase = ({
+  dbId,
+  params,
+}: {
+  dbId: number;
+  params: { slug: string };
+}) => {
+  const { data, isLoading, error } = useListDatabaseSchemasQuery({ id: dbId });
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  const schemas: Schema[] = (data ?? []).map((name) => ({ id: name, name }));
+  return <BrowseSchemasContainer schemas={schemas} params={params} />;
+};

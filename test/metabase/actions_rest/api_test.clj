@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.actions-rest.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions-rest.api-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.actions-rest.api-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -204,7 +206,7 @@
                               (mt/user-http-request :rasta
                                                     :post 400
                                                     (format "action/%s/execute" action-on-other-id)
-                                                   ;; Twitter is the current value so effectively a no-op
+                                                    ;; Twitter is the current value so effectively a no-op
                                                     {:parameters {:id 1 :source "Twitter"}})))))))
         (testing "When actions are enabled on the other database"
           (mt/dataset test-data
@@ -435,7 +437,6 @@
                   (is (= uuid
                          (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))))))))
-
           (testing "We cannot share an archived action"
             (mt/with-actions [{:keys [action-id]} (assoc unshared-action-opts :archived true)]
               (is (= "Not found."
@@ -446,17 +447,14 @@
               (mt/with-temporary-setting-values [enable-public-sharing false]
                 (is (= "Public sharing is not enabled."
                        (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id))))))
-
             (testing "We *cannot* share an action if actions are disabled"
               (mt/with-actions-disabled
                 (is (= "Actions are not enabled."
                        (:cause
                         (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id)))))))
-
             (testing "We get a 404 if the Action doesn't exist"
               (is (= "Not found."
                      (mt/user-http-request :crowberto :post 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))
-
         (testing "We *cannot* share an action if we aren't admins"
           (mt/with-actions [{:keys [action-id]} unshared-action-opts]
             (is (= "You don't have permissions to do that."
@@ -477,24 +475,20 @@
               (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
               (is (= false
                      (t2/exists? :model/Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
-
         (testing "Test that we cannot unshare an action if it's archived"
           (let [action-opts (merge {:archived true} (shared-action-opts))]
             (mt/with-actions [{:keys [action-id]} action-opts]
               (is (= "Not found."
                      (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id)))))))
-
         (testing "Test that we *cannot* unshare a action if we are not admins"
           (let [action-opts (shared-action-opts)]
             (mt/with-actions [{:keys [action-id]} action-opts]
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :delete 403 (format "action/%d/public_link" action-id)))))))
-
         (testing "Test that we get a 404 if Action isn't shared"
           (mt/with-actions [{:keys [action-id]} unshared-action-opts]
             (is (= "Not found."
                    (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id))))))
-
         (testing "Test that we get a 404 if Action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))))
@@ -636,27 +630,21 @@
         (testing "403 if user does not have permission to view the action"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
-
         (testing "404 if id does not exist"
           (is (= "Not found."
                  (mt/user-http-request :rasta :get 404 (format "action/%d/execute" Integer/MAX_VALUE) :parameters (json/encode {:id 1})))))
-
         (testing "returns empty map for query actions (not implicit)"
           (is (= {}
                  (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" query-action-id) :parameters (json/encode {:id 1})))))
-
         (testing "Can't fetch for create action"
           (is (= "Values can only be fetched for actions that require a Primary Key."
                  (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" create-action-id) :parameters (json/encode {:id 1})))))
-
         (testing "fetch for update action return name and id"
           (is (= {:id 1 :name "Red Medicine"}
                  (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
-
         (testing "fetch for delete action returns the id only"
           (is (= {:id 1}
                  (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))
-
         (mt/with-actions-disabled
           (testing "error if actions is disabled"
             (is (= "Actions are not enabled."
@@ -672,7 +660,6 @@
                           {update-action :action-id} {:type :implicit
                                                       :kind "row/update"}]
           (testing "an error in SQL will be caught and parsed to a readable erorr message"
-
             (is (= {:message "Unable to update the record."
                     :errors {:user_id "This value does not exist in table \"users\"."}}
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)

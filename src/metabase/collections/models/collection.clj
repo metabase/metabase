@@ -73,6 +73,13 @@
   "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
+(def library-collection-types
+  "All library `:type` values — collections users curate as the canonical place to find content.
+   Kept as a set so callers (e.g. search ranking) can enumerate them without hard-coding strings."
+  #{library-collection-type
+    library-data-collection-type
+    library-metrics-collection-type})
+
 (def ^:constant tenant-specific-root-collection-type
   "The value of the `:type` field for root collections that belong to a single tenant"
   "tenant-specific-root-collection")
@@ -182,6 +189,47 @@
   []
   (t2/select-one :model/Collection :type library-collection-type))
 
+(def ^{:arglists '([id])} root-collection-type-by-id
+  "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no
+   top-level collection has that id. Caching is keyed by `[app-db-id collection-id]` per the
+   `metabase.app-db.core/memoize-for-application-db` docstring — different ids never share cache
+   entries, which keeps tests isolated even when other tests run ingestion in parallel.
+
+   Top-level collections change infrequently, so a 1-hour TTL is fine."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
+   (fn [id]
+     (when id
+       (t2/select-one-fn :type :model/Collection :id id :location "/")))
+   :ttl/threshold (* 60 60 1000)))
+
+(defn root-collection-type
+  "Return the `:type` of the top-level ancestor collection given a collection's materialized path and
+   its own type/id. Used by the search ranking spec to power the `:library` scorer for items nested
+   inside library trees.
+
+   Resolution rules:
+     - `:collection_id` `nil`  →  `nil` (item has no collection)
+     - location is `\"/\"` or `nil`  →  the collection's own `:collection_type` (it IS a root)
+     - otherwise  →  parse the first id out of the materialized path and look up its type
+
+   Reads `:collection_id`, `:collection_location`, `:collection_type` from the ingestion record map."
+  [{:keys [collection_id collection_location collection_type]}]
+  (cond
+    (nil? collection_id)
+    nil
+
+    (or (nil? collection_location) (= "/" collection_location))
+    collection_type
+
+    :else
+    (when-let [root-id (some-> collection_location
+                               (str/split #"/")
+                               (->> (remove str/blank?))
+                               first
+                               parse-long)]
+      (root-collection-type-by-id root-id))))
+
 (def library-entity-id
   "The entity_id for the Library collection."
   "librarylibrarylibrary")
@@ -191,6 +239,12 @@
 
 (def ^:private library-metrics-entity-id
   "librarylibrarymetrics")
+
+(def ^:private library-entity-id?
+  "Returns true if the given entity ID is one of the hard-coded Library keys."
+  #{library-entity-id
+    library-data-entity-id
+    library-metrics-entity-id})
 
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
@@ -226,16 +280,30 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
+(defn library-root-collection?
+  "Is this one of the immutable system-created Library collections (root, data, or metrics)?
+  Returns false for user-created subcollections that inherit a library type."
+  [collection]
+  (library-entity-id? (:entity_id collection)))
+
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
+  Only overrides names for the system-created library collections, not user-created subcollections.
   This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
   or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
   (cond-> collection
-    (is-trash? collection) (assoc :name (tru "Trash"))
-    (is-library? collection) (assoc :name (tru "Library"))
-    (is-library-data-collection? collection) (assoc :name (tru "Data"))
-    (is-library-metrics-collection? collection) (assoc :name (tru "Metrics"))))
+    (is-trash? collection)
+    (assoc :name (tru "Trash"))
+
+    (and (is-library? collection) (library-root-collection? collection))
+    (assoc :name (tru "Library"))
+
+    (and (is-library-data-collection? collection) (library-root-collection? collection))
+    (assoc :name (tru "Data"))
+
+    (and (is-library-metrics-collection? collection) (library-root-collection? collection))
+    (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
@@ -519,6 +587,16 @@
                       :name collection-name
                       :slug (u/slugify collection-name))))) collections)))
 
+(defn maybe-mark-collection-as-library-root
+  "Given a collection, adds `:is_library_root true` to exactly those collections which have hard-coded Library
+  `:entity_id`s - the Library itself, and it's magic top-level collections.
+
+  This uses the `:entity_id`s rather than `:type`s because it only applies to those root collections at the top level,
+  not to all of them."
+  [{:keys [entity_id] :as collection}]
+  (cond-> collection
+    (library-entity-id? entity_id) (assoc :is_library_root true)))
+
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
   This is only used for displaying purposes, For insertion or updating  the name, use site's locale instead"
@@ -552,7 +630,6 @@
    (or
     ;; If collection has an owner ID we're already done here, we know it's a Personal Collection
     (:personal_owner_id collection)
-
     ;; Try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`. Then see if
     ;; the root-level ancestor is a Personal Collection (Personal Collections can only exist in the Root Collection.)
     (when-let [id (first (location-path->ids (:location collection)))]
@@ -749,10 +826,8 @@
    (and
     ;; we have permission for it.
     (can-access-root-collection? user-scope (:permission-level visibility-config))
-
     ;; we're not *only* looking for archived items
     (not= :only (:include-archived-items visibility-config))
-
     ;; we're not looking for a particular `archive_operation_id`
     (not (:archive-operation-id visibility-config)))))
 
@@ -828,24 +903,20 @@
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
-
             ;; hiding archived items when desired...
             (when (= :exclude (:include-archived-items visibility-config))
               [:= :c.archived false])
-
             ;; (or showing them, if that's what you want)
             (when (= :only (:include-archived-items visibility-config))
               [:or
                [:= :c.archived true]
                ;; the trash collection is included when viewing archived-only
                [:= :id [:inline (trash-collection-id)]]])
-
             (when-not (perms/use-tenants)
               [:not [:exists {:select [1]
                               :from [[:collection :sub_c]]
                               :where [:and [:= :c.id :sub_c.id]
                                       [:= :sub_c.namespace [:inline "shared-tenant-collection"]]]}]])
-
             ;; excluding things outside of the `archive_operation_id` you wanted...
             (when-let [op-id (:archive-operation-id visibility-config)]
               [:or
@@ -894,7 +965,6 @@
        [:and
         ;; an effective child is a descendant of the parent collection
         [:like (->col "location") (str (children-location parent-coll) "%")]
-
         ;; but NOT a child of any OTHER visible collection.
         [:not [:exists {:select 1
                         :from [[:collection :c2]]
@@ -1151,13 +1221,13 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
    & additional-honeysql-where-clauses]
-  {:select [:id :name :description]
+  {:select [:id :name :description :type]
    :from   [[:collection :col]]
    :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (t2/select [:model/Collection :id :name :description]
+  (set (t2/select [:model/Collection :id :name :description :type]
                   {:where (apply effective-children-where-clause
                                  collection
                                  (t2/table-name :model/Collection)
@@ -1555,7 +1625,14 @@
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
                            :archived_directly false}
-                    {:archived true})))
+                    {:archived true}))
+      (let [library-data-ids (t2/select-pks-set :model/Collection
+                                                :id   [:in affected-collection-ids]
+                                                :type library-data-collection-type)]
+        (when (seq library-data-ids)
+          (t2/update! :model/Table {:collection_id [:in library-data-ids]}
+                      {:collection_id nil
+                       :is_published  false}))))
     (let [updated-collection (t2/select-one :model/Collection :id (:id collection))]
       (when (:is_remote_synced updated-collection)
         (check-remote-synced-dependents updated-collection)))))
@@ -1585,7 +1662,6 @@
                                                                   :archived [:= true]))]
     (api/check-400
      (and (some? new-parent) (not (:archived new-parent))))
-
     (if (contains? updates :parent_id)
       (api/check-403
        (and (mi/can-write? new-parent)
@@ -1595,7 +1671,6 @@
       ;; Restoring to original location, use `can_restore` for a single source of truth
       (api/check-403
        (:can_restore (t2/hydrate collection :can_restore))))
-
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
                   {:location             new-location
@@ -1888,7 +1963,6 @@
         (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
-
     ;; (3.6) Check that the parent collection allows this collection to be there
     (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (3.7) Check if it's a semantic-library collection that can't be updated
@@ -1934,7 +2008,6 @@
                    :model/Pulse
                    :model/Timeline]]
       (t2/delete! model :collection_id [:in affected-collection-ids])))
-
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
@@ -2323,21 +2396,17 @@
                               (and
                                ;; the item is archived
                                (:archived item)
-
                                ;; the item is directly in the trash (it was archived independently, not as
                                ;; part of a collection)
                                (:archived_directly item)
-
                                ;; EITHER:
                                (or
                                 ;; the item was archived from the root collection
                                 (nil? (:collection_id item))
                                 ;; or the collection we'll restore to actually exists.
                                 (some? collection))
-
                                ;; the collection we'll restore to is not archived
                                (not (:archived collection))
-
                                ;; we have perms on the collection
                                (mi/can-write? (or collection root-collection)))))))
 
@@ -2368,20 +2437,25 @@
 
 (search.spec/define-spec "collection"
   {:model        :model/Collection
-   :attrs        {:collection-id :id
-                  :creator-id    false
-                  :database-id   false
-                  :archived      true
-                  :created-at    true
+   :attrs        {:collection-id        :id
+                  :collection-type      :type
+                  :collection-location  :location
+                  :root-collection-type {:fn root-collection-type}
+                  :creator-id           false
+                  :database-id          false
+                  :archived             true
+                  :created-at           true
                   ;; intentionally not tracked
-                  :updated-at    false}
+                  :updated-at           false}
    :search-terms [:name]
    :render-terms {:archived-directly          true
                   ;; Why not make this a search term? I suspect it was just overlooked before.
                   :description                true
                   :collection_authority_level :authority_level
                   :collection_name            :name
-                  :collection_type            :type
+                  ;; `:location` is read by the toucan2 effective-location hydration when collection
+                  ;; results pass through `metabase.search.impl/add-collection-effective-location`.
+                  ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                   :location                   true}
    :where [:or [:= :namespace nil]
            [:= :namespace "analytics"]

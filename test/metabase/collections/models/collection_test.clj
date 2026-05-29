@@ -1,4 +1,5 @@
 (ns metabase.collections.models.collection-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections.models.collection-test]}}}}}}
   (:refer-clojure :exclude [descendants])
   (:require
    [clojure.math.combinatorics :as math.combo]
@@ -63,6 +64,29 @@
     (is (-> trash :name i18n/localized-string?)
         "Trash name must be a localized string")))
 
+(deftest ^:parallel library-collection-names-localized-test
+  (testing "maybe-localize-system-collection-name overrides names for system library collections"
+    (testing "Library root gets canonical name regardless of DB value"
+      (let [result (collection/maybe-localize-system-collection-name
+                    {:name "Wrong Name" :type collection/library-collection-type
+                     :entity_id @#'collection/library-entity-id})]
+        (is (= "Library" (str (:name result))))))
+    (testing "Data gets canonical name"
+      (let [result (collection/maybe-localize-system-collection-name
+                    {:name "Wrong Name" :type collection/library-data-collection-type
+                     :entity_id @#'collection/library-data-entity-id})]
+        (is (= "Data" (str (:name result))))))
+    (testing "Metrics gets canonical name"
+      (let [result (collection/maybe-localize-system-collection-name
+                    {:name "Wrong Name" :type collection/library-metrics-collection-type
+                     :entity_id @#'collection/library-metrics-entity-id})]
+        (is (= "Metrics" (str (:name result)))))))
+  (testing "User-created subcollections keep their custom names"
+    (let [result (collection/maybe-localize-system-collection-name
+                  {:name "My Custom Folder" :type collection/library-data-collection-type
+                   :entity_id "some-random-entity-id"})]
+      (is (= "My Custom Folder" (:name result))))))
+
 (deftest personal-collection-with-ui-details-test
   (testing "With personal_owner"
     (is (= {:personal_owner_id (mt/user->id :lucky)
@@ -78,11 +102,9 @@
   (is (= [{:personal_owner_id (mt/user->id :lucky)
            :name              "Lucky Pigeon's Personal Collection"
            :slug              "lucky_pigeon_s_personal_collection"}
-
           {:personal_owner_id (mt/user->id :rasta)
            :name              "Rasta Toucan's Personal Collection"
            :slug              "rasta_toucan_s_personal_collection"}
-
           {:personal_owner_id nil
            :other             "No personal Id"}]
          (collection/personal-collections-with-ui-details [{:personal_owner_id (mt/user->id :lucky)}
@@ -113,7 +135,6 @@
                    :model/Collection c2 {:name "My Favorite Cards"}]
       (is (some? c1))
       (is (some? c2))
-
       (testing "Duplicate names should result in duplicate slugs..."
         (testing "Collection 1"
           (is (= "my_favorite_cards"
@@ -134,7 +155,6 @@
   (testing "entity IDs are generated"
     (mt/with-temp [:model/Collection collection]
       (is (some? (:entity_id collection)))))
-
   (testing "entity IDs are unique"
     (mt/with-temp [:model/Collection c1 {:name "My Favorite Cards"}
                    :model/Collection c2 {:name "my_favorite Cards"}]
@@ -154,7 +174,6 @@
                    :model/Card       card       {:collection_id (u/the-id collection)}]
       (archive-collection! collection)
       (is (true? (t2/select-one-fn :archived :model/Card :id (u/the-id card))))))
-
   (testing "check that unarchiving a Collection unarchives its Cards as well"
     (mt/with-temp [:model/Collection collection {}
                    :model/Card       card       {:collection_id (u/the-id collection)}]
@@ -169,7 +188,6 @@
          Exception
          (mt/with-temp [:model/Collection collection {:name ""}]
            collection))))
-
   (testing "check we can't change the name of a Collection to a blank string"
     (mt/with-temp [:model/Collection collection]
       (is (thrown?
@@ -270,7 +288,6 @@
         (testing (pr-str (cons 'location-path args))
           (is (= expected
                  (apply collection/location-path args))))))
-
     (testing "invalid input"
       (doseq [args [["1"]
                     [nil]
@@ -291,11 +308,9 @@
       (testing (pr-str (list 'location-path->ids path))
         (is (= expected
                (collection/location-path->ids path))))
-
       (testing (pr-str (list 'location-path->parent-id path))
         (is (= (last expected)
                (collection/location-path->parent-id path))))))
-
   (testing "invalid input"
     (doseq [path ["/a/"
                   nil
@@ -305,7 +320,6 @@
         (is (thrown?
              Exception
              (collection/location-path->ids path))))
-
       (testing (pr-str (list 'location-path->parent-id path))
         (is (thrown?
              Exception
@@ -320,7 +334,6 @@
       (testing (pr-str (list 'children-location collection))
         (is (= expected
                (collection/children-location collection))))))
-
   (testing "invalid input"
     (doseq [collection [{:id 1000, :location "/a/"}
                         {:id 1000, :location nil}
@@ -407,8 +420,8 @@
 (def ^:dynamic ^:private *visible-collection-ids* #{})
 
 (deftest effective-location-path-test
-  (with-redefs [audit/is-collection-id-audit? (constantly false)
-                collection/visible-collection-ids (fn [& _] *visible-collection-ids*)]
+  (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)
+                              collection/visible-collection-ids (fn [& _] *visible-collection-ids*)]
     (testing "valid input"
       (doseq [[[path visible-ids] expected] {["/10/20/30/" #{10 20}]    "/10/20/"
                                              ["/10/20/30/" #{10 30}]    "/10/30/"
@@ -418,7 +431,6 @@
           (is (= expected
                  (binding [*visible-collection-ids* visible-ids]
                    (collection/effective-location-path {:location path})))))))
-
     (testing "invalid input"
       (doseq [path [nil [10 20]]]
         (testing (format "path '%s'" path)
@@ -448,20 +460,17 @@
          clojure.lang.ExceptionInfo
          #"Invalid Collection location: path is invalid"
          (with-collection-in-location [_ "/a/"]))))
-
   (testing "We should be able to INSERT a Collection with a *valid* location"
     (mt/with-temp [:model/Collection parent]
       (with-collection-in-location [collection (collection/location-path parent)]
         (is (= (collection/location-path parent)
                (:location collection))))))
-
   (testing "Make sure we can't UPDATE a Collection to give it an invalid location"
     (mt/with-temp [:model/Collection collection]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid Collection location: path is invalid"
            (t2/update! :model/Collection (u/the-id collection) {:location "/a/"})))))
-
   (testing "We should be able to UPDATE a Collection and give it a new, *valid* location"
     (mt/with-temp [:model/Collection collection-1 {}
                    :model/Collection collection-2 {}]
@@ -473,7 +482,6 @@
          clojure.lang.ExceptionInfo
          #"Invalid Collection location: some or all ancestors do not exist"
          (with-collection-in-location [_ (collection/location-path (nonexistent-collection-id))]))))
-
   (testing "Make sure we can't UPDATE a Collection to give it a non-existent ancestors"
     (mt/with-temp [:model/Collection collection]
       (is (thrown-with-msg?
@@ -493,7 +501,6 @@
              (t2/delete! :model/Collection :id (u/the-id a))))
       (is (= 0
              (t2/count :model/Collection :id [:in (map u/the-id [a b c d e f g])])))))
-
   (testing "parents & siblings should be untouched"
     ;; ...put
     ;;
@@ -522,17 +529,14 @@
       (with-current-user-perms-for-collections! [a d]
         (is (= ["A"]
                (effective-ancestors d)))))
-
     (testing "For D: if we don't have permissions for A, we should only see C"
       (with-current-user-perms-for-collections! [c d]
         (is (= ["C"]
                (effective-ancestors d)))))
-
     (testing "For D: if we have perms for all ancestors we should see them all"
       (with-current-user-perms-for-collections! [a c d]
         (is (= ["A" "C"]
                (effective-ancestors d)))))
-
     (testing "For D: if we have permissions for no ancestors, we should see nothing"
       (with-current-user-perms-for-collections! [d]
         (is (= []
@@ -583,11 +587,9 @@
                                 :location    "/A/C/"
                                 :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}}}
              (descendants a))))
-
     (testing "try for one of the children, make sure we get just that subtree"
       (is (= #{}
              (descendants b))))
-
     (testing "try for the other child, we should get just that subtree!"
       (is (= #{{:name        "D"
                 :id          true
@@ -600,7 +602,6 @@
                 :location    "/A/C/"
                 :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}
              (descendants c))))
-
     (testing "try for a grandchild"
       (is (= #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}
              (descendants d))))))
@@ -658,17 +659,14 @@
                                     (filter #(contains? (set (map :id [a b c d e f g])) (:id %)))
                                     (map :name)
                                     set))]
-
       (testing "If we *have* perms for everything we should just see B and C."
         (with-current-user-perms-for-collections! [a b c d e f g]
           (is (= #{"B" "C"}
                  (effective-children a)))))
-
       (testing "make sure that `effective-children` isn't returning children or location of children! Those should get discarded."
         (with-current-user-perms-for-collections! [a b c d e f g]
-          (is (= #{:name :id :description}
+          (is (= #{:name :id :description :type}
                  (set (keys (first (collection/effective-children a))))))))
-
       (testing "If we don't have permissions for C, C's children (D and F) should be moved up one level"
         ;;
         ;;    +-> B                             +-> B
@@ -679,7 +677,6 @@
         (with-current-user-perms-for-collections! [a b d e f g]
           (is (= #{"B" "D" "F"}
                  (effective-children a)))))
-
       (testing "If we also remove D, its child (F) should get moved up, for a total of 2 levels."
         ;;
         ;;    +-> B                             +-> B
@@ -690,7 +687,6 @@
         (with-current-user-perms-for-collections! [a b e f g]
           (is (= #{"B" "E" "F"}
                  (effective-children a)))))
-
       (testing "If we remove C and both its children, both grandchildren should get get moved up"
         ;;
         ;;    +-> B                             +-> B
@@ -701,7 +697,6 @@
         (with-current-user-perms-for-collections! [a b e g]
           (is (= #{"B" "E" "G"}
                  (effective-children a)))))
-
       (testing "Now try with one of the Children. `effective-children` for C should be D & F"
         ;;
         ;; C -+-> D -> E              C -+-> D -> E
@@ -710,7 +705,6 @@
         (with-current-user-perms-for-collections! [b c d e f g]
           (is (= #{"D" "F"}
                  (effective-children c)))))
-
       (testing "If we remove perms for D & F their respective children should get moved up"
         ;;
         ;; C -+-> x -> E              C -+-> E
@@ -719,17 +713,14 @@
         (with-current-user-perms-for-collections! [b c e g]
           (is (= #{"E" "G"}
                  (effective-children c)))))
-
       (testing "For the Root Collection: can we fetch its effective children?"
         (with-current-user-perms-for-collections! [a b c d e f g]
           (is (= #{"A"}
                  (effective-children collection/root-collection)))))
-
       (testing "For the Root Collection: if we don't have perms for A, we should get B and C as effective children"
         (with-current-user-perms-for-collections! [b c d e f g]
           (is (= #{"B" "C"}
                  (effective-children collection/root-collection)))))
-
       (testing "For the Root Collection: if we remove A and C we should get B, D and F"
         (is (= #{"B" "D" "F"}
                (with-current-user-perms-for-collections! [b d e f g]
@@ -778,13 +769,11 @@
                "/collection/G/"}
              (->> (collection/perms-for-archiving a)
                   (perms-path-ids->names collections)))))
-
     (testing (str "Now let's move down a level. To archive B, you should need permissions for B only, since B doesn't "
                   "have any descendants and we don't need parent permissions")
       (is (= #{"/collection/B/"}
              (->> (collection/perms-for-archiving b)
                   (perms-path-ids->names collections)))))
-
     (testing "but for C, you should need perms for C and D, E, F, and G (descendants) but NOT A (parent)"
       (is (= #{"/collection/C/"
                "/collection/D/"
@@ -793,7 +782,6 @@
                "/collection/G/"}
              (->> (collection/perms-for-archiving c)
                   (perms-path-ids->names collections)))))
-
     (testing "For D you should need D and E (descendant) but NOT C (parent)"
       (is (= #{"/collection/D/"
                "/collection/E/"}
@@ -806,21 +794,18 @@
          Exception
          #"You cannot operate on the Root Collection."
          (collection/perms-for-archiving collection/root-collection))))
-
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
     (mt/with-temp [:model/Collection cr-collection {}]
-      (with-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
+      (mt/with-dynamic-fn-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
         (is (thrown-with-msg?
              Exception
              #"You cannot operate on the Custom Reports Collection."
              (collection/perms-for-archiving cr-collection))))))
-
   (testing "Let's make sure we get an Exception when we try to archive a Personal Collection"
     (is (thrown-with-msg?
          Exception
          #"You cannot operate on a Personal Collection."
          (collection/perms-for-archiving (collection/user->personal-collection (mt/fetch-user :lucky))))))
-
   (testing "invalid input"
     (doseq [input [nil {} 1]]
       (testing (format "input = %s" (pr-str input))
@@ -861,7 +846,6 @@
                "/collection/C/"}
              (->> (collection/perms-for-moving b c)
                   (perms-path-ids->names collections)))))
-
     (testing "Ok, now let's try moving something with descendants."
       ;; If we move C into B, we need perms for C and all its
       ;; descendants, and B, since it's the new parent
@@ -880,7 +864,6 @@
                "/collection/G/"}
              (->> (collection/perms-for-moving c b)
                   (perms-path-ids->names collections)))))
-
     (testing "Ok, now how about moving B into the Root Collection?"
       ;;    +-> B                    B* [and Root*]
       ;;    |
@@ -891,7 +874,6 @@
                "/collection/B/"}
              (->> (collection/perms-for-moving b collection/root-collection)
                   (perms-path-ids->names collections)))))
-
     (testing "How about moving C into the Root Collection?"
       ;;    +-> B                    A -> B
       ;;    |
@@ -913,23 +895,19 @@
       (is (thrown?
            Exception
            (collection/perms-for-moving collection/root-collection a))))
-
     (testing "You should also see an Exception if you try to move a Collection into itself or into one its descendants..."
       (testing "B -> B"
         (is (thrown?
              Exception
              (collection/perms-for-moving b b))))
-
       (testing "A -> B"
         (is (thrown?
              Exception
              (collection/perms-for-moving a b)))))
-
     (testing "Let's make sure we get an Exception when we try to *move* a Personal Collection"
       (is (thrown?
            Exception
            (collection/perms-for-moving (collection/user->personal-collection (mt/fetch-user :lucky)) a)))))
-
   (testing "invalid input"
     (doseq [[collection new-parent] [[{:location "/"} nil]
                                      [{:location "/"} {}]
@@ -995,8 +973,9 @@
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
-             (collection-locations (vals collections))))))
+             (collection-locations (vals collections)))))))
 
+(deftest move-nested-collections-test-2
   (testing "Test that we can move a Collection"
     ;;
     ;;    +-> B                        +-> B ---> E
@@ -1009,8 +988,9 @@
       (is (= {"A" {"B" {"E" {}}
                    "C" {"D" {}
                         "F" {"G" {}}}}}
-             (collection-locations (vals collections))))))
+             (collection-locations (vals collections)))))))
 
+(deftest move-nested-collections-test-3
   (testing "Test that we can move a Collection and its descendants get moved as well"
     ;;
     ;;    +-> B                       +-> B ---> D -> E
@@ -1022,8 +1002,9 @@
       (collection/move-collection! d (collection/children-location b))
       (is (= {"A" {"B" {"D" {"E" {}}}
                    "C" {"F" {"G" {}}}}}
-             (collection-locations (vals collections))))))
+             (collection-locations (vals collections)))))))
 
+(deftest move-nested-collections-test-4
   (testing "Test that we can move a Collection into the Root Collection"
     ;;
     ;;    +-> B                        +-> B
@@ -1036,8 +1017,9 @@
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}}}
               "F" {"G" {}}}
-             (collection-locations (vals collections))))))
+             (collection-locations (vals collections)))))))
 
+(deftest move-nested-collections-test-5
   (testing "Test that we can move a Collection out of the Root Collection"
     ;;
     ;;    +-> B                               +-> B
@@ -1064,7 +1046,6 @@
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
              (collection-locations (vals collections) :archived false)))))
-
   (testing "Test that we can archive a Collection with no descendants!"
     ;;    +-> B                        +-> B
     ;;    |                            |
@@ -1077,7 +1058,6 @@
                    "C" {"D" {}
                         "F" {"G" {}}}}}
              (collection-locations (vals collections) :archived false)))))
-
   (testing "Test that we can archive a Collection *with* descendants"
     ;;    +-> B                        +-> B
     ;;    |                            |
@@ -1103,7 +1083,6 @@
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
              (collection-locations (vals collections) :archived false)))))
-
   (testing "Test that we can unarchive a Collection *with* descendants"
     ;;    +-> B                        +-> B
     ;;    |                            |
@@ -1128,7 +1107,6 @@
           (archive-collection! e)
           (is (true?
                (t2/select-one-fn :archived model :id (u/the-id object)))))))
-
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
       (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model :model/NativeQuerySnippet)
@@ -1149,7 +1127,6 @@
           (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id e)))
           (is (= false
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))
-
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
       (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model :model/NativeQuerySnippet)
@@ -1189,30 +1166,25 @@
             (mt/with-temp [:model/Collection collection {:name "{new}", :namespace collection-namespace}]
               (is (= #{}
                      (group->perms [collection] group)))))
-
           (perms/grant-collection-read-permissions! group root-collection)
           (mt/with-temp [:model/Collection collection {:name "{new}", :namespace collection-namespace}]
             (testing "copy read perms"
               (is (= #{"/collection/{new}/read/"
                        (perms/collection-read-path root-collection)}
                      (group->perms [collection] group))))
-
             (testing "revoking root collection perms shouldn't affect perms of existing children"
               (perms/revoke-collection-permissions! group root-collection)
               (is (= #{"/collection/{new}/read/"}
                      (group->perms [collection] group))))
-
             (testing "granting new root collection perms shouldn't affect perms of existing children"
               (perms/grant-collection-readwrite-permissions! group root-collection)
               (is (= #{(perms/collection-readwrite-path root-collection) "/collection/{new}/read/"}
                      (group->perms [collection] group)))))
-
           (testing "copy readwrite perms"
             (mt/with-temp [:model/Collection collection {:name "{new}", :namespace collection-namespace}]
               (is (= #{"/collection/{new}/"
                        (perms/collection-readwrite-path root-collection)}
                      (group->perms [collection] group)))))
-
           (testing (format "Perms for Root Collection in %s namespace should not affect Collections in %s namespace"
                            (pr-str collection-namespace) (pr-str other-namespace))
             (mt/with-temp [:model/Collection collection {:name "{new}", :namespace other-namespace}]
@@ -1229,7 +1201,6 @@
             (is (= #{"/collection/{parent}/"
                      "/collection/{child}/"}
                    (group->perms [parent child] group))))))
-
       (testing "parent has read permissions"
         (mt/with-temp [:model/Collection parent {:name "{parent}"}]
           (perms/grant-collection-read-permissions! group parent)
@@ -1237,32 +1208,27 @@
             (is (= #{"/collection/{parent}/read/"
                      "/collection/{child}/read/"}
                    (group->perms [parent child] group))))))
-
       (testing "parent has no permissions"
         (mt/with-temp [:model/Collection parent {:name "{parent}"}
                        :model/Collection child  {:name "{child}", :location (collection/children-location parent)}]
           (is (= #{}
                  (group->perms [parent child] group)))))
-
       (testing "parent given read permissions after the fact -- should not update existing children"
         (mt/with-temp [:model/Collection parent {:name "{parent}"}
                        :model/Collection child  {:name "{child}", :location (collection/children-location parent)}]
           (perms/grant-collection-read-permissions! group parent)
           (is (= #{"/collection/{parent}/read/"}
                  (group->perms [parent child] group)))))
-
       (testing "If we have Root Collection perms they shouldn't be copied for a Child"
         (mt/with-temp [:model/Collection parent {:name "{parent}"}]
           (perms/grant-collection-read-permissions! group collection/root-collection)
           (mt/with-temp [:model/Collection child {:name "{child}", :location (collection/children-location parent)}]
             (is (= #{"/collection/root/read/"}
                    (group->perms [parent child] group)))))))
-
     (testing (str "Make sure that when creating a new Collection as child of a Personal Collection, no group "
                   "permissions are created")
       (mt/with-temp [:model/Collection child {:name "{child}", :location (lucky-collection-children-location)}]
         (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))))
-
     (testing (str "Make sure that when creating a new Collection as grandchild of a Personal Collection, no group "
                   "permissions are created")
       (mt/with-temp [:model/Collection child      {:location (lucky-collection-children-location)}
@@ -1281,7 +1247,6 @@
         (is (thrown?
              Exception
              (t2/update! :model/Collection (u/the-id personal-collection) {:archived true}))))))
-
   (testing "Make sure we're not allowed to *move* a Personal Collection"
     (mt/with-temp [:model/User       my-cool-user          {}
                    :model/Collection some-other-collection {}]
@@ -1290,14 +1255,12 @@
              Exception
              (t2/update! :model/Collection (u/the-id personal-collection)
                          {:location (collection/location-path some-other-collection)}))))))
-
   (testing "Make sure we're not allowed to change the owner of a Personal Collection"
     (mt/with-temp [:model/User my-cool-user]
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
         (is (thrown?
              Exception
              (t2/update! :model/Collection (u/the-id personal-collection) {:personal_owner_id (mt/user->id :crowberto)}))))))
-
   (testing "We are not allowed to change the authority_level of a Personal Collection"
     (mt/with-temp [:model/User my-cool-user]
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
@@ -1305,7 +1268,6 @@
              Exception
              #"You are not allowed to change the authority level of a Personal Collection."
              (t2/update! :model/Collection (u/the-id personal-collection) {:authority_level "official"}))))))
-
   (testing "Does hydrating `:personal_collection_id` force creation of Personal Collections?"
     (mt/with-temp [:model/User temp-user]
       (is (malli= [:map [:personal_collection_id ms/PositiveInt]]
@@ -1328,7 +1290,6 @@
                                   (as-> (t2/select :model/Collection :id [:in id-or-ids] {:order-by [:id]}) collections
                                     (t2/hydrate collections :is_personal)
                                     (map :is_personal collections))))]
-
         (testing "simple hydration and batched hydration should return correctly"
           (is (= [true true false false]
                  (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
@@ -1376,7 +1337,6 @@
           (is (= #{"/collection/root/read/"
                    "/collection/A/read/"}
                  (group->perms [a] group)))))
-
       (testing (str "to a non-personal Collection, we should create perms entries that match the Root Collection's "
                     "entries for any groups that  have Root Collection perms.")
         ;; Personal Collection > A         Personal Collection
@@ -1388,7 +1348,6 @@
           (is (= #{"/collection/A/read/"
                    "/collection/B/read/"}
                  (group->perms [a b] group))))))
-
     (testing "from a descendant of a Personal Collection"
       (testing (str "to the Root Collection, we should create perms entries that match the Root Collection's entries "
                     "for any groups that have Root Collection perms.")
@@ -1401,7 +1360,6 @@
           (is (= #{"/collection/root/"
                    "/collection/B/"}
                  (group->perms [a b] group)))))
-
       (testing (str "to a non-personal Collection, we should create perms entries that match the Root Collection's "
                     "entries for any groups that have Root Collection perms.")
         ;; Personal Collection > A > B         Personal Collection > A
@@ -1412,8 +1370,9 @@
           (t2/update! :model/Collection (u/the-id b) {:location (collection/children-location c)})
           (is (= #{"/collection/B/"
                    "/collection/C/"}
-                 (group->perms [a b c] group)))))))
+                 (group->perms [a b c] group))))))))
 
+(deftest move-from-personal-to-impersonal-test-2
   (testing "Perms should apply recursively as well..."
     ;; Personal Collection > A > B         Personal Collection
     ;;                              ===>
@@ -1449,7 +1408,6 @@
           (t2/update! :model/Collection (u/the-id b) {:location (collection/children-location a)})
           (is (= #{}
                  (group->perms [a b] group))))))
-
     (testing "from a non-Personal Collection"
       (testing "to a Personal Collection, we should *delete* perms entries for it"
         ;; Personal Collection            Personal Collection > B
@@ -1461,7 +1419,6 @@
           (t2/update! :model/Collection (u/the-id b) {:location (lucky-collection-children-location)})
           (is (= #{"/collection/A/"}
                  (group->perms [a b] group)))))
-
       (testing "to a descendant of a Personal Collection, we should *delete* perms entries for it"
         ;; Personal Collection > A        Personal Collection > A > C
         ;;                          ===>
@@ -1472,7 +1429,6 @@
           (t2/update! :model/Collection (u/the-id c) {:location (collection/children-location a)})
           (is (= #{"/collection/B/"}
                  (group->perms [a b c] group)))))))
-
   (testing "Deleting perms should apply recursively as well..."
     ;; Personal Collection > A        Personal Collection > A > B > C
     ;;                          ===>
@@ -1518,7 +1474,6 @@
                          {:location  (format "/%d/" (:id parent-collection))
                           :name      "Child Collection"
                           :namespace child-namespace}))))
-
       (testing (format "You should not be able to move a Collection of namespace %s into a Collection of namespace %s"
                        (pr-str child-namespace) (pr-str parent-namespace))
         (mt/with-temp [:model/Collection collection-2 {:namespace child-namespace}]
@@ -1526,7 +1481,6 @@
                clojure.lang.ExceptionInfo
                #"Collection must be in the same namespace as its parent"
                (collection/move-collection! collection-2 (format "/%d/" (:id parent-collection)))))))
-
       (testing (format "You should not be able to change the namespace of a Collection from %s to %s"
                        (pr-str parent-namespace) (pr-str child-namespace))
         (is (thrown-with-msg?
@@ -1551,14 +1505,12 @@
       (mt/with-temp [:model/Collection {collection-id :id}]
         (is (= nil
                (collection/check-collection-namespace :model/Card collection-id)))))
-
     (testing "Should throw exception if namespace is not allowed"
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" or :shared-tenant-collection or :tenant-specific or :analytics namespace."
              (collection/check-collection-namespace :model/Card collection-id)))))
-
     (testing "Should throw exception if Collection does not exist"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -1756,8 +1708,8 @@
                    :model/Collection cr-collection    {}
                    :model/Card       cr-card          {:collection_id (:id cr-collection)}
                    :model/Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
-      (with-redefs [audit/default-audit-collection          (constantly audit-collection)
-                    audit/default-custom-reports-collection (constantly cr-collection)]
+      (mt/with-dynamic-fn-redefs [audit/default-audit-collection          (constantly audit-collection)
+                                  audit/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? audit-collection))
@@ -1804,11 +1756,23 @@
             (is (= initial-perms-count final-perms-count)
                 "No new permissions should be created for collections inside personal collections")))))))
 
+(deftest has-remote-synced-collection?-test
+  (testing "Returns false when no remote-synced collections exist"
+    (collection/clear-remote-synced-collection!)
+    (is (false? (collection/has-remote-synced-collection?))))
+  (testing "Returns true when at least one remote-synced collection exists"
+    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+      (is (true? (collection/has-remote-synced-collection?)))))
+  (testing "Returns false after clearing remote-synced collections"
+    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+      (collection/clear-remote-synced-collection!)
+      (is (false? (collection/has-remote-synced-collection?))))))
+
 (deftest non-remote-synced-dependencies-no-dependencies-test
   (testing "when model has no dependencies"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
                    :model/Card {card-id :id} {:name "Test Card" :collection_id remote-synced-coll-id}]
-       ;; Card with no actual dependencies will return empty
+      ;; Card with no actual dependencies will return empty
       (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id card-id}))]
         (is (empty? result)
             "Should return empty when card has no dependencies")))))
@@ -2022,36 +1986,28 @@
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
                    :model/Collection {other-remote-synced-id :id} {:name "Other Library" :is_remote_synced true}]
-
       (testing "when moving from non-remote-synced to remote-synced collection"
         (is (true? (collection/moving-into-remote-synced? regular-coll-id remote-synced-id))
             "Should return true when moving from regular to remote-synced collection"))
-
       (testing "when moving from remote-synced collection to remote-synced collection"
         (is (false? (collection/moving-into-remote-synced? remote-synced-id other-remote-synced-id))
             "Should return false when moving from remote-synced collection to remote-synced collection"))
-
       (testing "when moving from remote-synced collection to non-remote-synced collection"
         (is (false? (collection/moving-into-remote-synced? remote-synced-id regular-coll-id))
             "Should return false when moving from remote-synced collection to non-remote-synced collection"))
-
       (testing "when moving from non-remote-synced to non-remote-synced collection"
         (mt/with-temp [:model/Collection {other-regular-id :id} {:name "Other Regular"}]
           (is (false? (collection/moving-into-remote-synced? regular-coll-id other-regular-id))
               "Should return false when moving between non-remote-synced collections")))
-
       (testing "when old collection ID is nil"
         (is (true? (collection/moving-into-remote-synced? nil remote-synced-id))
             "Should return false when old collection ID is nil"))
-
       (testing "when new collection ID is nil"
         (is (false? (collection/moving-into-remote-synced? regular-coll-id nil))
             "Should return false when new collection ID is nil"))
-
       (testing "when both collection IDs are nil"
         (is (false? (collection/moving-into-remote-synced? nil nil))
             "Should return false when both collection IDs are nil"))
-
       (testing "when collection IDs don't exist"
         (is (false? (collection/moving-into-remote-synced? 99999 88888))
             "Should return false when collection IDs don't exist")))))
@@ -2063,27 +2019,25 @@
         ;; When no dependencies, the function returns the model
         (let [model (t2/instance :model/Card {:id card-id})]
           ;; Mock to return empty set (new behavior)
-          (with-redefs [collection/non-remote-synced-dependencies (constantly #{})]
+          (mt/with-dynamic-fn-redefs [collection/non-remote-synced-dependencies (constantly #{})]
             (is (= model (collection/check-non-remote-synced-dependencies model))
                 "Should return the model when no dependencies")))))
-
     (testing "when model has non-remote-synced dependencies"
       (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"}
                      :model/Card {dep-card-id :id} {:name "Dependency Card"}]
         ;; Mock to return a set of Card IDs (new behavior)
-        (with-redefs [collection/non-remote-synced-dependencies
-                      (constantly #{dep-card-id})]
+        (mt/with-dynamic-fn-redefs [collection/non-remote-synced-dependencies
+                                    (constantly #{dep-card-id})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Uses content that is not remote synced."
                (collection/check-non-remote-synced-dependencies (t2/instance :model/Card {:id card-id})))
               "Should throw exception when dependencies exist"))))
-
     (testing "exception contains correct data"
       (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"}
                      :model/Card {dep-card-id :id} {:name "Dependency Card"}]
         ;; Mock to return a set of Card IDs (new behavior)
-        (with-redefs [collection/non-remote-synced-dependencies (constantly #{dep-card-id})]
+        (mt/with-dynamic-fn-redefs [collection/non-remote-synced-dependencies (constantly #{dep-card-id})]
           (try
             (collection/check-non-remote-synced-dependencies (t2/instance :model/Card {:id card-id}))
             (catch Exception e
@@ -2106,19 +2060,16 @@
                    :model/Collection {grandchild-id :id} {:name "Grandchild Collection"
                                                           :location (format "/%d/%d/" coll-id child-id)
                                                           :type nil}]
-        ;; Move collection to parent with into-remote-synced? true
+      ;; Move collection to parent with into-remote-synced? true
       (collection/move-collection! coll (format "/%d/" parent-id) true)
-
-        ;; Check that the moved collection became remote-synced type
+      ;; Check that the moved collection became remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (true? (:is_remote_synced moved-coll))
             "Moved collection should have remote-synced type"))
-
-        ;; Check that child collections also became remote-synced type
+      ;; Check that child collections also became remote-synced type
       (let [moved-child (t2/select-one :model/Collection :id child-id)]
         (is (true? (:is_remote_synced moved-child))
             "Child collection should have remote-synced type"))
-
       (let [moved-grandchild (t2/select-one :model/Collection :id grandchild-id)]
         (is (true? (:is_remote_synced moved-grandchild))
             "Grandchild collection should have remote-synced type")))))
@@ -2132,14 +2083,12 @@
                    :model/Collection {child-id :id} {:name "Child Collection"
                                                      :location (format "/%d/" coll-id)
                                                      :type nil}]
-        ;; Move collection to parent with into-remote-synced? false
+      ;; Move collection to parent with into-remote-synced? false
       (collection/move-collection! coll (format "/%d/" parent-id) false)
-
-        ;; Check that collection types remain nil
+      ;; Check that collection types remain nil
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
             "Moved collection should not have remote-synced type"))
-
       (let [moved-child (t2/select-one :model/Collection :id child-id)]
         (is (false? (:is_remote_synced moved-child))
             "Child collection should not have remote-synced type")))))
@@ -2153,14 +2102,12 @@
                    :model/Collection {child-id :id} {:name "Child Collection"
                                                      :location (format "/%d/" coll-id)
                                                      :is_remote_synced true}]
-        ;; Move remote-synced collection with into-remote-synced? true
+      ;; Move remote-synced collection with into-remote-synced? true
       (collection/move-collection! coll (format "/%d/" parent-id))
-
-        ;; Check that collections remain remote-synced type
+      ;; Check that collections remain remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
             "Library collection should lose remote-synced type"))
-
       (let [moved-child (t2/select-one :model/Collection :id child-id)]
         (is (false? (:is_remote_synced moved-child))
             "Child of remote-synced collection lose remote-synced type")))))
@@ -2180,7 +2127,6 @@
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
       ;; This should succeed because the dependency (remote-synced-card) is in a remote-synced collection
       (collection/move-collection! coll (format "/%d/" parent-id) true)
-
       ;; Verify the collection was moved and became remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (true? (:is_remote_synced moved-coll))
@@ -2201,7 +2147,7 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id coll-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
-        ;; This should throw an exception because the dependency (non-remote-synced-card) is not in a remote-synced collection
+      ;; This should throw an exception because the dependency (non-remote-synced-card) is not in a remote-synced collection
       (let [ex (is (thrown-with-msg? Exception
                                      #"Uses content that is not remote synced."
                                      (collection/move-collection! coll (format "/%d/" parent-id) true))
@@ -2211,8 +2157,7 @@
             "Exception should have 400 status code")
         (is (contains? ex-data :non-remote-synced-models)
             "Exception should contain non-remote-synced models"))
-
-        ;; Verify the transaction was rolled back - collection should not be moved or changed
+      ;; Verify the transaction was rolled back - collection should not be moved or changed
       (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced unchanged-coll))
             "Collection type should remain unchanged after failed move")
@@ -2235,18 +2180,16 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id coll-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
-        ;; This should throw an exception after updates are made but before transaction commits
+      ;; This should throw an exception after updates are made but before transaction commits
       (is (thrown? Exception
                    (collection/move-collection! coll (format "/%d/" parent-id) true))
           "Should throw exception for non-remote-synced dependencies")
-
-        ;; Verify the transaction was completely rolled back
+      ;; Verify the transaction was completely rolled back
       (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced unchanged-coll))
             "Collection type should remain unchanged after transaction rollback")
         (is (= "/" (:location unchanged-coll))
             "Collection location should remain unchanged after transaction rollback"))
-
       (let [unchanged-child (t2/select-one :model/Collection :id child-id)]
         (is (false? (:is_remote_synced unchanged-child))
             "Child collection type should remain unchanged after transaction rollback")
@@ -2266,10 +2209,9 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id coll-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
-        ;; This should succeed because we're not converting to remote-synced
+      ;; This should succeed because we're not converting to remote-synced
       (collection/move-collection! coll (format "/%d/" parent-id))
-
-        ;; Verify the collection was moved but did not become remote-synced type
+      ;; Verify the collection was moved but did not become remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
             "Collection should not have remote-synced type")
@@ -2281,36 +2223,28 @@
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
                    :model/Collection {other-remote-synced-id :id} {:name "Other Library" :is_remote_synced true}]
-
       (testing "when moving from remote-synced collection to non-remote-synced collection"
         (is (true? (collection/moving-from-remote-synced? remote-synced-id regular-coll-id))
             "Should return true when moving from remote-synced collection to regular collection"))
-
       (testing "when moving from remote-synced collection to remote-synced collection"
         (is (false? (collection/moving-from-remote-synced? remote-synced-id other-remote-synced-id))
             "Should return false when moving from remote-synced collection to remote-synced collection"))
-
       (testing "when moving from non-remote-synced to remote-synced collection"
         (is (false? (collection/moving-from-remote-synced? regular-coll-id remote-synced-id))
             "Should return false when moving from regular to remote-synced collection"))
-
       (testing "when moving from non-remote-synced to non-remote-synced collection"
         (mt/with-temp [:model/Collection {other-regular-id :id} {:name "Other Regular"}]
           (is (false? (collection/moving-from-remote-synced? regular-coll-id other-regular-id))
               "Should return false when moving between non-remote-synced collections")))
-
       (testing "when old collection ID is nil"
         (is (false? (collection/moving-from-remote-synced? nil regular-coll-id))
             "Should return false when old collection ID is nil"))
-
       (testing "when moving from remote-synced collection to root (new collection ID is nil)"
         (is (true? (collection/moving-from-remote-synced? remote-synced-id nil))
             "Should return true when moving from remote-synced collection to root collection"))
-
       (testing "when both collection IDs are nil"
         (is (false? (collection/moving-from-remote-synced? nil nil))
             "Should return false when both collection IDs are nil"))
-
       (testing "when collection IDs don't exist"
         (is (false? (collection/moving-from-remote-synced? 99999 88888))
             "Should return false when collection IDs don't exist")))))
@@ -2537,7 +2471,6 @@
                             #"Used by remote synced content."
                             (collection/check-remote-synced-dependents (t2/instance :model/Card {:id base-card-id})))
           "Should throw exception when model has remote-synced dependents")
-
       (try
         (collection/check-remote-synced-dependents (t2/instance :model/Card {:id base-card-id}))
         (catch clojure.lang.ExceptionInfo e
@@ -2594,7 +2527,6 @@
                                                                   :dashboard_id regular-dashboard-id
                                                                   :row 0 :col 0
                                                                   :size_x 4 :size_y 4}]
-
       (testing "Returns only dashboards in remote-synced collections"
         (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (contains? (set dependents) {"Dashboard" remote-synced-dashboard-id "DashboardCard" rs-dashcard-id})
@@ -2615,7 +2547,6 @@
                                                            :dashboard_id nested-dashboard-id
                                                            :row 0 :col 0
                                                            :size_x 4 :size_y 4}]
-
       (testing "Returns dashboards from nested remote-synced collections"
         (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (= #{{"Collection" remote-synced-coll-id} {"Dashboard" nested-dashboard-id "DashboardCard" dashcard-id}}
@@ -2634,7 +2565,6 @@
                                            :dashboard_id archived-dashboard-id
                                            :row 0 :col 0
                                            :size_x 4 :size_y 4}]
-
       (testing "Does not return archived dashboards"
         (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (= {"Collection" remote-synced-coll-id} (first dependents))
@@ -2656,7 +2586,6 @@
                    :model/DashboardCardSeries {series-id :id} {:dashboardcard_id dashcard-id
                                                                :card_id remote-synced-card-id
                                                                :position 0}]
-
       (testing "Returns dashboards that reference cards through series"
         (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (= #{{"Collection" remote-synced-coll-id} {"Dashboard" remote-synced-dashboard-id "DashboardCard" dashcard-id "DashboardCardSeries" series-id}}
@@ -2677,7 +2606,6 @@
                                            :dashboard_id remote-synced-dashboard-id
                                            :row 0 :col 0
                                            :size_x 4 :size_y 4}]
-
       (testing "Returns both card and dashboard dependencies"
         (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id source-card-id}))
               dependent-models (mapcat keys dependents)]
@@ -2703,7 +2631,6 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id remote-synced-parent-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
-
       (testing "Throws exception when trying to move collection with remote-synced dependents"
         (let [ex (is (thrown? Exception
                               (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
@@ -2715,7 +2642,6 @@
                 "Exception should have 400 status code")
             (is (contains? ex-data :remote-synced-models)
                 "Exception should contain remote-synced dependents"))))
-
       (testing "Collection remains unchanged after failed move"
         (let [unchanged-coll (t2/select-one :model/Collection :id child-remote-synced-id)]
           (is (true? (:is_remote_synced unchanged-coll))
@@ -2743,7 +2669,6 @@
                                            :dashboard_id remote-synced-dashboard-id
                                            :row 0 :col 0
                                            :size_x 4 :size_y 4}]
-
       (testing "Throws exception when trying to move collection with dashboard dependents"
         (let [ex (is (thrown? Exception
                               (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
@@ -2755,7 +2680,6 @@
                 "Exception should have 400 status code")
             (is (contains? ex-data :remote-synced-models)
                 "Exception should contain remote-synced dependents"))))
-
       (testing "Collection remains unchanged after failed move"
         (let [unchanged-coll (t2/select-one :model/Collection :id child-remote-synced-id)]
           (is (true? (:is_remote_synced unchanged-coll))
@@ -2777,10 +2701,8 @@
                    :model/Card _ {:name "Remote-Synced Card"
                                   :collection_id child-remote-synced-id
                                   :dataset_query (mt/native-query {:query "SELECT 1"})}]
-
       (testing "Successfully moves collection when no dependents exist"
         (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id))
-
         (let [moved-coll (t2/select-one :model/Collection :id child-remote-synced-id)]
           (is (false? (:is_remote_synced moved-coll))
               "Collection type should be cleared when moved out of remote-synced collection")
@@ -2856,7 +2778,6 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id remote-synced-parent-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
-
       (testing "Throws exception when trying to move collection with nested dependents"
         (let [ex (is (thrown? Exception
                               (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
@@ -2868,14 +2789,12 @@
                 "Exception should have 400 status code")
             (is (contains? ex-data :remote-synced-models)
                 "Exception should contain remote-synced dependents"))))
-
       (testing "Collection and nested collections remain unchanged after failed move"
         (let [unchanged-coll (t2/select-one :model/Collection :id child-remote-synced-id)]
           (is (true? (:is_remote_synced unchanged-coll))
               "Collection type should remain remote-synced collection after failed move")
           (is (= (format "/%d/" remote-synced-parent-id) (:location unchanged-coll))
               "Collection location should remain unchanged after failed move"))
-
         (let [unchanged-grandchild (t2/select-one :model/Collection :id grandchild-remote-synced-id)]
           (is (true? (:is_remote_synced unchanged-grandchild))
               "Grandchild collection type should remain remote-synced collection after failed move")
@@ -2946,23 +2865,18 @@
                    :model/Collection {child-of-a :id} {:name "Child of A"
                                                        :is_remote_synced true
                                                        :location (format "/%d/" remote-synced-root-a)}]
-
       (testing "when moving from non-remote-synced to remote-synced collection"
         (is (true? (collection/moving-into-remote-synced? regular-coll-id remote-synced-root-a))
             "Should return true when moving from regular to remote-synced collection"))
-
       (testing "when moving between different remote-synced root collections"
         (is (false? (collection/moving-into-remote-synced? remote-synced-root-a remote-synced-root-b))
             "Should return false when moving between different remote-synced root collections"))
-
       (testing "when moving from remote-synced child to different remote-synced root"
         (is (false? (collection/moving-into-remote-synced? child-of-a remote-synced-root-b))
             "Should return false when moving from remote-synced child to different remote-synced root"))
-
       (testing "when moving within same remote-synced hierarchy"
         (is (false? (collection/moving-into-remote-synced? child-of-a remote-synced-root-a))
             "Should return false when moving within same remote-synced hierarchy"))
-
       (testing "when moving from root to remote-synced collection"
         (is (true? (collection/moving-into-remote-synced? nil remote-synced-root-a))
             "Should return true when moving from root to remote-synced collection")))))
@@ -2975,23 +2889,18 @@
                    :model/Collection {child-of-a :id} {:name "Child of A"
                                                        :is_remote_synced true
                                                        :location (format "/%d/" remote-synced-root-a)}]
-
       (testing "when moving from remote-synced collection to non-remote-synced collection"
         (is (true? (collection/moving-from-remote-synced? remote-synced-root-a regular-coll-id))
             "Should return true when moving from remote-synced collection to regular collection"))
-
       (testing "when moving between different remote-synced root collections"
         (is (false? (collection/moving-from-remote-synced? remote-synced-root-a remote-synced-root-b))
             "Should return false when moving between different remote-synced root collections"))
-
       (testing "when moving from remote-synced child to different remote-synced root"
         (is (false? (collection/moving-from-remote-synced? child-of-a remote-synced-root-b))
             "Should return false when moving from remote-synced child to different remote-synced root"))
-
       (testing "when moving from remote-synced collection to root"
         (is (true? (collection/moving-from-remote-synced? remote-synced-root-a nil))
             "Should return true when moving from remote-synced collection to root"))
-
       (testing "when moving within same remote-synced hierarchy"
         (is (false? (collection/moving-from-remote-synced? child-of-a remote-synced-root-a))
             "Should return false when moving within same remote-synced hierarchy")))))
@@ -3006,19 +2915,16 @@
         (testing "regular collection is included"
           (is (some #(= (:id regular-collection) (:id %))
                     (t2/select :model/Collection :id (:id regular-collection)))))
-
         (testing "trash collection would be excluded by filter"
           (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
                 query (t2/select :model/Collection
                                  {:where [:and [:= :id (:id trash-collection)] hsql-clause]})]
             (is (empty? query))))
-
         (testing "analytics collection would be excluded by filter"
           (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
                 query (t2/select :model/Collection
                                  {:where [:and [:= :id (:id analytics-collection)] hsql-clause]})]
             (is (empty? query))))
-
         (testing "sample collection would be excluded by filter"
           (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
                 query (t2/select :model/Collection
@@ -3118,7 +3024,6 @@
                    :model/Card {dep-card-id :id} {:name "Dependent Card in Parent"
                                                   :collection_id remote-synced-parent-id
                                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-
       (testing "Throws exception when parent has items depending on child collection items"
         (let [ex (is (thrown? Exception
                               (mt/with-current-user (mt/user->id :crowberto)
@@ -3131,7 +3036,6 @@
                 "Exception should have 400 status code")
             (is (= #{{"Card" dep-card-id}} (set (ex-data :remote-synced-models)))
                 "Exception should contain remote-synced dependents"))))
-
       (testing "Collection is NOT archived when exception is thrown"
         (let [child-after (t2/select-one :model/Collection :id child-id)]
           (is (false? (:archived child-after))
@@ -3151,11 +3055,9 @@
                    :model/Card _ {:name "Independent Card in Parent"
                                   :collection_id remote-synced-parent-id
                                   :dataset_query (mt/native-query {:query "SELECT 2"})}]
-
       (testing "Successfully archives child collection when parent has no dependents on it"
         (mt/with-current-user (mt/user->id :crowberto)
           (collection/archive-collection! child-coll)))
-
       (testing "Child collection is archived"
         (let [archived-child (t2/select-one :model/Collection :id child-id)]
           (is (true? (:archived archived-child))
@@ -3172,11 +3074,9 @@
                    :model/Card _ {:name "Dependent Card in Same Collection"
                                   :collection_id remote-synced-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-
       (testing "Successfully archives root collection (internal dependencies don't matter)"
         (mt/with-current-user (mt/user->id :crowberto)
           (collection/archive-collection! remote-synced-coll)))
-
       (testing "Collection is archived"
         (let [archived-coll (t2/select-one :model/Collection :id remote-synced-id)]
           (is (true? (:archived archived-coll))
@@ -3198,11 +3098,9 @@
                    :model/Card _ {:name "Dependent Card in Parent"
                                   :collection_id regular-parent-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-
       (testing "Successfully archives regular collection even with parent dependents"
         (mt/with-current-user (mt/user->id :crowberto)
           (collection/archive-collection! regular-child-coll)))
-
       (testing "Collection is archived"
         (let [archived-coll (t2/select-one :model/Collection :id regular-child-id)]
           (is (true? (:archived archived-coll))
@@ -3225,7 +3123,6 @@
                                            :dashboard_id parent-dashboard-id
                                            :row 0 :col 0
                                            :size_x 4 :size_y 4}]
-
       (testing "Throws exception when parent dashboard depends on child collection card"
         (let [ex (is (thrown? Exception
                               (mt/with-current-user (mt/user->id :crowberto)
@@ -3233,7 +3130,6 @@
                      "Should throw exception when parent dashboard depends on child items")]
           (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")))
-
       (testing "Collection is NOT archived when exception is thrown"
         (let [child-after (t2/select-one :model/Collection :id child-id)]
           (is (false? (:archived child-after))
@@ -3254,11 +3150,9 @@
                                   :collection_id remote-synced-parent-id
                                   :archived true
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-
       (testing "Successfully archives when parent dependents are already archived"
         (mt/with-current-user (mt/user->id :crowberto)
           (collection/archive-collection! child-coll)))
-
       (testing "Child collection is archived"
         (let [archived-child (t2/select-one :model/Collection :id child-id)]
           (is (true? (:archived archived-child))
@@ -3289,11 +3183,8 @@
                                                                             non-archived-card]))))))))
 
 (deftest create-library
-  (mt/with-discard-model-updates! [:model/Collection]
+  (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
-      (t2/update! :model/Collection :type collection/library-collection-type {:type nil})
-      (t2/update! :model/Collection :type collection/library-data-collection-type {:type nil})
-      (t2/update! :model/Collection :type collection/library-metrics-collection-type {:type nil})
       (let [library (collection/create-library-collection!)]
         (is (= "Library" (:name library)))
         (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
@@ -3340,7 +3231,7 @@
 (deftest serdes-descendants-includes-published-tables-test
   (testing "Collection descendants includes published tables"
     (mt/with-temp [:model/Database   db              {:name "Test DB"}
-                   :model/Collection coll            {:name "Test Collection"}
+                   :model/Collection coll            {:name "Test Collection", :type "library-data"}
                    :model/Table      pub-table       {:name          "Published Table"
                                                       :db_id         (:id db)
                                                       :is_published  true
@@ -3363,7 +3254,7 @@
 (deftest serdes-descendants-skip-archived-tables-test
   (testing "Collection descendants with skip-archived handles published tables"
     (mt/with-temp [:model/Database   db             {:name "Test DB"}
-                   :model/Collection coll           {:name "Test Collection"}
+                   :model/Collection coll           {:name "Test Collection", :type "library-data"}
                    :model/Table      active-table   {:name          "Active Published Table"
                                                      :db_id         (:id db)
                                                      :is_published  true

@@ -7,7 +7,7 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -84,23 +84,16 @@ const DefaultCollectionEmptyState = ({
 };
 
 function getDefaultEmptyStateMessages(collection: Collection | undefined) {
-  switch (getLibraryCollectionType(collection?.type)) {
-    case "data":
-      return {
-        title: t`No published tables yet`,
-        description: t`Publish tables in the Library to see them here.`,
-      };
-    case "metrics":
-      return {
-        title: t`No metrics yet`,
-        description: t`Put metrics in the Library to see them here.`,
-      };
-    default:
-      return {
-        title: t`This collection is empty`,
-        description: t`Use collections to organize questions, dashboards, models, and other collections.`,
-      };
+  if (PLUGIN_LIBRARY.isLibrarySubCollectionType(collection?.type)) {
+    return PLUGIN_LIBRARY.getLibraryCollectionEmptyStateMessages(
+      collection.type,
+    );
   }
+
+  return {
+    title: t`This collection is empty`,
+    description: t`Use collections to organize questions, dashboards, models, and other collections.`,
+  };
 }
 
 export const CollectionEmptyIcon = (): JSX.Element => {

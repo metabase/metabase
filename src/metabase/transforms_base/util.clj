@@ -30,7 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.models.table :as table]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -123,11 +123,20 @@
       default-schema)))
 
 (defn qualified-table-name
-  "Return the name of the target table of a transform as a possibly qualified symbol."
+  "Return the transform target as a `:schema/name` (or bare `:name`) HoneySQL
+   identifier. Consumers downstream rely on `name`/`namespace` to extract the
+   parts (e.g. `metabase.driver.sql/run-transform! [:sql :table]`), so this stays
+   2-segment.
+
+   The `:db` slot — populated for engines whose `qualified-name-components`
+   includes `:db` (Snowflake / SQL Server / BigQuery / MySQL) — is **not** encoded
+   here. It travels separately on `transform-details` as `:output-db` and is
+   prepended at the SQL emission site. See
+   [[metabase.driver.sql.query-processor/compile-transform :sql]]."
   [_driver {:keys [schema name]}]
-  (if schema
-    (keyword schema name)
-    (keyword name)))
+  (if (str/blank? schema)
+    (keyword name)
+    (keyword schema name)))
 
 (defn temp-table-name
   "Generate a temporary table name with current timestamp in milliseconds.
@@ -163,17 +172,41 @@
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
 
+(defn full-incremental-run?
+  "True when an incremental transform should drop-and-recreate the target rather than append.
+  Fires whenever `last_checkpoint_value` is nil — covers the literal first run, and any run after the
+  `:model/Transform` before-update hook clears the watermark on a `checkpoint-filter-field-id`
+  change. Stays true across failed attempts since the predicate only inspects
+  `:last_checkpoint_value`."
+  [{:keys [target last_checkpoint_value]}]
+  (and (= :table-incremental (keyword (:type target)))
+       (nil? last_checkpoint_value)))
+
 (defn- encode-checkpoint-value [v]
   (if (number? v)
     (str v)
     (u.date/format v)))
 
+(defn checkpoint-span-attrs
+  "Build a map of OTel span attributes from `source-range-params`. Returns an empty
+  map when params are nil. Values are encoded as strings (the same encoding used
+  for persistence) so spans render consistently regardless of base type."
+  [source-range-params]
+  (let [{:keys [checkpoint-filter-field-id]
+         {lo-value :value} :lo
+         {hi-value :value} :hi} source-range-params]
+    (cond-> {}
+      checkpoint-filter-field-id (assoc :transform/checkpoint-field-id checkpoint-filter-field-id)
+      (some? lo-value)           (assoc :transform/checkpoint-lo (encode-checkpoint-value lo-value))
+      (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
+
 (defn save-watermark!
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id source-range-params]
-  (t2/update! :model/Transform
-              transform-id
-              {:last_checkpoint_value (some-> source-range-params :hi :value encode-checkpoint-value)}))
+  (let [hi-value (:value (:hi source-range-params))]
+    (t2/update! :model/Transform
+                transform-id
+                {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
 
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -363,23 +396,43 @@
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
+(defn- canonicalize-target
+  "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
+   to-side of an active TableRemapping for `db-id`), return `target` with
+   `:schema` and `:name` swapped back to canonical. Else return `target`
+   unchanged. The transform pipeline mutates `:target.schema` to the workspace
+   output schema in `metabase.transforms.execute/resolve-target` so writes
+   land in isolation; `:model/Table` rows must stay at the canonical schema,
+   so we invert here.
+
+   `canonical-schema+name` returns a `{:db :schema :name}` map with slot
+   values already normalized to `:model/Table` row vocabulary (nil for
+   engines that don't emit a slot, string otherwise) — directly usable as a
+   Table-row predicate without further translation."
+  [db-id target]
+  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
+    (if-let [{:keys [db schema name]} (ws.table-remapping/canonical-schema+name db-id lookup-spec)]
+      (assoc target :db db :schema schema :name name)
+      target)))
+
 (defn- sync-table!
   ([database target] (sync-table! database target nil))
   ([database target {:keys [create?]}]
-   (when-let [table (or (target-table (:id database) target)
-                        (when create?
-                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-     ;; If the table has nil schema, check if the physical table actually lives under
-     ;; the driver's default schema. If so, fix the Table record before syncing.
-     (let [table (if (nil? (:schema table))
-                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                     (do (t2/update! :model/Table (:id table) {:schema actual-schema})
-                         (-> (t2/select-one :model/Table (:id table))
-                             (t2/hydrate :db)))
-                     table)
-                   table)]
-       (sync/sync-table! table)
-       table))))
+   (let [target (canonicalize-target (:id database) target)]
+     (when-let [table (or (target-table (:id database) target)
+                          (when create?
+                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+       ;; If the table has nil schema, check if the physical table actually lives under
+       ;; the driver's default schema. If so, fix the Table record before syncing.
+       (let [table (if (nil? (:schema table))
+                     (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                       (do (t2/update! :model/Table (:id table) {:schema actual-schema})
+                           (-> (t2/select-one :model/Table (:id table))
+                               (t2/hydrate :db)))
+                       table)
+                     table)]
+         (sync/sync-table! table)
+         table)))))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
@@ -588,12 +641,10 @@
               (and (:table_id entry) (not (:table entry)))
               (merge (int-id->metadata (:table_id entry)) entry)
 
-              ;; Has table metadata but no table_id — look it up, upsert transform target if not found
+              ;; Has table metadata but no table_id — look it up. Leaves :table_id nil if the
+              ;; referenced table doesn't exist yet; resolved later at execute time.
               (missing-table-id? entry)
-              (assoc entry :table_id (or (ref-lookup (source-table-ref->key entry))
-                                         (when (and (:database_id entry) (:table entry))
-                                           (table/upsert-transform-target-table!
-                                            (:database_id entry) (:schema entry) (:table entry)))))
+              (assoc entry :table_id (ref-lookup (source-table-ref->key entry)))
 
               ;; Already fully populated
               :else entry))
@@ -664,7 +715,7 @@
                       {:temporal t})))))
 
 (defn utc-timestamp-string
-  "Convert the timestamp t to a string encoding the it in the system timezone."
+  "Convert the timestamp `t` to a UTC ISO-8601 string."
   [t]
   (-> t ->instant str))
 
@@ -707,16 +758,6 @@
     identity))
 
 ;;; ------------------------------------------------- Misc -------------------------------------------------
-
-(defn upsert-target-table!
-  "Upsert a provisional table entry for a transform's target, creating it if it doesn't exist.
-  Returns the table ID.
-
-  Thin wrapper around [[metabase.warehouse-schema.models.table/upsert-transform-target-table!]] —
-  exists because the `models` module cannot depend on `warehouse-schema` directly, but can
-  depend on `transforms-base` (which is allowed to use `warehouse-schema`)."
-  [db-id schema table-name]
-  (table/upsert-transform-target-table! db-id schema table-name))
 
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern."

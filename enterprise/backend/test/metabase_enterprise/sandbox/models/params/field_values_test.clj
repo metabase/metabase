@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.models.params.field-values-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.models.params.field-values-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -32,12 +33,10 @@
         (is (= [4 5] (:values fv)))
         (is (= ["id_4" "id_5"] (:human_readable_values fv)))
         (is (some? (:hash_key fv)))
-
         (testing "call second time shouldn't create a new FieldValues"
           (params.field-values/get-or-create-field-values!
            (t2/select-one :model/Field :id (mt/id :categories :id)))
           (is (= 1 (t2/count :model/FieldValues :field_id categories-id :type :advanced))))
-
         (testing "after changing the question, should create new FieldValues"
           (let [new-query (mt/mbql-query categories
                             {:filter [:and [:> $id 1] [:< $id 4]]})]
@@ -65,7 +64,6 @@
               field (t2/select-one :model/Field (mt/id :categories :name))]
           (mt/with-temp [:model/User {user-id-1 :id} {}
                          :model/User {user-id-2 :id} {}]
-
             (testing "2 users with the same attribute"
               (testing "should have the same hash for the same field"
                 (is (= (hash-input-for-user-id user-id-1 {"State" "CA"} field)
@@ -74,15 +72,12 @@
                 (is (= (hash-input-for-user-id user-id-1 {"State" "CA"
                                                           "City"  "San Jose"} field)
                        (hash-input-for-user-id user-id-2 {"State" "CA"} field)))))
-
             (testing "2 users with the same attribute should have the different hash for different "
               (is (= (hash-input-for-user-id user-id-1 {"State" "CA"} field)
                      (hash-input-for-user-id user-id-2 {"State" "CA"} field))))
-
             (testing "same users but the login_attributes change should have different hash"
               (is (not= (hash-input-for-user-id user-id-1 {"State" "CA"} field)
                         (hash-input-for-user-id user-id-1 {"State" "NY"} field))))
-
             (testing "2 users with different login_attributes should have different hash"
               (is (not= (hash-input-for-user-id user-id-1 {"State" "CA"} field)
                         (hash-input-for-user-id user-id-2 {"State" "NY"} field)))
@@ -113,15 +108,12 @@
                                      :group_id group-id
                                      :table_id (mt/id :categories)
                                      :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
-
               (testing "with same attributes, the hash should be the same field"
                 (is (= (hash-input-for-user-id-with-attributes user-id-1 {"State" "CA"} field)
                        (hash-input-for-user-id-with-attributes user-id-2 {"State" "CA"} field))))
-
               (testing "with different attributes, the hash should be the different"
                 (is (not= (hash-input-for-user-id-with-attributes user-id-1 {"State" "CA"} field)
                           (hash-input-for-user-id-with-attributes user-id-2 {"State" "NY"} field))))))
-
           (testing "gtap with native question"
             (mt/with-temp
               [:model/Card                       {card-id :id} {:query_type :native
@@ -147,12 +139,11 @@
               (testing "same users but if the login_attributes change, they should have different hash (#24966)"
                 (is (not= (hash-input-for-user-id-with-attributes user-id {"State" "CA"} field)
                           (hash-input-for-user-id-with-attributes user-id {"State" "NY"} field))))))
-
           (testing "2 users in different groups but gtaps use the same card"
             (mt/with-temp
               [:model/Card                       {card-id :id} {}
 
-                 ;; user 1 in group 1
+               ;; user 1 in group 1
                :model/User                       {user-id-1 :id} {}
                :model/PermissionsGroup           {group-id-1 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-1
@@ -161,7 +152,7 @@
                                      :group_id group-id-1
                                      :table_id (mt/id :categories)
                                      :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
-                 ;; user 2 in group 2 with gtap using the same card
+               ;; user 2 in group 2 with gtap using the same card
                :model/User                       {user-id-2 :id} {}
                :model/PermissionsGroup           {group-id-2 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-2
@@ -173,11 +164,9 @@
               (testing "with the same attributes, the hash should be the same"
                 (is (= (hash-input-for-user-id-with-attributes user-id-1 {"State" "CA"} field)
                        (hash-input-for-user-id-with-attributes user-id-2 {"State" "CA"} field))))
-
               (testing "with different attributes, the hash should be the different"
                 (is (not= (hash-input-for-user-id-with-attributes user-id-1 {"State" "CA"} field)
                           (hash-input-for-user-id-with-attributes user-id-2 {"State" "NY"} field))))))
-
           (testing "2 users in different groups and gtaps use 2 different cards"
             (mt/with-temp
               [:model/Card                       {card-id-1 :id} {}
@@ -189,7 +178,7 @@
                                      :group_id group-id-1
                                      :table_id (mt/id :categories)
                                      :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
-                 ;; user 2 in group 2 with gtap using card 2
+               ;; user 2 in group 2 with gtap using card 2
                :model/Card                       {card-id-2 :id} {}
                :model/User                       {user-id-2 :id} {}
                :model/PermissionsGroup           {group-id-2 :id} {}

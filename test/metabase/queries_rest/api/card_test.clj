@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.queries-rest.api.card-test
   "Tests for /api/card endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries-rest.api.card-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.queries-rest.api.card-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -36,11 +38,11 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
+   [metabase.query-processor.util :as qp.util]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -313,22 +315,21 @@
         (is (= {:embedding_client client-string, :embedding_sdk_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_sdk_version] :model "card" :model_id (u/the-id card-1))))))))
 
-(deftest embedding-sdk-info-saves-query-execution
+(deftest embedding-sdk-info-saves-query-execution-test
   (testing "GET /api/card with embedding headers set"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"
-                                       ;; This query is just to make sure the card actually runs a query, otherwise
-                                       ;; there won't be a QueryExecution record to check!
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
-      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
-                            {:request-options {:headers {"x-metabase-client" "client-B"
-                                                         "x-metabase-client-version" "2"}}})
-      (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
-              ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (tu/poll-until 2000
-                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
-                                            :card_id (u/the-id card-1))))))))
+    (binding [qp.util/*execute-async?* false]
+      (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                         ;; This query is just to make sure the card actually runs a query, otherwise
+                                         ;; there won't be a QueryExecution record to check!
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
+        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
+                              {:request-options {:headers {"x-metabase-client" "client-B"
+                                                           "x-metabase-client-version" "2"}}})
+        (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
+                (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
+                               :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
@@ -483,7 +484,6 @@
                                 :collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))}]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "card/%d/series" card-id))))
-
     (is (seq? (mt/user-http-request :crowberto :get 200 (format "card/%d/series" card-id))))))
 
 (deftest get-series-for-card-type-check-test
@@ -493,7 +493,6 @@
                                   :display "table"}]
       (is (= "Card with type table is not compatible to have series"
              (:message (mt/user-http-request :crowberto :get 400 (format "card/%d/series" card-id)))))))
-
   (testing "404 if the card does not exsits"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get 404 (format "card/%d/series" Integer/MAX_VALUE))))))
@@ -571,7 +570,6 @@
         (is (true? (every? #(str/includes? % "Toad")
                            (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "toad")
                                 (map :name)))))
-
         (testing "exclude ids works"
           (testing "with single id"
             (is (true?
@@ -587,19 +585,16 @@
                   (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
                                              :query "luigi" :exclude_ids (:id card7) :exclude_ids (:id card8))
                        (map :id)))))))
-
         (testing "with limit and sort by id descending"
           (is (= ["Luigi 8" "Luigi 7" "Luigi 6" "Luigi 5"]
                  (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
                                             :query "luigi" :limit 4)
                       (map :name))))
-
           (testing "and paging works too"
             (is (= ["Luigi 3" "Luigi 2" "Luigi 1"]
                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
                                               :query "luigi" :limit 10 :last_cursor (:id card4))
                         (map :name)))))
-
           (testing "And returning empty list if reaches there are nothing..."
             (is (= []
                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
@@ -781,6 +776,27 @@
                                                               (update :id boolean)
                                                               (update :timestamp boolean)))))))))))))))))
 
+(deftest create-a-card-with-result-metadata-updates-recents-test
+  (testing "POST /api/card adds user-created questions to recents (UXW-3171)"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-model-cleanup [:model/Card]
+        (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta))
+        (let [card    (assoc (card-with-name-and-query) :result_metadata [])
+              card-id (:id (mt/user-http-request :rasta :post 200 "card" card))]
+          (is (= {:user_id  (mt/user->id :rasta)
+                  :model    "card"
+                  :model_id card-id}
+                 (t2/select-one [:model/RecentViews :user_id :model :model_id]
+                                :user_id  (mt/user->id :rasta)
+                                :model_id card-id
+                                :model    "card"))))
+        (testing "Cards saved without result metadata are not treated as viewed"
+          (let [card-id (:id (mt/user-http-request :rasta :post 200 "card" (card-with-name-and-query)))]
+            (is (nil? (t2/select-one :model/RecentViews
+                                     :user_id  (mt/user->id :rasta)
+                                     :model_id card-id
+                                     :model    "card")))))))))
+
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
     (is (=? {:errors {:name                   "value must be a non-blank string."
@@ -902,7 +918,7 @@
 (deftest create-card-disallow-setting-embedding-type-test
   (testing "POST /api/card"
     (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-                    ;; should be ignored regardless of the value of the `embedding-type` Setting.
+      ;; should be ignored regardless of the value of the `embedding-type` Setting.
       (doseq [embedding-type [true false]]
         (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
           (mt/with-model-cleanup [:model/Card]
@@ -1046,11 +1062,11 @@
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
     (testing "Updating other parts but not query does not update the metadata"
-      (let [orig   @#'card.metadata/legacy-result-metadata-future
+      (let [orig   (mt/original-fn #'card.metadata/legacy-result-metadata-future)
             called (atom 0)]
-        (with-redefs [card.metadata/legacy-result-metadata-future (fn [q]
-                                                                    (swap! called inc)
-                                                                    (orig q))]
+        (mt/with-dynamic-fn-redefs [card.metadata/legacy-result-metadata-future (fn [q]
+                                                                                  (swap! called inc)
+                                                                                  (orig q))]
           (mt/with-model-cleanup [:model/Card]
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
@@ -1371,7 +1387,6 @@
                  :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
             "initial result_metadata is inferred correctly")
-
         (is (=? {:type            "model"
                  :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
@@ -1394,7 +1409,6 @@
                  :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
             "initial result_metadata is inferred correctly")
-
         (is (=? {:type            "model"
                  :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
@@ -1466,7 +1480,6 @@
         (testing "You have to have Collection perms to fetch a Card"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "card/" (u/the-id card))))))
-
         (testing "Should be able to fetch the Card if you have Collection read perms"
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (is (=? (merge
@@ -1639,7 +1652,6 @@
                       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                             {:parameters [{:id   "random-id"
                                                            :type "number"}]})))))
-
     (mt/with-temp [:model/Card card {:parameters [{:id   "random-id"
                                                    :type "number"}]}]
       (testing "nil parameters will no-op"
@@ -1684,13 +1696,11 @@
           (is (= "Embedding is not enabled."
                  (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}})))))
-
       (mt/with-temporary-setting-values [enable-embedding-static true]
         (testing "Non-admin should not be allowed to update Card's embedding parms"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}}))))
-
         (testing "Admin should be able to update Card's embedding params"
           (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                 {:embedding_params {:abc "enabled"}})
@@ -1769,7 +1779,6 @@
     (is (=? {:display "table"}
             (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
                                   {:type :model}))))
-
   (mt/with-temp [:model/Card card {:display :line}]
     (is (=? {:display "table"}
             (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
@@ -2083,7 +2092,6 @@
     :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
     :f                 (fn [card]
                          (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))})
-
   (test-alert-deletion!
    {:message              "Archiving a Card should trigger Alert deletion with email links when disable_links: false"
     :deleted?             true
@@ -2092,7 +2100,6 @@
     :should-re-not-match? false
     :f                    (fn [card]
                             (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))})
-
   (test-alert-deletion!
    {:message              "Archiving a Card should trigger Alert deletion without email links when disable_links: true"
     :deleted?             true
@@ -2110,7 +2117,6 @@
     :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
     :f                 (fn [card]
                          (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))})
-
   (test-alert-deletion!
    {:message              "Validate changing display type triggers alert deletion without email links when disable_links: true"
     :card                 {:display :table}
@@ -2633,22 +2639,21 @@
                                                    :middleware {:add-default-userland-constraints? true
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
-      (let [orig qp.card/process-query-for-card]
-        (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
-                                                       (apply orig card-id export-format
-                                                              :make-run (constantly (fn [{:keys [constraints]} _]
-                                                                                      {:constraints constraints}))
-                                                              options))]
+      (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
+                                                                     (apply orig card-id export-format
+                                                                            :make-run (constantly (fn [{:keys [constraints]} _]
+                                                                                                    {:constraints constraints}))
+                                                                            options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
-          (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+          (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
             (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                           "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
                           "gets saved from one that had it -- see #9831)")
               (is (= {:constraints nil}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
-
             (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
                           "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
@@ -2743,12 +2748,10 @@
             (testing "requires write permissions for the new Collection"
               (is (= "You don't have permissions to do that."
                      (change-collection! 403))))
-
             (testing "requires write permissions for the current Collection"
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
               (is (= "You don't have permissions to do that."
                      (change-collection! 403))))
-
             (testing "Should be able to change it once you have perms for both collections"
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
               (change-collection! 200)
@@ -2779,7 +2782,6 @@
                          {:collection_id (when collection-or-collection-id-or-nil
                                            (u/the-id collection-or-collection-id-or-nil))
                           :card_ids      (map u/the-id cards-or-card-ids)})
-
    :collections
    (collection-names cards-or-card-ids)))
 
@@ -2857,7 +2859,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-      ;; testing that we aren't just adding a nil moderation each time we update a card
+        ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -2993,19 +2995,16 @@
         (mt/with-temp [:model/Card card]
           (is (= "Public sharing is not enabled."
                  (mt/user-http-request :crowberto :post 400 (format "card/%d/public_link" (u/the-id card))))))))
-
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Have to be an admin to share a Card"
         (mt/with-temp [:model/Card card]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 (format "card/%d/public_link" (u/the-id card)))))))
-
       (testing "Cannot share an archived Card"
         (mt/with-temp [:model/Card card {:archived true}]
           (is (=? {:message    "The object has been archived."
                    :error_code "archived"}
                   (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" (u/the-id card)))))))
-
       (testing "Cannot share a Card that doesn't exist"
         (is (= "Not found."
                (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
@@ -3027,7 +3026,6 @@
         (testing "requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card))))))
-
         (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (u/the-id card)))
         (is (= false
                (t2/exists? :model/Card :id (u/the-id card), :public_uuid (:public_uuid card))))))))
@@ -3039,12 +3037,10 @@
         (mt/with-temp [:model/Card card]
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" (u/the-id card)))))))
-
       (testing "You have to be an admin to unshare a Card"
         (mt/with-temp [:model/Card card (shared-card)]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card)))))))
-
       (testing "Endpoint should 404 if Card doesn't exist"
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
@@ -3061,7 +3057,6 @@
                 :model "Card"
                 :model_id card-id}
                (mt/latest-audit-log-entry :card-public-link-created card-id)))
-
           (testing "Does not create duplicate audit log entry when returning existing public link"
             (let [audit-log-count-before (count (mt/all-entries-for :card-public-link-created
                                                                     :model/Card
@@ -3098,7 +3093,6 @@
         (testing "Test that it requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "card/public"))))
-
         (testing "Test that superusers can fetch a list of publicly-accessible cards"
           (is (= [{:name true, :id true, :public_uuid true}]
                  (for [card (mt/user-http-request :crowberto :get 200 "card/public")]
@@ -3124,7 +3118,6 @@
               (is (= "completed" (:status result)))
               (is (= 6 (count (get-in result [:data :cols]))))
               (is (= 1144 (count rows)))
-
               (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
               (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
               (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
@@ -3412,7 +3405,6 @@
                                      ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                    :has_more_values true}
                   (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
-
         (testing "GET /api/card/:card-id/params/:param-key/search/:query"
           (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                   :has_more_values false}
@@ -3422,7 +3414,7 @@
   (testing "fallback to field-values"
     (let [mock-default-result {:values          [["field-values"]]
                                :has_more_values false}]
-      (with-redefs [queries.card/mapping->field-values (constantly mock-default-result)]
+      (mt/with-dynamic-fn-redefs [queries.card/mapping->field-values (constantly mock-default-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp
             [:model/Card {source-card-id :id} {}
@@ -3434,7 +3426,6 @@
                                                                     :value_field (mt/$ids $venues.name)}}]}]
             (let [url (param-values-url card "abc")]
               (is (= mock-default-result (mt/user-http-request :rasta :get 200 url))))))
-
         (testing "if card is archived"
           (mt/with-temp
             [:model/Card {source-card-id :id} {:archived true}
@@ -3593,23 +3584,19 @@
               :values          [["African"] ["American"] ["Asian"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list param-keys)))))
-
       (is (= {:has_more_values false,
               :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list-label param-keys))))))
-
     (testing "we could search the values"
       (is (= {:has_more_values false,
               :values          [["African"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list param-keys) "af"))))
-
       (is (= {:has_more_values false,
               :values          [["African" "Af"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list-label param-keys) "af")))))
-
     (testing "we could edit the values list"
       (let [card (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
                                        {:parameters [{:name                  "Static Category",
@@ -3637,8 +3624,8 @@
                                            {:source-table (str "card__" (u/the-id model))
                                             :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
                                             :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]})
-                                                   ;; The FE sometimes used a field id instead of field by name - we need
-                                                   ;; to handle this
+                                         ;; The FE sometimes used a field id instead of field by name - we need
+                                         ;; to handle this
                                          :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
                                                                                              :columns [],
                                                                                              :values  ["sum"]},
@@ -3867,7 +3854,6 @@
               (is (not (mi/can-read? collection)))
               (is (not (mi/can-read? card))))
             (is (blocked? (process-query))))))
-
       (testing "Should NOT be able to run the parent Card with valid data-perms and no collection perms"
         (mt/with-no-data-perms-for-all-users!
           (mt/with-non-admin-groups-no-collection-perms collection
@@ -3877,7 +3863,6 @@
               (is (not (mi/can-read? collection)))
               (is (not (mi/can-read? card))))
             (is (blocked? (process-query))))))
-
       (testing "should NOT be able to run native queries with :blocked data-perms on any table"
         (mt/with-no-data-perms-for-all-users!
           (mt/with-non-admin-groups-no-collection-perms collection
@@ -3887,10 +3872,8 @@
               (is (mi/can-read? collection))
               (is (mi/can-read? card)))
             (is (process-query)))))
-
       ;; delete these in place so we can reset them below, you cannot set them twice in a row
       (perms/revoke-collection-permissions! (perms-group/all-users) collection)
-
       (testing "should NOT be able to run the parent Card when data-perms and valid collection perms"
         (mt/with-no-data-perms-for-all-users!
           (mt/with-non-admin-groups-no-collection-perms collection
@@ -4095,7 +4078,21 @@
     (testing "We can't create a dashboard internal card with a non-null :collection_position"
       (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
                                                                :dashboard_id dash-id
-                                                               :collection_position 5)))))
+                                                               :collection_position 5)))
+    (testing "An explicit :size overrides the display-type default when autoplacing"
+      (let [card-id (:id (mt/user-http-request :crowberto :post 200 "card"
+                                               (assoc (card-with-name-and-query)
+                                                      :dashboard_id dash-id
+                                                      :size {:size_x 8 :size_y 5})))
+            dashcard (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)]
+        (is (= 8 (:size_x dashcard)))
+        (is (= 5 (:size_y dashcard)))))
+    (testing ":size is not persisted on the Card itself"
+      (let [card (mt/user-http-request :crowberto :post 200 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :dashboard_id dash-id
+                                              :size {:size_x 3 :size_y 3}))]
+        (is (not (contains? card :size)))))))
 
 (deftest dashboard-internal-card-updates
   (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -4146,7 +4143,6 @@
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id))
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
       (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
-
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id))))
   (testing "even when the card was on a tab before, it gets autoplaced to the first tab"
@@ -4160,7 +4156,6 @@
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id))
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
       (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
-
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id first-tab-id :card_id card-id)))))
 
@@ -4348,7 +4343,7 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                ;; regardless of the `delete_old_dashcards` value, same response
+                 ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
@@ -4367,7 +4362,7 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                ;; regardless of the `delete_old_dashcards` value, same response
+                 ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
@@ -4375,7 +4370,8 @@
                    :collection_id forbidden-coll-id
                    :id other-dash-id
                    :description nil
-                   :archived false}]
+                   :archived false
+                   :enable_embedding false}]
                  (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
           (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
 
@@ -4404,7 +4400,8 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
       (is (= [{:id dash-id
-               :name "My Dashboard"}]
+               :name "My Dashboard"
+               :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-2
@@ -4420,8 +4417,8 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id1 :card_id card-id}
                    :model/DashboardCard _ {:dashboard_id dash-id2 :card_id card-id}]
-      (is (= [{:id dash-id1 :name "Dashboard One"}
-              {:id dash-id2 :name "Dashboard Two"}]
+      (is (= [{:id dash-id1 :name "Dashboard One" :enable_embedding false}
+              {:id dash-id2 :name "Dashboard Two" :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-4
@@ -4430,7 +4427,7 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id :name "My Dashboard" :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-5
@@ -4439,12 +4436,24 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard {dc-id :id} {:dashboard_id dash-id}
                    :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id :name "My Dashboard" :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-6
   (testing "nonexistent card"
     (mt/user-http-request :rasta :get 404 "card/invalid-id/dashboards")))
+
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-includes-enable_embedding
+  (testing "Response exposes enable_embedding so the frontend can warn before converting embedded questions to SQL"
+    (mt/with-temp [:model/Dashboard {embedded-dash-id :id} {:name "Embedded Dashboard"
+                                                            :enable_embedding true}
+                   :model/Dashboard {plain-dash-id :id} {:name "Plain Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id embedded-dash-id :card_id card-id}
+                   :model/DashboardCard _ {:dashboard_id plain-dash-id :card_id card-id}]
+      (is (= [{:id embedded-dash-id :name "Embedded Dashboard" :enable_embedding true}
+              {:id plain-dash-id :name "Plain Dashboard" :enable_embedding false}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest we-can-get-a-list-of-dashboards-a-card-appears-in-7
   (testing "Don't have permissions on all the dashboards involved"
@@ -4649,7 +4658,6 @@
                                                              :card-id (:id card)
                                                              :name (str "card-" (:id card))
                                                              :display-name "Card Reference"}}})
-
       ;; Try to update card to reference snippet (would create card → snippet → card cycle)
       (is (= "Cannot save card with cycles."
              (mt/user-http-request :crowberto :put 400 (str "card/" (:id card))
@@ -4698,7 +4706,6 @@
                                                                :card-id (:id card-2)
                                                                :name (str "card-" (:id card-2))
                                                                :display-name "Card 2"}}})
-
       ;; Try to update card-1 to also reference snippet-2
       ;; (would create card-1 → snippet-2 → card-2 → card-1 cycle)
       (is (= "Cannot save card with cycles."

@@ -1,4 +1,5 @@
 (ns metabase-enterprise.cache.cache-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.cache.cache-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -121,7 +122,6 @@
         (testing "Non-admins have no general access to cache config"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "cache/"))))
-
         (testing "Non-admins can access cache config only if they have write access to the model"
           (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
             (doseq [[model id] [["question" card-id]
@@ -142,7 +142,6 @@
                 (is (nil? (mt/user-http-request :rasta :delete 204 "cache/"
                                                 {:model    model
                                                  :model_id id})))))))
-
         (testing "Non-admins cannot access cache config if they do not have write access to the model"
           (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
             (mt/with-non-admin-groups-no-collection-perms collection-id
@@ -159,7 +158,6 @@
                                          :strategy {:type "nocache" :name "card1"}})
                   (mt/user-http-request :rasta :post 403 "cache/invalidate"
                                         (keyword model) [id])
-
                   (mt/user-http-request :rasta :delete 403 "cache/"
                                         {:model    model
                                          :model_id id}))))))))))
@@ -192,11 +190,9 @@
                                 (select-keys [:cached])))
               invalidate! (fn [status & args]
                             (apply mt/user-http-request :crowberto :post status "cache/invalidate" args))]
-
           (is (=? {:data [{:model "database" :model_id (mt/id)}]}
                   (mt/user-http-request :crowberto :get 200 "cache/"
                                         :model "database")))
-
           (testing "making a query will cache it"
             (is (=? {:cached nil :data some?}
                     (run-query! card1-id)))
@@ -204,7 +200,6 @@
                     (run-query! card1-id)))
             (is (=? {:cached some? :data some?}
                     (run-query! card2-id))))
-
           (testing "invalidation drops cache only for affected card"
             (is (=? {:count 1}
                     (invalidate! 200 :question card2-id :include :overrides)))
@@ -212,22 +207,19 @@
                     (run-query! card1-id)))
             (is (=? {:cached nil :data some?}
                     (run-query! card2-id))))
-
           (testing "but invalidating a whole config drops cache for any affected card"
             (doseq [card-id [card1-id card2-id]]
               (is (=? {:count 1}
                       (invalidate! 200 :database (mt/id))))
               (is (=? {:cached nil :data some?}
                       (run-query! card-id {:ignore_cache true})))))
-
           (testing "when invalidating database config directly, dashboard-related queries are still cached"
             (is (=? {:count 1}
                     (invalidate! 200 :database (mt/id))))
             (is (=? {:cached some? :data some?}
                     (run-query! card1-id {:dashboard_id (:id dash)}))))
-
           (testing "but with overrides - will go through every card and mark cache invalidated"
-              ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
+            ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
             (is (=? {:count pos-int?}
                     (invalidate! 200 :include :overrides :database (mt/id))))
             (is (=? {:cached nil :data some?}

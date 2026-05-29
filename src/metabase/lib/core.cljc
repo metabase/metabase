@@ -94,7 +94,8 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
    [metabase.lib.parameters]
-   [metabase.lib.parameters.parse :as lib.parameters.parse]
+   [metabase.lib.parameters.parse]
+   [metabase.lib.parameters.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
@@ -203,6 +204,8 @@
          lib.options/keep-me
          lib.order-by/keep-me
          metabase.lib.parameters/keep-me
+         metabase.lib.parameters.parse/keep-me
+         metabase.lib.parameters.parse.types/keep-me
          lib.parse/keep-me
          lib.query/keep-me
          lib.query.test-spec/keep-me
@@ -1403,7 +1406,6 @@
  [lib.equality
   find-column-for-legacy-ref
   find-matching-column]
-
  [lib.extraction
   column-extractions
   extract
@@ -1514,7 +1516,7 @@
   parameter-target-template-tag-name
   update-parameter-target-dimension-options
   update-parameter-target-field-ref]
- [lib.parameters.parse
+ [metabase.lib.parameters.parse
   match-and-normalize-tag-name]
  [lib.parse
   parse]
@@ -1674,3 +1676,37 @@
   Prefer this over setting the `:case-sensitive false` option directly."
   [boolean-expression :- ::lib.schema.expression/boolean]
   (lib.options/update-options boolean-expression assoc :case-sensitive false))
+
+;;; Parameter Parsing
+;;;
+;;; **Code Health:** Healthy.
+
+(shared.ns/import-fn metabase.lib.parameters.parse/parse                           parse-parameters)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/field-filter              parsed-field-filter-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/field-filter?             parsed-field-filter-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/temporal-unit             parsed-temporal-unit-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/temporal-unit?            parsed-temporal-unit-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-card-query     parsed-referenced-card-query-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-card-query?    parsed-referenced-card-query-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-table-query    parsed-referenced-table-query-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-table-query?   parsed-referenced-table-query-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-query-snippet  parsed-referenced-query-snippet-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-query-snippet? parsed-referenced-query-snippet-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date                      parsed-date-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date?                     parsed-date-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-range                parsed-date-range-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-range?               parsed-date-range-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-time-range           parsed-date-time-range-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-time-range?          parsed-date-time-range-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/param                     parsed-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/param?                    parsed-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/function-param?           parsed-function-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/optional                  parsed-optional-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/optional?                 parsed-optional-param?)
+
+(def parsed-param-no-value-placeholder
+  "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
+  values.
+
+  **Code Health:** Healthy."
+  metabase.lib.parameters.parse.types/no-value)

@@ -119,6 +119,7 @@ export interface SearchResult<
   based_on_upload?: TableId | null;
   "last-edit-info"?: LastEditInfo;
   result_metadata?: Field[];
+  collection_id?: CollectionId;
 }
 
 export type SearchContext =

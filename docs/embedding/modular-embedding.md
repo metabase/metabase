@@ -7,8 +7,6 @@ redirect_from:
 
 # Modular embedding
 
-{% include shared/in-page-promo-embedding-workshop.html %}
-
 ![Modular embedding wizard](./images/modular-embedding-wizard.png)
 
 Modular embedding lets you embed and customize Metabase [components](./components.md) (like dashboards, the query builder, AI chat, and more) into your own application. You don't need to write embedding code on your own - just use the wizard to create a code snippet and paste it into your app.
@@ -177,6 +175,10 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 - **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection, including both visual and native (SQL) questions. When disabled, they can still perform actions like filter, summarize, and drill-through, but won't be able to save results.
 
 - **Allow alerts**: lets people set up [alerts](../questions/alerts.md) on embedded questions. Requires [email setup](../configuring-metabase/email.md). Only for authenticated (SSO) question embeds.
+
+## Pass parameter values to embedded components
+
+See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components).
 
 ## Page-level config
 
