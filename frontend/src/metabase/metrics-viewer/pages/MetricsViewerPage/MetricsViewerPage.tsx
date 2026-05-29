@@ -96,6 +96,12 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
   const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
+  const showDimensionPickerSidebar =
+    isDimensionPickerSidebarOpen && !!activeDimensionBreakout;
+  const showBreakoutLegend =
+    !isDimensionPickerSidebarOpen &&
+    !!activeDimensionBreakout &&
+    activeDimensionBreakout.type !== "scalar";
 
   return (
     <Stack px="3rem" h="100%" gap={0} className={S.root}>
@@ -149,28 +155,26 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
                 <MetricsViewerNoDimensionBreakoutEmptyState />
               ) : null}
             </Flex>
-            {activeDimensionBreakout &&
-              (isDimensionPickerSidebarOpen ? (
-                <DimensionPickerSidebar
-                  activeDimensionBreakout={activeDimensionBreakout}
-                  availableDimensions={sidebarAvailableDimensions}
-                  allFieldsAvailableDimensions={sidebarAvailableDimensions}
-                  metricSlots={metricSlots}
-                  sourceColors={sourceColors}
-                  metricSourceOrder={sourceOrder}
-                  metricSourceDataById={sourceDataById}
-                  onSelectDimensionBreakout={selectDimensionBreakout}
-                  onUpdateActiveDimensionBreakout={
-                    updateActiveDimensionBreakout
-                  }
-                />
-              ) : activeDimensionBreakout.type !== "scalar" ? (
-                <BreakoutLegend
-                  formulaEntities={formulaEntities}
-                  definitions={definitions}
-                  activeBreakoutColors={activeBreakoutColors}
-                />
-              ) : null)}
+            {showDimensionPickerSidebar && (
+              <DimensionPickerSidebar
+                activeDimensionBreakout={activeDimensionBreakout}
+                availableDimensions={sidebarAvailableDimensions}
+                allFieldsAvailableDimensions={sidebarAvailableDimensions}
+                metricSlots={metricSlots}
+                sourceColors={sourceColors}
+                metricSourceOrder={sourceOrder}
+                metricSourceDataById={sourceDataById}
+                onSelectDimensionBreakout={selectDimensionBreakout}
+                onUpdateActiveDimensionBreakout={updateActiveDimensionBreakout}
+              />
+            )}
+            {showBreakoutLegend && (
+              <BreakoutLegend
+                formulaEntities={formulaEntities}
+                definitions={definitions}
+                activeBreakoutColors={activeBreakoutColors}
+              />
+            )}
           </Flex>
         </Stack>
       </Flex>

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -301,12 +302,12 @@ export function DimensionPickerSidebar({
         )}
         {showDefaultView && (
           <Stack gap="xs">
-            <Flex align="center" justify="space-between" px="sm" my="sm">
-              <Text size="sm" c="text-secondary">
+            <Flex align="center" justify="space-between" my="sm">
+              <Text size="md" c="text-secondary">
                 {t`Shared dimensions`}
               </Text>
               {showSeeAll && (
-                <Button onClick={handleSeeAll} size="sm" variant="subtle">
+                <Button onClick={handleSeeAll} p={0} size="xs" variant="subtle">
                   {t`See all`}
                 </Button>
               )}
@@ -350,8 +351,9 @@ export function DimensionPickerSidebar({
             )}
             <Box className={S.noBreakoutSection}>
               <UnstyledButton
-                className={S.noBreakoutButton}
-                data-selected={isNoBreakoutSelected}
+                className={cx(S.noBreakoutButton, {
+                  [S.selected]: isNoBreakoutSelected,
+                })}
                 aria-label={t`No breakout`}
                 aria-pressed={isNoBreakoutSelected}
                 onClick={handleNoBreakout}

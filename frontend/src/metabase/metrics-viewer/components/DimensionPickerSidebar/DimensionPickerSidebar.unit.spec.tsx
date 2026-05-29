@@ -129,7 +129,7 @@ describe("DimensionPickerSidebar", () => {
     expect(screen.getByLabelText("Search fields")).toBeInTheDocument();
     expect(screen.queryByText("Totals")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Category" })).toHaveAttribute(
-      "data-selected",
+      "aria-pressed",
       "true",
     );
     expect(
@@ -172,7 +172,7 @@ describe("DimensionPickerSidebar", () => {
 
     expect(
       screen.getByRole("button", { name: "Swapped dates" }),
-    ).not.toHaveAttribute("data-selected");
+    ).not.toHaveAttribute("aria-pressed", "true");
   });
 
   it("filters dimensions with search", async () => {
@@ -227,7 +227,7 @@ describe("DimensionPickerSidebar", () => {
     setup({ dimensionBreakout: scalarDimensionBreakout });
 
     expect(screen.getByRole("button", { name: "No breakout" })).toHaveAttribute(
-      "data-selected",
+      "aria-pressed",
       "true",
     );
     expect(screen.getByRole("button", { name: "No breakout" })).toHaveAttribute(
@@ -456,7 +456,7 @@ describe("DimensionPickerSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "See all" }));
 
     expect(screen.getByRole("button", { name: "Birth Date" })).toHaveAttribute(
-      "data-selected",
+      "aria-pressed",
       "true",
     );
 
@@ -465,8 +465,8 @@ describe("DimensionPickerSidebar", () => {
     const createdAtButtons = screen.getAllByRole("button", {
       name: "Created At",
     });
-    expect(createdAtButtons[0]).not.toHaveAttribute("data-selected");
-    expect(createdAtButtons[1]).toHaveAttribute("data-selected", "true");
+    expect(createdAtButtons[0]).not.toHaveAttribute("aria-pressed", "true");
+    expect(createdAtButtons[1]).toHaveAttribute("aria-pressed", "true");
   });
 
   it("groups all fields by metric when multiple metrics are selected", async () => {

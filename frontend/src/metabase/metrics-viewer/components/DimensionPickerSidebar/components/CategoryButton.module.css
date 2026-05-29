@@ -1,9 +1,3 @@
-.categoryRow {
-  align-items: center;
-  gap: 0.25rem;
-  width: 100%;
-}
-
 .categoryItem {
   display: grid;
   grid-template-columns: 1rem minmax(0, 1fr);
@@ -20,19 +14,6 @@
   line-height: 1rem;
 }
 
-.categoryItem:hover {
-  background-color: var(--mb-color-background-hover);
-}
-
-.categoryItem[data-selected="true"] {
-  background-color: var(--mb-color-background-selected);
-  color: var(--mb-color-text-brand);
-}
-
-.categoryItem[data-selected="true"]:hover {
-  background-color: var(--mb-color-background-hover);
-}
-
 .settingsButton {
   display: none;
   flex: 0 0 2rem;
@@ -43,14 +24,39 @@
   color: var(--mb-color-icon-primary);
 }
 
-.categoryRow:hover .settingsButton {
-  display: inline-flex;
-}
+.categoryRow {
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
 
-.settingsButton.settingsButton:hover,
-.settingsButton.settingsButton[data-expanded="true"] {
-  background-color: var(--mb-color-background-hover);
-  color: var(--mb-color-text-brand);
+  &.selected {
+    .categoryItem {
+      background-color: var(--mb-color-background-selected);
+      color: var(--mb-color-text-brand);
+    }
+  }
+
+  &:not(.selected):hover {
+    .categoryItem {
+      background-color: var(--mb-color-background-hover);
+    }
+  }
+
+  &:hover,
+  &.expanded {
+    .settingsButton {
+      display: inline-flex;
+    }
+  }
+
+  .settingsButton:hover {
+    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand);
+  }
+
+  &.expanded .settingsButton {
+    background-color: var(--mb-color-background-selected);
+  }
 }
 
 .itemIcon {
