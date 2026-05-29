@@ -1,25 +1,12 @@
+import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { initAuth } from "embedding-sdk-bundle/store/auth/auth";
 import { setPluginsReady } from "embedding-sdk-bundle/store/reducer";
+import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import api from "metabase/api/legacy-client";
 
-/**
- * Returns a singleton SDK Redux store pre-marked as initialized, suitable for
- * in-host rendering of Embedding SDK components.
- *
- * Why this exists: `ComponentProvider`'s `useInitData` dispatches the real
- * `initAuth` thunk on mount, which performs an SSO/JWT/API-key handshake
- * against the configured `metabaseInstanceUrl`. That handshake is meaningful
- * only for cross-origin embedders. Inside Metabase itself we're already on
- * the same origin with a valid session cookie, so requests just work without
- * an extra handshake.
- *
- * `useInitData` short-circuits when `initStatus.status !== "uninitialized"`,
- * so dispatching `initAuth.fulfilled` once before mount is enough to skip the
- * handshake. We also flip `pluginsReady` so `PublicComponentWrapper` doesn't
- * render its loader gate forever, and pin `api.basename` to the host origin
- * since the SDK's API client reads that.
- */
 let cachedStore: ReturnType<typeof getSdkStore> | null = null;
 
 export function getHostBackedSdkStore() {
@@ -36,6 +23,29 @@ export function getHostBackedSdkStore() {
   // Same-origin: the SDK's API client uses this as the request base; it must
   // match where the host is served from so session cookies are sent.
   api.basename = window.location.origin;
+
+  // Populate only the SDK-bundle exports the package hooks actually read.
+  // Cast to `Partial<…>` because the full `MetabaseEmbeddingSdkBundleExports`
+  // type requires every component / helper, but in-host the package hooks
+  // only dereference `queryQuestion` and `getLoginStatus`.
+  const win = getWindow();
+
+  if (win) {
+    win.METABASE_EMBEDDING_SDK_BUNDLE = {
+      ...(win.METABASE_EMBEDDING_SDK_BUNDLE ?? {}),
+      queryQuestion,
+      getLoginStatus,
+    } as typeof win.METABASE_EMBEDDING_SDK_BUNDLE;
+  }
+
+  // (2) `ComponentProvider` normally calls
+  // `ensureMetabaseProviderPropsStore().updateInternalProps({ reduxStore })`
+  // so package hooks can reach the SDK store via
+  // `useMetabaseProviderPropsStore()`. We don't render `ComponentProvider`,
+  // so push our pre-initialized store in directly.
+  ensureMetabaseProviderPropsStore().updateInternalProps({
+    reduxStore: store,
+  });
 
   cachedStore = store;
   return store;
