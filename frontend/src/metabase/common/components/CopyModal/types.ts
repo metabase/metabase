@@ -8,7 +8,7 @@ import type { Document } from "metabase-types/api/document";
  * Registry mapping entityType strings to their form properties and entity types.
  * To add a new entity type, extend this interface.
  */
-export interface EntityCopyTypeRegistry {
+export interface CopyTypeRegistry {
   dashboards: {
     formProperties: CopyDashboardFormProperties;
     entity: Dashboard;
@@ -23,31 +23,29 @@ export interface EntityCopyTypeRegistry {
   };
 }
 
-export type CopyableEntityType = keyof EntityCopyTypeRegistry;
+export type CopyableType = keyof CopyTypeRegistry;
 
-export interface EntityCopyModalProps<T extends CopyableEntityType> {
+export interface CopyModalProps<T extends CopyableType> {
   entityType: T;
-  entityObject: EntityCopyTypeRegistry[T]["entity"];
+  entityObject: CopyTypeRegistry[T]["entity"];
   copy: (
-    data: EntityCopyTypeRegistry[T]["formProperties"],
-  ) => Promise<EntityCopyTypeRegistry[T]["entity"]>;
+    data: CopyTypeRegistry[T]["formProperties"],
+  ) => Promise<CopyTypeRegistry[T]["entity"]>;
   title?: string;
   onClose: () => void;
-  onSaved: (newEntity: EntityCopyTypeRegistry[T]["entity"]) => void;
+  onSaved: (newEntity: CopyTypeRegistry[T]["entity"]) => void;
   overwriteOnInitialValuesChange?: boolean;
-  onValuesChange?: (
-    values: EntityCopyTypeRegistry[T]["formProperties"],
-  ) => void;
+  onValuesChange?: (values: CopyTypeRegistry[T]["formProperties"]) => void;
 }
 
 /**
  * Generic fallback props used by the implementation signature.
  *
- * Call sites should prefer the typed overloads using `EntityCopyModalProps<T>`.
+ * Call sites should prefer the typed overloads using `CopyModalProps<T>`.
  * The implementation stays broadly typed to avoid overly complex unions while
  * still being safe in practice (forms validate their own values).
  */
-export interface GenericEntityCopyModalProps {
+export interface GenericCopyModalProps {
   entityType: string | undefined;
   entityObject: any;
   copy: (data: any) => Promise<any>;

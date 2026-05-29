@@ -37,7 +37,7 @@ import {
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import CopyModal from "metabase/common/components/CopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -545,7 +545,7 @@ export const DocumentPage = ({
         )}
 
         {duplicateModalMode === "duplicate" && documentData && (
-          <EntityCopyModal
+          <CopyModal
             entityType="documents"
             onClose={() => setDuplicateModalMode(null)}
             onSaved={(document) => {

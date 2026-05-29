@@ -9,16 +9,16 @@ import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCar
 import { Modal } from "metabase/ui";
 
 import type {
-  CopyableEntityType,
-  EntityCopyModalProps,
-  GenericEntityCopyModalProps,
-} from "./EntityCopyModal.types";
+  CopyModalProps,
+  CopyableType,
+  GenericCopyModalProps,
+} from "./types";
 
-function EntityCopyModal<T extends CopyableEntityType>(
-  props: EntityCopyModalProps<T>,
+function CopyModal<T extends CopyableType>(
+  props: CopyModalProps<T>,
 ): React.JSX.Element;
-function EntityCopyModal(props: GenericEntityCopyModalProps): React.JSX.Element;
-function EntityCopyModal(props: GenericEntityCopyModalProps) {
+function CopyModal(props: GenericCopyModalProps): React.JSX.Element;
+function CopyModal(props: GenericCopyModalProps) {
   const {
     entityType,
     entityObject,
@@ -89,4 +89,4 @@ function EntityCopyModal(props: GenericEntityCopyModalProps) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EntityCopyModal;
+export default CopyModal;

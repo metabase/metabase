@@ -10,7 +10,7 @@ import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/Add
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import CopyModal from "metabase/common/components/CopyModal";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
@@ -236,7 +236,7 @@ export function QueryModals({
       );
     case MODAL_TYPES.CLONE:
       return (
-        <EntityCopyModal
+        <CopyModal
           entityType="cards"
           entityObject={{
             ...question.card(),
