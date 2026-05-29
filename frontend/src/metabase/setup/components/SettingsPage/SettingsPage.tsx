@@ -5,7 +5,6 @@ import { getSteps } from "metabase/setup/selectors";
 import type { SetupStep } from "metabase/setup/types";
 import { Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
 
-import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { CompletedStep } from "../CompletedStep";
 import { DataUsageStep } from "../DataUsageStep";
 import { DatabaseHelp } from "../DatabaseHelp";
@@ -80,7 +79,6 @@ export const SettingsPage = (): JSX.Element => {
           }
         })}
         <CompletedStep />
-        <CloudMigrationHelp />
         <SetupHelp />
         <DatabaseHelp />
       </Box>
