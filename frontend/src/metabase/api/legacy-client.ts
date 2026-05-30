@@ -93,12 +93,19 @@ export class NetworkError extends Error {
 }
 
 /**
- * `true` for the standard `DOMException` of name `"AbortError"` that
- * `fetch()` (and `XMLHttpRequest.abort()`-driven rejections) surface when the
- * request is cancelled. Replaces the legacy `error.isCancelled` flag, so
- * cancellation lines up with the standard web platform shape.
+ * The standard web-platform shape for a cancelled request: an `Error` whose
+ * `name` is `"AbortError"`. `fetch()` rejects with a `DOMException` of this
+ * shape on abort, and we throw the same from the XHR path so both transports
+ * line up. Use `isAbortError` to narrow.
  */
-export function isAbortError(error: unknown): boolean {
+export type AbortError = Error & { name: "AbortError" };
+
+/**
+ * Type guard for the standard `AbortError` that `fetch()` (and
+ * `XMLHttpRequest.abort()`-driven rejections) surface when the request is
+ * cancelled. Replaces the legacy `error.isCancelled` flag.
+ */
+export function isAbortError(error: unknown): error is AbortError {
   return (
     typeof error === "object" &&
     error !== null &&
