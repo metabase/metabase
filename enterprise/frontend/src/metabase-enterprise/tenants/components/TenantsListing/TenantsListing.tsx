@@ -1,7 +1,6 @@
-import { useMemo } from "react";
-import { push } from "react-router-redux";
-import { t } from "ttag";
-
+import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
+import * as Urls from "metabase-enterprise/urls";
+import type { Tenant } from "metabase-types/api";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { SearchFilter } from "metabase/admin/people/components/SearchFilter";
 import {
@@ -9,7 +8,6 @@ import {
   type ActiveStatus,
 } from "metabase/admin/people/constants";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import {
@@ -22,9 +20,9 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
-import * as Urls from "metabase-enterprise/urls";
-import type { Tenant } from "metabase-types/api";
+import { useMemo } from "react";
+import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import { TenantsListingEmptyState } from "../TenantsListingEmptyState";
 
@@ -99,10 +97,9 @@ export const TenantsListing = ({
                 className={CS.link}
                 gap="md"
               >
-                <UserAvatar
-                  user={{ first_name: tenant.name }}
-                  bg={tenantIdToColor(tenant.id)}
-                />
+                <Avatar bg={tenantIdToColor(tenant.id)}>
+                  {tenant.name}
+                </Avatar>
                 <Box component="span" fw={700} c="brand">
                   {tenant.name}
                 </Box>
