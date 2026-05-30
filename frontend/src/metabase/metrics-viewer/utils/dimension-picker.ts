@@ -429,7 +429,7 @@ function sortSidebarCategories(
   return first.name.localeCompare(second.name);
 }
 
-function getSidebarCategoryKey(item: DimensionPickerItem) {
+function getComparableDimensionKey(item: DimensionPickerItem) {
   const type = item.dimensionBreakoutInfo.type;
 
   if (type === "time") {
@@ -466,6 +466,44 @@ function hasMappingForEverySlot(
   );
 }
 
+export function getComparableDimensionMapping({
+  item,
+  sections,
+  metricSlots,
+}: {
+  item: DimensionPickerItem;
+  sections: DimensionPickerSection[];
+  metricSlots: MetricSlot[];
+}): Record<number, string> {
+  const comparableKey = getComparableDimensionKey(item);
+  const slotIndices = new Set(metricSlots.map((slot) => slot.slotIndex));
+  const mapping: Record<number, string> = {};
+
+  const comparableItems = [
+    item,
+    ...sections
+      .flatMap((section) => section.items)
+      .filter(
+        (sectionItem) =>
+          sectionItem !== item &&
+          getComparableDimensionKey(sectionItem) === comparableKey,
+      ),
+  ];
+
+  for (const comparableItem of comparableItems) {
+    for (const [slotIndex, dimensionId] of Object.entries(
+      comparableItem.dimensionBreakoutInfo.dimensionMapping,
+    )) {
+      const numericSlotIndex = Number(slotIndex);
+      if (slotIndices.has(numericSlotIndex)) {
+        mapping[numericSlotIndex] ??= dimensionId;
+      }
+    }
+  }
+
+  return mapping;
+}
+
 export function buildDimensionPickerSidebarCategories({
   availableDimensions,
   sourceOrder,
@@ -489,7 +527,7 @@ export function buildDimensionPickerSidebarCategories({
   const groupedItems = new Map<string, DimensionPickerItem[]>();
 
   for (const item of items) {
-    const key = getSidebarCategoryKey(item);
+    const key = getComparableDimensionKey(item);
     const existing = groupedItems.get(key);
     if (existing) {
       existing.push(item);

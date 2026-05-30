@@ -12,9 +12,11 @@ import {
   type AvailableDimensionsResult,
   type DimensionBreakoutInfo,
   type DimensionPickerItem,
+  type DimensionPickerSidebarCategory,
   type SourceDisplayInfo,
   buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
+  getComparableDimensionMapping,
   getDimensionBreakoutConfig,
   getScalarDimensionBreakoutLabel,
 } from "metabase/metrics-viewer/utils";
@@ -117,6 +119,9 @@ export function DimensionPickerSidebar({
   const defaultEmptyStateText = hasMultipleMetricSources(metricSlots)
     ? t`No shared dimensions found`
     : t`No fields found`;
+  const defaultSectionHeader = hasMultipleMetricSources(metricSlots)
+    ? t`Shared dimensions`
+    : t`Dimensions`;
 
   const handleSelect = (item: DimensionPickerItem) => {
     if (hasSameDimensions(item, activeDimensionBreakout)) {
@@ -155,10 +160,11 @@ export function DimensionPickerSidebar({
       dimensionBreakoutConfig.matchMode === "aggregate"
     ) {
       onUpdateActiveDimensionBreakout({
-        dimensionMapping: {
-          ...activeDimensionBreakout.dimensionMapping,
-          ...item.dimensionBreakoutInfo.dimensionMapping,
-        },
+        dimensionMapping: getComparableDimensionMapping({
+          item,
+          sections,
+          metricSlots,
+        }),
         label: item.dimensionBreakoutInfo.label,
       });
       trackMetricsViewerDimensionSelected();
@@ -299,7 +305,7 @@ export function DimensionPickerSidebar({
           <Stack gap="xs">
             <Flex align="center" justify="space-between" my="sm">
               <Text size="md" c="text-secondary">
-                {t`Shared dimensions`}
+                {defaultSectionHeader}
               </Text>
               {showSeeAll && (
                 <Button onClick={handleSeeAll} p={0} size="xs" variant="subtle">

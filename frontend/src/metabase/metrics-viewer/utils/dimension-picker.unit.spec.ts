@@ -16,6 +16,7 @@ import {
   buildDimensionPickerSidebarCategories,
   buildDimensionPickerSidebarCategorySelectRows,
   getAvailableDimensionsForPicker,
+  getComparableDimensionMapping,
   getExistingDimensionBreakoutDimensionIds,
 } from "./dimension-picker";
 
@@ -816,5 +817,176 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
       "Orders → Created At",
       "Products → Created At",
     ]);
+  });
+});
+
+describe("getComparableDimensionMapping", () => {
+  const metricSlots = [
+    { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+    { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+  ];
+
+  it("maps time fields across metric slots", () => {
+    const selectedItem = {
+      icon: "calendar",
+      name: "Birth Date",
+      group: { id: "users", type: "main", displayName: "Users" },
+      dimensionBreakoutInfo: {
+        type: "time" as const,
+        label: "Birth Date",
+        dimensionMapping: { 0: "dim-users-birth-date" },
+      },
+    };
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: { id: "orders", type: "main", displayName: "Orders" },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 1: "dim-orders-created-at" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+      }),
+    ).toEqual({
+      0: "dim-users-birth-date",
+      1: "dim-orders-created-at",
+    });
+  });
+
+  it("maps country fields across metric slots", () => {
+    const selectedItem = {
+      icon: "location",
+      name: "Product Country",
+      geoSubtype: "country" as const,
+      group: { id: "products", type: "main", displayName: "Products" },
+      dimensionBreakoutInfo: {
+        type: "geo" as const,
+        label: "Product Country",
+        dimensionMapping: { 0: "dim-product-country" },
+      },
+    };
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "location",
+                name: "User Country",
+                geoSubtype: "country",
+                group: { id: "users", type: "main", displayName: "Users" },
+                dimensionBreakoutInfo: {
+                  type: "geo",
+                  label: "User Country",
+                  dimensionMapping: { 1: "dim-user-country" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+      }),
+    ).toEqual({
+      0: "dim-product-country",
+      1: "dim-user-country",
+    });
+  });
+
+  it("does not map same-named category fields from different tables", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Name",
+      group: { id: "users", type: "main", displayName: "Users" },
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Name",
+        dimensionMapping: { 0: "dim-user-name" },
+      },
+    };
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "label",
+                name: "Name",
+                group: {
+                  id: "products",
+                  type: "main",
+                  displayName: "Products",
+                },
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Name",
+                  dimensionMapping: { 1: "dim-product-name" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+      }),
+    ).toEqual({ 0: "dim-user-name" });
+  });
+
+  it("maps exact same table and column category fields across metric slots", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Name",
+      group: { id: "users", type: "main", displayName: "Users" },
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Name",
+        dimensionMapping: { 0: "dim-user-name" },
+      },
+    };
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "label",
+                name: "Name",
+                group: { id: "users", type: "main", displayName: "Users" },
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Name",
+                  dimensionMapping: { 1: "dim-user-name" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+      }),
+    ).toEqual({ 0: "dim-user-name", 1: "dim-user-name" });
   });
 });

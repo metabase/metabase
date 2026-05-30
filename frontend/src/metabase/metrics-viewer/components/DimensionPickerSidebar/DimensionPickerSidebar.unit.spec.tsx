@@ -125,6 +125,8 @@ describe("DimensionPickerSidebar", () => {
     setup();
 
     expect(screen.getByText("Break out by")).toBeInTheDocument();
+    expect(screen.getByText("Dimensions")).toBeInTheDocument();
+    expect(screen.queryByText("Shared dimensions")).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText("Search fields")).toBeInTheDocument();
     expect(screen.getByLabelText("Search fields")).toBeInTheDocument();
     expect(screen.queryByText("Totals")).not.toBeInTheDocument();
@@ -273,6 +275,8 @@ describe("DimensionPickerSidebar", () => {
       },
     });
 
+    expect(screen.getByText("Shared dimensions")).toBeInTheDocument();
+    expect(screen.queryByText("Dimensions")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Country" })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Billing Address Country" }),
@@ -395,6 +399,73 @@ describe("DimensionPickerSidebar", () => {
       },
     });
     expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
+  });
+
+  it("selects only the clicked non-comparable field from See all", async () => {
+    const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
+      setup({
+        dimensionBreakout: {
+          id: "dim-status",
+          type: "category",
+          label: "Status",
+          display: "bar",
+          dimensionMapping: {
+            0: "dim-user-category",
+            1: "dim-product-status",
+          },
+          projectionConfig: {},
+        },
+        dimensions: {
+          shared: [],
+          bySource: {
+            [SOURCE_ID]: [
+              {
+                icon: "label",
+                group: { id: "users", type: "main", displayName: "Users" },
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Status",
+                  dimensionMapping: { 0: "dim-user-status" },
+                },
+              },
+            ],
+            [SECOND_SOURCE_ID]: [
+              {
+                icon: "label",
+                group: {
+                  id: "products",
+                  type: "main",
+                  displayName: "Products",
+                },
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Status",
+                  dimensionMapping: { 1: "dim-product-status" },
+                },
+              },
+            ],
+          },
+        },
+        slots: [
+          { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+          { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+        ],
+        sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+        sources: {
+          [SOURCE_ID]: { type: "metric", name: "Revenue" },
+          [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
+        },
+      });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Status" })[0]);
+
+    expect(onSelectDimensionBreakout).toHaveBeenCalledWith({
+      type: "category",
+      label: "Status",
+      dimensionMapping: { 0: "dim-user-status" },
+    });
+    expect(onUpdateActiveDimensionBreakout).not.toHaveBeenCalled();
   });
 
   it("marks metric-scoped See all dimensions as selected", async () => {
