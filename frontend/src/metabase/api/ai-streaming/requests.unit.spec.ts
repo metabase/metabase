@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 
 import {
   aiStreamingQuery,

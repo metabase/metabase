@@ -11,7 +11,7 @@ import {
   createStoreHook,
 } from "react-redux";
 
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { metabaseReduxContext } from "metabase/redux";
 
 import { TAG_TYPES } from "./tags";

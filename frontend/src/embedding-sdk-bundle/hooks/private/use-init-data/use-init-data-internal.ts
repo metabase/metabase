@@ -16,7 +16,7 @@ import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import {
   EMBEDDING_SDK_CONFIG,
