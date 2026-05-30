@@ -12,7 +12,6 @@ import {
   type AvailableDimensionsResult,
   type DimensionBreakoutInfo,
   type DimensionPickerItem,
-  type DimensionPickerSidebarCategory,
   type SourceDisplayInfo,
   buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
@@ -82,20 +81,16 @@ export function DimensionPickerSidebar({
     null,
   );
 
-  const categories = useMemo(() => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions,
-      sourceOrder: metricSourceOrder,
-      sourceDataById: metricSourceDataById,
-    });
-
-    return filterSharedCategories(categories, metricSlots);
-  }, [
-    availableDimensions,
-    metricSourceOrder,
-    metricSourceDataById,
-    metricSlots,
-  ]);
+  const categories = useMemo(
+    () =>
+      buildDimensionPickerSidebarCategories({
+        availableDimensions,
+        sourceOrder: metricSourceOrder,
+        sourceDataById: metricSourceDataById,
+        metricSlots,
+      }),
+    [availableDimensions, metricSourceOrder, metricSourceDataById, metricSlots],
+  );
 
   const sections = useMemo(
     () =>
@@ -375,36 +370,6 @@ export function DimensionPickerSidebar({
   );
 }
 
-function filterSharedCategories(
-  categories: DimensionPickerSidebarCategory[],
-  metricSlots: MetricSlot[],
-) {
-  if (!hasMultipleMetricSources(metricSlots)) {
-    return categories;
-  }
-
-  return categories.filter(
-    (category) => getMappedMetricSourceCount(category, metricSlots) >= 2,
-  );
-}
-
 function hasMultipleMetricSources(metricSlots: MetricSlot[]) {
   return new Set(metricSlots.map((slot) => slot.sourceId)).size > 1;
-}
-
-function getMappedMetricSourceCount(
-  category: DimensionPickerSidebarCategory,
-  metricSlots: MetricSlot[],
-) {
-  const mappedSourceIds = new Set<MetricSourceId>();
-
-  for (const slot of metricSlots) {
-    if (
-      category.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex] != null
-    ) {
-      mappedSourceIds.add(slot.sourceId);
-    }
-  }
-
-  return mappedSourceIds.size;
 }

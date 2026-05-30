@@ -1,5 +1,9 @@
 import { t } from "ttag";
 
+import {
+  type GeoSubtype,
+  getGeoSubtype,
+} from "metabase/metrics/common/utils/dimension-types";
 import type {
   DimensionGroup,
   DimensionMetadata,
@@ -29,6 +33,7 @@ export interface AvailableDimension {
   group?: DimensionGroup;
   canListValues?: boolean;
   isPreferred?: boolean;
+  geoSubtype?: GeoSubtype | null;
   dimensionBreakoutInfo: DimensionBreakoutInfo;
 }
 
@@ -64,6 +69,7 @@ interface DimensionEntry {
   group?: DimensionGroup;
   canListValues: boolean;
   isPreferred?: boolean;
+  geoSubtype?: GeoSubtype | null;
   sourceId: MetricSourceId;
 }
 
@@ -85,6 +91,8 @@ function collectAllDimensionEntries(
         continue;
       }
 
+      const geoSubtype = getGeoSubtype(info.dimensionMetadata);
+
       entries.push({
         dimension: info.dimensionMetadata,
         id,
@@ -94,6 +102,7 @@ function collectAllDimensionEntries(
         group: info.group,
         canListValues: info.canListValues,
         isPreferred: info.isPreferred,
+        ...(geoSubtype ? { geoSubtype } : {}),
         sourceId,
       });
     }
@@ -159,6 +168,7 @@ export function getAvailableDimensionsForPicker(
         group: first.group,
         canListValues: first.canListValues,
         isPreferred: first.isPreferred,
+        ...(first.geoSubtype ? { geoSubtype: first.geoSubtype } : {}),
         dimensionBreakoutInfo: {
           type: first.dimensionBreakoutType,
           label: first.label,
@@ -180,6 +190,7 @@ export function getAvailableDimensionsForPicker(
           group: entry.group,
           canListValues: entry.canListValues,
           isPreferred: entry.isPreferred,
+          ...(entry.geoSubtype ? { geoSubtype: entry.geoSubtype } : {}),
           dimensionBreakoutInfo: {
             type: entry.dimensionBreakoutType,
             label: entry.label,
@@ -418,14 +429,53 @@ function sortSidebarCategories(
   return first.name.localeCompare(second.name);
 }
 
+function getSidebarCategoryKey(item: DimensionPickerItem) {
+  const type = item.dimensionBreakoutInfo.type;
+
+  if (type === "time") {
+    return "type:time";
+  }
+
+  if (type === "geo" && item.geoSubtype === "country") {
+    return "type:geo:country";
+  }
+
+  return [type, item.group?.id ?? "", item.name].join(":");
+}
+
+function getSidebarCategoryName(item: DimensionPickerItem) {
+  const type = item.dimensionBreakoutInfo.type;
+
+  if (type === "time") {
+    return t`Time`;
+  }
+
+  if (type === "geo" && item.geoSubtype === "country") {
+    return t`Country`;
+  }
+
+  return item.name;
+}
+
+function hasMappingForEverySlot(
+  category: DimensionPickerSidebarCategory,
+  metricSlots: MetricSlot[],
+) {
+  return metricSlots.every(
+    (slot) => category.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex],
+  );
+}
+
 export function buildDimensionPickerSidebarCategories({
   availableDimensions,
   sourceOrder,
   sourceDataById,
+  metricSlots = [],
 }: {
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
+  metricSlots?: MetricSlot[];
 }): DimensionPickerSidebarCategory[] {
   const sections = buildDimensionPickerSections({
     availableDimensions,
@@ -439,10 +489,7 @@ export function buildDimensionPickerSidebarCategories({
   const groupedItems = new Map<string, DimensionPickerItem[]>();
 
   for (const item of items) {
-    const key =
-      item.dimensionBreakoutInfo.type === "time"
-        ? "type:time"
-        : `${item.dimensionBreakoutInfo.type}:${item.name}`;
+    const key = getSidebarCategoryKey(item);
     const existing = groupedItems.get(key);
     if (existing) {
       existing.push(item);
@@ -453,9 +500,18 @@ export function buildDimensionPickerSidebarCategories({
 
   for (const [key, categoryItems] of groupedItems) {
     const first = categoryItems[0];
-    const name =
-      first.dimensionBreakoutInfo.type === "time" ? t`Time` : first.name;
-    categories.push(buildSidebarCategory(key, name, categoryItems));
+    const category = buildSidebarCategory(
+      key,
+      getSidebarCategoryName(first),
+      categoryItems,
+    );
+
+    if (
+      metricSlots.length === 0 ||
+      hasMappingForEverySlot(category, metricSlots)
+    ) {
+      categories.push(category);
+    }
   }
 
   return categories.sort(sortSidebarCategories);
