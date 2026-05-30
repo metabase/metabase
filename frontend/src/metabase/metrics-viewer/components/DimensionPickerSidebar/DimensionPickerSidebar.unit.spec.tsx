@@ -463,7 +463,7 @@ describe("DimensionPickerSidebar", () => {
     expect(onSelectDimensionBreakout).toHaveBeenCalledWith({
       type: "category",
       label: "Status",
-      dimensionMapping: { 0: "dim-user-status" },
+      dimensionMapping: { 0: "dim-user-status", 1: null },
     });
     expect(onUpdateActiveDimensionBreakout).not.toHaveBeenCalled();
   });

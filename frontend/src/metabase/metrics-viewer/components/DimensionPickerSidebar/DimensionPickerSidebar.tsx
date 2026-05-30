@@ -152,6 +152,11 @@ export function DimensionPickerSidebar({
       return;
     }
 
+    const dimensionMapping = getComparableDimensionMapping({
+      item,
+      sections,
+      metricSlots,
+    });
     const dimensionBreakoutConfig = getDimensionBreakoutConfig(
       item.dimensionBreakoutInfo.type,
     );
@@ -160,18 +165,18 @@ export function DimensionPickerSidebar({
       dimensionBreakoutConfig.matchMode === "aggregate"
     ) {
       onUpdateActiveDimensionBreakout({
-        dimensionMapping: getComparableDimensionMapping({
-          item,
-          sections,
-          metricSlots,
-        }),
+        dimensionMapping,
         label: item.dimensionBreakoutInfo.label,
       });
       trackMetricsViewerDimensionSelected();
       return;
     }
 
-    handleSelect(item);
+    onSelectDimensionBreakout({
+      ...item.dimensionBreakoutInfo,
+      dimensionMapping,
+    });
+    trackMetricsViewerDimensionSelected();
   };
 
   const handleCategorySelect = (category: DimensionPickerSidebarCategory) => {

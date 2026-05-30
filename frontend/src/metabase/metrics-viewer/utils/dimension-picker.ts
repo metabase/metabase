@@ -474,10 +474,12 @@ export function getComparableDimensionMapping({
   item: DimensionPickerItem;
   sections: DimensionPickerSection[];
   metricSlots: MetricSlot[];
-}): Record<number, string> {
+}): Record<number, string | null> {
   const comparableKey = getComparableDimensionKey(item);
   const slotIndices = new Set(metricSlots.map((slot) => slot.slotIndex));
-  const mapping: Record<number, string> = {};
+  const mapping: Record<number, string | null> = Object.fromEntries(
+    metricSlots.map((slot) => [slot.slotIndex, null]),
+  );
 
   const comparableItems = [
     item,

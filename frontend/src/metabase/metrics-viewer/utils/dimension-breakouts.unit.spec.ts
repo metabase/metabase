@@ -8,6 +8,7 @@ import {
 } from "./__tests__/test-helpers";
 import {
   computeDefaultDimensionBreakouts,
+  createDimensionBreakoutFromInfo,
   resolveCommonDimensionBreakoutLabel,
 } from "./dimension-breakouts";
 
@@ -48,6 +49,25 @@ describe("resolveCommonDimensionBreakoutLabel", () => {
     expect(
       resolveCommonDimensionBreakoutLabel(["Created At", "Order Date"]),
     ).toBe("Created At");
+  });
+});
+
+describe("createDimensionBreakoutFromInfo", () => {
+  it("uses the first non-null dimension mapping as the dimensionBreakout id", () => {
+    expect(
+      createDimensionBreakoutFromInfo({
+        type: "numeric",
+        label: "Total",
+        dimensionMapping: { 0: null, 1: "dim-orders-total" },
+      }),
+    ).toEqual({
+      id: "dim-orders-total",
+      type: "numeric",
+      label: "Total",
+      display: "bar",
+      dimensionMapping: { 0: null, 1: "dim-orders-total" },
+      projectionConfig: {},
+    });
   });
 });
 

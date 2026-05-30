@@ -949,7 +949,49 @@ describe("getComparableDimensionMapping", () => {
         ],
         metricSlots,
       }),
-    ).toEqual({ 0: "dim-user-name" });
+    ).toEqual({ 0: "dim-user-name", 1: null });
+  });
+
+  it("does not map same-typed numeric fields from different tables", () => {
+    const selectedItem = {
+      icon: "int",
+      name: "Total",
+      group: { id: "orders", type: "main", displayName: "Orders" },
+      dimensionBreakoutInfo: {
+        type: "numeric" as const,
+        label: "Total",
+        dimensionMapping: { 0: "dim-orders-total" },
+      },
+    };
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "int",
+                name: "Price",
+                group: {
+                  id: "products",
+                  type: "main",
+                  displayName: "Products",
+                },
+                dimensionBreakoutInfo: {
+                  type: "numeric",
+                  label: "Price",
+                  dimensionMapping: { 1: "dim-products-price" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+      }),
+    ).toEqual({ 0: "dim-orders-total", 1: null });
   });
 
   it("maps exact same table and column category fields across metric slots", () => {
