@@ -302,7 +302,7 @@ describe("api", () => {
         retryCount: 5,
         formData: true,
         noEvent: false,
-        transformResponse: jest.fn(),
+        rawResponse: true,
       };
 
       const inputData = {
@@ -327,9 +327,7 @@ describe("api", () => {
 
       expect(result.url).toBe("/api/modified-url");
       expect(result.options).toEqual(complexOptions);
-      expect(result.options.transformResponse).toBe(
-        complexOptions.transformResponse,
-      );
+      expect(result.options.rawResponse).toBe(true);
     });
   });
 
