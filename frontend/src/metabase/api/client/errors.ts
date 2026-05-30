@@ -1,26 +1,30 @@
 /**
  * Thrown when the transport itself fails before a response is received —
  * e.g. the server dropped the connection, DNS lookup failed, or the user is
- * offline. Shaped as a plain object (not an `Error` subclass) so it round-trips
- * through `JSON.stringify` and RTK Query's `serializableCheck` middleware —
- * matches the `{ isCancelled }` and `{ status, data }` shapes also thrown from
- * `_dispatch`. Callers `isNetworkError`-check to render a connectivity error
+ * offline. Callers `isNetworkError`-check to render a connectivity error
  * message instead of treating it as a generic failure.
  */
-export type NetworkError = {
-  isNetworkError: true;
-  message: string;
-};
-
-export function networkError(message = "Network error"): NetworkError {
-  return { isNetworkError: true, message };
+export class NetworkError extends Error {
+  constructor(message = "Network error") {
+    super(message);
+    this.name = "NetworkError";
+  }
 }
 
 export function isNetworkError(error: unknown): error is NetworkError {
+  return error instanceof NetworkError;
+}
+
+/**
+ * `true` for the standard `DOMException` of name `"AbortError"` that
+ * `fetch()` rejects with when its signal aborts. Use this in place of the
+ * legacy `error.isCancelled` flag.
+ */
+export function isAbortError(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
-    (error as { isNetworkError?: unknown }).isNetworkError === true
+    (error as { name?: unknown }).name === "AbortError"
   );
 }
 

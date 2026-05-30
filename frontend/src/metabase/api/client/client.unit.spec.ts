@@ -201,10 +201,10 @@ describe("api", () => {
           params: { cardId: 1 },
           signal: controller.signal,
         }),
-      ).rejects.toEqual({ isCancelled: true });
+      ).rejects.toMatchObject({ name: "AbortError" });
     });
 
-    it("rejects as cancelled when the signal aborts while the request is in flight", async () => {
+    it("rejects with AbortError when the signal aborts while the request is in flight", async () => {
       const controller = new AbortController();
       fetchMock.get("path:/api/card/1/query", async () => {
         controller.abort();
@@ -218,13 +218,13 @@ describe("api", () => {
           params: { cardId: 1 },
           signal: controller.signal,
         }),
-      ).rejects.toEqual({ isCancelled: true });
+      ).rejects.toMatchObject({ name: "AbortError" });
     });
 
     // The retry path surfaces the signal's AbortError when a backoff is cut
-    // short; the client must normalize it to the same cancellation shape as a
-    // mid-fetch abort so consumers' `error.isCancelled` checks keep working.
-    it("rejects as cancelled when the signal aborts during a retry backoff", async () => {
+    // short via `signal.throwIfAborted()`, which the client lets propagate
+    // unchanged — same standard web shape as a mid-fetch abort.
+    it("rejects with AbortError when the signal aborts during a retry backoff", async () => {
       jest.useFakeTimers();
       try {
         fetchMock.get("path:/api/card/1/query", { status: 503, body: {} });
@@ -245,7 +245,7 @@ describe("api", () => {
         controller.abort();
         await jest.runAllTimersAsync();
 
-        expect(await promise).toEqual({ isCancelled: true });
+        expect(await promise).toMatchObject({ name: "AbortError" });
         expect(fetchMock.callHistory.calls()).toHaveLength(1);
       } finally {
         jest.useRealTimers();

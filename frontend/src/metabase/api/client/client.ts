@@ -11,7 +11,7 @@ import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
 import { addAntiCsrfToken, updateAntiCsrfToken } from "./csrf";
-import { isRetriableError, networkError } from "./errors";
+import { NetworkError, isRetriableError } from "./errors";
 import { getLocaleHeader } from "./locale";
 import { type RequestMethod, isRequestMethod } from "./method";
 import { apiRequestManipulationMiddleware } from "./middleware";
@@ -148,16 +148,20 @@ export class ApiClient extends EventEmitter<EventMap> {
       }
       return await this._makeRequest(init);
     } catch (error) {
+      // When the request is aborted, `fetch` rejects with the standard
+      // `DOMException` of name "AbortError". Let it propagate untouched so
+      // callers can `isAbortError`-check the standard web shape instead of a
+      // bespoke `{ isCancelled }` flag.
       if (init.signal?.aborted) {
-        throw { isCancelled: true };
+        throw error;
       }
       // A raw `fetch` rejection (e.g. the server dropped the connection)
       // surfaces as a plain Error here, indistinguishable from JS
-      // exceptions thrown elsewhere. Wrap it in a plain, redux-serializable
-      // shape so downstream renderers can `isNetworkError`-check and route it
-      // to the connectivity error message.
+      // exceptions thrown elsewhere. Wrap it so downstream renderers can
+      // `isNetworkError`-check and route it to the connectivity error
+      // message.
       if (error instanceof Error) {
-        throw networkError(error.message);
+        throw new NetworkError(error.message);
       }
       throw error;
     }
