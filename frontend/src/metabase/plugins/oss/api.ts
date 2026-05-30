@@ -1,4 +1,4 @@
-import type { RequestMethod } from "metabase/api/legacy-client";
+import type { RequestMethod } from "metabase/api/client";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 export type OnBeforeRequestHandlerConfig = {

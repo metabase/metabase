@@ -1,5 +1,5 @@
 import { sessionPropertiesPath } from "metabase/api";
-import type { RequestMethod } from "metabase/api/legacy-client";
+import type { RequestMethod } from "metabase/api/client";
 import {
   PLUGIN_API,
   PLUGIN_CONTENT_TRANSLATION,
