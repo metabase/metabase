@@ -23,20 +23,25 @@ export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
     return { error: "Invalid HTTP method" };
   }
 
+  // `FormData` / `URLSearchParams` bodies must be forwarded as-is — spreading
+  // them yields an empty object (neither is enumerable as keys) and would
+  // erase the upload. Other bodies merge with `params` so a single combined
+  // object reaches the legacy client (which doesn't separate them).
+  const isWebFormBody =
+    args?.body instanceof FormData || args?.body instanceof URLSearchParams;
+  const rawData = isWebFormBody
+    ? args.body
+    : { ...args?.body, ...args?.params };
+
   try {
-    const response = await api[method](url)(
-      // this will transform arrays to objects with numeric keys
-      // we shouldn't be using top level-arrays in the API
-      { ...args?.body, ...args?.params },
-      {
-        signal: ctx.signal,
-        noEvent,
-        formData,
-        fetch,
-        transformResponse,
-        ...extraOptions,
-      },
-    );
+    const response = await api[method](url)(rawData, {
+      signal: ctx.signal,
+      noEvent,
+      formData,
+      fetch,
+      transformResponse,
+      ...extraOptions,
+    });
     return { data: response };
   } catch (error) {
     return { error };
