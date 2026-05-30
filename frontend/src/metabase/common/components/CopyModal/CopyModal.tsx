@@ -2,23 +2,15 @@ import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { CopyDashboardFormConnected } from "metabase/common/components/CopyDashboardForm";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
 import { DocumentCopyForm } from "metabase/documents/components/DocumentCopyForm/DocumentCopyForm";
 import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
 import { Modal } from "metabase/ui";
 
-import type {
-  CopyModalProps,
-  CopyableType,
-  GenericCopyModalProps,
-} from "./types";
+import type { CopyModalProps } from "./types";
 
-export function CopyModal<T extends CopyableType>(
-  props: CopyModalProps<T>,
-): React.JSX.Element;
-export function CopyModal(props: GenericCopyModalProps): React.JSX.Element;
-export function CopyModal(props: GenericCopyModalProps) {
+export function CopyModal(props: CopyModalProps) {
   const {
     entityType,
     entityObject,
