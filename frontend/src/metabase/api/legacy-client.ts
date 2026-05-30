@@ -92,6 +92,20 @@ export class NetworkError extends Error {
   }
 }
 
+/**
+ * `true` for the standard `DOMException` of name `"AbortError"` that
+ * `fetch()` (and `XMLHttpRequest.abort()`-driven rejections) surface when the
+ * request is cancelled. Replaces the legacy `error.isCancelled` flag, so
+ * cancellation lines up with the standard web platform shape.
+ */
+export function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "AbortError"
+  );
+}
+
 type ResponseErrorInfo = {
   body: unknown;
   status: number;
@@ -296,7 +310,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
         ) {
           await delay(retryDelays.pop() ?? 0, options.signal);
           if (options.signal?.aborted) {
-            throw { isCancelled: true };
+            throw new DOMException("Aborted", "AbortError");
           }
         } else {
           throw e;
@@ -386,6 +400,15 @@ export class LegacyApi extends EventEmitter<EventMap> {
             status = responseBody._status as number;
           }
 
+          if (isCancelled) {
+            // Surface aborts as the standard `DOMException` AbortError so
+            // callers can `isAbortError`-check the same shape both transports
+            // (and `fetch` itself) emit. Skip the responseError/status events
+            // since the request was cancelled — there's no real response.
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+          }
+
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
               responseBody = options.transformResponse({
@@ -404,7 +427,6 @@ export class LegacyApi extends EventEmitter<EventMap> {
             reject({
               status: status,
               data: responseBody,
-              isCancelled: isCancelled,
             });
           }
           if (!options.noEvent) {
@@ -515,8 +537,11 @@ export class LegacyApi extends EventEmitter<EventMap> {
         });
       })
       .catch((error: unknown) => {
+        // When the request is aborted, `fetch` rejects with the standard
+        // `DOMException` AbortError. Let it propagate untouched so callers
+        // can `isAbortError`-check the standard web shape.
         if (options.signal?.aborted) {
-          throw { isCancelled: true };
+          throw error;
         }
         // A raw `fetch` rejection (e.g. the server dropped the connection)
         // surfaces as a plain Error here, indistinguishable from JS
