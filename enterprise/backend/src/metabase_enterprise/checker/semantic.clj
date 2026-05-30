@@ -17,11 +17,16 @@
    [metabase-enterprise.checker.provider :as provider]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.store :as deps.store]
+   [metabase-enterprise.dependencies.store.in-memory :as deps.store.mem]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.interface :as qp.i]
    ;; sql-tools.init registers multimethod implementations needed by deps.native-validation
    [metabase.sql-tools.init]
+   [metabase.util.log :as log]
    [metabase.util.malli.fn :as mu.fn]))
 
 (set! *warn-on-reflection* true)
@@ -597,6 +602,30 @@
                               (check-entity store provider kind eid))))
            dupes    (check-duplicate-entity-ids index)]
        (merge results dupes)))))
+
+;;; ===========================================================================
+;;; Dependency graph — build an InMemory store from checker's entity cache
+;;; ===========================================================================
+
+(defn build-dependency-store
+  "Build an [[deps.store.mem/InMemoryDependencyStore]] from all loaded entities
+   in the checker's store. Populates edges via [[deps.calculation/calculate-deps]].
+
+   The returned store uses the checker's synthetic integer IDs, so queries
+   via `(deps.store/graph store)` will return those IDs. Map them back to
+   portable entity-ids via [[store/id->ref]]."
+  [checker-store]
+  (let [dep-store (deps.store.mem/in-memory-dependency-store)]
+    (doseq [kind (disj deps.dependency-types/dependency-types :table)
+            eid  (store/all-refs checker-store kind)
+            :let [raw (store/cached-entity checker-store kind eid)]
+            :when raw]
+      (try
+        (let [deps (deps.calculation/calculate-deps kind raw)]
+          (deps.store/store-deps! dep-store kind (:id raw) deps))
+        (catch Exception e
+          (log/warnf e "Failed to calculate deps for %s %s, skipping" kind eid))))
+    dep-store))
 
 ;;; ===========================================================================
 ;;; Results processing — pure functions on result data

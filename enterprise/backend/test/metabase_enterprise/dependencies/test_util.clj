@@ -1,6 +1,9 @@
 (ns metabase-enterprise.dependencies.test-util
   (:require
    [medley.core :as m]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.store :as deps.store]
+   [metabase-enterprise.dependencies.store.in-memory :as deps.store.mem]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -16,6 +19,57 @@
   []
   (mt/with-premium-features #{:dependencies}
     (while (#'dependencies.backfill/backfill-dependencies!))))
+
+;;; ===========================================================================
+;;; In-memory store helpers — data-driven graph setup for tests
+;;; ===========================================================================
+
+(defn test-store
+  "Create an in-memory dependency store pre-loaded with edges.
+
+   `edges` is a map of `{entity-type {entity-id deps-by-type}}`:
+
+     (test-store {:card      {1 {:table #{100}}
+                              2 {:card #{1} :table #{200}}}
+                  :dashboard {10 {:card #{1 2}}}})
+
+   Returns an InMemoryDependencyStore ready for querying."
+  ([]
+   (deps.store.mem/in-memory-dependency-store))
+  ([edges]
+   (let [store (deps.store.mem/in-memory-dependency-store)]
+     (doseq [[entity-type entities] edges
+             [entity-id deps-by-type] entities]
+       (deps.store/store-deps! store entity-type entity-id deps-by-type))
+     store)))
+
+(defn with-edges
+  "Add or replace edges in an existing store. Same shape as [[test-store]].
+   Returns the store (mutated) for threading:
+
+     (-> (test-store {:card {1 {:table #{100}}}})
+         (with-edges {:card {1 {:table #{200}}}}))"
+  [store edges]
+  (doseq [[entity-type entities] edges
+          [entity-id deps-by-type] entities]
+    (deps.store/store-deps! store entity-type entity-id deps-by-type))
+  store)
+
+(defn calculate-and-store!
+  "Calculate deps for `entity` of `entity-type` and store in `store`.
+   Returns the calculated deps map.
+
+   Useful for testing calculate-deps → store → query round-trips:
+
+     (let [store (test-store)
+           dashboard {:dashcards [{:card_id 10}]
+                      :parameters []}]
+       (calculate-and-store! store :dashboard 1 dashboard)
+       ;; now query the store...)"
+  [store entity-type entity-id entity]
+  (let [deps (deps.calculation/calculate-deps entity-type entity)]
+    (deps.store/store-deps! store entity-type entity-id deps)
+    deps))
 
 (defn mock-card [metadata-provider {:keys [id query details]}]
   (merge {:lib/type        :metadata/card
