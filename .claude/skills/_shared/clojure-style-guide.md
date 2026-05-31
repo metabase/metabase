@@ -44,12 +44,61 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 - Lines ≤ 120 characters
 - No blank non-comment lines within definition forms (except pairwise `let`/`cond`)
 
+**Java interop: type-hint parameters in the arglist; prefer `ex-*` helpers:**
+
+```clojure
+;; bad — reflection warning, calls Throwable methods directly
+(defn root-cause [e]
+  (if-let [cause (.getCause e)] (recur cause) e))
+
+;; good
+(defn- root-cause [^Throwable e]
+  (if-let [cause (ex-cause e)]
+    (recur cause)
+    e))
+```
+
+Use `ex-cause`/`ex-message`/`ex-data`/`ex-info` rather than `.getCause`/`.getMessage`/`(.getData ^ExceptionInfo …)` where possible.
+
 ## Style Conventions
 
 **Keywords and Metadata:**
 
 - Prefer namespaced keywords for internal use: `:query-type/normal` not `:normal`
 - Tag variables with `:arglists` metadata if they're functions but wouldn't otherwise have it
+
+**Time/date: `java-time.api :as t` and `u.date`, not `java.time.*` direct interop:**
+
+```clojure
+;; bad — Claude default, requires java.time interop
+(:import (java.time LocalDate))
+... (LocalDate/now) ...
+
+;; good
+(:require
+ [java-time.api :as t]
+ [metabase.util.date-2 :as u.date])
+... (t/local-date) ...
+... (u.date/parse "2024-01-01") ...
+```
+
+Only `(:import java.time.X)` when interop with a Java method genuinely needs the class.
+
+**Realize a lazy seq once when traversing it more than once:**
+
+`map`, `filter`, `keep`, etc. return lazy seqs. If you `count`/`seq` it *and* iterate it, the seq runs twice — re-running every side-effecting or expensive item construction. Wrap in `vec` (or use a transducer into a vector) when the seq will be touched more than once.
+
+```clojure
+;; bad — `count` realizes once, `insert!` realizes again — build-prompt runs 2×
+(let [prompts (map build-prompt items)]
+  (when (pos? (count prompts))
+    (t2/insert! :model/Prompt prompts)))
+
+;; good
+(let [prompts (vec (map build-prompt items))]
+  (when (seq prompts)
+    (t2/insert! :model/Prompt prompts)))
+```
 
 ## Tests
 
@@ -61,6 +110,33 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 **Performance:**
 
 - Mark pure function tests `^:parallel`
+
+**Redefining `defn`-vars under test:**
+
+Use `mt/with-dynamic-fn-redefs` instead of `with-redefs` when stubbing `defn`/`defn-` vars — plain `with-redefs` is not parallel-test-safe and a clj-kondo hook (`:metabase/prefer-with-dynamic-fn-redefs`, see `.clj-kondo/config.edn`) will warn. `with-redefs` is still fine for `def` / dynamic var rebinding.
+
+```clojure
+;; bad — flagged by the linter, not safe under :parallel tests
+(with-redefs [my.ns/some-fn (fn [_] :stub)] (do-test))
+
+;; good
+(mt/with-dynamic-fn-redefs [my.ns/some-fn (fn [_] :stub)] (do-test))
+```
+
+**Async tests: no bare `Thread/sleep` — use `deref` with a timeout sentinel:**
+
+A fixed sleep is the #1 source of CI flake. Tests should fail fast and loud when a contract is violated, not hang or sleep through the bug.
+
+```clojure
+;; bad — flaky on slow CI, silent on actual failure
+(Thread/sleep 300)
+(is (= :expected @seen))
+
+;; good — fails fast with a clear message
+(let [v (deref some-promise 1000 ::timeout)]
+  (is (not= ::timeout v) "promise never delivered")
+  (is (= :expected v)))
+```
 
 ## Modules
 
@@ -86,6 +162,29 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 
 - Do not cheat module linters with `:clj-kondo/ignore [:metabase/modules]`
 
+**Enterprise/OSS split: use `defenterprise`, not protocols or runtime feature checks:**
+
+The OSS namespace defines the fallback body and names the EE namespace; the EE namespace overrides with the same fn name and a `:feature` clause naming the premium-features flag that gates the override. Both files use the same docstring shape — describe behavior on both sides.
+
+```clojure
+;; src/metabase/remote_sync/core.clj  (OSS)
+(defenterprise collection-editable?
+  "Returns whether remote-synced collections are editable.
+   Always true on OSS; EE consults the remote-sync settings."
+  metabase-enterprise.remote-sync.core
+  [_collection]
+  true)
+
+;; enterprise/backend/src/metabase_enterprise/remote_sync/core.clj  (EE)
+(defenterprise collection-editable?
+  "EE override — respects the synced-collections-editable? setting."
+  :feature :remote-sync
+  [collection]
+  (or (synced-collections-editable?) (not (synced? collection))))
+```
+
+`defenterprise-schema` is the malli-schema variant. Required from `[metabase.premium-features.core :refer [defenterprise defenterprise-schema]]`. The OSS body is what runs when the feature flag is off — never write `(when (premium/has-feature? ...) ...)` in user code; let `defenterprise` route.
+
 ## REST API Endpoints
 
 **Required Elements:**
@@ -93,6 +192,20 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 - All new endpoints must have response schemas (`:- <schema>` after route string)
 - All endpoints need Malli schemas for parameters (detailed and complete)
 - All new REST API endpoints MUST HAVE TESTS
+
+**Endpoint shape: `api.macros/defendpoint`, four positional arglist:**
+
+```clojure
+(api.macros/defendpoint :get "/:key/callback"
+  "OIDC callback for a specific provider."
+  [{provider-key :key} :- [:map [:key ProviderKey]]
+   _query-params
+   _body
+   request]
+  (oidc-integration/sso-callback provider-key request))
+```
+
+The arglist is **always 4 positional bindings** in this order: `route-params`, `query-params`, `body`, `request`. Use `_`-prefixed names for unused ones. Each one gets a Malli schema via `:- <schema>` (omit when `_`). The HTTP verb is a keyword (`:get`/`:post`/`:put`/`:delete`), not a symbol. Required as `[metabase.api.macros :as api.macros]`.
 
 **Naming Conventions:**
 
@@ -104,6 +217,20 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 
 - `GET` endpoints should not have side effects (except analytics)
 - `defendpoint` forms should be small wrappers around Toucan model code
+
+**Closed response maps:**
+
+Tag response Malli `:map` schemas with `{:closed true}` so the generated OpenAPI / TypeScript types reject extra keys. Open maps emit `additionalProperties: true`, which produces weak frontend types and makes discriminated unions ineffective. Tighten domain types in the same pass (`pos-int?` rather than `:int` when zero branches elsewhere).
+
+```clojure
+;; weak
+{:status 200 :body [:map [:status [:= :generated]] [:prompt_count :int]]}
+
+;; tight
+{:status 200 :body [:map {:closed true}
+                    [:status [:= :generated]]
+                    [:prompt_count pos-int?]]}
+```
 
 ## MBQL (Metabase Query Language)
 
@@ -144,8 +271,23 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 
 **Linter Suppressions:**
 
-- Use proper format for kondo suppressions
-- No `#_:clj-kondo/ignore` (keyword form)
+The right shape is a **reader-discard map** placed directly above the form being silenced, listing the rule keywords explicitly:
+
+```clojure
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/api_key" ...)
+```
+
+For a single require entry, hang it as metadata on that entry:
+
+```clojure
+(:require
+ ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
+ [metabase.query-processor.store :as qp.store])
+```
+
+Common Metabase-specific rules you'll see: `:metabase/modules`, `:metabase/validate-defendpoint-route-uses-kebab-case`, `:metabase/validate-defendpoint-has-response-schema`, `:metabase/prefer-with-dynamic-fn-redefs`, `:deprecated-namespace`, `:discouraged-namespace`. Don't use the keyword form (`#_:clj-kondo/ignore`); always the map form so it's grep-able by which rule(s) are suppressed.
 
 **Configurable Options:**
 
@@ -257,6 +399,21 @@ Define a model:
 
 Use it when a function would otherwise be a staircase of nested forms. Don't reach for it for a single `if`/`let`.
 
+## Schemas — `mr/def` for shared, inline for single-use
+
+When a schema is used in 2+ places or has a name worth documenting, extract it into the registry via `mr/def`:
+
+```clojure
+(:require [metabase.util.malli.registry :as mr])
+
+(mr/def ::options
+  "Options for Pulse channel rendering."
+  [:map
+   [:channel.render/include-buttons? {:description "default: false" :optional true} :boolean]])
+```
+
+`mr/def` keys are always `::namespaced` keywords; downstream callers reference via the fully-qualified keyword. Single-use schemas stay inline in the `mu/defn`'s `:-` annotation — no need to extract.
+
 ## Malli — `metabase.util.malli`
 
 - `(mu/defn my-fn :- :string [x :- :int, y :- [:maybe :string]] …)` — inline schemas; runtime validation in dev, no-op in prod by default.
@@ -305,6 +462,20 @@ Other useful map ops:
 - **Reaching into another module's tables via raw `:left-join` SQL** — expose a function on the owning model namespace and call that.
 - **Snake-case keys on a massaged in-memory map** — appdb-row only. Convert at the parse boundary (e.g., when a json response becomes an internal record).
 - **`(double (:k m 0.0))` on a hydrated DB column** — present-but-nil NPEs. Use `(double (or (:k m) 0.0))`.
+- **`defmulti` with every impl on one page** — extension story is a fiction. Use a private lookup map + a private fn.
+- **`(when (pos? (count xs)) …) … (use xs again)` where `xs` is lazy** — double-realizes, re-runs side-effecting item construction. `vec` it once.
+- **Plain `with-redefs` on a `defn` var in a test** — not parallel-safe; the kondo hook will warn. Use `mt/with-dynamic-fn-redefs`.
+- **`(Thread/sleep N)` in an async test** — flake source #1. `(deref p timeout-ms ::timeout)` and assert `not= ::timeout`.
+- **Hand-rolled `(str/split host #":")` for origin/host comparison** — mis-handles IPv6. Use `mw.security/parse-url` (or `try-parse-url` for client-controlled input).
+- **`(subs (pr-str huge) 0 N)` on a log path** — the multi-MB string is already allocated. Bind `*print-length*`/`*print-level*` around `pr-str` instead.
+- **New retry loop / new "find this column" helper / new transform-source-type predicate** — search first. `metabase.util.retry/with-retry`, `metabase.lib.equality/find-matching-column`, and `metabase.transforms.feature-gating/any-transforms-enabled?` already exist (along with many others). Reviewers ask "isn't there already an X for this?" more than any single idiom.
+- **Plain `defn` when the function has any real contract** — `mu/defn` (or `mu/defn-`) with `:- schema` on the return and each param is the house default; reserve plain `defn` for trivial dev/helper code.
+- **`(:import (java.time …))` + `(LocalDate/now)`** in new code — use `[java-time.api :as t]` + `[metabase.util.date-2 :as u.date]`. Direct `java.time` interop only when a Java API genuinely needs the class.
+- **Vanilla `defmethod`** — use `methodical/defmethod` (it takes a docstring; the codebase uses it uniformly).
+- **`(when (premium/has-feature? :flag) …)` in code** — gate via `defenterprise` so OSS/EE bodies live in their respective namespaces; never sprinkle runtime feature checks.
+- **No `(set! *warn-on-reflection* true)` after the `ns` form** in a new `.clj` file — every `.clj` source file in this repo has it (not `.cljc`).
+- **`(ns … (:require [a :as a] [b :as b]))` on one line; `(:import java.io.File java.net.URI)` bare** — both wrong shapes. Requires one per line under `:require`, imports as `(Package Class)` lists.
+- **Inventing a fresh `:as` alias for `metabase.util`, `metabase.util.malli`, `metabase.util.log`, `java-time.api`, etc.** — use the canonical alias (see the table in Style Conventions). Mixing aliases makes `grep`-based discovery worse.
 
 ## When in doubt
 
