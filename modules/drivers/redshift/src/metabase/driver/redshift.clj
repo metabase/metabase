@@ -25,6 +25,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
@@ -556,7 +557,7 @@
         (keep (fn [param]
                 (if (contains? param :name)
                   [(:name param) (:value param)]
-                  (when-let [field-id (driver-api/match-one param
+                  (when-let [field-id (match/match-one param
                                         [:field (field-id :guard integer?) _]
                                         (when (perf/some #{:dimension} &parents)
                                           field-id))]

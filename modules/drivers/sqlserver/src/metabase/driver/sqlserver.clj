@@ -33,6 +33,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf :refer [mapv get-in]]
    [next.jdbc :as next.jdbc])
@@ -275,7 +276,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (driver-api/match-one base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
+          (match/match-one base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -905,7 +906,7 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (driver-api/replace inner-query
+    (match/replace inner-query
       ;; remove order by and then recurse in case we need to do more transformations at another level
       (m :guard (remove-order-by? &parents m))
       (fix-order-bys (dissoc m :order-by))
