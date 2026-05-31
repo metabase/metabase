@@ -137,39 +137,6 @@ class Table {
     return this._metrics;
   }
 
-  // Setters let existing callers still override a cross-link explicitly (e.g.
-  // cloning a table and replacing its fields); reads stay lazy otherwise.
-  set db(value: Database | undefined) {
-    this._db = value;
-    this._dbResolved = true;
-  }
-
-  set schema(value: Schema | undefined) {
-    this._schema = value;
-    this._schemaResolved = true;
-  }
-
-  set fields(value: Field[] | undefined) {
-    this._fields = value;
-  }
-
-  set fks(value: ForeignKey[] | undefined) {
-    this._fks = value;
-    this._fksResolved = true;
-  }
-
-  set segments(value: Segment[] | undefined) {
-    this._segments = value;
-  }
-
-  set measures(value: Measure[] | undefined) {
-    this._measures = value;
-  }
-
-  set metrics(value: Question[] | undefined) {
-    this._metrics = value;
-  }
-
   getFields() {
     return this.fields ?? [];
   }

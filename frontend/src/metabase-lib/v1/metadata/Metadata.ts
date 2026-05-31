@@ -200,40 +200,6 @@ class Metadata {
     return this._snippets;
   }
 
-  // Setters let callers replace a whole wrapped map explicitly (mainly tests and
-  // the cljs metadata-provider bridge); otherwise maps materialize lazily.
-  set databases(value: Record<string, Database>) {
-    this._databasesAll = value;
-  }
-
-  set schemas(value: Record<string, Schema>) {
-    this._schemasAll = value;
-  }
-
-  set tables(value: Record<string, Table>) {
-    this._tablesAll = value;
-  }
-
-  set fields(value: Record<string, Field>) {
-    this._fieldsAll = value;
-  }
-
-  set segments(value: Record<string, Segment>) {
-    this._segmentsAll = value;
-  }
-
-  set measures(value: Record<string, Measure>) {
-    this._measuresAll = value;
-  }
-
-  set metrics(value: Record<string, Metric>) {
-    this._metricsAll = value;
-  }
-
-  set questions(value: Record<string, Question>) {
-    this._questionsAll = value;
-  }
-
   private _materialize<T>(
     rawStore: Record<string, unknown>,
     // ids are widened to `any` so callers can hand the string key straight to

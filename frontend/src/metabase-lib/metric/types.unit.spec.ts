@@ -15,8 +15,6 @@ import type {
  * Creates test metrics with dimensions of specific types for testing type predicates.
  */
 function createTestMetadata() {
-  const metadata = createMockMetadata();
-
   // Create a metric with various dimension types
   const testMetric = createMockMetric({
     id: 1,
@@ -104,11 +102,7 @@ function createTestMetadata() {
     ],
   });
 
-  metadata.metrics = {
-    [testMetric.id]: testMetric,
-  };
-
-  return metadata;
+  return createMockMetadata({ metrics: [testMetric] });
 }
 
 function setupDefinition(): {

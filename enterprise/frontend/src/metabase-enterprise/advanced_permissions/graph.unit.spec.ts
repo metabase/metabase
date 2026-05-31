@@ -1,4 +1,6 @@
-import Database from "metabase-lib/v1/metadata/Database";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/utils/types";
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import {
   DataPermission,
   DataPermissionValue,
@@ -14,18 +16,14 @@ const schema = "my_schema";
 const tableId = 30;
 const entityId = { databaseId };
 
-const database = new Database({
-  ...createMockDatabase({ id: entityId.databaseId }),
-  schemas: [schema],
-  tables: [tableId],
+const schemaId = generateSchemaId(databaseId, schema);
+
+const metadata = createMockMetadata({
+  databases: [createMockDatabase({ id: databaseId, schemas: [schemaId] })],
+  schemas: [createMockSchema({ id: schemaId, name: schema })],
 });
 
-database.schemas = [
-  createMockSchema({
-    id: "100",
-    name: schema,
-  }),
-];
+const database = checkNotNull(metadata.database(databaseId));
 
 const createGraph = (viewPermissions: SchemasPermissions) => ({
   [groupId]: {

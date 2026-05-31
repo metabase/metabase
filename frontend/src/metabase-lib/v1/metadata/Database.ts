@@ -72,15 +72,6 @@ class Database {
     return this._schemas;
   }
 
-  // Setters let callers still override a cross-link explicitly; reads stay lazy.
-  set tables(value: Table[] | undefined) {
-    this._tables = value;
-  }
-
-  set schemas(value: Schema[] | undefined) {
-    this._schemas = value;
-  }
-
   displayName() {
     return this.name;
   }

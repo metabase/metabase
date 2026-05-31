@@ -1,8 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
+import { createMockEntitiesState } from "__support__/store";
 import { getIcon, render, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
+import Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
@@ -159,10 +161,12 @@ describe("DataSelector", () => {
     rerender(<DataSelector {...props} loading />);
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
 
-    // select a db
-    let nextMetadata = createMockMetadata({ databases });
-    nextMetadata.schemas = {};
-    nextMetadata.tables = {};
+    // we build each loading stage as its own metadata, populated with only the
+    // slices that have been "fetched" so far
+    const entities = createMockEntitiesState({ databases });
+
+    // select a db (only databases are known so far)
+    let nextMetadata = new Metadata({ databases: entities.databases });
     rerenderWith(nextMetadata);
 
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
@@ -173,9 +177,11 @@ describe("DataSelector", () => {
     await delay(1);
     expect(fetchSchemas).toHaveBeenCalled();
 
-    // select a schema
-    nextMetadata = createMockMetadata({ databases });
-    nextMetadata.tables = {};
+    // select a schema (databases + schemas known, tables not yet fetched)
+    nextMetadata = new Metadata({
+      databases: entities.databases,
+      schemas: entities.schemas,
+    });
     rerenderWith(nextMetadata);
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();

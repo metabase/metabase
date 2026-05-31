@@ -75,20 +75,20 @@ export default class Field extends Base {
   visibility_type: FieldVisibilityType;
 
   constructor(object = {}) {
-    super(object);
-    // Base copies every raw key onto `this`, which runs the setters below with
-    // raw ids/arrays (e.g. `target` = a field id). Reset the lazy backing state
-    // so these resolve from `_plainObject` on first access instead.
-    this._table = undefined;
-    this._tableResolved = false;
-    this._target = undefined;
-    this._targetResolved = false;
-    this._name_field = undefined;
-    this._nameFieldResolved = false;
-    this._values = undefined;
-    this._valuesResolved = false;
-    this._remapping = undefined;
-    this._remappingResolved = false;
+    // `table`, `target`, `name_field`, `values` and `remapping` are exposed as
+    // lazy getters below. Keep them out of the object `Base` copies onto the
+    // instance (it would assign to a getter-only property and throw), then
+    // restore the full plain object so the getters can read the relational ids.
+    const {
+      table: _table,
+      target: _target,
+      name_field: _nameField,
+      values: _values,
+      remapping: _remapping,
+      ...rest
+    } = object;
+    super(rest);
+    this._plainObject = object;
   }
 
   getPlainObject(): NormalizedField {
@@ -138,32 +138,6 @@ export default class Field extends Base {
       this._remappingResolved = true;
     }
     return this._remapping;
-  }
-
-  // Setters let callers still override a cross-link explicitly; reads stay lazy.
-  set table(value) {
-    this._table = value;
-    this._tableResolved = true;
-  }
-
-  set target(value) {
-    this._target = value;
-    this._targetResolved = true;
-  }
-
-  set name_field(value) {
-    this._name_field = value;
-    this._nameFieldResolved = true;
-  }
-
-  set values(value) {
-    this._values = value;
-    this._valuesResolved = true;
-  }
-
-  set remapping(value) {
-    this._remapping = value;
-    this._remappingResolved = true;
   }
 
   getId() {

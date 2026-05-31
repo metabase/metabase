@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_METADATA,
@@ -62,37 +61,39 @@ function native(spec: TestNativeQuerySpec) {
 describe("parameters/utils/mapping-options", () => {
   describe("getParameterMappingOptions", () => {
     describe("structured model", () => {
-      const question = ordersTable.question();
-      const dataset = question.setCard({
-        ...question.card(),
+      // a model whose result metadata carries custom, model-specific column
+      // metadata, so the model exposes it as though it were already nested
+      const datasetCard = createMockCard({
         id: 123,
         type: "model",
+        name: "Orders",
+        dataset_query: Lib.toJsQuery(ordersTable.question().query()),
+        result_metadata: [
+          createMockField({
+            name: "CREATED_AT",
+            display_name: "~*~Created At~*~",
+            base_type: "type/DateTime",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            field_ref: [
+              "field",
+              "CREATED_AT",
+              { "base-type": "type/DateTime" },
+            ],
+          }),
+        ],
       });
 
-      // create a virtual table for the card
-      // that contains fields with custom, model-specific metadata
-      const virtualCardTable = ordersTable?.clone();
-      virtualCardTable.id = `card__123`;
-      virtualCardTable.fields = [
-        metadata.field(ORDERS.CREATED_AT)?.clone({
-          table_id: `card__123`,
-          uniqueId: `card__123:${ORDERS.CREATED_AT}`,
-          display_name: "~*~Created At~*~",
-        }),
-      ].filter(isNotNull);
-
-      // add instances to the `metadata` instance
-      metadata.questions[dataset.id()] = dataset;
-      metadata.tables[virtualCardTable.id] = virtualCardTable;
-      virtualCardTable.fields.forEach((f) => {
-        metadata.fields[f.getUniqueId()] = f;
+      const modelMetadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [datasetCard],
       });
 
       it("should return fields from the model question's virtual card table, as though it is already nested", () => {
         const options = getParameterMappingOptions(
-          new Question(dataset.card(), metadata),
+          new Question(datasetCard, modelMetadata),
           createMockParameter({ type: "date/single" }),
-          dataset.card(),
+          datasetCard,
         );
 
         expect(options).toEqual([

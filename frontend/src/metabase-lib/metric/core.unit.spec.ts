@@ -77,13 +77,7 @@ const DIM_IDX = {
 };
 
 function createSampleMetadata() {
-  const metadata = createMockMetadata();
-
-  metadata.metrics = {
-    [SAMPLE_METRIC.id]: SAMPLE_METRIC,
-  };
-
-  return metadata;
+  return createMockMetadata({ metrics: [SAMPLE_METRIC] });
 }
 
 /**
