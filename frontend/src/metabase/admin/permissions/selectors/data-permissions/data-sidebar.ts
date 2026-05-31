@@ -53,8 +53,8 @@ const getTableId = (id: string | number) => `table:${id}`;
 const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
   const entities = metadata
     .databasesList({ savedQuestions: false })
-    .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as DatabaseType))
-    .filter((db) => !(db as DatabaseType).router_database_id)
+    .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as unknown as DatabaseType))
+    .filter((db) => !(db as unknown as DatabaseType).router_database_id)
     .map((database) => ({
       id: database.id,
       name: database.name,

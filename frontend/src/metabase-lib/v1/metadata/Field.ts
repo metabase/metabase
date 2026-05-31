@@ -61,14 +61,9 @@ export default class Field extends Base {
   fingerprint?: FieldFingerprint;
   base_type: string;
   effective_type?: string | null;
-  table?: Table;
   table_id?: Table["id"];
-  target?: Field;
-  name_field?: Field;
-  remapping?: unknown;
   has_field_values?: FieldValuesType;
   has_more_values?: boolean;
-  values: any[];
   position: number;
   metadata?: Metadata;
   source?: string;
@@ -79,8 +74,96 @@ export default class Field extends Base {
   settings?: FieldFormattingSettings;
   visibility_type: FieldVisibilityType;
 
+  constructor(object = {}) {
+    super(object);
+    // Base copies every raw key onto `this`, which runs the setters below with
+    // raw ids/arrays (e.g. `target` = a field id). Reset the lazy backing state
+    // so these resolve from `_plainObject` on first access instead.
+    this._table = undefined;
+    this._tableResolved = false;
+    this._target = undefined;
+    this._targetResolved = false;
+    this._name_field = undefined;
+    this._nameFieldResolved = false;
+    this._values = undefined;
+    this._valuesResolved = false;
+    this._remapping = undefined;
+    this._remappingResolved = false;
+  }
+
   getPlainObject(): NormalizedField {
     return this._plainObject;
+  }
+
+  // Lazily-resolved cross-links, memoized for the life of the instance.
+  get table(): Table | undefined {
+    if (!this._tableResolved) {
+      this._table = this.metadata?.table(this.table_id) ?? undefined;
+      this._tableResolved = true;
+    }
+    return this._table;
+  }
+
+  get target(): Field | undefined {
+    if (!this._targetResolved) {
+      this._target = this.metadata?.field(this.fk_target_field_id) ?? undefined;
+      this._targetResolved = true;
+    }
+    return this._target;
+  }
+
+  get name_field(): Field | undefined {
+    if (!this._nameFieldResolved) {
+      const nameFieldId = this._plainObject.name_field;
+      this._name_field =
+        nameFieldId != null
+          ? (this.metadata?.field(nameFieldId) ?? undefined)
+          : undefined;
+      this._nameFieldResolved = true;
+    }
+    return this._name_field;
+  }
+
+  get values() {
+    if (!this._valuesResolved) {
+      this._values = getFieldValues(this._plainObject);
+      this._valuesResolved = true;
+    }
+    return this._values;
+  }
+
+  get remapping() {
+    if (!this._remappingResolved) {
+      this._remapping = new Map(getRemappings(this._plainObject));
+      this._remappingResolved = true;
+    }
+    return this._remapping;
+  }
+
+  // Setters let callers still override a cross-link explicitly; reads stay lazy.
+  set table(value) {
+    this._table = value;
+    this._tableResolved = true;
+  }
+
+  set target(value) {
+    this._target = value;
+    this._targetResolved = true;
+  }
+
+  set name_field(value) {
+    this._name_field = value;
+    this._nameFieldResolved = true;
+  }
+
+  set values(value) {
+    this._values = value;
+    this._valuesResolved = true;
+  }
+
+  set remapping(value) {
+    this._remapping = value;
+    this._remappingResolved = true;
   }
 
   getId() {

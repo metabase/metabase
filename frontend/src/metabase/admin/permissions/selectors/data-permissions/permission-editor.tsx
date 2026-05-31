@@ -337,8 +337,8 @@ export const getDatabasesPermissionEditor = createSelector(
       permissionSubject = "schemas";
       entities = metadata
         .databasesList({ savedQuestions: false })
-        .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as Database))
-        .filter((db) => !(db as Database).router_database_id)
+        .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as unknown as Database))
+        .filter((db) => !(db as unknown as Database).router_database_id)
         .map((database) => {
           const entityId = getDatabaseEntityId(database);
           return {

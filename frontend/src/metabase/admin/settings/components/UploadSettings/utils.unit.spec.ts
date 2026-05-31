@@ -16,7 +16,7 @@ const setup = ({ databases, schemas }: SetupOpts) => {
   return {
     databases: databases.map(({ id }) =>
       checkNotNull(metadata.database(id)),
-    ) as Database[],
+    ) as unknown as Database[],
     schemas: schemas.map(({ id }) => checkNotNull(metadata.schema(id))),
   };
 };

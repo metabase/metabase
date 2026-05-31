@@ -3,33 +3,8 @@ import { normalize } from "normalizr";
 
 import type { State } from "metabase/redux/store";
 import { FieldSchema } from "metabase/schema";
-import Question from "metabase-lib/v1/Question";
-import Database from "metabase-lib/v1/metadata/Database";
-import Field from "metabase-lib/v1/metadata/Field";
-import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import Table from "metabase-lib/v1/metadata/Table";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import {
-  getFieldValues,
-  getRemappings,
-} from "metabase-lib/v1/queries/utils/field";
-import type {
-  Table as ApiTable,
-  Card,
-  Measure,
-  Metric,
-  NormalizedDatabase,
-  NormalizedField,
-  NormalizedForeignKey,
-  NormalizedMeasure,
-  NormalizedMetric,
-  NormalizedSchema,
-  NormalizedSegment,
-  NormalizedTable,
-  Segment,
-} from "metabase-types/api";
+import type { NormalizedField, NormalizedTable } from "metabase-types/api";
 
 import { getSettings } from "./settings";
 
@@ -101,6 +76,48 @@ export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
 
+/**
+ * Some tables arrive with their fields denormalized under `original_fields`
+ * (e.g. from card/dashboard query_metadata). Flatten those into the fields map
+ * keyed by uniqueId so `Metadata` can resolve them uniformly, and point the
+ * table's `fields` at the resulting uniqueIds. This is the one bit of normalizr
+ * left, and it lives here in the app layer rather than in metabase-lib.
+ */
+function flattenOriginalFields(
+  tables: Record<string, NormalizedTable>,
+  fields: Record<string, NormalizedField>,
+): {
+  tables: Record<string, NormalizedTable>;
+  fields: Record<string, NormalizedField>;
+} {
+  const hasOriginalFields = Object.values(tables).some(
+    (table) => table.original_fields,
+  );
+  if (!hasOriginalFields) {
+    return { tables, fields };
+  }
+
+  const flattenedFields: Record<string, NormalizedField> = { ...fields };
+  const flattenedTables: Record<string, NormalizedTable> = {};
+
+  for (const [tableId, table] of Object.entries(tables)) {
+    if (!table.original_fields) {
+      flattenedTables[tableId] = table;
+      continue;
+    }
+
+    const fieldIds = table.original_fields.map((apiField) => {
+      const { entities, result } = normalize(apiField, FieldSchema);
+      Object.assign(flattenedFields, entities.fields);
+      return result;
+    });
+
+    flattenedTables[tableId] = { ...table, fields: fieldIds };
+  }
+
+  return { tables: flattenedTables, fields: flattenedFields };
+}
+
 export const getMetadata: (
   state: State,
   props?: MetadataSelectorOpts,
@@ -129,70 +146,19 @@ export const getMetadata: (
     snippets,
     settings,
   ) => {
-    const metadata = new Metadata({ settings });
-
-    metadata.databases = Object.fromEntries(
-      Object.values(databases).map((d) => [d.id, createDatabase(d, metadata)]),
-    );
-    metadata.schemas = Object.fromEntries(
-      Object.values(schemas).map((s) => [s.id, createSchema(s, metadata)]),
-    );
-    metadata.tables = Object.fromEntries(
-      Object.values(tables).map((t) => [t.id, createTable(t, metadata)]),
-    );
-    metadata.fields = Object.fromEntries(
-      Object.values(fields)
-        .filter((f) => f.uniqueId != null) // remove stub field instances created for field values without field properties
-        .map((f) => [f.uniqueId, createField(f, metadata)]),
-    );
-    metadata.segments = Object.fromEntries(
-      Object.values(segments).map((s) => [s.id, createSegment(s)]),
-    );
-    metadata.measures = Object.fromEntries(
-      Object.values(measures).map((m) => [m.id, createMeasure(m)]),
-    );
-    metadata.metrics = Object.fromEntries(
-      Object.values(metrics).map((m) => [m.id, createMetric(m)]),
-    );
-    metadata.questions = Object.fromEntries(
-      Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
-    );
-    metadata.snippets = Object.fromEntries(
-      Object.values(snippets).map((snippet) => [snippet.id, snippet]),
-    );
-
-    Object.values(metadata.databases).forEach((database) => {
-      database.tables = hydrateDatabaseTables(database, metadata);
+    const flattened = flattenOriginalFields(tables, fields);
+    return new Metadata({
+      databases,
+      schemas,
+      tables: flattened.tables,
+      fields: flattened.fields,
+      segments,
+      measures,
+      metrics,
+      questions,
+      snippets,
+      settings,
     });
-    Object.values(metadata.schemas).forEach((schema) => {
-      schema.database = hydrateSchemaDatabase(schemas[schema.id], metadata);
-    });
-    Object.values(metadata.tables).forEach((table) => {
-      table.db = hydrateTableDatabase(table, metadata);
-      table.schema = hydrateTableSchema(table, metadata);
-      table.fields = hydrateTableFields(table, metadata);
-      table.fks = hydrateTableForeignKeys(table, metadata);
-      table.segments = hydrateTableSegments(table, metadata);
-      table.measures = hydrateTableMeasures(table, metadata);
-      table.metrics = hydrateTableMetrics(table, metadata);
-    });
-    Object.values(metadata.databases).forEach((database) => {
-      database.schemas = hydrateDatabaseSchemas(database, metadata);
-    });
-    Object.values(metadata.schemas).forEach((schema) => {
-      schema.tables = hydrateSchemaTables(schema, schemas[schema.id], metadata);
-    });
-    Object.values(metadata.measures).forEach((measure) => {
-      measure.table = hydrateMeasureTable(measure, tables);
-    });
-    Object.values(metadata.fields).forEach((field) => {
-      hydrateField(field, metadata);
-    });
-    Object.values(metadata.tables).forEach((table) => {
-      table.fields?.forEach((field) => hydrateField(field, metadata));
-    });
-
-    return metadata;
   },
 );
 
@@ -209,235 +175,3 @@ export const getMetadataWithHiddenTables = (
 ) => {
   return getMetadata(state, { ...props, includeHiddenTables: true });
 };
-
-// Utils
-
-function isNotNull<T>(value: T | null | undefined): value is T {
-  return value != null;
-}
-
-function createDatabase(
-  database: NormalizedDatabase,
-  metadata: Metadata,
-): Database {
-  const instance = new Database(database);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createSchema(schema: NormalizedSchema, metadata: Metadata): Schema {
-  const { database: _database, tables: _tables, ...rest } = schema;
-  return { ...rest, metadata };
-}
-
-function createTable(table: NormalizedTable, metadata: Metadata): Table {
-  const instance = new Table(table);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createField(field: NormalizedField, metadata: Metadata): Field {
-  // We need a way to distinguish field objects that come from the server
-  // vs. those that are created client-side to handle lossy transformations between
-  // Field instances and FieldDimension instances.
-  // There are scenarios where we are failing to convert FieldDimensions back into Fields,
-  // and as a safeguard we instantiate a new Field that is missing most of its properties.
-  const instance = new Field({ ...field, _comesFromEndpoint: true });
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createForeignKey(
-  foreignKey: NormalizedForeignKey,
-  metadata: Metadata,
-): ForeignKey {
-  const instance = new ForeignKey(foreignKey);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createSegment(segment: NormalizedSegment): Segment {
-  const { table: _normalizedTableId, ...rest } = segment;
-  return rest;
-}
-
-function createMeasure(measure: NormalizedMeasure): Measure {
-  const { table: _normalizedTableId, ...rest } = measure;
-  return rest;
-}
-
-function createMetric(metric: NormalizedMetric): Metric {
-  const { collection: _normalizedCollectionId, ...rest } = metric;
-  return { ...rest, collection: null };
-}
-
-function createQuestion(card: Card, metadata: Metadata): Question {
-  return new Question(card, metadata);
-}
-
-function hydrateDatabaseTables(
-  database: Database,
-  metadata: Metadata,
-): Table[] {
-  const tableIds = database.getPlainObject().tables ?? [];
-  if (tableIds.length > 0) {
-    return tableIds.map((tableId) => metadata.table(tableId)).filter(isNotNull);
-  }
-
-  return Object.values(metadata.tables).filter(
-    (table) =>
-      !isVirtualCardId(table.id) && table.schema && table.db_id === database.id,
-  );
-}
-
-function hydrateDatabaseSchemas(
-  database: Database,
-  metadata: Metadata,
-): Schema[] {
-  const schemaIds = database.getPlainObject().schemas;
-  if (schemaIds) {
-    return schemaIds.map((s) => metadata.schema(s)).filter(isNotNull);
-  }
-
-  return Object.values(metadata.schemas).filter(
-    (s) => s.database && s.database.id === database.id,
-  );
-}
-
-function hydrateSchemaDatabase(
-  normalized: NormalizedSchema,
-  metadata: Metadata,
-): Database | undefined {
-  return metadata.database(normalized.database) ?? undefined;
-}
-
-function hydrateSchemaTables(
-  schema: Schema,
-  normalized: NormalizedSchema,
-  metadata: Metadata,
-): Table[] {
-  const tableIds = normalized.tables;
-  if (tableIds) {
-    return tableIds.map((table) => metadata.table(table)).filter(isNotNull);
-  } else if (schema.database && schema.database.getTables().length > 0) {
-    return schema.database
-      .getTables()
-      .filter((table) => table.schema_name === schema.name);
-  } else {
-    return Object.values(metadata.tables).filter(
-      (table) => table.schema && table.schema.id === schema.id,
-    );
-  }
-}
-
-function hydrateTableDatabase(
-  table: Table,
-  metadata: Metadata,
-): Database | undefined {
-  const { db, db_id } = table.getPlainObject();
-  return metadata.database(db ?? db_id) ?? undefined;
-}
-
-function hydrateTableSchema(
-  table: Table,
-  metadata: Metadata,
-): Schema | undefined {
-  const schemaId = table.getPlainObject().schema;
-  return metadata.schema(schemaId) ?? undefined;
-}
-
-function hydrateTableFields(entityTable: Table, metadata: Metadata): Field[] {
-  const apiTable = entityTable.getPlainObject();
-
-  if (!apiTable.original_fields) {
-    const fieldIds = apiTable.fields ?? [];
-    return fieldIds.map((id) => metadata.field(id)).filter(isNotNull);
-  }
-
-  return apiTable.original_fields.map((apiField) => {
-    const { entities, result } = normalize(apiField, FieldSchema);
-    const normalizedField = entities.fields?.[result];
-    return createField(normalizedField, metadata);
-  });
-}
-
-function hydrateField(field: Field, metadata: Metadata) {
-  field.table = hydrateFieldTable(field, metadata);
-  field.target = hydrateFieldTarget(field, metadata);
-  field.name_field = hydrateNameField(field, metadata);
-  field.values = getFieldValues(field);
-  field.remapping = new Map(getRemappings(field));
-}
-
-function hydrateTableForeignKeys(
-  table: Table,
-  metadata: Metadata,
-): ForeignKey[] | undefined {
-  return table.getPlainObject().fks?.map((fk) => {
-    const instance = createForeignKey(fk, metadata);
-    instance.origin = metadata.field(fk.origin_id) ?? undefined;
-    instance.destination = metadata.field(fk.destination_id) ?? undefined;
-    return instance;
-  });
-}
-
-function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
-  const segmentIds = table.getPlainObject().segments ?? [];
-  return segmentIds
-    .map((id) => metadata.segments[id] ?? null)
-    .filter(isNotNull);
-}
-
-function hydrateTableMeasures(table: Table, metadata: Metadata): Measure[] {
-  const measureIds = table.getPlainObject().measures ?? [];
-  return measureIds.map((id) => metadata.measure(id)).filter(isNotNull);
-}
-
-function hydrateTableMetrics(table: Table, metadata: Metadata): Question[] {
-  const metricIds = table.getPlainObject().metrics ?? [];
-  return metricIds.map((id) => metadata.question(id)).filter(isNotNull);
-}
-
-function hydrateFieldTable(
-  field: Field,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(field.table_id) ?? undefined;
-}
-
-function hydrateFieldTarget(
-  field: Field,
-  metadata: Metadata,
-): Field | undefined {
-  return metadata.field(field.fk_target_field_id) ?? undefined;
-}
-
-function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
-  const nameFieldId = field.getPlainObject().name_field;
-  if (nameFieldId != null) {
-    return metadata.field(nameFieldId) ?? undefined;
-  }
-}
-
-function hydrateMeasureTable(
-  measure: Measure,
-  tables: Record<string, NormalizedTable>,
-): ApiTable | undefined {
-  const normalized = tables[measure.table_id];
-  if (!normalized) {
-    return undefined;
-  }
-  const {
-    db: _db,
-    fields: _fields,
-    fks: _fks,
-    segments: _segments,
-    measures: _measures,
-    metrics: _metrics,
-    schema: _schema,
-    schema_name,
-    original_fields: _original_fields,
-    ...rest
-  } = normalized;
-  return { ...rest, schema: schema_name ?? "" };
-}

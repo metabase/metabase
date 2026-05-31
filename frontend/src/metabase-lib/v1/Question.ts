@@ -95,16 +95,7 @@ class Question {
     parameterValues?: ParameterValuesMap,
   ) {
     this._card = card;
-    this._metadata =
-      metadata ||
-      new Metadata({
-        databases: {},
-        tables: {},
-        fields: {},
-        metrics: {},
-        segments: {},
-        questions: {},
-      });
+    this._metadata = metadata || new Metadata();
     this._parameterValues = parameterValues || {};
   }
 

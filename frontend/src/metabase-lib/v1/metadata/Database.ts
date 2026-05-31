@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type { NativeQuery, NormalizedDatabase } from "metabase-types/api";
 
@@ -10,8 +11,7 @@ import type Schema from "./Schema";
 import type Table from "./Table";
 
 interface Database extends Omit<NormalizedDatabase, "tables" | "schemas"> {
-  tables?: Table[];
-  schemas?: Schema[];
+  // tables / schemas are provided as lazy getters on the class below.
   metadata?: Metadata;
 }
 
@@ -21,14 +21,64 @@ interface Database extends Omit<NormalizedDatabase, "tables" | "schemas"> {
 class Database {
   private readonly _plainObject: NormalizedDatabase;
 
+  // Lazily-resolved cross-links, memoized for the life of the instance.
+  private _tables?: Table[];
+  private _schemas?: Schema[];
+
   constructor(database: NormalizedDatabase) {
     this._plainObject = database;
     this.tablesLookup = _.memoize(this.tablesLookup);
-    Object.assign(this, database);
+    // Strip the relational keys so they don't shadow the lazy getters.
+    const { tables: _tables, schemas: _schemas, ...rest } = database;
+    Object.assign(this, rest);
   }
 
   getPlainObject(): NormalizedDatabase {
     return this._plainObject;
+  }
+
+  get tables(): Table[] {
+    if (!this._tables) {
+      const tableIds = this._plainObject.tables ?? [];
+      if (tableIds.length > 0) {
+        this._tables = tableIds
+          .map((id) => this.metadata?.table(id) ?? null)
+          .filter((table): table is Table => table != null);
+      } else {
+        this._tables = (this.metadata?.tablesList() ?? []).filter(
+          (table) =>
+            !isVirtualCardId(table.id) &&
+            table.schema &&
+            table.db_id === this.id,
+        );
+      }
+    }
+    return this._tables;
+  }
+
+  get schemas(): Schema[] {
+    if (!this._schemas) {
+      const schemaIds = this._plainObject.schemas;
+      if (schemaIds) {
+        this._schemas = schemaIds
+          .map((schemaId) => this.metadata?.schema(schemaId) ?? null)
+          .filter((schema): schema is Schema => schema != null);
+      } else {
+        this._schemas = Object.values(this.metadata?.schemas ?? {}).filter(
+          (schema) => schema.database && schema.database.id === this.id,
+        );
+      }
+    }
+    return this._schemas;
+  }
+
+  // Setters let callers still override a cross-link explicitly; reads stay lazy.
+  set tables(value: Table[] | undefined) {
+    this._tables = value;
+  }
+
+  set schemas(value: Schema[] | undefined) {
+    this._schemas = value;
   }
 
   displayName() {
