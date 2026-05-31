@@ -53,12 +53,12 @@ export class ApiClient extends EventEmitter<EventMap> {
     this.PUT = this._makeMethod("PUT", false);
   }
 
-  buildUrl(template: string, data: Record<string, unknown>): URL {
+  private buildUrl(template: string, data: Record<string, unknown>): URL {
     const relativePath = substituteUrlTags(template, data);
     return new URL(this.basename.concat(relativePath), location.origin);
   }
 
-  getClientHeaders(
+  private getClientHeaders(
     extraHeaders: Record<string, string> = {},
   ): Record<string, string> {
     const headers: Record<string, string> = {
