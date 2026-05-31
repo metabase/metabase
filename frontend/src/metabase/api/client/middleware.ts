@@ -1,4 +1,3 @@
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import type {
   OnBeforeRequestHandler,
@@ -9,11 +8,17 @@ export async function apiRequestManipulationMiddleware(
   beforeRequestHandlers: OnBeforeRequestHandler[],
   requestConfig: OnBeforeRequestHandlerConfig,
 ): Promise<OnBeforeRequestHandlerConfig> {
-  /**
-   * Handlers order is important.
-   * Handlers are executed in order and each handler uses the data returned by a previous handler.
-   */
-  const handlers = [...getDefaultHandlers(), ...beforeRequestHandlers];
+  // Handlers order is important.
+  // Handlers are executed in order and each handler uses the data returned by a previous handler.
+  const handlers = [
+    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler,
+    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+      .getOrRefreshGuestSessionHandler,
+    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds,
+    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
+    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
+    ...beforeRequestHandlers,
+  ];
 
   let result = requestConfig;
   for (const handler of handlers) {
@@ -24,22 +29,6 @@ export async function apiRequestManipulationMiddleware(
   }
 
   return result;
-}
-
-function getDefaultHandlers() {
-  if (isEmbeddingSdk()) {
-    return [
-      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler,
-      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
-        .getOrRefreshGuestSessionHandler,
-      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
-        .overrideRequestsForGuestEmbeds,
-    ];
-  }
-  return [
-    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
-    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
-  ];
 }
 
 function merge(
