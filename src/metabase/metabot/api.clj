@@ -313,6 +313,7 @@
   [provider]
   (case provider
     "anthropic"  :llm-anthropic-api-key
+    "edenai"     :llm-edenai-api-key
     "openai"     :llm-openai-api-key
     "openrouter" :llm-openrouter-api-key))
 
@@ -359,7 +360,9 @@
                  (map title-case-token)
                  (str/join " ")))))
 
-(defn- openrouter-model-group
+(defn- prefixed-model-group
+  "Group label for providers whose model IDs are namespaced as
+  `<underlying-provider>/<model>` (OpenRouter, Eden AI)."
   [{:keys [display_name id]}]
   (or (some-> display_name
               (str/split #": " 2)
@@ -373,7 +376,8 @@
   [provider model]
   (case provider
     "anthropic"  (assoc model :group (anthropic-model-group model))
-    "openrouter" (assoc model :group (openrouter-model-group model))
+    "edenai"     (assoc model :group (prefixed-model-group model))
+    "openrouter" (assoc model :group (prefixed-model-group model))
     model))
 
 (defn- normalize-metabase-model
@@ -390,7 +394,7 @@
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "openrouter"} provider)
+    (if (contains? #{"anthropic" "edenai" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
              keys

@@ -120,6 +120,25 @@
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
+;;; --------------------------------------------------- Eden AI -------------------------------------------------
+
+(defsetting llm-edenai-api-base-url
+  (deferred-tru "The Eden AI API base URL used for the OpenAI-compatible LLM endpoint.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.edenai.run/v3"
+  :export?    false
+  :doc        false)
+
+(defsetting llm-edenai-api-key
+  (deferred-tru "The Eden AI API Key. Used to authenticate against Eden AI's OpenAI-compatible LLM endpoint.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (fn [new-value]
+                (setting/set-value-of-type! :string :llm-edenai-api-key (trimmed-string new-value)))
+  :doc        false)
+
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url

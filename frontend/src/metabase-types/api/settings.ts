@@ -533,6 +533,8 @@ interface SettingsManagerSettings {
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-api-base-url"?: string | null;
   "llm-openrouter-api-key"?: string | null;
+  "llm-edenai-api-key"?: string | null;
+  "llm-edenai-api-base-url"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -754,6 +756,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-openai-model"?: string;
   "llm-metabot-configured?"?: boolean | null;
   "llm-openrouter-api-key"?: string | null;
+  "llm-edenai-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;

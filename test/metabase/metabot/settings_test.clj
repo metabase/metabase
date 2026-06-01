@@ -153,6 +153,13 @@
            clojure.lang.ExceptionInfo #"Unsupported provider \"openrouter\" for metabase managed AI"
            (metabot.settings/llm-metabot-provider! "metabase/openrouter/anthropic/claude-haiku-4-5"))))))
 
+(deftest validate-metabot-provider-rejects-direct-only-provider-as-managed-edenai-test
+  (testing "rejects edenai under metabase/ prefix (not in the managed allow-list)"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Unsupported provider \"edenai\" for metabase managed AI"
+           (metabot.settings/llm-metabot-provider! "metabase/edenai/openai/gpt-4o-mini"))))))
+
 (deftest validate-metabot-provider-rejects-unsupported-metabase-managed-model-test
   (testing "rejects unsupported model for an allowed metabase managed provider"
     (mt/with-premium-features #{:metabase-ai-managed}
@@ -182,6 +189,11 @@
   (testing "accepts valid direct openrouter provider string"
     (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
       (is (= "openrouter/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider))))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-edenai-test
+  (testing "accepts valid direct edenai provider string"
+    (mt/with-temporary-setting-values [llm-metabot-provider "edenai/openai/gpt-4o-mini"]
+      (is (= "edenai/openai/gpt-4o-mini" (metabot.settings/llm-metabot-provider))))))
 
 (deftest validate-metabot-provider-accepts-allowed-metabase-managed-provider-and-model-test
   (testing "accepts allow-listed metabase managed provider/model"

@@ -62,6 +62,14 @@ export function getProviderOptions(
         addKeyUrl: "https://openrouter.ai/keys",
       },
     },
+    edenai: {
+      value: "edenai",
+      label: "Eden AI",
+      apiKey: {
+        placeholder: "eyJhb...",
+        addKeyUrl: "https://app.edenai.run/settings/api-keys",
+      },
+    },
   };
 }
 
@@ -83,14 +91,22 @@ export function isApiKeyMetabotProvider(
 }
 
 export function isAvailableProvider(provider: MetabotProvider): boolean {
-  return provider === "anthropic" || provider === "metabase";
+  return (
+    provider === "anthropic" ||
+    provider === "metabase" ||
+    provider === "edenai"
+  );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
-  "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
+  | "llm-anthropic-api-key"
+  | "llm-edenai-api-key"
+  | "llm-openai-api-key"
+  | "llm-openrouter-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
+  edenai: "llm-edenai-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
 };

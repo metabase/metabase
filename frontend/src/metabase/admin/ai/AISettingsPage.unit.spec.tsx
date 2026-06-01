@@ -113,6 +113,10 @@ const setup = async ({
       key: "llm-openrouter-api-key",
       value: undefined,
     }),
+    createMockSettingDefinition({
+      key: "llm-edenai-api-key",
+      value: undefined,
+    }),
   ]);
   setupUpdateSettingEndpoint();
   setupCollectionByIdEndpoint({ collections });

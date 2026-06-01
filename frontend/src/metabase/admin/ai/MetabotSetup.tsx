@@ -238,6 +238,7 @@ export function MetabotSetupInner({
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
+    "llm-edenai-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
   ] as const);
@@ -505,6 +506,7 @@ const AIProviderSetup = ({
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
+    "llm-edenai-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
   ] as const);
