@@ -15,6 +15,7 @@ import {
 import type {
   ColumnSettingDefinition,
   VisualizationDefinition,
+  VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
@@ -259,7 +260,8 @@ export const ListViz = ({
   onVisualizationClick,
   queryBuilderMode,
   isDashboard,
-}: VisualizationProps) => {
+  onZoomRow,
+}: VisualizationProps & VisualizationPassThroughProps) => {
   const question = useMemo(() => {
     if (!card || !metadata) {
       return null;
@@ -324,6 +326,7 @@ export const ListViz = ({
         onSortClick={handleSort}
         entityType={entityType}
         isInteractive={queryBuilderMode !== "dataset"}
+        onZoomRow={onZoomRow}
       />
     </Box>
   );

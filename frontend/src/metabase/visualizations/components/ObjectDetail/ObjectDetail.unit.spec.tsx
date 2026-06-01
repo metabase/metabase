@@ -1,177 +1,106 @@
-import fetchMock from "fetch-mock";
-
-import {
-  setupActionsEndpoints,
-  setupDatabasesEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+import { setupTableEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import {
-  getBrokenUpTextMatcher,
   renderWithProviders,
   screen,
-  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail/ObjectDetail";
+import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import registerVisualizations from "metabase/visualizations/register";
-import type { Field } from "metabase-types/api";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
-import {
-  PRODUCTS_ID,
-  SAMPLE_DB_ID,
-  createOrdersTable,
-  createProductsTable,
-  createReviewsTable,
-} from "metabase-types/api/mocks/presets";
-
-import { ObjectDetail } from "./ObjectDetail";
+import { createMockCard } from "metabase-types/api/mocks";
+import { createProductsTable } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
 
-const PRODUCTS_TABLE = createProductsTable();
-const ORDERS_TABLE = createOrdersTable();
-const HIDDEN_ORDERS_TABLE = createOrdersTable({
-  visibility_type: "hidden",
+const DATABASE_ID = 1;
+
+const MOCK_TABLE = createProductsTable();
+
+const MOCK_CARD = createMockCard({
+  dataset_query: {
+    type: "query",
+    database: DATABASE_ID,
+    query: {
+      "source-table": MOCK_TABLE.id,
+    },
+  },
 });
-const REVIEWS_TABLE = createReviewsTable();
 
-const FK_RECORDS_COUNT = 93;
+async function setup(options?: Partial<ObjectDetailProps>) {
+  setupTableEndpoints(MOCK_TABLE);
 
-interface SetupOpts {
-  hideOrdersTable?: boolean;
-}
-
-function setup({ hideOrdersTable = false }: SetupOpts = {}) {
-  setupDatabasesEndpoints([]);
-  setupActionsEndpoints([]);
-  const productsId = checkNotNull(findField(PRODUCTS_TABLE.fields, "ID"));
-  const ordersProductId = {
-    ...checkNotNull(findField(ORDERS_TABLE.fields, "PRODUCT_ID")),
-    table: ORDERS_TABLE,
-  };
-  const reviewsProductId = {
-    ...checkNotNull(findField(REVIEWS_TABLE.fields, "PRODUCT_ID")),
-    table: REVIEWS_TABLE,
-  };
-  setupTableEndpoints(PRODUCTS_TABLE, [
-    {
-      origin: ordersProductId,
-      origin_id: ordersProductId.id as number,
-      destination: productsId,
-      destination_id: productsId.id as number,
-      relationship: "Mt1",
-    },
-    {
-      origin: reviewsProductId,
-      origin_id: reviewsProductId.id as number,
-      destination: productsId,
-      destination_id: productsId.id as number,
-      relationship: "Mt1",
-    },
-  ]);
-  setupForeignKeyCountQueryEndpoints();
-
-  const ROW_ID_INDEX = 0;
   const state = createMockState({
     entities: createMockEntitiesState({
-      tables: [
-        PRODUCTS_TABLE,
-        hideOrdersTable ? HIDDEN_ORDERS_TABLE : ORDERS_TABLE,
-        REVIEWS_TABLE,
-      ],
+      questions: [MOCK_CARD],
+      tables: [MOCK_TABLE],
     }),
-    qb: createMockQueryBuilderState({
-      card: createMockCard({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-          },
-        },
-      }),
-      zoomedRowObjectId: testDataset.rows[0][ROW_ID_INDEX] as string,
-      queryResults: [
-        createMockDataset({
-          data: testDataset,
-        }),
-      ],
-    }),
+    qb: createMockQueryBuilderState({ card: MOCK_CARD }),
   });
+  const metadata = getMetadata(state);
+
+  const question = checkNotNull(metadata.question(MOCK_CARD.id));
+  const table = checkNotNull(metadata.table(MOCK_TABLE.id));
+
   renderWithProviders(
     <ObjectDetail
       data={testDataset}
-      settings={{}}
-      isObjectDetail
-      onVisualizationClick={jest.fn()}
-      visualizationIsClickable={jest.fn()}
+      question={question}
+      table={table}
+      zoomedRow={testDataset.rows[0]}
+      zoomedRowID={0}
+      tableForeignKeys={table.fks}
+      settings={{
+        column: () => null,
+      }}
+      showHeader
+      canZoom={true}
+      canZoomPreviousRow={false}
+      canZoomNextRow={false}
+      onVisualizationClick={() => null}
+      visualizationIsClickable={() => false}
       isDashboard={false}
+      {...options}
     />,
-    {
-      storeInitialState: state,
-    },
+    { storeInitialState: state },
   );
-}
 
-function setupForeignKeyCountQueryEndpoints() {
-  fetchMock.post({
-    name: "ordersCountQuery",
-    url: "path:/api/dataset",
-    response: createMockDataset({
-      status: "completed",
-      data: {
-        rows: [[FK_RECORDS_COUNT]],
-      },
-    }),
-  });
-}
-
-function findField(fields: Field[] | undefined, name: string) {
-  return fields?.find((field) => field.name === name);
+  await waitForLoaderToBeRemoved();
 }
 
 describe("ObjectDetail", () => {
-  it("should render foreign key count when no table is hidden", async () => {
-    setup();
+  it("renders an object detail with a paginator", async () => {
+    await setup();
 
-    await waitFor(() => {
-      expect(screen.getAllByTestId("loading-indicator")).toHaveLength(2);
-    });
-    await waitForLoaderToBeRemoved();
-
-    expect(
-      await screen.findByText(
-        getBrokenUpTextMatcher([FK_RECORDS_COUNT, "Reviews"].join("")),
-      ),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        getBrokenUpTextMatcher([FK_RECORDS_COUNT, "Orders"].join("")),
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Item 1 of 10/i)).toBeInTheDocument();
   });
 
-  it("should render related objects count only for foreign keys referencing non-hidden tables (metabase#32654)", async () => {
-    setup({ hideOrdersTable: true });
-
-    await waitFor(() => {
-      expect(screen.getAllByTestId("loading-indicator")).toHaveLength(2);
+  it("shows object detail header", async () => {
+    await setup({
+      settings: {
+        "detail.showHeader": true,
+      },
+      showHeader: false,
     });
-    await waitForLoaderToBeRemoved();
 
-    expect(
-      await screen.findByText(
-        getBrokenUpTextMatcher([FK_RECORDS_COUNT, "Reviews"].join("")),
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText([FK_RECORDS_COUNT, "Orders"].join("")),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText(/Product/i)).toBeInTheDocument();
+  });
+
+  it("hides object detail header", async () => {
+    await setup({
+      settings: {
+        "detail.showHeader": false,
+      },
+      showHeader: false,
+    });
+
+    expect(screen.queryByText(/Product/i)).not.toBeInTheDocument();
   });
 });
