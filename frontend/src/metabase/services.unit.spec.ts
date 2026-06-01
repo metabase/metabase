@@ -300,6 +300,27 @@ describe("metabase/services > runQuestionQuery", () => {
       await expect(runPromise).rejects.toEqual({ isCancelled: true });
     });
 
+    it("rejects with { isCancelled: true } when the signal aborts (saved question)", async () => {
+      // The saved-card path dispatches an RTK Query endpoint; aborting the
+      // signal must abort the underlying `/api/card/:id/query` request and
+      // reject with the legacy `{ isCancelled: true }` shape.
+      const question = createMockSavedQuestion();
+      fetchMock.post(
+        getQueryEndpointPath(question),
+        new Promise(() => undefined),
+      );
+
+      const controller = new AbortController();
+      const runPromise = runQuestionQuery(question, {
+        dispatch: getRtkStore().dispatch,
+        signal: controller.signal,
+      });
+
+      controller.abort();
+
+      await expect(runPromise).rejects.toEqual({ isCancelled: true });
+    });
+
     it("normalizes plain-text 4xx error bodies into a structured error result (EMB-1659)", async () => {
       // Embed API checks (e.g. `/api/embed/card/:token/query`) reject with a
       // plain-text body when a locked param is missing from the JWT. Without

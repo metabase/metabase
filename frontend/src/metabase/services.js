@@ -100,10 +100,43 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   return api;
 }
 
-// Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot)
-// and wires the `signal` to RTK Query's `.abort()`. Translates aborts
-// into the `{ isCancelled: true }` shape that the legacy fetch helper threw,
-// so existing error-handling code (e.g. queryErrored) keeps working.
+// Dispatches an RTK Query query endpoint and wires `signal` to RTK Query's
+// `.abort()`. Translates aborts into the `{ isCancelled: true }` shape that the
+// legacy fetch helper threw, so existing error-handling code (e.g. queryErrored)
+// keeps working. `forceRefetch` makes each call hit the network rather than
+// resolving from a stale cache entry, matching the legacy fetch-and-discard
+// behavior.
+function dispatchQueryEndpoint(dispatch, endpoint, requestBody, signal) {
+  const action = dispatch(
+    endpoint.initiate(requestBody, { forceRefetch: true }),
+  );
+
+  let isCancelled = false;
+  const onAbort = () => {
+    isCancelled = true;
+    action.abort?.();
+  };
+  // The signal may already be aborted by the time we get here (e.g. the
+  // user cancelled while we were awaiting the dynamic import in the caller).
+  // In that case the "abort" event already fired and a listener won't run.
+  if (signal?.aborted) {
+    onAbort();
+  } else {
+    signal?.addEventListener("abort", onAbort, { once: true });
+  }
+
+  return action
+    .unwrap()
+    .catch((error) => {
+      if (isCancelled) {
+        throw { isCancelled: true };
+      }
+      throw error;
+    })
+    .finally(() => action.unsubscribe?.());
+}
+
+// Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot).
 let adhocDatasetQueryCounter = 0;
 export async function runAdhocDatasetQuery(
   dispatch,
@@ -133,33 +166,54 @@ export async function runAdhocDatasetQuery(
     ? datasetApi.endpoints.getAdhocPivotQuery
     : datasetApi.endpoints.getAdhocQuery;
 
-  const action = dispatch(
-    endpoint.initiate(requestBody, { forceRefetch: true }),
-  );
+  return dispatchQueryEndpoint(dispatch, endpoint, requestBody, signal);
+}
 
-  let isCancelled = false;
-  const onAbort = () => {
-    isCancelled = true;
-    action.abort?.();
+// Dispatches the RTK saved-card query endpoint, picking the card vs. dashcard
+// route (and their pivot variants). Guest embeds rely on the legacy-client
+// `onBeforeRequest` middleware (which RTK requests still pass through) rewriting
+// the card route to `/api/embed/card/:token/query` when `token` is in the body.
+async function runSavedCardQuery(
+  dispatch,
+  question,
+  { parameters, ignoreCache, collectionPreview, token, queryParamsOverride },
+  signal,
+) {
+  const card = question.card();
+  const isPivot = shouldUsePivotEndpoint(card, question.metadata());
+  const { dashboardId, dashcardId } = question.getDashboardProps();
+
+  const body = {
+    ignore_cache: ignoreCache,
+    collection_preview: collectionPreview,
+    parameters,
+    ...(token ? { token } : {}),
+    ...queryParamsOverride,
   };
-  // The signal may already be aborted by the time we get here (e.g. the
-  // user cancelled while we were awaiting the dynamic import above). In
-  // that case the "abort" event already fired and a listener won't run.
-  if (signal?.aborted) {
-    onAbort();
-  } else {
-    signal?.addEventListener("abort", onAbort, { once: true });
+
+  if (dashboardId != null) {
+    const { dashboardApi } = await import("metabase/api/dashboard");
+    const endpoint = isPivot
+      ? dashboardApi.endpoints.getDashboardCardQueryPivot
+      : dashboardApi.endpoints.getDashboardCardQuery;
+    return dispatchQueryEndpoint(
+      dispatch,
+      endpoint,
+      { dashboardId, dashcardId, cardId: question.id(), ...body },
+      signal,
+    );
   }
 
-  return action
-    .unwrap()
-    .catch((error) => {
-      if (isCancelled) {
-        throw { isCancelled: true };
-      }
-      throw error;
-    })
-    .finally(() => action.unsubscribe?.());
+  const { cardApi } = await import("metabase/api/card");
+  const endpoint = isPivot
+    ? cardApi.endpoints.getCardQueryPivot
+    : cardApi.endpoints.getCardQuery;
+  return dispatchQueryEndpoint(
+    dispatch,
+    endpoint,
+    { cardId: question.id(), ...body },
+    signal,
+  );
 }
 
 /**
@@ -186,27 +240,20 @@ export async function runQuestionQuery(
   const card = question.card();
 
   if (canUseCardApiEndpoint) {
-    const { dashboardId, dashcardId } = question.getDashboardProps();
-
-    const queryParams = {
-      ...(token ? { token } : { cardId: question.id() }),
-      dashboardId,
-      dashcardId,
-      ignore_cache: ignoreCache,
-      collection_preview: collectionPreview,
-      parameters,
-      ...queryParamsOverride,
-    };
-
     return [
       await handleQueryApiError(
-        maybeUsePivotEndpoint(
-          dashboardId ? DashboardApi.cardQuery : CardApi.query,
-          card,
-          question.metadata(),
-        )(queryParams, {
+        runSavedCardQuery(
+          dispatch,
+          question,
+          {
+            parameters,
+            ignoreCache,
+            collectionPreview,
+            token,
+            queryParamsOverride,
+          },
           signal,
-        }),
+        ),
       ),
     ];
   }
