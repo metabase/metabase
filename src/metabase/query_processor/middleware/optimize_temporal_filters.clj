@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.optimize-temporal-filters
   "Middleware that optimizes equality filter clauses against bucketed temporal fields. See docstring for
   `optimize-temporal-clauses` for more details."
-  (:refer-clojure :exclude [get-in])
+  (:refer-clojure :exclude [get-in mapv])
   (:require
    [better-cond.core :as b]
    [metabase.lib.core :as lib]
@@ -17,7 +17,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [get-in]]))
+   [metabase.util.performance :refer [get-in mapv]]))
 
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})
