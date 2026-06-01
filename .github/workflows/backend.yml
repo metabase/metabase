@@ -40,7 +40,7 @@ jobs:
     # Master / release safety net: lint every backend test namespace.
     if: ${{ !inputs.skip && github.event_name == 'push' && (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     name: Eastwood (tests only)
     steps:
       - uses: actions/checkout@v4
