@@ -81,8 +81,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
 export const TREEMAP_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Treemap`,
   identifier: "treemap",
-  // Placeholder until T19 ships the real icon
-  iconName: "grid_2x2",
+  iconName: "treemap",
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   noun: t`treemap chart`,
   minSize: { width: 4, height: 4 },
