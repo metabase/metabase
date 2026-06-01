@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import { createSeriesCard } from "metabase/metrics/utils/series";
@@ -72,7 +72,10 @@ const QUERY_TYPE_TO_LABEL_MAP: Record<
   ["default"]: () => null,
   ["top-n-other"]: () => null,
   ["temporal-pattern-day"]: () => t`Day of week`,
-  ["temporal-pattern-hour"]: () => t`Hour of day`,
+  // Hour of day is pluralized on the backend, so we need to pluralize it here
+  // otherwise building the translation files will fail
+  ["temporal-pattern-hour"]: () =>
+    ngettext(msgid`Hour of day`, `Hours of day`, 1),
   ["time-facet"]: () => t`Over time`,
   ["filtered-subset"]: () => null,
   ["per-value-time-series"]: () => null,

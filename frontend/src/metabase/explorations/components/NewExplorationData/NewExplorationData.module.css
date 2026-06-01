@@ -55,7 +55,7 @@
   /* Override the global theme: smaller font, neutral colour,
      reset the heavy vertical padding the theme adds. */
   color: var(--mb-color-text-secondary) !important;
-  font-weight: var(--mantine-font-weight-bold) !important;
+  font-weight: bold !important;
   font-size: var(--mantine-font-size-md) !important;
   line-height: 1rem !important;
   padding: 0 !important;
