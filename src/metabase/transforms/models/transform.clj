@@ -32,39 +32,37 @@
   (derive :model/Transform trait))
 
 (defn- transform-readable?
-  "Whether the current user can read `instance`, given a precomputed `source-readable?` (see
-  `transforms.u/source-tables-readable?`). Split out so the per-instance `can-read?` and the
-  batched `can_read` hydration share one logic path."
-  [instance source-readable?]
+  "Whether the current user can read `instance`. Any extra `args` (an optional `models-cache`) are
+  passed through to `transforms.u/source-tables-readable?`."
+  [instance & args]
   (and (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (and (api/is-data-analyst?)
-                source-readable?))))
+                (apply transforms.u/source-tables-readable? instance args)))))
 
 (defn- transform-writable?
-  "Whether the current user can write `instance`, given a precomputed `source-readable?`."
-  [instance source-readable?]
+  "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
+  passed through to the source-readability check, as in `transform-readable?`."
+  [instance & args]
   (and (remote-sync/transforms-editable?)
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
-           (and (transform-readable? instance source-readable?)
+           (and (apply transform-readable? instance args)
                 (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))))))
 
 (defmethod mi/can-read? :model/Transform
   ([instance]
-   (transform-readable? instance (transforms.u/source-tables-readable? instance)))
+   (transform-readable? instance))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-read? transform))))
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (transform-writable? instance (transforms.u/source-tables-readable? instance)))
+   (transform-writable? instance))
   ([_model pk]
-   (and (remote-sync/transforms-editable?)
-        (or api/*is-superuser?*
-            (when-let [transform (t2/select-one :model/Transform :id pk)]
-              (mi/can-write? transform))))))
+   (when-let [transform (t2/select-one :model/Transform :id pk)]
+     (mi/can-write? transform))))
 
 ;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
 (defmethod mi/can-query? :model/Transform
@@ -179,15 +177,16 @@
     transform))
 
 (defn- hydrate-permission
-  "Batched-hydrate helper: attach a permission under `k` by applying `pred` to each transform.
-   Source databases/tables are bulk-loaded once so a list of transforms doesn't issue a query per transform."
+  "Batched-hydrate helper: attach a permission under `k` to each transform by calling `pred`
+   (`transform-readable?`/`transform-writable?`) with a `models-cache` prefetched once for the whole
+   list, so checking N transforms doesn't issue a query per transform."
   [k transforms pred]
   (let [models-cache (transforms.u/prefetch-source-models transforms)]
     (mi/instances-with-hydrated-data
      transforms k
      #(into {}
             (map (fn [{:keys [id] :as transform}]
-                   [id (pred transform (transforms.u/source-tables-readable? transform models-cache))]))
+                   [id (pred transform models-cache)]))
             transforms)
      :id
      {:default false})))
