@@ -230,9 +230,16 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
         let body: string | FormData | undefined;
         if (options.hasBody) {
-          body = options.formData
-            ? (rawData["formData"] as FormData)
-            : JSON.stringify(data);
+          if (rawData instanceof FormData) {
+            // Pass `FormData` through unwrapped so the browser sets the right
+            // multipart Content-Type (with boundary). Drops the legacy
+            // `body: { formData }, formData: true` wrapper shape.
+            body = rawData;
+          } else if (options.formData) {
+            body = rawData["formData"] as FormData;
+          } else {
+            body = JSON.stringify(data);
+          }
         } else {
           const qs = querystring.stringify(data as Record<string, string>);
           if (qs) {
@@ -248,12 +255,10 @@ export class LegacyApi extends EventEmitter<EventMap> {
           ...options.headers,
         };
 
-        // FormData must NOT carry our default `application/json` Content-Type
-        // — the browser sets the right value (multipart boundary). Previously
-        // this was gated on `options.fetch` because XHR's behaviour was
-        // ambiguous; the gate is dropped now that `rawResponse: true` routes
-        // formData callers through fetch without an explicit `fetch: true`.
-        if (options.formData) {
+        // FormData must NOT carry our default `application/json` Content-Type —
+        // the browser sets the right value (with the multipart boundary). XHR's
+        // `xhr.send(formData)` honors this too.
+        if (body instanceof FormData || (options.formData && options.fetch)) {
           delete headers["Content-Type"];
         }
 

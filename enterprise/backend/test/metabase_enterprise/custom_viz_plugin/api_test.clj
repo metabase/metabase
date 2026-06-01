@@ -226,9 +226,8 @@
 
 (deftest asset-endpoint-security-test
   (mt/with-premium-features #{:custom-viz}
-    (let [manifest {:name   "sec-test"
-                    :icon   "icon.svg"
-                    :assets ["icon.svg"]}]
+    (let [manifest {:name "sec-test"
+                    :icon "icon.svg"}]
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "sec-test"
                                                       :display_name "sec-test"
                                                       :status       :active
