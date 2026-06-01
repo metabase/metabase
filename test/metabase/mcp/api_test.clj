@@ -77,6 +77,26 @@
                                :delete "mcp"
                                {:request-options {:headers extra-headers}}))
 
+(def ^:private mcp-endpoint-aliases
+  "[client-path expected-url-path] for the canonical MCP endpoint and each route alias.
+   `client-path` is appended to the test client's `/api` prefix; `expected-url-path` is the full path."
+  [["mcp"          "/api/mcp"]
+   ["metabase-mcp" "/api/metabase-mcp"]
+   ["metabase/mcp" "/api/metabase/mcp"]])
+
+(defn- mcp-request-to
+  "Like `mcp-request` but to an explicit endpoint path (e.g. \"metabase-mcp\"), authenticated as :crowberto."
+  [path body]
+  (client/client-full-response (test.users/username->token :crowberto)
+                               :post path
+                               {:request-options {:headers {}}}
+                               body))
+
+(defn- mcp-request-unauthenticated-to
+  "Make an unauthenticated POST to an explicit endpoint path, expecting a 401."
+  [path body]
+  (client/client-full-response :post 401 path {:request-options {:headers {}}} body))
+
 (defn- jsonrpc-request
   "Build a JSON-RPC 2.0 request map."
   ([method]
@@ -1101,6 +1121,47 @@
         (is (=? {:status  401
                  :headers {"WWW-Authenticate" #(str/includes? % "oauth-protected-resource")}}
                 response))))))
+
+;;; ------------------------------------------------ Endpoint aliases ----------------------------------------------
+
+(deftest endpoint-alias-routing-test
+  (testing "initialize succeeds (session auth) on every MCP endpoint alias"
+    (doseq [[path] mcp-endpoint-aliases]
+      (testing (str "/api/" path)
+        (is (=? {:status  200
+                 :headers {"Mcp-Session-Id" some?}
+                 :body    {:result {:serverInfo {:name "metabase"}}}}
+                (mcp-request-to path (jsonrpc-request "initialize"))))))))
+
+(deftest endpoint-alias-discovery-401-test
+  (testing "unauthenticated request on each alias advertises that same alias as the protected resource"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (doseq [[path url-path] mcp-endpoint-aliases]
+        (testing (str "/api/" path)
+          ;; The trailing quote pins the match to the exact path (so /api/mcp can't match /api/metabase-mcp).
+          (let [expected (str "/.well-known/oauth-protected-resource" url-path "\"")]
+            (is (=? {:status  401
+                     :headers {"WWW-Authenticate" #(str/includes? % expected)}}
+                    (mcp-request-unauthenticated-to path (jsonrpc-request "initialize"))))))))))
+
+(deftest endpoint-alias-bearer-token-test
+  (testing "bearer-token handling is identical on an alias — same invalid_token 401 as canonical"
+    ;; Bearer validation (validate-bearer-token) has no path logic, so reaching it via an alias must
+    ;; behave exactly like the canonical path. We assert the invalid-token branch since it's
+    ;; deterministic and doesn't depend on minting a live token.
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server/reset-provider!)
+      (try
+        (doseq [[path] mcp-endpoint-aliases]
+          (testing (str "/api/" path)
+            (is (=? {:status  401
+                     :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
+                    (client/client-full-response
+                     :post 401 path
+                     {:request-options {:headers {"authorization" "Bearer totally-bogus-token"}}}
+                     (jsonrpc-request "initialize"))))))
+        (finally
+          (oauth-server/reset-provider!))))))
 
 (deftest invalid-bearer-token-returns-401-test
   (testing "POST with invalid bearer token returns 401 with invalid_token error"

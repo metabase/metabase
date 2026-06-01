@@ -1,6 +1,7 @@
 (ns metabase.mcp.api
   "MCP (Model Context Protocol) Streamable HTTP transport handler.
-   Exposes Metabase's agent tools via JSON-RPC 2.0 over a single `/api/mcp` endpoint."
+   Exposes Metabase's agent tools via JSON-RPC 2.0 over the `/api/mcp` endpoint (and its
+   aliases, see [[endpoint-paths]])."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -347,8 +348,20 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
-(defn- www-authenticate-discovery []
-  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource/api/mcp\""))
+(def endpoint-paths
+  "URL paths (relative to site-url) that serve the MCP endpoint. `/api/mcp` is canonical; the others are
+   aliases for clients that can't be reconfigured to it. Kept in sync with the route-map in
+   [[metabase.api-routes.routes]] and the OAuth resource-metadata endpoints in
+   [[metabase.oauth-server.api.metadata]]."
+  #{"/api/mcp" "/api/metabase-mcp" "/api/metabase/mcp"})
+
+(defn- www-authenticate-discovery
+  "Build the `WWW-Authenticate` header. The advertised resource-metadata URL is derived from the path the
+   client actually hit, so a client connecting via an alias discovers that same alias as the resource."
+  [request]
+  (let [uri  (:uri request)
+        path (if (contains? endpoint-paths uri) uri "/api/mcp")]
+    (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\"")))
 
 (def +mcp-enabled
   "Wrap routes so they may only be accessed when the MCP server is enabled."
@@ -400,5 +413,5 @@
            ;; No auth at all — return 401 with discovery
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")
-                                   {"WWW-Authenticate" (www-authenticate-discovery)}))))))
+                                   {"WWW-Authenticate" (www-authenticate-discovery request)}))))))
    (constantly nil)))
