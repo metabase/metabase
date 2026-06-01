@@ -8,8 +8,10 @@
 - Provide the database_id where the SQL should run (available from model/table representations)
 - Write complete, valid SQL using table names or {{#model_id}} template syntax for models.
 - Quote column names with special characters, spaces, or reserved keywords using double quotes (e.g., "column name", "order", "group", "column_name")
-- The tool will return a newly created SQL query that you can show to the user or create charts from
-- The tool does NOT execute the SQL, it only creates the query
+- The tool returns a newly created SQL query that you can show to the user or create charts from.
+- After the query is created, Metabase executes it and includes a `<query_execution>` block in the tool result. Use those rows and columns to summarize the actual data.
+- The `<query_execution>` block may include result values linked with `metabase://data-point` URLs. Whenever you mention a specific value from the generated query or chart, use the matching URL and choose natural link text for your answer.
+- When the query execution succeeds, proactively mention one concrete observation from the data, such as a trend, outlier, or notable category. Only mention maxima, minima, rankings, or counts when `<query_execution>` is not truncated, or after running a follow-up query that computes them against the full result. If `<query_execution>` says results were omitted and the user needs an answer from the data, your next step MUST be that follow-up tool call without asking permission first. Do not produce a final answer until it returns. Do not just say that the query was created.
 
 **Model Usage:**
 - When querying Metabase models, remember that their fully qualified name is of the form `{{#model_id}}`,

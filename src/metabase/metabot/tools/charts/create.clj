@@ -15,8 +15,10 @@
 
 (defn- format-chart-for-llm
   "Format chart data as XML for LLM consumption."
-  [{:keys [chart-id query-id chart-type]}]
+  [{:keys [chart-id query-id chart-type chart-name]}]
   (str "<chart id=\"" chart-id "\">\n"
+       (when (seq chart-name)
+         (str "<name>" chart-name "</name>\n"))
        "<query-id>" query-id "</query-id>\n"
        "<visualization>{\"chart_type\": \"" (name chart-type) "\"}</visualization>\n"
        "</chart>"))
@@ -25,6 +27,12 @@
   "Format a metabase:// link to the chart."
   [chart-id]
   (str "metabase://chart/" chart-id))
+
+(defn- default-chart-name
+  [chart-type]
+  (if (= :table chart-type)
+    "Generated table"
+    (str "Generated " (name chart-type) " chart")))
 
 (defn create-chart
   "Create a chart from a query.
@@ -40,8 +48,8 @@
   - :chart-link - Metabase link to the chart
   - :chart-type - Type of chart created
   - :query-id - ID of the source query
-  - :reactions - Navigation action to show the chart"
-  [{:keys [query-id chart-type queries-state]}]
+  - :chart-url - URL for rendering the ad-hoc chart"
+  [{:keys [query-id chart-type queries-state title]}]
   (log/info "Creating chart" {:query-id query-id
                               :chart-type chart-type
                               :available-queries (keys queries-state)})
@@ -64,10 +72,13 @@
                        :query-id query-id
                        :available-queries (keys queries-state)})))
 
-    ;; Create the chart and generate navigation URL
+    ;; Create the chart and generate a renderable ad-hoc question URL.
     (let [chart-id (str (random-uuid))
-          results-url (links/query-and-viz-link query chart-type)
+          chart-name (or (not-empty (some-> title str/trim))
+                         (default-chart-name chart-type))
+          results-url (links/query-and-viz-link query chart-type chart-name)
           chart-data {:chart-id chart-id
+                      :chart-name chart-name
                       :query-id query-id
                       :chart-type chart-type}]
 
@@ -78,9 +89,20 @@
       {:chart-id chart-id
        :chart-content (format-chart-for-llm chart-data)
        :chart-link (format-chart-link chart-id)
+       :chart-name chart-name
+       :chart-url results-url
        :chart-type chart-type
+       :query query
        :query-id query-id
        :instructions (str "Chart created successfully. The user is now viewing the chart.\n"
-                          "Reference the chart using: [Chart](" (format-chart-link chart-id) ") "
-                          "where 'Chart' is a meaningful description.")
-       :reactions [{:type :metabot.reaction/redirect :url results-url}]})))
+                          "Use the <query_execution> block in this tool result to inspect the executed chart data, "
+                          "and proactively mention one concrete observation from the data. Only mention maxima, "
+                          "minima, rankings, or counts when <query_execution> is not truncated, or after running "
+                          "a follow-up query that computes them against the full result. If <query_execution> says "
+                          "results were omitted and the user needs an answer from the data, your next step MUST "
+                          "be a follow-up tool call without asking permission first. For notebook queries, use "
+                          "execute_notebook_query_silently with the needed follow-up program so no chart is created. "
+                          "Do not produce a final answer until it returns.\n"
+                          "When mentioning a specific value from the chart, use the matching metabase://data-point URL "
+                          "from the linked result value, and choose natural link text for your answer.\n"
+                          "Reference the chart using: [" chart-name "](" (format-chart-link chart-id) ").")})))

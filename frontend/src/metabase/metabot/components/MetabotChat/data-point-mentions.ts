@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { uuid } from "metabase/utils/uuid";
 import type { ClickObject } from "metabase-lib";
 import type {
   Dataset,
@@ -16,9 +17,29 @@ export type SelectedChartRange = NonNullable<
   MetabotChartConfig["selected_range"]
 >;
 
-let nextDataPointMentionId = 1;
+export type DataPointMentionTarget = {
+  columns?: string[];
+  row?: RowValue[];
+  value_column_index?: number;
+};
 
-export const getNextDataPointMentionId = () => nextDataPointMentionId++;
+export type DataPointMentionId = string | number;
+
+export type DataPointMentionEvent = {
+  id?: DataPointMentionId;
+  target?: DataPointMentionTarget;
+};
+
+export const getDataPointTargetsFromState = (
+  state: any,
+): Record<string, DataPointMentionTarget | undefined> | undefined => {
+  return state?.["data-points"] ?? state?.data_points;
+};
+
+let nextDataPointRangeMentionId = 1;
+
+export const getNextDataPointRangeMentionId = () =>
+  nextDataPointRangeMentionId++;
 
 const getColumnName = (column: DatasetColumn | undefined | null) => {
   return column?.display_name || column?.name || t`Value`;
@@ -153,10 +174,89 @@ export const getChartData = (
 
 export const getDataPointMentionMarkdown = (
   selectedData: SelectedChartData,
-  mentionId: number,
+  mentionId: DataPointMentionId,
 ) => {
   const label = selectedData.label || t`data point`;
   return `[${label}](metabase://data-point/${mentionId})`;
+};
+
+export const getDataPointTargetFromSelectedData = (
+  selectedData: SelectedChartData,
+): DataPointMentionTarget | undefined => {
+  const selectedRow = selectedData.row;
+  const row = selectedRow?.values;
+  if (!row) {
+    return undefined;
+  }
+
+  const columns = selectedRow.columns.map((column) => column.name);
+  const selectedColumnName = selectedData.column?.name;
+  const selectedColumnIndex = selectedColumnName
+    ? selectedRow.columns.findIndex(
+        (column) => column.name === selectedColumnName,
+      )
+    : -1;
+
+  return {
+    columns,
+    row,
+    value_column_index:
+      selectedColumnIndex >= 0 ? selectedColumnIndex : row.length - 1,
+  };
+};
+
+const getTargetValueColumnIndex = (target: DataPointMentionTarget) => {
+  return typeof target.value_column_index === "number"
+    ? target.value_column_index
+    : (target.row?.length ?? 1) - 1;
+};
+
+const isSameValue = (left: RowValue, right: RowValue) => {
+  return left === right || String(left) === String(right);
+};
+
+const isSameDataPointTarget = (
+  left: DataPointMentionTarget,
+  right: DataPointMentionTarget,
+) => {
+  const leftRow = left.row;
+  const rightRow = right.row;
+
+  return (
+    leftRow != null &&
+    rightRow != null &&
+    leftRow.length === rightRow.length &&
+    getTargetValueColumnIndex(left) === getTargetValueColumnIndex(right) &&
+    leftRow.every((value, index) => isSameValue(value, rightRow[index]))
+  );
+};
+
+const findDataPointMentionId = (
+  target: DataPointMentionTarget | undefined,
+  dataPointTargets: Record<string, DataPointMentionTarget | undefined> = {},
+) => {
+  if (!target) {
+    return undefined;
+  }
+
+  return Object.entries(dataPointTargets).find(([, existingTarget]) =>
+    existingTarget ? isSameDataPointTarget(existingTarget, target) : false,
+  )?.[0];
+};
+
+export const getDataPointMention = (
+  selectedData: SelectedChartData,
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>,
+) => {
+  const target = getDataPointTargetFromSelectedData(selectedData);
+  const existingId = findDataPointMentionId(target, dataPointTargets);
+
+  if (existingId) {
+    return { id: existingId, target, isGenerated: false };
+  }
+
+  console.warn("point doens't exist, generating new uuid");
+  return { id: uuid(), target, isGenerated: true };
 };
 
 const getSelectedChartRangeLabel = (
@@ -199,11 +299,65 @@ export const getSelectedChartRange = ({
 
 export const getDataPointRangeMentionMarkdown = (
   selectedRange: SelectedChartRange,
-  mentionId: number,
+  mentionId: DataPointMentionId,
 ) => {
   const label = selectedRange.label || t`selected cells`;
   return `[${label}](metabase://data-point/${mentionId})`;
 };
 
+const getColumnIndex = (
+  columns: DatasetColumn[],
+  target: DataPointMentionTarget,
+) => {
+  const targetIndex = target.value_column_index;
+  if (typeof targetIndex === "number" && columns[targetIndex]) {
+    return targetIndex;
+  }
+
+  return columns.length - 1;
+};
+
+export const getClickedObjectFromDataPointTarget = (
+  result: Dataset | null,
+  target: DataPointMentionTarget | undefined,
+): ClickObject | null => {
+  if (!result?.data || !target?.row) {
+    return null;
+  }
+
+  const { cols, rows } = result.data;
+  const targetRow = target.row;
+  const matchingRow = rows.find(
+    (row) =>
+      row.length === targetRow.length &&
+      row.every((value, index) => isSameValue(value, targetRow[index])),
+  );
+
+  if (!matchingRow) {
+    return null;
+  }
+
+  const valueColumnIndex = getColumnIndex(cols, target);
+  const valueColumn = cols[valueColumnIndex];
+
+  return {
+    value: matchingRow[valueColumnIndex],
+    column: valueColumn,
+    dimensions: cols
+      .map((column, index) => ({ column, value: matchingRow[index] }))
+      .filter(
+        ({ column, value }, index) =>
+          index !== valueColumnIndex && (column || value !== undefined),
+      ),
+    origin: {
+      cols,
+      row: matchingRow,
+    },
+  };
+};
+
+export const getDataPointMentionEvent = (event: Event): DataPointMentionEvent =>
+  (event as CustomEvent<DataPointMentionEvent>).detail ?? {};
+
 export const getDataPointMentionEventId = (event: Event) =>
-  (event as CustomEvent<{ id: number }>).detail?.id;
+  getDataPointMentionEvent(event).id;

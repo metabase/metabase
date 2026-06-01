@@ -54,12 +54,15 @@
            codecs/bytes->b64-str)))
 
 (defn query-and-viz-link
-  "Generate a question link for query and chart type. Chart type"
-  [query chart-type]
-  (pseudo-card->link
-   {:dataset_query query
-    :displayIsLocked true
-    :display (keyword chart-type)}))
+  "Generate a question link for query and chart type."
+  ([query chart-type]
+   (query-and-viz-link query chart-type nil))
+  ([query chart-type title]
+   (pseudo-card->link
+    (cond-> {:dataset_query query
+             :displayIsLocked true
+             :display (keyword chart-type)}
+      (seq title) (assoc :name title)))))
 
 (defn- resolve-query-link
   "Resolve a metabase://query/{id} link to a /question# URL."
@@ -138,6 +141,7 @@
   Supported URI formats:
   - metabase://query/{uuid} - Links to query results
   - metabase://chart/{uuid} - Links to chart visualizations
+  - metabase://data-point/{uuid} - Links to generated chart data point targets
   - metabase://question/{uuid} - Links to saved questions
   - metabase://model/{id} - Links to models
   - metabase://metric/{id} - Links to metrics
@@ -154,6 +158,7 @@
         (case entity-type
           "query"    (resolve-query-link entity-id queries-state)
           "chart"    (resolve-chart-link entity-id charts-state queries-state)
+          "data-point" uri
           "question" (resolve-entity-link "question" entity-id)
           "table"    (resolve-table-link entity-id)
           ;; For other types, use simple path mapping

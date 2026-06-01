@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import type { ComponentProps } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -10,7 +11,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 
 import { AIMarkdown } from "./AIMarkdown";
 
-const setup = (props: { children: string }) => {
+const setup = (props: ComponentProps<typeof AIMarkdown>) => {
   setupEnterprisePlugins();
   const settings = mockSettings({ "site-url": "http://localhost:3000" });
 
@@ -25,6 +26,14 @@ const setup = (props: { children: string }) => {
 };
 
 describe("AIMarkdown", () => {
+  beforeEach(() => {
+    jest.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("should render internal links for Metabase protocol links", async () => {
     setup({ children: "[My Question](metabase://question/123)" });
 
@@ -67,6 +76,29 @@ describe("AIMarkdown", () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({ detail: { id: 7 } }),
+    );
+    window.removeEventListener("metabot:data-point-mention-click", listener);
+  });
+
+  it("dispatches state-backed data point mention clicks", async () => {
+    const listener = jest.fn();
+    const dataPointId = "f10cfc50-2a0b-4c67-a064-7585d17974c7";
+    const target = {
+      columns: ["Created At", "Revenue"],
+      row: ["2026-01-01", 123],
+      value_column_index: 1,
+    };
+    window.addEventListener("metabot:data-point-mention-click", listener);
+
+    setup({
+      children: `[Dec 2025 · 2.85K](metabase://data-point/${dataPointId})`,
+      dataPointTargets: { [dataPointId]: target },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /Dec 2025/ }));
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: expect.objectContaining({ target }) }),
     );
     window.removeEventListener("metabot:data-point-mention-click", listener);
   });

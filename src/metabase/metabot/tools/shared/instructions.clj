@@ -53,6 +53,13 @@ The assistant needs to:
   "Generate instructions for chart creation result."
   [chart-id]
   (str "Chart created successfully.\n"
+       "The tool result may include a <query_execution> block with the generated chart's executed data. "
+       "Use it to mention one concrete observation from the data, such as a trend, outlier, or notable category. "
+       "Only mention maxima, minima, rankings, or counts when <query_execution> is not truncated, or after running "
+       "a follow-up query that computes them against the full result. If <query_execution> says results were omitted "
+       "and the user needs an answer from the data, your next step MUST be a follow-up tool call without asking permission first. For notebook queries, use execute_notebook_query_silently with the needed follow-up program so no chart is created. "
+       "Do not produce a final answer until it returns. Do not merely say the chart was created.\n"
+       "When you mention a specific value from the chart, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer.\n"
        "Present link to user using: [Chart](metabase://chart/" chart-id ")\n"
        "Replace 'Chart' with a meaningful description of what the chart shows."))
 
@@ -67,7 +74,11 @@ Reference items using: [name](metabase://type/id)")
    in the link template. Matches Python CreateSQLQueryToolV2._create_result."
   [query-id]
   (str "The assistant needs to:\n"
-       "- Remember you cannot view the results directly yourself\n"
+       "- Use the <query_execution> block in the result, when present, to inspect the executed query data\n"
+       "- Proactively mention one concrete observation from the data, such as a trend, outlier, or notable category\n"
+       "- Only mention maxima, minima, rankings, or counts when <query_execution> is not truncated, or after running a follow-up query that computes them against the full result\n"
+       "- If <query_execution> says results were omitted and the user needs an answer from the data, your next step MUST be a follow-up tool call without asking permission first. For notebook queries, use execute_notebook_query_silently with the needed follow-up program so no chart is created. Do not produce a final answer until it returns\n"
+       "- When mentioning a specific value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer\n"
        "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
        "so the user can open it themselves\n"
        "- Consider whether to create a chart or graph when that better matches the user's intent\n"
@@ -78,6 +89,8 @@ Reference items using: [name](metabase://type/id)")
    in the link template. Matches Python EditSqlQueryToolV2._create_result."
   [query-id]
   (str "The updated query is shown in the result data above.\n\n"
+       "If a <query_execution> block is present, use it to inspect the executed query data and mention one concrete observation from the results. Only mention maxima, minima, rankings, or counts when <query_execution> is not truncated, or after running a follow-up query that computes them against the full result. If <query_execution> says results were omitted and the user needs an answer from the data, your next step MUST be a follow-up tool call without asking permission first. For notebook queries, use execute_notebook_query_silently with the needed follow-up program so no chart is created. Do not produce a final answer until it returns.\n\n"
+       "When mentioning a specific value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer.\n\n"
        "After you have edited the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool again\n\n"
@@ -91,6 +104,8 @@ Reference items using: [name](metabase://type/id)")
    in the link template. Matches Python ReplaceSqlQueryToolV2._create_result."
   [query-id]
   (str "The updated query is shown in the result data above.\n\n"
+       "If a <query_execution> block is present, use it to inspect the executed query data and mention one concrete observation from the results. Only mention maxima, minima, rankings, or counts when <query_execution> is not truncated, or after running a follow-up query that computes them against the full result. If <query_execution> says results were omitted and the user needs an answer from the data, your next step MUST be a follow-up tool call without asking permission first. For notebook queries, use execute_notebook_query_silently with the needed follow-up program so no chart is created. Do not produce a final answer until it returns.\n\n"
+       "When mentioning a specific value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer.\n\n"
        "After you have replaced the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool or edit_sql_query again\n\n"

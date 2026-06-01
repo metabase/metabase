@@ -48,6 +48,7 @@ import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
+import { CLICKED_DATA_POINT_HIGHLIGHT_DURATION } from "metabase/visualizations/constants";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import {
   getTableCellClickedObject,
@@ -65,6 +66,7 @@ import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
+  DatasetData,
   MetabotColumnInfo,
   RowValue,
   RowValues,
@@ -129,6 +131,109 @@ const getColumnIndexFromSelectionColumnId = (
   return -1;
 };
 
+const getColumnId = (
+  column: DatasetColumn,
+  columnIndex: number,
+  isPivoted: boolean,
+) => {
+  if (isPivoted) {
+    return `${column.name}:${columnIndex}`;
+  }
+
+  if (column.name === "") {
+    return `${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:${columnIndex}`;
+  }
+
+  return column.name;
+};
+
+const isSameValue = (left: RowValue, right: RowValue) => {
+  return left === right || String(left) === String(right);
+};
+
+const isSameColumn = (
+  left: DatasetColumn | undefined,
+  right: DatasetColumn | undefined,
+) => {
+  return left?.name === right?.name;
+};
+
+const getRenderedColumnIndex = (
+  cols: DatasetColumn[],
+  originCols: DatasetColumn[],
+  column: DatasetColumn | undefined,
+) => {
+  const originColumnIndex = originCols.findIndex((originColumn) =>
+    isSameColumn(originColumn, column),
+  );
+
+  if (originColumnIndex >= 0) {
+    const renderedColumnIndex = cols.findIndex((renderedColumn) =>
+      isSameColumn(renderedColumn, originCols[originColumnIndex]),
+    );
+    if (renderedColumnIndex >= 0) {
+      return renderedColumnIndex;
+    }
+  }
+
+  return cols.findIndex((renderedColumn) =>
+    isSameColumn(renderedColumn, column),
+  );
+};
+
+const getRenderedRowIndex = (
+  rows: RowValues[],
+  cols: DatasetColumn[],
+  originRow: RowValues,
+  originCols: DatasetColumn[],
+) => {
+  return rows.findIndex((row) => {
+    if (row.length === originRow.length) {
+      return row.every((value, index) => isSameValue(value, originRow[index]));
+    }
+
+    return cols.every((column, index) => {
+      const originColumnIndex = originCols.findIndex((originColumn) =>
+        isSameColumn(originColumn, column),
+      );
+
+      return (
+        originColumnIndex >= 0 &&
+        isSameValue(row[index], originRow[originColumnIndex])
+      );
+    });
+  });
+};
+
+export const getMentionedTableCell = ({
+  clicked,
+  data,
+  isPivoted,
+}: {
+  clicked: ClickObject | null | undefined;
+  data: Pick<DatasetData, "cols" | "rows">;
+  isPivoted: boolean;
+}) => {
+  if (isPivoted || !clicked?.origin?.row) {
+    return null;
+  }
+
+  const { cols, rows } = data;
+  const { cols: originCols, row: originRow } = clicked.origin;
+  const rowIndex = getRenderedRowIndex(rows, cols, originRow, originCols);
+  const columnIndex = getRenderedColumnIndex(cols, originCols, clicked.column);
+
+  if (rowIndex < 0 || columnIndex < 0) {
+    return null;
+  }
+
+  return {
+    rowIndex,
+    columnIndex,
+    columnId: getColumnId(cols[columnIndex], columnIndex, isPivoted),
+  };
+};
+
 const getMetabotColumnInfo = (column: DatasetColumn): MetabotColumnInfo => ({
   name: column.display_name || column.name,
   type: column.base_type as MetabotColumnInfo["type"],
@@ -189,6 +294,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isPivoted = false,
     question,
     clicked,
+    clickedViaMention,
     hasMetadataPopovers = true,
     mode,
     theme,
@@ -530,19 +636,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnName = getColumnTitle(columnIndex);
 
       let align;
-      let id;
+      const id = getColumnId(col, columnIndex, isPivoted);
       let sortDirection: "asc" | "desc" | undefined;
       if (isPivoted) {
         align = columnIndex === 0 ? "right" : columnSettings["text_align"];
-        id = `${col.name}:${columnIndex}`;
       } else {
         align = columnSettings["text_align"];
-        id = col.name;
         sortDirection = getColumnSortDirection(columnIndex);
-      }
-
-      if (id === "") {
-        id = `${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:${columnIndex}`;
       }
 
       const translatedColumnName = tc(columnName);
@@ -777,6 +877,103 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     enableSelection: true,
   });
   const { getCenterColumns, scrollTo, columnsReordering } = tableProps;
+
+  const mentionedCell = useMemo(
+    () =>
+      getMentionedTableCell({
+        clicked: clickedViaMention,
+        data,
+        isPivoted,
+      }),
+    [clickedViaMention, data, isPivoted],
+  );
+  const lastMentionedCellKeyRef = useRef<string | null>(null);
+  const mentionHighlightTimeoutIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (mentionHighlightTimeoutIdRef.current != null) {
+        window.clearTimeout(mentionHighlightTimeoutIdRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!clickedViaMention) {
+      if (mentionHighlightTimeoutIdRef.current != null) {
+        window.clearTimeout(mentionHighlightTimeoutIdRef.current);
+        mentionHighlightTimeoutIdRef.current = null;
+      }
+
+      if (lastMentionedCellKeyRef.current) {
+        tableProps.selection.setCellSelection([]);
+        lastMentionedCellKeyRef.current = null;
+      }
+      return;
+    }
+
+    if (!mentionedCell) {
+      return;
+    }
+
+    const { table } = tableProps;
+    const rowModel = table.getRowModel();
+    const rowPosition = rowModel.rows.findIndex(
+      (row) => row.index === mentionedCell.rowIndex,
+    );
+    const { pageSize } = table.getState().pagination;
+
+    if (rowPosition < 0 && tableProps.enablePagination && pageSize > 0) {
+      const sortedRowPosition = table
+        .getSortedRowModel()
+        .rows.findIndex((row) => row.index === mentionedCell.rowIndex);
+
+      table.setPageIndex(
+        Math.floor(
+          (sortedRowPosition >= 0
+            ? sortedRowPosition
+            : mentionedCell.rowIndex) / pageSize,
+        ),
+      );
+      return;
+    }
+
+    const row = rowModel.rows[rowPosition];
+    const cell = row
+      ?.getAllCells()
+      .find((cell) => cell.column.id === mentionedCell.columnId);
+
+    if (!cell) {
+      return;
+    }
+
+    const selection = {
+      rowId: row.id,
+      columnId: mentionedCell.columnId,
+      cellId: cell.id,
+    };
+    if (selection.cellId === lastMentionedCellKeyRef.current) {
+      return;
+    }
+
+    const columnPosition = table
+      .getAllFlatColumns()
+      .findIndex((column) => column.id === mentionedCell.columnId);
+
+    lastMentionedCellKeyRef.current = selection.cellId;
+    tableProps.selection.setCellSelection([selection], selection);
+    if (mentionHighlightTimeoutIdRef.current != null) {
+      window.clearTimeout(mentionHighlightTimeoutIdRef.current);
+    }
+    mentionHighlightTimeoutIdRef.current = window.setTimeout(() => {
+      tableProps.selection.setCellSelection([]);
+      mentionHighlightTimeoutIdRef.current = null;
+    }, CLICKED_DATA_POINT_HIGHLIGHT_DURATION);
+    scrollTo({
+      row: { index: rowPosition },
+      column: columnPosition >= 0 ? { index: columnPosition } : undefined,
+    });
+  }, [clickedViaMention, mentionedCell, scrollTo, tableProps]);
+
   const lastMentionedSelectionKeyRef = useRef("");
   useEffect(() => {
     if (!onTableSelectionMention) {

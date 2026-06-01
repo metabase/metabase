@@ -40,6 +40,17 @@ describe("parseMetabaseProtocolLink", () => {
       parseMetabaseProtocolLink("metabase://question/abc"),
     ).toBeUndefined();
   });
+
+  it("should parse data point UUID IDs", () => {
+    expect(
+      parseMetabaseProtocolLink(
+        "metabase://data-point/5c3455ef-d9ac-4a46-9171-49b451d2657f",
+      ),
+    ).toEqual({
+      id: "5c3455ef-d9ac-4a46-9171-49b451d2657f",
+      model: "data-point",
+    });
+  });
 });
 
 describe("parseMetabaseProtocolMarkdownLink", () => {
@@ -109,6 +120,18 @@ describe("parseMetabaseProtocolMarkdownLink", () => {
     expect(
       parseMetabaseProtocolMarkdownLink("[Test](metabase://unsupported/123)"),
     ).toBeUndefined();
+  });
+
+  it("should parse data point markdown links with UUID IDs", () => {
+    expect(
+      parseMetabaseProtocolMarkdownLink(
+        "[Dec 2026 · Widget · 119](metabase://data-point/5c3455ef-d9ac-4a46-9171-49b451d2657f)",
+      ),
+    ).toEqual({
+      id: "5c3455ef-d9ac-4a46-9171-49b451d2657f",
+      model: "data-point",
+      name: "Dec 2026 · Widget · 119",
+    });
   });
 });
 

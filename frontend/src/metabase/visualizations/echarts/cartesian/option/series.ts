@@ -489,6 +489,17 @@ const buildEChartsBarSeries = (
         color: seriesModel.color,
       },
     },
+    selectedMode: "single",
+    select: {
+      itemStyle: {
+        color: seriesModel.color,
+        borderColor: renderingContext.getColor("brand"),
+        borderWidth: 2,
+        opacity: 1,
+        shadowBlur: 4,
+        shadowColor: renderingContext.getColor("background-primary"),
+      },
+    },
     blur: {
       label: getBlurLabelStyle(settings, hasMultipleSeries),
       itemStyle: {
@@ -639,6 +650,17 @@ const buildEChartsLineAreaSeries = (
       },
       areaStyle: {
         opacity: CHART_STYLE.opacity.areaFocused,
+      },
+    },
+    selectedMode: "single",
+    select: {
+      itemStyle: {
+        color: renderingContext.getColor("background-primary"),
+        borderColor: renderingContext.getColor("brand"),
+        borderWidth: 3,
+        opacity: 1,
+        shadowBlur: 4,
+        shadowColor: renderingContext.getColor("brand"),
       },
     },
     blur: {

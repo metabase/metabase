@@ -70,6 +70,7 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
+  DatasetColumn,
   RawSeries,
   TimelineEvent,
   TimelineEventId,
@@ -357,6 +358,163 @@ export const getSeriesHovered = (
     index: seriesIndex,
     datumIndex: dataIndex,
   };
+};
+
+const isSameColumn = (
+  left: DatasetColumn | null | undefined,
+  right: DatasetColumn | null | undefined,
+) => {
+  if (!left || !right) {
+    return false;
+  }
+
+  return (
+    left === right ||
+    (left.name != null && left.name === right.name) ||
+    (left.display_name != null && left.display_name === right.display_name)
+  );
+};
+
+const normalizeTimestamp = (value: unknown) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const parsed = parseTimestamp(value);
+  return parsed.isValid() ? parsed.format("YYYY-MM-DDTHH:mm:ss") : null;
+};
+
+const isSameClickValue = (left: unknown, right: unknown) => {
+  if (left === right) {
+    return true;
+  }
+
+  if (left == null || right == null) {
+    return false;
+  }
+
+  if (String(left) === String(right)) {
+    return true;
+  }
+
+  const leftTimestamp = normalizeTimestamp(left);
+  const rightTimestamp = normalizeTimestamp(right);
+
+  return (
+    leftTimestamp != null &&
+    rightTimestamp != null &&
+    leftTimestamp === rightTimestamp
+  );
+};
+
+const getClickedDimensionValue = (
+  chartModel: BaseCartesianChartModel,
+  datum: Datum,
+  clickedDimension: ClickObjectDimension,
+  clickedCardId: CardId | undefined,
+) => {
+  const xAxisColumn =
+    clickedCardId != null
+      ? (chartModel.dimensionModel.columnByCardId[clickedCardId] ??
+        chartModel.dimensionModel.column)
+      : chartModel.dimensionModel.column;
+
+  if (isSameColumn(clickedDimension.column, xAxisColumn)) {
+    return datum[X_AXIS_DATA_KEY];
+  }
+
+  const dataKey = getObjectKeys(datum).find((dataKey) =>
+    isSameColumn(chartModel.columnByDataKey[dataKey], clickedDimension.column),
+  );
+
+  return dataKey == null ? undefined : datum[dataKey];
+};
+
+const datumMatchesClickedDimensions = (
+  chartModel: BaseCartesianChartModel,
+  datum: Datum,
+  clicked: ClickObject,
+) => {
+  const dimensions = clicked.dimensions ?? [];
+  let matchedDimensionsCount = 0;
+
+  for (const dimension of dimensions) {
+    const datumValue = getClickedDimensionValue(
+      chartModel,
+      datum,
+      dimension,
+      clicked.cardId,
+    );
+
+    if (datumValue === undefined) {
+      continue;
+    }
+
+    matchedDimensionsCount++;
+    if (!isSameClickValue(datumValue, dimension.value)) {
+      return false;
+    }
+  }
+
+  return dimensions.length === 0 || matchedDimensionsCount > 0;
+};
+
+const seriesMatchesClicked = (
+  seriesModel: SeriesModel,
+  clicked: ClickObject,
+) => {
+  if (clicked.cardId != null && seriesModel.cardId !== clicked.cardId) {
+    return false;
+  }
+
+  if (clicked.column && !isSameColumn(seriesModel.column, clicked.column)) {
+    return false;
+  }
+
+  if (isBreakoutSeries(seriesModel)) {
+    const breakoutDimension = clicked.dimensions?.find((dimension) =>
+      isSameColumn(dimension.column, seriesModel.breakoutColumn),
+    );
+
+    return isSameClickValue(
+      breakoutDimension?.value,
+      seriesModel.breakoutValue,
+    );
+  }
+
+  return true;
+};
+
+export const getClickedDataPoint = (
+  chartModel: BaseCartesianChartModel,
+  clicked: ClickObject | null | undefined,
+) => {
+  if (!clicked) {
+    return null;
+  }
+
+  for (const [seriesIndex, seriesModel] of chartModel.seriesModels.entries()) {
+    if (!seriesModel.visible || !seriesMatchesClicked(seriesModel, clicked)) {
+      continue;
+    }
+
+    const datumIndex = chartModel.dataset.findIndex((datum) => {
+      if (clicked.value !== undefined) {
+        const datumValue = datum[seriesModel.dataKey];
+        if (!isSameClickValue(datumValue, clicked.value)) {
+          return false;
+        }
+      }
+
+      return datumMatchesClickedDimensions(chartModel, datum, clicked);
+    });
+
+    if (datumIndex >= 0) {
+      return { seriesIndex, datumIndex };
+    }
+  }
+
+  return null;
 };
 
 const getAdditionalTooltipRowsData = (

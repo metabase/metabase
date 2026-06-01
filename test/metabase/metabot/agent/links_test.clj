@@ -56,6 +56,11 @@
     (is (= "/question/101" (links/resolve-metabase-uri "metabase://question/101" {} {})))
     (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
 
+(deftest ^:parallel resolve-metabase-uri-data-point-link-test
+  (testing "preserves data point links for the frontend to resolve from state"
+    (let [uri "metabase://data-point/f10cfc50-2a0b-4c67-a064-7585d17974c7"]
+      (is (= uri (links/resolve-metabase-uri uri {} {}))))))
+
 (deftest ^:parallel resolve-metabase-uri-table-link-test
   (testing "resolves table links to ad-hoc question URLs"
     (let [result (links/resolve-metabase-uri (str "metabase://table/" (mt/id :venues)) {} {})]

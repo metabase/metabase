@@ -18,6 +18,7 @@
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.navigation :as tools.navigation]
+   [metabase.metabot.tools.query-results :as query-results]
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared :as shared]
@@ -41,7 +42,8 @@
   nlq-search-tool
   transform-search-tool]
  [tools.construct
-  construct-notebook-query-tool]
+  construct-notebook-query-tool
+  execute-notebook-query-silently-tool]
  [tools.document
   document-schema-collect-tool
   document-construct-sql-chart-tool
@@ -119,6 +121,11 @@
                      tool-name required-scope scope/*current-user-scope*)
           {:output "You do not have permission to use this tool."}))))
 
+(defn- maybe-enrich-tool-result
+  [memory-atom result]
+  (cond-> result
+    (map? result) (query-results/enrich-tool-result @memory-atom)))
+
 (defn wrap-tools-with-state
   "Wrap state-dependent tools with access to the memory atom.
   Tools in `state-dependent-tools` will have access to the memory atom
@@ -145,11 +152,11 @@
                             (binding [shared/*memory-atom*        memory-atom
                                       shared/*metabot-id*         metabot-id
                                       shared/*scoped-database-id* database-id]
-                              (tool-var args)))
+                              (maybe-enrich-tool-result memory-atom (tool-var args))))
                           (fn [args]
                             (binding [shared/*metabot-id*         metabot-id
                                       shared/*scoped-database-id* database-id]
-                              (tool-var args))))
+                              (maybe-enrich-tool-result memory-atom (tool-var args)))))
             tool-scope  (:scope m)
             tool-fn     (if tool-scope
                           (wrap-with-scope-check base-fn tool-name tool-scope)

@@ -2,6 +2,7 @@ import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
   getLegendTitles,
   getMapUrl,
+  getSelectedFeatureKeyFromClicked,
 } from "metabase/visualizations/components/ChoroplethMap";
 
 describe("getLegendTitles", () => {
@@ -95,5 +96,48 @@ describe("getLegendTitles", () => {
         );
       });
     });
+  });
+});
+
+describe("getSelectedFeatureKeyFromClicked", () => {
+  const stateColumn = { name: "STATE", display_name: "State" };
+  const rows = [
+    ["Texas", 100],
+    ["California", 200],
+  ];
+
+  const setup = (clicked) =>
+    getSelectedFeatureKeyFromClicked({
+      clicked,
+      cols: [stateColumn, { name: "COUNT", display_name: "Count" }],
+      rows,
+      dimensionName: "STATE",
+      region: "us_states",
+    });
+
+  it("uses the clicked map dimension when the full row does not match", () => {
+    expect(
+      setup({
+        dimensions: [{ column: stateColumn, value: "Texas" }],
+        origin: {
+          cols: [stateColumn, { name: "OTHER", display_name: "Other" }],
+          row: ["Texas", "value from a different result shape"],
+        },
+      }),
+    ).toBe("tx");
+  });
+
+  it("falls back to the matching origin column", () => {
+    expect(
+      setup({
+        origin: {
+          cols: [
+            { name: "OTHER", display_name: "Other" },
+            { name: "STATE_FROM_TARGET", display_name: "State" },
+          ],
+          row: ["ignored", "California"],
+        },
+      }),
+    ).toBe("ca");
   });
 });

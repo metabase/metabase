@@ -78,6 +78,7 @@
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/execute-notebook-query-silently-tool
                     #'tools/navigate-user-tool
                     #'tools/create-chart-tool
                     #'tools/edit-chart-tool]})
@@ -89,6 +90,7 @@
   :temperature     0.3
   :tools           [#'tools/search-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/execute-notebook-query-silently-tool
                     #'tools/read-resource-tool
                     #'tools/create-sql-query-tool
                     #'tools/edit-sql-query-tool
@@ -140,6 +142,7 @@
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/execute-notebook-query-silently-tool
                     #'tools/navigate-user-tool
                     #'tools/create-chart-tool
                     #'tools/edit-chart-tool]})
@@ -164,6 +167,7 @@
   :temperature     0.3
   :tools           [#'tools/search-tool
                     #'tools/slackbot-construct-notebook-query-tool
+                    #'tools/execute-notebook-query-silently-tool
                     #'tools/list-available-fields-tool
                     #'tools/get-field-values-tool
                     #'tools/static-viz-tool

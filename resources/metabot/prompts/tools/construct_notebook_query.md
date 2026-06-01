@@ -4,7 +4,7 @@ Return a payload with:
 - `source_entity`: `{"type":"table"|"model"|"question"|"metric","id":123}`
 - `referenced_entities`: optional additional context entities in the same shape
 - `program`: structured MBQL program
-- `visualization`: optional chart choice like `{"chart_type":"bar"}`
+- `visualization`: optional chart choice and name like `{"chart_type":"bar","name":"Revenue by month"}`. Always include a concise, user-facing `name` when creating a chart.
 
 The program must use the structured source/context pattern:
 
@@ -51,7 +51,7 @@ Common operators:
 - `["with-page", {"page": 2, "items": 25}]`
 
 Do not put visualization inside `program.operations`.
-- Good: top-level `"visualization": {"chart_type": "pie"}`
+- Good: top-level `"visualization": {"chart_type": "pie", "name": "Orders by category"}`
 - Bad: `["visualization", {"chart_type": "pie"}]`
 
 Breakout and ordering rules:
@@ -135,6 +135,9 @@ Field projection rules:
 
 Use `with-fields` for row-level queries and `breakout` only for grouped results.
 If the result should be visualized, set `visualization.chart_type` to something appropriate like `table`, `bar`, `line`, `area`, `pie`, or `scalar`.
+After this tool creates a query or chart, Metabase executes the generated query and includes a `<query_execution>` block in the tool result. Use that executed data in your response.
+The `<query_execution>` block may include result values linked with `metabase://data-point` URLs. Whenever you mention a specific value from the generated query or chart, use the matching URL and choose natural link text for your answer.
+When execution succeeds, proactively mention one concrete observation from the data, such as a trend, outlier, or notable category. Only mention maxima, minima, rankings, or counts when `<query_execution>` is not truncated, or after running a follow-up query that computes them against the full result. If `<query_execution>` says results were omitted and the user needs an answer from the data, your next step MUST be that follow-up tool call without asking permission first. Do not produce a final answer until it returns. Do not merely describe the query or chart configuration.
 
 Aggregation operators:
 - `["count"]` — Count all rows

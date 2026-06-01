@@ -377,9 +377,16 @@ export function getPieChartOption(
       type: "sunburst",
       sort: undefined,
       nodeClick: false,
+      selectedMode: "single",
       radius: [innerRadius, outerRadius],
       itemStyle: {
         borderColor: renderingContext.theme.pie.borderColor,
+      },
+      select: {
+        itemStyle: {
+          borderColor: renderingContext.getColor("summarize"),
+          borderWidth: Math.max(borderWidth, 3),
+        },
       },
       label: {
         overflow: "none",

@@ -1,7 +1,7 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import { forwardRef, memo, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -39,6 +39,7 @@ import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
+import type { DataPointMentionTarget } from "./data-point-mentions";
 
 const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
@@ -46,7 +47,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "transform_suggestion" }, () => true)
     .with({ type: "navigate_to" }, () => true)
     .with({ type: "code_edit" }, () => true)
-    .with({ type: "adhoc_viz" }, () => false)
+    .with({ type: "adhoc_viz" }, () => true)
     .with({ type: "static_viz" }, () => false)
     .exhaustive();
 
@@ -173,6 +174,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   readonly: boolean;
   onRetry?: (messageId: string) => void;
   getCopyText: () => string;
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
@@ -185,6 +187,7 @@ export const AgentMessage = ({
   debug,
   readonly,
   getCopyText,
+  dataPointTargets,
   onRetry,
   setFeedbackMessage,
   submittedFeedback,
@@ -203,6 +206,7 @@ export const AgentMessage = ({
           <AIMarkdown
             className={Styles.message}
             onInternalLinkClick={onInternalLinkClick}
+            dataPointTargets={dataPointTargets}
           >
             {m.message}
           </AIMarkdown>
@@ -213,6 +217,7 @@ export const AgentMessage = ({
             message={m}
             debug={debug}
             readonly={readonly}
+            dataPointTargets={dataPointTargets}
           />
         ))
         .with({ type: "tool_call" }, (m) => (
@@ -411,7 +416,7 @@ export const getFullAgentReply = (
   return messages.slice(firstMessageIndex, lastMessageIndex + 1);
 };
 
-export const Messages = ({
+export const Messages = memo(function Messages({
   agentId,
   messages,
   onRetryMessage,
@@ -419,6 +424,7 @@ export const Messages = ({
   debug,
   readonly = false,
   onInternalLinkClick,
+  dataPointTargets,
 }: {
   agentId: MetabotAgentId;
   messages: MetabotChatMessage[];
@@ -427,7 +433,8 @@ export const Messages = ({
   debug: boolean;
   readonly?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
-}) => {
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+}) {
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
     [debug, messages],
@@ -489,6 +496,7 @@ export const Messages = ({
             readonly={readonly}
             onRetry={onRetryMessage}
             getCopyText={() => getAgentReplyCopyText(message.id)}
+            dataPointTargets={dataPointTargets}
             setFeedbackMessage={(data) =>
               setFeedbackState((prev) => ({ ...prev, modal: data }))
             }
@@ -521,4 +529,4 @@ export const Messages = ({
       )}
     </>
   );
-};
+});

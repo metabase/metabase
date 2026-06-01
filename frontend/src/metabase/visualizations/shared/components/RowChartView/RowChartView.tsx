@@ -51,6 +51,7 @@ export interface RowChartViewProps<TDatum> {
   isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
+  selectedData?: HoveredData | null;
   measureTextWidth?: TextWidthMeasurer;
   onHover?: (
     event: React.MouseEvent<Element>,
@@ -84,6 +85,7 @@ const RowChartView = <TDatum,>({
   isStacked,
   style,
   hoveredData,
+  selectedData,
   measureTextWidth,
   onHover,
   onClick,
@@ -150,9 +152,13 @@ const RowChartView = <TDatum,>({
             const x = xScale(xStartValue);
             const width = Math.abs(xScale(xEndValue) - x);
 
-            const hasSeriesHover = hoveredData != null;
-            const isSeriesHovered = hoveredData?.seriesIndex === seriesIndex;
-            const isDatumHovered = hoveredData?.datumIndex === datumIndex;
+            const activeData = selectedData ?? hoveredData;
+            const hasSeriesHover = activeData != null;
+            const isSeriesHovered = activeData?.seriesIndex === seriesIndex;
+            const isDatumHovered = activeData?.datumIndex === datumIndex;
+            const isSelected =
+              selectedData?.seriesIndex === seriesIndex &&
+              selectedData?.datumIndex === datumIndex;
 
             const shouldHighlightBar =
               seriesData.length === 1 && isDatumHovered;
@@ -192,6 +198,8 @@ const RowChartView = <TDatum,>({
                   height={height}
                   fill={series.color}
                   opacity={opacity}
+                  stroke={isSelected ? "var(--mb-color-summarize)" : undefined}
+                  strokeWidth={isSelected ? 3 : undefined}
                   onClick={(event) => onClick?.(event, bar)}
                   onMouseEnter={(event) => onHover?.(event, bar)}
                   onMouseLeave={(event) => onHover?.(event, null)}

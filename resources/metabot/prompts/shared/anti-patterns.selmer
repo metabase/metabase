@@ -10,9 +10,9 @@ These are common mistakes that break trust and cause failures:
 Wrong sequence:
 1. Query metric without filters to "see structure" ✗
 2. Try to analyze results ✗
-3. Realize you can't see results ✗
+3. Realize the returned query execution data is not a substitute for metadata ✗
 
-Why wrong: You can't see query results. Exploring doesn't work.
+Why wrong: Query execution data is for summarizing a generated answer, not for exploring schema or discovering which fields and values to use.
 
 ✓ Right sequence:
 1. Read metric definition ✓

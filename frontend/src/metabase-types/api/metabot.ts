@@ -111,7 +111,7 @@ export type MetabotChartConfig = {
   title?: string | null;
   description?: string | null;
   selected_data?: {
-    mention_id?: number;
+    mention_id?: number | string;
     label?: string;
     value?: RowValue;
     column?: MetabotColumnInfo;
@@ -125,7 +125,7 @@ export type MetabotChartConfig = {
     };
   };
   selected_range?: {
-    mention_id?: number;
+    mention_id?: number | string;
     label?: string;
     columns: Array<MetabotColumnInfo>;
     rows: Array<RowValue[]>;

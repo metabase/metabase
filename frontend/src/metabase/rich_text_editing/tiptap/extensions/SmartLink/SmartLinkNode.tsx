@@ -471,7 +471,7 @@ export const SmartLinkComponent = memo(
               e.stopPropagation();
               window.dispatchEvent(
                 new CustomEvent("metabot:data-point-mention-click", {
-                  detail: { id: parseInt(entityId, 10) },
+                  detail: { id: entityId },
                 }),
               );
             }}

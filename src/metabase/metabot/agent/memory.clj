@@ -9,6 +9,7 @@
   State structure:
   {:queries {query-id query-map}
    :charts {chart-id chart-map}
+   :data-points {data-point-id target-map}
    :todos [...]
    :transforms {...}}"
   ([messages state]
@@ -17,7 +18,13 @@
    {:input-messages messages
     :steps-taken []
     :context context
-    :state (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}})}))
+    :state (or state
+               {:queries       {}
+                :charts        {}
+                :data-points   {}
+                :todos         []
+                :transforms    {}
+                :link-registry {}})}))
 
 (defn add-step
   "Add a completed agent step to memory.
@@ -103,6 +110,13 @@
   [memory]
   (get-in memory [:state :charts] {}))
 
+;;; Data Point Management
+
+(defn remember-data-points
+  "Store generated chart data point targets in memory state by ID."
+  [memory data-points]
+  (update-in memory [:state :data-points] merge data-points))
+
 ;;; Transform Management
 
 (defn remember-transform
@@ -155,6 +169,13 @@
   [memory state]
   (if-let [charts (:charts state)]
     (reduce-kv store-chart memory charts)
+    memory))
+
+(defn load-data-points-from-state
+  "Load data point targets from incoming state into memory."
+  [memory state]
+  (if-let [data-points (:data-points state)]
+    (remember-data-points memory data-points)
     memory))
 
 (defn load-transforms-from-state

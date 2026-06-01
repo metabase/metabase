@@ -41,6 +41,7 @@ import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
+import { getDataPointTargetsFromState } from "./data-point-mentions";
 import { useScrollManager } from "./hooks";
 
 export interface MetabotConfig {
@@ -234,6 +235,9 @@ export const MetabotChat = ({
               }
               isDoingScience={metabot.isDoingScience}
               debug={metabot.debugMode}
+              dataPointTargets={getDataPointTargetsFromState(
+                metabot.requestState,
+              )}
             />
             {/* loading */}
             {metabot.isDoingScience && (

@@ -14,11 +14,19 @@
   [chart-id]
   (str "metabase://chart/" chart-id))
 
+(defn- default-chart-name
+  [chart-type]
+  (if (= :table chart-type)
+    "Generated table"
+    (str "Generated " (name chart-type) " chart")))
+
 (defn- format-chart-for-llm
   "Format chart data as XML for LLM consumption."
-  [{:keys [chart_id queries] :as chart-data}]
+  [{:keys [chart_id name queries] :as chart-data}]
   (apply str
          (into ["<chart id=\"" chart_id "\">\n"
+                (when (seq name)
+                  (str "<name>" name "</name>\n"))
                 "The chart is powered by the following queries:\n"]
                (comp cat
                      (remove nil?))
@@ -47,7 +55,7 @@
   - :chart-content - XML representation of the chart
   - :chart-link - Metabase link to the chart
   - :chart-type - Type of chart created"
-  [{:keys [chart-id new-chart-type charts-state]}]
+  [{:keys [chart-id new-chart-type new-chart-name charts-state]}]
   (log/info "Editing chart" {:chart-id chart-id :new-chart-type new-chart-type})
 
   ;; Validate chart type
@@ -63,19 +71,28 @@
                       {:agent-error? true
                        :chart-id chart-id})))
 
-    (let [new-chart-data (-> chart-data
+    (let [chart-name (or (not-empty new-chart-name)
+                         (:name chart-data)
+                         (default-chart-name new-chart-type))
+          new-chart-data (-> chart-data
                              (assoc :chart_id (str (random-uuid)))
+                             (assoc :name chart-name)
                              (assoc :visualization_settings {:chart_type new-chart-type}))]
 
       {:new-chart-data new-chart-data
        :result {:chart-id (:chart_id new-chart-data)
                 :chart-content (format-chart-for-llm new-chart-data)
                 :chart-link (format-chart-link (:chart_id new-chart-data))
+                :chart-name chart-name
                 :chart-type new-chart-type
                 :instructions (str "Chart has been created successfully.\n\n"
                                    "Next steps to present the chart to the user:\n"
-                                   "- Always provide a direct link using: [Chart]("
+                                   "- Use the <query_execution> block in this tool result to inspect the executed chart data\n"
+                                   "- Proactively mention one concrete observation from the data, such as a trend, outlier, or notable category\n"
+                                   "- Only mention maxima, minima, rankings, or counts when <query_execution> is not truncated, or after running a follow-up query that computes them against the full result\n"
+                                   "- If <query_execution> says results were omitted and the user needs an answer from the data, your next step MUST be a follow-up tool call without asking permission first. For notebook queries, use execute_notebook_query_silently with the needed follow-up program so no chart is created. Do not produce a final answer until it returns\n"
+                                   "- When mentioning a specific value from the chart, use the matching metabase://data-point URL from the linked result value, and choose natural link text for your answer\n"
+                                   "- Always provide a direct link using: [" chart-name "]("
                                    (format-chart-link (:chart_id new-chart-data))
-                                   ") "
-                                   "where Chart is a meaningful link text\n"
+                                   ")\n"
                                    "- If creating multiple charts, present all chart links")}})))

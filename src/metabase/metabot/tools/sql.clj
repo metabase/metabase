@@ -70,6 +70,13 @@
                              :mode "rewrite"
                              :value sql}))
 
+(defn- query-data-part
+  [query title]
+  (streaming/adhoc-viz-part {:query query
+                             :link (streaming/query->question-url query)
+                             :title title
+                             :display "table"}))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Create SQL query
 ;;; ──────────────────────────────────────────────────────────────────
@@ -93,13 +100,12 @@
           {:keys [valid? dialect error-message]} validation-result
           {:keys [query-id query]} action-result]
       (if valid?
-        (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id)
-              results-url (streaming/query->question-url query)]
+        (let [structured (assoc action-result :result-type :query)
+              instr      (instructions/query-created-instructions-for query-id)]
           {:output (format-query-output structured instr {:preamble? true})
            :structured-output structured
            :instructions instr
-           :data-parts [(streaming/navigate-to-part results-url)]})
+           :data-parts [(query-data-part query "SQL query results")]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))
@@ -164,14 +170,13 @@
           {:keys [valid? error-message dialect]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
-        (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/edit-sql-query-instructions-for query-id)
-              results-url (streaming/query->question-url query)
+        (let [structured (assoc action-result :result-type :query)
+              instr      (instructions/edit-sql-query-instructions-for query-id)
               buffer-id  (first-code-editor-buffer-id)]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
-           :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (streaming/navigate-to-part results-url))]})
+           :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (query-data-part query "SQL query results"))]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))
@@ -207,14 +212,13 @@
           {:keys [valid? dialect error-message]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
-        (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/replace-sql-query-instructions-for query-id)
-              results-url (streaming/query->question-url query)
+        (let [structured (assoc action-result :result-type :query)
+              instr      (instructions/replace-sql-query-instructions-for query-id)
               buffer-id  (first-code-editor-buffer-id)]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
-           :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (streaming/navigate-to-part results-url))]})
+           :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (query-data-part query "SQL query results"))]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))

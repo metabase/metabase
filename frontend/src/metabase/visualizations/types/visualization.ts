@@ -182,6 +182,7 @@ export interface VisualizationProps {
   scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
   clicked?: ClickObject | null;
+  clickedViaMention?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];

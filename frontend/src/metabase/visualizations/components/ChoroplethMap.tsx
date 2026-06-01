@@ -32,9 +32,11 @@ import type {
   VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import type { ClickObject } from "metabase-lib";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomGeoJSONMap,
+  DatasetColumn,
   GeoJSONData,
   RowValue,
   VisualizationSettings,
@@ -223,6 +225,81 @@ type ChoroplethMapState = {
 type Projection = d3.GeoProjection | null;
 type ProjectionFrame = [[number, number], [number, number]];
 
+function isSameColumn(
+  left: DatasetColumn | null | undefined,
+  right: DatasetColumn | null | undefined,
+) {
+  return (
+    left != null &&
+    right != null &&
+    (left === right ||
+      (left.name != null && left.name === right.name) ||
+      (left.display_name != null && left.display_name === right.display_name))
+  );
+}
+
+function isSameRowValue(left: RowValue, right: RowValue) {
+  return left === right || String(left) === String(right);
+}
+
+export function getSelectedFeatureKeyFromClicked({
+  clicked,
+  cols,
+  rows,
+  dimensionName,
+  region,
+}: {
+  clicked: ClickObject | null | undefined;
+  cols: DatasetColumn[];
+  rows: RowValue[][];
+  dimensionName: string;
+  region: string | undefined;
+}) {
+  if (!clicked) {
+    return null;
+  }
+
+  const dimensionIndex = _.findIndex(cols, (col) => col.name === dimensionName);
+  if (dimensionIndex < 0) {
+    return null;
+  }
+
+  const dimensionColumn = cols[dimensionIndex];
+  const clickedDimension = clicked.dimensions?.find((dimension) =>
+    isSameColumn(dimension.column, dimensionColumn),
+  );
+  if (clickedDimension) {
+    return getCanonicalRowKey(clickedDimension.value, region);
+  }
+
+  const originDimensionIndex = clicked.origin?.cols.findIndex((col) =>
+    isSameColumn(col, dimensionColumn),
+  );
+  if (
+    originDimensionIndex != null &&
+    originDimensionIndex >= 0 &&
+    clicked.origin?.row[originDimensionIndex] !== undefined
+  ) {
+    return getCanonicalRowKey(clicked.origin.row[originDimensionIndex], region);
+  }
+
+  const clickedRow = clicked.origin?.row;
+  if (!clickedRow) {
+    return null;
+  }
+
+  const matchingRow = rows.find(
+    (row) =>
+      row.length === clickedRow.length &&
+      row.every((value, index) => isSameRowValue(value, clickedRow[index])),
+  );
+  if (!matchingRow) {
+    return null;
+  }
+
+  return getCanonicalRowKey(matchingRow[dimensionIndex], region);
+}
+
 function isFeatureCollection(value: GeoJSONData): value is FeatureCollection {
   return value.type === "FeatureCollection";
 }
@@ -253,6 +330,8 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     isDocument,
     isMetricsViewer,
     onRenderError,
+    clicked,
+    clickedViaMention,
   } = props;
 
   const details = getDetails(settings);
@@ -262,6 +341,9 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     geoJson: null,
     geoJsonPath: null,
   });
+  const [selectedFeatureKey, setSelectedFeatureKey] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!geoJsonPath) {
@@ -282,6 +364,51 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
       cancelled = true;
     };
   }, [geoJsonPath]);
+
+  useEffect(() => {
+    if (!details) {
+      setSelectedFeatureKey(null);
+      return;
+    }
+
+    const [seriesEntry] = series;
+    const cols = seriesEntry?.data.cols ?? [];
+    const rows = seriesEntry?.data.rows ?? [];
+    const activeClicked = clickedViaMention ?? clicked;
+    const selectedFeatureKey = getSelectedFeatureKeyFromClicked({
+      clicked: activeClicked,
+      cols,
+      rows,
+      dimensionName: settings["map.dimension"],
+      region: settings["map.region"],
+    });
+
+    console.warn("[metabot data-point map] choropleth selection", {
+      selectedFeatureKey,
+      region: settings["map.region"],
+      dimension: settings["map.dimension"],
+      columns: cols.map((col) => ({
+        name: col.name,
+        displayName: col.display_name,
+      })),
+      rowCount: rows.length,
+      clickedDimensions: activeClicked?.dimensions,
+      clickedOrigin: activeClicked?.origin,
+    });
+
+    if (!selectedFeatureKey) {
+      setSelectedFeatureKey(null);
+      return;
+    }
+
+    setSelectedFeatureKey(selectedFeatureKey);
+
+    const timeoutId = window.setTimeout(() => {
+      setSelectedFeatureKey(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [clicked, clickedViaMention, details, series, settings]);
 
   if (!details) {
     return <MapNotFound />;
@@ -311,14 +438,6 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
 
   const nameProperty = details.region_name;
   const keyProperty = details.region_key;
-
-  if (!geoJson) {
-    return (
-      <div className={cx(className, CS.flex, CS.layoutCentered)}>
-        <LoadingSpinner />
-      </div>
-    );
-  }
 
   const [
     {
@@ -364,6 +483,14 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const rowByFeatureKey = new Map<string, RowValue[]>(
     rows.map((row) => [getRowKey(row), row]),
   );
+
+  if (!geoJson) {
+    return (
+      <div className={cx(className, CS.flex, CS.layoutCentered)}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   const getFeatureClickObject = (
     row: RowValue[] | undefined,
@@ -519,6 +646,9 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
           getColor={getColor}
           onHoverFeature={onHoverFeature}
           onClickFeature={onClickFeature}
+          selectedFeatureKey={selectedFeatureKey}
+          selectedFeatureViaMention={clickedViaMention != null}
+          getFeatureKey={getFeatureKey}
           projection={projection}
           projectionFrame={projectionFrame}
         />
@@ -527,10 +657,13 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
           series={series}
           geoJson={geoJson}
           getColor={getColor}
+          getFeatureKey={getFeatureKey}
           onHoverFeature={onHoverFeature}
           onClickFeature={onClickFeature}
           minimalBounds={minimalBounds}
           onRenderError={propagateRenderError}
+          selectedFeatureKey={selectedFeatureKey}
+          selectedFeatureViaMention={clickedViaMention != null}
         />
       )}
     </ChartWithLegend>

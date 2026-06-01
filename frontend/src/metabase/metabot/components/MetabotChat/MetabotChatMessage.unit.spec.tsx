@@ -1,15 +1,27 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import type { MetabotAgentChatMessage } from "metabase/metabot/state";
+import type {
+  MetabotAgentChatMessage,
+  MetabotChatMessage,
+} from "metabase/metabot/state";
 
 import { AgentMessage, Messages } from "./MetabotChatMessage";
+import type { DataPointMentionTarget } from "./data-point-mentions";
 
 const mockSetPrompt = jest.fn();
 const mockFocusPromptInput = jest.fn();
 let mockPrompt = "";
 let mockChatContextProvider: (() => Promise<unknown>) | undefined;
+const mockQueryVisualizationRender = jest.fn();
 
 jest.mock("metabase/metabot", () => ({
   useMetabotContext: () => ({}),
@@ -77,50 +89,62 @@ jest.mock("metabase/common/components/QuestionResultLoader", () => ({
 }));
 
 jest.mock("metabase/querying/components/QueryVisualization", () => ({
-  QueryVisualization: ({ clicked, handleVisualizationClick }: any) => (
-    <button
-      data-testid="embedded-question"
-      data-clicked={clicked ? "true" : "false"}
-      onClick={() =>
-        handleVisualizationClick?.({
-          value: 123,
-          column: {
-            name: "REVENUE",
-            display_name: "Revenue",
-            base_type: "type/Float",
-          },
-          dimensions: [
-            {
-              value: "2026-01-01",
-              column: {
-                name: "CREATED_AT",
-                display_name: "Created At",
-                base_type: "type/DateTime",
-              },
+  QueryVisualization: ({
+    clicked,
+    clickedViaMention,
+    handleVisualizationClick,
+  }: any) => {
+    mockQueryVisualizationRender();
+
+    return (
+      <button
+        data-testid="embedded-question"
+        data-clicked={clicked ? "true" : "false"}
+        data-clicked-via-mention={clickedViaMention ? "true" : "false"}
+        onClick={() =>
+          handleVisualizationClick?.({
+            value: 123,
+            column: {
+              name: "REVENUE",
+              display_name: "Revenue",
+              base_type: "type/Float",
             },
-          ],
-          origin: {
-            cols: [
+            dimensions: [
               {
-                name: "CREATED_AT",
-                display_name: "Created At",
-                base_type: "type/DateTime",
-              },
-              {
-                name: "REVENUE",
-                display_name: "Revenue",
-                base_type: "type/Float",
+                value: "2026-01-01",
+                column: {
+                  name: "CREATED_AT",
+                  display_name: "Created At",
+                  base_type: "type/DateTime",
+                },
               },
             ],
-            row: ["2026-01-01", 123],
-          },
-        })
-      }
-    />
-  ),
+            origin: {
+              cols: [
+                {
+                  name: "CREATED_AT",
+                  display_name: "Created At",
+                  base_type: "type/DateTime",
+                },
+                {
+                  name: "REVENUE",
+                  display_name: "Revenue",
+                  base_type: "type/Float",
+                },
+              ],
+              row: ["2026-01-01", 123],
+            },
+          })
+        }
+      />
+    );
+  },
 }));
 
-const setup = (message: MetabotAgentChatMessage) =>
+const setup = (
+  message: MetabotAgentChatMessage,
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>,
+) =>
   renderWithProviders(
     <AgentMessage
       agentId="omnibot"
@@ -131,6 +155,7 @@ const setup = (message: MetabotAgentChatMessage) =>
       submittedFeedback={undefined}
       getCopyText={() => ""}
       message={message}
+      dataPointTargets={dataPointTargets}
     />,
   );
 
@@ -139,7 +164,16 @@ describe("AgentMessage", () => {
     mockPrompt = "";
     mockSetPrompt.mockClear();
     mockFocusPromptInput.mockClear();
+    mockQueryVisualizationRender.mockClear();
     mockChatContextProvider = undefined;
+    jest
+      .spyOn(crypto, "randomUUID")
+      .mockReturnValue("f10cfc50-2a0b-4c67-a064-7585d17974c7");
+    jest.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("renders navigate_to responses as embedded question cards", () => {
@@ -162,7 +196,40 @@ describe("AgentMessage", () => {
 
     expect(screen.getByText("Revenue by month")).toBeInTheDocument();
     expect(screen.queryByText(/generated question/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Open in fullscreen")).not.toBeInTheDocument();
     expect(screen.getByTestId("embedded-question")).toBeInTheDocument();
+  });
+
+  it("renders adhoc_viz responses as embedded question cards", () => {
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+
+    setup({
+      id: "msg",
+      role: "agent",
+      type: "data_part",
+      part: {
+        type: "adhoc_viz",
+        version: 1,
+        value: {
+          query: { type: "query", database: 1, query: {} },
+          link: `/question#${cardHash}`,
+          title: "Revenue by month",
+          display: "bar",
+        },
+      },
+    });
+
+    expect(screen.getByText("Revenue by month")).toBeInTheDocument();
+    expect(screen.getByTestId("embedded-question")).toBeInTheDocument();
+    expect(screen.queryByText("Open in fullscreen")).not.toBeInTheDocument();
   });
 
   it("mentions clicked chart values and makes them available to Metabot", async () => {
@@ -186,13 +253,22 @@ describe("AgentMessage", () => {
     await userEvent.click(screen.getByTestId("embedded-question"));
 
     const prompt = mockSetPrompt.mock.calls[0][0];
+    expect(console.warn).toHaveBeenCalledWith(
+      "point doens't exist, generating new uuid",
+    );
     expect(prompt).toMatch(
-      /^\[[^\]]+ 2026 · 123\]\(metabase:\/\/data-point\/1\)$/,
+      /^\[[^\]]+ 2026 · 123\]\(metabase:\/\/data-point\/f10cfc50-2a0b-4c67-a064-7585d17974c7\)$/,
     );
     expect(mockFocusPromptInput).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByTestId("embedded-question")).toHaveAttribute(
+        "data-clicked",
+        "true",
+      ),
+    );
     expect(screen.getByTestId("embedded-question")).toHaveAttribute(
-      "data-clicked",
-      "true",
+      "data-clicked-via-mention",
+      "false",
     );
 
     const context = await mockChatContextProvider?.();
@@ -204,7 +280,7 @@ describe("AgentMessage", () => {
           chart_configs: [
             expect.objectContaining({
               selected_data: expect.objectContaining({
-                mention_id: 1,
+                mention_id: "f10cfc50-2a0b-4c67-a064-7585d17974c7",
                 label: expect.stringMatching(/^[^\]]+ 2026 · 123$/),
                 value: 123,
                 row: expect.objectContaining({
@@ -216,6 +292,187 @@ describe("AgentMessage", () => {
         }),
       ],
     });
+  });
+
+  it("reuses matching generated query_execution data point ids", async () => {
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+    const dataPointId = "7714fa1e-288b-499d-887e-cbaf62b32bb6";
+
+    setup(
+      {
+        id: "msg",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "navigate_to",
+          version: 1,
+          value: `/question#${cardHash}`,
+        },
+      },
+      {
+        [dataPointId]: {
+          row: ["2026-01-01", 123],
+          value_column_index: 1,
+        },
+      },
+    );
+
+    await userEvent.click(screen.getByTestId("embedded-question"));
+
+    expect(mockSetPrompt.mock.calls[0][0]).toMatch(
+      new RegExp(
+        `^\\[[^\\]]+ 2026 · 123\\]\\(metabase:\\/\\/data-point\\/${dataPointId}\\)$`,
+      ),
+    );
+    expect(console.warn).not.toHaveBeenCalledWith(
+      "point doens't exist, generating new uuid",
+    );
+    expect(crypto.randomUUID).not.toHaveBeenCalled();
+  });
+
+  it("highlights generated chart values linked by Metabot", async () => {
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+    const dataPointId = "f10cfc50-2a0b-4c67-a064-7585d17974c7";
+    const dataPointTarget = {
+      columns: ["Created At", "Revenue"],
+      row: ["2026-01-01", 123],
+      value_column_index: 1,
+    };
+
+    renderWithProviders(
+      <Messages
+        agentId="omnibot"
+        messages={[
+          {
+            id: "chart",
+            role: "agent",
+            type: "data_part",
+            part: {
+              type: "navigate_to",
+              version: 1,
+              value: `/question#${cardHash}`,
+            },
+          },
+          {
+            id: "text",
+            role: "agent",
+            type: "text",
+            message: `Revenue peaked at [May 2026](metabase://data-point/${dataPointId}).`,
+          },
+        ]}
+        dataPointTargets={{ [dataPointId]: dataPointTarget }}
+        isDoingScience={false}
+        debug={false}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "May 2026" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("embedded-question")).toHaveAttribute(
+        "data-clicked-via-mention",
+        "true",
+      ),
+    );
+    expect(screen.getByTestId("embedded-question")).toHaveAttribute(
+      "data-clicked",
+      "false",
+    );
+
+    const context = await mockChatContextProvider?.();
+    expect(context).toEqual({
+      user_is_viewing: [
+        expect.objectContaining({
+          type: "adhoc",
+          name: "Revenue by month",
+          chart_configs: [
+            expect.objectContaining({
+              selected_data: expect.objectContaining({
+                label: expect.stringMatching(/^[^"]+ 2026 · 123$/),
+                value: 123,
+                row: expect.objectContaining({
+                  values: ["2026-01-01", 123],
+                }),
+              }),
+            }),
+          ],
+        }),
+      ],
+    });
+  });
+
+  it("highlights generated chart values when mention clicks only include state-backed ids", async () => {
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+    const dataPointId = "f10cfc50-2a0b-4c67-a064-7585d17974c7";
+    const dataPointTarget = {
+      columns: ["Created At", "Revenue"],
+      row: ["2026-01-01", 123],
+      value_column_index: 1,
+    };
+
+    renderWithProviders(
+      <Messages
+        agentId="omnibot"
+        messages={[
+          {
+            id: "chart",
+            role: "agent",
+            type: "data_part",
+            part: {
+              type: "navigate_to",
+              version: 1,
+              value: `/question#${cardHash}`,
+            },
+          },
+        ]}
+        dataPointTargets={{ [dataPointId]: dataPointTarget }}
+        isDoingScience={false}
+        debug={false}
+      />,
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent("metabot:data-point-mention-click", {
+          detail: { id: dataPointId },
+        }),
+      );
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("embedded-question")).toHaveAttribute(
+        "data-clicked-via-mention",
+        "true",
+      ),
+    );
+    expect(screen.getByTestId("embedded-question")).toHaveAttribute(
+      "data-clicked",
+      "false",
+    );
   });
 
   it("hides the action bar on the last agent message while processing", () => {
@@ -235,6 +492,60 @@ describe("AgentMessage", () => {
     expect(
       within(agentMessage).queryByTestId("metabot-chat-message-copy"),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not re-render embedded charts when an unrelated prompt changes", async () => {
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+    const messages: MetabotChatMessage[] = [
+      {
+        id: "chart",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "navigate_to",
+          version: 1,
+          value: `/question#${cardHash}`,
+        },
+      },
+    ];
+    const dataPointTargets = {};
+
+    const TestHarness = () => {
+      const [prompt, setPrompt] = useState("");
+
+      return (
+        <>
+          <input
+            aria-label="Prompt"
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+          />
+          <Messages
+            agentId="omnibot"
+            messages={messages}
+            dataPointTargets={dataPointTargets}
+            isDoingScience={false}
+            debug={false}
+          />
+        </>
+      );
+    };
+
+    renderWithProviders(<TestHarness />);
+
+    expect(mockQueryVisualizationRender).toHaveBeenCalledTimes(1);
+
+    await userEvent.type(screen.getByLabelText("Prompt"), "show revenue");
+
+    expect(mockQueryVisualizationRender).toHaveBeenCalledTimes(1);
   });
 
   describe("turn_errored", () => {

@@ -371,5 +371,22 @@ describe("RowChart", () => {
         "0.4",
       ]);
     });
+
+    it("should use a distinct stroke for selected mention data", () => {
+      const selectedData = {
+        seriesIndex: 0,
+        datumIndex: 1,
+      };
+
+      const { bars } = setup({ selectedData, series: [series1] });
+
+      expect(bars[1]).toHaveAttribute("stroke", "var(--mb-color-summarize)");
+      expect(bars[1]).toHaveAttribute("stroke-width", "3");
+      expect(bars.map((bar) => bar.getAttribute("opacity"))).toStrictEqual([
+        "0.4",
+        "1",
+        "0.4",
+      ]);
+    });
   });
 });

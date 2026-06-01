@@ -29,15 +29,28 @@ export const getHoveredEChartsSeriesDataKeyAndIndex = (
 ) => {
   const hoveredSeriesDataKey = getHoveredSeriesDataKey(seriesModels, hovered);
 
+  return {
+    hoveredSeriesDataKey,
+    hoveredEChartsSeriesIndex: getEChartsSeriesIndexByDataKey(
+      option,
+      hoveredSeriesDataKey,
+    ),
+  };
+};
+
+export const getEChartsSeriesIndexByDataKey = (
+  option: EChartsCoreOption,
+  dataKey: DataKey | null | undefined,
+) => {
+  if (dataKey == null) {
+    return -1;
+  }
+
   const seriesOptions = Array.isArray(option?.series)
     ? option?.series
     : [option?.series].filter(isNotNull);
 
   // ECharts series contain goal line, trend lines, and timeline events so the series index
   // is different from one in chartModel.seriesModels
-  const hoveredEChartsSeriesIndex = seriesOptions.findIndex(
-    (series) => series.id === hoveredSeriesDataKey,
-  );
-
-  return { hoveredSeriesDataKey, hoveredEChartsSeriesIndex };
+  return seriesOptions.findIndex((series) => series.id === dataKey);
 };

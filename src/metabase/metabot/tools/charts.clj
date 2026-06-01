@@ -1,7 +1,6 @@
 (ns metabase.metabot.tools.charts
   "Chart tool wrappers."
   (:require
-   [medley.core :as m]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
@@ -31,7 +30,17 @@
    [:data_source [:map {:closed true}
                   [:query_id :string]]]
    [:viz_settings [:map {:closed true}
-                   [:chart_type chart-type-enum]]]])
+                   [:chart_type chart-type-enum]
+                   [:name {:optional true
+                           :description "A concise, user-facing name for the generated chart."}
+                    [:maybe :string]]]]])
+
+(defn- chart->adhoc-viz-part
+  [{:keys [query chart-url chart-name chart-type]}]
+  (streaming/adhoc-viz-part {:query query
+                             :link chart-url
+                             :title chart-name
+                             :display (name chart-type)}))
 
 (mu/defn ^{:tool-name "create_chart"
            :scope     scope/agent-viz-create}
@@ -44,12 +53,12 @@
     (let [result     (create-chart-tools/create-chart
                       {:query-id      (get data_source :query_id)
                        :chart-type    (keyword (get viz_settings :chart_type))
+                       :title         (get viz_settings :name)
                        :queries-state (shared/current-queries-state)})
-          reactions  (:reactions result)
-          structured (assoc (dissoc result :reactions) :result-type :chart)]
-      (-> {:output            (format-chart-output structured)
-           :structured-output structured}
-          (m/assoc-some :reactions (not-empty reactions))))
+          structured (assoc result :result-type :chart)]
+      {:output            (format-chart-output structured)
+       :structured-output structured
+       :data-parts        [(chart->adhoc-viz-part result)]})
     (catch Exception e
       (log/error e "Error creating chart")
       (if (:agent-error? (ex-data e))
@@ -60,7 +69,10 @@
   [:map {:closed true}
    [:chart_id :string]
    [:new_viz_settings [:map {:closed true}
-                       [:chart_type chart-type-enum]]]])
+                       [:chart_type chart-type-enum]
+                       [:name {:optional true
+                               :description "A concise, user-facing name for the edited chart."}
+                        [:maybe :string]]]]])
 
 (mu/defn ^{:tool-name "edit_chart"
            :scope     scope/agent-viz-edit}
@@ -79,6 +91,7 @@
           (edit-chart-tools/edit-chart
            {:chart-id chart_id
             :new-chart-type new-viz
+            :new-chart-name (get new_viz_settings :name)
             :charts-state (shared/current-charts-state)})
 
           structured (assoc result :result-type :chart)]
@@ -90,11 +103,15 @@
 
       {:output (format-chart-output structured)
        :structured-output structured
-       :data-parts [(streaming/navigate-to-part
-                     (links/pseudo-card->link
-                      {:dataset_query query
-                       :display new-viz
-                       :displayIsLocked true}))]})
+       :data-parts [(streaming/adhoc-viz-part
+                     {:query query
+                      :link (links/pseudo-card->link
+                             {:dataset_query query
+                              :name (:chart-name result)
+                              :display new-viz
+                              :displayIsLocked true})
+                      :title (:chart-name result)
+                      :display (name new-viz)})]})
 
     (catch Exception e
       (log/error e "Error editing chart")

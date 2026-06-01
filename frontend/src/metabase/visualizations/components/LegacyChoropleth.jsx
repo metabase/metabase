@@ -6,6 +6,26 @@ import { Component } from "react";
 import CS from "metabase/css/core/index.css";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
+/** @type {string | null | undefined} */
+const DEFAULT_SELECTED_FEATURE_KEY = null;
+
+/** @type {(feature: import("geojson").Feature) => string | null} */
+const getDefaultFeatureKey = () => null;
+
+/**
+ * @param {{
+ *   series: unknown,
+ *   geoJson: any,
+ *   projection: any,
+ *   projectionFrame: any,
+ *   getColor: (feature: any) => string,
+ *   onHoverFeature?: (hoveredFeature: any) => void,
+ *   onClickFeature?: ((clickedFeature: any) => void) | null,
+ *   selectedFeatureKey?: string | null,
+ *   selectedFeatureViaMention?: boolean,
+ *   getFeatureKey?: (feature: any) => string | null,
+ * }} props
+ */
 export const LegacyChoropleth = ({
   series,
   geoJson,
@@ -14,6 +34,9 @@ export const LegacyChoropleth = ({
   getColor,
   onHoverFeature,
   onClickFeature,
+  selectedFeatureKey = DEFAULT_SELECTED_FEATURE_KEY,
+  selectedFeatureViaMention = false,
+  getFeatureKey = getDefaultFeatureKey,
 }) => {
   const geo = d3.geoPath().projection(projection);
 
@@ -35,8 +58,13 @@ export const LegacyChoropleth = ({
     >
       <ShouldUpdate
         series={series}
+        selectedFeatureKey={selectedFeatureKey}
+        selectedFeatureViaMention={selectedFeatureViaMention}
         shouldUpdate={(props, nextProps) =>
-          !isSameSeries(props.series, nextProps.series)
+          !isSameSeries(props.series, nextProps.series) ||
+          props.selectedFeatureKey !== nextProps.selectedFeatureKey ||
+          props.selectedFeatureViaMention !==
+            nextProps.selectedFeatureViaMention
         }
       >
         {() => (
@@ -49,8 +77,25 @@ export const LegacyChoropleth = ({
                 data-testid="choropleth-feature"
                 key={index}
                 d={geo(feature, index)}
-                stroke="white"
-                strokeWidth={1}
+                stroke={
+                  selectedFeatureKey &&
+                  selectedFeatureViaMention &&
+                  getFeatureKey(feature) === selectedFeatureKey
+                    ? "var(--mb-color-summarize)"
+                    : "white"
+                }
+                strokeWidth={
+                  selectedFeatureKey &&
+                  getFeatureKey(feature) === selectedFeatureKey
+                    ? 3
+                    : 1
+                }
+                opacity={
+                  selectedFeatureKey &&
+                  getFeatureKey(feature) !== selectedFeatureKey
+                    ? 0.3
+                    : 1
+                }
                 fill={getColor(feature)}
                 onMouseMove={(e) =>
                   onHoverFeature({

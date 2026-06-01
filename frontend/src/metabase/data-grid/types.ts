@@ -267,6 +267,7 @@ export type DataGridSelection = {
   selectedCells: CellId[];
   focusedCell: CellId | null;
   isEnabled: boolean;
+  setCellSelection: (cells: CellId[], focusedCell?: CellId | null) => void;
   isCellSelected: (cell: Cell<any, any>) => boolean;
   isCellFocused: (cell: Cell<any, any>) => boolean;
   isRowSelected: (rowId: string) => boolean;

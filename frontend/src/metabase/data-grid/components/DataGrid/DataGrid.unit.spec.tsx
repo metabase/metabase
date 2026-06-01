@@ -438,6 +438,26 @@ describe("DataGrid", () => {
     expect(lines[2]).toBe("Item 2\tClothing");
   });
 
+  it("highlights headers for selected columns", () => {
+    renderWithProviders(<TestDataGrid enableSelection={true} />);
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const bodyCells = screen
+      .getByTestId("table-body")
+      .querySelectorAll("[data-selectable-cell]");
+    const cellsArray = Array.from(bodyCells);
+    const nameCell = cellsArray.find((cell) => cell.textContent === "Item 1");
+
+    fireEvent.mouseDown(nameCell!);
+    fireEvent.mouseUp(nameCell!);
+
+    const nameHeader = screen.getByRole("columnheader", { name: "Name" });
+    expect(nameHeader).toHaveAttribute("data-column-selected", "true");
+  });
+
   it("uses correct ARIA roles for grid structure (#70547)", () => {
     renderWithProviders(<TestDataGrid />);
 

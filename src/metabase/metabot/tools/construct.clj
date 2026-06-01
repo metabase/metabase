@@ -9,6 +9,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
+   [metabase.metabot.tools.query-results :as query-results]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.metabot.tools.util :as tools.u]
@@ -39,7 +40,10 @@
 
 (def ^:private construct-visualization-schema
   [:map {:closed true}
-   [:chart_type :string]])
+   [:chart_type :string]
+   [:name {:optional true
+           :description "A concise, user-facing name for the generated chart."}
+    [:maybe :string]]])
 
 (def ^:private construct-notebook-query-args-schema
   [:map {:closed true}
@@ -48,6 +52,13 @@
    [:referenced_entities {:optional true} [:maybe [:sequential source-entity-schema]]]
    [:program construct-program-schema]
    [:visualization {:optional true} construct-visualization-schema]])
+
+(def ^:private silent-execute-notebook-query-args-schema
+  [:map {:closed true}
+   [:reasoning {:optional true} :string]
+   [:source_entity source-entity-schema]
+   [:referenced_entities {:optional true} [:maybe [:sequential source-entity-schema]]]
+   [:program construct-program-schema]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -192,7 +203,39 @@
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
+(defn- silent-execution-output
+  [execution-output]
+  (te/lines
+   "<result>"
+   execution-output
+   "</result>"
+   "<instructions>"
+   "Use these complete query results to answer the user. Do not create or mention a chart link for this silent inspection query."
+   "When mentioning a specific value from the result, use the matching metabase://data-point URL from the linked result value and choose natural link text for your answer."
+   "</instructions>"))
+
 ;;; ---------------------------------------- Main tool ----------------------------------------
+
+(mu/defn ^{:tool-name "execute_notebook_query_silently"
+           :scope     scope/agent-query-execute}
+  execute-notebook-query-silently-tool
+  "Construct and execute a notebook query for agent-only inspection without creating a chart or visualization."
+  [{:keys [_reasoning source_entity referenced_entities program]} :- silent-execute-notebook-query-args-schema]
+  (try
+    (let [query-result (execute-program source_entity referenced_entities (dissoc program :visualization))
+          structured   (or (:structured-output query-result) (:structured_output query-result))]
+      (if-let [query (:query structured)]
+        (let [{:keys [output structured-output]} (query-results/format-untruncated-execution-result
+                                                  (query-results/execute-query-untruncated query))]
+          (cond-> {:output (silent-execution-output output)
+                   :instructions "Use these complete query results to answer the user. No chart or visualization was created."}
+            structured-output (assoc :structured-output structured-output)))
+        {:output "Failed to execute notebook query: no executable query was constructed."}))
+    (catch Exception e
+      (log/error e "Failed to silently execute notebook query")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to execute notebook query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "construct_notebook_query"
            :scope     scope/agent-notebook-create}
@@ -205,33 +248,43 @@
           normalized-visualization (some-> effective-viz (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
                                       :table)
+          chart-name              (:name normalized-visualization)
           query-result            (execute-program source_entity referenced_entities (dissoc program :visualization))
           structured              (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
+                             :title         chart-name
                              :queries-state {(:query-id structured) (:query structured)}})
-              navigate-url (get-in chart-result [:reactions 0 :url])
+              adhoc-viz-value {:query   (:query structured)
+                               :link    (:chart-url chart-result)
+                               :title   (:chart-name chart-result)
+                               :display (name chart-type)}
               full-structured (assoc structured
                                      :result-type   :query
                                      :chart-id      (:chart-id chart-result)
+                                     :chart-name    (:chart-name chart-result)
                                      :chart-type    (:chart-type chart-result)
                                      :chart-link    (:chart-link chart-result)
                                      :chart-content (:chart-content chart-result))
               instruction-text
-              (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
+              (let [link (te/link (:chart-name chart-result) "metabase://chart/" (:chart-id chart-result))]
                 (te/lines
                  "Your query and chart have been created successfully."
                  ""
                  "Next steps to present the chart to the user:"
-                 (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+                 "- Use the <query_execution> block in this tool result to inspect the executed chart data"
+                 "- Proactively mention one concrete observation from the data, such as a trend, outlier, or notable category"
+                 "- Only mention maxima, minima, rankings, or counts when <query_execution> is not truncated, or after running a follow-up query that computes them against the full result"
+                 "- If <query_execution> says results were omitted and the user needs an answer from the data, your next step MUST be execute_notebook_query_silently with the needed follow-up program, without asking permission first. Do not produce a final answer until it returns"
+                 "- When mentioning a specific value from the chart, use the matching metabase://data-point URL from the linked result value, and choose natural link text for your answer"
+                 (str "- Always provide a direct link using: `" link "`")
                  "- If creating multiple charts, present all chart links"))
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
           {:output (str "<result>\n" chart-xml "\n</result>\n"
                         "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        (when navigate-url
-                                [(streaming/navigate-to-part navigate-url)])
+           :data-parts        [(streaming/adhoc-viz-part adhoc-viz-value)]
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output

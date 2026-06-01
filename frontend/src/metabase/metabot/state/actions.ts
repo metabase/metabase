@@ -64,6 +64,7 @@ export const {
   setSelectedDatabaseId,
   setPrompt,
   setConversationTitle,
+  rememberDataPointTarget,
   focusPromptInput,
   toolCallStart,
   toolCallEnd,

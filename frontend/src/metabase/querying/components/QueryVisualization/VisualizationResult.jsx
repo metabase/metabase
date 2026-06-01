@@ -175,6 +175,8 @@ class VisualizationResultInner extends Component {
             timelineEvents={timelineEvents}
             token={token}
             selectedTimelineEventIds={selectedTimelineEventIds}
+            clicked={this.props.clicked}
+            clickedViaMention={this.props.clickedViaMention}
             getExtraDataForClick={() => ({ zoomInRow })}
             handleVisualizationClick={this.props.handleVisualizationClick}
             onOpenTimelines={this.props.onOpenTimelines}

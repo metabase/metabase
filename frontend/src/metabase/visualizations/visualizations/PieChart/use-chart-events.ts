@@ -9,6 +9,8 @@ import type {
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTotalValue } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
+import { CLICKED_DATA_POINT_HIGHLIGHT_DURATION } from "metabase/visualizations/constants";
+import { OPTION_NAME_SEPERATOR } from "metabase/visualizations/echarts/pie/constants";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
 import type { EChartsSunburstSeriesMouseEvent } from "metabase/visualizations/echarts/pie/types";
@@ -27,6 +29,91 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+
+const isSameColumn = (
+  left: ClickObject["column"],
+  right: ClickObject["column"],
+) => {
+  if (!left || !right) {
+    return false;
+  }
+
+  return (
+    left === right ||
+    (left.name != null && left.name === right.name) ||
+    (left.display_name != null && left.display_name === right.display_name)
+  );
+};
+
+const isSameClickValue = (left: unknown, right: unknown) => {
+  return left === right || String(left) === String(right);
+};
+
+const getClickedSliceKeyPath = (
+  chartModel: PieChartModel,
+  clicked: ClickObject | null | undefined,
+) => {
+  if (!clicked) {
+    return null;
+  }
+
+  const dimensions = clicked.dimensions ?? [];
+
+  const findClickedSliceKeyPath = (
+    sliceTree: PieChartModel["sliceTree"],
+    path: string[],
+    matchedDimensionsCount: number,
+  ): string[] | null => {
+    for (const slice of getArrayFromMapValues(sliceTree)) {
+      if (!slice.visible || slice.isOther) {
+        continue;
+      }
+
+      const dimension = dimensions.find((dimension) =>
+        isSameColumn(dimension.column, slice.column),
+      );
+
+      if (
+        dimension != null &&
+        !isSameClickValue(getValueFromDimensionKey(slice.key), dimension.value)
+      ) {
+        continue;
+      }
+
+      const nextPath = [...path, slice.key];
+      const nextMatchedDimensionsCount =
+        matchedDimensionsCount + (dimension == null ? 0 : 1);
+      const childMatch = findClickedSliceKeyPath(
+        slice.children,
+        nextPath,
+        nextMatchedDimensionsCount,
+      );
+      if (childMatch != null) {
+        return childMatch;
+      }
+
+      const hasMatchedDimension =
+        dimensions.length === 0 || nextMatchedDimensionsCount > 0;
+      const hasMatchingValue =
+        clicked.value === undefined ||
+        isSameClickValue(slice.value, clicked.value) ||
+        isSameClickValue(slice.rawValue, clicked.value);
+
+      if (hasMatchedDimension && hasMatchingValue) {
+        return nextPath;
+      }
+    }
+
+    return null;
+  };
+
+  return findClickedSliceKeyPath(chartModel.sliceTree, [], 0);
+};
+
+export const getClickedSliceName = (
+  chartModel: PieChartModel,
+  clicked: ClickObject | null | undefined,
+) => getClickedSliceKeyPath(chartModel, clicked)?.join(OPTION_NAME_SEPERATOR);
 
 export const getTooltipModel = (
   sliceKeyPath: string[],
@@ -226,7 +313,51 @@ export function useChartEvents(
     [chart, chartModel, legendHoverIndex],
   );
 
-  useClickedStateTooltipSync(chartRef.current, props.clicked);
+  useClickedStateTooltipSync(
+    chartRef.current,
+    props.clickedViaMention ?? props.clicked,
+  );
+
+  useEffect(
+    function highlightClickedSlice() {
+      const activeClicked = props.clickedViaMention ?? props.clicked;
+      const actionType = props.clickedViaMention ? "select" : "highlight";
+      const clearActionType = props.clickedViaMention ? "unselect" : "downplay";
+
+      if (chart == null || activeClicked == null) {
+        return;
+      }
+
+      const name = getClickedSliceName(chartModel, activeClicked);
+      if (name == null) {
+        return;
+      }
+
+      chart.dispatchAction({
+        type: actionType,
+        name,
+        seriesIndex: 0,
+      });
+
+      const timeoutId = window.setTimeout(() => {
+        chart.dispatchAction({
+          type: clearActionType,
+          name,
+          seriesIndex: 0,
+        });
+      }, CLICKED_DATA_POINT_HIGHLIGHT_DURATION);
+
+      return () => {
+        window.clearTimeout(timeoutId);
+        chart.dispatchAction({
+          type: clearActionType,
+          name,
+          seriesIndex: 0,
+        });
+      };
+    },
+    [chart, chartModel, props.clicked, props.clickedViaMention],
+  );
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
