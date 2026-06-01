@@ -18,7 +18,8 @@
 
 (use-fixtures :each
   (fn [thunk]
-    (mt/with-temporary-setting-values [custom-viz-enabled true]
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       custom-viz-enabled true]
       (thunk))))
 
 (defmacro ^:private with-dev-mode-enabled [& body]
@@ -225,9 +226,8 @@
 
 (deftest asset-endpoint-security-test
   (mt/with-premium-features #{:custom-viz}
-    (let [manifest {:name   "sec-test"
-                    :icon   "icon.svg"
-                    :assets ["icon.svg"]}]
+    (let [manifest {:name "sec-test"
+                    :icon "icon.svg"}]
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "sec-test"
                                                       :display_name "sec-test"
                                                       :status       :active
