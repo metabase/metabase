@@ -8,6 +8,7 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useUpdateDatabaseMutation } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useToast } from "metabase/common/hooks/use-toast";
 import {
   hasDbRoutingEnabled,
   hasFeature,
@@ -23,6 +24,7 @@ export function AdminConnectionInfoSection({
   const hasAdminConnection = database.admin_details != null;
   const [updateDatabase] = useUpdateDatabaseMutation();
   const { modalContent, show: showConfirmation } = useConfirmation();
+  const [sendToast] = useToast();
   const isDbRoutingEnabled = hasDbRoutingEnabled(database);
 
   if (!isDbModifiable(database) || !hasFeature(database, "workspace")) {
@@ -35,10 +37,18 @@ export function AdminConnectionInfoSection({
       message: t`This will remove the admin connection for this database. Any features that depend on it will stop working.`,
       confirmButtonText: t`Remove`,
       onConfirm: async () => {
-        await updateDatabase({
-          id: database.id,
-          admin_details: null,
-        }).unwrap();
+        try {
+          await updateDatabase({
+            id: database.id,
+            admin_details: null,
+          }).unwrap();
+        } catch {
+          sendToast({
+            message: t`Failed to remove admin connection`,
+            toastColor: "error",
+            icon: "warning",
+          });
+        }
       },
     });
   };
