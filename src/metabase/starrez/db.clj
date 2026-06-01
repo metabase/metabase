@@ -17,9 +17,11 @@
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [metabase.starrez.settings :as starrez.settings]
+   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as rs])
+   [next.jdbc.result-set :as rs]
+   [toucan2.core :as t2])
   (:import
    (java.io StringReader StringWriter)
    (org.postgresql.copy CopyManager)
@@ -194,6 +196,49 @@
 (defn- safe-column-name [s]
   (safe-ident-name s "column"))
 
+(defn- normalize-db-detail [s]
+  (some-> s str str/trim str/lower-case))
+
+(defn- database-detail-name [details]
+  (or (:dbname details) (:db details) (:database details)))
+
+(defn- matching-metabase-database? [{:keys [details]}]
+  (and (= (normalize-db-detail (:host details))
+          (normalize-db-detail (starrez.settings/starrez-pg-host)))
+       (= (normalize-db-detail (database-detail-name details))
+          (normalize-db-detail (starrez.settings/starrez-pg-database)))))
+
+(defn- starrez-metabase-database []
+  (or (when-let [database-id (starrez.settings/starrez-metabase-database-id)]
+        (t2/select-one :model/Database :id database-id))
+      (some->> (t2/select :model/Database :engine "postgres")
+               (filter matching-metabase-database?)
+               first)))
+
+(defn- sync-metabase-schema! []
+  (try
+    (if-let [database (starrez-metabase-database)]
+      (do
+        (log/infof "Syncing Metabase metadata for StarRez database %s" (:id database))
+        (sync-metadata/sync-db-metadata! database)
+        {:database_id (:id database)
+         :synced      true})
+      (do
+        (log/warn "Skipping Metabase metadata sync: no matching Metabase database found")
+        {:synced false
+         :error  "No matching Metabase database found. Set the StarRez Metabase Database ID."}))
+    (catch Exception e
+      (log/errorf e "Failed to sync Metabase metadata for StarRez database")
+      {:synced false
+       :error  (ex-message e)})))
+
+(defn refresh-snapshots!
+  "Return the latest StarRez snapshots and synchronously refresh the Metabase
+  metadata for the configured StarRez Postgres database."
+  []
+  (assoc (list-weeks-result)
+         :metadata_sync (sync-metabase-schema!)))
+
 (defn- unique-column-names [headers]
   (loop [names (map safe-column-name headers)
          seen  {}
@@ -330,7 +375,9 @@
                   (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = FALSE WHERE is_active = TRUE")])
                   (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = TRUE WHERE id = ?") week-id])
                   (.commit conn)
-                  {:results results :error nil})
+                  {:results       results
+                   :metadata_sync (sync-metabase-schema!)
+                   :error         nil})
                 (catch Exception e
                   (try
                     (.rollback conn)

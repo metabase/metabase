@@ -16,6 +16,7 @@ export interface StarRezStatus {
     sort_field: string;
     keep_versions: number;
     pg_database: string;
+    metabase_database_id: number | null;
   };
 }
 
@@ -28,8 +29,21 @@ export interface StarRezWeek {
   notes: string | null;
 }
 
+export interface StarRezMetadataSyncResult {
+  database_id?: number;
+  synced: boolean;
+  error?: string;
+}
+
+export interface StarRezWeeksResult {
+  weeks: StarRezWeek[];
+  error?: string;
+  metadata_sync?: StarRezMetadataSyncResult;
+}
+
 export interface StarRezActivateResult {
   results?: { table: string; rows: number; cols: number }[];
+  metadata_sync?: StarRezMetadataSyncResult;
   error?: string | null;
 }
 
@@ -99,12 +113,14 @@ const starRezApi = Api.injectEndpoints({
       query: () => ({ method: "POST", url: "/api/starrez/db/test" }),
     }),
 
-    listStarRezWeeks: builder.query<
-      { weeks: StarRezWeek[]; error?: string },
-      void
-    >({
+    listStarRezWeeks: builder.query<StarRezWeeksResult, void>({
       query: () => ({ method: "GET", url: "/api/starrez/weeks" }),
       providesTags: ["starrez-weeks"],
+    }),
+
+    refreshStarRezWeeks: builder.mutation<StarRezWeeksResult, void>({
+      query: () => ({ method: "POST", url: "/api/starrez/weeks/refresh" }),
+      invalidatesTags: ["starrez-weeks"],
     }),
 
     activateStarRezWeek: builder.mutation<StarRezActivateResult, number>({
@@ -125,5 +141,6 @@ export const {
   useDeleteStarRezExportMutation,
   useTestStarRezDbMutation,
   useListStarRezWeeksQuery,
+  useRefreshStarRezWeeksMutation,
   useActivateStarRezWeekMutation,
 } = starRezApi;

@@ -47,11 +47,23 @@ to uploaded database tables or native SQL.
 - `localhost:3001` is running.
 - The `Collegiate Python Reports` root collection and 15 notebook dashboards
   have been created.
+- Verified StarRez snapshots now exist in database id 2:
+  - `starrez_data.collegiate_next_year_most_recent`: 3,602 rows, term
+    `2026/2027`.
+  - `starrez_data.collegiate_this_year_most_recent`: 9,014 rows, term
+    `2025/2026`.
+- Imported first-pass report dashboards:
+  - `Next Year Most Recent` collection 38, dashboard 35, cards 40-45.
+  - Notebook-specific This Year ready-row imports from the Python-side importer:
+    cards 46-49.
+  - `This Year Most Recent` collection 39, dashboard 36, cards 50-55.
+  - `Year-on-Year Most Recent` collection 40, dashboard 37, cards 56-61.
 - `scripts/collegiate_metabase_import_ready_cards.py` will import rows marked
   `ready` once `metabase_database_id` and `metabase_sql` are filled.
-- Current blocker: all 343 visualisations are marked `blocked` because the
-  notebook charts depend on CSV/XLSX snapshot files that are not present in the
-  notebook folder and are not currently exposed as Metabase tables.
+- Current blocker: remaining visuals that require Last Year, Two Years Ago,
+  room inventory, budgets, eligibility, incentive, weekly reporting, or
+  cancellation files still need their StarRez/source reports mapped to database
+  tables.
 - Blocker summary: `/private/tmp/collegiate_conversion_blockers.json`.
 
 ## Required Source Files

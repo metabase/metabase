@@ -92,3 +92,9 @@
   :visibility :admin
   :type       :string
   :audit      :no-value)
+
+(defsetting starrez-metabase-database-id
+  (deferred-tru "Metabase database ID for the StarRez Postgres connection. Used to refresh Metabase table metadata after activating a snapshot.")
+  :visibility :admin
+  :type       :integer
+  :audit      :getter)

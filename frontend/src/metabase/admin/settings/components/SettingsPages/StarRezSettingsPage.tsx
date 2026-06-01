@@ -11,6 +11,7 @@ import {
   useGetStarRezStatusQuery,
   useListStarRezExportsQuery,
   useListStarRezWeeksQuery,
+  useRefreshStarRezWeeksMutation,
   useRunStarRezExportMutation,
   useTestStarRezConnectionMutation,
   useTestStarRezDbMutation,
@@ -333,6 +334,14 @@ function PostgresConfigSection() {
           inputType="password"
         />
 
+        <AdminSettingInput
+          name="starrez-metabase-database-id"
+          title={t`Metabase Database ID`}
+          description={t`Optional. The Metabase database ID for this Postgres connection. Used to refresh the table browser after activation.`}
+          placeholder="2"
+          inputType="number"
+        />
+
         <Flex gap="md" align="center">
           <Button variant="outline" onClick={() => testDb()} loading={testing}>
             {t`Test Postgres Connection`}
@@ -356,7 +365,9 @@ function PostgresConfigSection() {
 }
 
 function SnapshotsSection() {
-  const { data, isLoading, refetch } = useListStarRezWeeksQuery();
+  const { data, isLoading } = useListStarRezWeeksQuery();
+  const [refreshSnapshots, { isLoading: refreshing, data: refreshResult }] =
+    useRefreshStarRezWeeksMutation();
   const [activate, { isLoading: activating, data: activateResult }] =
     useActivateStarRezWeekMutation();
 
@@ -369,11 +380,27 @@ function SnapshotsSection() {
           <Text c="text-secondary">
             {t`Each export creates a snapshot. Click "Activate" to drop and reload starrez_data.* tables from that snapshot.`}
           </Text>
-          <Button variant="subtle" size="sm" onClick={() => refetch()}>
+          <Button
+            variant="subtle"
+            size="sm"
+            loading={refreshing}
+            onClick={() => refreshSnapshots()}
+          >
             {t`Refresh`}
           </Button>
         </Group>
 
+        {refreshResult?.metadata_sync?.synced && (
+          <Alert color="green">
+            {t`Snapshots and PostgreSQL schema refreshed.`}
+          </Alert>
+        )}
+        {refreshResult?.error && (
+          <Alert color="red">{refreshResult.error}</Alert>
+        )}
+        {refreshResult?.metadata_sync?.error && (
+          <Alert color="red">{refreshResult.metadata_sync.error}</Alert>
+        )}
         {activateResult?.error && (
           <Alert color="red">{activateResult.error}</Alert>
         )}

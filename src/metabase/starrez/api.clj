@@ -27,7 +27,8 @@
                 :export_reports (starrez.settings/starrez-export-reports)
                 :sort_field     (starrez.settings/starrez-sort-field)
                 :keep_versions  (starrez.settings/starrez-keep-versions)
-                :pg_database    (starrez.settings/starrez-pg-database)}})
+                :pg_database    (starrez.settings/starrez-pg-database)
+                :metabase_database_id (starrez.settings/starrez-metabase-database-id)}})
 
 (api.macros/defendpoint :post "/test"
   "Test connectivity to the configured StarRez API."
@@ -75,6 +76,13 @@
   []
   (perms/check-has-application-permission :setting)
   (starrez.db/list-weeks-result))
+
+(api.macros/defendpoint :post "/weeks/refresh"
+  "List the latest StarRez snapshots and synchronously refresh Metabase metadata
+  for the configured StarRez Postgres database."
+  []
+  (perms/check-has-application-permission :setting)
+  (starrez.db/refresh-snapshots!))
 
 (api.macros/defendpoint :post "/weeks/:week-id/activate"
   "Make `week-id` the active snapshot — drop+reload `starrez_data.*` tables from
