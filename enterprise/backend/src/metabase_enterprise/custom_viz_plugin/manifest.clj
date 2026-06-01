@@ -59,16 +59,6 @@
   (let [lower (u/lower-case-en path)]
     (some #(str/ends-with? lower %) image-extensions)))
 
-(def ^:private allowed-asset-extensions
-  "File extensions allowed for static asset serving (images + JSON)."
-  (into image-extensions #{".json"}))
-
-(defn- allowed-asset-file?
-  "Returns true if the file path has a recognized allowed extension."
-  [^String path]
-  (let [lower (u/lower-case-en path)]
-    (some #(str/ends-with? lower %) allowed-asset-extensions)))
-
 (defn safe-relative-path?
   "Returns true if path normalizes to a relative path with no directory traversal."
   [^String path]
@@ -77,25 +67,19 @@
          (not (.startsWith normalized "..")))))
 
 (defn asset-paths
-  "List the static asset paths whitelisted by the manifest.
-   Includes paths from the `assets` array (filtered to allowed extensions and
-   safe relative paths) and the `icon` (if it's an image filename).
-   Only explicitly listed paths are supported — no glob patterns."
+  "List the static asset paths the backend will serve for a plugin.
+   Custom viz plugins do not ship arbitrary assets — the only servable asset is the
+   plugin `icon` (when it's an image with a safe relative path). Authors who need
+   images inline them (e.g. base64) into their single JS bundle."
   [manifest]
-  (let [declared  (filter (every-pred allowed-asset-file? safe-relative-path?) (get manifest :assets []))
-        icon-name (when-let [icon (:icon manifest)]
-                    (when (and (image-file? icon) (safe-relative-path? icon)) icon))]
-    (distinct (concat declared (when icon-name [icon-name])))))
+  (when-let [icon (:icon manifest)]
+    (when (and (image-file? icon) (safe-relative-path? icon))
+      [icon])))
 
 (defn asset-content-type
-  "Return the MIME content type for an allowed asset file, or nil if not recognized.
-   Allows image files and JSON files (for locale translations)."
+  "Return the MIME content type for an image asset file, or nil if not recognized.
+   Only the plugin icon is served, so only image types are allowed."
   [^String path]
-  (cond
-    (str/ends-with? path ".json")
-    "application/json"
-
-    :else
-    (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
-      (when (and ct (str/starts-with? ct "image/"))
-        ct))))
+  (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
+    (when (and ct (str/starts-with? ct "image/"))
+      ct)))
