@@ -58,6 +58,18 @@
 
     Returns the version of the written files.")
 
+  (apply-changes! [snapshot message upserts delete-paths]
+    "Incrementally updates the source: writes/overwrites `upserts`, removes `delete-paths`,
+    and PRESERVES every other existing file (unlike `write-files!`, which deletes managed-dir
+    files absent from the write set).
+
+    Takes a SourceSnapshot instance, a commit message, `upserts` (a sequence of file specs, each
+    a map with :path and :content), and `delete-paths` (a sequence of path strings to remove).
+
+    Used by the incremental export fast-path to avoid re-serializing/re-writing the whole tree.
+
+    Returns the version of the written files.")
+
   (version [snapshot]
     "Gets a version identifier for the current state of the snapshot.
 

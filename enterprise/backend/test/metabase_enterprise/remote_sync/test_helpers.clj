@@ -212,6 +212,20 @@ width: fixed
         (swap! files-atom assoc branch final-files)))
     "write-files-version")
 
+  (apply-changes! [_this _message upserts delete-paths]
+    (case fail-mode
+      :apply-changes-error (throw (Exception. "Failed to apply changes"))
+      :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
+      ;; Default: overwrite/add upserts, remove delete-paths, preserve every other file.
+      (let [write-entries (remove #(str/blank? (:path %)) upserts)
+            delete-set    (into #{} (remove str/blank?) delete-paths)]
+        (swap! files-atom update branch
+               (fn [current]
+                 (as-> (or current {}) files
+                   (apply dissoc files delete-set)
+                   (into files (map (juxt :path :content)) write-entries))))))
+    "apply-changes-version")
+
   (version [_this]
     "mock-version"))
 

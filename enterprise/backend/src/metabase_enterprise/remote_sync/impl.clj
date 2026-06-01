@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
@@ -311,6 +312,49 @@
       {:status :error
        :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
+;;; ------------------------------------------- Incremental Export Fast-Path -------------------------------------------
+
+(defn- file-entity-id
+  "Parses serialized YAML `content` and returns its top-level entity_id, or nil if the content is
+  absent, unparseable, or has no entity_id."
+  [content]
+  (when content
+    (try
+      (:entity_id (yaml/parse-string content))
+      (catch Exception _ nil))))
+
+(defn- entity-id-update-row?
+  "True if a dirty RemoteSyncObject row is an in-place content UPDATE of an entity-id model —
+  the only case the incremental fast-path handles safely. Creates, renames, deletions, removals,
+  collection changes, and path-identity models (Table/Field) all return false (→ full export)."
+  [row]
+  (and (= "update" (:status row))
+       (= :entity-id (:identity (spec/spec-for-model-type (:model_type row))))))
+
+(defn- safe-incremental-upserts
+  "Given the current `dirty-rows`, returns a vector of `{:path :content}` upsert specs when a SAFE
+  in-place incremental export is possible, otherwise nil (caller falls back to a full export).
+
+  Safe means: there is dirty content; every dirty row is an in-place UPDATE of an entity-id model;
+  every changed entity still exists; and each entity's freshly-serialized path already exists in the
+  repo holding that SAME entity. That last check (one cheap read per changed file) rules out creates,
+  renames, and name-collision path shifts that would otherwise drop or clobber files — those cases
+  fall back to the full export, which reconciles the whole tree correctly."
+  [snapshot dirty-rows]
+  (when (and (seq dirty-rows)
+             (every? entity-id-update-row? dirty-rows))
+    (let [opts     (serdes/storage-base-context)
+          entities (into [] (spec/extract-dirty-entities-for-export dirty-rows))]
+      (when (= (count entities) (count dirty-rows))
+        (let [specs (mapv (fn [e]
+                            (assoc (source/entity->file-spec opts e) ::entity-id (:entity_id e)))
+                          entities)]
+          (when (every? (fn [{:keys [path] ::keys [entity-id]}]
+                          (and entity-id
+                               (= entity-id (file-entity-id (source.p/read-file snapshot path)))))
+                        specs)
+            (mapv #(select-keys % [:path :content]) specs)))))))
+
 (defn export!
   "Exports remote-synced collections to a remote source repository.
 
@@ -337,16 +381,32 @@
       (try
         (analytics/inc! :metabase-remote-sync/exports)
         (serdes/with-cache
-          (if-let [models (spec/extract-entities-for-export)]
-            (do
-              (remote-sync.task/update-progress! task-id 0.3)
-              (let [written-version (source/store! models snapshot task-id message)]
-                (remote-sync.task/set-version! task-id written-version))
-              (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-              {:status :success
-               :version (source.p/version snapshot)})
-            {:status :error
-             :message "No remote-syncable content available."}))
+          (let [dirty-rows (remote-sync.object/dirty-rows)]
+            (if-let [upserts (safe-incremental-upserts snapshot dirty-rows)]
+              ;; Incremental fast-path: serialize and write only the changed entities, preserving
+              ;; every other file. Avoids re-serializing the entire synced set.
+              (do
+                (remote-sync.task/update-progress! task-id 0.3)
+                (let [written-version (source.p/apply-changes! snapshot message upserts [])]
+                  (remote-sync.task/set-version! task-id written-version))
+                (t2/update! :model/RemoteSyncObject :id [:in (mapv :id dirty-rows)]
+                            {:status "synced" :status_changed_at sync-timestamp})
+                (log/infof "Remote sync incremental export: wrote %d changed entit%s"
+                           (count upserts) (if (= 1 (count upserts)) "y" "ies"))
+                {:status :success
+                 :version (source.p/version snapshot)})
+              ;; Full export: re-serialize the entire synced set (first export, creates, renames,
+              ;; deletions, collection or path-model changes).
+              (if-let [models (spec/extract-entities-for-export)]
+                (do
+                  (remote-sync.task/update-progress! task-id 0.3)
+                  (let [written-version (source/store! models snapshot task-id message)]
+                    (remote-sync.task/set-version! task-id written-version))
+                  (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                  {:status :success
+                   :version (source.p/version snapshot)})
+                {:status :error
+                 :message "No remote-syncable content available."}))))
         (catch Exception e
           (if (:cancelled? (ex-data e))
             (log/info "Export to git repository was cancelled")

@@ -36,6 +36,12 @@
                                      (some (fn [path-filter] (re-matches path-filter (:path file-spec))) path-filters))
                                    files)))
 
+  (apply-changes! [_ message upserts delete-paths]
+    (let [path-allowed? (fn [path] (some (fn [path-filter] (re-matches path-filter path)) path-filters))]
+      (source.p/apply-changes! original-snapshot message
+                               (filter (comp path-allowed? :path) upserts)
+                               (filter path-allowed? delete-paths))))
+
   (version [_]
     (source.p/version original-snapshot)))
 
@@ -62,6 +68,20 @@
             :content (yaml/generate-string (serialization/serialization-deep-sort entity)
                                            {:dumper-options {:flow-style :block :split-lines false}})}
     (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
+
+(defn entity->file-spec
+  "Serializes a single extracted entity into a `{:path :content}` file spec.
+
+  Takes a storage context `opts` (from `serdes/storage-base-context`) and an extracted entity.
+  Used by the incremental export fast-path, which serializes only changed entities.
+
+  Throws if `entity` is an Exception instance."
+  [opts entity]
+  (when (instance? Exception entity)
+    (throw entity))
+  {:path    (remote-sync-path opts entity)
+   :content (yaml/generate-string (serialization/serialization-deep-sort entity)
+                                  {:dumper-options {:flow-style :block :split-lines false}})})
 
 (defn store!
   "Stores serialized entities from a stream to a remote source and commits the changes.
