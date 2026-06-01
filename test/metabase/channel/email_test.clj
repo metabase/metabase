@@ -487,17 +487,17 @@
                               :timeout-ms  200
                               :interval-ms 10}))))))))
 
-(deftest partition-recipients-test
-  (let [rs ["1@x.com" "2@x.com" "3@x.com" "4@x.com" "5@x.com"]]
+(deftest ^:parallel partition-recipients-test
+  (let [recipients ["1@x.com" "2@x.com" "3@x.com" "4@x.com" "5@x.com"]]
     (testing "splits into consecutive batches of at most max-per-message, keeping the trailing short batch"
       (is (= [["1@x.com" "2@x.com"] ["3@x.com" "4@x.com"] ["5@x.com"]]
-             (map vec (email/partition-recipients rs 2)))))
+             (map vec (email/partition-recipients recipients 2)))))
     (testing "fewer recipients than the cap => a single batch"
-      (is (= [rs] (map vec (email/partition-recipients rs 50)))))
+      (is (= [recipients] (map vec (email/partition-recipients recipients 50)))))
     (testing "nil or non-positive max-per-message => no splitting"
-      (is (= [rs] (email/partition-recipients rs nil)))
-      (is (= [rs] (email/partition-recipients rs 0)))
-      (is (= [rs] (email/partition-recipients rs -3))))
+      (is (= [recipients] (email/partition-recipients recipients nil)))
+      (is (= [recipients] (email/partition-recipients recipients 0)))
+      (is (= [recipients] (email/partition-recipients recipients -3))))
     (testing "empty recipients => no batch, so no message is produced"
       (is (= [] (email/partition-recipients [] 50)))
       (is (= [] (email/partition-recipients nil 50))))))

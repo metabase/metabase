@@ -146,7 +146,9 @@
   into multiple messages of at most that many recipients each (see [[partition-recipients]]), so a single message
   never exceeds an SMTP provider's per-message recipient cap (e.g. Amazon SES rejects messages with >50
   recipients). This is a transport concern handled here, mirroring how [[metabase.channel.impl.slack/send!]]
-  chunks Slack blocks at its own send boundary."
+  chunks Slack blocks at its own send boundary. If a later batch throws after earlier batches succeeded, the
+  caller's retry will resend the earlier batches — at-least-once per batch, matching the existing retry
+  semantics in [[send-email-retrying!]]."
   [{:keys [subject recipients message-type message bcc?] :as _email}]
   (try
     (when-not (channel.settings/email-smtp-host)
