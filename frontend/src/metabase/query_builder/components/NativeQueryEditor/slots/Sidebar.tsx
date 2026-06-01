@@ -24,6 +24,7 @@ export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
   const {
     question,
     snippets,
+    snippetCollections,
     isNativeEditorOpen,
     readOnly,
     isRunnable,
@@ -49,6 +50,7 @@ export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
       onFormatQuery={onFormatQuery}
       question={question}
       snippets={snippets}
+      snippetCollections={snippetCollections}
       isRunnable={isRunnable}
       isRunning={isRunning}
       isResultDirty={isResultDirty}

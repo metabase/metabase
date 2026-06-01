@@ -19,7 +19,7 @@ export function RunButton() {
     cancelQuery,
   } = useNativeQueryEditorContext();
 
-  if (readOnly) {
+  if (readOnly || !runQuery || !cancelQuery) {
     return null;
   }
 
