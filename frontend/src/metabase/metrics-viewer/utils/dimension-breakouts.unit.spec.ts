@@ -9,6 +9,7 @@ import {
 import {
   computeDefaultDimensionBreakouts,
   createDimensionBreakoutFromInfo,
+  findMatchingDimensionForBreakout,
   resolveCommonDimensionBreakoutLabel,
 } from "./dimension-breakouts";
 
@@ -129,5 +130,126 @@ describe("computeDefaultDimensionBreakouts", () => {
     expect(
       dimensionBreakouts.map((dimensionBreakout) => dimensionBreakout.label),
     ).toEqual(["Category", "Totals"]);
+  });
+});
+
+describe("findMatchingDimensionForBreakout", () => {
+  const FIRST_METRIC = createMockNormalizedMetric({
+    id: 201,
+    name: "First Metric",
+    dimensions: [
+      createMockMetricDimension({
+        id: "dim-first-last-name",
+        display_name: "Last Name",
+        effective_type: "type/Text",
+        semantic_type: "type/Category",
+      }),
+    ],
+  });
+  const SECOND_METRIC = createMockNormalizedMetric({
+    id: 202,
+    name: "Second Metric",
+    dimensions: [
+      createMockMetricDimension({
+        id: "dim-second-last-name",
+        display_name: "Last Name",
+        effective_type: "type/Text",
+        semantic_type: "type/Category",
+      }),
+    ],
+  });
+  const SHARED_SOURCE_METRIC = createMockNormalizedMetric({
+    id: 203,
+    name: "Shared Source Metric",
+    dimensions: [
+      createMockMetricDimension({
+        id: "dim-shared-first-name",
+        display_name: "First Name",
+        effective_type: "type/Text",
+        semantic_type: "type/Category",
+        sources: [{ type: "field", "field-id": 1 }],
+      }),
+    ],
+  });
+  const MATCHING_SHARED_SOURCE_METRIC = createMockNormalizedMetric({
+    id: 204,
+    name: "Matching Shared Source Metric",
+    dimensions: [
+      createMockMetricDimension({
+        id: "dim-matching-shared-first-name",
+        display_name: "First Name",
+        effective_type: "type/Text",
+        semantic_type: "type/Category",
+        sources: [{ type: "field", "field-id": 1 }],
+      }),
+    ],
+  });
+
+  const firstSourceId: MetricSourceId = `metric:${FIRST_METRIC.id}`;
+  const secondSourceId: MetricSourceId = `metric:${SECOND_METRIC.id}`;
+  const sharedSourceId: MetricSourceId = `metric:${SHARED_SOURCE_METRIC.id}`;
+  const metadata = createMetricMetadata([
+    FIRST_METRIC,
+    SECOND_METRIC,
+    SHARED_SOURCE_METRIC,
+    MATCHING_SHARED_SOURCE_METRIC,
+  ]);
+  const firstDefinition = setupDefinition(metadata, FIRST_METRIC.id);
+  const secondDefinition = setupDefinition(metadata, SECOND_METRIC.id);
+  const sharedSourceDefinition = setupDefinition(
+    metadata,
+    SHARED_SOURCE_METRIC.id,
+  );
+  const matchingSharedSourceDefinition = setupDefinition(
+    metadata,
+    MATCHING_SHARED_SOURCE_METRIC.id,
+  );
+
+  it("does not match exact-column dimensions without the same table group", () => {
+    expect(
+      findMatchingDimensionForBreakout(
+        secondDefinition,
+        {
+          id: "dim-first-last-name",
+          type: "category",
+          label: "Last Name",
+          dimensionBySlotIndex: { 0: "dim-first-last-name" },
+        },
+        { [firstSourceId]: firstDefinition },
+        new Map([[0, firstSourceId]]),
+      ),
+    ).toBeNull();
+  });
+
+  it("matches the exact dimension id when available", () => {
+    expect(
+      findMatchingDimensionForBreakout(
+        firstDefinition,
+        {
+          id: "dim-first-last-name",
+          type: "category",
+          label: "Last Name",
+          dimensionBySlotIndex: { 1: "dim-first-last-name" },
+        },
+        { [secondSourceId]: secondDefinition },
+        new Map([[1, secondSourceId]]),
+      ),
+    ).toBe("dim-first-last-name");
+  });
+
+  it("matches exact-column dimensions from the same underlying source column", () => {
+    expect(
+      findMatchingDimensionForBreakout(
+        matchingSharedSourceDefinition,
+        {
+          id: "dim-shared-first-name",
+          type: "category",
+          label: "First Name",
+          dimensionBySlotIndex: { 0: "dim-shared-first-name" },
+        },
+        { [sharedSourceId]: sharedSourceDefinition },
+        new Map([[0, sharedSourceId]]),
+      ),
+    ).toBe("dim-matching-shared-first-name");
   });
 });

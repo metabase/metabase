@@ -762,9 +762,37 @@ function findExactColumnMatch(
     slotIndexToSourceId,
   );
   if (reference) {
-    return (
-      findSourceMatch(dimensions, dimensionBreakout.type, reference)?.id ?? null
-    );
+    return findStrictExactColumnMatch(dimensions, reference)?.id ?? null;
+  }
+
+  return null;
+}
+
+function findStrictExactColumnMatch(
+  dimensions: Map<string, DimensionDescriptor>,
+  reference: DimensionDescriptor,
+): DimensionDescriptor | null {
+  for (const [, info] of dimensions) {
+    if (info.dimensionType !== reference.dimensionType) {
+      continue;
+    }
+
+    if (
+      LibMetric.isSameSource(
+        info.dimensionMetadata,
+        reference.dimensionMetadata,
+      )
+    ) {
+      return info;
+    }
+
+    if (
+      reference.group?.id &&
+      info.group?.id === reference.group.id &&
+      info.displayName === reference.displayName
+    ) {
+      return info;
+    }
   }
 
   return null;
