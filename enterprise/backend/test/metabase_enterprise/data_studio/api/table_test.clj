@@ -272,6 +272,52 @@
           (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
             customers-id orders-id items-id))))))
 
+(defn- with-fk-linked-published-tables
+  "Sets up two Library/Data collections A and B, with published Table X in A and published Table Y in B, where Y has an
+  FK remapping (Dimension) pointing at X (so X is upstream / Y is downstream). Calls `f` with a map of the ids."
+  [f]
+  (mt/with-temp [:model/Collection {coll-a :id} {:type collection/library-data-collection-type}
+                 :model/Collection {coll-b :id} {:type collection/library-data-collection-type}
+                 :model/Database   {db-id :id}  {}
+                 ;; Table X in collection A (published)
+                 :model/Table      {x-id :id}   {:db_id db-id :name "x" :is_published true :collection_id coll-a}
+                 :model/Field      _            {:table_id x-id :name "id"
+                                                 :semantic_type :type/PK :base_type :type/Integer}
+                 :model/Field      {x-name :id} {:table_id x-id :name "name"
+                                                 :semantic_type :type/Name :base_type :type/Text}
+                 ;; Table Y in collection B (published), FK -> X
+                 :model/Table      {y-id :id}   {:db_id db-id :name "y" :is_published true :collection_id coll-b}
+                 :model/Field      _            {:table_id y-id :name "id"
+                                                 :semantic_type :type/PK :base_type :type/Integer}
+                 :model/Field      {y-fk :id}   {:table_id y-id :name "x_id"
+                                                 :semantic_type :type/FK :base_type :type/Integer}
+                 :model/Dimension  _            {:field_id y-fk :human_readable_field_id x-name :type :external}]
+    (f {:coll-a coll-a :coll-b coll-b :x-id x-id :y-id y-id})))
+
+(deftest unpublish-fk-linked-tables-on-collection-delete-test
+  (mt/with-premium-features #{:library}
+    (testing "deleting a Library collection unpublishes its tables and their FK-linked tables in other collections"
+      (with-fk-linked-published-tables
+        (fn [{:keys [coll-a x-id y-id]}]
+          (t2/delete! :model/Collection :id coll-a)
+          (testing "Table X (in the deleted collection) is unpublished"
+            (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table x-id))))
+          (testing "Table Y (FK-linked, in another collection) is also unpublished"
+            (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table y-id)))))))))
+
+(deftest unpublish-fk-linked-tables-on-collection-archive-test
+  (mt/with-premium-features #{:library}
+    (testing "archiving a Library collection unpublishes its tables and their FK-linked tables in other collections"
+      (with-fk-linked-published-tables
+        (fn [{:keys [coll-a x-id y-id]}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (collection/archive-or-unarchive-collection!
+             (t2/select-one :model/Collection :id coll-a) {:archived true}))
+          (testing "Table X (in the archived collection) is unpublished"
+            (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table x-id))))
+          (testing "Table Y (FK-linked, in another collection) is also unpublished"
+            (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table y-id)))))))))
+
 ;;; ------------------------------------------ Publish/Unpublish requires write and query perms ------------------------------------------
 
 (deftest publish-tables-requires-write-and-query-perms-test
