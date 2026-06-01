@@ -1,5 +1,4 @@
 import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
-import { isNative } from "metabase/common/utils/card";
 import { isEmbedPreview } from "metabase/embedding/config";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -65,20 +64,6 @@ async function handleQueryApiError(apiPromise) {
   }
 }
 
-// Pivot tables need extra data beyond what's described in the MBQL query itself.
-// To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
-// Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
-// If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
-export function shouldUsePivotEndpoint(card, metadata) {
-  const question = new Question(card, metadata);
-  return (
-    question.display() === "pivot" &&
-    !isNative(card) &&
-    // if we have metadata for the db, check if it supports pivots
-    (!question.database() || question.database().supportsPivots())
-  );
-}
-
 // Dispatches an RTK Query query endpoint and wires `signal` to RTK Query's
 // `.abort()`. Translates aborts into the `{ isCancelled: true }` shape that the
 // legacy fetch helper threw, so existing error-handling code (e.g. queryErrored)
@@ -128,7 +113,10 @@ export async function runAdhocDatasetQuery(
   // in `metabase/api` → `metabase/redux/user` → `metabase/redux/query-builder`
   // → `metabase/services` (this module). Deferring resolution until call time
   // means the cycle closes only after every module has finished initializing.
-  const { datasetApi } = await import("metabase/api/dataset");
+  const [{ datasetApi }, { shouldUsePivotEndpoint }] = await Promise.all([
+    import("metabase/api/dataset"),
+    import("metabase/api/query-endpoints"),
+  ]);
   const isPivot = shouldUsePivotEndpoint(card, metadata);
   // Disambiguate the RTK cache key so two callers running the same MBQL
   // query get independent cache entries and abort signals. Without this,

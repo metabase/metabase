@@ -1,8 +1,7 @@
+import { isNative } from "metabase/common/utils/card";
 import type { Dispatch } from "metabase/redux/store";
-import {
-  dispatchQueryEndpoint,
-  shouldUsePivotEndpoint,
-} from "metabase/services";
+import { dispatchQueryEndpoint } from "metabase/services";
+import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card, Dataset } from "metabase-types/api";
 
@@ -47,6 +46,25 @@ const PIVOT_ENDPOINTS = new Map<unknown, unknown>([
     embedApi.endpoints.getEmbedDashcardQueryPivot,
   ],
 ]);
+
+/**
+ * Whether `card` should be queried through the pivot endpoints. Pivot tables
+ * need subtotal data the regular query endpoints don't return, so they use
+ * dedicated mirror endpoints that take `pivot_rows`/`pivot_cols`.
+ */
+export function shouldUsePivotEndpoint(
+  card: Card,
+  metadata: Metadata,
+): boolean {
+  const question = new Question(card, metadata);
+  const database = question.database();
+  return (
+    question.display() === "pivot" &&
+    !isNative(card) &&
+    // if we have metadata for the db, check if it supports pivots
+    (!database || database.supportsPivots())
+  );
+}
 
 /**
  * Returns the pivot variant of `endpoint` when `card` renders as a pivot table,
