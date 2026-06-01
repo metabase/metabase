@@ -31,7 +31,7 @@ To develop your Metabase content with an agent, we've put together a set of tool
 
 ## How content moves between files and Metabase
 
-Your agent creates content directly in Metabase through the CLI. To version that content as YAML files—so your team can review a diff and promote it to production—use [Remote Sync](../installation-and-operation/remote-sync.md): a Read-write development Metabase pushes your content to a git repo, and a Read-only production Metabase pulls it back in.
+Your agent creates content directly in Metabase through the CLI. To version that content as YAML files, so your team can review a diff and promote it to production, use [Remote Sync](../installation-and-operation/remote-sync.md): a Read-write development Metabase pushes your content to a git repo, and a Read-only production Metabase pulls it back in.
 
 ## Initial setup
 
@@ -72,7 +72,7 @@ npm install -g @metabase/cli
 Then authenticate it against your development Metabase:
 
 ```
-mb auth login
+mb auth login --url your-metabase-url-here
 ```
 
 Authenticate with the API key you created in your Metabase instance.
@@ -95,7 +95,7 @@ Or, depending on how capable your model is, try a more open-ended request:
 /metabase-cli Analyze our support data. Look at the tickets, customers, and interactions tables, and build a dashboard that gives an overview of our team's support workload.
 ```
 
-The agent creates the questions and dashboard for you. You don't need to write any CLI commands yourself, just describe what you want.
+The agent creates the questions and dashboard for you. You don't need to write any CLI commands yourself. Just describe what you want.
 
 ## Example workflow
 
@@ -121,7 +121,7 @@ Open your development Metabase and confirm the dashboard renders correctly and t
 
 ### 5. If you make any changes in your Metabase, push the new content to the branch
 
-To commit the work, [push the change from your Metabase](../installation-and-operation/remote-sync.md#committing-and-pushing-your-changes).
+To commit the work, [push the change from your Metabase](../installation-and-operation/remote-sync.md#committing-and-pushing-your-changes). If you don't push your changes from your Metabase to your repo, you could lose work the next time you pull changes into that Metabase.
 
 ### 6. Open a pull request
 
@@ -133,10 +133,10 @@ If you've enabled [auto-sync](../installation-and-operation/remote-sync.md#pulli
 
 ## Undoing the agent's changes
 
-Since the agent creates content directly in Metabase, undoing its work may mean cleaning up in two places:
+Since the agent uses the CLI to create content directly in Metabase, to undo changes, you could either:
 
-- **In Metabase**: archive the items the agent created. Pushing a previous commit via remote sync won't delete any content in your Metabase; you have to delete the content manually (or ask the agent to delete the content via `/metabase-cli`).
-- **If you've pushed changes to your repo**: you'll also need to use `git` to revert your YAML files to the last good commit.
+- **Revert to a commit and pull changes**: Revert to a previous commit, and pull that commit into your Metabase. Pulling that commit would overwrite any changes you or the agent had made.
+- **Update Metabase and push changes**: Edit or archive the content in your Metabase (either manually or via an agent with the CLI), and push the changes to your repo. You may want to pick this approach if you want to keep some, but not all of the changes made by the AI, or if you've made additional changes via Metabase's handy UI that you want to keep.
 
 ## Further reading
 
@@ -144,4 +144,4 @@ Since the agent creates content directly in Metabase, undoing its work may mean 
 - [Metabase CLI](../installation-and-operation/metabase-cli.md)
 - [Metabase Representation Format](https://github.com/metabase/representations)
 - [Agent skills](https://github.com/metabase/agent-skills)
-- [MCP server](./mcp.md) — for agents that need live metadata lookups outside the file-based workflow.
+- [MCP server](./mcp.md): for agents that need live metadata lookups outside the file-based workflow.
