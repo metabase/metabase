@@ -26,7 +26,7 @@ import type {
 import {
   appendQueryParameters,
   handleResponse,
-  relativeUrl as relativePath,
+  relativeUrl,
   substituteUrlTags,
 } from "./utils";
 
@@ -201,7 +201,7 @@ export class ApiClient extends EventEmitter<EventMap> {
 
     if (!init.noEvent && (status === 401 || status === 403)) {
       // Strip basename so listeners (app-main.js) see the relative path.
-      const path = relativePath(this.basename, init.url);
+      const path = relativeUrl(this.basename, init.url);
       this.emit(status, path);
     }
 
