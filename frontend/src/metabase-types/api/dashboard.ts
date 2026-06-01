@@ -348,6 +348,10 @@ export type DashboardCardQueryRequest = {
   collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
+  // Sent in the request body (in addition to the path params above) when
+  // querying a saved dashcard, for query provenance/telemetry.
+  dashboard_id?: DashboardId;
+  dashboard_load_id?: string;
 };
 
 export type SaveDashboardRequest = Omit<UpdateDashboardRequest, "id">;
