@@ -10,7 +10,7 @@ import {
   segmentApi,
   tableApi,
 } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { isProduction } from "metabase/env";
 import { createThunkAction } from "metabase/redux";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
@@ -33,27 +33,19 @@ const deprecated = (message) => {
 
 export const fetchSegments = () => (dispatch) => {
   deprecated("metabase/redux/metadata fetchSegments");
-  return entityCompatibleQuery(
-    undefined,
-    dispatch,
-    segmentApi.endpoints.listSegments,
-  );
+  return runRtkEndpoint(undefined, dispatch, segmentApi.endpoints.listSegments);
 };
 
 export const updateSegment = (segment) => (dispatch) => {
   deprecated("metabase/redux/metadata updateSegment");
-  return entityCompatibleQuery(
-    segment,
-    dispatch,
-    segmentApi.endpoints.updateSegment,
-  );
+  return runRtkEndpoint(segment, dispatch, segmentApi.endpoints.updateSegment);
 };
 
 export const fetchRealDatabases =
   (reload = false) =>
   (dispatch) => {
     deprecated("metabase/redux/metadata fetchRealDatabases");
-    return entityCompatibleQuery(
+    return runRtkEndpoint(
       { include: "tables" },
       dispatch,
       databaseApi.endpoints.listDatabases,
@@ -65,7 +57,7 @@ export const fetchDatabaseMetadata =
   (dbId, reload = false) =>
   (dispatch) => {
     deprecated("metabase/redux/metadata fetchDatabaseMetadata");
-    return entityCompatibleQuery(
+    return runRtkEndpoint(
       { id: dbId },
       dispatch,
       databaseApi.endpoints.getDatabaseMetadata,
@@ -76,7 +68,7 @@ export const fetchDatabaseMetadata =
 export const updateDatabase = (database) => async (dispatch) => {
   deprecated("metabase/redux/metadata updateDatabase");
   const slimDatabase = _.omit(database, "tables", "tables_lookup");
-  const result = await entityCompatibleQuery(
+  const result = await runRtkEndpoint(
     slimDatabase,
     dispatch,
     databaseApi.endpoints.updateDatabase,
@@ -94,7 +86,7 @@ export const updateTable = (table) => async (dispatch) => {
     "aggregation_operators",
     "segments",
   );
-  const result = await entityCompatibleQuery(
+  const result = await runRtkEndpoint(
     slimTable,
     dispatch,
     tableApi.endpoints.updateTable,
@@ -110,7 +102,7 @@ export const fetchTableMetadata = (id, reload = false) => {
 
 export const updateFieldValues = (fieldId, fieldValuePairs) => (dispatch) => {
   deprecated("metabase/redux/metadata updateFieldValues");
-  return entityCompatibleQuery(
+  return runRtkEndpoint(
     { id: fieldId, values: fieldValuePairs },
     dispatch,
     fieldApi.endpoints.updateFieldValues,
@@ -120,7 +112,7 @@ export const updateFieldValues = (fieldId, fieldValuePairs) => (dispatch) => {
 export const updateField = (field) => async (dispatch) => {
   deprecated("metabase/redux/metadata updateField");
   const slimField = _.omit(field, "filter_operators_lookup");
-  const result = await entityCompatibleQuery(
+  const result = await runRtkEndpoint(
     slimField,
     dispatch,
     fieldApi.endpoints.updateField,
@@ -131,7 +123,7 @@ export const updateField = (field) => async (dispatch) => {
 
 export const deleteFieldDimension = (fieldId) => async (dispatch) => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
-  const result = await entityCompatibleQuery(
+  const result = await runRtkEndpoint(
     fieldId,
     dispatch,
     fieldApi.endpoints.deleteFieldDimension,
@@ -143,7 +135,7 @@ export const deleteFieldDimension = (fieldId) => async (dispatch) => {
 export const updateFieldDimension =
   (fieldId, dimension) => async (dispatch) => {
     deprecated("metabase/redux/metadata updateFieldDimension");
-    const result = await entityCompatibleQuery(
+    const result = await runRtkEndpoint(
       { id: fieldId, ...dimension },
       dispatch,
       fieldApi.endpoints.createFieldDimension,
@@ -239,7 +231,7 @@ export const fetchRemapping = createThunkAction(
       const entityIdentifier = uuid ?? token ?? null;
       let remapping;
       if (dashboardId != null) {
-        remapping = await entityCompatibleQuery(
+        remapping = await runRtkEndpoint(
           {
             ...(entityIdentifier
               ? { entityIdentifier }
@@ -252,7 +244,7 @@ export const fetchRemapping = createThunkAction(
           { forceRefetch: false },
         );
       } else if (cardId != null) {
-        remapping = await entityCompatibleQuery(
+        remapping = await runRtkEndpoint(
           {
             ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
             parameter_id: parameter.id,
@@ -265,7 +257,7 @@ export const fetchRemapping = createThunkAction(
       } else if (field != null) {
         // Field-based remapping (e.g. FK display fields). Static-list sources
         // carry their [value, label] pairs inline and need no network call.
-        remapping = await entityCompatibleQuery(
+        remapping = await runRtkEndpoint(
           {
             parameter: normalizeParameter(parameter),
             field_ids: [field.id],

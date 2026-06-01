@@ -24,11 +24,13 @@
    [metabase-enterprise.dependencies.api]
    [metabase-enterprise.email.api]
    [metabase-enterprise.embedding-hub.api]
+   [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
+   [metabase-enterprise.notification-admin.api]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -60,6 +62,7 @@
    :custom-viz                 (deferred-tru "Custom Visualizations")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
+   :schema-viewer              (deferred-tru "Schema Viewer")
    :embedding                  (deferred-tru "Embedding")
    :remote-sync                (deferred-tru "Remote Sync")
    :etl-connections            (deferred-tru "ETL Connections")
@@ -119,6 +122,7 @@
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :schema-viewer)
    "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
    "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
@@ -129,6 +133,7 @@
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/metabot-analytics"            (premium-handler metabase-enterprise.metabot-analytics.api/routes :audit-app)
+   "/notifications"                (premium-handler 'metabase-enterprise.notification-admin.api :audit-app)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)

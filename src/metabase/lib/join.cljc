@@ -1045,7 +1045,13 @@
     (case j-fields
       :all        (map #(assoc % :selected? true))
       (:none nil) (map #(assoc % :selected? false))
-      (mapcat #(lib.equality/mark-selected-columns [%] j-fields)))))
+      ;; Per-column check against `j-fields` avoids the spurious
+      ;; "N refs are selected, but we found 1 matches" warning that
+      ;; `mark-selected-columns` emits when given a single column and many refs.
+      (map (fn [col]
+             (assoc col :selected?
+                    (boolean (some #(lib.equality/find-matching-column nil -1 % [col])
+                                   j-fields))))))))
 
 (def ^:private xform-fix-source-for-joinable-columns
   (map #(assoc % :lib/source :source/joins)))

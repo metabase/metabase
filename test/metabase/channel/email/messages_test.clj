@@ -9,7 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util.retry :as retry]
-   [metabase.util.retry-test :as rt]))
+   [metabase.util.retry-test :as rt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -98,12 +99,22 @@
             (is (= 1 (count @mt/inbox)))))))))
 
 (deftest all-admin-recipients
-  (mt/with-temp [:model/ApiKey _ {::api-key/unhashed-key (api-key/generate-key)
-                                  :name                  "Test API key"
-                                  :user_id               (mt/user->id :crowberto)
-                                  :creator_id            (mt/user->id :crowberto)
-                                  :updated_by_id         (mt/user->id :crowberto)}]
-    (testing "all-admin-recipients returns all admin emails"
-      (let [emails (#'messages/all-admin-recipients)]
-        (is (some #(= % "crowberto@metabase.com") emails))
+  (mt/with-temp [:model/User   accepted-admin {:is_superuser true
+                                               :email        "accepted-admin@example.com"}
+                 :model/User   _pending-admin {:is_superuser true
+                                               :email        "pending-admin@example.com"}
+                 :model/ApiKey _              {::api-key/unhashed-key (api-key/generate-key)
+                                               :name                  "Test API key"
+                                               :user_id               (mt/user->id :crowberto)
+                                               :creator_id            (mt/user->id :crowberto)
+                                               :updated_by_id         (mt/user->id :crowberto)}]
+    ;; `mt/with-temp` creates Users with `last_login = nil`, which the recipient filter treats as
+    ;; "invited but not accepted." Mark one as having logged in to represent an accepted admin.
+    (t2/update! :model/User (:id accepted-admin) {:last_login :%now})
+    (let [emails (set (#'messages/all-admin-recipients))]
+      (testing "includes admins who have accepted their invitation"
+        (is (contains? emails "accepted-admin@example.com")))
+      (testing "excludes admins who have not yet accepted their invitation"
+        (is (not (contains? emails "pending-admin@example.com"))))
+      (testing "excludes API key users"
         (is (not (some #(str/starts-with? % "api-key-user") emails)))))))
