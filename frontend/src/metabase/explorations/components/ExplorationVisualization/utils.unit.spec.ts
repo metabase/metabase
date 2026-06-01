@@ -276,7 +276,6 @@ describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
     return buildSeriesGroups({
       queries,
       datasets,
-      metricsById: new Map(),
       queryColors: {},
     }).chartsForDocumentEmbed;
   }
@@ -352,7 +351,6 @@ describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
 });
 
 describe("buildSeries (display selection)", () => {
-  const metricsById = new Map();
   const queryColors = { "1": "#509EE3", "2": "#88BF4D" };
 
   function buildOneSeries(
@@ -369,13 +367,12 @@ describe("buildSeries (display selection)", () => {
     ];
     return buildSeries({
       queriesWithDatasets: group,
-      metricsById,
       queryColors,
     });
   }
 
-  it("sets the y-axis title from the thread metric name", () => {
-    const query = makeQuery({ id: 1, card_id: 42 });
+  it("disables cartesian axis labels by default", () => {
+    const query = makeQuery({ id: 1 });
     const dataset = makeDataset(
       [
         createMockColumn({ name: "ts", base_type: "type/DateTime" }),
@@ -383,23 +380,26 @@ describe("buildSeries (display selection)", () => {
       ],
       [["2025-01-01", 1]],
     );
-    const metricsByIdWithName = new Map();
-    metricsByIdWithName.set(query.card_id, {
-      id: 1,
-      exploration_thread_id: 1,
-      card_id: query.card_id,
-      dimension_mappings: null,
-      position: 0,
-      card: { name: "Total Revenue" },
-    });
-    const group = buildSeries({
-      queriesWithDatasets: [{ ...query, dataset }],
-      metricsById: metricsByIdWithName,
-      queryColors,
-    });
-    expect(
-      group.series[0].card.visualization_settings["graph.y_axis.title_text"],
-    ).toBe("Total Revenue");
+    const group = buildOneSeries(query, dataset);
+    const settings = group.series[0].card.visualization_settings;
+    expect(settings["graph.x_axis.labels_enabled"]).toBe(false);
+    expect(settings["graph.y_axis.labels_enabled"]).toBe(false);
+  });
+
+  it("enables the x-axis label for the 3-column time-facet shape", () => {
+    const query = makeQuery({ id: 1, query_type: "time-facet" });
+    const dataset = makeDataset(
+      [
+        createMockColumn({ name: "category", base_type: "type/Text" }),
+        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["A", "2025-01-01", 1]],
+    );
+    const group = buildOneSeries(query, dataset);
+    const settings = group.series[0].card.visualization_settings;
+    expect(settings["graph.x_axis.labels_enabled"]).toBe(true);
+    expect(settings["graph.y_axis.labels_enabled"]).toBe(false);
   });
 
   it("picks line with split panels for a 2-column timeseries dataset", () => {
@@ -485,7 +485,6 @@ describe("buildSeries (display selection)", () => {
     );
     const group = buildSeries({
       queriesWithDatasets: queries.map((q) => ({ ...q, dataset: categorical })),
-      metricsById,
       queryColors,
     });
     expect(group.series[0].card.display).toBe("table");
@@ -508,7 +507,6 @@ describe("buildSeries (display selection)", () => {
         { ...makeQuery({ id: 1 }), dataset },
         { ...makeQuery({ id: 2 }), dataset },
       ],
-      metricsById,
       queryColors,
     });
     const ramp1 = group.series[0].card.visualization_settings["map.colors"];
@@ -542,7 +540,6 @@ describe("buildSeriesGroups", () => {
     const { seriesGroups } = buildSeriesGroups({
       queries,
       datasets,
-      metricsById: new Map(),
       queryColors: {},
     });
     expect(seriesGroups).toHaveLength(2);
@@ -572,19 +569,26 @@ describe("buildSeriesGroups", () => {
     const { layoutStrategy } = buildSeriesGroups({
       queries,
       datasets: [tsDataset, tsDataset, tsDataset],
-      metricsById: new Map(),
       queryColors: {},
     });
     expect(layoutStrategy).toBe("two-small-charts-down");
   });
 
-  it("strips axis titles from series in labeled layouts", () => {
+  it("assigns chart labels in labeled layouts and disables cartesian axis labels", () => {
     const tsDataset = makeDataset(
       [
         createMockColumn({ name: "ts", base_type: "type/DateTime" }),
         createMockColumn({ name: "count", base_type: "type/Integer" }),
       ],
       [["2025-01-01", 1]],
+    );
+    const timeFacetDataset = makeDataset(
+      [
+        createMockColumn({ name: "category", base_type: "type/Text" }),
+        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["A", "2025-01-01", 1]],
     );
     const queries = [
       makeQuery({ id: 1, dimension_id: "dim-1", query_type: "default" }),
@@ -596,16 +600,25 @@ describe("buildSeriesGroups", () => {
     ];
     const { seriesGroups } = buildSeriesGroups({
       queries,
-      datasets: [tsDataset, tsDataset],
-      metricsById: new Map(),
+      datasets: [tsDataset, timeFacetDataset],
       queryColors: {},
     });
     expect(
       seriesGroups[0].series[0].card.visualization_settings[
-        "graph.y_axis.title_text"
+        "graph.y_axis.labels_enabled"
       ],
-    ).toBe("");
+    ).toBe(false);
     expect(seriesGroups[1].chartLabel).toBe("Over time");
+    expect(
+      seriesGroups[1].series[0].card.visualization_settings[
+        "graph.x_axis.labels_enabled"
+      ],
+    ).toBe(true);
+    expect(
+      seriesGroups[1].series[0].card.visualization_settings[
+        "graph.y_axis.labels_enabled"
+      ],
+    ).toBe(false);
   });
 });
 

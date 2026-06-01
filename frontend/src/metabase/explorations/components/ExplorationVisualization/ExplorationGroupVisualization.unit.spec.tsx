@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import {
-  createExploration,
   createGroup,
   createQuery,
   createThread,
@@ -10,7 +9,6 @@ import {
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   Dataset,
-  Exploration,
   ExplorationQuery,
   ExplorationQueryType,
   Timeline,
@@ -100,10 +98,6 @@ function makeStateMapDataset(): Dataset {
 }
 
 const thread = createThread();
-const defaultExploration: Exploration = {
-  ...createExploration(),
-  name: "Test exploration",
-};
 
 const group = createGroup({
   id: "auto:1:dim-page",
@@ -115,7 +109,6 @@ const group = createGroup({
 interface SetupOpts {
   queries: ExplorationQuery[];
   datasets?: Map<number, Dataset>;
-  exploration?: Exploration;
   availableTimelines?: Timeline[];
   interestingTimelineIds?: ReadonlySet<number>;
 }
@@ -123,7 +116,6 @@ interface SetupOpts {
 function setup({
   queries,
   datasets,
-  exploration: explorationOverride = defaultExploration,
   availableTimelines = [],
   interestingTimelineIds,
 }: SetupOpts) {
@@ -139,7 +131,6 @@ function setup({
       group={{ ...group, query_ids: queries.map((q) => q.id) }}
       queries={queries}
       explorationThread={thread}
-      exploration={explorationOverride}
       availableTimelines={availableTimelines}
       selectedTimelineId={null}
       onSelectTimelineId={jest.fn()}

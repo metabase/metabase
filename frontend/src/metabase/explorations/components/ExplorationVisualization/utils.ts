@@ -10,7 +10,6 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isCountry, isDate, isState } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
-  CardId,
   Dataset,
   DatasetColumn,
   ExplorationDocument,
@@ -19,7 +18,6 @@ import type {
   ExplorationQueryParams,
   ExplorationQueryType,
   ExplorationThread,
-  ExplorationThreadMetric,
   RowValue,
   RowValues,
   SeriesSettings,
@@ -32,7 +30,6 @@ import type {
 interface BuildSeriesGroupsParams {
   queries: ExplorationQuery[];
   datasets: Dataset[];
-  metricsById: Map<CardId, ExplorationThreadMetric>;
   queryColors: Record<string, string>;
 }
 
@@ -104,16 +101,6 @@ export function buildSeriesGroups({
     layoutStrategy === "two-small-charts-down" ||
     layoutStrategy === "two-small-tables-down"
   ) {
-    seriesGroups[0].series = removeAxisTitlesFromAllSeries(
-      seriesGroups[0].series,
-    );
-    seriesGroups[1].series = removeAxisTitlesFromAllSeries(
-      seriesGroups[1].series,
-    );
-    seriesGroups[2].series = removeAxisTitlesFromAllSeries(
-      seriesGroups[2].series,
-    );
-
     const bottomLeftChartLabel = getChartLabel(seriesGroups[1]);
     if (bottomLeftChartLabel) {
       seriesGroups[1].chartLabel = bottomLeftChartLabel;
@@ -129,23 +116,10 @@ export function buildSeriesGroups({
     layoutStrategy === "two-same-size-charts-vertically" ||
     layoutStrategy === "chart-and-table-vertically"
   ) {
-    seriesGroups[0].series = removeAxisTitlesFromAllSeries(
-      seriesGroups[0].series,
-    );
-    seriesGroups[1].series = removeAxisTitlesFromAllSeries(
-      seriesGroups[1].series,
-    );
-
     const bottomChartLabel = getChartLabel(seriesGroups[1]);
     if (bottomChartLabel) {
       seriesGroups[1].chartLabel = bottomChartLabel;
     }
-  }
-
-  if (layoutStrategy === "default" && seriesGroups.length === 1) {
-    seriesGroups[0].series = removeAxisTitlesFromAllSeries(
-      seriesGroups[0].series,
-    );
   }
 
   const chartsForDocumentEmbed = seriesGroups.flatMap((group, i) =>
@@ -156,20 +130,6 @@ export function buildSeriesGroups({
   );
 
   return { seriesGroups, layoutStrategy, chartsForDocumentEmbed };
-}
-
-function removeAxisTitlesFromAllSeries(series: SingleSeries[]) {
-  return series.map((series) => ({
-    ...series,
-    card: {
-      ...series.card,
-      visualization_settings: {
-        ...series.card.visualization_settings,
-        "graph.x_axis.title_text": "",
-        "graph.y_axis.title_text": "",
-      },
-    },
-  }));
 }
 
 interface ExplorationQueryWithDataset extends ExplorationQuery {
@@ -205,7 +165,6 @@ type BuildSeriesParams = Omit<
 
 export function buildSeries({
   queriesWithDatasets,
-  metricsById,
   queryColors,
 }: BuildSeriesParams): SeriesGroup {
   let isTimeseries = false;
@@ -236,9 +195,13 @@ export function buildSeries({
     const isCartesian = isCartesianChart(display);
     const cardSettings: VisualizationSettings = { ...settings };
     if (isCartesian) {
-      cardSettings["graph.y_axis.title_text"] = metricsById.get(
-        query.card_id,
-      )?.card?.name;
+      // disable axis labels unless explicitly set
+      if (!cardSettings["graph.y_axis.labels_enabled"]) {
+        cardSettings["graph.y_axis.labels_enabled"] = false;
+      }
+      if (!cardSettings["graph.x_axis.labels_enabled"]) {
+        cardSettings["graph.x_axis.labels_enabled"] = false;
+      }
     } else if (display === "map") {
       const color = queryColors[String(query.id)];
       if (color) {
@@ -352,6 +315,9 @@ function getDisplay(
       settings: {
         "graph.dimensions": dimensions,
         "graph.split_panels": shouldStack,
+        // the page header tells you the breakout column, not the date column
+        // so we need an x axis label here
+        "graph.x_axis.labels_enabled": true,
       },
       stackCount: shouldStack ? breakoutValues.size : undefined,
       isTimeseries,
