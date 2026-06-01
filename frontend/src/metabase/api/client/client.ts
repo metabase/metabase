@@ -17,7 +17,6 @@ import { type RequestMethod, isRequestMethod } from "./method";
 import { apiRequestManipulationMiddleware } from "./middleware";
 import type {
   EventMap,
-  MethodCreator,
   RequestClientInfo,
   RequestInit,
   RequestOptions,
@@ -39,19 +38,6 @@ export class ApiClient extends EventEmitter<EventMap> {
   requestClient: RequestClientInfo | undefined;
 
   beforeRequestHandlers: OnBeforeRequestHandler[] = [];
-
-  GET: MethodCreator;
-  POST: MethodCreator;
-  PUT: MethodCreator;
-  DELETE: MethodCreator;
-
-  constructor() {
-    super();
-    this.GET = this._makeMethod("GET", true);
-    this.DELETE = this._makeMethod("DELETE", false);
-    this.POST = this._makeMethod("POST", true);
-    this.PUT = this._makeMethod("PUT", false);
-  }
 
   private buildUrl(template: string, data: Record<string, unknown>): URL {
     const relativePath = substituteUrlTags(template, data);
@@ -215,57 +201,6 @@ export class ApiClient extends EventEmitter<EventMap> {
   }
 
   /**
-   * Legacy API method. Consumers across the codebase pass concrete request shapes
-   * (e.g. `CreateDashboardRequest`) and rely on destructuring a concrete response,
-   * so we use broad `any` types here to match the JS version's behaviour.
-   */
-  private _makeMethod(
-    methodTemplate: RequestMethod,
-    withRetries: boolean = false,
-  ): MethodCreator {
-    return (urlTemplate, methodOptions = {}) => {
-      return async (rawData = {}, invocationOptions = {}) => {
-        const options = { ...methodOptions, ...invocationOptions };
-        const { url, method, data, headers } = await this._resolveOptions({
-          url: urlTemplate,
-          method: methodTemplate,
-          headers: {
-            ...methodOptions.headers,
-            ...invocationOptions.headers,
-          },
-          data: rawData,
-        });
-
-        // Method-derived placement: POST/PUT/DELETE put data in body, GET
-        // puts it in the querystring. Callers wanting RTK-style explicit
-        // body/params semantics use `request()` below instead.
-        let body: BodyInit | undefined = undefined;
-        if (method === "GET") {
-          // GET cannot carry a body: fold data into the querystring.
-          appendQueryParameters(url, data);
-        } else if (Object.keys(data).length > 0) {
-          body = JSON.stringify(data);
-        }
-
-        // GET/POST/etc. are intentionally `any`-typed (see ApiMethod), and this
-        // closure can't name MethodCreator's `Raw`, so we cast to `any` — a
-        // literal `rawResponse: true` is still narrowed to `Response` by the
-        // `ApiMethod<Raw>` return type at the call site.
-        return this._dispatch(
-          {
-            ...options,
-            url,
-            method,
-            headers,
-            body,
-          },
-          withRetries,
-        ) as any;
-      };
-    };
-  }
-
-  /**
    * Resolve options through the middleware pipeline and assemble a `RequestInit`:
    * URL (basename + `:tag` substitution), client headers, and body placement.
    * Shared by `request` and `requestRaw`.
@@ -323,7 +258,9 @@ export class ApiClient extends EventEmitter<EventMap> {
   /**
    * RTK Query entry point with explicit body/params semantics. Reads and parses
    * the body, throwing `{ status, data }` on a non-2xx response. Pass
-   * `rawResponse: true` to resolve with the raw `Response` instead.
+   * `rawResponse: true` to resolve with the raw `Response` instead. Pass
+   * `retry: true` for the legacy retry-on-transient-failure behavior used by
+   * the GET/POST helpers; RTK callers leave it off.
    */
   async request<Raw extends boolean = false>(
     options: {
@@ -331,13 +268,11 @@ export class ApiClient extends EventEmitter<EventMap> {
       url: string;
       body?: unknown;
       params?: Record<string, unknown>;
+      retry?: boolean;
     } & RequestOptions<Raw>,
   ): Promise<ResponseFor<Raw>> {
     const init = await this._prepareRequest(options);
-
-    // RTK callers don't retry; matches the prior behavior where apiQuery never
-    // opted into retries.
-    return this._dispatch(init) as ResponseFor<Raw>;
+    return this._dispatch(init, options.retry ?? false) as ResponseFor<Raw>;
   }
 
   /**

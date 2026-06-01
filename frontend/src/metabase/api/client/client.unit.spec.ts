@@ -231,10 +231,13 @@ describe("api", () => {
 
         const controller = new AbortController();
         const promise = apiInstance
-          .GET("/api/card/:cardId/query")(
-            { cardId: 1 },
-            { signal: controller.signal },
-          )
+          .request({
+            method: "GET",
+            url: "/api/card/:cardId/query",
+            params: { cardId: 1 },
+            signal: controller.signal,
+            retry: true,
+          })
           .catch((error: unknown) => error);
 
         // Let the first attempt fail with 503 and schedule the backoff.

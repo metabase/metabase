@@ -190,3 +190,27 @@ export function substituteUrlTags(
     return isRaw ? String(value) : encodeURIComponent(String(value));
   });
 }
+
+/**
+ * Split `data` into the keys consumed by a URL template's `:tag` / `:tag*`
+ * placeholders and the leftover keys. The input is not mutated. The legacy
+ * `GET`/`POST`/`PUT`/`DELETE` helpers use this to pick URL params from a
+ * single `rawData` bag and route the remainder to the body or querystring.
+ */
+export function splitTagParams(
+  template: string,
+  data: Record<string, unknown>,
+): { tagParams: Record<string, unknown>; leftover: Record<string, unknown> } {
+  const tagParams: Record<string, unknown> = {};
+  const leftover: Record<string, unknown> = { ...data };
+  for (const match of template.matchAll(URL_TAG_REGEX)) {
+    const tag = match[0];
+    const isRaw = tag.endsWith("*");
+    const paramName = tag.slice(1, isRaw ? -1 : undefined);
+    if (paramName in leftover) {
+      tagParams[paramName] = leftover[paramName];
+      delete leftover[paramName];
+    }
+  }
+  return { tagParams, leftover };
+}
