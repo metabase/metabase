@@ -35,7 +35,6 @@ import type {
   NormalizedField,
 } from "metabase-types/api";
 
-import Base from "./Base";
 import type Metadata from "./Metadata";
 import type Table from "./Table";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
@@ -52,7 +51,8 @@ import { getIconForField, getUniqueFieldId } from "./utils/fields";
  * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
  */
 // eslint-disable-next-line import/no-default-export
-export default class Field extends Base {
+export default class Field {
+  _plainObject: NormalizedField;
   id: FieldId | FieldReference;
   name: string;
   display_name: string;
@@ -76,9 +76,9 @@ export default class Field extends Base {
 
   constructor(object = {}) {
     // `table`, `target`, `name_field`, `values` and `remapping` are exposed as
-    // lazy getters below. Keep them out of the object `Base` copies onto the
-    // instance (it would assign to a getter-only property and throw), then
-    // restore the full plain object so the getters can read the relational ids.
+    // lazy getters below. Keep them out of the keys copied onto the instance
+    // (assigning to a getter-only property would throw), but keep the full plain
+    // object around so the getters can read the relational ids.
     const {
       table: _table,
       target: _target,
@@ -87,7 +87,9 @@ export default class Field extends Base {
       remapping: _remapping,
       ...rest
     } = object;
-    super(rest);
+    for (const property in rest) {
+      this[property] = rest[property];
+    }
     this._plainObject = object;
   }
 
