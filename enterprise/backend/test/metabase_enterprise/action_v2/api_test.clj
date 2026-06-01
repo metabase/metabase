@@ -773,5 +773,8 @@
                                                                 :query    {:source-table table-id}})))
                             "no row may be inserted into a table the user cannot actually write to"))))))
               (finally
-                (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
-                (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_runtime_user';")))))))))
+                ;; Drop the user *before* disabling partial_revokes: MySQL refuses to turn partial_revokes off while
+                ;; any partial-revoke restriction still exists (error 3896), and dropping the user removes its
+                ;; restriction. Doing it in the other order leaves the shared server poisoned for later tests.
+                (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_runtime_user';")
+                (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")))))))))
