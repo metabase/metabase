@@ -31,6 +31,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -2357,3 +2358,130 @@
             (is (=? {:type :missing-column
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
+
+;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
+
+(defmacro ^:private with-drop-schema!
+  "Run `body`, ensuring `schema` is dropped (CASCADE) on `admin-spec` afterward."
+  [admin-spec schema & body]
+  `(try
+     ~@body
+     (finally
+       (jdbc/execute! ~admin-spec
+                      [(format "DROP SCHEMA IF EXISTS %s CASCADE"
+                               (sql.u/quote-name :postgres :schema ~schema))]))))
+
+(defmacro ^:private with-drop-role!
+  "Run `body`, ensuring `role` is dropped on `admin-spec` afterward."
+  [admin-spec role & body]
+  `(try
+     ~@body
+     (finally
+       (jdbc/execute! ~admin-spec
+                      [(format "DROP ROLE IF EXISTS %s"
+                               (sql.u/quote-name :postgres :field ~role))]))))
+
+(deftest workspace-precondition-usage-grant-option-test
+  (mt/test-driver :postgres
+    (testing "assert-has-usage-grant-option! throws when current_user lacks USAGE WITH GRANT OPTION on the schema"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              role       "ws_pre_usage_role"
+              schema     "ws_pre_usage_schema"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-schema! admin-spec schema
+              (let [qrole   (sql.u/quote-name :postgres :field role)
+                    qschema (sql.u/quote-name :postgres :schema schema)]
+                (jdbc/execute! admin-spec
+                               [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
+                                             "CREATE SCHEMA %s; "
+                                             ;; USAGE without WITH GRANT OPTION
+                                             "GRANT USAGE ON SCHEMA %s TO %s;")
+                                        qrole password qschema qschema qrole)])
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                  (testing "fails when grant option is missing"
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"USAGE WITH GRANT OPTION"
+                         (postgres/assert-has-usage-grant-option! user-spec schema))))
+                  (testing "passes once WITH GRANT OPTION is granted"
+                    (jdbc/execute! admin-spec
+                                   [(format "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION"
+                                            qschema qrole)])
+                    (is (nil? (postgres/assert-has-usage-grant-option! user-spec schema)))))))))))))
+
+(deftest workspace-precondition-table-grant-option-test
+  (mt/test-driver :postgres
+    (testing "assert-has-grant-option! throws when current_user lacks SELECT WITH GRANT OPTION on a schema table"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              role       "ws_pre_table_role"
+              schema     "ws_pre_table_schema"
+              table      "ws_pre_table_t"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-schema! admin-spec schema
+              (let [qrole   (sql.u/quote-name :postgres :field role)
+                    qschema (sql.u/quote-name :postgres :schema schema)
+                    qtable  (sql.u/quote-name :postgres :table table)
+                    qobject (str qschema "." qtable)]
+                (jdbc/execute! admin-spec
+                               [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
+                                             "CREATE SCHEMA %s; "
+                                             "CREATE TABLE %s (id INT); "
+                                             ;; Pass the schema-USAGE precondition so we test the table check in isolation.
+                                             "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION; "
+                                             ;; SELECT *without* WITH GRANT OPTION
+                                             "GRANT SELECT ON %s TO %s;")
+                                        qrole password qschema qobject qschema qrole qobject qrole)])
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                  (testing "fails and names the offending table"
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"SELECT WITH GRANT OPTION"
+                         (postgres/assert-has-grant-option! user-spec schema))))
+                  (testing "passes once SELECT WITH GRANT OPTION is granted"
+                    (jdbc/execute! admin-spec
+                                   [(format "GRANT SELECT ON %s TO %s WITH GRANT OPTION"
+                                            qobject qrole)])
+                    (is (nil? (postgres/assert-has-grant-option! user-spec schema)))))))))))))
+
+(deftest workspace-precondition-alter-default-privileges-test
+  (mt/test-driver :postgres
+    (testing "assert-can-alter-default-privileges! throws when an object owner is not a role the current_user belongs to"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              role       "ws_pre_adp_role"
+              owner      "ws_pre_adp_other_owner"
+              schema     "ws_pre_adp_schema"
+              table      "ws_pre_adp_t"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-role! admin-spec owner
+              (with-drop-schema! admin-spec schema
+                (let [qrole   (sql.u/quote-name :postgres :field role)
+                      qowner  (sql.u/quote-name :postgres :field owner)
+                      qschema (sql.u/quote-name :postgres :schema schema)
+                      qobject (str qschema "." (sql.u/quote-name :postgres :table table))]
+                  (jdbc/execute! admin-spec
+                                 [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
+                                               "CREATE ROLE %s; "
+                                               "CREATE SCHEMA %s; "
+                                               "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION; "
+                                               "CREATE TABLE %s (id INT); "
+                                               "ALTER TABLE %s OWNER TO %s;")
+                                          qrole password qowner qschema qschema qrole qobject qobject qowner)])
+                  (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                   [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                    (testing "fails and names the unmemberable owner"
+                      (is (thrown-with-msg?
+                           clojure.lang.ExceptionInfo
+                           #"not a member of \d+ role"
+                           (postgres/assert-can-alter-default-privileges! user-spec schema))))
+                    (testing "passes once the current_user becomes a member of the owner role"
+                      (jdbc/execute! admin-spec
+                                     [(format "GRANT %s TO %s" qowner qrole)])
+                      (is (nil? (postgres/assert-can-alter-default-privileges! user-spec schema))))))))))))))

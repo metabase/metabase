@@ -114,7 +114,14 @@ async function getTablePathFromValue(
   return [
     ...(db ? [{ id: db.id, name: db.name, model: "database" as const }] : []),
     ...(db && schema
-      ? [{ id: schema, name: schema, model: "schema" as const, dbId: db.id }]
+      ? [
+          {
+            id: schema,
+            name: schema,
+            model: "schema" as const,
+            database_id: db.id,
+          },
+        ]
       : []),
   ];
 }
@@ -247,11 +254,14 @@ export function getFolderAndHiddenFunctions(
       return false;
     }
 
-    if (
-      item.model === MiniPickerFolderModel.Database ||
-      item.model === MiniPickerFolderModel.Schema
-    ) {
+    if (item.model === MiniPickerFolderModel.Database) {
       return true;
+    }
+
+    if (item.model === MiniPickerFolderModel.Schema) {
+      // When the caller opts schemas into the pickable model set, schemas
+      // become terminal and don't drill into tables.
+      return !modelSet.has("schema");
     }
 
     if (item.model !== MiniPickerFolderModel.Collection) {

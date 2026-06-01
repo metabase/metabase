@@ -344,7 +344,13 @@ describe("dataset transform functions", () => {
     it("should populate dataset with min numeric values for positive and negative stack totals", () => {
       const result = applyVisualizationSettingsDataTransformations(
         originalDataset,
-        [],
+        [
+          {
+            seriesKeys: seriesModels.map((seriesModel) => seriesModel.dataKey),
+            display: "bar",
+            axis: "left",
+          },
+        ],
         xAxisModel,
         seriesModels,
         [],
@@ -374,6 +380,57 @@ describe("dataset transform functions", () => {
           series1: 300,
           series2: 400,
           unusedSeries: 100,
+        },
+      ]);
+    });
+
+    it("should not use line series to create stacked bar total labels (UXW-3433)", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          dimensionKey: "A",
+          barSeries: null,
+          lineSeries: 100,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          dimensionKey: "B",
+          barSeries: 200,
+          lineSeries: 300,
+        },
+      ];
+      const barSeriesModel = createMockSeriesModel({ dataKey: "barSeries" });
+      const lineSeriesModel = createMockSeriesModel({ dataKey: "lineSeries" });
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [{ seriesKeys: ["barSeries"], display: "bar", axis: "left" }],
+        xAxisModel,
+        [barSeriesModel, lineSeriesModel],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          "stackable.stack_type": "stacked",
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          dimensionKey: "A",
+          barSeries: null,
+          lineSeries: 100,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
+          dimensionKey: "B",
+          barSeries: 200,
+          lineSeries: 300,
         },
       ]);
     });

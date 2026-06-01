@@ -128,6 +128,24 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_CSP_IMG_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-enabled`.
+- [Configuration file name](./config-file.md): `csp-img-enabled`
+
+When on, the browser Content Security Policy restricts `img-src` so images can only load from this Metabase instance and the domains listed in `MB_CSP_IMG_ALLOWED_HOSTS`. Must be turned on to enable Custom Visualizations.
+
+### `MB_CSP_IMG_ALLOWED_HOSTS`
+
+- Type: string
+- Default: `""`
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
+- [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
+
+Comma-separated list of domains that images can load from in dashboard text cards, entity descriptions, and custom visualizations when `MB_CSP_IMG_ENABLED` is on. Empty by default, which restricts images to those hosted by your Metabase instance. See [Allowed domains for images](./settings.md#allowed-domains-for-images).
+
 ### `MB_ANALYTICS_PII_RETENTION_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1030,7 +1048,7 @@ When set to `true`, users who log in via JWT will automatically get a Metabase a
 - [Exported as](../installation-and-operation/serialization.md): `landing-page`.
 - [Configuration file name](./config-file.md): `landing-page`
 
-Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.
+Enter a relative URL like /dashboard/1 or /collection/2.
 
 ### `MB_LANDING_PAGE_ILLUSTRATION`
 

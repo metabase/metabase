@@ -3,7 +3,6 @@ import cx from "classnames";
 import { type CSSProperties, useMemo, useRef } from "react";
 
 import { Icon, Stack, Text } from "metabase/ui";
-import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type {
@@ -25,6 +24,7 @@ export interface ListViewProps {
   entityType?: string;
   isInteractive?: boolean;
   className?: string;
+  onZoomRow?: (rowIndex: number) => void;
 }
 
 export function ListView({
@@ -36,6 +36,7 @@ export function ListView({
   entityType,
   isInteractive,
   className,
+  onZoomRow,
 }: ListViewProps) {
   const { cols, rows } = data;
 
@@ -52,8 +53,6 @@ export function ListView({
     cols,
     settings?.["list.columns"],
   );
-
-  const openObjectDetail = useObjectDetail(data);
 
   // Get the appropriate icon based on entity type
   const entityIcon =
@@ -137,7 +136,7 @@ export function ListView({
                     }
                     titleColumn={titleColumn}
                     rightColumns={rightColumns}
-                    onClick={() => isInteractive && openObjectDetail(index)}
+                    onClick={() => isInteractive && onZoomRow?.(index)}
                     className={styles.listItemVirtualized}
                     style={{
                       transform: `translateY(${start}px)`,

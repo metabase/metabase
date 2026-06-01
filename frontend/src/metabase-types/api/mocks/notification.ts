@@ -1,4 +1,5 @@
 import type {
+  AdminNotification,
   Notification,
   NotificationCronSubscription,
   NotificationHandlerEmail,
@@ -102,5 +103,16 @@ export const createMockNotificationCronSubscription = (
   created_at: "2025-01-07T18:40:47.245205+03:00",
   cron_schedule: "0 0 9 * * ?",
   ui_display_type: "cron/builder",
+  ...opts,
+});
+
+export const createMockAdminNotification = (
+  opts?: Partial<AdminNotification>,
+): AdminNotification => ({
+  ...createMockNotification(),
+  creator_id: 1,
+  creator: createMockUserInfo({ is_active: true }),
+  last_check: null,
+  last_send: null,
   ...opts,
 });
