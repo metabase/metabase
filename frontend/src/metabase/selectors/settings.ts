@@ -61,9 +61,6 @@ export function getStoreUrl(state: State, path: StorePaths = "") {
   }
 }
 
-export const migrateToCloudGuideUrl = () =>
-  "https://www.metabase.com/cloud/docs/migrate/guide";
-
 export const getLearnUrl = (path = "") => {
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
   return `https://www.metabase.com/learn/${path}`;
