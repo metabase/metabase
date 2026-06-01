@@ -341,6 +341,15 @@ export type GetDashboardQueryMetadataRequest = {
   dashboard_load_id?: string;
 };
 
+export type DashboardCardQueryRequest = {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  cardId: CardId;
+  collection_preview?: boolean;
+  ignore_cache?: boolean;
+  parameters?: unknown[];
+};
+
 export type SaveDashboardRequest = Omit<UpdateDashboardRequest, "id">;
 
 export type CopyDashboardRequest = {

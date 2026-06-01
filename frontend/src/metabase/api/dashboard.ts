@@ -4,8 +4,10 @@ import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
   Dashboard,
+  DashboardCardQueryRequest,
   DashboardId,
   DashboardQueryMetadata,
+  Dataset,
   FieldId,
   FieldValue,
   GetDashboardQueryMetadataRequest,
@@ -28,6 +30,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideCardQueryTags,
   provideDashboardListTags,
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
@@ -94,6 +97,27 @@ export const dashboardApi = Api.injectEndpoints({
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
         onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
+      }),
+      getDashboardCardQuery: builder.query<Dataset, DashboardCardQueryRequest>({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
+          method: "POST",
+          url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
+          body,
+        }),
+        providesTags: (_data, _error, { cardId }) =>
+          provideCardQueryTags(cardId),
+      }),
+      getDashboardCardQueryPivot: builder.query<
+        Dataset,
+        DashboardCardQueryRequest
+      >({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
+          method: "POST",
+          url: `/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
+          body,
+        }),
+        providesTags: (_data, _error, { cardId }) =>
+          provideCardQueryTags(cardId),
       }),
       getRemappedDashboardParameterValue: builder.query<
         FieldValue,
@@ -263,6 +287,8 @@ export const {
   useGetDashboardQuery,
   useLazyGetDashboardQuery,
   useGetDashboardQueryMetadataQuery,
+  useGetDashboardCardQueryQuery,
+  useGetDashboardCardQueryPivotQuery,
   useListDashboardsQuery,
   useListDashboardItemsQuery,
   useGetRemappedDashboardParameterValueQuery,
