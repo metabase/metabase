@@ -675,30 +675,12 @@
   (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
                               dataset-name)))
 
-(defn- read-lock [dataset-name]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :snowflake
-   (no-db-connection-spec)
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (loop [tries 0]
-       #_{:clj-kondo/ignore [:discouraged-var]}
-       (println "[Snowflake] read-locking attempt" tries "on" dataset-name)
-       (when (< 2000 tries)
-         (throw (Exception. "could not acquire snowflake read lock")))
-       (when (with-open [stmt (.createStatement conn)]
-               (.next (.executeQuery stmt (format "SELECT at FROM
-                                                   metabase_test_tracking.PUBLIC.locks
-                                                   WHERE dataset = '%s'" dataset-name))))
-         (Thread/sleep 100)
-         (recur (inc tries)))))))
-
 (defmethod test.data.impl.get-or-create/dataset-lock :snowflake
   [_driver dataset-name]
   (reify ReadWriteLock
     (readLock [_]
       (reify Lock
-        (lock [_] (read-lock dataset-name))
+        (lock [_])
         (unlock [_])))
     (writeLock [_]
       (reify Lock
