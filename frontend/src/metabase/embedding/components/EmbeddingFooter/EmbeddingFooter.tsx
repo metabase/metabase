@@ -4,6 +4,7 @@ import {
   Footer,
   type FooterVariant,
 } from "metabase/public/components/EmbedFrame/EmbedFrame.styled";
+import { LogoBadge } from "metabase/public/components/EmbedFrame/LogoBadge";
 
 import EmbeddingFooterS from "./EmbeddingFooter.module.css";
 
@@ -15,7 +16,9 @@ type Props = {
 
 export const EmbeddingFooter = ({
   children,
+  hasEmbedBranding,
   variant,
+  isDarkMode,
 }: PropsWithChildren<Props>) => {
   return (
     <Footer
@@ -23,6 +26,8 @@ export const EmbeddingFooter = ({
       className={EmbeddingFooterS.EmbeddingFooter}
       variant={variant}
     >
+      {hasEmbedBranding && <LogoBadge dark={!!isDarkMode} />}
+
       {children}
     </Footer>
   );
