@@ -3,7 +3,7 @@ import { useLatest } from "react-use";
 
 import { useCreateCardMutation } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import type { CopyCardProperties } from "metabase/questions/components/CopyCardForm";
 import type { Card } from "metabase-types/api";
 
@@ -45,7 +45,7 @@ export function CardCopyModal({ card, onCopy, onClose }: CardCopyModalProps) {
   };
 
   return (
-    <EntityCopyModal
+    <CopyModal
       entityType="cards"
       entityObject={initialValues}
       copy={handleCopy}

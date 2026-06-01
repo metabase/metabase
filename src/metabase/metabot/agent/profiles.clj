@@ -122,7 +122,7 @@
 (register-profile!
  {:name                :sql
   :prompt-template     "sql-querying-only.selmer"
-  :max-iterations      10
+  :max-iterations      20
   :temperature         0.3
   :required-tool-call? true
   :tools               [#'tools/sql-search-tool

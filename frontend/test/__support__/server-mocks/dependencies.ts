@@ -50,6 +50,6 @@ export function setupListUnreferencedGraphNodesEndpoint(
   fetchMock.get("path:/api/ee/dependencies/graph/unreferenced", response);
 }
 
-export function setupDependecyGraphEndpoint(response: DependencyGraph) {
+export function setupDependencyGraphEndpoint(response: DependencyGraph) {
   fetchMock.get("path:/api/ee/dependencies/graph", response);
 }
