@@ -321,10 +321,21 @@ export const NativeQueryEditorRoot = forwardRef<
 
   // Separate the top bar (rendered in the header) from the body slots (run
   // button, extra buttons, custom content rendered over the editor surface).
+  //
+  // Slots are matched by referential identity and must be *direct* children:
+  // `React.Children` flattens nested arrays but does not descend into Fragments,
+  // so a `<NativeQueryEditor.TopBar>` (or a `<ParametersList>` inside it) wrapped
+  // in a fragment / memo / styled wrapper will not be recognized and ends up in
+  // the wrong region.
   let topBar: ReactNode = null;
   const bodySlots: ReactNode[] = [];
   Children.forEach(children, (child) => {
     if (isValidElement(child) && child.type === TopBar) {
+      if (topBar != null && process.env.NODE_ENV !== "production") {
+        console.warn(
+          "NativeQueryEditor: multiple <NativeQueryEditor.TopBar> children were provided; only the last one is rendered.",
+        );
+      }
       topBar = cloneElement(child, { ref: topBarRef });
     } else {
       bodySlots.push(child);

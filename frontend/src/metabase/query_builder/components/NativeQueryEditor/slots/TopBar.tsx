@@ -19,6 +19,13 @@ import { ParametersList } from "./ParametersList";
  * the left (from context) and lays out its children, keeping the parameters
  * list on the left and pushing the remaining actions (sidebar buttons,
  * visibility toggler, custom content) into the right-aligned cluster.
+ *
+ * Must be a direct child of `<NativeQueryEditor>`, and its children (e.g.
+ * `<NativeQueryEditor.ParametersList>`) must likewise be direct children —
+ * elements wrapped in a Fragment are not detected and land in the wrong region.
+ *
+ * The `ref` is reserved: the root injects a measurement ref used to size the
+ * editor, so a `ref` passed by a caller is overridden.
  */
 export const TopBar = forwardRef<HTMLDivElement, PropsWithChildren>(
   function TopBar({ children }, ref) {
