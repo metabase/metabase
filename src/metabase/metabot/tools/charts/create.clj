@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -96,13 +97,15 @@
        :query-id query-id
        :instructions (str "Chart created successfully. The user is now viewing the chart.\n"
                           "Use the <query_execution> block in this tool result to inspect the executed chart data, "
-                          "and proactively mention one concrete observation from the data. Only mention maxima, "
-                          "minima, rankings, or counts when <query_execution> is not truncated, or after running "
-                          "a follow-up query that computes them against the full result. If <query_execution> says "
-                          "results were omitted and the user needs an answer from the data, your next step MUST "
-                          "be a follow-up tool call without asking permission first. For notebook queries, use "
-                          "execute_notebook_query_silently with the needed follow-up program so no chart is created. "
-                          "Do not produce a final answer until it returns.\n"
+                          "and proactively mention one concrete observation from the data. "
+                          instructions/distribution-guidance " "
+                          "When <query_execution> is marked sampled=\"true\", it is a representative sample of the "
+                          "chart's own rows (minimum, maximum, outliers, and evenly spaced trend points); every "
+                          "sampled row is a real point on the user's chart, so you may cite the sampled values, "
+                          "including the minimum and maximum. Only run a follow-up query (for notebook queries, "
+                          "execute_notebook_query_silently) when you need an exact count, ranking, or aggregate the "
+                          "sample cannot give; do it without asking permission first and do not produce a final "
+                          "answer until it returns.\n"
                           "When mentioning a specific value from the chart, use the matching metabase://data-point URL "
                           "from the linked result value, and choose natural link text for your answer.\n"
                           "Reference the chart using: [" chart-name "](" (format-chart-link chart-id) ").")})))

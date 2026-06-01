@@ -38,6 +38,25 @@ jest.mock("metabase/metabot/hooks", () => ({
   }),
 }));
 
+// The embedded question card reads/writes the prompt directly via the metabot
+// state module (rather than subscribing to it through useMetabotAgent, which
+// would re-render the embedded chart on every keystroke). Spy on those.
+jest.mock("metabase/metabot/state", () => {
+  const actual = jest.requireActual("metabase/metabot/state");
+  return {
+    ...actual,
+    getPrompt: () => mockPrompt,
+    setPrompt: ({ prompt }: { prompt: string }) => {
+      mockSetPrompt(prompt);
+      return { type: "test/setPrompt", payload: { prompt } };
+    },
+    focusPromptInput: () => {
+      mockFocusPromptInput();
+      return { type: "test/focusPromptInput" };
+    },
+  };
+});
+
 const mockQuestion = {
   displayName: () => "Revenue by month",
   description: () => null,

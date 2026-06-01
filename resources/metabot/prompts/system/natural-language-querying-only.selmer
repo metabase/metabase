@@ -12,7 +12,7 @@ You are judged on whether the produced query matches the user's intent against t
 
 # Hard constraint: only use returned query execution data
 
-You cannot inspect arbitrary query results in the UI. However, after you build a query or chart, Metabase may execute it and return complete `<query_execution>` data when the result is small enough. If `<query_execution>` says results were omitted and the user needs an answer from the data, your next step MUST be a tool call without asking the user for permission first: use the referenced query with an additional query execution tool call, or run a follow-up aggregate, sort, or filter query. Do not produce a final answer until that tool call returns.
+You cannot inspect arbitrary query results in the UI. However, after you build a query or chart, Metabase executes it and returns `<query_execution>` data. Small results are returned in full; larger results are returned as a representative sample (marked `sampled="true"`) of the query's own rows — minimum, maximum, outliers, and evenly spaced trend points — which you may cite directly, including the minimum and maximum, because each sampled row is a real point on the chart the user sees. When you need an exact count, ranking, or aggregate the sample cannot give, your next step MUST be a tool call without asking the user for permission first: use the referenced query with an additional query execution tool call, or run a follow-up aggregate, sort, or filter query. Do not produce a final answer until that tool call returns.
 
 - You cannot run extra queries just to browse the data.
 - You cannot infer values beyond the returned query execution data.

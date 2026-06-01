@@ -13,6 +13,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 import type {
   BaseCartesianChartModel,
   ChartDataset,
+  DataKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   buildBrushMirrorGraphics,
@@ -27,6 +28,7 @@ import {
   isLineXBrushRange,
 } from "metabase/visualizations/echarts/types";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
+import { MENTION_HIGHLIGHT_CONTRACT_DURATION } from "metabase/visualizations/lib/mention-highlight";
 import type {
   RenderingContext,
   VisualizationProps,
@@ -83,6 +85,7 @@ export const useChartEvents = (
     hovered,
     clicked,
     clickedViaMention,
+    clickedViaMentionGroup,
     metadata,
     isDashboard,
   }: VisualizationProps,
@@ -446,12 +449,27 @@ export const useChartEvents = (
         String(selectedSeriesType),
       );
 
-      const mentionHighlightColor = renderingContext.getColor("summarize");
+      const mentionHighlightColor = renderingContext.getColor("brand");
       const defaultHighlightColor = renderingContext.getColor("brand");
       const defaultShadowColor =
         selectedSeriesType === "line"
           ? defaultHighlightColor
           : renderingContext.getColor("background-primary");
+
+      // Data series keys for this chart, excluding non-data series like goal or
+      // trend lines (those aren't backed by a series model).
+      const dataSeriesKeys = chartModel.seriesModels
+        .filter((seriesModel) => seriesModel.visible)
+        .map((seriesModel) => seriesModel.dataKey);
+      // In a multi-series chart each series is a separate line/area, so we keep
+      // the selected series prominent and dim the OTHER series. In a single-series
+      // chart (one series with many points, e.g. a bar chart broken out by
+      // category) there are no other series, so we dim the selected series itself
+      // and re-emphasize the clicked point via its selected state.
+      const isMultiSeries = dataSeriesKeys.length > 1;
+      const otherSeriesKeys = dataSeriesKeys.filter(
+        (key) => key !== seriesDataKey,
+      );
 
       if (isClickedViaMention && shouldDimSeries) {
         chart.setOption(
@@ -475,19 +493,25 @@ export const useChartEvents = (
       if (shouldDimSeries) {
         chart.setOption(
           {
-            series: [
-              {
-                id: seriesDataKey,
-                ...(selectedSeriesType === "line"
-                  ? {
-                      lineStyle: { opacity: CHART_STYLE.opacity.blur },
-                      itemStyle: { opacity: CHART_STYLE.opacity.blur },
-                    }
-                  : {
-                      itemStyle: { opacity: CHART_STYLE.opacity.blur },
-                    }),
-              },
-            ],
+            series: isMultiSeries
+              ? otherSeriesKeys.map((id) => ({
+                  id,
+                  lineStyle: { opacity: CHART_STYLE.opacity.blur },
+                  itemStyle: { opacity: CHART_STYLE.opacity.blur },
+                }))
+              : [
+                  {
+                    id: seriesDataKey,
+                    ...(selectedSeriesType === "line"
+                      ? {
+                          lineStyle: { opacity: CHART_STYLE.opacity.blur },
+                          itemStyle: { opacity: CHART_STYLE.opacity.blur },
+                        }
+                      : {
+                          itemStyle: { opacity: CHART_STYLE.opacity.blur },
+                        }),
+                  },
+                ],
           },
           false,
         );
@@ -499,6 +523,15 @@ export const useChartEvents = (
         seriesIndex: eChartsSeriesIndex,
       });
 
+      animateMentionContractRing(chart, {
+        seriesIndex: eChartsSeriesIndex,
+        dataIndex,
+        value: Number(
+          chartModel.transformedDataset[dataIndex]?.[seriesDataKey],
+        ),
+        color: mentionHighlightColor,
+      });
+
       const clearHighlight = () => {
         chart.dispatchAction({
           type: "unselect",
@@ -506,34 +539,45 @@ export const useChartEvents = (
           seriesIndex: eChartsSeriesIndex,
         });
         if (shouldDimSeries) {
+          const restoreSelectStyle = isClickedViaMention
+            ? {
+                itemStyle: {
+                  borderColor: defaultHighlightColor,
+                  shadowColor: defaultShadowColor,
+                },
+              }
+            : undefined;
+
           chart.setOption(
             {
-              series: [
-                {
-                  id: seriesDataKey,
-                  select: isClickedViaMention
-                    ? {
-                        itemStyle: {
-                          borderColor: defaultHighlightColor,
-                          shadowColor: defaultShadowColor,
-                        },
-                      }
-                    : undefined,
-                  ...(selectedSeriesType === "line"
-                    ? {
-                        lineStyle: { opacity: 1 },
-                        itemStyle: { opacity: 1 },
-                      }
-                    : {
-                        itemStyle: {
-                          opacity:
-                            selectedSeriesType === "scatter"
-                              ? CHART_STYLE.opacity.scatter
-                              : 1,
-                        },
-                      }),
-                },
-              ],
+              series: isMultiSeries
+                ? [
+                    { id: seriesDataKey, select: restoreSelectStyle },
+                    ...otherSeriesKeys.map((id) => ({
+                      id,
+                      lineStyle: { opacity: 1 },
+                      itemStyle: { opacity: 1 },
+                    })),
+                  ]
+                : [
+                    {
+                      id: seriesDataKey,
+                      select: restoreSelectStyle,
+                      ...(selectedSeriesType === "line"
+                        ? {
+                            lineStyle: { opacity: 1 },
+                            itemStyle: { opacity: 1 },
+                          }
+                        : {
+                            itemStyle: {
+                              opacity:
+                                selectedSeriesType === "scatter"
+                                  ? CHART_STYLE.opacity.scatter
+                                  : 1,
+                            },
+                          }),
+                    },
+                  ],
             },
             false,
           );
@@ -557,6 +601,166 @@ export const useChartEvents = (
       chartRef,
       clicked,
       clickedViaMention,
+      option,
+      renderingContext,
+    ],
+  );
+
+  useEffect(
+    function handleMentionGroupHighlight() {
+      const chart = chartRef.current;
+      if (!chart || !clickedViaMentionGroup?.length) {
+        return;
+      }
+
+      const optionSeries = Array.isArray(option.series)
+        ? option.series
+        : [option.series].filter(Boolean);
+
+      // Resolve every clicked point to its (ECharts series, data index), grouped by series so we can
+      // dim a series once and select all of its highlighted points in a single dispatch.
+      const selectionsBySeries = new Map<
+        number,
+        { seriesDataKey: DataKey; seriesType?: string; dataIndices: number[] }
+      >();
+
+      for (const clickedItem of clickedViaMentionGroup) {
+        const clickedDataPoint = getClickedDataPoint(chartModel, clickedItem);
+        if (clickedDataPoint == null) {
+          continue;
+        }
+
+        const seriesDataKey =
+          chartModel.seriesModels[clickedDataPoint.seriesIndex]?.dataKey;
+        if (seriesDataKey == null) {
+          continue;
+        }
+
+        const eChartsSeriesIndex = getEChartsSeriesIndexByDataKey(
+          option,
+          seriesDataKey,
+        );
+        if (eChartsSeriesIndex < 0) {
+          continue;
+        }
+
+        const dataIndex = getTransformedDatumIndex(
+          chartModel.transformedDataset,
+          clickedDataPoint.datumIndex,
+        );
+
+        const existing = selectionsBySeries.get(eChartsSeriesIndex);
+        if (existing) {
+          existing.dataIndices.push(dataIndex);
+        } else {
+          selectionsBySeries.set(eChartsSeriesIndex, {
+            seriesDataKey,
+            seriesType: optionSeries[eChartsSeriesIndex]?.type,
+            dataIndices: [dataIndex],
+          });
+        }
+      }
+
+      if (selectionsBySeries.size === 0) {
+        return;
+      }
+
+      const mentionHighlightColor = renderingContext.getColor("brand");
+
+      const canDim = (seriesType?: string) =>
+        ["bar", "line", "scatter"].includes(String(seriesType));
+
+      selectionsBySeries.forEach(
+        ({ seriesDataKey, seriesType, dataIndices }, eChartsSeriesIndex) => {
+          if (canDim(seriesType)) {
+            chart.setOption(
+              {
+                series: [
+                  {
+                    id: seriesDataKey,
+                    select: {
+                      itemStyle: {
+                        borderColor: mentionHighlightColor,
+                        shadowColor: mentionHighlightColor,
+                      },
+                    },
+                    ...(seriesType === "line"
+                      ? {
+                          lineStyle: { opacity: CHART_STYLE.opacity.blur },
+                          itemStyle: { opacity: CHART_STYLE.opacity.blur },
+                        }
+                      : { itemStyle: { opacity: CHART_STYLE.opacity.blur } }),
+                  },
+                ],
+              },
+              false,
+            );
+          }
+
+          chart.dispatchAction({
+            type: "select",
+            seriesIndex: eChartsSeriesIndex,
+            dataIndex: dataIndices,
+          });
+
+          dataIndices.forEach((dataIndex) => {
+            animateMentionContractRing(chart, {
+              seriesIndex: eChartsSeriesIndex,
+              dataIndex,
+              value: Number(
+                chartModel.transformedDataset[dataIndex]?.[seriesDataKey],
+              ),
+              color: mentionHighlightColor,
+            });
+          });
+        },
+      );
+
+      return () => {
+        selectionsBySeries.forEach(
+          ({ seriesDataKey, seriesType, dataIndices }, eChartsSeriesIndex) => {
+            chart.dispatchAction({
+              type: "unselect",
+              seriesIndex: eChartsSeriesIndex,
+              dataIndex: dataIndices,
+            });
+
+            if (canDim(seriesType)) {
+              chart.setOption(
+                {
+                  series: [
+                    {
+                      id: seriesDataKey,
+                      select: undefined,
+                      ...(seriesType === "line"
+                        ? {
+                            lineStyle: { opacity: 1 },
+                            itemStyle: { opacity: 1 },
+                          }
+                        : {
+                            itemStyle: {
+                              opacity:
+                                seriesType === "scatter"
+                                  ? CHART_STYLE.opacity.scatter
+                                  : 1,
+                            },
+                          }),
+                    },
+                  ],
+                },
+                false,
+              );
+            }
+          },
+        );
+      };
+    },
+    [
+      chartModel,
+      chartModel.seriesModels,
+      chartModel.transformedDataset,
+      chartRef,
+      clickedViaMentionGroup,
       option,
       renderingContext,
     ],
@@ -623,6 +827,91 @@ export const useChartEvents = (
     eventHandlers,
   };
 };
+
+let mentionRingCounter = 0;
+
+// Draws a brand-colored ring at a highlighted data point that starts larger
+// than the element and contracts onto it, then fades out — so the highlight
+// feels like it "lands" on the point. The persistent select border remains.
+function animateMentionContractRing(
+  chart: EChartsType,
+  {
+    seriesIndex,
+    dataIndex,
+    value,
+    color,
+  }: {
+    seriesIndex: number;
+    dataIndex: number;
+    value: number;
+    color: string;
+  },
+) {
+  if (!Number.isFinite(value)) {
+    return;
+  }
+
+  const pixel = chart.convertToPixel({ seriesIndex }, [dataIndex, value]) as
+    | number[]
+    | null;
+  if (pixel == null || pixel.some((coord) => !Number.isFinite(coord))) {
+    return;
+  }
+
+  const [cx, cy] = pixel;
+  const id = `mention-contract-ring-${mentionRingCounter++}`;
+  const restRadius = 16;
+
+  chart.setOption(
+    {
+      graphic: [
+        {
+          id,
+          type: "circle",
+          z: 1000,
+          silent: true,
+          shape: { cx, cy, r: restRadius },
+          style: { fill: "none", stroke: color, lineWidth: 2 },
+          originX: cx,
+          originY: cy,
+          scaleX: 1,
+          scaleY: 1,
+          transition: ["scaleX", "scaleY", "style"],
+          transitionDuration: MENTION_HIGHLIGHT_CONTRACT_DURATION / 1000,
+          enterFrom: { scaleX: 2.5, scaleY: 2.5, style: { opacity: 0 } },
+        },
+      ],
+    },
+    false,
+  );
+
+  window.setTimeout(() => {
+    if (chart.isDisposed()) {
+      return;
+    }
+    // Fade/contract the ring out once it has landed, leaving the select border.
+    chart.setOption(
+      {
+        graphic: [
+          {
+            id,
+            scaleX: 0.6,
+            scaleY: 0.6,
+            style: { opacity: 0 },
+            transition: ["scaleX", "scaleY", "style"],
+            transitionDuration: MENTION_HIGHLIGHT_CONTRACT_DURATION / 1000,
+          },
+        ],
+      },
+      false,
+    );
+    window.setTimeout(() => {
+      if (!chart.isDisposed()) {
+        chart.setOption({ graphic: [{ id, $action: "remove" }] }, false);
+      }
+    }, MENTION_HIGHLIGHT_CONTRACT_DURATION);
+  }, MENTION_HIGHLIGHT_CONTRACT_DURATION);
+}
 
 function getTransformedDatumIndex(
   transformedDataset: ChartDataset,

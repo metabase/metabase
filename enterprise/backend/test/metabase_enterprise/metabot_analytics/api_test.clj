@@ -402,6 +402,7 @@
                     :last_name  "Corv"}
                    (select-keys (:user response) [:id :email :first_name :last_name])))
             (is (nil? (:slack_permalink response)))
+            (is (= {:foo "bar"} (:state response)))
             (is (= "internal" (:profile_id response))
                 "profile_id comes from the first assistant message, ignoring user-message placeholders")
             (is (= 2 (count (:chat_messages response))))

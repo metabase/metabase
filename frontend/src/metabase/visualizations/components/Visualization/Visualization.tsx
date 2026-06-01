@@ -125,6 +125,7 @@ type VisualizationOwnProps = {
   className?: string;
   clicked?: ClickObject | null;
   clickedViaMention?: ClickObject | null;
+  clickedViaMentionGroup?: ClickObject[] | null;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
   error?: ReactNode;
@@ -741,6 +742,7 @@ class Visualization extends PureComponent<
         ? this.props.clicked
         : this.state.clicked;
     const clickedViaMention = this.props.clickedViaMention;
+    const clickedViaMentionGroup = this.props.clickedViaMentionGroup;
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
@@ -950,6 +952,7 @@ class Visualization extends PureComponent<
                     canToggleSeriesVisibility={canToggleSeriesVisibility}
                     clicked={clicked}
                     clickedViaMention={clickedViaMention}
+                    clickedViaMentionGroup={clickedViaMentionGroup}
                     data={series[0].data} // convenience for single-series visualizations
                     dashboard={dashboard}
                     dashcard={dashcard}

@@ -175,6 +175,7 @@ const MetabotConversation = ({
     setPrompt,
     submitInput,
     retryMessage,
+    forkMessage,
     cancelRequest,
     selectedDatabaseId,
     setSelectedDatabaseId,
@@ -384,6 +385,7 @@ const MetabotConversation = ({
                 agentId={agentId}
                 messages={messages}
                 onRetryMessage={retryMessage}
+                onForkMessage={forkMessage}
                 isDoingScience={isDoingScience}
                 debug={debugMode}
                 dataPointTargets={getDataPointTargetsFromState(requestState)}

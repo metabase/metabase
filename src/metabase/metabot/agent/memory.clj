@@ -19,12 +19,13 @@
     :steps-taken []
     :context context
     :state (or state
-               {:queries       {}
-                :charts        {}
-                :data-points   {}
-                :todos         []
-                :transforms    {}
-                :link-registry {}})}))
+               {:queries         {}
+                :charts          {}
+                :data-points     {}
+                :data-selections {}
+                :todos           []
+                :transforms      {}
+                :link-registry   {}})}))
 
 (defn add-step
   "Add a completed agent step to memory.
@@ -117,6 +118,12 @@
   [memory data-points]
   (update-in memory [:state :data-points] merge data-points))
 
+(defn remember-data-selections
+  "Store generated multi-point chart selections in memory state by selection ID.
+  Each selection is `{:targets [target...] :count n :label ...}`."
+  [memory data-selections]
+  (update-in memory [:state :data-selections] merge data-selections))
+
 ;;; Transform Management
 
 (defn remember-transform
@@ -176,6 +183,13 @@
   [memory state]
   (if-let [data-points (:data-points state)]
     (remember-data-points memory data-points)
+    memory))
+
+(defn load-data-selections-from-state
+  "Load multi-point chart selections from incoming state into memory."
+  [memory state]
+  (if-let [data-selections (:data-selections state)]
+    (remember-data-selections memory data-selections)
     memory))
 
 (defn load-transforms-from-state

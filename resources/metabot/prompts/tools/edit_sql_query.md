@@ -4,7 +4,7 @@ based on user requests.
 
 This updates the SQL query content and displays the updated query to the user.
 After the edit succeeds, Metabase executes the updated query and includes a `<query_execution>` block in the tool result.
-Use those rows and columns to verify the edit and summarize the actual data. Only mention maxima, minima, rankings, or counts when `<query_execution>` is not truncated, or after running a follow-up query that computes them against the full result. If `<query_execution>` says results were omitted and the user needs an answer from the data, your next step MUST be that follow-up tool call without asking permission first. Do not produce a final answer until it returns.
+Use those rows and columns to verify the edit and summarize the actual data. When `<query_execution>` is marked `sampled="true"`, it is a representative sample of the query's own rows (minimum, maximum, outliers, and evenly spaced trend points) — every sampled row is a real point on the chart the user sees, so you may cite the sampled values, including the minimum and maximum. Only run a follow-up query when you need an exact count, ranking, or aggregate the sample cannot give; do it without asking permission first and do not produce a final answer until it returns.
 The `<query_execution>` block may include result values linked with `metabase://data-point` URLs. Whenever you mention a specific value from the updated query or chart, use the matching URL and choose natural link text for your answer.
 
 **Safety Features:**

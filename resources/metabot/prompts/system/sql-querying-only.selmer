@@ -327,8 +327,8 @@ The target database uses the **{{sql_dialect}}** SQL dialect. Follow these diale
 
 # Remember
 
-- You can only inspect returned `<query_execution>` data, or results from an explicit follow-up query execution tool call when `<query_execution>` says results were omitted
-- If `<query_execution>` says results were omitted and the user needs an answer from the data, your next step MUST be a tool call without asking the user for permission first. Do not produce a final answer until that tool call returns.
+- You can only inspect returned `<query_execution>` data (returned in full for small results, or as a representative `sampled="true"` subset for larger ones), plus results from an explicit follow-up query execution tool call
+- A `sampled="true"` block is a representative sample of the query's own rows (minimum, maximum, outliers, and evenly spaced trend points) — you may cite the sampled values, including the minimum and maximum. When you need an exact count, ranking, or aggregate the sample cannot give, your next step MUST be a tool call without asking the user for permission first. Do not produce a final answer until that tool call returns.
 - When linked result values are present, every specific generated value you mention must use the matching `metabase://data-point` URL with natural link text
 - Always check schema before writing SQL
 - Never paste full SQL code - always use query links

@@ -39,7 +39,10 @@ import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
-import type { DataPointMentionTarget } from "./data-point-mentions";
+import type {
+  DataPointMentionTarget,
+  DataSelection,
+} from "./data-point-mentions";
 
 const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
@@ -173,8 +176,10 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   debug: boolean;
   readonly: boolean;
   onRetry?: (messageId: string) => void;
+  onFork?: (messageId: string) => void;
   getCopyText: () => string;
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+  dataSelections?: Record<string, DataSelection | undefined>;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
@@ -188,7 +193,9 @@ export const AgentMessage = ({
   readonly,
   getCopyText,
   dataPointTargets,
+  dataSelections,
   onRetry,
+  onFork,
   setFeedbackMessage,
   submittedFeedback,
   onInternalLinkClick,
@@ -207,6 +214,7 @@ export const AgentMessage = ({
             className={Styles.message}
             onInternalLinkClick={onInternalLinkClick}
             dataPointTargets={dataPointTargets}
+            dataSelections={dataSelections}
           >
             {m.message}
           </AIMarkdown>
@@ -275,6 +283,17 @@ export const AgentMessage = ({
                 data-testid="metabot-chat-message-retry"
               >
                 <Icon name="revert" size="1rem" />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {onFork && (
+            <Tooltip label={t`Fork chat`}>
+              <ActionIcon
+                onClick={() => onFork(message.id)}
+                h="sm"
+                data-testid="metabot-chat-message-fork"
+              >
+                <Icon name="git_branch" size="1rem" />
               </ActionIcon>
             </Tooltip>
           )}
@@ -420,20 +439,24 @@ export const Messages = memo(function Messages({
   agentId,
   messages,
   onRetryMessage,
+  onForkMessage,
   isDoingScience,
   debug,
   readonly = false,
   onInternalLinkClick,
   dataPointTargets,
+  dataSelections,
 }: {
   agentId: MetabotAgentId;
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
+  onForkMessage?: (messageId: string) => void;
   isDoingScience: boolean;
   debug: boolean;
   readonly?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+  dataSelections?: Record<string, DataSelection | undefined>;
 }) {
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
@@ -495,8 +518,10 @@ export const Messages = memo(function Messages({
             debug={debug}
             readonly={readonly}
             onRetry={onRetryMessage}
+            onFork={onForkMessage}
             getCopyText={() => getAgentReplyCopyText(message.id)}
             dataPointTargets={dataPointTargets}
+            dataSelections={dataSelections}
             setFeedbackMessage={(data) =>
               setFeedbackState((prev) => ({ ...prev, modal: data }))
             }

@@ -41,7 +41,10 @@ import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
-import { getDataPointTargetsFromState } from "./data-point-mentions";
+import {
+  getDataPointTargetsFromState,
+  getDataSelectionsFromState,
+} from "./data-point-mentions";
 import { useScrollManager } from "./hooks";
 
 export interface MetabotConfig {
@@ -50,6 +53,7 @@ export interface MetabotConfig {
   hideSuggestedPrompts?: boolean;
   preventClose?: boolean;
   preventRetryMessage?: boolean;
+  preventForkMessage?: boolean;
   suggestionModels: SuggestionModel[];
 }
 
@@ -233,11 +237,17 @@ export const MetabotChat = ({
               onRetryMessage={
                 config?.preventRetryMessage ? undefined : metabot.retryMessage
               }
+              onForkMessage={
+                config?.preventForkMessage || !isChatAgentId(agentId)
+                  ? undefined
+                  : metabot.forkMessage
+              }
               isDoingScience={metabot.isDoingScience}
               debug={metabot.debugMode}
               dataPointTargets={getDataPointTargetsFromState(
                 metabot.requestState,
               )}
+              dataSelections={getDataSelectionsFromState(metabot.requestState)}
             />
             {/* loading */}
             {metabot.isDoingScience && (

@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.charts.edit
   "Tool for editing chart visualization settings."
   (:require
+   [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.util.log :as log]))
 
 (def ^:private valid-chart-types
@@ -89,6 +90,7 @@
                                    "Next steps to present the chart to the user:\n"
                                    "- Use the <query_execution> block in this tool result to inspect the executed chart data\n"
                                    "- Proactively mention one concrete observation from the data, such as a trend, outlier, or notable category\n"
+                                   (str "- " instructions/distribution-guidance "\n")
                                    "- Only mention maxima, minima, rankings, or counts when <query_execution> is not truncated, or after running a follow-up query that computes them against the full result\n"
                                    "- If <query_execution> says results were omitted and the user needs an answer from the data, your next step MUST be a follow-up tool call without asking permission first. For notebook queries, use execute_notebook_query_silently with the needed follow-up program so no chart is created. Do not produce a final answer until it returns\n"
                                    "- When mentioning a specific value from the chart, use the matching metabase://data-point URL from the linked result value, and choose natural link text for your answer\n"

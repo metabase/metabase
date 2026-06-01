@@ -166,13 +166,13 @@
                                                               {:structured-output {:query-id "q-1"
                                                                                    :query {:database 1}
                                                                                    :result-columns []}})
-                                  query-results/execute-query-untruncated (fn [query]
-                                                                            (is (= {:database 1} query))
-                                                                            {:status :completed
-                                                                             :result_columns [{:name "name"
-                                                                                               :display_name "Name"
-                                                                                               :type :type/Text}]
-                                                                             :rows [["Ada"]]})]
+                                  query-results/execute-query (fn [query]
+                                                                (is (= {:database 1} query))
+                                                                {:status :completed
+                                                                 :result_columns [{:name "name"
+                                                                                   :display_name "Name"
+                                                                                   :type :type/Text}]
+                                                                 :rows [["Ada"]]})]
         (let [result (agent-tools/execute-notebook-query-silently-tool
                       {:reasoning "inspect all rows"
                        :source_entity {:type "table" :id 6}

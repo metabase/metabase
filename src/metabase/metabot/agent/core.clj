@@ -150,6 +150,7 @@
    [:charts {:optional true} [:map-of [:or :string :keyword] :map]]
    [:chart-configs {:optional true} [:map-of [:or :string :keyword] :map]]
    [:data-points {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:data-selections {:optional true} [:map-of [:or :string :keyword] :map]]
    [:todos {:optional true} [:sequential :map]]
    [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]
    [:link-registry {:optional true} [:map-of [:or :string :keyword] :string]]])
@@ -292,6 +293,17 @@
    memory
    parts))
 
+(defn- extract-data-selections
+  "Extract and store multi-point chart selections from tool outputs."
+  [memory parts]
+  (transduce
+   (comp (filter #(= :tool-output (:type %)))
+         (map #(get-structured-output (:result %)))
+         (keep :data-selections))
+   (completing memory/remember-data-selections)
+   memory
+   parts))
+
 (defn- update-memory
   "Update memory with parts from an iteration."
   [memory parts]
@@ -299,7 +311,8 @@
       (memory/add-step parts)
       (extract-queries parts)
       (extract-charts parts)
-      (extract-data-points parts)))
+      (extract-data-points parts)
+      (extract-data-selections parts)))
 
 ;;; Context seeding
 
@@ -447,6 +460,7 @@
                          (memory/load-queries-from-state seeded)
                          (memory/load-charts-from-state seeded)
                          (memory/load-data-points-from-state seeded)
+                         (memory/load-data-selections-from-state seeded)
                          (memory/load-transforms-from-state seeded)
                          (memory/load-todos-from-state seeded)
                          (memory/load-link-registry-from-state seeded))

@@ -2,6 +2,7 @@ import L from "leaflet";
 import _ from "underscore";
 
 import { getSubpathSafeUrl } from "metabase/urls";
+import { animateMentionHighlightContract } from "metabase/visualizations/lib/mention-highlight";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -274,11 +275,13 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
       element.style.opacity =
         selectedRowIndex == null || isSelected ? "" : "0.3";
       element.style.filter = isSelected
-        ? `drop-shadow(0 0 6px var(--mb-color-${
-            selectedViaMention ? "summarize" : "brand"
-          }))`
+        ? "drop-shadow(0 0 6px var(--mb-color-brand))"
         : "";
       element.style.zIndex = isSelected ? "1000" : "";
+
+      if (isSelected && selectedViaMention) {
+        animateMentionHighlightContract(element);
+      }
     }
   }
 }

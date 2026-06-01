@@ -210,7 +210,8 @@
    execution-output
    "</result>"
    "<instructions>"
-   "Use these complete query results to answer the user. Do not create or mention a chart link for this silent inspection query."
+   "Use these query results to answer the user. Do not create or mention a chart link for this silent inspection query."
+   "If the results are a representative sample, you may cite the sampled values — including the minimum and maximum — but use a follow-up aggregate query for any exact count, ranking, or total that requires the full result."
    "When mentioning a specific value from the result, use the matching metabase://data-point URL from the linked result value and choose natural link text for your answer."
    "</instructions>"))
 
@@ -226,9 +227,9 @@
           structured   (or (:structured-output query-result) (:structured_output query-result))]
       (if-let [query (:query structured)]
         (let [{:keys [output structured-output]} (query-results/format-untruncated-execution-result
-                                                  (query-results/execute-query-untruncated query))]
+                                                  (query-results/execute-query query))]
           (cond-> {:output (silent-execution-output output)
-                   :instructions "Use these complete query results to answer the user. No chart or visualization was created."}
+                   :instructions "Use these query results to answer the user. No chart or visualization was created."}
             structured-output (assoc :structured-output structured-output)))
         {:output "Failed to execute notebook query: no executable query was constructed."}))
     (catch Exception e
@@ -276,8 +277,9 @@
                  "Next steps to present the chart to the user:"
                  "- Use the <query_execution> block in this tool result to inspect the executed chart data"
                  "- Proactively mention one concrete observation from the data, such as a trend, outlier, or notable category"
-                 "- Only mention maxima, minima, rankings, or counts when <query_execution> is not truncated, or after running a follow-up query that computes them against the full result"
-                 "- If <query_execution> says results were omitted and the user needs an answer from the data, your next step MUST be execute_notebook_query_silently with the needed follow-up program, without asking permission first. Do not produce a final answer until it returns"
+                 (str "- " instructions/distribution-guidance)
+                 "- When <query_execution> is marked sampled=\"true\", it is a representative sample of the chart's own rows (minimum, maximum, outliers, and evenly spaced trend points). Every sampled row is a real point on the user's chart, so you may cite the sampled values — including the minimum and maximum — and link them"
+                 "- Only run execute_notebook_query_silently when you need an exact count, ranking, or aggregate that the sample cannot give. When you do, do it without asking permission first and do not produce a final answer until it returns"
                  "- When mentioning a specific value from the chart, use the matching metabase://data-point URL from the linked result value, and choose natural link text for your answer"
                  (str "- Always provide a direct link using: `" link "`")
                  "- If creating multiple charts, present all chart links"))

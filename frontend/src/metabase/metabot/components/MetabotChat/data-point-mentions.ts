@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { uuid } from "metabase/utils/uuid";
 import type { ClickObject } from "metabase-lib";
 import type {
@@ -30,10 +31,27 @@ export type DataPointMentionEvent = {
   target?: DataPointMentionTarget;
 };
 
+export type DataSelection = {
+  targets: DataPointMentionTarget[];
+  label?: string;
+  count?: number;
+};
+
+export type DataSelectionMentionEvent = {
+  id?: string;
+  targets?: DataPointMentionTarget[];
+};
+
 export const getDataPointTargetsFromState = (
   state: any,
 ): Record<string, DataPointMentionTarget | undefined> | undefined => {
   return state?.["data-points"] ?? state?.data_points;
+};
+
+export const getDataSelectionsFromState = (
+  state: any,
+): Record<string, DataSelection | undefined> | undefined => {
+  return state?.["data-selections"] ?? state?.data_selections;
 };
 
 let nextDataPointRangeMentionId = 1;
@@ -211,8 +229,28 @@ const getTargetValueColumnIndex = (target: DataPointMentionTarget) => {
     : (target.row?.length ?? 1) - 1;
 };
 
+const normalizeTimestamp = (value: RowValue) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const parsed = parseTimestamp(value);
+  return parsed.isValid() ? parsed.format("YYYY-MM-DDTHH:mm:ss") : null;
+};
+
 const isSameValue = (left: RowValue, right: RowValue) => {
-  return left === right || String(left) === String(right);
+  if (left === right || String(left) === String(right)) {
+    return true;
+  }
+
+  const leftTimestamp = normalizeTimestamp(left);
+  const rightTimestamp = normalizeTimestamp(right);
+
+  return (
+    leftTimestamp != null &&
+    rightTimestamp != null &&
+    leftTimestamp === rightTimestamp
+  );
 };
 
 const isSameDataPointTarget = (
@@ -361,3 +399,21 @@ export const getDataPointMentionEvent = (event: Event): DataPointMentionEvent =>
 
 export const getDataPointMentionEventId = (event: Event) =>
   getDataPointMentionEvent(event).id;
+
+export const getClickedObjectsFromDataSelection = (
+  result: Dataset | null,
+  targets: DataPointMentionTarget[] | undefined,
+): ClickObject[] => {
+  if (!result?.data || !targets?.length) {
+    return [];
+  }
+
+  return targets
+    .map((target) => getClickedObjectFromDataPointTarget(result, target))
+    .filter((clicked): clicked is ClickObject => clicked != null);
+};
+
+export const getDataSelectionMentionEvent = (
+  event: Event,
+): DataSelectionMentionEvent =>
+  (event as CustomEvent<DataSelectionMentionEvent>).detail ?? {};

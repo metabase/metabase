@@ -236,6 +236,7 @@
        :total_tokens    (transduce (keep :total_tokens) + 0 messages)
        :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
        :slack_permalink (slack-permalink conversation)
+       :state           (:state conversation)
        :chat_messages   (metabot-persistence/messages->chat-messages
                          messages {:include-errored? true})
        :queries         (analytics.queries/messages->generated-queries messages)

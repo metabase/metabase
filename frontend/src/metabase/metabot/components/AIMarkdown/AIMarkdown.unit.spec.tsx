@@ -102,4 +102,33 @@ describe("AIMarkdown", () => {
     );
     window.removeEventListener("metabot:data-point-mention-click", listener);
   });
+
+  it("targets a specific column via the trailing column index", async () => {
+    const listener = jest.fn();
+    const dataPointId = "f10cfc50-2a0b-4c67-a064-7585d17974c7";
+    const target = {
+      columns: ["Customer", "Revenue"],
+      row: ["Alanis Kovacek", 123],
+      value_column_index: 1,
+    };
+    window.addEventListener("metabot:data-point-mention-click", listener);
+
+    // The URL targets column 0 (Customer), overriding the stored value column.
+    setup({
+      children: `[Alanis Kovacek](metabase://data-point/${dataPointId}/0)`,
+      dataPointTargets: { [dataPointId]: target },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /Alanis/ }));
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          id: dataPointId,
+          target: { ...target, value_column_index: 0 },
+        }),
+      }),
+    );
+    window.removeEventListener("metabot:data-point-mention-click", listener);
+  });
 });

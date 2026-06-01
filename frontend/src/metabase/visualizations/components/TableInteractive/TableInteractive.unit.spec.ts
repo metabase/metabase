@@ -41,6 +41,7 @@ describe("getMentionedTableCell", () => {
       rowIndex: 1,
       columnIndex: 1,
       columnId: "REVENUE",
+      columnRendered: true,
     });
   });
 
@@ -70,6 +71,37 @@ describe("getMentionedTableCell", () => {
       rowIndex: 1,
       columnIndex: 1,
       columnId: "REVENUE",
+      columnRendered: true,
+    });
+  });
+
+  it("falls back to the whole row when the referenced column is not rendered", () => {
+    const clicked: ClickObject = {
+      value: "Gadget",
+      column: product,
+      origin: {
+        cols: [createdAt, product, revenue],
+        row: ["2026-02-01", "Gadget", 456],
+      },
+    };
+
+    expect(
+      getMentionedTableCell({
+        clicked,
+        data: {
+          cols: [createdAt, revenue],
+          rows: [
+            ["2026-01-01", 123],
+            ["2026-02-01", 456],
+          ],
+        },
+        isPivoted: false,
+      }),
+    ).toEqual({
+      rowIndex: 1,
+      columnIndex: 0,
+      columnId: "CREATED_AT",
+      columnRendered: false,
     });
   });
 

@@ -19,8 +19,12 @@
         (is (str/includes? output "<query_execution status=\"completed\""))
         (is (str/includes? output "reference_type=\"query\" reference_id=\"q1\""))
         (is (str/includes? output "[query q1](metabase://query/q1)"))
-        (is (re-find #"\[Ada\]\(metabase://data-point/[0-9a-f-]{36}\)" output))
+        ;; the value column is linked with an explicit 0-based column index
+        (is (re-find #"\[Ada\]\(metabase://data-point/[0-9a-f-]{36}/0\)" output))
         (is (re-find #"metabase://data-point/[0-9a-f-]{36}" output))
+        ;; the LLM is told how to target any other column in the row by reusing the row id
+        (is (str/includes? output "metabase://data-point/{id}/{column_index}"))
+        (is (str/includes? output "Columns (0-based): 0=Name"))
         (is (str/includes? output "choose natural link text"))
         (is (not (str/includes? output "<data_point_links")))
         (is (not (str/includes? output "Markdown Mention")))
@@ -43,66 +47,90 @@
                     {:state {:charts {"chart-1" {:queries [{:database 1 :type :query}]}}}})]
         (is (str/includes? (:output result) "<query_execution status=\"completed\""))))))
 
-(deftest query-result-summary-row-limit-test
-  (testing "allows up to 100 rows"
-    (let [summary (#'query-results/query-result-summary
-                   {:status :completed
-                    :row_count 100
-                    :data {:cols [{:name "name"}]
-                           :rows (mapv vector (range 100))}})]
-      (is (= :completed (:status summary)))
-      (is (= 100 (count (:rows summary))))))
+(deftest representative-indices-test
+  (testing "returns every index when at or below the target"
+    (is (= [0 1 2] (#'query-results/representative-indices [1.0 2.0 3.0] 10))))
 
-  (testing "omits previews when more than 100 rows are returned"
-    (let [summary (#'query-results/query-result-summary
-                   {:status :completed
-                    :data {:cols [{:name "name"}]
-                           :rows (mapv vector (range 101))}})]
-      (is (= :completed (:status summary)))
-      (is (empty? (:rows summary)))
-      (is (nil? (:result_columns summary)))
-      (is (true? (:truncated? summary)))))
+  (testing "down-samples while always keeping first, last, and ascending order"
+    (let [values (mapv double (range 500))
+          idxs   (#'query-results/representative-indices values 20)]
+      (is (<= (count idxs) 20))
+      (is (contains? (set idxs) 0))
+      (is (contains? (set idxs) 499))
+      (is (= idxs (sort idxs)))))
 
-  (testing "omits previews when row_count reports more than 100 rows"
-    (let [summary (#'query-results/query-result-summary
-                   {:status :completed
-                    :row_count 101
-                    :data {:cols [{:name "name"}]
-                           :rows (mapv vector (range 100))}})]
-      (is (= :completed (:status summary)))
-      (is (empty? (:rows summary)))
-      (is (nil? (:result_columns summary)))
-      (is (true? (:truncated? summary))))))
+  (testing "captures a statistical outlier spike"
+    (let [values (assoc (mapv double (range 500)) 137 1.0e9)
+          idxs   (#'query-results/representative-indices values 20)]
+      (is (contains? (set idxs) 137))))
 
-(deftest untruncated-query-result-summary-test
-  (testing "keeps all rows for silent query inspection"
-    (let [summary (#'query-results/untruncated-query-result-summary
-                   {:status :completed
-                    :row_count 101
-                    :data {:cols [{:name "name"}]
-                           :rows (mapv vector (range 101))}})]
-      (is (= :completed (:status summary)))
-      (is (= 101 (count (:rows summary))))
-      (is (= [{:name "name" :display_name "name" :type nil :description nil}]
-             (:result_columns summary)))
-      (is (not (:truncated? summary))))))
+  (testing "still samples when the value column is non-numeric"
+    (let [idxs (#'query-results/representative-indices (vec (repeat 500 nil)) 20)]
+      (is (<= (count idxs) 20))
+      (is (contains? (set idxs) 0))
+      (is (contains? (set idxs) 499)))))
+
+(deftest sample-summary-test
+  (testing "keeps results at or below the budget untouched"
+    (let [summary {:status         :completed
+                   :row_count      100
+                   :result_columns [{:name "v"}]
+                   :rows           (mapv vector (range 100))}]
+      (is (= summary (#'query-results/sample-summary summary)))
+      (is (not (:sampled? (#'query-results/sample-summary summary))))))
+
+  (testing "down-samples larger results to a representative subset of real rows"
+    (let [n       1000
+          ;; col0 = index, col1 = value with a spike outlier at row 500
+          rows    (mapv (fn [i] [i (if (= i 500) 999999 i)]) (range n))
+          summary {:status         :completed
+                   :row_count      n
+                   :result_columns [{:name "i"} {:name "v"}]
+                   :rows           rows}
+          sampled (#'query-results/sample-summary summary)
+          kept    (:rows sampled)]
+      (is (true? (:sampled? sampled)))
+      (is (= n (:total-row-count sampled)))
+      (is (<= (count kept) 100))
+      (is (= (first rows) (first kept)) "first row is kept")
+      (is (= (last rows) (last kept)) "last row is kept")
+      (is (some #(= 999999 (second %)) kept) "the outlier/max spike is kept")
+      (is (= (map first kept) (sort (map first kept))) "original order is preserved")
+      ;; every kept row is a real row from the original result
+      (is (every? (set rows) kept)))))
 
 (deftest execution-summary-xml-test
-  (testing "oversized results are omitted and include a reusable reference"
-    (let [xml (#'query-results/execution-summary->xml
-               {:status :completed
-                :row_count 101
-                :rows []
-                :truncated? true}
-               nil
-               {:type "query" :id "q1" :url "metabase://query/q1"})]
-      (is (str/includes? xml "truncated=\"true\""))
-      (is (str/includes? xml "results_omitted=\"true\""))
+  (testing "oversized results are surfaced as a representative sample, not omitted"
+    (let [summary {:status          :completed
+                   :row_count       5000
+                   :sampled?        true
+                   :total-row-count 5000
+                   :result_columns  [{:name "day" :display_name "Day" :type :type/Date}
+                                     {:name "v" :display_name "V" :type :type/Integer}]
+                   :rows            [["2024-01-01" 5] ["2024-06-01" 999]]}
+          links   (#'query-results/data-point-link-rows summary)
+          xml     (#'query-results/execution-summary->xml
+                   summary links {:type "query" :id "q1" :url "metabase://query/q1"})]
+      (is (str/includes? xml "sampled=\"true\""))
+      (is (str/includes? xml "total_row_count=\"5000\""))
+      (is (not (str/includes? xml "results_omitted")))
+      (is (str/includes? xml "representative sample"))
       (is (str/includes? xml "reference_type=\"query\" reference_id=\"q1\""))
-      (is (str/includes?
-           xml
-           "The generated query returned more than 100 rows, so the results are omitted"))
-      (is (str/includes? xml "Your next step MUST be a tool call"))
-      (is (str/includes? xml "Do not produce a final answer until that tool call returns"))
       (is (str/includes? xml "[query q1](metabase://query/q1)"))
-      (is (not (str/includes? xml "<query_results>"))))))
+      (is (str/includes? xml "<query_results>"))
+      (is (re-find #"metabase://data-point/[0-9a-f-]{36}" xml))
+      ;; value column (index 1 of two columns) is linked with its explicit index
+      (is (re-find #"metabase://data-point/[0-9a-f-]{36}/1" xml))
+      ;; the column-index legend lets the LLM target the other (Day) column
+      (is (str/includes? xml "Columns (0-based): 0=Day, 1=V"))))
+
+  (testing "small results show all rows"
+    (let [summary {:status         :completed
+                   :row_count      2
+                   :result_columns [{:name "v" :display_name "V" :type :type/Integer}]
+                   :rows           [[1] [2]]}
+          links   (#'query-results/data-point-link-rows summary)
+          xml     (#'query-results/execution-summary->xml summary links nil)]
+      (is (not (str/includes? xml "sampled=\"true\"")))
+      (is (str/includes? xml "Showing all 2 rows"))
+      (is (str/includes? xml "<query_results>")))))

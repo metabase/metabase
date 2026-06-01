@@ -5,6 +5,7 @@ import L from "leaflet";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/ui/utils/colors";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
+import { animateMentionHighlightStroke } from "metabase/visualizations/lib/mention-highlight";
 import type { GeoJSONData, Series } from "metabase-types/api";
 
 import { CardRenderer } from "./CardRenderer";
@@ -88,13 +89,21 @@ export const LeafletChoropleth = ({
           opacity: hasSelection && !isSelected ? 0.3 : 1,
           color:
             isSelected && selectedFeatureViaMention
-              ? "var(--mb-color-summarize)"
+              ? "var(--mb-color-brand)"
               : "white",
           fillOpacity: hasSelection && !isSelected ? 0.25 : 1,
         };
       };
 
+      let mentionSelectedLayer: L.Layer | null = null;
+
       const onEachFeature = (feature: Feature, layer: L.Layer) => {
+        if (
+          selectedFeatureViaMention &&
+          selectedFeatureKey === getFeatureKey(feature)
+        ) {
+          mentionSelectedLayer = layer;
+        }
         layer.on({
           mousemove: (e: L.LeafletMouseEvent) => {
             onHoverFeature({
@@ -128,7 +137,17 @@ export const LeafletChoropleth = ({
         map.fitBounds(minimalBounds);
       }
 
+      // Once the selected region's path is in the DOM, play the "contract onto
+      // the region" animation by tightening its stroke from thick to resting.
+      const mentionAnimationFrame = window.requestAnimationFrame(() => {
+        const path = (mentionSelectedLayer as L.Path | null)?.getElement?.();
+        if (path instanceof SVGElement) {
+          animateMentionHighlightStroke(path, 3);
+        }
+      });
+
       return () => {
+        window.cancelAnimationFrame(mentionAnimationFrame);
         map.remove();
       };
     }}

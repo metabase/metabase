@@ -10,6 +10,7 @@ import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import * as React from "react";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
+import { animateMentionHighlightStroke } from "metabase/visualizations/lib/mention-highlight";
 import { truncateText } from "metabase/visualizations/lib/text";
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type { Margin } from "metabase/visualizations/shared/types/layout";
@@ -90,6 +91,15 @@ const RowChartView = <TDatum,>({
   onHover,
   onClick,
 }: RowChartViewProps<TDatum>) => {
+  // Track which selected bar we've already played the "contract" animation for,
+  // so it runs once per new mention selection rather than on every re-render.
+  const animatedSelectionKeyRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (selectedData == null) {
+      animatedSelectionKeyRef.current = null;
+    }
+  }, [selectedData]);
+
   const innerBarScale = isStacked
     ? null
     : scaleBand({
@@ -198,8 +208,21 @@ const RowChartView = <TDatum,>({
                   height={height}
                   fill={series.color}
                   opacity={opacity}
-                  stroke={isSelected ? "var(--mb-color-summarize)" : undefined}
+                  stroke={isSelected ? "var(--mb-color-brand)" : undefined}
                   strokeWidth={isSelected ? 3 : undefined}
+                  innerRef={
+                    isSelected
+                      ? (el: SVGRectElement | null) => {
+                          if (
+                            el &&
+                            animatedSelectionKeyRef.current !== barKey
+                          ) {
+                            animatedSelectionKeyRef.current = barKey;
+                            animateMentionHighlightStroke(el, 3);
+                          }
+                        }
+                      : undefined
+                  }
                   onClick={(event) => onClick?.(event, bar)}
                   onMouseEnter={(event) => onHover?.(event, bar)}
                   onMouseLeave={(event) => onHover?.(event, null)}

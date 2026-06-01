@@ -10,7 +10,10 @@ import {
 import { parseMetabaseProtocolLink } from "metabase/metabot/utils/links";
 import { b64url_to_utf8 } from "metabase/utils/encoding";
 
-import type { DataPointMentionTarget } from "../MetabotChat/data-point-mentions";
+import type {
+  DataPointMentionTarget,
+  DataSelection,
+} from "../MetabotChat/data-point-mentions";
 
 import S from "./AIMarkdown.module.css";
 import { InternalLink } from "./components/InternalLink";
@@ -20,32 +23,88 @@ type AIMarkdownProps = MarkdownProps & {
   onInternalLinkClick?: (link: string) => void;
   singleNewlinesAreParagraphs?: boolean;
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+  dataSelections?: Record<string, DataSelection | undefined>;
 };
+
+// Apply a URL-supplied column index to a target, overriding which column the
+// data point highlights. This lets a single per-row data point id link any cell
+// in the row — a name, category, date, etc. — not just the value column.
+const applyColumnIndex = (
+  target: DataPointMentionTarget | undefined,
+  columnIndex: number | undefined,
+): DataPointMentionTarget | undefined =>
+  target && columnIndex != null
+    ? { ...target, value_column_index: columnIndex }
+    : target;
 
 const parseDataPointLink = (
   href: string | undefined,
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>,
 ) => {
+  // Numeric range-mention ids never carry a column segment.
   const numericMatch = href?.match(/^metabase:\/\/data-point\/(\d+)$/);
   if (numericMatch) {
     return { id: Number(numericMatch[1]), model: "data-point" as const };
   }
 
-  const targetMatch = href?.match(/^metabase:\/\/data-point\/([^/?#]+)$/);
+  // Row data points: metabase://data-point/{id} or metabase://data-point/{id}/{columnIndex}.
+  const targetMatch = href?.match(
+    /^metabase:\/\/data-point\/([^/?#]+)(?:\/(\d+))?$/,
+  );
   if (!targetMatch) {
     return null;
   }
 
   const dataPointId = targetMatch[1];
+  const columnIndex =
+    targetMatch[2] != null ? Number(targetMatch[2]) : undefined;
+
   const target = dataPointTargets?.[dataPointId];
   if (target) {
-    return { id: dataPointId, model: "data-point" as const, target };
+    return {
+      id: dataPointId,
+      model: "data-point" as const,
+      target: applyColumnIndex(target, columnIndex),
+    };
   }
 
   try {
     return {
       model: "data-point" as const,
-      target: JSON.parse(b64url_to_utf8(targetMatch[1])),
+      target: applyColumnIndex(
+        JSON.parse(b64url_to_utf8(dataPointId)),
+        columnIndex,
+      ),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const parseDataSelectionLink = (
+  href: string | undefined,
+  dataSelections?: Record<string, DataSelection | undefined>,
+) => {
+  const match = href?.match(/^metabase:\/\/data-selection\/([^/?#]+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const selectionId = match[1];
+  const selection = dataSelections?.[selectionId];
+  if (selection?.targets) {
+    return {
+      id: selectionId,
+      model: "data-selection" as const,
+      targets: selection.targets,
+    };
+  }
+
+  try {
+    return {
+      id: selectionId,
+      model: "data-selection" as const,
+      targets: JSON.parse(b64url_to_utf8(selectionId)),
     };
   } catch {
     return null;
@@ -58,7 +117,11 @@ const splitMessageLinesAsParagraphs = (message: string) =>
 const getComponents = ({
   onInternalLinkClick,
   dataPointTargets,
-}: Pick<AIMarkdownProps, "onInternalLinkClick" | "dataPointTargets">) => ({
+  dataSelections,
+}: Pick<
+  AIMarkdownProps,
+  "onInternalLinkClick" | "dataPointTargets" | "dataSelections"
+>) => ({
   a: ({
     href,
     children,
@@ -72,6 +135,7 @@ const getComponents = ({
   }) => {
     const parsed =
       parseDataPointLink(node.properties.href, dataPointTargets) ??
+      parseDataSelectionLink(node.properties.href, dataSelections) ??
       parseMetabaseProtocolLink(node.properties.href);
     if (parsed) {
       return (
@@ -112,13 +176,19 @@ export const AIMarkdown = memo(
     className,
     onInternalLinkClick,
     dataPointTargets,
+    dataSelections,
     children,
     singleNewlinesAreParagraphs = false,
     ...props
   }: AIMarkdownProps) => {
     const components = useMemo(
-      () => getComponents({ onInternalLinkClick, dataPointTargets }),
-      [onInternalLinkClick, dataPointTargets],
+      () =>
+        getComponents({
+          onInternalLinkClick,
+          dataPointTargets,
+          dataSelections,
+        }),
+      [onInternalLinkClick, dataPointTargets, dataSelections],
     );
 
     const normalizedChildren = useMemo(

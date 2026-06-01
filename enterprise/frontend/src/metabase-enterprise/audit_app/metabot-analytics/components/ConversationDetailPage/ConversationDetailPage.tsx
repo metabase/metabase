@@ -11,6 +11,10 @@ import {
   AgentMessage,
   Messages,
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
+import {
+  type DataPointMentionTarget,
+  getDataPointTargetsFromState,
+} from "metabase/metabot/components/MetabotChat/data-point-mentions";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
 import type {
   MetabotAgentId,
@@ -90,6 +94,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   // an agentId, but selectors return undefined for an unknown id, so interactive
   // affordances stay inert.
   const agentId: MetabotAgentId = `chat_${conversation.conversation_id}`;
+  const dataPointTargets = getDataPointTargetsFromState(conversation.state);
 
   return (
     <MetabotAdminLayout>
@@ -116,6 +121,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   agentId={agentId}
                   feedback={item}
                   chatMessages={chatMessages}
+                  dataPointTargets={dataPointTargets}
                 />
               ))}
             </Stack>
@@ -138,6 +144,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               isDoingScience={false}
               debug
               readonly
+              dataPointTargets={dataPointTargets}
             />
           </Card>
         </Stack>
@@ -175,10 +182,12 @@ function FeedbackCard({
   agentId,
   feedback,
   chatMessages,
+  dataPointTargets,
 }: {
   agentId: MetabotAgentId;
   feedback: ConversationFeedback;
   chatMessages: MetabotChatMessage[];
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
 }) {
   const agentResponse = useMemo(
     () =>
@@ -227,6 +236,7 @@ function FeedbackCard({
             hideActions
             getCopyText={noopGetCopyText}
             submittedFeedback={undefined}
+            dataPointTargets={dataPointTargets}
             bg="background-secondary"
             p="md"
             pb="0"

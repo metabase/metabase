@@ -183,6 +183,8 @@ export interface VisualizationProps {
   hovered?: HoveredObject | null;
   clicked?: ClickObject | null;
   clickedViaMention?: ClickObject | null;
+  /** Multiple points highlighted at once via a `metabase://data-selection` mention. */
+  clickedViaMentionGroup?: ClickObject[] | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];

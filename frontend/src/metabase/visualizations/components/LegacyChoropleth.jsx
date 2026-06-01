@@ -4,6 +4,7 @@ import * as d3 from "d3";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { animateMentionHighlightStroke } from "metabase/visualizations/lib/mention-highlight";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 /** @type {string | null | undefined} */
@@ -72,50 +73,55 @@ export const LegacyChoropleth = ({
             className={cx(CS.flexFull, CS.m1)}
             viewBox={`${minX} ${minY} ${width} ${height}`}
           >
-            {geoJson.features.map((feature, index) => (
-              <path
-                data-testid="choropleth-feature"
-                key={index}
-                d={geo(feature, index)}
-                stroke={
-                  selectedFeatureKey &&
-                  selectedFeatureViaMention &&
-                  getFeatureKey(feature) === selectedFeatureKey
-                    ? "var(--mb-color-summarize)"
-                    : "white"
-                }
-                strokeWidth={
-                  selectedFeatureKey &&
-                  getFeatureKey(feature) === selectedFeatureKey
-                    ? 3
-                    : 1
-                }
-                opacity={
-                  selectedFeatureKey &&
-                  getFeatureKey(feature) !== selectedFeatureKey
-                    ? 0.3
-                    : 1
-                }
-                fill={getColor(feature)}
-                onMouseMove={(e) =>
-                  onHoverFeature({
-                    feature: feature,
-                    event: e.nativeEvent,
-                  })
-                }
-                onMouseLeave={() => onHoverFeature(null)}
-                className={cx({ [CS.cursorPointer]: !!onClickFeature })}
-                onClick={
-                  onClickFeature
-                    ? (e) =>
-                        onClickFeature({
-                          feature: feature,
-                          event: e.nativeEvent,
-                        })
-                    : undefined
-                }
-              />
-            ))}
+            {geoJson.features.map((feature, index) => {
+              const isMentionSelected =
+                selectedFeatureKey &&
+                selectedFeatureViaMention &&
+                getFeatureKey(feature) === selectedFeatureKey;
+              return (
+                <path
+                  data-testid="choropleth-feature"
+                  key={index}
+                  ref={
+                    isMentionSelected
+                      ? (el) => el && animateMentionHighlightStroke(el, 3)
+                      : undefined
+                  }
+                  d={geo(feature, index)}
+                  stroke={isMentionSelected ? "var(--mb-color-brand)" : "white"}
+                  strokeWidth={
+                    selectedFeatureKey &&
+                    getFeatureKey(feature) === selectedFeatureKey
+                      ? 3
+                      : 1
+                  }
+                  opacity={
+                    selectedFeatureKey &&
+                    getFeatureKey(feature) !== selectedFeatureKey
+                      ? 0.3
+                      : 1
+                  }
+                  fill={getColor(feature)}
+                  onMouseMove={(e) =>
+                    onHoverFeature({
+                      feature: feature,
+                      event: e.nativeEvent,
+                    })
+                  }
+                  onMouseLeave={() => onHoverFeature(null)}
+                  className={cx({ [CS.cursorPointer]: !!onClickFeature })}
+                  onClick={
+                    onClickFeature
+                      ? (e) =>
+                          onClickFeature({
+                            feature: feature,
+                            event: e.nativeEvent,
+                          })
+                      : undefined
+                  }
+                />
+              );
+            })}
           </svg>
         )}
       </ShouldUpdate>

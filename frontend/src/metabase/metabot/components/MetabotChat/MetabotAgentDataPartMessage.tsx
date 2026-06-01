@@ -11,14 +11,16 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { useMetabotAgent } from "metabase/metabot/hooks";
 import {
   type MetabotAgentDataPartMessage,
   type MetabotAgentId,
+  focusPromptInput as focusPromptInputAction,
+  getPrompt,
   rememberDataPointTarget,
+  setPrompt as setPromptAction,
 } from "metabase/metabot/state";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useStore } from "metabase/redux";
 import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { TableSelectionMention } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
@@ -40,11 +42,13 @@ import {
   type DataPointMentionTarget,
   getChartData,
   getClickedObjectFromDataPointTarget,
+  getClickedObjectsFromDataSelection,
   getDataPointMention,
   getDataPointMentionEvent,
   getDataPointMentionEventId,
   getDataPointMentionMarkdown,
   getDataPointRangeMentionMarkdown,
+  getDataSelectionMentionEvent,
   getNextDataPointRangeMentionId,
   getSelectedChartData,
   getSelectedChartRange,
@@ -164,8 +168,20 @@ const EmbeddedQuestionCard = ({
   title?: string;
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
 }) => {
-  const { prompt, setPrompt, focusPromptInput } = useMetabotAgent(agentId);
   const dispatch = useDispatch();
+  const store = useStore();
+  // Read the prompt lazily from the store at click time instead of subscribing
+  // to it. Subscribing here would re-render this card (and its embedded chart)
+  // on every keystroke, which wipes and re-applies the data-point highlight,
+  // causing it to flash and resetting its auto-dismiss timer.
+  const setPrompt = useCallback(
+    (value: string) => dispatch(setPromptAction({ agentId, prompt: value })),
+    [dispatch, agentId],
+  );
+  const focusPromptInput = useCallback(
+    () => dispatch(focusPromptInputAction({ agentId })),
+    [dispatch, agentId],
+  );
   const cardRef = useRef<HTMLDivElement>(null);
   const questionRef = useRef<Question | null>(null);
   const resultRef = useRef<Dataset | null>(null);
@@ -176,6 +192,9 @@ const EmbeddedQuestionCard = ({
   );
   const [selectedClickedViaMention, setSelectedClickedViaMention] =
     useState<ClickObject | null>(null);
+  const [selectedClickedGroup, setSelectedClickedGroup] = useState<
+    ClickObject[] | null
+  >(null);
   const [isHighlightingSelection, setIsHighlightingSelection] = useState(false);
   const { questionHash, questionName } = useMemo(() => {
     try {
@@ -231,6 +250,7 @@ const EmbeddedQuestionCard = ({
         });
         setSelectedClicked(null);
         setSelectedClickedViaMention(null);
+        setSelectedClickedGroup(null);
         setIsHighlightingSelection(false);
 
         if (question && selectedData) {
@@ -302,6 +322,42 @@ const EmbeddedQuestionCard = ({
     };
   }, [dataPointTargets, questionName, selectedClicked, selectedContext]);
 
+  useEffect(() => {
+    const handleSelectionClick = (event: Event) => {
+      const { targets } = getDataSelectionMentionEvent(event);
+      const clickedObjects = getClickedObjectsFromDataSelection(
+        resultRef.current,
+        targets,
+      );
+
+      if (clickedObjects.length === 0) {
+        return;
+      }
+
+      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setSelectedClicked(null);
+      setSelectedClickedViaMention(null);
+      setSelectedClickedGroup(null);
+      setIsHighlightingSelection(false);
+
+      requestAnimationFrame(() => {
+        setSelectedClickedGroup(clickedObjects);
+        setIsHighlightingSelection(true);
+      });
+    };
+
+    window.addEventListener(
+      "metabot:data-selection-mention-click",
+      handleSelectionClick,
+    );
+    return () => {
+      window.removeEventListener(
+        "metabot:data-selection-mention-click",
+        handleSelectionClick,
+      );
+    };
+  }, []);
+
   const handleVisualizationClick = useCallback(
     ({
       question,
@@ -335,6 +391,7 @@ const EmbeddedQuestionCard = ({
 
       setSelectedClicked(clicked);
       setSelectedClickedViaMention(null);
+      setSelectedClickedGroup(null);
       setIsHighlightingSelection(false);
 
       setSelectedContext({
@@ -357,7 +414,7 @@ const EmbeddedQuestionCard = ({
         selectedData,
         mention.id,
       );
-      const trimmedPrompt = prompt.trim();
+      const trimmedPrompt = (getPrompt(store.getState(), agentId) ?? "").trim();
       setPrompt(
         trimmedPrompt ? `${trimmedPrompt} ${mentionMarkdown}` : mentionMarkdown,
       );
@@ -368,9 +425,9 @@ const EmbeddedQuestionCard = ({
       dataPointTargets,
       dispatch,
       focusPromptInput,
-      prompt,
       questionName,
       setPrompt,
+      store,
     ],
   );
 
@@ -414,11 +471,11 @@ const EmbeddedQuestionCard = ({
         selectedRange,
         mentionId,
       );
-      const trimmedPrompt = prompt.trim();
+      const trimmedPrompt = (getPrompt(store.getState(), agentId) ?? "").trim();
       setPrompt(trimmedPrompt ? `${trimmedPrompt} ${mention}` : mention);
       focusPromptInput();
     },
-    [focusPromptInput, prompt, questionName, setPrompt],
+    [agentId, focusPromptInput, questionName, setPrompt, store],
   );
 
   return (
@@ -476,6 +533,7 @@ const EmbeddedQuestionCard = ({
                           maxTableRows={10}
                           clicked={selectedClicked}
                           clickedViaMention={selectedClickedViaMention}
+                          clickedViaMentionGroup={selectedClickedGroup}
                           handleVisualizationClick={(
                             clicked: ClickObject | null,
                           ) =>

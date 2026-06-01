@@ -384,7 +384,7 @@ export function getPieChartOption(
       },
       select: {
         itemStyle: {
-          borderColor: renderingContext.getColor("summarize"),
+          borderColor: renderingContext.getColor("brand"),
           borderWidth: Math.max(borderWidth, 3),
         },
       },

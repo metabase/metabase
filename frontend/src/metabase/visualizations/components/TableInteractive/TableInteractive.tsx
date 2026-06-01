@@ -50,6 +50,7 @@ import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
 import { CLICKED_DATA_POINT_HIGHLIGHT_DURATION } from "metabase/visualizations/constants";
 import { formatValue } from "metabase/visualizations/lib/formatting";
+import { animateMentionHighlightRing } from "metabase/visualizations/lib/mention-highlight";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -221,16 +222,32 @@ export const getMentionedTableCell = ({
   const { cols, rows } = data;
   const { cols: originCols, row: originRow } = clicked.origin;
   const rowIndex = getRenderedRowIndex(rows, cols, originRow, originCols);
+
+  if (rowIndex < 0 || cols.length === 0) {
+    return null;
+  }
+
   const columnIndex = getRenderedColumnIndex(cols, originCols, clicked.column);
 
-  if (rowIndex < 0 || columnIndex < 0) {
-    return null;
+  // The mention resolved to a row, but the referenced column isn't rendered in
+  // this table — it's hidden via viz settings, or the table shows only a subset
+  // of the query's columns. Fall back to highlighting the whole row at the first
+  // visible column, so clicking still takes the user to the row they referenced
+  // instead of silently doing nothing.
+  if (columnIndex < 0) {
+    return {
+      rowIndex,
+      columnIndex: 0,
+      columnId: getColumnId(cols[0], 0, isPivoted),
+      columnRendered: false,
+    };
   }
 
   return {
     rowIndex,
     columnIndex,
     columnId: getColumnId(cols[columnIndex], columnIndex, isPivoted),
+    columnRendered: true,
   };
 };
 
@@ -938,29 +955,56 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     }
 
     const row = rowModel.rows[rowPosition];
-    const cell = row
+    const anchorCell = row
       ?.getAllCells()
       .find((cell) => cell.column.id === mentionedCell.columnId);
 
-    if (!cell) {
+    if (!anchorCell) {
       return;
     }
 
-    const selection = {
-      rowId: row.id,
-      columnId: mentionedCell.columnId,
-      cellId: cell.id,
-    };
-    if (selection.cellId === lastMentionedCellKeyRef.current) {
+    // When the referenced column isn't rendered we highlight the whole row
+    // (every visible data cell) rather than a single cell, so the fallback reads
+    // as "here's the row you mentioned" instead of an arbitrary cell.
+    const columnRendered = mentionedCell.columnRendered !== false;
+    const selectionKey = `${anchorCell.id}:${columnRendered ? "cell" : "row"}`;
+    if (selectionKey === lastMentionedCellKeyRef.current) {
       return;
     }
+
+    const rowCells = row
+      .getAllCells()
+      .filter((cell) => cell.column.id !== ROW_ID_COLUMN_ID);
+    const selections = columnRendered
+      ? [
+          {
+            rowId: row.id,
+            columnId: mentionedCell.columnId,
+            cellId: anchorCell.id,
+          },
+        ]
+      : rowCells.map((cell) => ({
+          rowId: row.id,
+          columnId: cell.column.id,
+          cellId: cell.id,
+        }));
+
+    if (selections.length === 0) {
+      return;
+    }
+
+    const anchor = {
+      rowId: row.id,
+      columnId: mentionedCell.columnId,
+      cellId: anchorCell.id,
+    };
 
     const columnPosition = table
       .getAllFlatColumns()
       .findIndex((column) => column.id === mentionedCell.columnId);
 
-    lastMentionedCellKeyRef.current = selection.cellId;
-    tableProps.selection.setCellSelection([selection], selection);
+    lastMentionedCellKeyRef.current = selectionKey;
+    tableProps.selection.setCellSelection(selections, anchor);
     if (mentionHighlightTimeoutIdRef.current != null) {
       window.clearTimeout(mentionHighlightTimeoutIdRef.current);
     }
@@ -969,9 +1013,27 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       mentionHighlightTimeoutIdRef.current = null;
     }, CLICKED_DATA_POINT_HIGHLIGHT_DURATION);
     scrollTo({
-      row: { index: rowPosition },
-      column: columnPosition >= 0 ? { index: columnPosition } : undefined,
+      row: { index: rowPosition, options: { align: "center" } },
+      column:
+        columnRendered && columnPosition >= 0
+          ? { index: columnPosition, options: { align: "center" } }
+          : undefined,
     });
+
+    // Once the cell is scrolled into view and rendered as selected, play the
+    // "contract onto the cell" ring so the highlight feels like it lands there.
+    // The ring targets a single cell, so we only play it when we resolved an
+    // exact column — a whole-row fallback is conveyed by the row selection.
+    if (columnRendered) {
+      requestAnimationFrame(() => {
+        const selectedCell = tableProps.gridRef.current?.querySelector(
+          '[role="gridcell"][aria-selected="true"]',
+        );
+        if (selectedCell) {
+          animateMentionHighlightRing(selectedCell);
+        }
+      });
+    }
   }, [clickedViaMention, mentionedCell, scrollTo, tableProps]);
 
   const lastMentionedSelectionKeyRef = useRef("");

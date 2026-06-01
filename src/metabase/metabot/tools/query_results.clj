@@ -1,5 +1,12 @@
 (ns metabase.metabot.tools.query-results
-  "Execute generated Metabot queries and format a compact result summary for the LLM."
+  "Execute generated Metabot queries and format a compact, representative result summary for the LLM.
+
+  When a generated query returns more rows than the LLM should see, we do not drop the data.
+  Instead we down-sample the query's own result to a representative subset of real rows — the
+  global minimum, the global maximum, notable statistical outliers, and evenly spaced points that
+  convey the overall trend. Because the sample is drawn from the same default-constraint row window
+  the client re-renders for the chart, every sampled row is a real data point on the chart the user
+  is viewing, so any value the model cites maps back onto that chart."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -10,8 +17,10 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-llm-result-rows 100)
-(def ^:private overflow-detection-result-rows (inc max-llm-result-rows))
+(def ^:private max-llm-result-rows
+  "Maximum number of rows to surface to the LLM. Larger results are down-sampled to a
+  representative subset of this size."
+  100)
 
 (defn- structured-output
   [result]
@@ -57,22 +66,14 @@
       (:lib/type query) lib/->legacy-MBQL)))
 
 (defn- prepare-query
+  "Prepare `query` for execution over the standard userland row window — the same default
+  constraints (2000 unaggregated / 10000 aggregated rows) the client applies when it re-renders
+  the chart. Sampling from this identical window guarantees the rows we surface to the LLM are
+  real points on the user's chart."
   [query]
   (-> query
       (update-in [:middleware :js-int-to-string?] (fnil identity true))
       qp/userland-query-with-default-constraints
-      (assoc :constraints {:max-results           overflow-detection-result-rows
-                           :max-results-bare-rows overflow-detection-result-rows})
-      (update :info merge {:executed-by api/*current-user-id*
-                           :context     :agent})))
-
-(defn- prepare-untruncated-query
-  [query]
-  (-> query
-      (dissoc :constraints)
-      (update :middleware dissoc :add-default-userland-constraints?)
-      (update-in [:middleware :js-int-to-string?] (fnil identity true))
-      qp/userland-query
       (update :info merge {:executed-by api/*current-user-id*
                            :context     :agent})))
 
@@ -88,22 +89,88 @@
   [status]
   (= "failed" (some-> status name)))
 
-(defn- query-result-summary
-  [{:keys [status error row_count running_time data]}]
-  (if (failed? status)
-    {:status :failed
-     :error  (or error "Query execution failed")}
-    (let [rows      (mapv vec (take overflow-detection-result-rows (:rows data)))
-          too-large (or (> (count rows) max-llm-result-rows)
-                        (and (number? row_count) (> row_count max-llm-result-rows)))]
-      {:status         :completed
-       :row_count      row_count
-       :running_time   running_time
-       :result_columns (when-not too-large (mapv result-column (:cols data)))
-       :rows           (if too-large [] rows)
-       :truncated?     (boolean too-large)})))
+;;; ---------------------------------------- Representative sampling ----------------------------------------
 
-(defn- untruncated-query-result-summary
+(defn- ->number
+  "Coerce a cell value to a double for sampling math, or nil when non-numeric. Handles the
+  stringified integers produced by the js-int-to-string middleware."
+  [v]
+  (cond
+    (number? v) (double v)
+    (string? v) (try (Double/parseDouble (str/trim v)) (catch Exception _ nil))
+    :else       nil))
+
+(defn- value-column-index
+  "Index of the column used as the data point's value — the last column, matching the
+  data-point link machinery."
+  [result_columns]
+  (max 0 (dec (count result_columns))))
+
+(defn- representative-indices
+  "Choose up to `target` representative row indices (0-based) for `values`, a vector aligned with
+  the result rows where each entry is the row's numeric value-column value (or nil when
+  non-numeric). Always keeps the first and last row; when numeric values are present also keeps the
+  global minimum, the global maximum, and the most extreme statistical outliers; fills any
+  remaining budget with evenly spaced indices so the overall trend stays visible. Returns indices
+  sorted ascending."
+  [values target]
+  (let [n (count values)]
+    (if (<= n target)
+      (vec (range n))
+      (let [keep  (java.util.TreeSet.)
+            add!  (fn [i] (when (and (<= 0 i) (< i n)) (.add keep (int i))))
+            pairs (keep-indexed (fn [i v] (when (some? v) [i v])) values)]
+        (add! 0)
+        (add! (dec n))
+        (when (seq pairs)
+          (let [vs   (mapv second pairs)
+                mean (/ (reduce + vs) (count vs))
+                sd   (Math/sqrt (/ (reduce + (map (fn [v] (let [d (- v mean)] (* d d))) vs))
+                                   (count vs)))
+                ;; reserve at most a quarter of the budget for outliers so the trend samples
+                ;; aren't crowded out
+                budget (quot target 4)]
+            (add! (first (apply min-key second pairs)))
+            (add! (first (apply max-key second pairs)))
+            (when (pos? sd)
+              (doseq [i (->> pairs
+                             (map (fn [[i v]] [i (/ (Math/abs (double (- v mean))) sd)]))
+                             (filter (fn [[_ z]] (>= z 2.0)))
+                             (sort-by second >)
+                             (take budget)
+                             (map first))]
+                (add! i)))))
+        ;; fill the rest of the budget with evenly spaced indices to preserve the overall shape
+        (let [remaining (- target (.size keep))]
+          (when (pos? remaining)
+            (let [step (/ (double (dec n)) (inc remaining))]
+              (dotimes [k remaining]
+                (add! (Math/round (* step (double (inc k)))))))))
+        ;; rounding collisions can leave us short; backfill deterministically
+        (loop [i 0]
+          (when (and (< (.size keep) target) (< i n))
+            (add! i)
+            (recur (inc i))))
+        (vec keep)))))
+
+(defn- sample-summary
+  "Down-sample a completed summary to at most `max-llm-result-rows` representative rows, preserving
+  order. Marks the summary `:sampled?` with the `:total-row-count` when sampling actually occurs;
+  otherwise returns the summary unchanged."
+  [{:keys [rows result_columns] :as summary}]
+  (let [n (count rows)]
+    (if (<= n max-llm-result-rows)
+      summary
+      (let [vci    (value-column-index result_columns)
+            values (mapv (fn [row] (->number (nth row vci nil))) rows)
+            idxs   (representative-indices values max-llm-result-rows)]
+        (assoc summary
+               :rows            (mapv #(nth rows %) idxs)
+               :sampled?        true
+               :total-row-count (or (:row_count summary) n))))))
+
+(defn- full-result-summary
+  "Build a complete summary (all rows within the userland window) from a raw QP result."
   [{:keys [status error row_count running_time data]}]
   (if (failed? status)
     {:status :failed
@@ -114,13 +181,60 @@
      :result_columns (mapv result-column (:cols data))
      :rows           (mapv vec (:rows data))}))
 
+(defn- summarize
+  "Summarize a raw QP result, down-sampling large results to a representative subset."
+  [result]
+  (let [summary (full-result-summary result)]
+    (cond-> summary
+      (= :completed (:status summary)) sample-summary)))
+
+(defn execute-query
+  "Execute `query` over the standard userland row window (the same window the client re-renders for
+  the chart) and return a compact LLM-facing summary. Results larger than the LLM row budget are
+  down-sampled to a representative set of real rows — the minimum, the maximum, notable outliers,
+  and evenly spaced points that convey the overall trend. Execution errors are captured as failed
+  summaries so a generated query still gives the model actionable feedback instead of aborting the
+  tool call."
+  [query]
+  (if-let [query (executable-query query)]
+    (try
+      (summarize (qp/process-query (prepare-query query)))
+      (catch Exception e
+        (log/warn e "Metabot generated query execution failed")
+        {:status :failed
+         :error  (or (ex-message e) "Query execution failed")}))
+    {:status :failed
+     :error  "Tool result did not include an executable query."}))
+
+(defn execute-query-full
+  "Execute `query` over the standard userland row window and return the complete summary with every
+  row (no down-sampling). Used when a caller must scan the whole result, e.g. to resolve a selection
+  filter against a chart's own rows."
+  [query]
+  (if-let [query (executable-query query)]
+    (try
+      (full-result-summary (qp/process-query (prepare-query query)))
+      (catch Exception e
+        (log/warn e "Metabot full query execution failed")
+        {:status :failed
+         :error  (or (ex-message e) "Query execution failed")}))
+    {:status :failed
+     :error  "Tool input did not include an executable query."}))
+
+;;; ---------------------------------------- Data point links ----------------------------------------
+
 (defn- column-name
   [column]
   (or (:name column) (:display_name column)))
 
 (defn- data-point-link
-  [data-point-id]
-  (str "metabase://data-point/" data-point-id))
+  "Build a data point URL. The single-arity form targets the row's value column; the two-arity form
+  targets a specific 0-based column within the row, letting the LLM link any cell (a name, category,
+  date, etc.) and not just the value column."
+  ([data-point-id]
+   (str "metabase://data-point/" data-point-id))
+  ([data-point-id column-index]
+   (str "metabase://data-point/" data-point-id "/" column-index)))
 
 (defn- data-point-target
   [columns row value-column-index]
@@ -132,15 +246,36 @@
   [label url]
   (str "[" label "](" url ")"))
 
+(defn- column-index-legend
+  "A compact, 0-based column index legend the LLM uses to build column-scoped data point URLs, e.g.
+  \"0=Created At, 1=Customer, 2=Total\"."
+  [result_columns]
+  (->> result_columns
+       (map-indexed (fn [index column]
+                      (str index "=" (or (:display_name column) (:name column)))))
+       (str/join ", ")))
+
+(defn- data-point-link-instructions
+  "Tell the LLM how to reference any cell — not just the value column — using the
+  metabase://data-point/{id}/{column_index} scheme. The value column is already linked with its
+  index, so the model can reuse a row's id with another column's index to link names, categories,
+  dates, etc."
+  [result_columns]
+  (str "Linked result values contain metabase://data-point URLs. Each row's value column is linked as "
+       "metabase://data-point/{id}/{column_index}, where column_index is 0-based. To reference ANY "
+       "other value in the same row — a name, category, date, or any cell — reuse that row's {id} with "
+       "the target column's index instead. Columns (0-based): " (column-index-legend result_columns) ". "
+       "Link every specific value you mention, and choose natural link text for your answer.\n"))
+
 (defn- data-point-link-rows
   [{:keys [result_columns rows]}]
   (when (and (seq result_columns) (seq rows))
     (let [value-column-index (dec (count result_columns))]
       (mapv (fn [row]
               (let [data-point-id (str (random-uuid))]
-                {:id          data-point-id
-                 :target      (data-point-target result_columns row value-column-index)
-                 :url         (data-point-link data-point-id)}))
+                {:id                 data-point-id
+                 :value-column-index value-column-index
+                 :target             (data-point-target result_columns row value-column-index)}))
             rows))))
 
 (defn- data-point-state
@@ -150,13 +285,19 @@
         link-rows))
 
 (defn- linked-summary
+  "Wrap each row's value column in a column-scoped data point link. The trailing column index makes
+  the metabase://data-point/{id}/{column_index} scheme explicit, so the LLM can reuse a row's id to
+  link any other column in the same row (see [[data-point-link-instructions]])."
   [summary link-rows]
   (if (seq link-rows)
     (update summary :rows
             (fn [rows]
-              (mapv (fn [row {:keys [url]}]
-                      (let [value-column-index (dec (count row))]
-                        (assoc row value-column-index (markdown-link (str (nth row value-column-index nil)) url))))
+              (mapv (fn [row {:keys [id value-column-index]}]
+                      (let [row (vec row)
+                            vci (or value-column-index (dec (count row)))]
+                        (assoc row vci
+                               (markdown-link (str (nth row vci nil))
+                                              (data-point-link id vci)))))
                     rows
                     link-rows)))
     summary))
@@ -177,68 +318,45 @@
          :id   id
          :url  (str "metabase://chart/" id)}))))
 
-(defn execute-query
-  "Execute `query` with a small row cap and return a compact LLM-facing summary.
-  Execution errors are captured as failed summaries so a generated query still
-  gives the model actionable feedback instead of aborting the tool call."
-  [query]
-  (if-let [query (executable-query query)]
-    (try
-      (query-result-summary (qp/process-query (prepare-query query)))
-      (catch Exception e
-        (log/warn e "Metabot generated query execution failed")
-        {:status :failed
-         :error  (or (ex-message e) "Query execution failed")}))
-    {:status :failed
-     :error  "Tool result did not include an executable query."}))
+;;; ---------------------------------------- XML formatting ----------------------------------------
 
-(defn execute-query-untruncated
-  "Execute `query` without Metabot preview row caps and return all rows available from QP."
-  [query]
-  (if-let [query (executable-query query)]
-    (try
-      (untruncated-query-result-summary (qp/process-query (prepare-untruncated-query query)))
-      (catch Exception e
-        (log/warn e "Metabot silent query execution failed")
-        {:status :failed
-         :error  (or (ex-message e) "Query execution failed")}))
-    {:status :failed
-     :error  "Tool input did not include an executable query."}))
+(defn- sampled-execution-note
+  [rows-returned total-row-count]
+  (str "Showing a representative sample of " rows-returned " rows out of " total-row-count " total. "
+       "The sample includes the minimum, the maximum, notable outliers, and evenly spaced rows so the "
+       "overall trend stays visible. Every sampled row is a real data point on the chart the user is "
+       "viewing, so you may reference these values — including the minimum and maximum — and link them "
+       "with their metabase://data-point URLs. Rows between the sampled points are not shown; if you "
+       "need an exact count, ranking, or other aggregate over the full result, run a follow-up "
+       "aggregate query (for notebook queries, use execute_notebook_query_silently).\n"))
 
 (defn- execution-summary->xml
-  [{:keys [status error row_count running_time truncated?] :as summary} data-point-links reference]
+  [{:keys [status error row_count running_time sampled? total-row-count] :as summary} data-point-links reference]
   (if (failed? status)
     (str "<query_execution status=\"failed\">\n"
          (llm-rep/escape-xml error)
          "\n</query_execution>")
     (str "<query_execution status=\"completed\" rows_returned=\"" (count (:rows summary)) "\""
-         (when truncated?
-           " truncated=\"true\" results_omitted=\"true\"")
+         (when sampled?
+           " sampled=\"true\"")
          (when (some? row_count)
            (str " row_count=\"" row_count "\""))
+         (when (and sampled? (some? total-row-count))
+           (str " total_row_count=\"" total-row-count "\""))
          (when (some? running_time)
            (str " running_time_ms=\"" running_time "\""))
          (when reference
            (str " reference_type=\"" (:type reference) "\""
                 " reference_id=\"" (llm-rep/escape-xml (:id reference)) "\""))
          ">\n"
-         (if truncated?
-           (str "The generated query returned more than " max-llm-result-rows " rows, so the results are omitted. "
-                "Do not answer from omitted result data. "
-                (if reference
-                  (str "Your next step MUST be a tool call, without asking the user for permission first: use the referenced " (:type reference)
-                       " with an additional query execution tool call (for notebook queries, use execute_notebook_query_silently), or run a follow-up aggregate, sort, "
-                       "or filter query, to inspect the full result. Do not produce a final answer until that tool call returns.\n")
-                  (str "Your next step MUST be a tool call, without asking the user for permission first: use an additional query execution tool call (for notebook queries, use execute_notebook_query_silently), "
-                       "or run a follow-up aggregate, sort, or filter query, to inspect the full result. "
-                       "Do not produce a final answer until that tool call returns.\n")))
+         (if sampled?
+           (sampled-execution-note (count (:rows summary)) (or total-row-count row_count))
            (str "Showing all " (count (:rows summary)) " rows from executing the generated query.\n"))
          (when reference
            (str "Full result reference: [" (:type reference) " " (:id reference) "](" (:url reference) ").\n"))
-         (when-not truncated?
-           (str (when (seq data-point-links)
-                  "Linked result values contain metabase://data-point URLs. Use those URLs when mentioning specific generated values, but choose natural link text for your answer.\n")
-                (llm-rep/query-result->xml (linked-summary summary data-point-links))))
+         (when (seq data-point-links)
+           (data-point-link-instructions (:result_columns summary)))
+         (llm-rep/query-result->xml (linked-summary summary data-point-links))
          "\n</query_execution>")))
 
 (defn- insert-into-result-block
@@ -248,8 +366,9 @@
     (str output "\n" execution-xml)))
 
 (defn enrich-tool-result
-  "If a tool generated a query or chart, execute the backing query and append the
-  result summary to the text that will be sent back to the LLM."
+  "If a tool generated a query or chart, execute the backing query and append the result summary to
+  the text that will be sent back to the LLM. Large results are down-sampled to a representative set
+  of real rows so the model always has chart-mapped data points to cite."
   [result memory]
   (if-let [query (query-from-result result memory)]
     (let [structured       (structured-output result)
@@ -263,7 +382,7 @@
     result))
 
 (defn format-untruncated-execution-result
-  "Format an untruncated query execution summary for an agent-only tool result."
+  "Format a query execution summary for an agent-only (silent) tool result."
   [summary]
   (let [data-point-links (data-point-link-rows summary)]
     (cond-> {:output (execution-summary->xml summary data-point-links nil)}

@@ -6,6 +6,8 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
+   [metabase.metabot.tools.charts.select :as select-chart-tools]
+   [metabase.metabot.tools.query-results :as query-results]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
@@ -118,3 +120,37 @@
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))}))))
+
+(def ^:private select-chart-points-schema
+  [:map {:closed true}
+   [:reasoning {:optional true} :string]
+   [:chart_id {:optional true} [:maybe :string]]
+   [:query_id {:optional true} [:maybe :string]]
+   [:filter [:sequential :any]]
+   [:label {:optional true} [:maybe :string]]])
+
+(mu/defn ^{:tool-name "select_chart_points"
+           :scope     scope/agent-query-execute}
+  select-chart-points-tool
+  "Select a subset of an existing chart's data points with a filter, returning a single highlightable
+  data-selection link that references all matching points."
+  [{:keys [chart_id query_id filter label]} :- select-chart-points-schema]
+  (try
+    (let [query   (select-chart-tools/resolve-selection-query
+                   (shared/current-charts-state) (shared/current-queries-state) chart_id query_id)
+          summary (query-results/execute-query-full query)]
+      (if (= :failed (:status summary))
+        {:output (str "Failed to select chart points: " (or (:error summary) "query execution failed"))}
+        (let [targets (select-chart-tools/select-targets summary filter)]
+          (if (empty? targets)
+            {:output (str "No chart points matched the selection filter. Adjust the filter and try "
+                          "again, or reference individual points with their metabase://data-point URLs.")}
+            (select-chart-tools/format-selection-result
+             {:selection-id (str (random-uuid))
+              :targets      targets
+              :label        label})))))
+    (catch Exception e
+      (log/error e "Error selecting chart points")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to select chart points: " (or (ex-message e) "Unknown error"))}))))

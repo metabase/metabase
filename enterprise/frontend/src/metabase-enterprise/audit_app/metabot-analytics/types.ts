@@ -3,6 +3,7 @@ import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetche
 import type {
   DatasetQuery,
   MetabotFeedback,
+  MetabotStateContext,
   VisualizationDisplay,
 } from "metabase-types/api";
 
@@ -93,6 +94,7 @@ export type ConversationDetail = {
   total_tokens: number;
   profile_id: MetabotProfileId | null;
   slack_permalink: string | null;
+  state: MetabotStateContext | null;
   chat_messages: FetchedChatMessage[];
   queries: GeneratedQuery[];
   search_count: number;

@@ -434,11 +434,26 @@ const datumMatchesClickedDimensions = (
   chartModel: BaseCartesianChartModel,
   datum: Datum,
   clicked: ClickObject,
+  seriesModel: SeriesModel,
 ) => {
   const dimensions = clicked.dimensions ?? [];
+  // In a pivoted breakout dataset there is one data key per breakout value for the
+  // same column (e.g. CATEGORY:Gadget, CATEGORY:Widget, ...), so resolving the
+  // breakout dimension here would compare against an arbitrary series' value. The
+  // breakout dimension is already validated by `seriesMatchesClicked`, so skip it.
+  const breakoutColumn = isBreakoutSeries(seriesModel)
+    ? seriesModel.breakoutColumn
+    : null;
   let matchedDimensionsCount = 0;
 
   for (const dimension of dimensions) {
+    if (
+      breakoutColumn != null &&
+      isSameColumn(dimension.column, breakoutColumn)
+    ) {
+      continue;
+    }
+
     const datumValue = getClickedDimensionValue(
       chartModel,
       datum,
@@ -506,7 +521,12 @@ export const getClickedDataPoint = (
         }
       }
 
-      return datumMatchesClickedDimensions(chartModel, datum, clicked);
+      return datumMatchesClickedDimensions(
+        chartModel,
+        datum,
+        clicked,
+        seriesModel,
+      );
     });
 
     if (datumIndex >= 0) {

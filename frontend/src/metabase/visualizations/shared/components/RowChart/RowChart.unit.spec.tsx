@@ -380,7 +380,7 @@ describe("RowChart", () => {
 
       const { bars } = setup({ selectedData, series: [series1] });
 
-      expect(bars[1]).toHaveAttribute("stroke", "var(--mb-color-summarize)");
+      expect(bars[1]).toHaveAttribute("stroke", "var(--mb-color-brand)");
       expect(bars[1]).toHaveAttribute("stroke-width", "3");
       expect(bars.map((bar) => bar.getAttribute("opacity"))).toStrictEqual([
         "0.4",

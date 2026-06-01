@@ -3,7 +3,7 @@ This tool changes the chart type (e.g., bar chart to line chart, table to pie ch
 It will return a new chart with the updated settings.
 Include a concise, user-facing `name` in `new_viz_settings` whenever you update a chart.
 After the chart is updated, Metabase executes the chart's query and includes a `<query_execution>` block in the tool result.
-Use those rows and columns to say something concrete about the data shown in the updated chart. Only mention maxima, minima, rankings, or counts when `<query_execution>` is not truncated, or after running a follow-up query that computes them against the full result. If `<query_execution>` says results were omitted and the user needs an answer from the data, your next step MUST be that follow-up tool call without asking permission first. Do not produce a final answer until it returns.
+Use those rows and columns to say something concrete about the data shown in the updated chart. When `<query_execution>` is marked `sampled="true"`, it is a representative sample of the chart's own rows (minimum, maximum, outliers, and evenly spaced trend points) — every sampled row is a real point on the user's chart, so you may cite the sampled values, including the minimum and maximum. Only run a follow-up query when you need an exact count, ranking, or aggregate the sample cannot give; do it without asking permission first and do not produce a final answer until it returns.
 The `<query_execution>` block may include result values linked with `metabase://data-point` URLs. Whenever you mention a specific value from the updated chart, use the matching URL and choose natural link text for your answer.
 
 **Usage:**

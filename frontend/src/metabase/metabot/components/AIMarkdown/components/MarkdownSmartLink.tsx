@@ -19,12 +19,14 @@ export const MarkdownSmartLink = ({
   name,
   model,
   target,
+  targets,
 }: {
   onInternalLinkClick?: (href: string) => void;
   id?: number | string;
   name: string;
-  model: MetabaseProtocolEntityModel | "data-point";
+  model: MetabaseProtocolEntityModel | "data-point" | "data-selection";
   target?: DataPointMentionTarget;
+  targets?: DataPointMentionTarget[];
 }) => {
   const getIcon = useGetIcon();
 
@@ -33,12 +35,36 @@ export const MarkdownSmartLink = ({
     .with("question", () => "card" as const)
     .otherwise((x) => x);
   const queryModel: SuggestionModel | null =
-    model === "data-point" ? null : (entityModel as SuggestionModel);
+    model === "data-point" || model === "data-selection"
+      ? null
+      : (entityModel as SuggestionModel);
 
   const { entity, isLoading, error } = useEntityData(
-    model === "data-point" || typeof id !== "number" ? null : id,
+    model === "data-point" ||
+      model === "data-selection" ||
+      typeof id !== "number"
+      ? null
+      : id,
     queryModel,
   );
+
+  if (model === "data-selection") {
+    return (
+      <button
+        type="button"
+        className={S.smartLink}
+        onClick={() => {
+          window.dispatchEvent(
+            new CustomEvent("metabot:data-selection-mention-click", {
+              detail: { id, targets },
+            }),
+          );
+        }}
+      >
+        <span className={S.smartLinkInner}>{name}</span>
+      </button>
+    );
+  }
 
   if (model === "data-point") {
     return (

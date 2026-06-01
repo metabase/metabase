@@ -12,6 +12,7 @@ import {
   type MetabotUserChatMessage,
   cancelInflightAgentRequests,
   focusPromptInput as focusPromptInputAction,
+  forkConversation as forkConversationAction,
   getActiveToolCalls,
   getConversationTitle,
   getDebugMode,
@@ -169,6 +170,12 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     ],
   );
 
+  const forkMessage = useCallback(
+    (messageId: string) =>
+      dispatch(forkConversationAction({ agentId, messageId })),
+    [dispatch, agentId],
+  );
+
   const cancelRequest = useCallback(() => {
     dispatch(cancelInflightAgentRequests(agentId));
   }, [dispatch, agentId]);
@@ -194,6 +201,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     resetConversation,
     submitInput,
     retryMessage,
+    forkMessage,
     cancelRequest,
     metabotId: useSelector(getMetabotId),
     requestState: useSelector((state) =>
