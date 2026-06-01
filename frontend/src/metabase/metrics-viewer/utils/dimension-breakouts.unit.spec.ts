@@ -69,6 +69,30 @@ describe("createDimensionBreakoutFromInfo", () => {
       projectionConfig: {},
     });
   });
+
+  it("uses the preferred id when one is provided", () => {
+    expect(
+      createDimensionBreakoutFromInfo({
+        id: "dim-selected-created-at",
+        type: "time",
+        label: "Created At",
+        dimensionMapping: {
+          0: "dim-comparable-canceled-at",
+          1: "dim-selected-created-at",
+        },
+      }),
+    ).toEqual({
+      id: "dim-selected-created-at",
+      type: "time",
+      label: "Created At",
+      display: "line",
+      dimensionMapping: {
+        0: "dim-comparable-canceled-at",
+        1: "dim-selected-created-at",
+      },
+      projectionConfig: {},
+    });
+  });
 });
 
 describe("computeDefaultDimensionBreakouts", () => {

@@ -581,6 +581,7 @@ export function computeDefaultDimensionBreakouts(
 // ── Manual dimensionBreakout creation ──
 
 export interface DimensionBreakoutInfo {
+  id?: string;
   type: MetricsViewerDimensionBreakoutType;
   label: string;
   dimensionMapping: Record<number, string | null>;
@@ -589,13 +590,18 @@ export interface DimensionBreakoutInfo {
 export function createDimensionBreakoutFromInfo(
   dimensionBreakoutInfo: DimensionBreakoutInfo,
 ): MetricsViewerDimensionBreakoutState | null {
-  const { type, label, dimensionMapping } = dimensionBreakoutInfo;
+  const {
+    id: preferredId,
+    type,
+    label,
+    dimensionMapping,
+  } = dimensionBreakoutInfo;
   if (type === "scalar") {
     return createScalarDimensionBreakout();
   }
-  const id = Object.values(dimensionMapping).find(
-    (dimensionId) => dimensionId != null,
-  );
+  const id =
+    preferredId ??
+    Object.values(dimensionMapping).find((dimensionId) => dimensionId != null);
   if (id == null) {
     return null;
   }

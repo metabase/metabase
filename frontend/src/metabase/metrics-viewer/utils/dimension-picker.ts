@@ -443,6 +443,24 @@ function getComparableDimensionKey(item: DimensionPickerItem) {
   return [type, item.group?.id ?? "", item.name].join(":");
 }
 
+function getDimensionPickerItemByDimensionId(
+  sections: DimensionPickerSection[],
+) {
+  const itemsByDimensionId = new Map<string, DimensionPickerItem>();
+
+  for (const item of sections.flatMap((section) => section.items)) {
+    for (const dimensionId of Object.values(
+      item.dimensionBreakoutInfo.dimensionMapping,
+    )) {
+      if (dimensionId != null && !itemsByDimensionId.has(dimensionId)) {
+        itemsByDimensionId.set(dimensionId, item);
+      }
+    }
+  }
+
+  return itemsByDimensionId;
+}
+
 function getSidebarCategoryName(item: DimensionPickerItem) {
   const type = item.dimensionBreakoutInfo.type;
 
@@ -470,27 +488,63 @@ export function getComparableDimensionMapping({
   item,
   sections,
   metricSlots,
+  activeDimensionBreakout,
 }: {
   item: DimensionPickerItem;
   sections: DimensionPickerSection[];
   metricSlots: MetricSlot[];
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
 }): Record<number, string | null> {
   const comparableKey = getComparableDimensionKey(item);
   const slotIndices = new Set(metricSlots.map((slot) => slot.slotIndex));
   const mapping: Record<number, string | null> = Object.fromEntries(
     metricSlots.map((slot) => [slot.slotIndex, null]),
   );
+  const clickedSlotIndices = new Set(
+    Object.entries(item.dimensionBreakoutInfo.dimensionMapping)
+      .filter(([, dimensionId]) => dimensionId != null)
+      .map(([slotIndex]) => Number(slotIndex)),
+  );
+  const itemsByDimensionId = getDimensionPickerItemByDimensionId(sections);
+  const comparableSectionItems = sections
+    .flatMap((section) => section.items)
+    .filter(
+      (sectionItem) =>
+        sectionItem !== item &&
+        getComparableDimensionKey(sectionItem) === comparableKey,
+    );
 
   const comparableItems = [
     item,
-    ...sections
-      .flatMap((section) => section.items)
-      .filter(
-        (sectionItem) =>
-          sectionItem !== item &&
-          getComparableDimensionKey(sectionItem) === comparableKey,
-      ),
+    ...comparableSectionItems.filter(
+      (sectionItem) => sectionItem.name === item.name,
+    ),
+    ...comparableSectionItems.filter(
+      (sectionItem) => sectionItem.name !== item.name,
+    ),
   ];
+
+  for (const [slotIndex, dimensionId] of Object.entries(
+    activeDimensionBreakout.dimensionMapping,
+  )) {
+    const numericSlotIndex = Number(slotIndex);
+    if (
+      !slotIndices.has(numericSlotIndex) ||
+      clickedSlotIndices.has(numericSlotIndex)
+    ) {
+      continue;
+    }
+
+    const currentItem = dimensionId
+      ? itemsByDimensionId.get(dimensionId)
+      : undefined;
+    if (
+      currentItem &&
+      getComparableDimensionKey(currentItem) === comparableKey
+    ) {
+      mapping[numericSlotIndex] = dimensionId;
+    }
+  }
 
   for (const comparableItem of comparableItems) {
     for (const [slotIndex, dimensionId] of Object.entries(

@@ -825,6 +825,14 @@ describe("getComparableDimensionMapping", () => {
     { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
     { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
   ];
+  const activeDimensionBreakout = {
+    id: "active-dimension-breakout",
+    type: "time",
+    label: "Time",
+    display: "line",
+    dimensionMapping: {},
+    projectionConfig: {},
+  } satisfies MetricsViewerDimensionBreakoutState;
 
   it("maps time fields across metric slots", () => {
     const selectedItem = {
@@ -860,10 +868,238 @@ describe("getComparableDimensionMapping", () => {
           },
         ],
         metricSlots,
+        activeDimensionBreakout,
       }),
     ).toEqual({
       0: "dim-users-birth-date",
       1: "dim-orders-created-at",
+    });
+  });
+
+  it("prefers same-named time fields when multiple time fields are comparable", () => {
+    const selectedItem = {
+      icon: "calendar",
+      name: "Created At",
+      group: { id: "accounts", type: "main", displayName: "Accounts" },
+      dimensionBreakoutInfo: {
+        type: "time" as const,
+        label: "Created At",
+        dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
+      },
+    };
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Canceled At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Canceled At",
+                  dimensionMapping: { 0: "dim-revenue-accounts-canceled-at" },
+                },
+              },
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 0: "dim-revenue-accounts-created-at" },
+                },
+              },
+            ],
+            sourceId: REVENUE_SOURCE_ID,
+          },
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Canceled At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Canceled At",
+                  dimensionMapping: { 1: "dim-feedback-accounts-canceled-at" },
+                },
+              },
+              selectedItem,
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({
+      0: "dim-revenue-accounts-created-at",
+      1: "dim-feedback-accounts-created-at",
+    });
+  });
+
+  it("preserves another slot's compatible active time field", () => {
+    const selectedItem = {
+      icon: "calendar",
+      name: "Birth Date",
+      group: { id: "accounts", type: "main", displayName: "Accounts" },
+      dimensionBreakoutInfo: {
+        type: "time" as const,
+        label: "Birth Date",
+        dimensionMapping: { 0: "dim-revenue-accounts-birth-date" },
+      },
+    };
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          {
+            items: [
+              selectedItem,
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 0: "dim-revenue-accounts-created-at" },
+                },
+              },
+            ],
+            sourceId: REVENUE_SOURCE_ID,
+          },
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Canceled At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Canceled At",
+                  dimensionMapping: { 1: "dim-feedback-accounts-canceled-at" },
+                },
+              },
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout: {
+          ...activeDimensionBreakout,
+          dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
+        },
+      }),
+    ).toEqual({
+      0: "dim-revenue-accounts-birth-date",
+      1: "dim-feedback-accounts-created-at",
+    });
+  });
+
+  it("preserves another slot's compatible active time field over a same-named fallback", () => {
+    const selectedItem = {
+      icon: "calendar",
+      name: "Created At",
+      group: { id: "accounts", type: "main", displayName: "Accounts" },
+      dimensionBreakoutInfo: {
+        type: "time" as const,
+        label: "Created At",
+        dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
+      },
+    };
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Birth Date",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Birth Date",
+                  dimensionMapping: { 0: "dim-revenue-accounts-birth-date" },
+                },
+              },
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 0: "dim-revenue-accounts-created-at" },
+                },
+              },
+            ],
+            sourceId: REVENUE_SOURCE_ID,
+          },
+          {
+            items: [selectedItem],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout: {
+          ...activeDimensionBreakout,
+          dimensionMapping: { 0: "dim-revenue-accounts-birth-date" },
+        },
+      }),
+    ).toEqual({
+      0: "dim-revenue-accounts-birth-date",
+      1: "dim-feedback-accounts-created-at",
     });
   });
 
@@ -903,6 +1139,7 @@ describe("getComparableDimensionMapping", () => {
           },
         ],
         metricSlots,
+        activeDimensionBreakout,
       }),
     ).toEqual({
       0: "dim-product-country",
@@ -948,9 +1185,65 @@ describe("getComparableDimensionMapping", () => {
           },
         ],
         metricSlots,
+        activeDimensionBreakout,
       }),
     ).toEqual({ 0: "dim-user-name", 1: null });
   });
+
+  it.each([
+    ["Address", "dim-revenue-user-address"],
+    ["Name", "dim-revenue-user-name"],
+  ])(
+    "does not preserve an incompatible active field when selecting %s",
+    (fieldName, fieldId) => {
+      const selectedItem = {
+        icon: "label",
+        name: fieldName,
+        group: { id: "users", type: "main", displayName: "Users" },
+        dimensionBreakoutInfo: {
+          type: "category" as const,
+          label: fieldName,
+          dimensionMapping: { 0: fieldId },
+        },
+      };
+
+      expect(
+        getComparableDimensionMapping({
+          item: selectedItem,
+          sections: [
+            { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+            {
+              items: [
+                {
+                  icon: "label",
+                  name: "Email",
+                  group: {
+                    id: "accounts",
+                    type: "main",
+                    displayName: "Accounts",
+                  },
+                  dimensionBreakoutInfo: {
+                    type: "category",
+                    label: "Email",
+                    dimensionMapping: { 1: "dim-accounts-email" },
+                  },
+                },
+              ],
+              sourceId: ORDERS_SOURCE_ID,
+            },
+          ],
+          metricSlots,
+          activeDimensionBreakout: {
+            ...activeDimensionBreakout,
+            type: "category",
+            label: "Email",
+            display: "bar",
+            dimensionMapping: { 1: "dim-accounts-email" },
+          },
+        }),
+      ).toEqual({ 0: fieldId, 1: null });
+    },
+  );
 
   it("does not map same-typed numeric fields from different tables", () => {
     const selectedItem = {
@@ -990,6 +1283,7 @@ describe("getComparableDimensionMapping", () => {
           },
         ],
         metricSlots,
+        activeDimensionBreakout,
       }),
     ).toEqual({ 0: "dim-orders-total", 1: null });
   });
@@ -1028,6 +1322,7 @@ describe("getComparableDimensionMapping", () => {
           },
         ],
         metricSlots,
+        activeDimensionBreakout,
       }),
     ).toEqual({ 0: "dim-user-name", 1: "dim-user-name" });
   });

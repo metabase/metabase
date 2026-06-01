@@ -148,7 +148,7 @@ export function DimensionPickerSidebar({
   };
 
   const handleAllFieldsSelect = (item: DimensionPickerItem) => {
-    if (hasMatchingDimensions(item, activeDimensionBreakout)) {
+    if (isMatchingActiveDimensionBreakout(item, activeDimensionBreakout)) {
       return;
     }
 
@@ -156,7 +156,9 @@ export function DimensionPickerSidebar({
       item,
       sections,
       metricSlots,
+      activeDimensionBreakout,
     });
+    const dimensionBreakoutId = getDimensionBreakoutId(item);
     const dimensionBreakoutConfig = getDimensionBreakoutConfig(
       item.dimensionBreakoutInfo.type,
     );
@@ -174,6 +176,7 @@ export function DimensionPickerSidebar({
 
     onSelectDimensionBreakout({
       ...item.dimensionBreakoutInfo,
+      ...(dimensionBreakoutId ? { id: dimensionBreakoutId } : {}),
       dimensionMapping,
     });
     trackMetricsViewerDimensionSelected();
@@ -383,4 +386,24 @@ export function DimensionPickerSidebar({
 
 function hasMultipleMetricSources(metricSlots: MetricSlot[]) {
   return new Set(metricSlots.map((slot) => slot.sourceId)).size > 1;
+}
+
+function getDimensionBreakoutId(item: DimensionPickerItem) {
+  return Object.values(item.dimensionBreakoutInfo.dimensionMapping).find(
+    (dimensionId) => dimensionId != null,
+  );
+}
+
+function isMatchingActiveDimensionBreakout(
+  item: DimensionPickerItem,
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState,
+) {
+  const dimensionBreakoutId = getDimensionBreakoutId(item);
+
+  return (
+    hasMatchingDimensions(item, activeDimensionBreakout) &&
+    item.dimensionBreakoutInfo.label === activeDimensionBreakout.label &&
+    (dimensionBreakoutId == null ||
+      dimensionBreakoutId === activeDimensionBreakout.id)
+  );
 }
