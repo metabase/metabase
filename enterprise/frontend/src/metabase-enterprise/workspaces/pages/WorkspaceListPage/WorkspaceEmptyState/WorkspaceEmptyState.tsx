@@ -58,54 +58,45 @@ export function WorkspaceEmptyState() {
           <Title
             order={3}
             mb="sm"
-          >{t`Workspaces let you develop your semantic layer without affecting your production setup`}</Title>
+          >{t`Use Workspaces to develop your semantic layer safely`}</Title>
           <Text mb="md">
-            {t` While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema. You can build measures, dashboards, and more on top of these remapped tables. Once you're happy with your changes, use remote sync to pull your changes into your production ${applicationName}.`}
+            {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
           </Text>
-          <Stack gap="lg" pb="xl">
-            <Stack gap="xs" align="flex-start">
-              <Title
-                order={5}
-              >{t`Is this your production ${applicationName}?`}</Title>
-              <Text c="text-secondary">
-                {t`Create a workspace config that you can download and use to set up a workspace in a development instance.`}
-              </Text>
-              <Button variant="filled" mt="xs" onClick={openCreate}>
-                {t`Create a workspace`}
-              </Button>
-            </Stack>
+          <Text mb="lg">
+            {t`If this is your production instance, create and download a workspace config here to use in a development instance.`}
+            {canManageInstance &&
+              ` ${t`If you're using this ${applicationName} instance for development, you can upload a workspace config file to put this instance into that workspace.`}`}
+          </Text>
+          <Group gap="md">
+            <Button variant="filled" onClick={openCreate}>
+              {t`Create a workspace`}
+            </Button>
             {canManageInstance && (
-              <>
-                <Divider />
-                <Stack gap="xs" align="flex-start">
-                  <Title order={5}>{t`Set up a workspace`}</Title>
-                  <Text c="text-secondary">
-                    {t`If you're using this ${applicationName} for development, you can upload a workspace config file to put this ${applicationName} into that workspace.`}
-                  </Text>
-                  <Button variant="default" mt="xs" onClick={handleSetupClick}>
-                    {t`Upload a workspace config`}
-                  </Button>
-                </Stack>
-              </>
+              <Button variant="default" onClick={handleSetupClick}>
+                {t`Upload a workspace config`}
+              </Button>
             )}
-          </Stack>
+          </Group>
           {(showFileBasedDevLink || showRemoteSyncLink) && (
-            <Group pt="md" gap="sm" align="stretch">
-              {showFileBasedDevLink && (
-                <DocsLink
-                  title={t`Agent-driven development`}
-                  description={t`How to use the CLI to develop content locally.`}
-                  link={fileBasedDevDocsUrl}
-                />
-              )}
-              {showRemoteSyncLink && (
-                <DocsLink
-                  title={t`Using remote sync`}
-                  description={t`How to sync and review instance content with git.`}
-                  link={remoteSyncDocsUrl}
-                />
-              )}
-            </Group>
+            <>
+              <Divider my="xl" />
+              <Group gap="sm" align="stretch">
+                {showFileBasedDevLink && (
+                  <DocsLink
+                    title={t`Agent-driven development`}
+                    description={t`How to use the CLI to develop content locally.`}
+                    link={fileBasedDevDocsUrl}
+                  />
+                )}
+                {showRemoteSyncLink && (
+                  <DocsLink
+                    title={t`Using remote sync`}
+                    description={t`How to sync and review ${applicationName} content with git.`}
+                    link={remoteSyncDocsUrl}
+                  />
+                )}
+              </Group>
+            </>
           )}
         </Box>
       </Card>
