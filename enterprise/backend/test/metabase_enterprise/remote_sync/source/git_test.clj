@@ -10,7 +10,7 @@
    [metabase.util :as u])
   (:import (java.io File)
            (org.apache.commons.io FileUtils)
-           (org.eclipse.jgit.api Git)
+           (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
 
@@ -93,9 +93,38 @@
   (let [remote-repo (apply init-remote! dir config)]
     [(->source! branch remote-repo) remote-repo]))
 
+(defn- command-timeout
+  "Reads the protected `timeout` field (in seconds) that JGit applies to a TransportCommand's
+   network operations. 0 means no timeout (JGit's default), i.e. the operation can hang forever."
+  [^TransportCommand cmd]
+  (let [f (.getDeclaredField TransportCommand "timeout")]
+    (.setAccessible f true)
+    (.getInt f cmd)))
+
 (deftest qualify-branch-test
   (is (= "refs/heads/main" (#'git/qualify-branch "main")))
   (is (= "refs/heads/main" (#'git/qualify-branch "refs/heads/main"))))
+
+(deftest call-remote-command-applies-network-timeout-test
+  (testing "Remote git operations get a positive network timeout so a stalled connection can't hang
+            the sync thread forever (GHY-3727: pull/push gets stuck at progress 0 and 0.3)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            ^Git git (:git source)
+            cmd (.lsRemote git)]
+        (#'git/call-remote-command cmd source)
+        (is (pos? (command-timeout cmd))
+            "TransportCommand should have a positive (non-zero) timeout configured before .call")))))
+
+(deftest call-remote-command-respects-timeout-setting-test
+  (testing "The network timeout applied to remote git operations is driven by remote-sync-git-timeout-seconds"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            ^Git git (:git source)
+            cmd (.lsRemote git)]
+        (mt/with-temporary-setting-values [remote-sync-git-timeout-seconds 17]
+          (#'git/call-remote-command cmd source)
+          (is (= 17 (command-timeout cmd))))))))
 
 (deftest log
   (mt/with-temp-dir [remote-dir nil]
