@@ -11,4 +11,11 @@ module.exports.CSS_CONFIG = {
       : "[hash:base64:5]",
   },
   importLoaders: 1,
+  // Leave built-in font URLs untouched: fonts.css references ../fonts/... relative to
+  // the emitted stylesheet (app/dist/*.css) so the browser resolves them against the
+  // stylesheet URL — handling subpath hosting for free. The fonts are static,
+  // backend-served assets, not bundled modules, so css-loader must not try to resolve them.
+  url: {
+    filter: (url) => !url.startsWith("../fonts/"),
+  },
 };

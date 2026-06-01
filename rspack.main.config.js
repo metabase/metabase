@@ -16,7 +16,6 @@ const {
   LICENSE_TEXT,
   WEBPACK_BUNDLE,
 } = require("./frontend/build/shared/constants");
-const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
@@ -48,8 +47,6 @@ const TEST_CUSTOM_DOMAINS =
   process.env.MB_TEST_CUSTOM_DOMAINS?.split(",")
     .map((domain) => domain.trim())
     .filter(Boolean) ?? [];
-
-const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
 
 const SWC_LOADER = {
   loader: "builtin:swc-loader",
@@ -137,12 +134,6 @@ const config = {
   module: {
     rules: [
       {
-        // swc breaks styles for the whole app if we process this file
-        test: /css\/core\/fonts\.styled\.ts$/,
-        exclude: /node_modules|cljs/,
-        use: [BABEL_LOADER],
-      },
-      {
         // Embedding onboarding flow requires sharing snippets from
         // docs, so we treat TypeScript files inside docs/ as raw text
         test: /\.tsx?$/,
@@ -151,12 +142,7 @@ const config = {
       },
       {
         test: /\.(tsx?|jsx?)$/,
-        exclude: [
-          /node_modules/,
-          /cljs/,
-          /css\/core\/fonts\.styled\.ts/,
-          SDK_DOCS_SNIPPETS_PATH,
-        ],
+        exclude: [/node_modules/, /cljs/, SDK_DOCS_SNIPPETS_PATH],
         use: [SWC_LOADER],
         type: "javascript/auto",
       },
