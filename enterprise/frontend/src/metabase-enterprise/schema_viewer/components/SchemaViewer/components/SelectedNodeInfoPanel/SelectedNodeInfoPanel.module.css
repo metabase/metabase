@@ -20,7 +20,6 @@
 
   .fkLink {
     overflow: hidden;
-    line-height: 1;
 
     &:hover span {
       text-decoration: underline;
@@ -33,9 +32,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .fieldName {
-    max-width: 50%;
+    display: inline-block;
   }
 }
