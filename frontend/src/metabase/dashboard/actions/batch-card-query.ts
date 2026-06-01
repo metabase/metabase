@@ -219,7 +219,7 @@ export async function streamBatchCardQuery(
     headers["Content-Type"] = "application/json";
     fetchInit.body = JSON.stringify(body);
   }
-  const response = await fetch(url, fetchInit);
+  const response = await fetch(api.basename + url, fetchInit);
 
   if (!response.ok) {
     // Surface the server-side message (e.g. "You must specify a value for :source

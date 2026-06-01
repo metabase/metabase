@@ -651,13 +651,22 @@ export const fetchDashboardCardData =
           dashcard.id,
           card.id,
         ]);
+        // Permission-stripped cards (backend deleted dataset_query because the
+        // user can't read this card) mirror the per-card path's early-out at
+        // fetchCardDataAction: once we have any cached result, don't re-fetch.
+        // The first load still hits the server so it can emit the canonical
+        // 403 card-error.
+        if (!card.dataset_query) {
+          if (lastResult) {
+            continue;
+          }
+          batchCardsToFetch.push(entry);
+          continue;
+        }
         if (
           lastResult &&
-          !("error" in lastResult) &&
           _.isEqual(getDatasetQueryParams(lastResult.json_query), queryParams)
         ) {
-          // Cached. Note: error results always retry — the user may have fixed
-          // a bad parameter mapping or upstream config.
           continue;
         }
         const inFlight = cardDataCancelDeferreds[key];
