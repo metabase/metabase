@@ -8,20 +8,6 @@ type Settings = {
   threshold?: number;
 };
 
-const ThumbIcon = ({
-  up,
-  size,
-  label,
-}: {
-  up: boolean;
-  size: number;
-  label: string;
-}) => (
-  <div role="img" aria-label={label} style={{ fontSize: size, lineHeight: 1 }}>
-    {up ? "👍" : "👎"}
-  </div>
-);
-
 const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
 }) => {
@@ -54,11 +40,13 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
           height: "100%",
         }}
       >
-        <ThumbIcon
-          up={meetsThreshold}
-          size={finalHeight}
-          label={meetsThreshold ? "Above threshold" : "Below threshold"}
-        />
+        <div
+          role="img"
+          aria-label={meetsThreshold ? "Above threshold" : "Below threshold"}
+          style={{ fontSize: finalHeight, lineHeight: 1 }}
+        >
+          {meetsThreshold ? "👍" : "👎"}
+        </div>
       </div>
     );
   };
