@@ -1,6 +1,6 @@
 (ns metabase.mcp.api
   "MCP (Model Context Protocol) Streamable HTTP transport handler.
-   Exposes Metabase's agent tools via JSON-RPC 2.0 over `/api/mcp` and its aliases (see [[endpoint-paths]])."
+   Exposes Metabase's agent tools via JSON-RPC 2.0 over each of the MCP endpoints."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -358,7 +358,9 @@
   "Build the `WWW-Authenticate` header advertising OAuth discovery for the path the client hit.
    A client connecting via an alias is pointed at that same alias as the protected resource."
   [request]
-  (let [uri  (:uri request)
+  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase/mcp/`) still
+  ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
+  (let [uri  (str/replace (:uri request) #"/+$" "")
         path (if (contains? endpoint-paths uri) uri "/api/mcp")]
     (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\"")))
 

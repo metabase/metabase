@@ -1141,6 +1141,14 @@
                      :headers {"WWW-Authenticate" #(str/includes? % expected)}}
                     (mcp-request-unauthenticated-to path (jsonrpc-request "initialize"))))))))))
 
+(deftest endpoint-alias-trailing-slash-discovery-test
+  (testing "a trailing-slash request still advertises the matching alias (not canonical fallback)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [expected "/.well-known/oauth-protected-resource/api/metabase-mcp\""]
+        (is (=? {:status  401
+                 :headers {"WWW-Authenticate" #(str/includes? % expected)}}
+                (mcp-request-unauthenticated-to "metabase-mcp/" (jsonrpc-request "initialize"))))))))
+
 (deftest endpoint-alias-bearer-token-test
   (testing "bearer-token handling is identical on an alias — same invalid_token 401 as canonical"
     ;; Bearer validation (validate-bearer-token) has no path logic, so reaching it via an alias must
