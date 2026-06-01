@@ -44,6 +44,8 @@ export function getTreemapChartOption(
     // the initial view at two levels.
     nodeClick: false,
     roam: false,
+    // A custom React breadcrumb (see TreemapChart) replaces ECharts' native one.
+    breadcrumb: { show: false },
     data: toSeriesData(tree, colors),
     leafDepth: 2,
     ...(hasChildren ? { levels: TWO_LEVEL_LEVELS } : {}),

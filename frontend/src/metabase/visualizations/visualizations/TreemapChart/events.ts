@@ -48,22 +48,72 @@ export function getTreemapViewRootId(
   return id;
 }
 
+// Minimal shape of the internal ECharts model chain we read to recover the
+// treemap series' absolute root node — the same property ECharts itself reads
+// when resolving a `treemapRootToNode` action (see retrieveTargetInfo).
+type TreemapModelAccessor = {
+  getModel?: () =>
+    | {
+        getSeriesByIndex?: (
+          index: number,
+        ) =>
+          | { getRawData?: () => { tree?: { root?: unknown } } | undefined }
+          | undefined;
+      }
+    | undefined;
+};
+
+/**
+ * Read the treemap series' absolute root node from the chart instance. Returns
+ * `undefined` if the chart isn't ready or the internal shape changed.
+ */
+export function getTreemapRootNode(chart: EChartsType): unknown {
+  return (chart as unknown as TreemapModelAccessor)
+    .getModel?.()
+    ?.getSeriesByIndex?.(0)
+    ?.getRawData?.()?.tree?.root;
+}
+
+/**
+ * Navigate the treemap back to the overview (absolute root). Dispatching
+ * `treemapRootToNode` with the root node fires a `treemaproottonode` event, so
+ * the tracked view root resets through the same single source of truth as
+ * click-drilling. Used by the breadcrumb's "All".
+ */
+export function dispatchTreemapToRoot(
+  chartRef: MutableRefObject<EChartsType | undefined>,
+): void {
+  const chart = chartRef.current;
+  if (chart == null) {
+    return;
+  }
+  const root = getTreemapRootNode(chart);
+  if (root == null) {
+    return;
+  }
+  chart.dispatchAction({
+    type: "treemapRootToNode",
+    seriesIndex: 0,
+    targetNode: root,
+  });
+}
+
 /**
  * Treemap event handlers:
  * - `click` drills into the grouping the clicked element belongs to. ECharts
  *   can't natively show two levels initially and drill on click (see option.ts
  *   `leafDepth`/`nodeClick`), so we disable native click and dispatch
  *   `treemapRootToNode` ourselves.
- * - `treemaproottonode` tracks the current view root in `viewRootIdRef` so the
- *   tooltip can switch between the overview summary and a drilled-in breakdown.
- *   It is the single source of truth, firing for both our click-drill and the
- *   native breadcrumb (including "All", which resets to the overview).
+ * - `treemaproottonode` reports the current view root via `onViewRootChange` so
+ *   the tooltip and breadcrumb can react to drill state. It is the single source
+ *   of truth, firing for both our click-drill and the breadcrumb's "All" (which
+ *   resets to the overview).
  */
 export function getTreemapEventHandlers(
   chartRef: MutableRefObject<EChartsType | undefined>,
   hasChildren: boolean,
   tree: TreemapTree,
-  viewRootIdRef: MutableRefObject<string | null>,
+  onViewRootChange: (viewRootId: string | null) => void,
 ): EChartsEventHandler[] {
   if (!hasChildren) {
     return [];
@@ -87,7 +137,7 @@ export function getTreemapEventHandlers(
     {
       eventName: "treemaproottonode",
       handler: (event: TreemapRootToNodeEvent) => {
-        viewRootIdRef.current = getTreemapViewRootId(event?.targetNode, tree);
+        onViewRootChange(getTreemapViewRootId(event?.targetNode, tree));
       },
     },
   ];
@@ -97,11 +147,12 @@ export function useChartEvents(
   chartRef: MutableRefObject<EChartsType | undefined>,
   hasChildren: boolean,
   tree: TreemapTree,
-  viewRootIdRef: MutableRefObject<string | null>,
+  onViewRootChange: (viewRootId: string | null) => void,
 ) {
   const eventHandlers = useMemo(
-    () => getTreemapEventHandlers(chartRef, hasChildren, tree, viewRootIdRef),
-    [chartRef, hasChildren, tree, viewRootIdRef],
+    () =>
+      getTreemapEventHandlers(chartRef, hasChildren, tree, onViewRootChange),
+    [chartRef, hasChildren, tree, onViewRootChange],
   );
 
   return { eventHandlers };

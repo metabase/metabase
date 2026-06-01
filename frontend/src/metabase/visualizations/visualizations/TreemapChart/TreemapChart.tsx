@@ -1,8 +1,9 @@
 import type { EChartsType } from "echarts/core";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
+import { getTreemapBreadcrumbModel } from "metabase/visualizations/echarts/graph/treemap/model/breadcrumb";
 import { getTreemapColors } from "metabase/visualizations/echarts/graph/treemap/model/colors";
 import {
   getTreemapChartColumns,
@@ -18,8 +19,9 @@ import {
 } from "metabase/visualizations/echarts/tooltip";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
+import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
-import { useChartEvents } from "./events";
+import { dispatchTreemapToRoot, useChartEvents } from "./events";
 
 // Stable fallback so `useChartEvents` deps don't churn while chartData is null.
 const EMPTY_TREE: TreemapTree = [];
@@ -33,9 +35,16 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
   // `null` = overview (initial 2-level view); `"0".."N-1"` = drilled into that
-  // top-level group. Tracked from `treemaproottonode` events (see events.ts);
-  // read live by the tooltip formatter.
+  // top-level group. Tracked from `treemaproottonode` events (see events.ts).
+  // The breadcrumb renders from `viewRootId` state; the tooltip formatter reads
+  // the synced `viewRootIdRef` live (its option is built once, so it can't close
+  // over state). `handleViewRootChange` keeps both in sync.
+  const [viewRootId, setViewRootId] = useState<string | null>(null);
   const viewRootIdRef = useRef<string | null>(null);
+  const handleViewRootChange = useCallback((id: string | null) => {
+    viewRootIdRef.current = id;
+    setViewRootId(id);
+  }, []);
 
   const chartData = useMemo(() => {
     const cols = rawSeriesWithRemappings[0]?.data?.cols ?? [];
@@ -80,14 +89,22 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
     chartRef,
     hasChildren,
     chartData?.tree ?? EMPTY_TREE,
-    viewRootIdRef,
+    handleViewRootChange,
   );
 
   // A new dataset re-renders the chart at the absolute root, so reset the
   // tracked view root to the overview.
   useEffect(() => {
-    viewRootIdRef.current = null;
-  }, [chartData]);
+    handleViewRootChange(null);
+  }, [chartData, handleViewRootChange]);
+
+  const breadcrumb = chartData
+    ? getTreemapBreadcrumbModel(chartData.tree, viewRootId)
+    : null;
+
+  const handleBreadcrumbAllClick = useCallback(() => {
+    dispatchTreemapToRoot(chartRef);
+  }, []);
 
   useCloseTooltipOnScroll(chartRef);
 
@@ -106,7 +123,14 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
         option={option}
         eventHandlers={eventHandlers}
         onInit={handleInit}
-      />
+      >
+        {breadcrumb && (
+          <TreemapBreadcrumb
+            groupLabel={breadcrumb.groupLabel}
+            onAllClick={handleBreadcrumbAllClick}
+          />
+        )}
+      </ResponsiveEChartsRenderer>
       {colorsCss}
     </>
   );

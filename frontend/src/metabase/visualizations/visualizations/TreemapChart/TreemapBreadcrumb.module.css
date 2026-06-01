@@ -1,0 +1,38 @@
+.breadcrumb {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  background-color: var(--mb-color-background);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.07),
+    0 1px 4px rgba(0, 0, 0, 0.05),
+    0 5px 15px rgba(0, 0, 0, 0.1);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  white-space: nowrap;
+}
+
+.root {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: bold;
+  color: var(--mb-color-text-primary);
+}
+
+.separator {
+  color: var(--mb-color-text-tertiary);
+}
+
+.group {
+  color: var(--mb-color-text-secondary);
+}

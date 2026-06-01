@@ -146,4 +146,10 @@ describe("getTreemapChartOption zoom", () => {
 
     expect(series.roam).toBe(false);
   });
+
+  it("hides the native breadcrumb (a custom React breadcrumb replaces it)", () => {
+    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+
+    expect(series.breadcrumb).toMatchObject({ show: false });
+  });
 });
