@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import {
@@ -89,6 +90,16 @@ export const setupStrategyEditorForDatabases = ({
 
 export const getSaveButton = async () =>
   await screen.findByTestId("strategy-form-submit-button");
+
+/** The strategy picker is a Mantine Select; its options stack a bold title
+ * over a description, so match `name` against the title prefix (e.g. `/^Duration/i`). */
+export const selectCacheStrategy = async (name: RegExp) => {
+  await userEvent.click(await screen.findByTestId("cache-strategy-select"));
+  await userEvent.click(await screen.findByRole("option", { name }));
+};
+
+export const getCacheStrategySelect = () =>
+  screen.getByTestId("cache-strategy-select");
 
 export const changeInput = async (
   label: RegExp,

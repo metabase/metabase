@@ -428,8 +428,9 @@ describe("scenarios > data studio > library > metrics", () => {
       H.DataStudio.Metrics.cachingTab().click();
 
       cy.log("Change the setting and save");
-      cy.findByRole("radio", { name: /Use default/ }).should("be.checked");
-      cy.findByRole("radio", { name: /Duration/ }).click();
+      cy.findByTestId("cache-strategy-select").should("have.value", "Default");
+      cy.findByTestId("cache-strategy-select").click();
+      cy.findByRole("option", { name: /Duration/ }).click();
       cy.findByRole("button", { name: "Save" }).click();
       cy.findByRole("button", { name: /Saved/ }).should("exist");
 
@@ -440,7 +441,7 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.log("Navigate away and come back to verify the change is persisted");
       H.DataStudio.Metrics.overviewTab().click();
       H.DataStudio.Metrics.cachingTab().click();
-      cy.findByRole("radio", { name: /Duration/ }).should("be.checked");
+      cy.findByTestId("cache-strategy-select").should("have.value", "Duration");
     });
   });
 });
