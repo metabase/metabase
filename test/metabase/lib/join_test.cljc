@@ -62,6 +62,30 @@
                                              :args     [(lib/ref (meta/field-metadata :venues :category-id))
                                                         (lib/ref (meta/field-metadata :categories :id))]}]))))))
 
+(deftest ^:parallel with-join-source-fields-test
+  (let [base-join (lib/join-clause (meta/table-metadata :categories)
+                                   [(lib/= (meta/field-metadata :venues :category-id)
+                                           (meta/field-metadata :categories :id))])]
+    (testing "Sets :fields on the join's first (source) stage from column metadatas"
+      (let [result (lib/with-join-source-fields base-join [(meta/field-metadata :categories :id)])]
+        (is (= 1 (count (:fields (first (:stages result))))))))
+    (testing "nil or empty cols dissocs :fields (reverts to implicit-all)"
+      (let [with-it (lib/with-join-source-fields base-join [(meta/field-metadata :categories :id)])]
+        (is (not (contains? (first (:stages (lib/with-join-source-fields with-it nil))) :fields)))
+        (is (not (contains? (first (:stages (lib/with-join-source-fields with-it []))) :fields)))))
+    (testing "Rejects a native-stage inner with a clear error (not a malli output-schema mess)"
+      (let [native-join (assoc base-join :stages [{:lib/type    :mbql.stage/native
+                                                   :lib/options {:lib/uuid (str (random-uuid))}
+                                                   :native      "SELECT 1"}])]
+        #?(:clj  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                       #"requires the join's first stage to be an MBQL stage"
+                                       (lib/with-join-source-fields native-join
+                                         [(meta/field-metadata :categories :id)])))
+           :cljs (is (thrown-with-msg? js/Error
+                                       #"requires the join's first stage to be an MBQL stage"
+                                       (lib/with-join-source-fields native-join
+                                         [(meta/field-metadata :categories :id)]))))))))
+
 (deftest ^:parallel join-clause-test
   (testing "Should have :fields :all by default (#32419)"
     (is (=? {:lib/type    :mbql/join

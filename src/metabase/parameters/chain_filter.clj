@@ -421,8 +421,15 @@
          update :joins
          (fn [joins]
            (mapv (fn [a-join]
-                   (let [tid (:id (lib/joined-thing query a-join))]
-                     (lib/with-join-stage-fields a-join (get cols-by-tid tid))))
+                   (let [thing (lib/joined-thing query a-join)
+                         tid   (when (= :metadata/table (:lib/type thing))
+                                 (:id thing))]
+                     (if tid
+                       (lib/with-join-source-fields a-join (get cols-by-tid tid))
+                       ;; Non-Table source (e.g. Card): leave alone. Chain-filter doesn't produce these today, but if
+                       ;; a future caller did, projecting by table-id wouldn't be meaningful — leave the join's
+                       ;; existing `:fields` untouched rather than silently dropping them.
+                       a-join)))
                  joins)))))))
 
 (mr/def ::options

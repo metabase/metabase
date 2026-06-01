@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.query-processor.compile :as qp.compile]
@@ -598,45 +599,52 @@
 ;;;     compiles fine and values are correct, but we're materializing columns we don't need
 ;;;     — the OOM root cause behind #74154.
 
-(defn- referenced-field-ids-by-source-table
-  "Return `{table-id #{field-id ...}}` — for every field-id referenced anywhere in `query`, bucket by its `:table-id`."
+(defn- referenced-field-ids-by-join-alias
+  "Return `{alias #{field-id ...}}` — for every `[:field {:join-alias A} id]` ref in `query`, bucket by `A`. Refs
+  without a `:join-alias` (source-table refs, refs inside a join's own inner stage) don't contribute. This is the
+  actual contract: the inner stage of a join projects exactly what the rest of the query reaches through that join's
+  alias."
   [query]
-  (let [fids (lib/all-field-ids query)
-        cols (lib.metadata/bulk-metadata query :metadata/column fids)]
-    (reduce (fn [m {:keys [table-id id]}]
-              (cond-> m
-                table-id (update table-id (fnil conj #{}) id)))
-            {} cols)))
+  (let [acc (volatile! (transient {}))]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _path clause]
+       (when (lib.util/clause-of-type? clause :field)
+         (let [[_ opts id] clause
+               alias (:join-alias opts)]
+           (when (and alias (pos-int? id))
+             (vswap! acc assoc! alias (conj (get @acc alias #{}) id)))))
+       nil))
+    (persistent! @acc)))
 
-(defn- inner-projection-by-source-table
-  "Return `{table-id #{field-id ...}}` — the field-ids each join's inner-stage `:fields` projects, keyed by the join's
-  source-table-id."
+(defn- inner-projection-by-join-alias
+  "Return `{alias #{field-id ...}}` — the field-ids each join's inner-stage `:fields` projects, keyed by the join's
+  alias."
   [query]
   (into {}
         (for [a-join (lib/joins query)
-              :let [tid (:id (lib/joined-thing query a-join))]
-              :when tid]
+              :let [a-alias (lib/current-join-alias a-join)]
+              :when a-alias]
           ;; Structural read into the inner stage: the projection list is the thing under test.
-          [tid (set (keep (fn [clause]
-                            (when (lib.util/clause-of-type? clause :field)
-                              (let [id (last clause)]
-                                (when (pos-int? id) id))))
-                          (:fields (first (:stages a-join)))))])))
+          [a-alias (set (keep (fn [clause]
+                                (when (lib.util/clause-of-type? clause :field)
+                                  (let [id (last clause)]
+                                    (when (pos-int? id) id))))
+                              (:fields (first (:stages a-join)))))])))
 
 (defn- projection-violations
-  "Return a seq of diagnostic maps (one per offending join) or nil if the invariant holds:
-  inner-stage `:fields` equals the set of field-ids the query references that live on that
-  join's source table."
+  "Return a seq of diagnostic maps (one per offending join's alias) or nil if the invariant holds: each join's
+  inner-stage `:fields` equals exactly the field-ids the rest of the query references through that join's alias."
   [query]
-  (let [refs (referenced-field-ids-by-source-table query)
-        proj (inner-projection-by-source-table query)]
+  (let [refs (referenced-field-ids-by-join-alias query)
+        proj (inner-projection-by-join-alias query)]
     (not-empty
      (vec
-      (for [tid (sort (keys proj))
-            :let [r (get refs tid #{})
-                  p (get proj tid #{})]
+      (for [a-alias (sort (into (set (keys refs)) (keys proj)))
+            :let [r (get refs a-alias #{})
+                  p (get proj a-alias #{})]
             :when (not= r p)]
-        {:source-table-id         tid
+        {:alias                   a-alias
          :referenced              r
          :projected               p
          :missing-from-projection (set/difference r p)
@@ -654,7 +662,11 @@
 
 (defn- sql-over-projections
   "Return a map of `{table-id {:declared #{…} :actual #{…} :extra #{…}}}` for any joined Table whose compiled-SQL
-  field references aren't a subset of the MBQL inner-stage `:fields` for that join. Returns nil if the SQL is tight."
+  field references aren't a subset of the MBQL inner-stage `:fields` for that join. Returns nil if the SQL is tight.
+
+  Keyed by table-id (not alias) because `sql-tools/referenced-fields` reports columns by `:table-id`, and the SQL
+  emitter aggregates across joins to the same table. When multiple joins target the same table-id, `:declared` is the
+  union of their inner-stage projections."
   [query]
   (let [driver    (t2/select-one-fn :engine :model/Database :id (:database query))
         sql       (:query (qp.compile/compile query))
@@ -663,7 +675,16 @@
                             (update m table-id (fnil conj #{}) id))
                           {}
                           (sql-tools/referenced-fields driver nq))
-        mbql-proj (inner-projection-by-source-table query)]
+        mbql-proj (reduce (fn [m a-join]
+                            (let [tid (:id (lib/joined-thing query a-join))
+                                  fields (set (keep (fn [clause]
+                                                      (when (lib.util/clause-of-type? clause :field)
+                                                        (let [id (last clause)]
+                                                          (when (pos-int? id) id))))
+                                                    (:fields (first (:stages a-join)))))]
+                              (cond-> m
+                                tid (update tid (fnil into #{}) fields))))
+                          {} (lib/joins query))]
     (not-empty
      (into {}
            (for [[tid declared] mbql-proj
@@ -708,32 +729,75 @@
       (testing label
         (check-tight-projections (build))))))
 
+(deftest ^:parallel tighten-leaves-card-source-joins-untouched-test
+  ;; chain-filter never produces card-source joins today; this test guards against silent breakage if a future caller
+  ;; uses tighten-join-projections on a query that does. Without the `:metadata/table` check in tighten, the join's
+  ;; inner-stage `:fields` would be dissoc'd (because `:id` of a card metadata won't match any field's `:table-id`),
+  ;; re-exposing the original add-implicit-clauses expansion bug for that join.
+  (mt/dataset test-data
+    (mt/with-temp [:model/Card temp-card {:dataset_query {:database (mt/id)
+                                                          :type     :query
+                                                          :query    {:source-table (mt/id :venues)}}}]
+      (let [;; Build a real chain-filter query, then synthesize a card-source join by swapping `:source-table` for
+            ;; `:source-card` on the venues join's inner stage. The Card just needs to exist as a metadata-provider
+            ;; entry — its actual query doesn't matter for this structural check.
+            q             (mbql-for (mt/id :categories :name) (mt/id :venues :category_id) nil)
+            q-mocked      (-> q
+                              (update-in [:stages 0 :joins 0 :stages 0] dissoc :source-table)
+                              (assoc-in  [:stages 0 :joins 0 :stages 0 :source-card] (:id temp-card)))
+            inner-before  (first (:stages (first (lib/joins q-mocked))))
+            q-tightened   (#'chain-filter/tighten-join-projections q-mocked)
+            inner-after   (first (:stages (first (lib/joins q-tightened))))]
+        (is (= (:fields inner-before) (:fields inner-after))
+            "tighten must not modify :fields on a card-source join's inner stage")))))
+
+(defn- find-partition-filter
+  "Return the `[:>  ... [:field {:join-alias A} partition-fid] _]` clause from `query`'s outer-stage `:filters`, or
+  nil if none. Matches both join-aliased and source-table refs."
+  [query partition-fid join-alias]
+  (some (fn [clause]
+          (and (vector? clause)
+               (= :> (first clause))
+               (let [field (nth clause 2 nil)]
+                 (and (vector? field)
+                      (= :field (first field))
+                      (= partition-fid (last field))
+                      (= join-alias (:join-alias (second field)))
+                      clause))))
+        (-> query :stages first :filters)))
+
 (deftest ^:sequential chain-filter-preserves-required-partition-filter-on-joined-table-test
-  ;; `add-required-filters-if-needed` runs at the END of `chain-filter-mbql-query`, after
-  ;; joins are built. For tables that require partition filters (currently BigQuery
-  ;; partitioned tables), it adds a `[:> partition-col <epoch>]` clause referencing the joined
-  ;; Table's partition column via the join alias.
+  ;; `add-required-filters-if-needed` runs near the end of `chain-filter-mbql-query`, after joins are built. For
+  ;; tables that require a partition filter (currently BigQuery partitioned tables), it adds a `[:> partition-col _]`
+  ;; clause; when the partition column lives on a *joined* table, the clause references it through the join's alias.
   ;;
-  ;; A fix that narrows the join's projection up front — and doesn't account for filters added
-  ;; later — silently elides the partition filter, because the joined-Table column it would
-  ;; reference is no longer in `visible-columns`. That's a behavior regression on BigQuery:
-  ;; the partition filter master would have emitted is missing from the SQL.
+  ;; A fix that narrows the join's projection up front — and doesn't account for filters added later — silently
+  ;; elides the partition filter, because the joined-Table column it would reference is no longer in
+  ;; `visible-columns`. That's a behavior regression on BigQuery.
   ;;
-  ;; This test pins the contract: after the full chain-filter pipeline runs, the joined-Table
-  ;; alias must reference the partition column. Any fix that drops the filter or fails to
-  ;; project the column will fail this test.
+  ;; The query below is chosen so venues becomes a JOIN target (source = categories, constraint on venues.id), and
+  ;; the partition column (venues.price) is not referenced by anything the user wrote. So if tighten-join-projections
+  ;; correctly survives the late-added partition filter, venues.price ends up in the venues join's inner stage
+  ;; *only because of the partition filter middleware*.
   (mt/dataset test-data
     (let [venues-id     (mt/id :venues)
           partition-fid (mt/id :venues :price)]
       (mt/with-temp-vals-in-db :model/Table venues-id {:database_require_filter true}
         (mt/with-temp-vals-in-db :model/Field partition-fid {:database_partitioned true}
-          (let [q    (mbql-for (mt/id :categories :name)
-                               (mt/id :venues :category_id)
-                               nil)
-                refs (get (referenced-field-ids-by-source-table q) venues-id)]
-            (is (contains? refs partition-fid)
-                (str "expected refs on venues (table " venues-id ") to include "
-                     partition-fid " (venues.price); got " refs))))))))
+          (let [q            (mbql-for (mt/id :categories :name)
+                                       nil
+                                       {(mt/id :venues :id) 1})
+                venues-alias (some (fn [j]
+                                     (when (= venues-id (:id (lib/joined-thing q j)))
+                                       (lib/current-join-alias j)))
+                                   (lib/joins q))]
+            (testing "partition filter clause is present in :filters, referencing the joined-table alias"
+              (is (some? (find-partition-filter q partition-fid venues-alias))
+                  (str "expected a [:> [:field {:join-alias " (pr-str venues-alias) "} " partition-fid "] _] clause "
+                       "in :filters; got: " (pr-str (-> q :stages first :filters)))))
+            (testing "venues join projects partition column in its inner stage"
+              (is (contains? (get (inner-projection-by-join-alias q) venues-alias) partition-fid)
+                  (str "expected " partition-fid " in inner stage of venues join (" (pr-str venues-alias) ")")))))))))
 
 ;; Detail: Key (entity_id)=(6nmVTpCpKFRkZJigvqSVm) already exists.
 (deftest use-cached-field-values-test

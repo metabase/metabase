@@ -515,11 +515,22 @@
                                           fields)))]
     (u/assoc-dissoc joinable :fields fields)))
 
-(mu/defn with-join-stage-fields :- ::lib.join.util/partial-join
-  "Set the `:fields` projection on the first (inner) stage of `a-join` from `cols`, a coll of column metadatas. Pass
-  `nil` or an empty coll to drop the explicit projection. Inner-stage analogue of [[with-join-fields]]."
+(mu/defn with-join-source-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
+  column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
+
+  Preconditions:
+    - the join's first stage must be an MBQL stage. Native-stage inner has no `:fields` semantics; passing one throws.
+    - `cols` must come from the join's source. Mismatched cols produce refs the source can't resolve.
+
+  Sets what the inner subquery SELECTs. For what the join EXPOSES to its outer stage, see [[with-join-fields]]."
   [a-join :- ::lib.join.util/partial-join
    cols   :- [:maybe [:sequential some?]]]
+  (let [first-stage-type (-> a-join :stages first :lib/type)]
+    (when-not (= :mbql.stage/mbql first-stage-type)
+      (throw (ex-info "with-join-source-fields requires the join's first stage to be an MBQL stage"
+                      {:first-stage-type first-stage-type
+                       :join             a-join}))))
   (let [refs (not-empty (mapv lib.ref/ref cols))]
     (update-in a-join [:stages 0] u/assoc-dissoc :fields refs)))
 

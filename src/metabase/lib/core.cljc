@@ -1025,14 +1025,20 @@
    fields :- [:maybe [:or [:enum :all :none] [:sequential some?]]]] ;; TODO: More precise schema.
   (lib.join/with-join-fields a-join fields))
 
-(mu/defn with-join-stage-fields :- ::lib.join.util/partial-join
-  "Set the `:fields` projection on the first (inner) stage of `a-join` from `cols`, a coll of column metadatas. Pass
-  `nil` or an empty coll to drop the explicit projection. Inner-stage analogue of [[with-join-fields]].
+(mu/defn with-join-source-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
+  column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
+
+  Preconditions:
+    - the join's first stage must be an MBQL stage. Native-stage inner has no `:fields` semantics; passing one throws.
+    - `cols` must come from the join's source. Mismatched cols produce refs the source can't resolve.
+
+  Sets what the inner subquery SELECTs. For what the join EXPOSES to its outer stage, see [[with-join-fields]].
 
   **Code Health:** Healthy. This is a core API."
   [a-join :- ::lib.join.util/partial-join
    cols   :- [:maybe [:sequential some?]]]
-  (lib.join/with-join-stage-fields a-join cols))
+  (lib.join/with-join-source-fields a-join cols))
 
 (mu/defn join-fieldable-columns :- ::lib.metadata.calculation/visible-columns
   "Returns the list of column metadata for the columns which are *visible* on the RHS of `a-joinable`, such as a table,
