@@ -18,6 +18,7 @@ interface ChartItemTooltip {
   dataIndex: number;
   display: CardDisplayType;
   seriesId?: DataKey | null;
+  selectedSeriesDataKey?: DataKey | null;
   settings: ComputedVisualizationSettings;
   chartModel: BaseCartesianChartModel;
 }
@@ -28,6 +29,7 @@ const ChartItemTooltip = ({
   dataIndex,
   display,
   seriesId,
+  selectedSeriesDataKey,
 }: ChartItemTooltip) => {
   if (dataIndex == null || seriesId == null) {
     return null;
@@ -39,6 +41,7 @@ const ChartItemTooltip = ({
     dataIndex,
     display,
     seriesId,
+    selectedSeriesDataKey,
   );
 
   if (!tooltipModel) {
@@ -53,6 +56,7 @@ export const getTooltipOption = (
   settings: ComputedVisualizationSettings,
   display: CardDisplayType,
   containerRef: React.RefObject<HTMLDivElement>,
+  selectedSeriesDataKey?: DataKey | null,
 ): TooltipOption => {
   return {
     ...getTooltipBaseOption(containerRef),
@@ -95,6 +99,7 @@ export const getTooltipOption = (
           dataIndex={dataIndex}
           display={display}
           seriesId={seriesId}
+          selectedSeriesDataKey={selectedSeriesDataKey}
         />,
       );
     },

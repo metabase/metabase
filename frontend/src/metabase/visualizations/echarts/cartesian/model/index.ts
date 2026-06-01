@@ -118,7 +118,7 @@ export const getCartesianChartModel = (
 
   const sortedSeriesModels = hasMultipleCards
     ? unsortedSeriesModels
-    : getSortedSeriesModels(unsortedSeriesModels, settings);
+    : getSortedSeriesModels(unsortedSeriesModels, settings, dataset);
 
   const scaledDataset = scaleDataset(dataset, sortedSeriesModels, settings);
 

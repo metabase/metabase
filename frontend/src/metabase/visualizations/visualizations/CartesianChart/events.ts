@@ -416,6 +416,7 @@ export const getTooltipModel = (
   echartsDataIndex: number,
   display: CardDisplayType,
   seriesDataKey: DataKey,
+  selectedSeriesDataKey?: DataKey | null,
 ): EChartsTooltipModel | null => {
   const datum = getDatumByEChartsDataIndex(chartModel, echartsDataIndex);
   const transformedDatum = chartModel.transformedDataset[echartsDataIndex];
@@ -452,6 +453,7 @@ export const getTooltipModel = (
       settings,
       hoveredSeries,
       display,
+      selectedSeriesDataKey,
     );
   }
 
@@ -465,6 +467,7 @@ export const getTooltipModel = (
       datum,
       transformedDatum,
       hoveredSeries,
+      selectedSeriesDataKey,
     );
   }
   return getSeriesComparisonTooltipModel(
@@ -474,6 +477,7 @@ export const getTooltipModel = (
     transformedDatum,
     previousDatum,
     hoveredSeries,
+    selectedSeriesDataKey,
   );
 };
 
@@ -483,6 +487,7 @@ const getSingleSeriesTooltipModel = (
   settings: ComputedVisualizationSettings,
   hoveredSeries: SeriesModel,
   display: CardDisplayType,
+  selectedSeriesDataKey?: DataKey | null,
 ): EChartsTooltipModel | null => {
   const header = String(
     formatValueForTooltip({
@@ -503,8 +508,9 @@ const getSingleSeriesTooltipModel = (
     (series) => series === hoveredSeries || !isBreakoutSeries(series),
   );
   const seriesTooltipRows = seriesToShow.map((series) => {
+    const focusedSeriesDataKey = selectedSeriesDataKey ?? hoveredSeries.dataKey;
     const isFocused =
-      hoveredSeries.dataKey === series.dataKey && seriesToShow.length > 1;
+      focusedSeriesDataKey === series.dataKey && seriesToShow.length > 1;
 
     return {
       isFocused,
@@ -559,6 +565,7 @@ const getSeriesComparisonTooltipModel = (
   transformedDatum: Datum,
   previousDatum: Datum | null,
   hoveredSeries: SeriesModel,
+  selectedSeriesDataKey?: DataKey | null,
 ): EChartsTooltipModel | null => {
   const header = String(
     formatValueForTooltip({
@@ -571,8 +578,7 @@ const getSeriesComparisonTooltipModel = (
   const seriesRows: EChartsTooltipRow[] = chartModel.seriesModels
     .filter((seriesModel) => seriesModel.visible)
     .map((seriesModel) => {
-      // Disable highlighting to show all series equally
-      const isFocused = false;
+      const isFocused = selectedSeriesDataKey === seriesModel.dataKey;
 
       const value =
         seriesModel.dataKey === OTHER_DATA_KEY
@@ -659,6 +665,7 @@ export const getStackedTooltipModel = (
   datum: Datum,
   transformedDatum: Datum,
   hoveredSeries: SeriesModel,
+  selectedSeriesDataKey?: DataKey | null,
 ): EChartsTooltipModel | null => {
   const stackSeriesRows = chartModel.seriesModels
     .filter(
@@ -672,8 +679,10 @@ export const getStackedTooltipModel = (
           ? transformedDatum[OTHER_DATA_KEY]
           : datum[seriesModel.dataKey];
 
+      const focusedSeriesDataKey = selectedSeriesDataKey ?? seriesDataKey;
+
       return {
-        isFocused: seriesModel.dataKey === seriesDataKey,
+        isFocused: seriesModel.dataKey === focusedSeriesDataKey,
         name: seriesModel.name,
         color: seriesModel.color,
         dataKey: seriesModel.dataKey,

@@ -869,8 +869,50 @@ const sortByDimension = (
   });
 };
 
+const BREAKOUT_NAME_COLLATOR = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: "base",
+});
+
+const getSeriesTotalValue = (
+  seriesModel: SeriesModel,
+  dataset?: ChartDataset,
+): number => {
+  return (
+    dataset?.reduce((total, datum) => {
+      const value = datum[seriesModel.dataKey];
+      return total + (typeof value === "number" ? value : 0);
+    }, 0) ?? 0
+  );
+};
+
+const sortSeriesModelsByBreakout = (
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+  dataset?: ChartDataset,
+): SeriesModel[] => {
+  switch (settings["graph.breakout_series_sort"]) {
+    case "value_desc":
+      return seriesModels.toSorted(
+        (left, right) =>
+          getSeriesTotalValue(right, dataset) -
+          getSeriesTotalValue(left, dataset),
+      );
+    case "name_asc":
+      return seriesModels.toSorted((left, right) =>
+        BREAKOUT_NAME_COLLATOR.compare(left.name, right.name),
+      );
+    case "name_desc":
+      return seriesModels.toSorted((left, right) =>
+        BREAKOUT_NAME_COLLATOR.compare(right.name, left.name),
+      );
+    default:
+      return seriesModels;
+  }
+};
+
 /**
- * Sorts the series models based on the order specified in the "graph.series_order" property of visualization settings.
+ * Sorts the series models based on the configured breakout sorting, or the order specified in the "graph.series_order" property of visualization settings.
  * It defines the breakout series order so that charts where all series are metrics without breakouts do not
  * rely on this property, and the series are sorted based on the metrics order in the original MBQL query.
  *
@@ -881,7 +923,17 @@ const sortByDimension = (
 export const getSortedSeriesModels = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
+  dataset?: ChartDataset,
 ): SeriesModel[] => {
+  const sortedSeriesModels = sortSeriesModelsByBreakout(
+    seriesModels,
+    settings,
+    dataset,
+  );
+  if (sortedSeriesModels !== seriesModels) {
+    return sortedSeriesModels;
+  }
+
   const breakoutSeriesOrder = settings["graph.series_order"];
   if (breakoutSeriesOrder == null || breakoutSeriesOrder.length === 0) {
     return seriesModels;

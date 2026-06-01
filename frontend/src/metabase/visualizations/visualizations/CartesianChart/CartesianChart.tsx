@@ -1,4 +1,5 @@
-import type { EChartsType } from "echarts/core";
+import Color from "color";
+import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
@@ -8,6 +9,7 @@ import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
+import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
   useCartesianChartSeriesColorsClasses,
@@ -24,6 +26,58 @@ import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import { getDashboardAdjustedSettings } from "./utils";
 
+function getDimmedColor(color: unknown, backgroundColor: string) {
+  return typeof color === "string"
+    ? Color(color)
+        .mix(Color(backgroundColor), 1 - CHART_STYLE.opacity.blur)
+        .string()
+    : color;
+}
+
+function getOptionWithSelectedLine(
+  option: EChartsCoreOption,
+  selectedLineSeriesIndex: number | null,
+  backgroundColor: string,
+): EChartsCoreOption {
+  if (selectedLineSeriesIndex == null || !Array.isArray(option.series)) {
+    return option;
+  }
+
+  return {
+    ...option,
+    series: option.series.map((seriesOption, seriesIndex) => {
+      const isDataLineSeries =
+        seriesOption.type === "line" && seriesOption.silent !== true;
+
+      if (!isDataLineSeries) {
+        return seriesOption;
+      }
+
+      const isSelected = selectedLineSeriesIndex === seriesIndex;
+
+      return {
+        ...seriesOption,
+        lineStyle: {
+          ...seriesOption.lineStyle,
+          color: isSelected
+            ? seriesOption.lineStyle?.color
+            : getDimmedColor(seriesOption.lineStyle?.color, backgroundColor),
+        },
+        itemStyle: {
+          ...seriesOption.itemStyle,
+          borderColor: isSelected
+            ? seriesOption.itemStyle?.borderColor
+            : getDimmedColor(
+                seriesOption.itemStyle?.borderColor,
+                backgroundColor,
+              ),
+          opacity: isSelected ? 1 : CHART_STYLE.opacity.blur,
+        },
+      };
+    }),
+  };
+}
+
 function CartesianChartInner(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
@@ -31,6 +85,9 @@ function CartesianChartInner(props: VisualizationProps) {
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
 
   const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
+  const [selectedLineSeriesIndex, setSelectedLineSeriesIndex] = useState<
+    number | null
+  >(null);
 
   const {
     showAllLegendItems,
@@ -77,11 +134,27 @@ function CartesianChartInner(props: VisualizationProps) {
         width: chartSize.width,
         height: chartSize.height,
         hiddenSeries,
+        selectedLineSeriesIndex,
         settings,
       },
       containerRef,
     );
-  useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
+  const renderedOption = useMemo(
+    () =>
+      getOptionWithSelectedLine(
+        option,
+        selectedLineSeriesIndex,
+        renderingContext.getColor("background-primary"),
+      ),
+    [option, selectedLineSeriesIndex, renderingContext],
+  );
+
+  useChartDebug({
+    isQueryBuilder,
+    rawSeries,
+    option: renderedOption,
+    chartModel,
+  });
 
   const chartRef = useRef<EChartsType>();
 
@@ -121,15 +194,18 @@ function CartesianChartInner(props: VisualizationProps) {
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
-  const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
-    chartRef,
-    containerRef,
-    chartModel,
-    timelineEventsModel,
-    option,
-    renderingContext,
-    props,
-  );
+  const { onSelectSeries, onOpenQuestion, eventHandlers, zrEventHandlers } =
+    useChartEvents(
+      chartRef,
+      containerRef,
+      chartModel,
+      timelineEventsModel,
+      renderedOption,
+      renderingContext,
+      selectedLineSeriesIndex,
+      setSelectedLineSeriesIndex,
+      props,
+    );
 
   const handleResize = useCallback((width: number, height: number) => {
     setChartSize({ width, height });
@@ -186,8 +262,9 @@ function CartesianChartInner(props: VisualizationProps) {
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}
-          option={option}
+          option={renderedOption}
           eventHandlers={eventHandlers}
+          zrEventHandlers={zrEventHandlers}
           onResize={handleResize}
           onInit={handleInit}
         >

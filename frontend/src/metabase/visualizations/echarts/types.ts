@@ -13,6 +13,7 @@ export type EChartsSeriesMouseEvent<TDatum = unknown> = {
     event: ZRRawMouseEvent;
   };
   dataIndex?: number;
+  seriesIndex?: number;
   seriesId?: string;
   seriesName?: string;
   name?: string;

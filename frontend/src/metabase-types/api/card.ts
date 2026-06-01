@@ -253,6 +253,8 @@ export interface ColumnSettings {
   [key: string]: any;
 }
 
+export type BreakoutSeriesSort = "value_desc" | "name_asc" | "name_desc";
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
@@ -311,6 +313,7 @@ export type VisualizationSettings = {
   series_settings?: Record<string, SeriesSettings | undefined>;
 
   "graph.series_order"?: SeriesOrderSetting[];
+  "graph.breakout_series_sort"?: BreakoutSeriesSort;
 
   // Scatter plot settings
   "scatter.bubble"?: string; // col name
