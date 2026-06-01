@@ -331,6 +331,10 @@
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
+(defmethod sql.qp/add-interval-honeysql-form :h2-mbql5
+  [driver hsql-form amount unit]
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+
 (defmethod driver/humanize-connection-error-message :h2
   [_ messages]
   (let [message (first messages)]
@@ -357,6 +361,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
+
+(defmethod sql.qp/current-datetime-honeysql-form :h2-mbql5
   [driver]
   (h2x/current-datetime-honeysql-form driver))
 
@@ -474,10 +482,8 @@
          [:case
           [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 
@@ -743,7 +749,10 @@
                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [password]))))))
     {:schema           schema-name
      :database_details {:db new-db}}))
 

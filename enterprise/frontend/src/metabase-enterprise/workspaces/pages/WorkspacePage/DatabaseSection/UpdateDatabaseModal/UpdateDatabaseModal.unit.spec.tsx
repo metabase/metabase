@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupDatabasesEndpoints,
+  setupGetWorkspaceEndpoint,
   setupUpdateWorkspaceDatabaseEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -62,6 +63,7 @@ function setup({
 
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupUpdateWorkspaceDatabaseEndpoint(updatedWorkspace, TEST_DATABASE.id);
+  setupGetWorkspaceEndpoint(updatedWorkspace);
 
   renderWithProviders(
     <UpdateDatabaseModal
@@ -81,8 +83,9 @@ describe("UpdateDatabaseModal", () => {
   it("can update a workspace database", async () => {
     const { onUpdate, updatedWorkspace } = setup();
 
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
     await userEvent.click(
-      await screen.findByRole("checkbox", { name: "analytics" }),
+      await screen.findByRole("option", { name: "analytics" }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 

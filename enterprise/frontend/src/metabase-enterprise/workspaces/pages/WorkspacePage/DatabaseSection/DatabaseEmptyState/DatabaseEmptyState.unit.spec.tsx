@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCreateWorkspaceDatabaseEndpoint,
   setupDatabasesEndpoints,
+  setupGetWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { Workspace } from "metabase-types/api";
@@ -41,6 +42,7 @@ function setup({
 } = {}) {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupCreateWorkspaceDatabaseEndpoint(createdWorkspace);
+  setupGetWorkspaceEndpoint(createdWorkspace);
 
   renderWithProviders(
     <DatabaseEmptyState
@@ -60,7 +62,10 @@ describe("DatabaseEmptyState", () => {
 
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(
-      await within(dialog).findByRole("checkbox", { name: "public" }),
+      await within(dialog).findByLabelText("Schemas to include"),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "public" }),
     );
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Add database" }),

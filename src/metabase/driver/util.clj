@@ -679,12 +679,10 @@
                                      (.init ^KeyStore (cast KeyStore nil)))]
     (doseq [cert certs]
       (.setCertificateEntry keystore (dn-for-cert cert) cert))
-
     (doseq [^X509TrustManager trust-mgr (.getTrustManagers base-trust-manager-factory)]
       (when (instance? X509TrustManager trust-mgr)
         (doseq [issuer (.getAcceptedIssuers trust-mgr)]
           (.setCertificateEntry keystore (dn-for-cert issuer) issuer))))
-
     keystore))
 
 (defn- key-managers [private-key password own-cert]
@@ -839,6 +837,33 @@
        (map rand-nth)
        shuffle
        (apply str)))
+
+(defn- redact-msg
+  "Replace all `secrets` in `msg` with `****`."
+  [msg secrets]
+  (reduce (fn [s secret] (str/replace s secret "****")) (or msg "") secrets))
+
+(defn scrub-exceptions
+  "Scrub `secrets` from the exception message and cause chain of `t`. Returns a new
+   exception with every occurrence of each secret replaced by `****`. Use this to prevent
+   credentials embedded in DDL SQL from leaking into logs via exception messages."
+  [^Throwable t secrets]
+  (let [msg   (redact-msg (ex-message t) secrets)
+        cause (some-> (.getCause t) (scrub-exceptions secrets))]
+    (cond
+      (instance? clojure.lang.ExceptionInfo t)
+      (ex-info msg (ex-data t) cause)
+
+      (instance? java.sql.SQLException t)
+      (let [^java.sql.SQLException sql-ex t
+            next-ex (some-> (.getNextException sql-ex) (scrub-exceptions secrets))]
+        (doto (java.sql.SQLException. msg (.getSQLState sql-ex) (.getErrorCode sql-ex) cause)
+          (.setStackTrace (.getStackTrace t))
+          (cond-> next-ex (.setNextException next-ex))))
+
+      :else
+      (doto (Exception. msg cause)
+        (.setStackTrace (.getStackTrace t))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Macaw parsing helpers                                                |

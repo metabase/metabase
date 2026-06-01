@@ -39,6 +39,22 @@ const reactSdkEmbedReferrerHandler = async (
   },
 });
 
+const sdkResponseErrorHandler = ({
+  metabaseVersion,
+}: {
+  metabaseVersion: string | null;
+}) => {
+  if (metabaseVersion == null) {
+    return;
+  }
+  // Use ensureMetabaseProviderPropsStore to access the current instance of reduxStore
+  ensureMetabaseProviderPropsStore()
+    .getState()
+    .internalProps.reduxStore?.dispatch(
+      setMetabaseInstanceVersion(metabaseVersion),
+    );
+};
+
 const registerVisualizationsOnce = _.once(registerVisualizations);
 const registerDashboardVisualizationsOnce = _.once(
   registerDashboardVisualizations,
@@ -113,18 +129,11 @@ export const useInitDataInternal = ({
     api.beforeRequestHandlers.push(reactSdkEmbedReferrerHandler);
   }
 
-  if (!api.onResponseError) {
-    api.onResponseError = ({ metabaseVersion }) => {
-      if (metabaseVersion == null) {
-        return;
-      }
-      // Use ensureMetabaseProviderPropsStore to access the current instance of reduxStore
-      ensureMetabaseProviderPropsStore()
-        .getState()
-        .internalProps.reduxStore?.dispatch(
-          setMetabaseInstanceVersion(metabaseVersion),
-        );
-    };
+  // Dedupe by handler identity (matches the `beforeRequestHandlers` pattern
+  // above) rather than total listener count — other code can register its own
+  // `responseError` listeners without disabling ours.
+  if (!api.listeners("responseError").includes(sdkResponseErrorHandler)) {
+    api.on("responseError", sdkResponseErrorHandler);
   }
 
   useEffect(() => {

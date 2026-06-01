@@ -1,0 +1,41 @@
+.infoPanel {
+  position: absolute;
+  top: 1rem;
+  bottom: 1rem;
+  max-height: calc(100% - var(--minimap-height));
+  z-index: var(--canvas-element-z-index);
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    width: 32rem;
+    max-height: 100%;
+    pointer-events: all;
+  }
+
+  .fieldRow {
+    overflow: hidden;
+  }
+
+  .fkLink {
+    overflow: hidden;
+    line-height: 1;
+
+    &:hover span {
+      text-decoration: underline;
+    }
+  }
+
+  .fieldName,
+  .targetName {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fieldName {
+    max-width: 50%;
+  }
+}

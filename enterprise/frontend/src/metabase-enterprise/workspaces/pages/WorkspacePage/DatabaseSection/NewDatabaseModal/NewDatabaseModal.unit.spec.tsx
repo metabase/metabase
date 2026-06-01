@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCreateWorkspaceDatabaseEndpoint,
   setupDatabasesEndpoints,
+  setupGetWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Database, Workspace } from "metabase-types/api";
@@ -15,6 +16,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import { NewDatabaseModal } from "./NewDatabaseModal";
+
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 const POSTGRES_DATABASE = createMockDatabase({
   id: 10,
@@ -61,6 +64,7 @@ function setup({
 
   setupDatabasesEndpoints(availableDatabases);
   setupCreateWorkspaceDatabaseEndpoint(createdWorkspace);
+  setupGetWorkspaceEndpoint(createdWorkspace);
 
   renderWithProviders(
     <NewDatabaseModal
@@ -76,16 +80,38 @@ function setup({
 }
 
 describe("NewDatabaseModal", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("can create a workspace database", async () => {
     const { onCreate, createdWorkspace } = setup();
 
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
     await userEvent.click(
-      await screen.findByRole("checkbox", { name: "public" }),
+      await screen.findByRole("option", { name: "public" }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Add database" }));
 
     await waitFor(() =>
       expect(onCreate).toHaveBeenCalledWith(createdWorkspace),
+    );
+  });
+
+  it("tracks an analytics event when a database is added", async () => {
+    const { workspace } = setup();
+
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "public" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add database" }));
+
+    await waitFor(() =>
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "workspaces_database_added",
+        target_id: workspace.id,
+      }),
     );
   });
 

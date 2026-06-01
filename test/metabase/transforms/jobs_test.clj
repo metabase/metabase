@@ -36,7 +36,6 @@
                    :model/TransformTransformTag _ {:transform_id (:id t) :tag_id (:id tag) :position 0}]
       (is (= #{(:id t)}
              (#'jobs/job-transform-ids (:id job))))))
-
   (testing "job has 2 tags, transform has only 1 — must still be found"
     (mt/with-temp [:model/TransformTag tag-a {:name "tag-a"}
                    :model/TransformTag tag-b {:name "tag-b"}
@@ -47,7 +46,6 @@
                    :model/TransformTransformTag _ {:transform_id (:id t) :tag_id (:id tag-a) :position 0}]
       (is (= #{(:id t)}
              (#'jobs/job-transform-ids (:id job))))))
-
   (testing "job has 2 tags, two transforms with different tag subsets — both found"
     (mt/with-temp [:model/TransformTag tag-a {:name "tag-a"}
                    :model/TransformTag tag-b {:name "tag-b"}
@@ -60,13 +58,11 @@
                    :model/TransformTransformTag _ {:transform_id (:id t2) :tag_id (:id tag-b) :position 0}]
       (is (= #{(:id t1) (:id t2)}
              (#'jobs/job-transform-ids (:id job))))))
-
   (testing "job tag with no matching transforms — empty set"
     (mt/with-temp [:model/TransformTag tag {:name "tag-orphan"}
                    :model/TransformJob job {:name "job-4" :schedule "0 0 * * * ? *"}
                    :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
       (is (= #{} (#'jobs/job-transform-ids (:id job))))))
-
   (testing "job with no tags — empty set"
     (mt/with-temp [:model/TransformJob job {:name "job-5" :schedule "0 0 * * * ? *"}]
       (is (= #{} (#'jobs/job-transform-ids (:id job)))))))
@@ -168,7 +164,6 @@
           (is (re-matches #".*Skip running transform 1 due to lacking premium features.*"
                           (:message (first @logged-messages)))
               "Warning message should indicate transform was skipped due to missing features")))))
-
   (testing "Query transforms run with :transforms-basic feature"
     (mt/with-premium-features #{:hosting :transforms-basic}
       (let [query-transform {:id 3
@@ -345,6 +340,7 @@
     (mt/with-model-cleanup [:model/Notification
                             :model/TransformJobRun]
       (mt/with-fake-inbox
+        (mt/fetch-user :crowberto)
         (notification.seed/seed-notification!)
         (mt/with-temp [:model/TransformJob job {:name "stalled-cron-job"
                                                 :schedule "0 0 * * * ? *"}]
@@ -371,6 +367,7 @@
     (mt/with-model-cleanup [:model/Notification
                             :model/TransformJobRun]
       (mt/with-fake-inbox
+        (mt/fetch-user :crowberto)
         (notification.seed/seed-notification!)
         (mt/with-temp [:model/TransformJob job {:name "stalled-manual-job"
                                                 :schedule "0 0 * * * ? *"}]
@@ -639,7 +636,6 @@
             (is (= {::jobs/status :succeeded}
                    (jobs/run-transforms! 0 #{1 2 3 4} {:run-method :manual}))
                 "all four independents must reach the barrier (i.e. be live simultaneously)")))))
-
     (testing "Dependents wait for their dependencies even when concurrency > 1"
       (let [plan  [{:id 1} {:id 2}]
             deps  {1 #{} 2 #{1}}
@@ -652,7 +648,6 @@
                                               (swap! order conj (:id transform)))]
             (jobs/run-transforms! 0 #{1 2} {:run-method :manual})
             (is (= [1 2] @order) "a must complete before b starts")))))
-
     (testing "Dependents of a failed transform are skipped transitively"
       (let [plan [{:id 1} {:id 2} {:id 3}]
             deps {1 #{} 2 #{1} 3 #{2}}]
@@ -665,7 +660,6 @@
               (is (= :failed (::jobs/status result)))
               (is (= #{1 2 3} (set (map (comp :id ::jobs/transform) (::jobs/failures result))))
                   "a failed, b & c skipped as dep-failed"))))))
-
     (testing "Concurrency is capped by the setting"
       (let [plan       (mapv (fn [i] {:id i}) (range 1 9))
             deps       (into {} (map (fn [i] [i #{}]) (range 1 9)))
@@ -683,7 +677,6 @@
                                               (swap! live dec))]
             (jobs/run-transforms! 0 (set (range 1 9)) {:run-method :manual})
             (is (= 2 @max-live) "should never exceed the concurrency setting")))))
-
     (testing "Python transforms are serialized in their own lane (n=1)"
       (let [py       (fn [id] {:id id :source {:type :python}})
             plan     [(py 1) (py 2) (py 3) (py 4)]
@@ -702,7 +695,6 @@
             (jobs/run-transforms! 0 #{1 2 3 4} {:run-method :manual})
             (is (= 1 @max-live)
                 "python transforms must run one at a time even with concurrency=4")))))
-
     (testing "SQL and Python lanes run in parallel without contending for slots"
       (let [py          (fn [id] {:id id :source {:type :python}})
             sql         (fn [id] {:id id})

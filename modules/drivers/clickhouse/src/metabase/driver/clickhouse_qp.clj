@@ -300,7 +300,6 @@
     [:case
      [:< position 1]
      ""
-
      :else
      [:'arrayElement
       [:'splitByString (sql.qp/->honeysql driver divider) [:'assumeNotNull (sql.qp/->honeysql driver text)]]

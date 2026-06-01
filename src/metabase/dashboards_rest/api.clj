@@ -984,7 +984,6 @@
           dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
-
       (api/check-500
        (do
          (t2/with-transaction [_conn]
@@ -997,19 +996,7 @@
                                 :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly :embedding_type}
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
-             (when (api/column-will-change? :archived current-dash dash-updates)
-               (if (:archived dash-updates)
-                 (t2/update! :model/Card
-                             :dashboard_id id
-                             :archived false
-                             {:archived true :archived_directly false})
-                 (t2/update! :model/Card
-                             :dashboard_id id
-                             :archived true
-                             :archived_directly false
-                             {:archived false})))
-             (when (api/column-will-change? :collection_id current-dash dash-updates)
-               (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)}))
+             (dashboard/cascade-card-state-from-dashboard-update! current-dash dash-updates)
              (t2/update! :model/Dashboard id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
@@ -1053,7 +1040,6 @@
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-
            (collections/check-for-remote-sync-update current-dash))
          true))
       (let [dashboard (t2/select-one :model/Dashboard id)]

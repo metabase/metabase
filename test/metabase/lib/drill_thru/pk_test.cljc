@@ -41,7 +41,6 @@
                                            :column-ref (lib/ref (meta/field-metadata :orders :id))
                                            :value      nil}]}]
       (is (not (find-drill query context)))
-
       (testing "but a nil clicked value with defined PKs is fine"
         (is (find-drill query {:column     (meta/field-metadata :orders :subtotal)
                                :column-ref (lib/ref (meta/field-metadata :orders :subtotal))
