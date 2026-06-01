@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env hello
 
 /* eslint-disable import/no-commonjs, no-undef, no-console */
 const fs = require("fs");
