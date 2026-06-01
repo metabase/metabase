@@ -18,6 +18,7 @@ type MetricExpressionPillProps = {
   expressionEntry: ExpressionDefinitionEntry;
   metricNames: MetricNameMap;
   colors?: string[];
+  isDisabled?: boolean;
   onNameChange: (name: string) => void;
   onRemove: () => void;
   onEdit: () => void;
@@ -27,6 +28,7 @@ export function MetricExpressionPill({
   expressionEntry,
   metricNames,
   colors,
+  isDisabled,
   onNameChange,
   onRemove,
   onEdit,
@@ -44,6 +46,9 @@ export function MetricExpressionPill({
     () => buildExpressionForPill(expressionEntry.tokens, metricNames),
     [expressionEntry.tokens, metricNames],
   );
+  const disabledTextStyle = isDisabled
+    ? { color: "var(--mb-color-text-tertiary)" }
+    : undefined;
 
   useEffect(() => {
     if (isRenaming) {
@@ -110,7 +115,9 @@ export function MetricExpressionPill({
           data-testid="metric-expression-pill"
         >
           <Flex align="center" gap="xs">
-            <SourceColorIndicator colors={colors} />
+            <SourceColorIndicator
+              colors={isDisabled ? ["var(--mb-color-icon-disabled)"] : colors}
+            />
             {isRenaming ? (
               <EditableText
                 ref={editableRef}
@@ -125,28 +132,37 @@ export function MetricExpressionPill({
               />
             ) : (
               <Flex align="center" gap={0}>
-                {expressionEntry.name && expressionEntry.name !== expressionText
-                  ? expressionEntry.name
-                  : expressionForPill.map((segment, i) => {
-                      if (typeof segment === "number") {
-                        return (
-                          <Badge
-                            key={i}
-                            circle
-                            c="text-hover"
-                            style={{ marginInlineStart: "0.2em" }}
-                          >
-                            {segment}
-                          </Badge>
-                        );
-                      }
+                {expressionEntry.name &&
+                expressionEntry.name !== expressionText ? (
+                  <span style={disabledTextStyle}>{expressionEntry.name}</span>
+                ) : (
+                  expressionForPill.map((segment, i) => {
+                    if (typeof segment === "number") {
                       return (
-                        <span key={i} className={S.expressionText}>
+                        <Badge
+                          key={i}
+                          circle
+                          c="text-hover"
+                          style={{ marginInlineStart: "0.2em" }}
+                        >
                           {segment}
-                        </span>
+                        </Badge>
                       );
-                    })}
-                <span className={S.expressionText}>{"\u00a0"}</span>
+                    }
+                    return (
+                      <span
+                        key={i}
+                        className={S.expressionText}
+                        style={disabledTextStyle}
+                      >
+                        {segment}
+                      </span>
+                    );
+                  })
+                )}
+                <span className={S.expressionText} style={disabledTextStyle}>
+                  {"\u00a0"}
+                </span>
               </Flex>
             )}
           </Flex>

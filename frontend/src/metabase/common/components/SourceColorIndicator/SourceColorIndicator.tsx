@@ -6,7 +6,6 @@ import S from "./SourceColorIndicator.module.css";
 type SourceColorIndicatorProps = {
   colors?: string[];
   fallbackIcon?: IconName;
-  fallbackColor?: string;
   size?: number;
   limit?: number;
 };
@@ -14,7 +13,6 @@ type SourceColorIndicatorProps = {
 export function SourceColorIndicator({
   colors,
   fallbackIcon,
-  fallbackColor = "var(--mb-color-text-primary)",
   size = 14,
   limit = 6,
 }: SourceColorIndicatorProps) {
@@ -27,6 +25,7 @@ export function SourceColorIndicator({
           <Box
             key={index}
             className={S.colorDot}
+            data-testid="color-indicator"
             w={size}
             h={size}
             ml={index === 0 ? 0 : -overlap}
@@ -36,11 +35,16 @@ export function SourceColorIndicator({
       </Flex>
     );
   }
-  const color = colors?.[0] ?? fallbackColor;
+  const color = colors?.[0] ?? "var(--mb-color-text-primary)";
   if (fallbackIcon) {
     return (
       <Flex align="center" data-testid="color-indicator-container">
-        <Icon name={fallbackIcon} size={size} style={{ color }} />
+        <Icon
+          name={fallbackIcon}
+          data-testid="color-indicator"
+          size={size}
+          style={{ color }}
+        />
       </Flex>
     );
   }
@@ -48,6 +52,7 @@ export function SourceColorIndicator({
     <Flex align="center" data-testid="color-indicator-container">
       <Box
         className={S.colorDot}
+        data-testid="color-indicator"
         w={size}
         h={size}
         style={{

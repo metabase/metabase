@@ -20,6 +20,7 @@ import { getEffectiveDefinitionEntry } from "../../../utils/definition-entries";
 import {
   computeMetricSlots,
   findStandaloneSlot,
+  slotsForEntity,
 } from "../../../utils/metric-slots";
 import {
   createMeasureSourceId,
@@ -196,6 +197,16 @@ export function MetricSearchInput({
                 const expressionColors = metricColors[entryIndex]
                   ? [metricColors[entryIndex][0]]
                   : undefined;
+                const expressionSlots = slotsForEntity(metricSlots, entryIndex);
+                const isDisabled =
+                  activeDimensionBreakout != null &&
+                  activeDimensionBreakout.type !== "scalar" &&
+                  expressionSlots.some(
+                    (slot) =>
+                      activeDimensionBreakout.dimensionMapping[
+                        slot.slotIndex
+                      ] == null,
+                  );
 
                 return (
                   <span
@@ -206,6 +217,7 @@ export function MetricSearchInput({
                       expressionEntry={entry}
                       metricNames={metricNames}
                       colors={expressionColors}
+                      isDisabled={isDisabled}
                       onNameChange={(newName) => {
                         const updated = [...formulaEntities];
                         updated[entryIndex] = { ...entry, name: newName };
