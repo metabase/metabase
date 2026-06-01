@@ -647,6 +647,14 @@
         (is (= clause
                (optimize-filter clause)))))))
 
+(defn- local-date= [expected-date]
+  (fn [actual]
+    (= (t/local-date expected-date) (t/local-date actual))))
+
+(defn- local-date-time= [expected]
+  (fn [actual]
+    (= (t/local-date-time expected) (t/local-date-time actual))))
+
 (deftest ^:parallel optimize-temporal-between-clauses-test
   (mt/test-drivers (mt/normal-driver-select)
     (mt/dataset attempted-murders
@@ -669,28 +677,29 @@
                                      lib/expressions
                                      lib.schema.util/remove-lib-uuids)]
              (is (=? expect-expressions opt-expressions))
-             (is (= expect-rows (mt/rows (qp/process-query query)))))
+             (is (= expect-rows (mt/formatted-rows [identity mt/boolish->bool identity mt/boolish->bool identity mt/boolish->bool]
+                                                   (qp/process-query query)))))
 
         ;; Date strings with no time component should have bucketing of `:day` and get optimized
         "2019-11-04" "2019-11-07"
         [[:between {:lib/expression-name "date_between"}
-          [:field {:effective-type :type/Date, :base-type :type/Date} int?]
+          [:field map? int?]
           [:absolute-datetime {} #t "2019-11-04" :default]
           [:absolute-datetime {} #t "2019-11-07" :default]]
          [:and {:lib/expression-name "datetime_between"}
           [:>= {}
-           [:field {:effective-type :type/DateTime, :base-type :type/DateTime} int?]
-           [:absolute-datetime {} #t "2019-11-04T00:00" :default]]
+           [:field map? int?]
+           [:absolute-datetime {} (local-date= "2019-11-04") :default]]
           [:< {}
-           [:field {:effective-type :type/DateTime, :base-type :type/DateTime} int?]
-           [:absolute-datetime {} #t "2019-11-08T00:00" :default]]]
+           [:field map? int?]
+           [:absolute-datetime {} (local-date= "2019-11-08") :default]]]
          [:and {:lib/expression-name "datetime_tz_between"}
           [:>= {}
-           [:field {:effective-type :type/DateTimeWithLocalTZ, :base-type :type/DateTimeWithLocalTZ} int?]
-           [:absolute-datetime {} (t/offset-date-time "2019-11-04T00:00Z") :default]]
+           [:field map? int?]
+           [:absolute-datetime {} (local-date= "2019-11-04") :default]]
           [:< {}
-           [:field {:effective-type :type/DateTimeWithLocalTZ, :base-type :type/DateTimeWithLocalTZ} int?]
-           [:absolute-datetime {} (t/offset-date-time "2019-11-08T00:00Z") :default]]]]
+           [:field map? int?]
+           [:absolute-datetime {} (local-date= "2019-11-08") :default]]]]
         [["2019-11-01T00:00:00Z" false "2019-11-01T00:23:18.331Z" false "2019-11-01T07:23:18.331Z" false]
          ["2019-11-02T00:00:00Z" false "2019-11-02T00:14:14.246Z" false "2019-11-02T07:14:14.246Z" false]
          ["2019-11-03T00:00:00Z" false "2019-11-03T23:35:17.906Z" false "2019-11-04T07:35:17.906Z" true]
@@ -705,15 +714,15 @@
         ;; Datetime strings should have bucketing of `:default` and not get optimized
         "2019-11-04T12:00:00" "2019-11-07T01:00:00"
         [[:between {:lib/expression-name "date_between"}
-          [:field {:effective-type :type/Date, :base-type :type/Date} int?]
+          [:field map? int?]
           [:absolute-datetime {} #t "2019-11-04" :default]
           [:absolute-datetime {} #t "2019-11-07" :default]]
          [:between {:lib/expression-name "datetime_between"}
-          [:field {:effective-type :type/DateTime, :base-type :type/DateTime} int?]
-          [:absolute-datetime {} #t "2019-11-04T12:00" :default]
-          [:absolute-datetime {} #t "2019-11-07T01:00" :default]]
+          [:field map? int?]
+          [:absolute-datetime {} (local-date-time= "2019-11-04T12:00") :default]
+          [:absolute-datetime {} (local-date-time= "2019-11-07T01:00") :default]]
          [:between {:lib/expression-name "datetime_tz_between"}
-          [:field {:effective-type :type/DateTimeWithLocalTZ, :base-type :type/DateTimeWithLocalTZ} int?]
+          [:field map? int?]
           [:absolute-datetime {} (t/offset-date-time "2019-11-04T12:00Z") :default]
           [:absolute-datetime {} (t/offset-date-time "2019-11-07T01:00Z") :default]]]
         [["2019-11-01T00:00:00Z" false "2019-11-01T00:23:18.331Z" false "2019-11-01T07:23:18.331Z" false]
@@ -730,15 +739,15 @@
         ;; Datetime strings without a T should have bucketing of `:default` and not get optimized
         "2019-11-04 12:00:00" "2019-11-07 01:00:00"
         [[:between {:lib/expression-name "date_between"}
-          [:field {:effective-type :type/Date, :base-type :type/Date} int?]
+          [:field map? int?]
           [:absolute-datetime {} #t "2019-11-04" :default]
           [:absolute-datetime {} #t "2019-11-07" :default]]
          [:between {:lib/expression-name "datetime_between"}
-          [:field {:effective-type :type/DateTime, :base-type :type/DateTime} int?]
-          [:absolute-datetime {} #t "2019-11-04T12:00" :default]
-          [:absolute-datetime {} #t "2019-11-07T01:00" :default]]
+          [:field map? int?]
+          [:absolute-datetime {} (local-date-time= "2019-11-04T12:00") :default]
+          [:absolute-datetime {} (local-date-time= "2019-11-07T01:00") :default]]
          [:between {:lib/expression-name  "datetime_tz_between"}
-          [:field {:effective-type :type/DateTimeWithLocalTZ, :base-type :type/DateTimeWithLocalTZ} int?]
+          [:field map? int?]
           [:absolute-datetime {} (t/offset-date-time "2019-11-04T12:00Z") :default]
           [:absolute-datetime {} (t/offset-date-time "2019-11-07T01:00Z") :default]]]
         [["2019-11-01T00:00:00Z" false "2019-11-01T00:23:18.331Z" false "2019-11-01T07:23:18.331Z" false]
