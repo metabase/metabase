@@ -1,9 +1,9 @@
 (ns mage.ci-report
   (:require
    [babashka.process :as p]
+   [cheshire.core :as json]
    [clojure.string :as str]
-   [mage.util :as u]
-   [metabase.util.json :as json]))
+   [mage.util :as u]))
 
 (def ^:private repo "metabase/metabase")
 
@@ -29,7 +29,7 @@
   "Call GitHub API via gh cli, return parsed JSON"
   [endpoint]
   (when-let [result (u/sh "gh" "api" endpoint)]
-    (json/decode result true)))
+    (json/parse-string result true)))
 
 (defn- strip-ansi
   "Remove ANSI escape codes from string"
@@ -75,14 +75,14 @@
   [pr-number]
   (when-let [result (u/sh "gh" "pr" "view" (str pr-number) "-R" repo
                           "--json" "headRefName,headRefOid,title,url")]
-    (json/decode result true)))
+    (json/parse-string result true)))
 
 (defn- pr-checks
   "Fetch PR check statuses"
   [pr-number]
   (when-let [result (sh-nil "gh" "pr" "checks" (str pr-number) "-R" repo
                             "--json" "name,state,link")]
-    (json/decode result true)))
+    (json/parse-string result true)))
 
 (defn- find-test-report-start
   "Find the line index where the test report section starts.
