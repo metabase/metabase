@@ -236,16 +236,17 @@
   "Pull the parsed plan out of the structured-tool response, normalizing keys."
   [response]
   (when (map? response)
-    (let [g (fn [k] (or (get response k) (get response (name k))))]
-      {:plan      (some->> (g :plan)
+    (let [{:keys [plan rationale]} (update-keys response keyword)]
+      {:plan      (some->> plan
                            (mapv (fn [item]
-                                   (let [g2 (fn [k] (or (get item k) (get item (name k))))]
-                                     {:metric_id    (g2 :metric_id)
-                                      :dimension_id (g2 :dimension_id)
-                                      :variant      (g2 :variant)
-                                      :params       (or (g2 :params) {})
-                                      :rationale    (g2 :rationale)}))))
-       :rationale (g :rationale)})))
+                                   (let [{:keys [metric_id dimension_id variant params rationale]}
+                                         (update-keys item keyword)]
+                                     {:metric_id    metric_id
+                                      :dimension_id dimension_id
+                                      :variant      variant
+                                      :params       (or params {})
+                                      :rationale    rationale}))))
+       :rationale rationale})))
 
 ;; ---------------------------------------------------------------------------
 ;; Repair prompt

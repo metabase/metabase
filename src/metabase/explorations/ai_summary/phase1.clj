@@ -34,21 +34,21 @@
   embeds whichever one best supports each point — so the curator never sees or chooses
   renderings. Multi-line so the curator can tell apart breakouts that share a title but
   differ on granularity, FK source, or aggregation."
-  [{:keys [rep-id score representative]}]
-  (let [{:keys [name summary-line dim-detail metric-detail
-                metric-description chart-description]} representative]
-    (str "- id=" rep-id
-         " score=" (format "%.2f" (double (or score 0.0)))
-         " | " name "\n"
-         (when chart-description
-           (str "  chart:  " chart-description "\n"))
-         (when metric-description
-           (str "  metric description: " metric-description "\n"))
-         "  metric: " (or metric-detail "(unknown)") "\n"
-         "  dim:    " (or dim-detail "(unknown)") "\n"
-         "  data:   " summary-line)))
+  [{:keys [rep-id score]
+    {:keys [name summary-line dim-detail metric-detail
+            metric-description chart-description]} :representative}]
+  (str "- id=" rep-id
+       " score=" (format "%.2f" (double (or score 0.0)))
+       " | " name "\n"
+       (when chart-description
+         (str "  chart:  " chart-description "\n"))
+       (when metric-description
+         (str "  metric description: " metric-description "\n"))
+       "  metric: " (or metric-detail "(unknown)") "\n"
+       "  dim:    " (or dim-detail "(unknown)") "\n"
+       "  data:   " summary-line))
 
-(def curation-schema
+(def ^:private curation-schema
   "Phase-1 output: `{top_tier [ids] awareness_tier [ids] rationale string}`.
   Strict schema since the shape is simple and we want fast rejection of
   malformed responses."
@@ -64,7 +64,7 @@
    :required             ["top_tier" "awareness_tier" "rationale"]
    :additionalProperties false})
 
-(def curation-bounds
+(def ^:private curation-bounds
   "Soft size guidance for Phase-1's curation. Used both in the prompt (as
   guidance to the model) and in validation (as hard bounds). Min top-tier of
   1 guarantees the analysis has at least one citable chart; the upper caps
@@ -98,79 +98,72 @@
       :total_chart_count  total-chart-count})))
 
 (defn- extract-curation
-  "Pull the parsed curation map out of the LLM's structured-tool response."
+  "Pull the parsed curation map out of the LLM's structured-tool response. The tool response
+  may arrive with string or keyword keys, so normalize to keywords once up front rather than
+  dual-looking-up each field."
   [response]
   (when (map? response)
-    (let [g (fn [k] (or (get response k) (get response (name k))))]
-      {:top_tier       (some-> (g :top_tier) vec)
-       :awareness_tier (some-> (g :awareness_tier) vec)
-       :rationale      (g :rationale)})))
+    (let [{:keys [top_tier awareness_tier rationale]} (update-keys response keyword)]
+      {:top_tier       (some-> top_tier vec)
+       :awareness_tier (some-> awareness_tier vec)
+       :rationale      rationale})))
 
 (defn- validate-curation
   "Returns a vector of error strings (empty when the curation is valid).
   Accumulates ALL errors found rather than short-circuiting — repair retries
   do better when they can fix everything in one round-trip."
   [pool-ids curation]
-  (let [pool-set (set pool-ids)
-        {:keys [top-tier-min top-tier-max
-                awareness-tier-min awareness-tier-max
-                combined-max]} curation-bounds]
-    (cond
-      (not (map? curation))
-      ["response must be an object with top_tier, awareness_tier, and rationale fields"]
+  (if-not (map? curation)
+    ["response must be an object with top_tier, awareness_tier, and rationale fields"]
+    (let [pool-set (set pool-ids)
+          {:keys [top-tier-min top-tier-max
+                  awareness-tier-min awareness-tier-max
+                  combined-max]} curation-bounds
+          {:keys [top_tier awareness_tier rationale]} curation
+          top      (when (sequential? top_tier) top_tier)
+          aware    (when (sequential? awareness_tier) awareness_tier)
+          non-int  (concat (remove integer? top) (remove integer? aware))
+          outside  (remove pool-set (concat top aware))
+          overlap  (filter (set top) aware)
+          combined (+ (count top) (count aware))]
+      (cond-> []
+        (not (sequential? top_tier))
+        (conj "top_tier must be an array of integer breakout ids")
 
-      :else
-      (let [{:keys [top_tier awareness_tier rationale]} curation
-            top-seq?   (sequential? top_tier)
-            aware-seq? (sequential? awareness_tier)
-            top        (when top-seq? (vec top_tier))
-            aware      (when aware-seq? (vec awareness_tier))
-            non-int    (when (or top aware)
-                         (concat (remove integer? (or top []))
-                                 (remove integer? (or aware []))))
-            outside    (when (and top aware)
-                         (remove pool-set (concat top aware)))
-            overlap    (when (and top aware)
-                         (filter (set top) aware))
-            combined   (+ (count (or top [])) (count (or aware [])))]
-        (cond-> []
-          (not top-seq?)
-          (conj "top_tier must be an array of integer breakout ids")
+        (not (sequential? awareness_tier))
+        (conj "awareness_tier must be an array of integer breakout ids")
 
-          (not aware-seq?)
-          (conj "awareness_tier must be an array of integer breakout ids")
+        (or (not (string? rationale)) (str/blank? rationale))
+        (conj "rationale must be a non-empty string explaining the selection")
 
-          (or (not (string? rationale)) (str/blank? rationale))
-          (conj "rationale must be a non-empty string explaining the selection")
+        (seq non-int)
+        (conj (str "every breakout id must be an integer; found: "
+                   (str/join ", " (map pr-str non-int))))
 
-          (seq non-int)
-          (conj (str "every breakout id must be an integer; found: "
-                     (str/join ", " (map pr-str non-int))))
+        (seq outside)
+        (conj (str "these ids are not in the supplied breakout pool: "
+                   (str/join ", " outside)
+                   " (pool contains " (count pool-ids) " breakout ids — pick from the id= values in the prompt's POOL section)"))
 
-          (seq outside)
-          (conj (str "these ids are not in the supplied breakout pool: "
-                     (str/join ", " outside)
-                     " (pool contains " (count pool-ids) " breakout ids — pick from the id= values in the prompt's POOL section)"))
+        (seq overlap)
+        (conj (str "the same breakout appears in both top_tier and awareness_tier: "
+                   (str/join ", " overlap)
+                   ". A breakout must appear in at most one tier."))
 
-          (seq overlap)
-          (conj (str "the same breakout appears in both top_tier and awareness_tier: "
-                     (str/join ", " overlap)
-                     ". A breakout must appear in at most one tier."))
+        (and top (< (count top) top-tier-min))
+        (conj (str "top_tier has " (count top) " entries; need at least " top-tier-min))
 
-          (and top-seq? (< (count top) top-tier-min))
-          (conj (str "top_tier has " (count top) " entries; need at least " top-tier-min))
+        (and top (> (count top) top-tier-max))
+        (conj (str "top_tier has " (count top) " entries; max allowed is " top-tier-max))
 
-          (and top-seq? (> (count top) top-tier-max))
-          (conj (str "top_tier has " (count top) " entries; max allowed is " top-tier-max))
+        (and aware (< (count aware) awareness-tier-min))
+        (conj (str "awareness_tier has " (count aware) " entries; need at least " awareness-tier-min))
 
-          (and aware-seq? (< (count aware) awareness-tier-min))
-          (conj (str "awareness_tier has " (count aware) " entries; need at least " awareness-tier-min))
+        (and aware (> (count aware) awareness-tier-max))
+        (conj (str "awareness_tier has " (count aware) " entries; max allowed is " awareness-tier-max))
 
-          (and aware-seq? (> (count aware) awareness-tier-max))
-          (conj (str "awareness_tier has " (count aware) " entries; max allowed is " awareness-tier-max))
-
-          (and top-seq? aware-seq? (> combined combined-max))
-          (conj (str "top_tier + awareness_tier = " combined " entries; combined max is " combined-max)))))))
+        (and top aware (> combined combined-max))
+        (conj (str "top_tier + awareness_tier = " combined " entries; combined max is " combined-max))))))
 
 (def ^:private repair-echo-cap 4000)
 

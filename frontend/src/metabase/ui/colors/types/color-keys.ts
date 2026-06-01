@@ -56,7 +56,6 @@ export type MetabaseColorKey =
   | "illustration-brand-secondary"
   | "illustration-brand-tertiary"
   | "info"
-  | "interesting"
   | "overlay"
   | "saturated-blue"
   | "saturated-green"

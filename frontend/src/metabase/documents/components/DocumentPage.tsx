@@ -21,12 +21,12 @@ import {
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import {
   LeaveConfirmModal,
   LeaveRouteConfirmModal,
 } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -300,7 +300,7 @@ export const DocumentPage = ({
         )}
 
         {duplicateModalMode === "duplicate" && documentData && (
-          <EntityCopyModal
+          <CopyModal
             entityType="documents"
             onClose={() => setDuplicateModalMode(null)}
             onSaved={(document) => {

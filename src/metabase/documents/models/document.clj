@@ -187,16 +187,19 @@
   (and (= prose-mirror/card-embed-type (:type node))
        (pos-int? (-> node :attrs :id))))
 
+(defn- serdes-portable-node?
+  "True for the AST nodes whose ids serdes rewrites between database ids and entity ids:
+  smartLinks and live (non-static) cardEmbeds."
+  [node]
+  (or (= prose-mirror/smart-link-type (:type node))
+      (live-card-embed? node)))
+
 (defn- export-document-content
   "Transform live cardEmbed / smartLink nodes to use entity IDs instead of database IDs"
   [document serdes-key _]
   (serdes-key
    (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast
-      document
-      #(or (= prose-mirror/smart-link-type (:type %))
-           (live-card-embed? %))
-      id->entity-id)
+     (prose-mirror/update-ast document serdes-portable-node? id->entity-id)
      document)))
 
 (defn- import-document-content
@@ -204,11 +207,7 @@
   [document serdes-key _]
   (serdes-key
    (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast
-      document
-      #(or (= prose-mirror/smart-link-type (:type %))
-           (live-card-embed? %))
-      entity-id->id)
+     (prose-mirror/update-ast document serdes-portable-node? entity-id->id)
      document)))
 
 (defmethod serdes/make-spec "Document"

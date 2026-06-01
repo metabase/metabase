@@ -9,7 +9,6 @@ import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIPro
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
-import type { MetabotPromptInputRef } from "metabase/metabot/context";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
@@ -58,7 +57,6 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     activeToolCalls,
     submitInput,
   } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
-  const metabotPromptInputRef = useRef<MetabotPromptInputRef | null>(null);
 
   const handleSubmit = useCallback(() => {
     submitInput(prompt, {
@@ -173,24 +171,6 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     messages,
   ]);
 
-  const handleClick = useCallback(
-    (event: React.MouseEvent) => {
-      // the actual textbox is quite a bit smaller than its container,
-      // so we'll manually focus if the user clicks in the container —
-      // but not if the click landed on or inside an interactive element
-      const target = event.target as HTMLElement;
-      if (
-        target.closest(
-          "button, a, input, select, textarea, [contenteditable], [role='button']",
-        )
-      ) {
-        return;
-      }
-      metabotPromptInputRef.current?.focus();
-    },
-    [metabotPromptInputRef],
-  );
-
   const hasMessages = messages.length > 0;
 
   return (
@@ -226,10 +206,9 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           bdrs="md"
           mx="lg"
           mb="lg"
-          mih="8rem"
           pr="0.75rem"
           flex="none"
-          onClick={handleClick}
+          className={S.inputContainer}
         >
           {canUseNlq ? (
             <MetabotChatEditor
@@ -239,7 +218,6 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               onStop={() => {}}
               placeholder={t`Ex. What recent events might be impacting our signups?`}
               suggestionConfig={{ suggestionModels: ["metric"] }}
-              ref={metabotPromptInputRef}
             />
           ) : (
             <AIProviderConfigurationNotice

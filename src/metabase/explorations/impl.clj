@@ -151,7 +151,7 @@
     (let [rows   (t2/select (into [:model/Card] metric-card-cols)
                             :id [:in card-ids]
                             :type "metric")
-          by-id  (into {} (map (juxt :id identity)) rows)]
+          by-id  (u/index-by :id rows)]
       (into [] (keep by-id) card-ids))))
 
 (defn- breakoutable-column-index
@@ -236,7 +236,7 @@
   (if-not (:dataset_query metric)
     metric
     (let [col-index      (breakoutable-column-index breakoutable)
-          mappings-by-id (into {} (map (juxt :dimension_id identity)) (:dimension_mappings metric))
+          mappings-by-id (u/index-by :dimension_id (:dimension_mappings metric))
           keep?          (fn [dim]
                            (if-let [target (get-in mappings-by-id [(:id dim) :target])]
                              (and (some? query) (target-resolvable? query breakoutable col-index target))

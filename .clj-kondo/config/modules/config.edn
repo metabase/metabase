@@ -2034,6 +2034,7 @@
            tracing
            users
            util
+           enterprise/custom-viz-plugin
            enterprise/sso}
    :model-imports #{:model/Session}}
 
@@ -2260,6 +2261,7 @@
            task
            tracing
            util}
+   :model-exports #{:model/TaskHistory}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
   tenants
@@ -2951,7 +2953,8 @@
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
-           metabase-enterprise.custom-viz-plugin.init}
+           metabase-enterprise.custom-viz-plugin.init
+           metabase-enterprise.custom-viz-plugin.settings}
    :uses #{api
            config
            events
@@ -3125,6 +3128,16 @@
    ;; make token tracking a hook). Drop this dep once the relocation lands.
    :uses #{enterprise/semantic-search}}
 
+  enterprise/erd
+  {:team "Gadget"
+   :api  #{metabase-enterprise.erd.api}
+   :uses #{api
+           models
+           util}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table}}
+
   enterprise/gsheets
   {:team "Cloud"
    :api  #{metabase-enterprise.gsheets.api
@@ -3213,6 +3226,20 @@
            sql-tools
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
+
+  enterprise/notification-admin
+  {:team "Gadget"
+   :api  #{metabase-enterprise.notification-admin.api}
+   :uses #{api
+           app-db
+           models
+           notification
+           request
+           util}
+   :model-imports #{:model/Notification
+                    :model/NotificationHandler
+                    :model/NotificationRecipient
+                    :model/TaskHistory}}
 
   enterprise/permission-debug
   {:team "UX West"

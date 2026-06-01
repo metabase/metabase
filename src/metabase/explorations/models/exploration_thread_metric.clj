@@ -29,3 +29,14 @@
         (into {} (map (juxt :id identity))
               (t2/select (into [:model/Card] card-projection) :id [:in card-ids]))))
    :card_id))
+
+(defn selected-names
+  "Names of the metrics (cards) selected on `thread-id`, in position order."
+  [thread-id]
+  (->> (t2/query
+        {:select    [[:c.name :name]]
+         :from      [[:exploration_thread_metric :m]]
+         :left-join [[:report_card :c] [:= :c.id :m.card_id]]
+         :where     [:= :m.exploration_thread_id thread-id]
+         :order-by  [[:m.position :asc]]})
+       (keep :name)))

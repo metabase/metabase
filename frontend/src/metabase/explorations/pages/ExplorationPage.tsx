@@ -419,7 +419,6 @@ export function ExplorationPage({
           onSelectTimelineId={handleSelectTimelineId}
           timelineEvents={timelineEvents}
           interestingTimelineIds={interestingTimelineIds}
-          exploration={exploration}
         />
       )}
       {selectedDocument && (

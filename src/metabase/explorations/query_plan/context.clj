@@ -14,10 +14,12 @@
   iterate on prompt engineering."
   (:require
    [clojure.string :as str]
+   [metabase.explorations.models.exploration-thread-dimension :as thread-dimension]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -103,14 +105,6 @@
               (filter some?
                       [header type-line card-line range-line apply-line]))))
 
-(defn- enrich-dim-with-card-group
-  "Look up `:group` for `dim` on the metric Card's `:dimensions` snapshot, if
-  any — same lookup `attach-query-dimension-labels` does in api.clj."
-  [dim card-dim-by-id]
-  (if-let [group (get-in card-dim-by-id [(:dimension_id dim) :group])]
-    (assoc dim :group group)
-    dim))
-
 (defn- column-fingerprint-for-target
   "Resolve `target` against `base-query`'s breakoutable columns and return the
   resolved column's `:fingerprint` (or nil). Thread-dim rows don't carry
@@ -151,8 +145,8 @@
   enrichment."
   [tm card mp dim-by-id]
   (let [dataset-query        (:dataset_query card)
-        card-dims            (into {} (map (juxt :id identity)) (:dimensions card))
-        enriched-thread-dims (update-vals dim-by-id #(enrich-dim-with-card-group % card-dims))
+        card-dims            (u/index-by :id (:dimensions card))
+        enriched-thread-dims (update-vals dim-by-id #(thread-dimension/enrich-with-card-group % card-dims))
         appl                 (applicability enriched-thread-dims tm mp dataset-query)
         default-temp         (qp.mbql/extract-default-temporal-breakout-col mp dataset-query)]
     {:metric-id                 (:card_id tm)
@@ -189,7 +183,7 @@
                                        :dataset_query :card_schema :dimensions]
                                       :id [:in card-ids]))
         mp-by-db  (memoize (fn [db-id] (lib-be/application-database-metadata-provider db-id)))
-        dim-by-id (into {} (map (juxt :dimension_id identity)) thread-dims)
+        dim-by-id (u/index-by :dimension_id thread-dims)
         metrics   (into []
                         (keep (fn [tm]
                                 (when-let [card (get cards (:card_id tm))]
@@ -235,7 +229,7 @@
                           :applicable-to  (vec (get applicable-to dim-id []))}))]
     {:metrics       metrics
      :dimensions    dimensions
-     :applicability (into {} (map (juxt :metric-id :applicability)) metrics)}))
+     :applicability (u/index-by :metric-id :applicability metrics)}))
 
 (defn build-row-context
   "Resolve everything the variant multimethods need to finalize a single

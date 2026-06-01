@@ -145,7 +145,7 @@ export const CardEmbedMenuDropdown = ({
           {t`Replace`}
         </Menu.Item>
       )}
-      {canDownloadResults(dataset) && (
+      {!isStatic && canDownloadResults(dataset) && (
         <Menu.Item
           leftSection={<Icon name="download" aria-hidden />}
           aria-label={isDownloadingData ? t`Downloading…` : t`Download results`}

@@ -9,12 +9,9 @@ import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import type {
-  CardId,
-  Exploration,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationThread,
-  ExplorationThreadMetric,
   SingleSeries,
   Timeline,
   TimelineEvent,
@@ -36,7 +33,6 @@ interface ExplorationGroupVisualizationProps {
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
   timelineEvents: TimelineEvent[];
   interestingTimelineIds?: ReadonlySet<TimelineId>;
-  exploration: Exploration;
 }
 
 const STACK_PANEL_HEIGHT = 64;
@@ -156,7 +152,6 @@ function ExplorationGroupVisualizationChart({
   onSelectTimelineId,
   timelineEvents,
   interestingTimelineIds,
-  exploration,
 }: ExplorationGroupVisualizationProps) {
   // One RTKQ hook per query. ESLint complains about hooks-in-a-loop;
   // safe here because the parent keys this component on `group.id`, so
@@ -174,14 +169,6 @@ function ExplorationGroupVisualizationChart({
   // Extract the identity-stable dataset references so they can be
   // individually tracked in the useMemo dependency array below.
   const datasets = datasetQueries.map((q) => q.currentData);
-
-  const metricsById: Map<CardId, ExplorationThreadMetric> = useMemo(() => {
-    return new Map(
-      (exploration?.threads ?? []).flatMap((thread) =>
-        (thread.metrics ?? []).map((metric) => [metric.card_id, metric]),
-      ),
-    );
-  }, [exploration]);
 
   const queryColors = useMemo(
     () => getColorsForValues(queries.map((q) => String(q.id))),
@@ -201,14 +188,13 @@ function ExplorationGroupVisualizationChart({
       return buildSeriesGroups({
         queries,
         datasets: filteredDatasets,
-        metricsById,
         queryColors,
       });
       // datasets is reconstructed every render but its identity-stable
       // entries make this safe; including the array directly would cause
       // an unstable dep warning.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [queries, metricsById, queryColors, ...datasets]);
+    }, [queries, queryColors, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
     return seriesGroups?.some((group) => group.isTimeseries);

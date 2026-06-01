@@ -14,6 +14,7 @@
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
@@ -100,7 +101,7 @@
                         ("label_asc" "label_desc") label-idx)
             cmp       (case sort
                         ("value_asc" "label_asc")  compare
-                        ("value_desc" "label_desc") #(compare %2 %1))
+                        ("value_desc" "label_desc") u/reverse-compare)
             sorted    (vec (sort-by #(nth % idx nil)
                                     (fn [a b]
                                       (cond

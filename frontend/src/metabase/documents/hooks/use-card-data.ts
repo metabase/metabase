@@ -114,9 +114,14 @@ export function useCardData({
   const metadata = useSelector(getMetadata);
 
   const isPivotTable = cardToUse?.display === "pivot";
+  const shouldUseDraftQuery = isDraft && storedResultId == null;
+  const shouldSkipRegularQuery = !id || shouldUseDraftQuery || !card;
+  const canQueryDraftCard = shouldUseDraftQuery && cardToUse?.dataset_query;
+  const shouldQueryDraftNonPivot = canQueryDraftCard && !isPivotTable;
+  const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
 
   const pivotOptions = useMemo(() => {
-    if (!isDraft || !isPivotTable || !cardToUse || !metadata) {
+    if (!shouldUseDraftQuery || !isPivotTable || !cardToUse || !metadata) {
       return null;
     }
 
@@ -126,12 +131,7 @@ export function useCardData({
     } catch (error) {
       return null;
     }
-  }, [isDraft, isPivotTable, cardToUse, metadata]);
-
-  const shouldSkipRegularQuery = !id || isDraft || !card;
-  const canQueryDraftCard = isDraft && cardToUse?.dataset_query;
-  const shouldQueryDraftNonPivot = canQueryDraftCard && !isPivotTable;
-  const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
+  }, [shouldUseDraftQuery, isPivotTable, cardToUse, metadata]);
 
   const { data: regularDataset, isLoading: isLoadingRegularDataset } =
     useGetCardQueryQuery(
@@ -160,7 +160,7 @@ export function useCardData({
     );
 
   const dataset = selectDataset(
-    isDraft,
+    shouldUseDraftQuery,
     isPivotTable,
     regularDataset,
     draftDataset,
@@ -168,7 +168,7 @@ export function useCardData({
   );
 
   const isLoadingDataset = selectIsLoadingDataset(
-    isDraft,
+    shouldUseDraftQuery,
     isPivotTable,
     isLoadingRegularDataset,
     isLoadingDraftDataset,

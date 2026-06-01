@@ -28,6 +28,7 @@
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -105,10 +106,7 @@
                                             (when (= :breakout (:source c)) i))
                                           (:cols data)))]
       (when (and dim-idx (seq (:rows data)))
-        (vec (keep (fn [row]
-                     (let [v (nth row dim-idx nil)]
-                       (when (some? v) v)))
-                   (:rows data)))))
+        (u/keepv #(nth % dim-idx nil) (:rows data))))
     (catch Throwable _ nil)))
 
 (def ^:private discovery-cache-threshold
@@ -191,11 +189,11 @@
 
 (defmethod query-name "temporal-pattern-day"
   [_ {:keys [card dim-label segment]}]
-  (with-segment-suffix (tru "{0} by {1} (day of week)" (:name card) dim-label) segment))
+  (with-segment-suffix (tru "{0} by {1} (Day of week)" (:name card) dim-label) segment))
 
 (defmethod query-name "temporal-pattern-hour"
   [_ {:keys [card dim-label segment]}]
-  (with-segment-suffix (tru "{0} by {1} (hour of day)" (:name card) dim-label) segment))
+  (with-segment-suffix (tru "{0} by {1} (Hour of day)" (:name card) dim-label) segment))
 
 (defmethod query-name "time-facet"
   [_ {:keys [card dim-label]}]
@@ -203,7 +201,7 @@
 
 (defmethod query-name "top-n-other"
   [_ {:keys [card dim-label segment params]}]
-  (with-segment-suffix (tru "{0} by {1} (top {2} + Other)" (:name card) dim-label (:k params)) segment))
+  (with-segment-suffix (tru "{0} by {1} (Top {2} + Other)" (:name card) dim-label (:k params)) segment))
 
 (defmethod query-name "filtered-subset"
   [_ {:keys [card dim-label segment params]}]

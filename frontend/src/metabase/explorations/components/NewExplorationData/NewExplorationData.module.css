@@ -121,7 +121,7 @@
 
 .accordionRoot .accordionLabel {
   color: var(--mb-color-text-primary) !important;
-  font-weight: var(--mantine-font-weight-bold) !important;
+  font-weight: bold !important;
   font-size: var(--mantine-font-size-md) !important;
   line-height: 1.25rem !important;
   padding: 0 !important;

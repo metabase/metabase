@@ -18,6 +18,7 @@ export const TAG_TYPES = [
   "dataset",
   "document",
   "embed-theme",
+  "erd",
   "external-transform",
   "public-document",
   "comment",

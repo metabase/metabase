@@ -282,6 +282,7 @@ export type IconName =
   | "verified_round"
   | "view_archive"
   | "warning"
+  | "warning_round"
   | "warning_round_filled"
   | "warning_triangle_filled"
   | "waterfall"

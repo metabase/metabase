@@ -9,7 +9,7 @@ export function ResearchModeIntro() {
     <Stack align="center" gap="md" maw="24.125rem" mx="auto" ta="center">
       <Stack align="center" gap={0}>
         <Icon name="ai" size={16} className={S.aiIcon} right={-32} />
-        <Icon name="telescope" size={48} className={S.illustration} />
+        <Icon name="telescope" size={48} />
       </Stack>
       <Title order={3} fw="bold">
         {t`What do you want to research?`}

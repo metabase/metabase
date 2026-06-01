@@ -802,7 +802,7 @@ describe("ExplorationSidebar", () => {
         });
 
         // The keyboard handler imperatively collapses the source
-        // heading via `treeRef.current?.collapse`. Auto-expanding the
+        // heading via `treeController.collapse`. Auto-expanding the
         // target heading happens via `getInitialExpandedIds` on the
         // next render — that's a parent-side effect we don't model
         // here (the `setSelectedEntityId` is a mock so the controlled

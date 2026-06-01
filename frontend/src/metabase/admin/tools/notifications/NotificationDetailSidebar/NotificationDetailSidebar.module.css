@@ -1,0 +1,30 @@
+.navButton {
+  color: var(--mb-color-text-primary);
+  background: var(--mb-color-background);
+  border: 1px solid var(--mb-color-border);
+
+  &:hover {
+    background: var(--mb-color-background-hover);
+  }
+
+  &[data-disabled] {
+    color: var(--mb-color-text-tertiary);
+    background: var(--mb-color-background);
+
+    &:hover {
+      background: var(--mb-color-background);
+    }
+  }
+}
+
+.avatarStack {
+  flex-shrink: 0;
+}
+
+.channelAvatar {
+  flex-shrink: 0;
+}
+
+.detailsTable {
+  overflow: hidden;
+}

@@ -15,10 +15,12 @@
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.models.exploration-query-result :as eqr]
+   [metabase.explorations.models.exploration-thread-dimension :as thread-dimension]
    [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -113,12 +115,9 @@
                              (mapcat (fn [{:keys [card]}]
                                        (map (juxt :id identity) (:dimensions card))))
                              (:metrics thread))
-        enriched-dims  (mapv (fn [d]
-                               (if-let [group (get-in card-dim-by-id [(:dimension_id d) :group])]
-                                 (assoc d :group group)
-                                 d))
+        enriched-dims  (mapv #(thread-dimension/enrich-with-card-group % card-dim-by-id)
                              (:dimensions thread))
-        dim-by-id      (into {} (map (juxt :dimension_id identity)) enriched-dims)
+        dim-by-id      (u/index-by :dimension_id enriched-dims)
         name-counts    (frequencies (keep :display_name enriched-dims))]
     (update thread :queries
             (fn [queries]
@@ -148,7 +147,7 @@
                :creator_id            api/*current-user-id*
                :collection_id         coll-id
                :exploration_thread_id thread-id})
-  (when (ai-summary/ai-summary-available?)
+  (when (ai-summary/current-user-can-create-ai-summary?)
     (ai-summary/create-placeholder-doc! thread-id api/*current-user-id* coll-id)))
 
 (defn- positional-rows

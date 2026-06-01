@@ -30,6 +30,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.self :as metabot.self]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (clojure.lang ExceptionInfo)
@@ -62,33 +63,50 @@
     (format "%+.1f%%" (double n))
     "n/a (zero base)"))
 
+(defn- format-num
+  "Compact numeric formatter for the one-line chart summary. Plain integers
+  pass through; floats with no fractional part drop the `.0`; otherwise we
+  keep up to 4 significant figures so the summary line stays short."
+  [n]
+  (cond
+    (nil? n)         "n/a"
+    (integer? n)     (str n)
+    (and (number? n)
+         (== n (Math/floor (double n)))) (str (long n))
+    (number? n)      (let [d (double n)
+                           a (Math/abs d)]
+                       (cond
+                         (zero? d)   "0"
+                         (>= a 1000) (format "%.0f" d)
+                         (>= a 1)    (format "%.2f" d)
+                         :else       (format "%.4g" d)))
+    :else            (str n)))
+
 (defn- time-series-key-points
   "Build the per-series key-points map from a `chart-stats` blob's time-series
   entry. All values are pulled from the cached `chart_stats` — we no longer
   re-scan the y-array client-side. Returns nil when the series doesn't have
   the expected time-series shape."
-  [series-stats]
-  (when (and (:peak series-stats) (:trough series-stats))
-    (let [{:keys [peak trough above-mean data-points summary trend]} series-stats]
-      {:peak       [(:x peak) (:y peak)]
-       :trough     [(:x trough) (:y trough)]
-       :first      [(get-in series-stats [:time-range :start]) (:start-value trend)]
-       :last       [(get-in series-stats [:time-range :end])   (:end-value trend)]
-       :change-pct (:overall-change-pct trend)
-       :mean       (:mean summary)
-       :n          data-points
-       :above-mean above-mean})))
+  [{:keys [peak trough above-mean data-points summary trend time-range] :as series-stats}]
+  (when (and peak trough series-stats)
+    {:peak       [(:x peak) (:y peak)]
+     :trough     [(:x trough) (:y trough)]
+     :first      [(:start time-range) (:start-value trend)]
+     :last       [(:end time-range)   (:end-value trend)]
+     :change-pct (:overall-change-pct trend)
+     :mean       (:mean summary)
+     :n          data-points
+     :above-mean above-mean}))
 
 (defn- categorical-key-points
   "Build the per-series key-points map from a `chart-stats` blob's categorical
   entry. Uses the existing `:top-categories` / `:bottom-categories` and the
   summary stats — no recomputation needed. Returns nil when the series
   doesn't have the expected categorical shape."
-  [series-stats]
-  (let [top    (first (:top-categories series-stats))
-        bottom (or (last (:bottom-categories series-stats))
-                   (last (:top-categories series-stats)))
-        {:keys [data-points summary]} series-stats]
+  [{:keys [top-categories bottom-categories data-points summary]}]
+  (let [top    (first top-categories)
+        bottom (or (last bottom-categories)
+                   (last top-categories))]
     (when (and top bottom)
       {:peak         [(:name top)    (:value top)]
        :trough       [(:name bottom) (:value bottom)]
@@ -112,25 +130,6 @@
     (or (time-series-key-points  series-stats)
         (categorical-key-points  series-stats))))
 
-(defn- fmt-num
-  "Compact numeric formatter for the one-line chart summary. Plain integers
-  pass through; floats with no fractional part drop the `.0`; otherwise we
-  keep up to 4 significant figures so the summary line stays short."
-  [n]
-  (cond
-    (nil? n)         "n/a"
-    (integer? n)     (str n)
-    (and (number? n)
-         (== n (Math/floor (double n)))) (str (long n))
-    (number? n)      (let [d (double n)
-                           a (Math/abs d)]
-                       (cond
-                         (zero? d)   "0"
-                         (>= a 1000) (format "%.0f" d)
-                         (>= a 1)    (format "%.2f" d)
-                         :else       (format "%.4g" d)))
-    :else            (str n)))
-
 (defn- chart-summary-line
   "A ~80-char human-readable summary of a chart's *contents* (not just its
   axes), used in the Phase-1 chart index so the curator can pick on substance
@@ -143,13 +142,8 @@
       "no series data"
 
       :else
-      (let [[sname _] (first series-entries)
-            kp (key-points-from-stats chart-stats sname)]
-        (if-not kp
-          (let [total-points (reduce + 0 (map (fn [[_ s]] (count (:x_values s))) series-entries))]
-            (str total-points " non-numeric points"
-                 (when (> (count series-entries) 1)
-                   (str " across " (count series-entries) " series"))))
+      (let [[sname _] (first series-entries)]
+        (if-let [kp (key-points-from-stats chart-stats sname)]
           (let [{:keys [peak trough first last change-pct n categorical?]} kp
                 [px pv] peak
                 [_ tv]  trough
@@ -162,10 +156,14 @@
                    (let [[fx fv] first
                          [lx lv] last]
                      (str ", " fx " → " lx
-                          ": " (fmt-num fv) " → " (fmt-num lv)
+                          ": " (format-num fv) " → " (format-num lv)
                           " (" (format-pct change-pct) ")")))
-                 ", peak " (fmt-num pv) " at " px
-                 (when (not= pv tv) (str ", trough " (fmt-num tv))))))))))
+                 ", peak " (format-num pv) " at " px
+                 (when (not= pv tv) (str ", trough " (format-num tv)))))
+          (let [total-points (reduce + 0 (map (fn [[_ s]] (count (:x_values s))) series-entries))]
+            (str total-points " non-numeric points"
+                 (when (> (count series-entries) 1)
+                   (str " across " (count series-entries) " series")))))))))
 
 (defn chart-rank-score
   "Numeric display hint for a hydrated query: prefer the LLM-judged contextual
@@ -187,7 +185,7 @@
   share a bucket — the old `(or ctx det)` threw this away whenever a contextual
   score existed. `:id` is a stable final tiebreak for a fully deterministic total
   order. Sort best-first with a descending vector comparator, e.g.
-  `(sort-by chart-rank-key #(compare %2 %1) qs)`."
+  `(sort-by chart-rank-key u/reverse-compare qs)`."
   [q]
   [(double (or (:contextual_interestingness_score q) 0.0))
    (double (or (:interestingness_score q) 0.0))
@@ -263,7 +261,7 @@
                  (map-indexed (fn [pos c]
                                 [(* (chart-rank-score c) (Math/pow metric-breakout-decay pos)) c])
                               (metric-queue metric-charts))))
-       (sort-by (fn [[adj c]] [adj (chart-rank-key c)]) #(compare %2 %1))
+       (sort-by (fn [[adj c]] [adj (chart-rank-key c)]) u/reverse-compare)
        (map second)
        (take n)
        vec))
@@ -289,6 +287,12 @@
   [c]
   [(:card-id c) (:dimension-id c) (:segment-id c)])
 
+(defn- variant-sort-key
+  "Descending-better sort key for a prepped variant within its breakout: best `:score` first,
+  stable on id."
+  [c]
+  [(double (:score c 0.0)) (- (long (:exploration-query-id c)))])
+
 (defn group-breakouts
   "Group prepped charts into breakouts (metric × dimension × segment), bundling each
   breakout's rendering variants so Phase 2 can present the whole menu and let the analyst
@@ -298,21 +302,19 @@
 
       => [{:rep-id N :representative <prepped> :variants [<prepped> ...] :score s} ...]"
   [prepped]
-  (let [variant-key (fn [c] [(double (or (:score c) 0.0))
-                             (- (long (:exploration-query-id c)))])]
-    (->> prepped
-         (group-by breakout-key)
-         vals
-         (map (fn [variants]
-                (let [sorted (vec (sort-by variant-key #(compare %2 %1) variants))
-                      rep    (first sorted)]
-                  {:rep-id         (:exploration-query-id rep)
-                   :representative rep
-                   :variants       sorted
-                   :score          (:score rep)})))
-         (sort-by (fn [b] [(double (or (:score b) 0.0)) (- (long (:rep-id b)))])
-                  #(compare %2 %1))
-         vec)))
+  (->> prepped
+       (group-by breakout-key)
+       vals
+       (map (fn [variants]
+              (let [sorted (vec (sort-by variant-sort-key u/reverse-compare variants))
+                    rep    (first sorted)]
+                {:rep-id         (:exploration-query-id rep)
+                 :representative rep
+                 :variants       sorted
+                 :score          (:score rep)})))
+       (sort-by (fn [b] [(double (:score b 0.0)) (- (long (:rep-id b)))])
+                u/reverse-compare)
+       vec))
 
 (defn prep-chart
   "Compute the rich per-chart record both phases consume.
@@ -458,13 +460,28 @@
   transcript stays readable. Concatenates reasoning blocks and non-tool text
   separately; keeps the raw parts list under `:all` for full fidelity."
   [parts]
-  (let [reasoning (->> parts (filter #(= :reasoning (:type %))) (map :reasoning) (str/join "\n"))
-        text      (->> parts (filter #(= :text (:type %))) (map :text) (str/join "\n"))
-        usage     (some #(when (= :usage (:type %)) (:usage %)) parts)]
+  (let [by-type   (group-by :type parts)
+        reasoning (->> (:reasoning by-type) (map :reasoning) (str/join "\n"))
+        text      (->> (:text by-type) (map :text) (str/join "\n"))
+        usage     (:usage (first (:usage by-type)))]
     (cond-> {:all parts}
       (seq reasoning) (assoc :reasoning reasoning)
       (seq text)      (assoc :text text)
       usage           (assoc :usage usage))))
+
+(defn- run-attempt
+  "Run a single LLM call + extract + validate, returning one attempt map for the transcript.
+  `ctx` carries the call settings shared across attempts: `{:llm-config :schema :tag
+  :extract-fn :validate-fn}`."
+  [{:keys [llm-config schema tag extract-fn validate-fn]} n messages]
+  (let [{:keys [response parts]} (call-llm llm-config messages schema tag)
+        value (extract-fn response)]
+    {:attempt           n
+     :messages          messages
+     :response          response
+     :trace             (summarize-parts parts)
+     :value             value
+     :validation-errors (vec (validate-fn value))}))
 
 (defn run-with-repair
   "Phase-agnostic LLM call + validate + one repair retry. Returns
@@ -487,43 +504,27 @@
     repair-builder - (previous-value errors) → repair user message string"
   [{:keys [thread-id phase-name llm-config prompt schema
            extract-fn validate-fn repair-builder]}]
-  (let [tag             (str "exploration-ai-summary-" phase-name)
-        first-messages  [{:role "user" :content prompt}]
-        {first-response :response
-         first-parts    :parts} (call-llm llm-config first-messages schema tag)
-        first-value     (extract-fn first-response)
-        first-errors    (vec (validate-fn first-value))
-        attempt-1       {:attempt           1
-                         :messages          first-messages
-                         :response          first-response
-                         :trace             (summarize-parts first-parts)
-                         :value             first-value
-                         :validation-errors first-errors}]
-    (if (empty? first-errors)
-      {:value first-value :attempts [attempt-1] :outcome :ok}
+  (let [ctx       {:llm-config  llm-config
+                   :schema      schema
+                   :tag         (str "exploration-ai-summary-" phase-name)
+                   :extract-fn  extract-fn
+                   :validate-fn validate-fn}
+        attempt-1 (run-attempt ctx 1 [{:role "user" :content prompt}])]
+    (if (empty? (:validation-errors attempt-1))
+      {:value (:value attempt-1) :attempts [attempt-1] :outcome :ok}
       (do
         (log/warnf "AI Summary %s for thread %d: validation failed on first attempt; retrying once.\nErrors:\n%s"
-                   phase-name thread-id (format-errors first-errors))
-        (let [retry-msg       (repair-builder first-value first-errors)
-              retry-messages  (conj first-messages
-                                    {:role "assistant" :content (pr-str first-response)}
-                                    {:role "user" :content retry-msg})
-              {retry-response :response
-               retry-parts    :parts} (call-llm llm-config retry-messages schema tag)
-              retry-value     (extract-fn retry-response)
-              retry-errors    (vec (validate-fn retry-value))
-              attempt-2       {:attempt           2
-                               :messages          retry-messages
-                               :response          retry-response
-                               :trace             (summarize-parts retry-parts)
-                               :value             retry-value
-                               :validation-errors retry-errors}]
-          (if (empty? retry-errors)
+                   phase-name thread-id (format-errors (:validation-errors attempt-1)))
+        (let [retry-msg (repair-builder (:value attempt-1) (:validation-errors attempt-1))
+              attempt-2 (run-attempt ctx 2 (conj (:messages attempt-1)
+                                                 {:role "assistant" :content (pr-str (:response attempt-1))}
+                                                 {:role "user" :content retry-msg}))]
+          (if (empty? (:validation-errors attempt-2))
             (do (log/infof "AI Summary %s for thread %d: repair succeeded on retry" phase-name thread-id)
-                {:value retry-value :attempts [attempt-1 attempt-2] :outcome :ok})
+                {:value (:value attempt-2) :attempts [attempt-1 attempt-2] :outcome :ok})
             (do (log/warnf "AI Summary %s for thread %d: repair failed; giving up.\nErrors:\n%s"
-                           phase-name thread-id (format-errors retry-errors))
+                           phase-name thread-id (format-errors (:validation-errors attempt-2)))
                 {:value        nil
                  :attempts     [attempt-1 attempt-2]
                  :outcome      :failed
-                 :final-errors retry-errors})))))))
+                 :final-errors (:validation-errors attempt-2)})))))))

@@ -27,6 +27,10 @@ export function setupDeleteWorkspaceEndpoint(workspaceId: WorkspaceId) {
   });
 }
 
+export function setupDeleteWorkspaceEndpointError(workspaceId: WorkspaceId) {
+  fetchMock.delete(`${BASE_URL}/${workspaceId}`, { status: 500 });
+}
+
 export function setupCreateWorkspaceDatabaseEndpoint(workspace: Workspace) {
   fetchMock.post(`${BASE_URL}/${workspace.id}/database`, workspace);
 }
@@ -49,4 +53,13 @@ export function setupDeleteWorkspaceDatabaseEndpoint(
     `${BASE_URL}/${workspace.id}/database/${databaseId}`,
     workspace,
   );
+}
+
+export function setupDeleteWorkspaceDatabaseEndpointError(
+  workspaceId: WorkspaceId,
+  databaseId: DatabaseId,
+) {
+  fetchMock.delete(`${BASE_URL}/${workspaceId}/database/${databaseId}`, {
+    status: 500,
+  });
 }

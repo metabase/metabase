@@ -209,7 +209,7 @@ export function createExplorationViaApi({
       // `dimension_mappings` resolves a target for that dimension.
       // Pass `null` and we get an exploration with zero queries —
       // the sidebar tree renders only the empty section headings
-      // and `findAllByRole("listitem")` finds nothing. Echo back
+      // and `findAllByRole("treeitem")` finds nothing. Echo back
       // the BE's own mappings so query generation succeeds.
       const metrics = metricIds.map((id) => {
         const m = body.metrics.find((mm) => mm.id === id);
@@ -260,7 +260,7 @@ interface ExplorationDimensionsResponse {
 
 export function visitExploration(id: number): void {
   cy.visit(`/question/research/${id}`);
-  // Sidebar rows use `role="listitem"`. Wait for at least one to
+  // Sidebar rows use `role="treeitem"`. Wait for at least one to
   // appear so subsequent queries don't race the initial render.
-  cy.findAllByRole("listitem").first().should("be.visible");
+  cy.findAllByRole("treeitem").first().should("be.visible");
 }

@@ -138,13 +138,12 @@ Always return a single object matching the supplied schema. Do not respond with 
     (when (= "done" (:status query))
       (when-let [sr (eqr/stored-results exploration-query-id)]
         (when-let [timeline (t2/select-one :model/Timeline :id timeline-id)]
-          (let [thread   (t2/select-one [:model/ExplorationThread :prompt]
-                                        :id (:exploration_thread_id query))
-                hydrated (timeline/include-events-singular timeline {:events/all? false})]
+          (let [hydrated (timeline/include-events-singular timeline {:events/all? false})]
             {:query        query
              :result-bytes (:result_data sr)
              :timeline     hydrated
-             :prompt       (:prompt thread)}))))))
+             :prompt       (t2/select-one-fn :prompt :model/ExplorationThread
+                                             :id (:exploration_thread_id query))}))))))
 
 (defn- score-loaded-context
   "Given the output of `load-context`, build the chart config and dispatch to
