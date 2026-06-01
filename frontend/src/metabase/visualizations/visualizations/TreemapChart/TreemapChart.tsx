@@ -10,7 +10,6 @@ import {
   getTreemapData,
 } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
 import {
@@ -21,10 +20,11 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
-import { dispatchTreemapToRoot, useChartEvents } from "./events";
+import { dispatchTreemapViewRoot, useChartEvents } from "./events";
 
-// Stable fallback so `useChartEvents` deps don't churn while chartData is null.
-const EMPTY_TREE: TreemapTree = [];
+// Bottom inset (px) reserved for the breadcrumb overlay while drilled in. The
+// overview uses 0 (full-bleed); see option.ts.
+const BREADCRUMB_BOTTOM_SPACE = 48;
 
 export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
@@ -35,10 +35,10 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
   // `null` = overview (initial 2-level view); `"0".."N-1"` = drilled into that
-  // top-level group. Tracked from `treemaproottonode` events (see events.ts).
-  // The breadcrumb renders from `viewRootId` state; the tooltip formatter reads
-  // the synced `viewRootIdRef` live (its option is built once, so it can't close
-  // over state). `handleViewRootChange` keeps both in sync.
+  // top-level group. The breadcrumb and the bottom inset render from
+  // `viewRootId` state; the tooltip formatter reads the synced `viewRootIdRef`
+  // live (its option is built once, so it can't close over state).
+  // `handleViewRootChange` keeps both in sync.
   const [viewRootId, setViewRootId] = useState<string | null>(null);
   const viewRootIdRef = useRef<string | null>(null);
   const handleViewRootChange = useCallback((id: string | null) => {
@@ -62,7 +62,8 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
       return null;
     }
     const { tree, colors, treemapColumns } = chartData;
-    const seriesOption = getTreemapChartOption(tree, colors);
+    const bottomSpace = viewRootId != null ? BREADCRUMB_BOTTOM_SPACE : 0;
+    const seriesOption = getTreemapChartOption(tree, colors, bottomSpace);
     const formatters = getTreemapFormatters(treemapColumns, settings);
 
     return {
@@ -76,7 +77,7 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
         treemapColumns.grouping.column.display_name,
       ),
     };
-  }, [chartData, settings]);
+  }, [chartData, settings, viewRootId]);
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
@@ -85,12 +86,7 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
   const hasChildren = Boolean(
     chartData?.tree.some((node) => node.children != null),
   );
-  const { eventHandlers } = useChartEvents(
-    chartRef,
-    hasChildren,
-    chartData?.tree ?? EMPTY_TREE,
-    handleViewRootChange,
-  );
+  const { eventHandlers } = useChartEvents(hasChildren, handleViewRootChange);
 
   // A new dataset re-renders the chart at the absolute root, so reset the
   // tracked view root to the overview.
@@ -98,13 +94,22 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
     handleViewRootChange(null);
   }, [chartData, handleViewRootChange]);
 
+  // `setOption` (run by the renderer when `option` changes) always renders at
+  // the absolute root, so after each change re-apply the drill for a drilled-in
+  // view. This effect runs after the renderer's `setOption` effect (child
+  // effects fire before parent effects). No canvas resize is involved, so the
+  // layout stays clean.
+  useEffect(() => {
+    dispatchTreemapViewRoot(chartRef, viewRootId);
+  }, [option, viewRootId]);
+
   const breadcrumb = chartData
     ? getTreemapBreadcrumbModel(chartData.tree, viewRootId)
     : null;
 
   const handleBreadcrumbAllClick = useCallback(() => {
-    dispatchTreemapToRoot(chartRef);
-  }, []);
+    handleViewRootChange(null);
+  }, [handleViewRootChange]);
 
   useCloseTooltipOnScroll(chartRef);
 

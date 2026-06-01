@@ -153,3 +153,21 @@ describe("getTreemapChartOption zoom", () => {
     expect(series.breadcrumb).toMatchObject({ show: false });
   });
 });
+
+describe("getTreemapChartOption layout", () => {
+  it("is full-bleed with no bottom inset at the overview", () => {
+    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+
+    expect(series).toMatchObject({ top: 0, left: 0, right: 0, bottom: 0 });
+  });
+
+  it("reserves the requested bottom space for the breadcrumb when drilled", () => {
+    const { series } = getTreemapChartOption(
+      TWO_LEVEL_TREE,
+      getTreemapColors(TWO_LEVEL_TREE),
+      48,
+    );
+
+    expect(series.bottom).toBe(48);
+  });
+});

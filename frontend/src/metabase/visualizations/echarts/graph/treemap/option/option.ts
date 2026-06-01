@@ -32,6 +32,7 @@ const TWO_LEVEL_LEVELS: TreemapSeriesOption["levels"] = [
 export function getTreemapChartOption(
   tree: TreemapTree,
   colors: Record<string, string> = getTreemapColors(tree),
+  bottomSpace = 0,
 ): {
   series: TreemapChartSeriesOption;
 } {
@@ -46,6 +47,16 @@ export function getTreemapChartOption(
     roam: false,
     // A custom React breadcrumb (see TreemapChart) replaces ECharts' native one.
     breadcrumb: { show: false },
+    // Full-bleed layout. ECharts' default reserves `top`/`bottom: 50px` (where
+    // the native breadcrumb sat) — we zero it out so the overview fills the
+    // whole area, and reserve `bottomSpace` only while drilled in, so the
+    // breadcrumb overlay has room without overlapping tiles. The bottom inset
+    // changes via a fresh `setOption` (not a canvas resize), so there's no
+    // resize/animation race to corrupt the layout.
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: bottomSpace,
     data: toSeriesData(tree, colors),
     leafDepth: 2,
     ...(hasChildren ? { levels: TWO_LEVEL_LEVELS } : {}),
