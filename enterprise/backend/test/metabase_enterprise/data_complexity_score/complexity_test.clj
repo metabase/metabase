@@ -1107,6 +1107,36 @@
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
 
+(deftest ^:sequential scored-within-cooldown-uses-db-time-test
+  (testing "scored-within-cooldown? counts only same-fingerprint, same-source rows inside the window"
+    ;; created_at defaults to the DB's current_timestamp, so the cutoff is computed in DB time. We
+    ;; seed rows relative to real wall-clock (H2's clock ≈ the JVM's) with 1h/13h offsets — far from
+    ;; the 12h boundary so there's no flake window.
+    (mt/initialize-if-needed! :db)
+    (let [fp      "scored-within-test/fp"
+          other   "scored-within-test/other"
+          recent  (.minusHours (java.time.LocalDateTime/now) 1)
+          stale   (.minusHours (java.time.LocalDateTime/now) 13)
+          insert! (fn [f source created-at]
+                    (t2/insert! :model/DataComplexityScore
+                                {:fingerprint f :source source :score_data {} :created_at created-at}))]
+      (try
+        (t2/delete! :model/DataComplexityScore :fingerprint [:in [fp other]])
+        (insert! other "appdb" recent)
+        (is (not (data-complexity-score/scored-within-cooldown? fp "appdb" 12))
+            "a fresh row for a different fingerprint doesn't count")
+        (insert! fp "appdb" stale)
+        (is (not (data-complexity-score/scored-within-cooldown? fp "appdb" 12))
+            "a same-fingerprint row older than the window doesn't count")
+        (insert! fp "representation:abcd" recent)
+        (is (not (data-complexity-score/scored-within-cooldown? fp "appdb" 12))
+            "a fresh row from another source doesn't count")
+        (insert! fp "appdb" recent)
+        (is (data-complexity-score/scored-within-cooldown? fp "appdb" 12)
+            "a fresh same-fingerprint appdb row counts")
+        (finally
+          (t2/delete! :model/DataComplexityScore :fingerprint [:in [fp other]]))))))
+
 (deftest ^:sequential run-scoring-persists-latest-score-snapshot-test
   (testing "every successful computation persists a fresh snapshot for the overview endpoint"
     (mt/initialize-if-needed! :db)

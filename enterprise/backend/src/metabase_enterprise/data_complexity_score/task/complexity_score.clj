@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-complexity-score.task.complexity-score
-  "Daily Quartz job that computes and publishes the Data Complexity Score."
+  "Weekly Quartz job that computes and publishes the Data Complexity Score."
   (:require
    [clojure.edn :as edn]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -77,6 +77,13 @@
 ;; claimant unblocks the next tick's retry without operator intervention.
 (def ^:private scoring-claim-ttl-ms (* 30 60 1000))
 
+;; The weekly cron re-scores unconditionally to capture catalog drift the fingerprint can't see, but
+;; a recompute for the *same fingerprint* within this window — boot-time emission on a config change,
+;; an admin "recompute" click, or a CLI appdb run — already published an equivalent score, so the
+;; cron skips to avoid a redundant Snowplow publish. Fingerprint-scoped: a config change leaves no
+;; recent row for the new fingerprint, so the cron still scores immediately.
+(def ^:private cron-cooldown-hours 12)
+
 (defn- now-ms [] (System/currentTimeMillis))
 
 (defn- parse-scoring-claim
@@ -107,7 +114,9 @@
   (including a unique `:owner` token) when this caller wins the right to run, or nil when another
   node/path already holds an active claim for the current fingerprint — or, when
   `:require-fingerprint-change?` is true, when the live fingerprint still matches the last
-  successfully-published one (boot's extra gate so restarts at an unchanged config don't re-emit).
+  successfully-published one (boot's extra gate so restarts at an unchanged config don't re-emit) —
+  or, when `:cooldown-hours` is set, when an appdb snapshot for the current fingerprint was recorded
+  within that window (the cron's gate against re-publishing a still-fresh score).
 
   The returned claim must be passed back to [[release-scoring-claim!]] so the release is a
   compare-and-clear — a sibling that took over after a TTL-based expiry keeps its own claim.
@@ -125,7 +134,7 @@
   Reads inside the lock bypass the in-process settings cache via `config/*disable-setting-cache*`
   so values freshly committed by sibling nodes are always visible — the cache is only refreshed
   periodically and without bypass two nodes could both pass the check and both score."
-  [{:keys [require-fingerprint-change?]}]
+  [{:keys [require-fingerprint-change? cooldown-hours]}]
   (cluster-lock/with-cluster-lock {:lock ::complexity-score-run
                                    :timeout-seconds 10}
     (binding [config/*disable-setting-cache* true]
@@ -133,6 +142,8 @@
         (when (and (settings/scoring-active?)
                    (or (not require-fingerprint-change?)
                        (not= current (settings/data-complexity-scoring-last-fingerprint)))
+                   (not (and cooldown-hours
+                             (data-complexity-score/scored-within-cooldown? current "appdb" cooldown-hours)))
                    (not (scoring-claim-active?
                          (parse-scoring-claim (settings/data-complexity-scoring-claim))
                          current)))
@@ -173,7 +184,7 @@
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Compute and publish the Data Complexity Score."}
   DataComplexityScoring [_ctx]
-  (with-scoring-claim! {} run-scoring!))
+  (with-scoring-claim! {:cooldown-hours cron-cooldown-hours} run-scoring!))
 
 (defn maybe-emit-boot-score!
   "Run one scoring pass at boot when the persisted fingerprint lags the live config. Shares the
@@ -201,14 +212,14 @@
                  (jobs/of-type DataComplexityScoring)
                  (jobs/store-durably)
                  (jobs/with-identity job-key)
-                 (jobs/with-description "Data Complexity Score — daily telemetry"))
-        ;; 03:17 UTC — off-hour to avoid cron-thundering-herd with other Metabase jobs.
+                 (jobs/with-description "Data Complexity Score — weekly telemetry"))
+        ;; Sundays at 03:17 UTC — off-hour to avoid cron-thundering-herd with other Metabase jobs.
         trigger (triggers/build
                  (triggers/with-identity trigger-key)
                  (triggers/for-job job-key)
                  (triggers/with-schedule
                   (cron/schedule
-                   (cron/cron-schedule "0 17 3 * * ? *")
+                   (cron/cron-schedule "0 17 3 ? * SUN *")
                    (cron/in-time-zone (java.util.TimeZone/getTimeZone "UTC"))
                    (cron/with-misfire-handling-instruction-fire-and-proceed))))]
     (task/schedule-task! job trigger)))
