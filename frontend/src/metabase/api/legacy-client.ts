@@ -2,7 +2,6 @@
 import EventEmitter from "events";
 import querystring from "querystring";
 
-import { isWebFormBody } from "metabase/api/utils/is-web-form-body";
 import { substituteUrlTags } from "metabase/api/utils/substitute-url-tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
@@ -239,13 +238,12 @@ export class LegacyApi extends EventEmitter<EventMap> {
           }
         }
 
-        let body: string | FormData | URLSearchParams | undefined;
+        let body: string | FormData | undefined;
         if (options.hasBody) {
-          if (isWebFormBody(rawData)) {
-            // Pass `FormData` / `URLSearchParams` through unwrapped so the
-            // browser sets the right Content-Type (multipart boundary /
-            // urlencoded charset). Drops the legacy `body: { formData },
-            // formData: true` wrapper shape.
+          if (rawData instanceof FormData) {
+            // Pass `FormData` through unwrapped so the browser sets the right
+            // multipart Content-Type (with boundary). Drops the legacy
+            // `body: { formData }, formData: true` wrapper shape.
             body = rawData;
           } else if (options.formData) {
             body = rawData["formData"] as FormData;
@@ -267,11 +265,10 @@ export class LegacyApi extends EventEmitter<EventMap> {
           ...options.headers,
         };
 
-        // FormData / URLSearchParams must NOT carry our default
-        // `application/json` Content-Type — the browser sets the right value
-        // (with the multipart boundary or urlencoded charset). XHR's
+        // FormData must NOT carry our default `application/json` Content-Type —
+        // the browser sets the right value (with the multipart boundary). XHR's
         // `xhr.send(formData)` honors this too.
-        if (isWebFormBody(body) || (options.formData && options.fetch)) {
+        if (body instanceof FormData || (options.formData && options.fetch)) {
           delete headers["Content-Type"];
         }
 
@@ -295,7 +292,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | URLSearchParams | undefined,
+    body: string | FormData | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -338,7 +335,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | URLSearchParams | undefined,
+    body: string | FormData | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -369,7 +366,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | URLSearchParams | undefined,
+    body: string | FormData | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -469,7 +466,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    requestBody: string | FormData | URLSearchParams | undefined,
+    requestBody: string | FormData | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {

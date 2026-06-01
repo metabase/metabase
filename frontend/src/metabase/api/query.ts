@@ -1,7 +1,6 @@
 import type { BaseQueryFn } from "@reduxjs/toolkit/query/react";
 
 import api from "metabase/api/legacy-client";
-import { isWebFormBody } from "metabase/api/utils/is-web-form-body";
 
 type AllowedHTTPMethods = "GET" | "POST" | "PUT" | "DELETE";
 const allowedHTTPMethods = new Set<AllowedHTTPMethods>([
@@ -24,12 +23,14 @@ export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
     return { error: "Invalid HTTP method" };
   }
 
-  // Web-form bodies are forwarded as-is; other bodies merge with `params` so a
-  // single combined object reaches the legacy client (which doesn't separate
-  // them).
-  const rawData = isWebFormBody(args?.body)
-    ? args.body
-    : { ...args?.body, ...args?.params };
+  // `FormData` bodies are forwarded as-is — spreading would yield an empty
+  // object (its entries aren't enumerable as keys) and erase the upload. Other
+  // bodies merge with `params` so a single combined object reaches the legacy
+  // client (which doesn't separate them).
+  const rawData =
+    args?.body instanceof FormData
+      ? args.body
+      : { ...args?.body, ...args?.params };
 
   try {
     const response = await api[method](url)(rawData, {
