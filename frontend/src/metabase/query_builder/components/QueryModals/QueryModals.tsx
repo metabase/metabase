@@ -246,7 +246,7 @@ export function QueryModals({
           }}
           copy={async (formValues) => {
             if (!underlyingQuestion) {
-              return;
+              throw new Error(t`Unable to duplicate this question.`);
             }
 
             const question = underlyingQuestion
