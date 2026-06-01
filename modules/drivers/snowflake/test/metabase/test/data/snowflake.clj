@@ -644,13 +644,24 @@
 
 (alter-var-root #'setup-locks! memoize)
 
+;; sometimes snowflake randomly throws an exception claiming
+;; "SQL compilation error: Object 'METABASE_TEST_TRACKING.PUBLIC.LOCKS' does not exist or not authorized."
+;; despite the fact that the table definitely exists. the cause is unknown,
+;; but the error goes away upon a retry. tacky as hell, but what else can we do?
+(defn- missing-table-ex? [^SnowflakeSQLException ex]
+  ;; snowflake documentation does not bother to define these so it's possible
+  ;; these codes are broader than what we are looking for.
+  (and (= "42S02" (.getSQLState ex))
+       (re-find #"does not exist or not authorized." (.getMessage ex))))
+
 (defn- try-lock! [^java.sql.Statement stmt dataset-name]
   (try
     (.executeQuery stmt (format "INSERT INTO metabase_test_tracking.PUBLIC.locks (dataset) VALUES ('%s')"
                                 dataset-name))
     true
     (catch SnowflakeSQLException e
-      (when-not (= "A primary key already exists." (.getMessage e))
+      (when-not (or (= "A primary key already exists." (.getMessage e))
+                    (missing-table-ex? e))
         (throw e))
       (with-write-stmt! (fn [^java.sql.Statement stmt]
                           (.executeQuery stmt "DELETE FROM metabase_test_tracking.PUBLIC.locks
@@ -672,8 +683,16 @@
 (defn- unlock! [dataset-name ^java.sql.Statement stmt]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "[Snowflake] unlocking" dataset-name)
-  (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
-                              dataset-name)))
+  (try
+    (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
+                                dataset-name))
+    (catch SnowflakeSQLException e
+      ;; sometimes snowflake throws a missing table exception for no reason.
+      ;; when this happens, retrying immediately does not work; it just
+      ;; happens again.  so instead we can delay so that the lock will be
+      ;; considered stale when it's checked next.
+      (when (missing-table-ex? e)
+        (Thread/sleep 30000)))))
 
 (defmethod test.data.impl.get-or-create/dataset-lock :snowflake
   [_driver dataset-name]
