@@ -83,7 +83,7 @@ export const CardEmbedMenuDropdown = ({
 
   return (
     <>
-      {!isWithinIframe() && (
+      {!isWithinIframe() && (canWrite || isStatic) && (
         <Menu.Item
           leftSection={<Icon name="add_comment" size={14} />}
           component={ForwardRefLink}
@@ -97,7 +97,9 @@ export const CardEmbedMenuDropdown = ({
               e.preventDefault();
             }
           }}
-          disabled={!commentsPath || hasUnsavedChanges}
+          disabled={
+            !commentsPath || hasUnsavedChanges || (!canWrite && !isStatic)
+          }
         >
           {t`Comment`}
         </Menu.Item>
