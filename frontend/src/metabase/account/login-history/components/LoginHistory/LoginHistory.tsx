@@ -15,7 +15,7 @@ interface FormattedLoginItem extends UserLoginHistoryItem {
 }
 
 const LoginHistoryItem = ({ item }: { item: FormattedLoginItem }) => (
-  <Card px="20px" py="sm" my="md" radius="md" withBorder>
+  <Card px="md" py="sm" my="md" radius="md" withBorder>
     <Flex align="flex-start">
       <div>
         <Label>

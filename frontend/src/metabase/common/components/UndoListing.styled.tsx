@@ -1,51 +1,20 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { type ComponentPropsWithoutRef, forwardRef } from "react";
 
 import { Link } from "metabase/common/components/Link";
-import type { BoxProps, CardProps } from "metabase/ui";
-import { Box, Card, Icon } from "metabase/ui";
+import type { BoxProps } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
-
-const LIST_H_MARGINS = "var(--mantine-spacing-md)";
 
 export const UndoList = styled.ul`
   position: fixed;
   left: 0;
   bottom: 0;
-  margin: ${LIST_H_MARGINS};
+  margin: var(--mantine-spacing-md);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
 `;
-
-type ToastCardProps = CardProps &
-  ComponentPropsWithoutRef<"div"> & {
-    dark?: boolean;
-    noBorder?: boolean;
-  };
-
-export const ToastCard = forwardRef<HTMLDivElement, ToastCardProps>(
-  function ToastCard({ dark = true, noBorder, style, ...props }, ref) {
-    return (
-      <Card
-        ref={ref}
-        {...props}
-        bg={dark ? "background-primary-inverse" : "background-primary"}
-        c={dark ? "text-secondary-inverse" : "text-primary"}
-        withBorder={!noBorder}
-        radius="md"
-        style={{
-          padding: "10px var(--mantine-spacing-md)",
-          marginTop: "var(--mantine-spacing-sm)",
-          maxWidth: `calc(100vw - 2 * ${LIST_H_MARGINS})`,
-          ...(noBorder && { overflowX: "hidden" as const }),
-          ...style,
-        }}
-      />
-    );
-  },
-);
 
 export const CardContent = styled.div`
   display: flex;

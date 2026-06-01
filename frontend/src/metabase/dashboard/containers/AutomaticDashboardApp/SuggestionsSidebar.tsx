@@ -66,7 +66,7 @@ const SuggestionsList = ({
                 className={cx(CS.hoverParent, CS.hoverVisibility, S.ItemLink)}
                 onClick={() => trackSuggestedXRayClicked(suggestionKey)}
               >
-                <Card p="md" radius="md" withBorder>
+                <Card p="md" radius="md" withBorder c="inherit">
                   <Flex align="center">
                     <Icon
                       name={RELATED_CONTENT[suggestionKey].icon}

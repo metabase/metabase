@@ -3,7 +3,7 @@ import { memo } from "react";
 
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
-import { Card, Ellipsified, Icon } from "metabase/ui";
+import { Box, Card, Ellipsified, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import { ListItemLink, Root } from "./ListItem.styled";
@@ -36,6 +36,7 @@ const ListItemInner = ({
       w="680px"
       radius="md"
       withBorder
+      c="inherit"
       data-testid="data-reference-list-item"
     >
       <div className={cx(S.item)}>
@@ -43,13 +44,13 @@ const ListItemInner = ({
           {icon && <Icon className={S.chartIcon} name={icon} size={16} />}
         </div>
         <div className={cx(S.itemBody, CS.flexColumn)}>
-          <div className={S.itemTitle}>
+          <Box className={S.itemTitle} lh="1.5rem">
             <Ellipsified tooltip={name}>{name}</Ellipsified>
-          </div>
+          </Box>
           {(description || placeholder) && (
-            <div className={cx(S.itemSubtitle)}>
+            <Box className={cx(S.itemSubtitle)} mt="sm">
               {description || placeholder}
-            </div>
+            </Box>
           )}
         </div>
       </div>
