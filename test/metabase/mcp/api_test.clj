@@ -77,12 +77,9 @@
                                :delete "mcp"
                                {:request-options {:headers extra-headers}}))
 
-(def ^:private mcp-endpoint-aliases
-  "[client-path expected-url-path] for the canonical MCP endpoint and each route alias.
-   `client-path` is appended to the test client's `/api` prefix; `expected-url-path` is the full path."
-  [["mcp"          "/api/mcp"]
-   ["metabase-mcp" "/api/metabase-mcp"]
-   ["metabase/mcp" "/api/metabase/mcp"]])
+(def ^:private mcp-endpoint-paths
+  "Client paths for the canonical MCP endpoint and its route aliases, appended to the test client's `/api`."
+  ["mcp" "metabase-mcp" "metabase/mcp"])
 
 (defn- mcp-request-to
   "Like `mcp-request` but to an explicit endpoint path (e.g. \"metabase-mcp\"), authenticated as :crowberto."
@@ -1126,7 +1123,7 @@
 
 (deftest endpoint-alias-routing-test
   (testing "initialize succeeds (session auth) on every MCP endpoint alias"
-    (doseq [[path] mcp-endpoint-aliases]
+    (doseq [path mcp-endpoint-paths]
       (testing (str "/api/" path)
         (is (=? {:status  200
                  :headers {"Mcp-Session-Id" some?}
@@ -1136,10 +1133,10 @@
 (deftest endpoint-alias-discovery-401-test
   (testing "unauthenticated request on each alias advertises that same alias as the protected resource"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (doseq [[path url-path] mcp-endpoint-aliases]
+      (doseq [path mcp-endpoint-paths]
         (testing (str "/api/" path)
           ;; The trailing quote pins the match to the exact path (so /api/mcp can't match /api/metabase-mcp).
-          (let [expected (str "/.well-known/oauth-protected-resource" url-path "\"")]
+          (let [expected (str "/.well-known/oauth-protected-resource/api/" path "\"")]
             (is (=? {:status  401
                      :headers {"WWW-Authenticate" #(str/includes? % expected)}}
                     (mcp-request-unauthenticated-to path (jsonrpc-request "initialize"))))))))))
@@ -1152,7 +1149,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (oauth-server/reset-provider!)
       (try
-        (doseq [[path] mcp-endpoint-aliases]
+        (doseq [path mcp-endpoint-paths]
           (testing (str "/api/" path)
             (is (=? {:status  401
                      :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
