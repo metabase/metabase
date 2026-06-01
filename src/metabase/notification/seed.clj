@@ -134,7 +134,6 @@
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
                                      :details {:pattern "{{payload.event_info.support_email}}"}}]}]}
-
           ;; an individual transform within a job failed — notifies the transform's last
           ;; editor / creator (see metabase.transforms.jobs/notify-transform-failures)
           {:internal_id "system-event/transform-failed"
@@ -153,7 +152,6 @@
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
                                      :details {:pattern "{{payload.event_info.email}}"}}]}]}
-
           ;; a whole transform job failed catastrophically or timed out — notifies all
           ;; admins in a single bcc email (see metabase.transforms.jobs/notify-job-failure)
           {:internal_id "system-event/transform-job-failed"
