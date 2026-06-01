@@ -988,19 +988,105 @@ describe("DimensionPickerSidebar", () => {
     expect(screen.getByRole("button", { name: "Title" })).toBeInTheDocument();
   });
 
-  it("shows per-metric column selects from the settings button", async () => {
+  it("shows inline column options from the settings button for one metric", async () => {
     setup();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Configure Time" }),
     );
 
-    expect(screen.getByLabelText("Select dimension for Revenue")).toHaveValue(
-      "Created At",
+    expect(
+      screen.queryByLabelText("Select dimension for Revenue"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Created At" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
     expect(
-      screen.queryByRole("button", { name: "Created At" }),
+      screen.getByRole("button", { name: "Order Date" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show settings or duplicate options for a category with one exact column", async () => {
+    const { onSelectDimensionBreakout } = setup({
+      dimensionBreakout: scalarDimensionBreakout,
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "location",
+              dimensionBreakoutInfo: {
+                type: "geo",
+                label: "State",
+                dimensionMapping: { 0: "dim-state" },
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Configure State" }),
     ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "State" })).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole("button", { name: "State" }));
+
+    expect(onSelectDimensionBreakout).toHaveBeenCalledWith({
+      type: "geo",
+      label: "State",
+      dimensionMapping: { 0: "dim-state" },
+    });
+  });
+
+  it("shows per-metric column selects from the settings button for multiple metrics", async () => {
+    setup({
+      dimensionBreakout: {
+        ...timeDimensionBreakout,
+        dimensionMapping: {
+          0: "dim-created-at",
+          1: "dim-second-created-at",
+        },
+      },
+      dimensions: {
+        shared: [
+          {
+            icon: "calendar",
+            dimensionBreakoutInfo: {
+              type: "time",
+              label: "Time",
+              dimensionMapping: {
+                0: "dim-created-at",
+                1: "dim-second-created-at",
+              },
+            },
+          },
+        ],
+        bySource: {},
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Feedback, Count" },
+      },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Configure Time" }),
+    );
+
+    expect(screen.getByLabelText("Select dimension for Revenue")).toHaveValue(
+      "Time",
+    );
+    expect(
+      screen.getByLabelText("Select dimension for Feedback, Count"),
+    ).toHaveValue("Time");
   });
 
   it("uses the active time mapping for column select values", async () => {
@@ -1038,8 +1124,9 @@ describe("DimensionPickerSidebar", () => {
       screen.getByRole("button", { name: "Configure Time" }),
     );
 
-    expect(screen.getByLabelText("Select dimension for Revenue")).toHaveValue(
-      "Created At",
+    expect(screen.getByRole("button", { name: "Created At" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
   });
 
@@ -1060,13 +1147,13 @@ describe("DimensionPickerSidebar", () => {
       screen.getByRole("button", { name: "Configure Time" }),
     );
     expect(
-      screen.getByLabelText("Select dimension for Revenue"),
+      screen.getByRole("button", { name: "Created At" }),
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Category" }));
 
     expect(
-      screen.queryByLabelText("Select dimension for Revenue"),
+      screen.queryByRole("button", { name: "Created At" }),
     ).not.toBeInTheDocument();
   });
 
@@ -1094,17 +1181,14 @@ describe("DimensionPickerSidebar", () => {
     expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
-  it("updates the active dimensionBreakout mapping from a metric column select", async () => {
+  it("updates the active dimensionBreakout mapping from a single metric column option", async () => {
     const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
       setup({ dimensionBreakout: timeDimensionBreakout });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Configure Time" }),
     );
-    await userEvent.click(
-      screen.getByLabelText("Select dimension for Revenue"),
-    );
-    await userEvent.click(screen.getByRole("option", { name: /Order Date/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Order Date" }));
 
     expect(onUpdateActiveDimensionBreakout).toHaveBeenCalledWith({
       dimensionMapping: { 0: "dim-order-date" },
