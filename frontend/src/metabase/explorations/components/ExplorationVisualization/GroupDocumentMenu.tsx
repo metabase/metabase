@@ -9,6 +9,10 @@ import {
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
+  trackDocumentCreated,
+  trackDocumentUpdated,
+} from "metabase/documents/analytics";
+import {
   ActionIcon,
   Anchor,
   Box,
@@ -74,6 +78,7 @@ export function GroupDocumentMenu({
         });
         return;
       }
+      trackDocumentUpdated(documentId, "exploration");
       sendToast({
         message: (
           <Text c="inherit">
@@ -110,6 +115,7 @@ export function GroupDocumentMenu({
         });
         return;
       }
+      trackDocumentCreated(document.id, "exploration");
       // The freshly created doc has no chart yet; append the picked one.
       await handleAppend(chart, document.id);
     },
