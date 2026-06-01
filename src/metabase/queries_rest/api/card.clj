@@ -544,6 +544,15 @@
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
 
+(defn- normalize-dataset-query-or-400
+  "Strictly normalize an incoming `:dataset_query` from an API request, converting any normalization
+  failure into a 400 Bad Request."
+  [query]
+  (try
+    (lib-be/normalize-query nil query {:strict? true})
+    (catch Throwable e
+      (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -554,8 +563,10 @@
    _query-params
    {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
   (let [card (-> card
-                 (update :dataset_query lib-be/normalize-query)
+                 (update :dataset_query normalize-dataset-query-or-400)
                  (cond-> (some? collection-id)
+                   ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
+                   ;; from being written into the DB (#74615).
                    (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
@@ -668,7 +679,9 @@
   [id :- ::lib.schema.id/card
    {metadata :result_metadata, card-type :type, :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
-  (let [card-updates (m/update-existing card-updates :dataset_query lib-be/normalize-query)
+  ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
+  ;; from being written into the DB (#74615).
+  (let [card-updates (m/update-existing card-updates :dataset_query normalize-dataset-query-or-400)
         query        (:dataset_query card-updates)]
     (check-if-card-can-be-saved query card-type)
     (when-some [query (:dataset_query card-updates)]

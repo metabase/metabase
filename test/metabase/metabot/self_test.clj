@@ -879,7 +879,9 @@
                    (is (every? nil? (map body-preview [{} []])))
                    (msgs))]
         (is (empty? msgs))))
-    (testing "non-empty maps/arrays without a recognised error field pr-str into the preview + warn"
+    (testing "non-empty maps/arrays without a recognised error field pr-str into the preview, no warn"
+      ;; rethrow-api-error! already emits a single warn at the failure boundary with the (bounded) body,
+      ;; so body-preview must not emit a second warn for unrecognised shapes — that's a duplicate.
       (let [bodies [{:request-id "abc" :trace ["frame1"]}
                     [42 :kw]
                     [{:request-id "abc"}]
@@ -889,9 +891,8 @@
                        (is (= (pr-str b) (body-preview b))
                            (str "pr-str fallback for " (pr-str b))))
                      (msgs))]
-        (is (= (count bodies) (count msgs))
-            "one warn line per pr-str fallback")
-        (is (every? #(re-find #"unrecognised error body shape" (:message %)) msgs))))
+        (is (empty? msgs)
+            "body-preview must not warn — rethrow-api-error! logs the (bounded) body once already")))
     (testing "JSON arrays probe their first element"
       (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
       (is (= "first message" (body-preview ["first message" "ignored"]))))
@@ -899,6 +900,39 @@
       (let [preview (body-preview (apply str (repeat 2000 \x)))]
         (is (str/ends-with? preview "…"))
         (is (= 501 (count preview)))))))
+
+(deftest ^:parallel body-for-log-bounding-test
+  (let [body-for-log   #'self.core/body-for-log
+        bounded-pr-str #'self.core/bounded-pr-str
+        max-log        @#'self.core/max-body-log-chars]
+    (testing "a huge string body is sliced before pr-str, never rendered in full"
+      ;; Proof of pre-truncation: without it, bounded-pr-str would print all 1M chars before
+      ;; the caller could truncate. The printed result stays near the limit instead.
+      (is (< (count (bounded-pr-str (apply str (repeat 1000000 \x)) max-log))
+             (+ max-log 10))))
+    (testing "body-for-log caps a huge string at max-body-log-chars with an ellipsis"
+      (let [out (body-for-log (apply str (repeat 1000000 \x)))]
+        (is (str/ends-with? out "…"))
+        (is (= (inc max-log) (count out)))))
+    (testing "a many-element collection renders under *print-length* and stays bounded"
+      (let [out (body-for-log (vec (range 100000)))]
+        (is (<= (count out) max-log))
+        (is (str/includes? out "...") "the *print-length* elision marker is present")))
+    (testing "a small recognised body is left untouched by the bounds"
+      (is (= (pr-str {:error {:message "nope"}})
+             (body-for-log {:error {:message "nope"}}))))
+    (testing "a huge string leaf inside a collection is sliced before pr-str renders the parent"
+      ;; Regression: previously `bounded-pr-str` only pre-sliced *top-level* strings.
+      ;; A map with a near-cap string leaf (e.g. parsed JSON `{:detail "<1MB>"}`)
+      ;; would allocate the whole leaf inside pr-str and rely on the outer truncate-to
+      ;; to cap the result — wasteful on the error path. Now nested string leaves
+      ;; get sliced too.
+      (let [body {:detail (apply str (repeat 1000000 \x))}
+            out  (bounded-pr-str body max-log)]
+        (is (<= (count out) (+ max-log 100))
+            "bounded-pr-str should not render the full huge string leaf")
+        (is (str/includes? out ":detail")
+            "the map structure should still survive past the slicing")))))
 
 (defn- caught
   "Run `thunk` and return the thrown exception, or nil if it didn't throw."
@@ -932,7 +966,6 @@
       (is (=? {:api-error true :provider "anthropic" :error-code :provider-api-error
                :status 500 :body {:error {:message "model decommissioned"}}}
               (ex-data ex)))))
-
   (testing "non-JSON bodies still get a preview appended"
     (let [upstream (ex-info "clj-http error"
                             {:status 502 :reason-phrase "Bad Gateway"
@@ -946,7 +979,6 @@
       (is (str/includes? (ex-message ex) "upstream gateway timeout"))
       (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
              (set (keys (ex-data ex)))))))
-
   (testing "structured maps without :error/:detail/:message pr-str into the user-facing message"
     (let [upstream (ex-info "clj-http error"
                             {:status 500 :reason-phrase "Internal Server Error"
@@ -976,7 +1008,6 @@
       (is (=? {:api-error true :provider "openai" :error-code :provider-request-failed
                :exception-class "java.net.SocketTimeoutException"}
               (ex-data ex)))))
-
   (testing "no-body branch drops the trailing colon when ex-message is blank"
     (let [ex (caught #(self.core/rethrow-api-error! "openai" (constantly "unused") (RuntimeException.)))]
       (is (= "openai API request failed" (ex-message ex)))
@@ -996,7 +1027,6 @@
                              upstream))]
       (is (= "Anthropic API error (HTTP 500) — model decommissioned" (ex-message ex)))
       (is (=? {:error {:message "model decommissioned"}} (:body (ex-data ex))))))
-
   (testing "Large InputStream bodies are bounded — not fully slurped into memory"
     ;; ByteArrayInputStream.available() returns the unread byte count, so we can
     ;; measure how much rethrow-api-error! pulled off the stream without proxying.
@@ -1015,7 +1045,6 @@
       (is (str/ends-with? (ex-message ex) "…"))
       (is (< consumed (alength body-bytes))
           "should not consume the entire 2MB stream just to surface an error preview")))
-
   (testing "Truncated InputStream JSON bodies fall back to the raw bounded string"
     ;; A small slurp cap forces the JSON to be cut mid-envelope. We should fall back
     ;; to surfacing the raw bounded string rather than throwing on parse failure.

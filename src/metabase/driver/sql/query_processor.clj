@@ -18,6 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf :refer [empty? every? mapv not-empty select-keys some]]
    [toucan2.pipeline :as t2.pipeline])
   (:import
@@ -1354,7 +1355,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-one (nth (:aggregation *inner-query*) index)
+  (match/match-one (nth (:aggregation *inner-query*) index)
     [:aggregation-options ag {driver-api/qp.add.desired-alias desired-alias}]
     (->honeysql driver (h2x/identifier :field-alias desired-alias))
 
@@ -1541,7 +1542,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (driver-api/replace
+   (match/replace
      form
      [:field id-or-name opts]
      [:field id-or-name (cond-> opts
@@ -1809,7 +1810,7 @@
   ;; We must not transform the head again else we'll have an infinite loop
   ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
   (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
-    (if-let [field-arg (driver-api/match-one args
+    (if-let [field-arg (match/match-one args
                          [#{:field :expression} & _] &match)]
       [:or
        honeysql-clause

@@ -123,7 +123,8 @@
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url
-  (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key.")
+  (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key. Harbormaster adds /llm component into the url.")
+  ;; For details on llm component see the https://github.com/metabase/metabase/pull/74526#discussion_r3282553435.
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :metabot-v3))
   :encryption       :no

@@ -254,7 +254,6 @@
     (metabase.util.match/match-many)
     (metabase.util.match/replace-in)
     (metabase.util.match/replace)
-    (metabase.driver-api.core/match)
     (metabase.driver-api.core/match-one)
     (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
