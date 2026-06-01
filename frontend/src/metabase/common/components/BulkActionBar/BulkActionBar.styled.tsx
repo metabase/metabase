@@ -12,6 +12,7 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
     props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
   margin-bottom: var(--mantine-spacing-md);
   transform: translateX(-50%);
+  z-index: 150;
 `;
 
 export const ToastCard = styled(Card)`

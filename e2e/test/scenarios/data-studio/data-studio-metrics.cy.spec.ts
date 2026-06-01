@@ -280,8 +280,12 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
+    // The library page lists items as they come back from /api/ee/library;
+    // on fetch (microtask resolution) the initial render can land before
+    // the metric we created in `createLibraryWithItems` has been indexed
+    // into the library response. Allow more time than the default 4s retry.
     H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
+      .findByText("Trusted Orders Metric", { timeout: 10000 })
       .click();
 
     cy.log("Verify metric is loaded");

@@ -17,7 +17,7 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
 export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
   const method = typeof args === "string" ? "GET" : (args?.method ?? "GET");
   const url = typeof args === "string" ? args : args.url;
-  const { bodyParamName, noEvent, formData, fetch, rawResponse } = args;
+  const { noEvent, formData, fetch, rawResponse } = args;
 
   if (!isAllowedHTTPMethod(method)) {
     return { error: "Invalid HTTP method" };
@@ -30,7 +30,6 @@ export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
       { ...args?.body, ...args?.params },
       {
         signal: ctx.signal,
-        bodyParamName,
         noEvent,
         formData,
         fetch,
