@@ -15,16 +15,24 @@ describe("TransformsUpsellPage", () => {
     jest.spyOn(domUtils, "reload").mockImplementation(() => undefined);
   });
 
-  it("does not render an enable button if the user is not a store user", async () => {
-    setup({ isHosted: true, isStoreUser: false });
+  it("shows the contact message if the user is not an admin or store user", async () => {
+    setup({ isHosted: true, isAdmin: false, isStoreUser: false });
     await waitForLoadingToFinish();
 
     expect(
-      screen.queryByRole("button", { name: "Enable transforms" }),
-    ).not.toBeInTheDocument();
-    expect(
       screen.getByText(/contact a store administrator/i),
     ).toBeInTheDocument();
+  });
+
+  it("proceeds to an agree step when the user is an admin", async () => {
+    setup({ isHosted: true, isAdmin: true, isStoreUser: false });
+    await waitForLoadingToFinish();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enable transforms" }),
+    );
+
+    expect(screen.getByText("1,000 free transform runs")).toBeInTheDocument();
   });
 
   it("proceeds to an agree step with an overview of the free bucket", async () => {
@@ -66,9 +74,6 @@ describe("TransformsUpsellPage", () => {
     setup({ isHosted: true, isStoreUser: true, hadTransforms: true });
     await waitForLoadingToFinish();
 
-    expect(
-      screen.queryByText("1,000 free transform runs"),
-    ).not.toBeInTheDocument();
     expect(
       fetchMock.callHistory.calls(
         "path:/api/ee/cloud-add-ons/transforms-basic-metered",
