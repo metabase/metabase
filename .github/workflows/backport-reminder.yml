@@ -12,25 +12,15 @@ jobs:
     name: Decide whether to backport or not
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
+    permissions: {}
     steps:
-      # Replaces jesusvasquez333/verify-pr-label-action (last release 2021), which crashes
-      # with `AttributeError: 'NoneType' object has no attribute 'get'` on transient
-      # GitHub API hiccups during paginated label fetch.
-      - name: Verify backport decision label is present
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
+      - name: Fail if backport decision label is missing
+        if: >
+          github.event_name == 'pull_request' &&
+          !contains(github.event.pull_request.labels.*.name, 'no-backport') &&
+          !contains(github.event.pull_request.labels.*.name, 'backport') &&
+          !contains(github.event.pull_request.labels.*.name, 'double-backport') &&
+          !contains(github.event.pull_request.labels.*.name, 'triple-backport')
         run: |
-          set -euo pipefail
-          valid='no-backport backport double-backport triple-backport'
-          labels=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')
-          for v in $valid; do
-            if printf '%s\n' "$labels" | grep -qFx "$v"; then
-              echo "Found backport label: $v"
-              exit 0
-            fi
-          done
-          echo "::error::PR is missing a backport decision label. Add one of: $valid"
+          echo "::error::PR is missing a backport decision label. Add one of: no-backport, backport, double-backport, triple-backport"
           exit 1
