@@ -1155,9 +1155,9 @@
                 (is (> id before-id)
                     "a new append-only snapshot should be written for each run")))))))))
 
-(deftest ^:sequential run-scoring-persists-fingerprint-only-on-successful-publish-test
-  (testing "fingerprint advances only when Snowplow accepted the event — failed publish must leave
-           the stale fingerprint in place so the next boot / cron retries"
+(deftest ^:sequential run-scoring-advances-fingerprint-only-on-confirmed-publish-test
+  (testing "fingerprint advances only when Snowplow accepted the event — any other outcome leaves the
+           stale fingerprint in place so the next boot / cron retries"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
       (testing "successful publish → fingerprint advances to the claim's fingerprint"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
@@ -1172,7 +1172,16 @@
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result false))]
             (#'task.complexity-score/run-scoring! "fresh-fp")
             (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
-                "fingerprint preserved — next boot / cron will retry the emission")))))))
+                "fingerprint preserved — next boot / cron will retry the emission"))))
+      (testing "persistence throws → fingerprint stays stale so the failed cache write is retried"
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
+                                           data-complexity-scoring-last-fingerprint "stale"]
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores       (fn [& _] (stub-result true))
+                                      data-complexity-score/record-score! (fn [& _]
+                                                                            (throw (RuntimeException. "db boom")))]
+            (#'task.complexity-score/run-scoring! "fresh-fp")
+            (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
+                "fingerprint preserved so the next boot / cron retries the failed cache write")))))))
 
 (deftest ^:sequential scoring-gate-matrix-test
   (testing "scoring runs iff :data-complexity-score premium feature OR deprecated setting is on"
@@ -1206,18 +1215,6 @@
                       (format "with-scoring-claim! should %sacquire a claim for [%s]"
                               (if should-run? "" "NOT ") label)))))))))))
 
-(deftest ^:sequential run-scoring-keeps-fingerprint-stale-when-persistence-fails-test
-  (testing "persistence is part of a successful run now — if the cache write fails we must retry"
-    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
-                                         data-complexity-scoring-last-fingerprint "stale"]
-        (mt/with-dynamic-fn-redefs [complexity/complexity-scores      (fn [& _] (stub-result true))
-                                    data-complexity-score/record-score! (fn [& _]
-                                                                          (throw (RuntimeException. "db boom")))]
-          (#'task.complexity-score/run-scoring! "fresh-fp")
-          (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
-              "fingerprint preserved so the next boot / cron retries the failed cache write"))))))
-
 (deftest ^:sequential maybe-emit-boot-score-only-advances-fingerprint-on-successful-publish-test
   (testing "boot-time emission never advances the last-successful fingerprint on failure — the
            success fingerprint is separate from the in-progress scoring claim, so a scoring/publish
@@ -1244,115 +1241,199 @@
             (is (= "" (settings/data-complexity-scoring-claim))
                 "scoring claim released after successful run")))))))
 
-(deftest ^:sequential maybe-emit-boot-score-skips-when-another-path-holds-active-claim-test
-  (testing "a fresh scoring claim (from a sibling node OR a concurrent cron tick) blocks duplicate
-           emission on this node, even when the last-successful fingerprint is stale — prevents
-           the boot and cron paths from both computing and publishing for the same fingerprint"
+(deftest ^:sequential maybe-emit-boot-score-claim-protocol-test
+  (testing "the shared scoring claim serializes boot-time emission against sibling nodes and cron ticks"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (let [current-fp (#'task.complexity-score/current-fingerprint)
-            ;; Serialize a sibling/cron claim for the same fingerprint, timestamped just now so
-            ;; it's well inside the TTL.
-            active-claim (pr-str {:fingerprint current-fp :claimed-at (#'task.complexity-score/now-ms)})
-            scoring-ran? (atom false)]
-        (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
-                                           data-complexity-scoring-last-fingerprint "stale"
-                                           data-complexity-scoring-claim          active-claim]
-          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
-                                      (fn [& _] (reset! scoring-ran? true) (stub-result true))]
-            (task.complexity-score/maybe-emit-boot-score!)
-            (is (false? @scoring-ran?)
-                "scoring skipped because another path already claimed the current fingerprint")
+      (testing "a fresh claim (sibling node OR concurrent cron tick) blocks duplicate emission, even
+               when the last-successful fingerprint is stale"
+        (let [current-fp   (#'task.complexity-score/current-fingerprint)
+              ;; Serialize a sibling/cron claim for the same fingerprint, timestamped just now so
+              ;; it's well inside the TTL.
+              active-claim (pr-str {:fingerprint current-fp :claimed-at (#'task.complexity-score/now-ms)})
+              scoring-ran? (atom false)]
+          (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                             data-complexity-scoring-last-fingerprint "stale"
+                                             data-complexity-scoring-claim            active-claim]
+            (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                        (fn [& _] (reset! scoring-ran? true) (stub-result true))]
+              (task.complexity-score/maybe-emit-boot-score!)
+              (is (false? @scoring-ran?)
+                  "scoring skipped because another path already claimed the current fingerprint")
+              (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
+                  "fingerprint untouched when the claim is skipped")
+              (is (= active-claim (settings/data-complexity-scoring-claim))
+                  "other path's claim is preserved (we never took it, so we don't clear it)")))))
+      (testing "an expired (TTL-exceeded) claim is treated as orphaned — scoring re-claims and proceeds"
+        (let [current-fp    (#'task.complexity-score/current-fingerprint)
+              ;; 1 hour ago — older than the 30-minute TTL, so this claim is treated as orphaned.
+              expired-claim (pr-str {:fingerprint current-fp
+                                     :claimed-at (- (#'task.complexity-score/now-ms)
+                                                    (* 60 60 1000))})
+              scoring-ran?  (atom false)]
+          (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                             data-complexity-scoring-last-fingerprint "stale"
+                                             data-complexity-scoring-claim            expired-claim]
+            (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                        (fn [& _] (reset! scoring-ran? true) (stub-result true))]
+              (task.complexity-score/maybe-emit-boot-score!)
+              (is (true? @scoring-ran?)
+                  "scoring ran because the prior claim had aged past the TTL")
+              (is (not= "stale" (settings/data-complexity-scoring-last-fingerprint))
+                  "fingerprint advanced on successful publish after re-claim")))))
+      (testing "a sibling re-claim during our run is not wiped by our release (compare-and-clear on :owner)"
+        ;; Stub scoring so that while this node is mid-run the persisted claim is replaced with a
+        ;; sibling's fresh claim (different :owner). This simulates: our run hung past the 30-min
+        ;; TTL → sibling saw an expired claim → sibling wrote its own → our run finally returns.
+        (let [sibling-claim (pr-str {:fingerprint (#'task.complexity-score/current-fingerprint)
+                                     :claimed-at  (System/currentTimeMillis)
+                                     :owner       "sibling-node-owner-token"})]
+          (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                             data-complexity-scoring-last-fingerprint "stale"
+                                             data-complexity-scoring-claim            ""]
+            (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                        (fn [& _]
+                                          (settings/data-complexity-scoring-claim! sibling-claim)
+                                          (stub-result true))]
+              (task.complexity-score/maybe-emit-boot-score!)
+              (is (= sibling-claim (settings/data-complexity-scoring-claim))
+                  "replacement claim preserved — our release was a compare-and-clear and the owners didn't match"))))))))
+
+(deftest ^:sequential claim-scoring-run-mode-selection-test
+  (testing "the cron cooldown gate resolves to :skip / :republish / :recompute by publish state"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (let [current (#'task.complexity-score/current-fingerprint)]
+        (testing "within cooldown AND already published (last-fp = current) → :skip, no claim acquired"
+          (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                             data-complexity-scoring-last-fingerprint current
+                                             data-complexity-scoring-claim            ""]
+            (mt/with-dynamic-fn-redefs [data-complexity-score/scored-within-cooldown? (constantly true)]
+              (is (nil? (#'task.complexity-score/claim-scoring-run! {:cooldown-hours 12}))))))
+        (testing "within cooldown but publish lagged (last-fp ≠ current) → :republish"
+          (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                             data-complexity-scoring-last-fingerprint "stale"
+                                             data-complexity-scoring-claim            ""]
+            (mt/with-dynamic-fn-redefs [data-complexity-score/scored-within-cooldown? (constantly true)]
+              (is (=? {:mode :republish :fingerprint current}
+                      (#'task.complexity-score/claim-scoring-run! {:cooldown-hours 12}))))))
+        (testing "outside the cooldown → :recompute"
+          (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                             data-complexity-scoring-last-fingerprint "stale"
+                                             data-complexity-scoring-claim            ""]
+            (mt/with-dynamic-fn-redefs [data-complexity-score/scored-within-cooldown? (constantly false)]
+              (is (=? {:mode :recompute :fingerprint current}
+                      (#'task.complexity-score/claim-scoring-run! {:cooldown-hours 12}))))))))))
+
+(deftest ^:sequential republish-cached-score-test
+  (testing "the re-publish path re-emits the cached snapshot without recomputing"
+    (mt/initialize-if-needed! :db)
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (testing "cached snapshot + confirmed publish → fingerprint advances, no recompute"
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                           data-complexity-scoring-last-fingerprint "stale"]
+          (data-complexity-score/record-score! "republish-fp" "appdb" (stub-result false))
+          (let [recompute? (atom false)
+                handed     (atom nil)]
+            (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (reset! recompute? true) (stub-result true))
+                                        complexity/republish-score!  (fn [s]
+                                                                       (reset! handed s)
+                                                                       (with-meta s {::complexity/snowplow-published? true}))]
+              (#'task.complexity-score/republish-cached-score! "republish-fp")
+              (is (false? @recompute?) "must re-publish the cached score, never recompute")
+              (is (some? @handed) "cached snapshot handed to republish-score!")
+              (is (= "republish-fp" (settings/data-complexity-scoring-last-fingerprint))
+                  "fingerprint advances on a confirmed re-publish")))))
+      (testing "failed re-publish leaves the fingerprint stale for the next retry"
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                           data-complexity-scoring-last-fingerprint "stale"]
+          (data-complexity-score/record-score! "republish-fail-fp" "appdb" (stub-result false))
+          (mt/with-dynamic-fn-redefs [complexity/republish-score! (fn [s] (with-meta s {::complexity/snowplow-published? false}))]
+            (#'task.complexity-score/republish-cached-score! "republish-fail-fp")
             (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
-                "fingerprint untouched when the claim is skipped")
-            (is (= active-claim (settings/data-complexity-scoring-claim))
-                "other path's claim is preserved (we never took it, so we don't clear it)")))))))
-
-(deftest ^:sequential maybe-emit-boot-score-reclaims-when-prior-claim-has-expired-test
-  (testing "an expired (TTL-exceeded) scoring claim must not permanently suppress scoring — a
-           crashed or orphaned claim from a prior run should be replaced and scoring proceed"
-    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (let [current-fp (#'task.complexity-score/current-fingerprint)
-            ;; 1 hour ago — older than the 30-minute TTL, so this claim is treated as orphaned.
-            expired-claim (pr-str {:fingerprint current-fp
-                                   :claimed-at (- (#'task.complexity-score/now-ms)
-                                                  (* 60 60 1000))})
-            scoring-ran? (atom false)]
-        (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
-                                           data-complexity-scoring-last-fingerprint "stale"
-                                           data-complexity-scoring-claim          expired-claim]
-          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
-                                      (fn [& _] (reset! scoring-ran? true) (stub-result true))]
-            (task.complexity-score/maybe-emit-boot-score!)
-            (is (true? @scoring-ran?)
-                "scoring ran because the prior claim had aged past the TTL")
-            (is (not= "stale" (settings/data-complexity-scoring-last-fingerprint))
-                "fingerprint advanced on successful publish after re-claim")))))))
-
-(deftest ^:sequential maybe-emit-boot-score-does-not-clear-sibling-claim-after-ttl-takeover-test
-  (testing "if our run outlives the TTL and another path legitimately re-claims, the original
-           claimant's release-scoring-claim! must NOT wipe the replacement claim — doing so would
-           reopen the duplicate-publish race (a third node/path would see no claim and run again)"
-    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      ;; Stub scoring so that while this node is mid-run the persisted claim is replaced with a
-      ;; sibling's fresh claim (different :owner). This simulates: our run hung past the 30-min
-      ;; TTL → sibling saw an expired claim → sibling wrote its own → our run finally returns.
-      (let [sibling-claim (pr-str {:fingerprint (#'task.complexity-score/current-fingerprint)
-                                   :claimed-at  (System/currentTimeMillis)
-                                   :owner       "sibling-node-owner-token"})]
+                "fingerprint preserved when the re-publish fails"))))
+      (testing "cooldown saw a row that's since gone → falls back to a full recompute"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
-                                           data-complexity-scoring-last-fingerprint "stale"
-                                           data-complexity-scoring-claim            ""]
-          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
-                                      (fn [& _]
-                                        (settings/data-complexity-scoring-claim! sibling-claim)
-                                        (stub-result true))]
-            (task.complexity-score/maybe-emit-boot-score!)
-            (is (= sibling-claim (settings/data-complexity-scoring-claim))
-                "replacement claim preserved — our release was a compare-and-clear and the owners didn't match")))))))
+                                           data-complexity-scoring-last-fingerprint "stale"]
+          (let [recompute? (atom false)]
+            (mt/with-dynamic-fn-redefs [data-complexity-score/latest-score (constantly nil)
+                                        complexity/complexity-scores      (fn [& _] (reset! recompute? true) (stub-result true))]
+              (#'task.complexity-score/republish-cached-score! "missing-fp")
+              (is (true? @recompute?) "a missing snapshot must trigger a recompute"))))))))
 
-(deftest ^:sequential cron-skips-when-boot-run-holds-active-claim-test
-  (testing "the cron job's scoring call skips when the boot-time run is already mid-flight for the
-           current fingerprint — the shared claim protocol serializes the two paths so they can't
-           both compute and publish in parallel"
+(deftest ^:sequential cron-run-claim-path-test
+  (testing "the cron path — with-scoring-claim! + run-claim!, exactly what the Quartz job body calls"
+    (mt/initialize-if-needed! :db)
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (let [current-fp (#'task.complexity-score/current-fingerprint)
-            boot-claim (pr-str {:fingerprint current-fp
-                                :claimed-at  (#'task.complexity-score/now-ms)
-                                :owner       "boot-path-owner-token"})
-            scoring-ran? (atom false)]
-        (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
-                                           data-complexity-scoring-last-fingerprint "stale"
-                                           data-complexity-scoring-claim            boot-claim]
-          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
-                                      (fn [& _] (reset! scoring-ran? true) (stub-result true))]
-            ;; Exercise the cron's code path via the shared helper — this is exactly what the
-            ;; Quartz job body calls. Re-sampling current-fingerprint does not matter because the
-            ;; live value matches the one the boot path claimed.
-            (#'task.complexity-score/with-scoring-claim! {} #'task.complexity-score/run-scoring!)
-            (is (false? @scoring-ran?)
-                "cron tick skipped because the boot run holds the scoring claim")
-            (is (= boot-claim (settings/data-complexity-scoring-claim))
-                "boot's claim preserved — cron never took it, so it doesn't clear it")))))))
+      (testing "skips when a boot-time run already holds an active claim for the current fingerprint —
+               the shared claim serializes the two paths so they can't both compute and publish"
+        (let [current-fp   (#'task.complexity-score/current-fingerprint)
+              boot-claim   (pr-str {:fingerprint current-fp
+                                    :claimed-at  (#'task.complexity-score/now-ms)
+                                    :owner       "boot-path-owner-token"})
+              scoring-ran? (atom false)]
+          (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                             data-complexity-scoring-last-fingerprint "stale"
+                                             data-complexity-scoring-claim            boot-claim]
+            (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                        (fn [& _] (reset! scoring-ran? true) (stub-result true))]
+              (#'task.complexity-score/with-scoring-claim! {} #'task.complexity-score/run-claim!)
+              (is (false? @scoring-ran?)
+                  "cron tick skipped because the boot run holds the scoring claim")
+              (is (= boot-claim (settings/data-complexity-scoring-claim))
+                  "boot's claim preserved — cron never took it, so it doesn't clear it")))))
+      (testing "regression: a snapshot scored-but-never-published within the cooldown must NOT make the
+               cron skip for a week — it re-publishes the cached score and advances the fingerprint instead"
+        (let [current      (#'task.complexity-score/current-fingerprint)
+              recompute?   (atom false)
+              republished? (atom false)]
+          (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                             ;; publish lagged — last-fp never advanced to the scored fingerprint
+                                             data-complexity-scoring-last-fingerprint "stale"
+                                             data-complexity-scoring-claim            ""]
+            (data-complexity-score/record-score! current "appdb" (stub-result false))
+            (mt/with-dynamic-fn-redefs [data-complexity-score/scored-within-cooldown? (constantly true)
+                                        complexity/complexity-scores (fn [& _] (reset! recompute? true) (stub-result true))
+                                        complexity/republish-score!  (fn [s]
+                                                                       (reset! republished? true)
+                                                                       (with-meta s {::complexity/snowplow-published? true}))]
+              (#'task.complexity-score/with-scoring-claim! {:cooldown-hours 12} #'task.complexity-score/run-claim!)
+              (is (true? @republished?) "re-published the cached snapshot")
+              (is (false? @recompute?) "did not recompute")
+              (is (= current (settings/data-complexity-scoring-last-fingerprint))
+                  "fingerprint advanced after the re-publish — telemetry no longer stalled for a week"))))))))
 
-(deftest ^:sequential complexity-scores-tags-publish-success-on-result-test
-  (testing "complexity-scores stamps publish success/failure via metadata for schedule/boot callers"
-    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                (constantly {:library [] :universe [] :metabot []})]
-      (testing "successful publish → ::snowplow-published? true"
-        (snowplow-test/with-fake-snowplow-collector
-          (let [result (complexity/complexity-scores :embedder nil)]
-            (is (true? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
-                        (meta result)))))))
-      (testing "publish throw → ::snowplow-published? false (and the result is still returned)"
-        (mt/with-dynamic-fn-redefs [analytics/track-event! (fn [& _] (throw (RuntimeException. "snowplow down")))]
-          (let [result (complexity/complexity-scores :embedder nil)]
-            (is (false? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
-                         (meta result)))))))
-      (testing "snowplow disabled → ::snowplow-published? false so the fingerprint stays unadvanced"
-        ;; `track-event!` no-ops when anon-tracking is off; without a real-delivery signal it would
-        ;; look indistinguishable from a successful publish and the fingerprint would advance,
-        ;; silently suppressing the boot-time retry once tracking is turned back on.
-        (mt/with-temporary-setting-values [anon-tracking-enabled false]
-          (let [result (complexity/complexity-scores :embedder nil)]
-            (is (false? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
-                         (meta result))))))))))
+(deftest ^:sequential publish-tagging-test
+  (testing "::snowplow-published? metadata records publish success/failure for schedule/boot callers"
+    (testing "complexity-scores (fresh compute + publish)"
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (constantly {:library [] :universe [] :metabot []})]
+        (testing "successful publish → ::snowplow-published? true"
+          (snowplow-test/with-fake-snowplow-collector
+            (let [result (complexity/complexity-scores :embedder nil)]
+              (is (true? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
+                          (meta result)))))))
+        (testing "publish throw → ::snowplow-published? false (and the result is still returned)"
+          (mt/with-dynamic-fn-redefs [analytics/track-event! (fn [& _] (throw (RuntimeException. "snowplow down")))]
+            (let [result (complexity/complexity-scores :embedder nil)]
+              (is (false? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
+                           (meta result)))))))
+        (testing "snowplow disabled → ::snowplow-published? false so the fingerprint stays unadvanced"
+          ;; `track-event!` no-ops when anon-tracking is off; without a real-delivery signal it would
+          ;; look indistinguishable from a successful publish and the fingerprint would advance,
+          ;; silently suppressing the boot-time retry once tracking is turned back on.
+          (mt/with-temporary-setting-values [anon-tracking-enabled false]
+            (let [result (complexity/complexity-scores :embedder nil)]
+              (is (false? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
+                           (meta result)))))))))
+    (testing "republish-score! (re-emit cached, no recompute) mirrors that tagging"
+      (let [score {:library  {:score 0 :components {}}
+                   :universe {:score 0 :components {}}
+                   :metabot  {:score 0 :components {}}
+                   :meta     {:formula-version 1 :synonym-threshold 0.8 :weights {}}}]
+        (testing "publish succeeds → tagged true"
+          (snowplow-test/with-fake-snowplow-collector
+            (is (true? (::complexity/snowplow-published? (meta (complexity/republish-score! score)))))))
+        (testing "publish throws → tagged false, score still returned unchanged"
+          (mt/with-dynamic-fn-redefs [analytics/track-event! (fn [& _] (throw (RuntimeException. "snowplow down")))]
+            (let [result (complexity/republish-score! score)]
+              (is (false? (::complexity/snowplow-published? (meta result))))
+              (is (= score result) "the score value is returned untouched"))))))))

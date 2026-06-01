@@ -77,11 +77,14 @@
 ;; claimant unblocks the next tick's retry without operator intervention.
 (def ^:private scoring-claim-ttl-ms (* 30 60 1000))
 
-;; The weekly cron re-scores unconditionally to capture catalog drift the fingerprint can't see, but
-;; a recompute for the *same fingerprint* within this window — boot-time emission on a config change,
-;; an admin "recompute" click, or a CLI appdb run — already published an equivalent score, so the
-;; cron skips to avoid a redundant Snowplow publish. Fingerprint-scoped: a config change leaves no
-;; recent row for the new fingerprint, so the cron still scores immediately.
+;; The weekly cron re-scores to capture catalog drift the fingerprint can't see, but a recompute for the
+;; *same fingerprint* within this window — boot-time emission on a config change, an admin "recompute"
+;; click, or a CLI appdb run — already produced an equivalent score, so the cron suppresses the recompute.
+;; If that recent score was actually published the cron skips entirely; if the snapshot exists but its
+;; publish lagged (`last-fingerprint` didn't advance) the cron re-emits the cached snapshot instead of
+;; recomputing — see [[claim-scoring-run!]]'s `:mode`.
+;; Fingerprint-scoped: a config change leaves no recent row for the new fingerprint, so the cron still
+;; scores immediately.
 (def ^:private cron-cooldown-hours 12)
 
 (defn- now-ms [] (System/currentTimeMillis))
@@ -114,9 +117,13 @@
   (including a unique `:owner` token) when this caller wins the right to run, or nil when another
   node/path already holds an active claim for the current fingerprint — or, when
   `:require-fingerprint-change?` is true, when the live fingerprint still matches the last
-  successfully-published one (boot's extra gate so restarts at an unchanged config don't re-emit) —
-  or, when `:cooldown-hours` is set, when an appdb snapshot for the current fingerprint was recorded
-  within that window (the cron's gate against re-publishing a still-fresh score).
+  successfully-published one (boot's extra gate so restarts at an unchanged config don't re-emit).
+
+  The returned claim carries a `:mode`. With `:cooldown-hours` set (the cron path) an appdb snapshot
+  for the current fingerprint within that window means we skip the recompute, but the mode still
+  distinguishes two cases: `:skip` (already published — `last-fingerprint` matches, no claim
+  returned) versus `:republish` (scored but the publish lagged — re-emit the cached snapshot instead
+  of recomputing). Outside the cooldown the mode is `:recompute`.
 
   The returned claim must be passed back to [[release-scoring-claim!]] so the release is a
   compare-and-clear — a sibling that took over after a TTL-based expiry keeps its own claim.
@@ -138,16 +145,25 @@
   (cluster-lock/with-cluster-lock {:lock ::complexity-score-run
                                    :timeout-seconds 10}
     (binding [config/*disable-setting-cache* true]
-      (let [current (current-fingerprint)]
+      (let [current (current-fingerprint)
+            last-fp (settings/data-complexity-scoring-last-fingerprint)
+            recent? (boolean (and cooldown-hours
+                                  (data-complexity-score/scored-within-cooldown? current "appdb" cooldown-hours)))
+            ;; A scored-but-unpublished fingerprint (last-fp still lags) re-emits the cached snapshot
+            ;; rather than recomputing — the cooldown suppresses the recompute, not the publish retry.
+            mode    (cond
+                      (and recent? (= current last-fp)) :skip
+                      recent?                           :republish
+                      :else                             :recompute)]
         (when (and (settings/scoring-active?)
+                   (not= mode :skip)
                    (or (not require-fingerprint-change?)
-                       (not= current (settings/data-complexity-scoring-last-fingerprint)))
-                   (not (and cooldown-hours
-                             (data-complexity-score/scored-within-cooldown? current "appdb" cooldown-hours)))
+                       (not= current last-fp))
                    (not (scoring-claim-active?
                          (parse-scoring-claim (settings/data-complexity-scoring-claim))
                          current)))
           (let [claim {:fingerprint current
+                       :mode        mode
                        :claimed-at  (now-ms)
                        :owner       (str (random-uuid))}]
             (settings/data-complexity-scoring-claim! (pr-str claim))
@@ -171,20 +187,38 @@
       (log/warn t "Data Complexity Score: failed to clear scoring claim; it will expire via TTL"))))
 
 (defn- with-scoring-claim!
-  "Acquire a scoring claim, invoke `f` with the claim's fingerprint, then release the claim via
+  "Acquire a scoring claim, invoke `f` with the claim map, then release the claim via
   compare-and-clear. Returns nil when the claim couldn't be acquired (another path is scoring, or
   the fingerprint-change gate didn't fire). `opts` pass through to [[claim-scoring-run!]]."
   [opts f]
   (when-let [claim (claim-scoring-run! opts)]
     (try
-      (f (:fingerprint claim))
+      (f claim)
       (finally
         (release-scoring-claim! claim)))))
+
+(defn- republish-cached-score!
+  "Re-emit the latest cached appdb snapshot for `fingerprint` to Snowplow without recomputing, then
+  advance `last-fingerprint` on a confirmed publish. Falls back to a full recompute if the snapshot
+  the cooldown saw is already gone (manual delete / race)."
+  [fingerprint]
+  (if-let [cached (data-complexity-score/latest-score fingerprint "appdb")]
+    (let [result (complexity/republish-score! cached)]
+      (maybe-advance-last-fingerprint! fingerprint result)
+      result)
+    (run-scoring! fingerprint)))
+
+(defn- run-claim!
+  "Dispatch a claimed run: `:republish` re-emits the cached snapshot, anything else recomputes."
+  [{:keys [mode fingerprint]}]
+  (case mode
+    :republish (republish-cached-score! fingerprint)
+    (run-scoring! fingerprint)))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Compute and publish the Data Complexity Score."}
   DataComplexityScoring [_ctx]
-  (with-scoring-claim! {:cooldown-hours cron-cooldown-hours} run-scoring!))
+  (with-scoring-claim! {:cooldown-hours cron-cooldown-hours} run-claim!))
 
 (defn maybe-emit-boot-score!
   "Run one scoring pass at boot when the persisted fingerprint lags the live config. Shares the
@@ -201,9 +235,9 @@
   []
   (try
     (with-scoring-claim! {:require-fingerprint-change? true}
-      (fn [fp]
+      (fn [{:keys [fingerprint]}]
         (log/info "Data Complexity Score: fingerprint changed, emitting boot-time score")
-        (run-scoring! fp)))
+        (run-scoring! fingerprint)))
     (catch Throwable t
       (log/warn t "Data Complexity Score: boot-time emission failed"))))
 
