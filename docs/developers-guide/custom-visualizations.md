@@ -163,7 +163,7 @@ export default createVisualization;
 | `minSize`                | `{ width, height }`                 | Minimum size on a dashboard grid.                                                                                                                                                               |
 | `defaultSize`            | `{ width, height }`                 | Default size on a dashboard grid.                                                                                                                                                               |
 | `noHeader`               | `boolean`                           | When `true`, hides the default card title and description header.                                                                                                                               |
-| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export for this visualization. Disabled by default.                                                                                                                 |
+| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export of the live, interactive chart. Disabled by default. This is distinct from static rendering (subscriptions), which always falls back — see [Sandbox restrictions](#sandbox-restrictions).                |
 | `checkRenderable`        | `(series, settings) => void`        | Throw here to signal the visualization can't render with the current data or settings. Metabase shows the error message to the person viewing the chart.                                        |
 | `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created with `defineSetting()`.                                                                                                                                      |
 | `VisualizationComponent` | `React.ComponentType`               | The interactive React component that renders the visualization in questions and dashboards.                                                                                                     |
@@ -184,7 +184,7 @@ export default createVisualization;
 
 `series` is an array of result sets, with one entry per series on the chart. A single question produces one entry; a dashboard card with [multiple series](../dashboards/multiple-series.md) produces several entries. Each entry has a `data` object:
 
-- `data.rows`: an array of rows; each row is an array of cell values in column order.
+- `data.rows`: an array of rows; each row is an array of cell values in column order. Row order is preserved, so when you map rows to chart points one-to-one, a point's index maps straight back to `data.rows[i]` — convenient when a click or hover needs the whole original row, not just the clicked cell.
 - `data.cols`: an array of column objects describing each value. The fields you'll reach for most: `name` (database column name), `display_name` (label shown in the UI), `base_type` (Metabase type, for example `"type/Integer"`), and `semantic_type` (for example `"type/Currency"` or `"type/Latitude"`).
 
 ```tsx
@@ -201,6 +201,8 @@ const numericColumns = data.cols.filter(isNumeric);
 ```
 
 Use `checkRenderable` to bail out when the data isn't a shape your visualization can handle. Throw an `Error` whose message is aimed at the person viewing the chart — Metabase shows it in place of the visualization, so "Pick exactly one numeric column" beats a stray `TypeError`.
+
+`checkRenderable` can run before the defaults computed by `getDefault` are written to stored settings, so a setting it reads may still be `undefined`. Fall back to the same default logic you use in `getDefault` — the calendar-heatmap example does this for its dimension and metric settings (`settings.dimension ?? findDefaultDimensionName(cols)`) so the check passes on first render, before anything is stored.
 
 ## Clicks and tooltips
 
@@ -325,6 +327,23 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
 };
 ```
 
+`getAssetUrl` is only available inside the factory — it isn't a prop on your component. If your component lives in its own file (rather than inline, as above), resolve the URL in the factory and pass it down, instead of reaching for `getAssetUrl` from inside the component:
+
+```tsx
+// Visualization.tsx — a factory that closes over the resolved URL
+export function createVisualizationComponent(imageUrl: string) {
+  return function VisualizationComponent(props: CustomVisualizationProps<Settings>) {
+    return <img src={imageUrl} alt="" />;
+  };
+}
+
+// index.tsx
+const createVisualization: CreateCustomVisualization<Settings> = ({ getAssetUrl }) => {
+  const VisualizationComponent = createVisualizationComponent(getAssetUrl("my-image.png"));
+  // ...return your visualization definition with this component
+};
+```
+
 ## The visualization icon
 
 The icon shows up in the chart type picker and elsewhere in the Metabase UI.
@@ -370,7 +389,7 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 - **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
 - **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
-Plugins also don't render in static visualizations: dashboard subscriptions sent by [email](../dashboards/subscriptions.md) and Slack fall back to a default visualization for cards that use a custom visualization.
+Plugins also don't render in static visualizations: dashboard subscriptions sent by [email](../dashboards/subscriptions.md) and Slack fall back to a default visualization for cards that use a custom visualization. This static, server-side path is separate from the user-triggered PNG export enabled by [`canSavePng`](#visualization-definition-properties), which captures the live interactive chart and does work.
 
 ## Examples
 
