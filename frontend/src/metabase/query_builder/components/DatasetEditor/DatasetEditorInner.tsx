@@ -53,13 +53,6 @@ import { setUIControls } from "metabase/redux/query-builder";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { ListViewConfiguration } from "metabase/visualizations/visualizations/List/components/ListView";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -71,10 +64,8 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatasetColumn,
   Field,
-  IconName,
   RawSeries,
   ResultsMetadata,
-  Series,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -87,6 +78,10 @@ import {
 import { DatasetFieldMetadataSidebar } from "./DatasetFieldMetadataSidebar";
 import { DatasetQueryEditor } from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
+import {
+  ListViewConfigurationPanel,
+  getComputedVisualizationSettings,
+} from "./ListViewConfigurationPanel";
 import { EDITOR_TAB_INDEXES } from "./constants";
 type MetadataDiff = Record<string, Partial<Field>>;
 
@@ -286,18 +281,6 @@ function getTempRawSeries(
   ] as RawSeries;
 }
 
-function getComputedVisualizationSettings(
-  series: Series | null,
-): ComputedVisualizationSettings | null {
-  if (series == null) {
-    return series;
-  }
-
-  return getComputedSettingsForSeries(
-    getVisualizationTransformed(extractRemappings(series)).series,
-  ) as ComputedVisualizationSettings;
-}
-
 const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const {
     question,
@@ -362,82 +345,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const isShowingListViewConfig =
     isShowingListViewConfiguration &&
     question.display() === "list" &&
-    rawSeries != null;
-
-  const listConfigData = useMemo(
-    () => (isShowingListViewConfig ? rawSeries?.[0]?.data : null),
-    [isShowingListViewConfig, rawSeries],
-  );
-
-  const listConfigSettings = useMemo(
-    () =>
-      isShowingListViewConfig
-        ? getComputedVisualizationSettings(rawSeries)
-        : null,
-    [isShowingListViewConfig, rawSeries],
-  );
-
-  const listColumnsMetadata = useMemo(() => {
-    if (!isShowingListViewConfig || !listConfigData) {
-      return [];
-    }
-    const query = question.query();
-    return listConfigData.cols.map((col) =>
-      Lib.fromLegacyColumn(query, -1, col),
-    );
-  }, [isShowingListViewConfig, listConfigData, question]);
-
-  const listEntityType = useMemo(() => {
-    if (!isShowingListViewConfig) {
-      return undefined;
-    }
-    try {
-      const query = question.query();
-      const sourceTableId = Lib.sourceTableOrCardId(query);
-      const table = question.metadata().table(sourceTableId);
-      // entity_type exists in the database but not in the TypeScript types
-      return (table as any)?.entity_type;
-    } catch {
-      return undefined;
-    }
-  }, [isShowingListViewConfig, question]);
-
-  const handleUpdateListSettings = useCallback(
-    ({
-      left,
-      right,
-      entityIcon,
-      entityIconColor,
-      entityIconEnabled,
-      useImageColumn,
-    }: {
-      left?: string[];
-      right?: string[];
-      entityIcon?: IconName | null;
-      entityIconColor?: string;
-      entityIconEnabled?: boolean;
-      useImageColumn?: boolean;
-    }) => {
-      const settings = { ...(question.settings() || {}) };
-      if (left && right) {
-        settings["list.columns"] = { left, right };
-      }
-      if (entityIcon !== undefined) {
-        settings["list.entity_icon"] = entityIcon;
-      }
-      if (entityIconColor !== undefined) {
-        settings["list.entity_icon_color"] = entityIconColor;
-      }
-      if (entityIconEnabled !== undefined) {
-        settings["list.entity_icon_enabled"] = entityIconEnabled;
-      }
-      if (useImageColumn !== undefined) {
-        settings["list.use_image_column"] = useImageColumn;
-      }
-      dispatch(updateQuestionAction(question.updateSettings(settings)));
-    },
-    [question, dispatch],
-  );
+    rawSeries?.[0]?.data != null;
 
   const isDirty = isModelQueryDirty || isMetadataDirty;
 
@@ -830,13 +738,16 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
             })}
           >
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
-              {isShowingListViewConfig && listConfigData ? (
-                <ListViewConfiguration
-                  data={listConfigData}
-                  settings={listConfigSettings ?? undefined}
-                  columnsMetadata={listColumnsMetadata}
-                  entityType={listEntityType}
-                  onChange={handleUpdateListSettings}
+              {/**
+               * The list view configuration UI replaces the table preview while the user arranges list columns,
+               * (toggled from the "Metadata" tab sidebar). It's rendered here, and not inside the List visualization itself,
+               * because configuring the list updates the question being edited,
+               * and the visualizationsmodule can't depend on query_builder state/actions.
+               */}
+              {isShowingListViewConfig ? (
+                <ListViewConfigurationPanel
+                  question={question}
+                  rawSeries={rawSeries}
                 />
               ) : (
                 <QueryVisualization
