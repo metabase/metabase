@@ -163,8 +163,6 @@ const elements = [
       mode: "full",
     }),
   ),
-  // App-level connected nav orchestration (wires feature data into the
-  // shared nav components).
   createElement({
     type: "app",
     name: "nav",
