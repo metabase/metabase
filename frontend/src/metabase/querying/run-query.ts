@@ -1,27 +1,51 @@
+import type { Dispatch } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
+import type { Card, Dataset, DatasetQuery } from "metabase-types/api";
+
+type RunQuestionQueryOptions = {
+  dispatch: Dispatch;
+  signal?: AbortSignal;
+  isDirty?: boolean;
+  token?: string | null;
+  ignoreCache?: boolean;
+  collectionPreview?: boolean;
+  // Ability to override or add extra query params to the request, used by Embedding SDK
+  queryParamsOverride?: Record<string, unknown>;
+};
+
+type SavedCardQueryOptions = {
+  parameters: unknown[];
+  ignoreCache?: boolean;
+  collectionPreview?: boolean;
+  token?: string | null;
+  queryParamsOverride?: Record<string, unknown>;
+};
 
 /**
  * Handles API errors for query endpoints. For 4xx errors from streaming query
  * endpoints, the error response body contains the actual error data that should
  * be displayed (just like the old 202-with-error-in-body behavior). This function
  * converts 4xx errors into successful responses with the error data.
- *
- * @param {Promise} apiPromise - The API promise to handle
- * @returns {Promise} The result or error data
  */
-async function handleQueryApiError(apiPromise) {
+async function handleQueryApiError(
+  apiPromise: Promise<Dataset>,
+): Promise<Dataset> {
   try {
     return await apiPromise;
   } catch (error) {
     // For 4xx errors, treat the error response body as a successful response
     // (maintaining compatibility with the old 202-with-error-in-body behavior)
     if (
-      error &&
+      error != null &&
       typeof error === "object" &&
+      "status" in error &&
+      typeof error.status === "number" &&
       error.status >= 400 &&
       error.status < 500 &&
+      "data" in error &&
       error.data
     ) {
       // The QP returns a structured `{ error, error_type, ... }` body, but
@@ -29,9 +53,12 @@ async function handleQueryApiError(apiPromise) {
       // plain-text body. Normalize so callers can rely on a `{ error, ... }`
       // shape and don't fall through to the empty state (EMB-1659).
       if (typeof error.data === "string") {
-        return { error: error.data, status: error.status };
+        return {
+          error: error.data,
+          status: error.status,
+        } as unknown as Dataset;
       }
-      return error.data;
+      return error.data as Dataset;
     }
     // For 5xx and other errors, re-throw
     throw error;
@@ -41,12 +68,12 @@ async function handleQueryApiError(apiPromise) {
 // Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot).
 let adhocDatasetQueryCounter = 0;
 export async function runAdhocDatasetQuery(
-  dispatch,
-  card,
-  metadata,
-  body,
-  signal,
-) {
+  dispatch: Dispatch,
+  card: Card,
+  metadata: Metadata,
+  body: DatasetQuery & { parameters?: unknown[]; ignore_cache?: boolean },
+  signal?: AbortSignal,
+): Promise<Dataset> {
   // Dynamic import to avoid a module-init cycle: the RTK api modules transitively
   // pull in the redux store graph, which (far downstream) imports this module's
   // consumers. Deferring resolution until call time means the cycle closes only
@@ -80,11 +107,17 @@ export async function runAdhocDatasetQuery(
 // `onBeforeRequest` middleware (which RTK requests still pass through) rewriting
 // the card route to `/api/embed/card/:token/query` when `token` is in the body.
 async function runSavedCardQuery(
-  dispatch,
-  question,
-  { parameters, ignoreCache, collectionPreview, token, queryParamsOverride },
-  signal,
-) {
+  dispatch: Dispatch,
+  question: Question,
+  {
+    parameters,
+    ignoreCache,
+    collectionPreview,
+    token,
+    queryParamsOverride,
+  }: SavedCardQueryOptions,
+  signal?: AbortSignal,
+): Promise<Dataset> {
   const [{ makePivotAwareQueryRunner }, { cardApi }, { dashboardApi }] =
     await Promise.all([
       import("metabase/api/query-endpoints"),
@@ -105,7 +138,7 @@ async function runSavedCardQuery(
     ...queryParamsOverride,
   };
 
-  if (dashboardId != null) {
+  if (dashboardId != null && dashcardId != null) {
     return runQuery(
       dashboardApi.endpoints.getDashboardCardQuery,
       card,
@@ -120,12 +153,8 @@ async function runSavedCardQuery(
   });
 }
 
-/**
- * @param {*} question
- * @param {object} param
- */
 export async function runQuestionQuery(
-  question,
+  question: Question,
   {
     dispatch,
     signal,
@@ -133,10 +162,9 @@ export async function runQuestionQuery(
     token,
     ignoreCache = false,
     collectionPreview = false,
-    // Ability to override or add extra query params to the request, used by Embedding SDK
     queryParamsOverride = {},
-  } = {},
-) {
+  }: RunQuestionQueryOptions,
+): Promise<[Dataset]> {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
   const parameters = normalizeParameters(
     question.parameters({ collectionPreview }),

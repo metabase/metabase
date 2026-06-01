@@ -4,7 +4,7 @@ import { runQuestionQuery } from "metabase/querying/run-query";
 import type { Dispatch } from "metabase/redux/store";
 import { getSensibleDisplays } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
-import type { ParameterValuesMap } from "metabase-types/api";
+import type { DatasetData, ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 interface RunQuestionQueryParams {
@@ -67,8 +67,15 @@ export async function runQuestionQuerySdk(
     const [{ data = isGuestEmbed ? { rows: [], cols: [] } : undefined }] =
       queryResults;
 
-    const sensibleDisplays = getSensibleDisplays(data);
-    question = question.maybeResetDisplay(data, sensibleDisplays, undefined);
+    // `data` may be a partial (guest embed) or absent (error result); the
+    // viz helpers tolerate it, matching the prior untyped behavior.
+    const datasetData = data as DatasetData;
+    const sensibleDisplays = getSensibleDisplays(datasetData);
+    question = question.maybeResetDisplay(
+      datasetData,
+      sensibleDisplays,
+      undefined,
+    );
   }
 
   return { question, queryResults };
