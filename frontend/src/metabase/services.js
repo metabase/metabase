@@ -79,27 +79,6 @@ export function shouldUsePivotEndpoint(card, metadata) {
   );
 }
 
-export function maybeUsePivotEndpoint(api, card, metadata) {
-  if (!shouldUsePivotEndpoint(card, metadata)) {
-    return api;
-  }
-
-  const mapping = [
-    [CardApi.query, CardApi.query_pivot],
-    [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
-    [PublicApi.cardQuery, PublicApi.cardQueryPivot],
-    [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
-    [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
-    [EmbedApi.dashboardCardQuery, EmbedApi.dashboardCardQueryPivot],
-  ];
-  for (const [from, to] of mapping) {
-    if (api === from) {
-      return to;
-    }
-  }
-  return api;
-}
-
 // Dispatches an RTK Query query endpoint and wires `signal` to RTK Query's
 // `.abort()`. Translates aborts into the `{ isCancelled: true }` shape that the
 // legacy fetch helper threw, so existing error-handling code (e.g. queryErrored)
@@ -269,22 +248,11 @@ export async function runQuestionQuery(
   ];
 }
 
-export const CardApi = {
-  query: POST("/api/card/:cardId/query"),
-  query_pivot: POST("/api/card/pivot/:cardId/query"),
-};
-
 export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
   parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
-  cardQuery: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
-  ),
-  cardQueryPivot: POST(
-    "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
-  ),
 };
 
 export const CollectionsApi = {
@@ -293,8 +261,6 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph?skip-graph=true"),
 };
 
-const PIVOT_PUBLIC_PREFIX = `${publicBase}/pivot/`;
-
 export const PublicApi = {
   action: GET(`${publicBase}/action/:uuid`),
   executeDashcardAction: POST(
@@ -302,15 +268,7 @@ export const PublicApi = {
   ),
   executeAction: POST(`${publicBase}/action/:uuid/execute`),
   card: GET(`${publicBase}/card/:uuid`),
-  cardQuery: GET(`${publicBase}/card/:uuid/query`),
-  cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
   dashboard: GET(`${publicBase}/dashboard/:uuid`),
-  dashboardCardQuery: GET(
-    `${publicBase}/dashboard/:uuid/dashcard/:dashcardId/card/:cardId`,
-  ),
-  dashboardCardQueryPivot: GET(
-    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
-  ),
   prefetchDashcardValues: GET(
     `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
@@ -320,16 +278,7 @@ export const PublicApi = {
 
 export const EmbedApi = {
   card: GET(getEmbedBase() + "/card/:token"),
-  cardQuery: GET(getEmbedBase() + "/card/:token/query"),
-  cardQueryPivot: GET(getEmbedBase() + "/pivot/card/:token/query"),
   dashboard: GET(getEmbedBase() + "/dashboard/:token"),
-  dashboardCardQuery: GET(
-    getEmbedBase() + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
-  ),
-  dashboardCardQueryPivot: GET(
-    getEmbedBase() +
-      "/pivot/dashboard/:token/dashcard/:dashcardId/card/:cardId",
-  ),
 };
 
 export const AutoApi = {
