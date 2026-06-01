@@ -11,6 +11,14 @@ import type { TreemapNode, TreemapTree } from "../model/types";
 // Opacity of the group-header background (the group's hue, translucent).
 const GROUP_HEADER_BG_OPACITY = 0.85;
 
+// Hide a tile's label once it occupies less than this fraction of the chart
+// area. A treemap tile's area is proportional to its value, so a node's share
+// of the total is a reliable proxy for its rendered box size — below this,
+// the label can't be drawn legibly and ECharts would only truncate it to an
+// ellipsis. Applies to tiles that render their own label (leaves in a 2-level
+// tree, top-level nodes in a 1-level tree), not to group header chips.
+const LEAF_LABEL_MIN_AREA_SHARE = 0.03;
+
 // Bottom inset (px) reserved for the breadcrumb overlay while drilled in.
 // Exported so the rounded-corner clip in TreemapChart can match it (otherwise
 // the clip rounds the empty breadcrumb strip instead of the drilled tiles).
@@ -23,6 +31,7 @@ export interface TreemapSeriesNode {
   rawName: TreemapNode["rawName"];
   rowIndices: number[];
   itemStyle?: { color?: string };
+  label?: { show?: boolean };
   upperLabel?: { backgroundColor?: string };
   children?: TreemapSeriesNode[];
 }
@@ -124,6 +133,12 @@ function toSeriesData(
   tree: TreemapTree,
   colors: Record<string, string>,
 ): TreemapSeriesNode[] {
+  // A leaf's share of the whole chart is its value over the total (the root
+  // values already sum the leaves), which equals its share of the rendered area.
+  const total = tree.reduce((sum, node) => sum + node.value, 0);
+  const isTileTooSmall = (value: number) =>
+    total > 0 && value / total < LEAF_LABEL_MIN_AREA_SHARE;
+
   return tree.map((node, rootIndex) => {
     const groupColor = colors[String(node.rawName)];
     return {
@@ -133,6 +148,12 @@ function toSeriesData(
       rawName: node.rawName,
       rowIndices: node.rowIndices,
       itemStyle: { color: groupColor },
+      // Top-level nodes with children render a header chip (always shown), not
+      // their own tile label, so only hide the label for childless tiles — i.e.
+      // a 1-level treemap's tiles.
+      ...(node.children == null && isTileTooSmall(node.value)
+        ? { label: { show: false } }
+        : {}),
       ...(groupColor
         ? {
             upperLabel: {
@@ -150,6 +171,7 @@ function toSeriesData(
               value: leaf.value,
               rawName: leaf.rawName,
               rowIndices: leaf.rowIndices,
+              ...(isTileTooSmall(leaf.value) ? { label: { show: false } } : {}),
             })),
           }
         : {}),

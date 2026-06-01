@@ -188,6 +188,79 @@ describe("getTreemapChartOption zoom", () => {
   });
 });
 
+describe("getTreemapChartOption small-node labels", () => {
+  it("hides the label on a leaf whose area share is below the threshold", () => {
+    const tree: TreemapTree = [
+      {
+        rawName: "G",
+        displayName: "G",
+        value: 100,
+        rowIndices: [0, 1],
+        children: [
+          { rawName: "Big", displayName: "Big", value: 98, rowIndices: [0] },
+          { rawName: "Tiny", displayName: "Tiny", value: 2, rowIndices: [1] },
+        ],
+      },
+    ];
+
+    const { series } = getTreemapChartOption({ tree, renderingContext });
+    const [big, tiny] = series.data[0].children ?? [];
+
+    expect(tiny.label).toMatchObject({ show: false });
+    expect(big.label?.show).not.toBe(false);
+  });
+
+  it("hides the label on a small tile in a 1-level treemap", () => {
+    const tree: TreemapTree = [
+      { rawName: "A", displayName: "A", value: 99, rowIndices: [0] },
+      { rawName: "B", displayName: "B", value: 1, rowIndices: [1] },
+    ];
+
+    const { series } = getTreemapChartOption({ tree, renderingContext });
+
+    expect(series.data[1].label).toMatchObject({ show: false });
+    expect(series.data[0].label?.show).not.toBe(false);
+  });
+
+  it("keeps top-level group headers visible even when the group is a small share", () => {
+    const tree: TreemapTree = [
+      {
+        rawName: "Big",
+        displayName: "Big",
+        value: 99,
+        rowIndices: [0],
+        children: [
+          {
+            rawName: "Big-1",
+            displayName: "Big-1",
+            value: 99,
+            rowIndices: [0],
+          },
+        ],
+      },
+      {
+        rawName: "Small",
+        displayName: "Small",
+        value: 1,
+        rowIndices: [1],
+        children: [
+          {
+            rawName: "Small-1",
+            displayName: "Small-1",
+            value: 1,
+            rowIndices: [1],
+          },
+        ],
+      },
+    ];
+
+    const { series } = getTreemapChartOption({ tree, renderingContext });
+
+    // The small group's own label is never force-hidden — its header chip stays.
+    expect(series.data[1].label?.show).not.toBe(false);
+  });
+});
+
 describe("getTreemapChartOption layout", () => {
   it("is full-bleed with no bottom inset at the overview", () => {
     const { series } = getTreemapChartOption({
