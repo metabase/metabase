@@ -11,14 +11,14 @@ Metabase content like questions and dashboards can be serialized as YAML files. 
 
 With this set up, a typical workflow using an agent with a development instance of Metabase would be:
 
-- Prompt the agent with `/metabase-cli Create a dashboard based on the sales table.`
-- Agent creates questions and a dashboard.
-- You view the dashboard in your dev instance.
-- Iterate either in your Metabase or via the agent until you're happy with the dashboard.
-- Use remote sync to push your changes to a repo.
-- Create a PR.
-- Merge the changes.
-- Once merged, your production Metabase pulls in the changes via remote sync.
+1. Prompt the agent with `/metabase-cli Create a dashboard based on the sales table.`
+2. Agent creates questions and a dashboard.
+3. You view the dashboard in your dev instance.
+4. Iterate either in your Metabase or via the agent until you're happy with the dashboard.
+5. Use remote sync to push your changes to a repo.
+6. Create a PR.
+7. Merge the changes.
+8. Once merged, your production Metabase pulls in the changes via remote sync.
 
 ## The agent-driven development toolkit
 
