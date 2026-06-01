@@ -21,6 +21,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   embedding: "metabase-enterprise/embedding",
   admin: "metabase-enterprise/admin",
   dependencies: "metabase-enterprise/dependencies",
+  schema_viewer: "metabase-enterprise/schema_viewer",
   feature_level_permissions: "metabase-enterprise/feature_level_permissions",
   shared: "metabase-enterprise/shared",
   transforms: "metabase-enterprise/transforms",
@@ -50,6 +51,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   content_verification: "metabase-enterprise/content_verification",
   moderation: "metabase-enterprise/moderation",
   tenants: "metabase-enterprise/tenants",
+  workspaces: "metabase-enterprise/workspaces",
 
   // Embedding SDK specific plugins
   sdk_notifications: "embedding-sdk-ee/notifications",

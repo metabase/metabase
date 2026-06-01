@@ -69,7 +69,6 @@
            (-> query
                (lib/remove-clause (first conditions))
                (lib/remove-clause (second conditions)))))))
-
   (testing "a cascading delete that removes the final join condition should remove the whole join (#36690)"
     (let [base   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                      (lib/join (lib/join-clause (meta/table-metadata :products)
@@ -1224,7 +1223,6 @@
           agg    (first (lib/aggregations query))
           brk    (first (lib/breakouts query))]
       (is (= :all (-> base :stages first :joins first :fields)))
-
       (testing "no change to join"
         (testing "when removing just the aggregation"
           (is (= (m/dissoc-in query [:stages 0 :aggregation])

@@ -58,13 +58,11 @@
                       {:agent-error? true
                        :query-id query-id
                        :available-queries (keys queries-state)})))
-
     (let [current-sql (metabot.u/extract-sql-content query)]
       (when-not current-sql
         (throw (ex-info (tru "Query {0} is not a SQL query" query-id)
                         {:agent-error? true
                          :query-id query-id})))
-
       (let [;; Apply edits sequentially
             new-sql (reduce apply-sql-edit current-sql edits)
             dialect (metabot.tools.sql.validation/query->dialect query)

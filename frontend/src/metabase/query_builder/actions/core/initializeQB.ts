@@ -1,13 +1,13 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
-import { snippetApi } from "metabase/api";
+import { cardApi, snippetApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
-import { Questions } from "metabase/entities/questions";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
@@ -235,10 +235,11 @@ export async function updateTemplateTagNames(
     await Promise.all(
       query.referencedQuestionIds().map(async (id) => {
         try {
-          const actionResult = await dispatch(
-            Questions.actions.fetch({ id }, { noEvent: true }),
+          return await runRtkEndpoint(
+            { id, ignore_error: true },
+            dispatch,
+            cardApi.endpoints.getCard,
           );
-          return Questions.HACK_getObjectFromAction(actionResult);
         } catch {
           return null;
         }

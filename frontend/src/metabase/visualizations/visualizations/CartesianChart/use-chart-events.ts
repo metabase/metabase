@@ -361,6 +361,7 @@ export const useChartEvents = (
   const canBrushChart = canBrush(
     rawSeries,
     settings,
+    chartModel.dimensionModel.column,
     onChangeCardAndRun,
     onBrush,
   );

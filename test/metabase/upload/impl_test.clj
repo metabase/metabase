@@ -458,7 +458,7 @@
                    (is (= (ddl.i/format-name driver/*driver* "chu_se_de_20240628000000")
                           (:name table)))))))))
         (testing "The names should be truncated to the right size"
-         ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
+          ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
           (let [max-bytes 15]
             (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
                           upload/max-bytes (constantly max-bytes)]
@@ -1224,7 +1224,6 @@
                                 "upload_seconds"    pos?}
                       :user-id (str (mt/user->id :rasta))}
                      (last (snowplow-test/pop-event-data-and-user-id!)))))
-
            (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
              (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                (try (do-with-uploaded-example-csv! {} identity)
@@ -1483,7 +1482,7 @@
         (t2/update! :model/Table table-id {:is_upload is-upload})
         (try (update-csv! action {:table-id table-id, :file file})
              (finally
-                 ;; Drop the table in the testdb if a new one was created.
+               ;; Drop the table in the testdb if a new one was created.
                (when (and new-table (not= driver/*driver* :redshift)) ; redshift tests flake when tables are dropped
                  (driver/drop-table! driver/*driver*
                                      (mt/id)
@@ -1597,7 +1596,6 @@
                                               :id int-type
                                               :name text-type)
                            :rows             [[1 long-text]]})]
-
                   (let [file (csv-file-with csv-rows)]
                     (when error-message
                       (is (= {:message error-message
@@ -1606,12 +1604,10 @@
                       (testing "Check the data was not uploaded into the table"
                         (is (= [[1 long-text]]
                                (rows-for-table table)))))
-
                     (when-not error-message
                       (testing "Check the data was uploaded into the table"
                         ;; No exception is thrown - but there were also no rows in the table to check
                         (update-csv! action {:file file :table-id (:id table)})))
-
                     (io/delete-file file)))))))))))
 
 (deftest update-common-types-test
@@ -1821,13 +1817,11 @@
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (snowplow-test/with-fake-snowplow-collector
-
           (with-upload-table! [table (create-upload-table!)]
             (testing "Successfully appending to CSV Uploads publishes statistics to Snowplow"
               (let [csv-rows ["name" "Luke Skywalker"]
                     file     (csv-file-with csv-rows (mt/random-name))]
                 (update-csv! action {:file file, :table-id (:id table)})
-
                 (is (=? {:data    {"event"             "csv_append_successful"
                                    "size_mb"           1.811981201171875E-5
                                    "num_columns"       1
@@ -1836,9 +1830,7 @@
                                    "upload_seconds"    pos?}
                          :user-id (str (mt/user->id :crowberto))}
                         (last (snowplow-test/pop-event-data-and-user-id!))))
-
                 (io/delete-file file)))
-
             (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
               (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                 (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
@@ -1848,7 +1840,6 @@
                     (catch Throwable _)
                     (finally
                       (io/delete-file file))))
-
                 (is (= {:data    {"event"             "csv_append_failed"
                                   "size_mb"           5.245208740234375E-5
                                   "num_columns"       2
@@ -1868,9 +1859,7 @@
                   event-type (case action
                                :metabase.upload/append  :upload-append
                                :metabase.upload/replace :upload-replace)]
-
               (update-csv! action {:file file, :table-id (:id table)})
-
               (is (=? {:topic    event-type
                        :user_id  (:id (mt/fetch-user :crowberto))
                        :model    "Table"
@@ -1884,7 +1873,6 @@
                                                 :size-mb           1.811981201171875E-5
                                                 :upload-seconds    pos?}}}
                       (last-audit-event event-type)))
-
               (io/delete-file file))))))))
 
 (defn- mbql [mp table]
@@ -1902,7 +1890,6 @@
                                 (lib.metadata/field mp field-id)))
         base-id-metadata         (pk-metadata base-table)
         join-id-metadata         (pk-metadata join-table)]
-
     (-> (lib/query mp base-table-metadata)
         (lib/join (lib/join-clause join-table-metadata
                                    [(lib/= (lib/ref base-id-metadata)
@@ -1922,24 +1909,19 @@
                 other-id    (mt/id :venues)
                 other-table (t2/select-one :model/Table other-id)
                 mp          (lib-be/application-database-metadata-provider (:db_id table))]
-
             (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
                            :model/Card {model-id           :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}
                            :model/Card {complex-model-id   :id} {:table_id table-id, :type :model, :dataset_query (join-mbql mp table other-table)}
                            :model/Card {archived-model-id  :id} {:table_id table-id, :type :model, :archived true, :dataset_query (mbql mp table)}
                            :model/Card {unrelated-model-id :id} {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)}
                            :model/Card {joined-model-id    :id} {:table_id other-id, :type :model, :dataset_query (join-mbql mp other-table table)}]
-
               (is (= #{question-id model-id complex-model-id}
                      (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
-
               (mt/with-persistence-enabled! [persist-models!]
                 (persist-models!)
-
                 (let [cached-before (cached-model-ids)
                       _             (update-csv! action {:file file, :table-id (:id table)})
                       cached-after  (cached-model-ids)]
-
                   (testing "The models are cached"
                     (let [active-model-ids #{model-id complex-model-id unrelated-model-id joined-model-id}]
                       (is (= active-model-ids (set/intersection cached-before (conj active-model-ids archived-model-id))))))
@@ -1955,7 +1937,6 @@
                                 (and (= "Luke Skywalker" row-name)
                                      (= 57 age)))
                               (rows-for-model (:db_id table) model-id)))))))
-
             (io/delete-file file)))))))
 
 (deftest update-mb-row-id-csv-and-table-test
@@ -1975,7 +1956,6 @@
                                                 [["Luke Skywalker"]]))
                          (set (rows-for-table table)))))
                 (io/delete-file file)))
-
             ;; TODO we can deduplicate a lot of code in this test
             (testing "with duplicate normalized _mb_row_id columns in the CSV file"
               (with-upload-table! [table (create-upload-table!)]
@@ -2020,7 +2000,6 @@
                                       :rows [["Obi-Wan Kenobi" "No one really knows me"]])]
             (let [csv-rows ["shame,name" "Nothing - you can't prove it,Puke Nightstalker"]
                   file     (csv-file-with csv-rows)]
-
               (testing "The new row is inserted with the values correctly reordered"
                 (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
                 (is (= (set (updated-contents action
@@ -2036,7 +2015,7 @@
         (with-uploads-enabled!
           (testing "Append should handle new columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!)]
-             ;; Reorder as well for good measure
+              ;; Reorder as well for good measure
               (let [csv-rows ["game,name" "Witticisms,Fluke Skytalker"]
                     file     (csv-file-with csv-rows)]
                 (testing "The new row is inserted with the values correctly reordered"
@@ -2056,7 +2035,7 @@
             (with-upload-table! [table (create-upload-table!)]
               (is (= (header-with-auto-pk ["Name"])
                      (column-display-names-for-table table)))
-             ;; Reorder as well for good measure
+              ;; Reorder as well for good measure
               (let [csv-rows ["α,name"
                               "omega,Everything"]
                     file     (csv-file-with csv-rows)]
@@ -2078,10 +2057,10 @@
           (testing "Append should handle new non-ascii columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!
                                         :col->upload-type (columns-with-auto-pk {"α" ::upload-types/varchar-255}))]
-             ;; We can't type a literal uppercase Alpha, as our whitespace linter will complain.
+              ;; We can't type a literal uppercase Alpha, as our whitespace linter will complain.
               (is (= (header-with-auto-pk [(u/upper-case-en "α")])
                      (column-display-names-for-table table)))
-             ;; Reorder as well for good measure
+              ;; Reorder as well for good measure
               (let [csv-rows ["α,ϐ"
                               "omega,Everything"]
                     file     (csv-file-with csv-rows)]
@@ -2391,7 +2370,6 @@
                                                           :number_1 int-type
                                                           :number_2 int-type))
                                       :rows [[1, 1]])]
-
             (let [csv-rows ["number-1, number-2"
                             "1.0, 1"
                             "1  , 1.0"]
@@ -2463,23 +2441,18 @@
                                                       :number_1 int-type
                                                       :number_2 int-type))
                                   :rows [[1, 1]])]
-
         (testing "The upload table and the expected application data are created\n"
           (is (upload-table-exists? table))
           (is (seq (t2/select :model/Table :id (:id table))))
           (testing "The expected metadata is synchronously sync'd"
             (is (seq (t2/select :model/Field :table_id (:id table))))))
-
         (mt/with-temp [:model/Card {card-id :id} {:table_id (:id table)}]
           (is (false? (:archived (t2/select-one :model/Card :id card-id))))
-
           (upload/delete-upload! table :archive-cards? archive-cards?)
-
           (testing (format "We %s the related cards if archive-cards? is %s"
                            (if archive-cards? "archive" "do not archive")
                            archive-cards?)
             (is (= archive-cards? (:archived (t2/select-one :model/Card :id card-id)))))
-
           (testing "The upload table and related application data are deleted\n"
             (is (not (upload-table-exists? table)))
             (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))

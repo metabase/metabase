@@ -2,6 +2,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
@@ -96,10 +97,10 @@
      {:model "card" :id 6 :name "ordering"}]
     (case (mdb/db-type)
       :postgres
-        ;; WARNING: this is likely to diverge between appdb types as we support more.
+      ;; WARNING: this is likely to diverge between appdb types as we support more.
       (testing "Preferences according to textual matches"
-          ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
-          ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
+        ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
+        ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
         (is (= [["card" 1 "orders"]
                 ["card" 4 "order"]
                 ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
@@ -200,7 +201,7 @@
                 card-with-view  #(merge (mt/with-temp-defaults :model/Card)
                                         {:name       search-term
                                          :view_count %})
-               ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
+                ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
                 ;; NOTE: we have brought in the outlier *a lot* to compensate for h2 not calculating a real percentile.
                 outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 88 #_100000))
                 _               (t2/insert! :model/Card (concat (repeatedly 20 #(card-with-view 0))
@@ -212,8 +213,8 @@
                                  [])
                 first-result-id (-> (search-results* search-term) first second)]
             (is (some? first-result-id))
-           ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
-           ;; but we can solve this later if it actually becomes a flake
+            ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
+            ;; but we can solve this later if it actually becomes a flake
             (is (not= outlier-card-id first-result-id))))))))
 
 (deftest ^:parallel dashboard-count-test
@@ -249,7 +250,6 @@
             (is (= [["card" c2 "card crowberto loved"]
                     ["card" c1 "card normal"]]
                    (search-results :bookmarked "card" {:current-user-id crowberto})))))))
-
     (mt/with-temp [:model/Dashboard {d1 :id} {}
                    :model/Dashboard {d2 :id} {}]
       (testing "bookmarked dashboard"
@@ -261,7 +261,6 @@
             (is (= [["dashboard" d2 "dashboard crowberto loved"]
                     ["dashboard" d1 "dashboard normal"]]
                    (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
-
     (mt/with-temp [:model/Collection {c1 :id} {}
                    :model/Collection {c2 :id} {}]
       (testing "bookmarked collection"
@@ -328,15 +327,14 @@
                    :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
                    :model/Collection other     {:name "non-library"    :location "/"}]
       (with-index-contents
-        [{:model "card" :id 1 :name "card plain"           :collection_id (:id other)    :collection_location (:location other)}
-         {:model "card" :id 2 :name "card in library"      :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
-         {:model "card" :id 3 :name "card in library-data" :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
-         {:model "card" :id 4 :name "card in lib-metrics"  :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
-         {:model "card" :id 5 :name "card in sub of lib"   :collection_id (:id sub)      :collection_location (:location sub)}
-         {:model "card" :id 6 :name "card in sub of sub"   :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
-         {:model "card" :id 7 :name "card in trash"        :collection_type "trash"}]
-        (let [library-id? #{2 3 4 5 6}
-              in-library? (fn [[_ id _]] (boolean (library-id? id)))]
+        [{:model "card" :id 1 :name "plain card"                    :collection_id (:id other)    :collection_location (:location other)}
+         {:model "card" :id 2 :name "lib-tree card library"         :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
+         {:model "card" :id 3 :name "lib-tree card library-data"    :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
+         {:model "card" :id 4 :name "lib-tree card library-metrics" :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
+         {:model "card" :id 5 :name "lib-tree card sub"             :collection_id (:id sub)      :collection_location (:location sub)}
+         {:model "card" :id 6 :name "lib-tree card sub-sub"         :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
+         {:model "card" :id 7 :name "trashed card" :collection_type "trash"}]
+        (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
           (testing "with positive :library weight, items inside library trees come first"
             (is (= [true true true true true false false]
                    (map in-library? (with-weights {:library 1} (search-results* "card"))))))
@@ -363,15 +361,15 @@
         (is (= 4 (-> (with-weights {:data-layer 1 :data-layer/hidden 1}
                        (search-results* "table"))
                      first second))))))
-  (testing "Metabot tier ordering: final > internal > hidden when all weights active"
+  (testing "tier ordering: final > internal > hidden under :metabot magnitudes"
     (with-index-contents
-      [{:model "table" :id 1 :name "metabot table final"    :data_layer "final"}
-       {:model "table" :id 2 :name "metabot table internal" :data_layer "internal"}
-       {:model "table" :id 3 :name "metabot table hidden"   :data_layer "hidden"}]
+      [{:model "table" :id 1 :name "foo table final"    :data_layer "final"}
+       {:model "table" :id 2 :name "foo table internal" :data_layer "internal"}
+       {:model "table" :id 3 :name "foo table hidden"   :data_layer "hidden"}]
       (is (= [1 2 3]
-             (->> (with-weights {:data-layer          1
-                                 :data-layer/final    33
-                                 :data-layer/internal 10
-                                 :data-layer/hidden   1}
-                    (search-results* "metabot table"))
+             (->> (with-weights {:data-layer          33
+                                 :data-layer/final    1
+                                 :data-layer/internal 0.3
+                                 :data-layer/hidden   0.03}
+                    (search-results* "foo table"))
                   (map second)))))))

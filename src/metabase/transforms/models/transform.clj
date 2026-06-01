@@ -273,20 +273,17 @@
             to-insert            (set/difference new-set current-set)
             ;; Build position map for new ordering
             new-positions        (zipmap new-tag-ids (range))]
-
         ;; Delete removed associations
         (when (seq to-delete)
           (t2/delete! :model/TransformTransformTag
                       :transform_id transform-id
                       :tag_id [:in to-delete]))
-
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
             (t2/update! :model/TransformTransformTag
                         {:transform_id transform-id :tag_id tag-id}
                         {:position new-pos})))
-
         ;; Insert new associations with correct positions
         (when (seq to-insert)
           (t2/insert! :model/TransformTransformTag
@@ -383,10 +380,7 @@
       [[{:model "Database" :id source_database_id}]])
     (for [{tag-id :tag_id} tags]
       [{:model "TransformTag" :id tag-id}])
-    (serdes/mbql-deps source)
-    (for [{:keys [table_id]} (:source-tables source)
-          :when (vector? table_id)]
-      (serdes/table->path table_id)))))
+    (serdes/mbql-deps source))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
   (serdes/storage-default-collection-path transform ctx "transforms"))

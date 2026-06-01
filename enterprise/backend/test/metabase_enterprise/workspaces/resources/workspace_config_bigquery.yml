@@ -1,0 +1,30 @@
+# BigQuery workspace - 3-slot identifiers.
+#
+# BigQuery emits `project.dataset.table` natively (qualified-name-components
+# is [:db :schema]). The :db slot carries the GCP project ID (the AST
+# catalog), the :schema slot carries the dataset name. Authentication is
+# via service-account credentials in :details, not in the wire format.
+version: 1
+config:
+  databases:
+  - name: test-data (bigquery)
+    engine: bigquery-cloud-sdk
+    details:
+      project-id: metabase-prod
+      service-account-json: '{"private_key": "not-a-real-key"}'
+      dataset-filters-type: inclusion
+      dataset-filters-patterns: core
+  users:
+  - first_name: Workspace
+    last_name: Admin
+    email: workspace@workspace.local
+    password: password1
+  workspace:
+    name: New workspace
+    databases:
+      test-data (bigquery):
+        input_schemas:
+        - core
+        output:
+          db: metabase-prod
+          schema: ws_alice

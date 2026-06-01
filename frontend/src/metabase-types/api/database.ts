@@ -1,5 +1,5 @@
 import type { ScheduleSettings } from "./settings";
-import type { Table } from "./table";
+import type { SchemaName, Table } from "./table";
 
 import type { ISO8601Time, LongTaskStatus } from ".";
 
@@ -57,7 +57,8 @@ export type DatabaseFeature =
   | "split-part"
   | "collate"
   | "transforms/python"
-  | "transforms/table";
+  | "transforms/table"
+  | "workspace";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -85,6 +86,9 @@ export interface Database extends DatabaseData {
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
   tables?: Table[];
+  // Populated when GET /api/database is called with include=schemas; lists
+  // schema names that contain at least one readable table.
+  schemas?: SchemaName[];
 }
 
 export interface DatabaseData {
@@ -96,6 +100,7 @@ export interface DatabaseData {
   // [[metabase.models.interface/to-json]] for `:model/Database`:
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
+  admin_details?: Record<string, unknown> | null;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
@@ -138,7 +143,7 @@ export type DatabaseLocalSettingAvailability =
   | { enabled: true }
   | { enabled: false; reasons: DatabaseLocalSettingDisableReason[] };
 
-export type DatabaseConnectionType = "default" | "write-data";
+export type DatabaseConnectionType = "default" | "write-data" | "admin";
 
 export type GetDatabaseHealthRequest = {
   id: DatabaseId;
@@ -150,7 +155,7 @@ export type GetDatabaseHealthResponse =
   | { status: "error"; message: string; errors: unknown };
 
 export interface ListDatabasesRequest {
-  include?: "tables";
+  include?: "tables" | "schemas";
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
@@ -221,6 +226,7 @@ export interface UpdateDatabaseRequest {
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
+  admin_details?: Record<string, unknown> | null;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;

@@ -15,6 +15,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -192,7 +193,6 @@
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                  {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                (db->fields (mt/db)))))
-
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
         (mt/with-temp [:model/Database db {:engine  "mysql"
                                            :details (assoc (:details (mt/db))
@@ -221,7 +221,6 @@
                                            field-metadata)]
           (testing "Model has boolean metadata"
             (is (= :type/Boolean (:base-type boolean-col))))
-
           (testing "Can query model with boolean filter"
             (let [query (as-> (lib/query mp (lib.metadata/card mp 1)) $q
                           (lib/filter $q (lib/= (m/find-first #(= (:name %) "number-of-cans") (lib/fieldable-columns $q))
@@ -275,7 +274,6 @@
       (testing "Should add a `+` if needed to offset"
         (is (= "+00:00"
                (timezone {:global_tz "PDT", :system_tz "UTC", :offset "00:00"})))))
-
     (testing "real timezone query doesn't fail"
       (is (nil? (try
                   (driver/db-default-timezone driver/*driver* (mt/db))
@@ -306,7 +304,6 @@
         (testing "date formatting when system-timezone == report-timezone"
           (is (= ["2018-04-18T00:00:00+08:00"]
                  (run-query-with-report-timezone "Asia/Hong_Kong"))))
-
         ;; [August, 2018]
         ;; This tests a similar scenario, but one in which the JVM timezone is in Hong Kong, but the report timezone
         ;; is in Los Angeles. The Joda Time date parsing functions for the most part default to UTC. Our tests all run
@@ -403,9 +400,9 @@
                         (jdbc/execute! spec [sql]))
                       true
                       (catch java.sql.SQLSyntaxErrorException se
-                       ;; if an error is received with SYSTEM VERSIONING mentioned, the version
-                       ;; of mysql or mariadb being tested against does not support system versioning,
-                       ;; so do not continue
+                        ;; if an error is received with SYSTEM VERSIONING mentioned, the version
+                        ;; of mysql or mariadb being tested against does not support system versioning,
+                        ;; so do not continue
                         (if (re-matches #".*VERSIONING'.*" (.getMessage se))
                           false
                           (throw se))))]
@@ -513,7 +510,6 @@
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))
-
     (testing "trunc-with-format should not cast a field if it is already a DATETIME"
       (is (= ["SELECT STR_TO_DATE(DATE_FORMAT(CAST(`field` AS datetime), '%Y'), '%Y')"]
              (sql.qp/format-honeysql :mysql {:select [[(#'mysql/trunc-with-format "%Y" :field)]]})))
@@ -964,12 +960,10 @@
                           "CREATE TABLE `fullaccess_table` (id INTEGER);"
                           "CREATE USER 'sync_writable_test_user' IDENTIFIED BY 'password';"]]
               (jdbc/execute! spec stmt))
-
             (doseq [stmt ["GRANT SELECT ON sync_writable_test.`readonly_table` TO 'sync_writable_test_user'"
                           "GRANT SELECT, INSERT ON sync_writable_test.`readwrite_table` TO 'sync_writable_test_user'"
                           "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_writable_test.`fullaccess_table` TO 'sync_writable_test_user'"]]
               (jdbc/execute! spec stmt))
-
             (let [user-connection-details (assoc details
                                                  :user "sync_writable_test_user"
                                                  :password "password"
@@ -985,7 +979,6 @@
                 (testing "After granting full access to all tables and re-syncing"
                   (doseq [table-name ["readonly_table" "readwrite_table"]]
                     (jdbc/execute! spec (format "GRANT INSERT, UPDATE, DELETE ON sync_writable_test.`%s` TO 'sync_writable_test_user'" table-name)))
-
                   (sync/sync-database! database)
                   (is (= {"readonly_table"   true
                           "readwrite_table"  true
@@ -1009,7 +1002,6 @@
                           "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.writable_table TO 'partial_revokes_test_user'"
                           "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.revoked_table TO 'partial_revokes_test_user'"]]
               (jdbc/execute! spec stmt))
-
             (let [user-connection-details (assoc details
                                                  :user "partial_revokes_test_user"
                                                  :password "password"
@@ -1024,21 +1016,20 @@
                   (sync/sync-database! database)
                   (is (= {"writable_table" true, "revoked_table" true}
                          (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
-
                 (testing "With partial_revokes ON and INSERT revoked on one table, the check stays enabled"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = ON;")
                   (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.revoked_table FROM 'partial_revokes_test_user';")
                   (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
                       "Should still support metadata/table-writable-check when partial_revokes is ON")
-
                   (sync/sync-database! database)
-                  ;; The bug (metabase#73276): a single REVOKE made *every* table uneditable. The fix is that the
-                  ;; genuinely-writable table must remain writable. The revoked table reports writable optimistically
-                  ;; (we ignore REVOKE grants), so editing it would fail at runtime rather than being hidden up front.
-                  (is (= {"writable_table" true, "revoked_table" true}
+                  ;; The bug (metabase#73276): turning partial_revokes ON disabled the writable check for the whole
+                  ;; database, so *every* table became uneditable. The fix removes that blanket gate, so writability is
+                  ;; computed per-table from the GRANT lines again: the untouched table stays writable, and the table
+                  ;; whose INSERT was revoked correctly reports not-writable instead of dragging everything down with it.
+                  ;; (Optimistic handling of schema-level partial-revoke REVOKE lines is covered by `parse-grant-test`.)
+                  (is (= {"writable_table" true, "revoked_table" false}
                          (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
-                      "writable_table must stay writable; revoked_table is optimistically writable"))))
-
+                      "writable_table stays writable; revoked_table loses writability after its INSERT is revoked"))))
             (finally
               ;; Clean up: Reset partial_revokes to OFF before exiting
               (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
@@ -1078,3 +1069,24 @@
 
          "webapp@localhost"
          "SET ROLE 'webapp'@'localhost';")))))
+
+(deftest ^:synchronized cancel-slow-mysql-query-via-query-timeout-test
+  (mt/test-driver :mysql
+    (testing "Slow MySQL query is cancelled server-side when *query-timeout-ms* elapses (GHY-3266)"
+      ;; `SELECT SLEEP(60)` would normally take 60s. With `*query-timeout-ms*` of 2s the canceled-chan timer fires
+      ;; (and `Statement.setQueryTimeout` also fires); both reach the MariaDB Connector/J `.cancel()` path which
+      ;; issues `KILL QUERY` on a side connection. The query should error within a few seconds, not run to
+      ;; completion. Cancellation evidence: the query throws AND finishes far short of 60s. We don't assert on the
+      ;; exception message because QP output-schema middleware wraps the underlying SQLException — the timing is
+      ;; the load-bearing assertion.
+      (binding [driver.settings/*query-timeout-ms* 2000]
+        (let [timer   (u/start-timer)
+              query   (mt/native-query {:query "SELECT SLEEP(60) AS s"})
+              result  (try
+                        (qp/process-query query)
+                        (catch Throwable e e))
+              elapsed (u/since-ms timer)]
+          (is (instance? Throwable result)
+              "query should throw rather than completing normally")
+          (is (< elapsed 30000)
+              (format "query should be cancelled well before SLEEP(60) completes naturally — took %.0f ms" elapsed)))))))

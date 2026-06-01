@@ -44,8 +44,8 @@
                                                                  1 :no
                                                                  2 :one-million-rows
                                                                  :one-million-rows))
-                    ;; Sentinel: if execution reaches the streaming path, the perm check passed.
-                    ;; We avoid exercising real CSV streaming machinery in a unit test.
+                                  ;; Sentinel: if execution reaches the streaming path, the perm check passed.
+                                  ;; We avoid exercising real CSV streaming machinery in a unit test.
                                   email.result-attachment/create-temp-file! (fn [_]
                                                                               (throw (ex-info "PERM-CHECK-PASSED" {})))]
         (testing "passes perm check when subscription creator has download perms (even if card author does not)"

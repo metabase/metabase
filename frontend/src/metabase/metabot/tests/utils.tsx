@@ -130,7 +130,15 @@ export const lastReqBody = async (
   agentSpy: ReturnType<typeof mockAgentEndpoint>,
 ) => {
   await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-  return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
+  // Today the client calls `fetch(url, init)`, so the body is on `init`. A
+  // follow-up switches it to `fetch(new Request(url, init))`, moving the body
+  // onto the Request. Read whichever shape is present so this works either way.
+  const [first, init] = agentSpy.mock.lastCall ?? [];
+  const body =
+    typeof first === "string"
+      ? (init?.body as string)
+      : await (first as Request).clone().text();
+  return JSON.parse(body);
 };
 
 // Common mock response fixtures
@@ -182,7 +190,6 @@ export function setup(
     metabotInitialState?: MetabotState;
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
-    isHosted?: boolean;
     storeInitialState?: RenderWithProvidersOptions["storeInitialState"];
     customReducers?: RenderWithProvidersOptions["customReducers"];
     isConfigured?: boolean;
@@ -190,7 +197,6 @@ export function setup(
 ) {
   const settings = mockSettings({
     "llm-metabot-configured?": options?.isConfigured ?? true,
-    "is-hosted?": options?.isHosted ?? false,
   });
 
   setupEnterprisePlugins();

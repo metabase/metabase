@@ -22,7 +22,10 @@ const mockUploadCSV = (valid = true) => {
   fetchMock.post(
     "path:/api/upload/csv",
     valid
-      ? "3"
+      ? new Response(JSON.stringify(3), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
       : {
           throws: { data: { message: "It's dead Jim" } },
         },
@@ -33,7 +36,10 @@ const mockAppendCSV = (valid = true) => {
   fetchMock.post(
     "glob:*/api/table/*/append-csv",
     valid
-      ? "3"
+      ? new Response(JSON.stringify(3), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
       : {
           throws: { data: { message: "It's dead Jim" } },
         },
@@ -44,7 +50,10 @@ const mockReplaceCSV = (valid = true) => {
   fetchMock.post(
     "glob:*/api/table/*/replace-csv",
     valid
-      ? "3"
+      ? new Response(JSON.stringify(3), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
       : {
           throws: { data: { message: "It's dead Jim" } },
         },

@@ -54,7 +54,6 @@
       (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
         (testing "Initially the table is empty"
           (is (= [] (table-rows table-id))))
-
         (testing "POST should insert new rows"
           (is (= #{{:op "created", :table-id table-id, :row {:id 1, :name "Pidgey", :song "Car alarms"}}
                    {:op "created", :table-id table-id, :row {:id 2, :name "Spearow", :song "Hold music"}}
@@ -64,12 +63,10 @@
                    (action-v2.tu/create-rows! table-id [{:name "Pidgey" :song "Car alarms"}
                                                         {:name "Spearow" :song "Hold music"}
                                                         {:name "Farfetch'd" :song "The land of lisp"}])))))
-
           (is (= [[1 "Pidgey" "Car alarms"]
                   [2 "Spearow" "Hold music"]
                   [3 "Farfetch'd" "The land of lisp"]]
                  (table-rows table-id))))
-
         (testing "PUT should update the relevant rows and columns"
           (is (= #{{:op "updated", :table-id table-id :row {:id 1, :name "Pidgey", :song "Join us now and share the software"}}
                    {:op "updated", :table-id table-id :row {:id 2, :name "Speacolumn", :song "Hold music"}}}
@@ -77,24 +74,20 @@
                   (:outputs
                    (action-v2.tu/update-rows! table-id [{:id 1 :song "Join us now and share the software"}
                                                         {:id 2 :name "Speacolumn"}])))))
-
           (is (= #{[1 "Pidgey" "Join us now and share the software"]
                    [2 "Speacolumn" "Hold music"]
                    [3 "Farfetch'd" "The land of lisp"]}
                  (set (table-rows table-id)))))
-
         (testing "PUT can also do bulk updates"
           (is (= #{{:op "updated", :table-id table-id, :row {:id 1, :name "Pidgey", :song "The Star-Spangled Banner"}}
                    {:op "updated", :table-id table-id, :row {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
                    (action-v2.tu/update-rows! table-id [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
-
           (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
                    [2 "Speacolumn" "The Star-Spangled Banner"]
                    [3 "Farfetch'd" "The land of lisp"]}
                  (set (table-rows table-id)))))
-
         (testing "DELETE should remove the corresponding rows"
           (is (= #{{:op "deleted", :table-id table-id, :row {:id 1}}
                    {:op "deleted", :table-id table-id, :row {:id 2}}}
@@ -117,7 +110,6 @@
               id-3 (random-uuid)]
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
-
           (testing "POST should insert new rows"
             (is (= #{{:op "created", :table-id table-id, :row {:id (str id-1), :name "Pidgey", :song "Car alarms"}}
                      {:op "created", :table-id table-id, :row {:id (str id-2), :name "Spearow", :song "Hold music"}}
@@ -127,12 +119,10 @@
                      (action-v2.tu/create-rows! table-id [{:id id-1, :name "Pidgey"     :song "Car alarms"}
                                                           {:id id-2, :name "Spearow"    :song "Hold music"}
                                                           {:id id-3, :name "Farfetch'd" :song "The land of lisp"}])))))
-
             (is (= [[id-1 "Pidgey" "Car alarms"]
                     [id-2 "Spearow" "Hold music"]
                     [id-3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id))))
-
           (testing "PUT should update the relevant rows and columns"
             (is (= #{{:op "updated", :table-id table-id :row {:id (str id-1), :name "Pidgey",     :song "Join us now and share the software"}}
                      {:op "updated", :table-id table-id :row {:id (str id-2), :name "Speacolumn", :song "Hold music"}}}
@@ -140,12 +130,10 @@
                     (:outputs
                      (action-v2.tu/update-rows! table-id [{:id id-1, :song "Join us now and share the software"}
                                                           {:id id-2, :name "Speacolumn"}])))))
-
             (is (= #{[id-1 "Pidgey" "Join us now and share the software"]
                      [id-2 "Speacolumn" "Hold music"]
                      [id-3 "Farfetch'd" "The land of lisp"]}
                    (set (table-rows table-id)))))
-
           (testing "PUT can also do bulk updates"
             (is (= #{{:op "updated", :table-id table-id, :row {:id (str id-1), :name "Pidgey",     :song "The Star-Spangled Banner"}}
                      {:op "updated", :table-id table-id, :row {:id (str id-2), :name "Speacolumn", :song "The Star-Spangled Banner"}}}
@@ -155,12 +143,10 @@
                                                 [{:id id-1}
                                                  {:id id-2}]
                                                 {:song "The Star-Spangled Banner"})))))
-
             (is (= #{[id-1 "Pidgey" "The Star-Spangled Banner"]
                      [id-2 "Speacolumn" "The Star-Spangled Banner"]
                      [id-3 "Farfetch'd" "The land of lisp"]}
                    (set (table-rows table-id)))))
-
           (testing "DELETE should remove the corresponding rows"
             (is (= #{{:op "deleted", :table-id table-id, :row {:id (str id-1)}}
                      {:op "deleted", :table-id table-id, :row {:id (str id-2)}}}
@@ -175,14 +161,13 @@
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (action-v2.tu/with-test-tables! [table-id [{:id_1   'auto-inc-type
-                                                     ;; MySQL does not support multiple auto increment fields.
+                                                  ;; MySQL does not support multiple auto increment fields.
                                                   :id_2   [:integer]
                                                   :name   [:text]
                                                   :song   [:text]}
                                                  {:primary-key [:id_1 :id_2]}]]
         (testing "Initially the table is empty"
           (is (= [] (table-rows table-id))))
-
         (testing "POST should insert new rows"
           (is (= #{{:op "created", :table-id table-id, :row {:id_1 1, :id_2 0, :name "Pidgey",     :song "Car alarms"}}
                    {:op "created", :table-id table-id, :row {:id_1 2, :id_2 0, :name "Spearow",    :song "Hold music"}}
@@ -192,12 +177,10 @@
                    (action-v2.tu/create-rows! table-id [{:id_2 0 :name "Pidgey"     :song "Car alarms"}
                                                         {:id_2 0 :name "Spearow"    :song "Hold music"}
                                                         {:id_2 0 :name "Farfetch'd" :song "The land of lisp"}])))))
-
           (is (= [[1 0 "Pidgey" "Car alarms"]
                   [2 0 "Spearow" "Hold music"]
                   [3 0 "Farfetch'd" "The land of lisp"]]
                  (table-rows table-id))))
-
         (testing "PUT should update the relevant rows and columns"
           (is (= #{{:op "updated", :table-id table-id :row {:id_1 1, :id_2 0, :name "Pidgey",     :song "Join us now and share the software"}}
                    {:op "updated", :table-id table-id :row {:id_1 2, :id_2 0, :name "Speacolumn", :song "Hold music"}}}
@@ -205,12 +188,10 @@
                   (:outputs
                    (action-v2.tu/update-rows! table-id [{:id_1 1, :id_2 0, :song "Join us now and share the software"}
                                                         {:id_1 2, :id_2 0, :name "Speacolumn"}])))))
-
           (is (= #{[1 0 "Pidgey" "Join us now and share the software"]
                    [2 0 "Speacolumn" "Hold music"]
                    [3 0 "Farfetch'd" "The land of lisp"]}
                  (set (table-rows table-id)))))
-
         (testing "PUT can also do bulk updates"
           (is (= #{{:op "updated", :table-id table-id, :row {:id_1 1, :id_2 0, :name "Pidgey",     :song "The Star-Spangled Banner"}}
                    {:op "updated", :table-id table-id, :row {:id_1 2, :id_2 0, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
@@ -220,12 +201,10 @@
                                               [{:id_1 1, :id_2 0}
                                                {:id_1 2, :id_2 0}]
                                               {:song "The Star-Spangled Banner"})))))
-
           (is (= #{[1 0 "Pidgey" "The Star-Spangled Banner"]
                    [2 0 "Speacolumn" "The Star-Spangled Banner"]
                    [3 0 "Farfetch'd" "The land of lisp"]}
                  (set (table-rows table-id)))))
-
         (testing "DELETE should remove the corresponding rows"
           (is (= #{{:op "deleted", :table-id table-id, :row {:id_1 1, :id_2 0}}
                    {:op "deleted", :table-id table-id, :row {:id_1 2, :id_2 0}}}
@@ -252,10 +231,8 @@
                                                                                    :breakout     [(mt/$ids $orders.product_id)]
                                                                                    :filter        [:in (mt/$ids $orders.product_id) 1 2]}}))]
                                  (zipmap (map first result) (map second result))))]
-
           ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
           (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
-
           (testing "sanity check that we have children rows"
             (is (= {1 93
                     2 98}
@@ -273,7 +250,6 @@
                                :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url
                                           body))))
-
           ;; TODO: an edge case we could handle in the future
           #_(testing "success with delete-children options"
               (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
@@ -311,15 +287,12 @@
                                                                                  :aggregation  [[:count]]
                                                                                  :filter       [:= (mt/$ids $category.parent_id) parent-id]}}))]
                                (-> result first first)))]
-
         (testing "sanity check that we have self-referential children"
           (is (= 2 (children-count 1)))
           (is (= 1 (children-count 2)))
           (is (= 1 (children-count 3))))
-
         ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
         (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
-
         (testing "delete parent with self-referential children should return error without delete-children param"
           (is (=? {:errors [{:index       0
                              :type        "metabase.actions.error/violate-foreign-key-constraint",
@@ -327,7 +300,6 @@
                              :errors      {}
                              :status-code 400}]}
                   (mt/user-http-request :crowberto :post 400 execute-bulk-url body))))
-
         ;; TODO: same with the test above, this is one of the case where we want to handle in the future
         #_(testing "success with delete-children option should cascade delete all descendants"
             (is (=? {:outputs [{:table-id (mt/id :category)
@@ -336,7 +308,6 @@
                     (mt/user-http-request :crowberto :post 200 execute-bulk-url
                                           (assoc body :params {:delete-children true}))))
             (is (= 0 (count (table-rows (mt/id :category)))))
-
             (testing "the change is not undoable for self-referential cascades"
               (is (= "Your previous change cannot be undone"
                      (mt/user-http-request :crowberto :post 405 execute-bulk-url
@@ -369,16 +340,13 @@
                                           {:table-name "user"}
                                           {:fk :team :field-name "team_id"})
                        {:transaction? false})
-
         ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
         (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
-
         (let [users-table-id (mt/id :user)
               #_teams-table-id #_(mt/id :team)
               delete-user-body {:action "data-grid.row/delete"
                                 :scope     {:table-id users-table-id}
                                 :inputs    [{(mt/format-name :id) 1}]}]
-
           (testing "delete user involved in mutual recursion should return error without delete-children param"
             (is (=? {:errors [{:index       0
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
@@ -397,7 +365,6 @@
                                   :row      {(keyword (mt/format-name :id)) 1}}]}
                       (mt/user-http-request :crowberto :post 200 execute-bulk-url
                                             (assoc delete-user-body :params {:delete-children true}))))
-
               (let [remaining-users (table-rows users-table-id)
                     remaining-teams (table-rows teams-table-id)]
                 (testing "mutual recursion cascade should delete interconnected records"
@@ -502,7 +469,6 @@
                                   (is (= [qp-row] (map :row outputs)))
                                   (is (= input (:o qp-row))))
                                 (is (= expected (:o (first (get-db-state)))))))))))]
-
         ;;    type     coercion                                     input                          database
         (->> (concat
               [:text    nil                                          "a"                            "a"
@@ -513,19 +479,15 @@
                 [:text  :Coercion/ISO8601->DateTime                  "2025-03-25T14:34:42Z"         "2025-03-25T14:34:42Z"])
               [:text    :Coercion/ISO8601->Date                      "2025-03-25T00:00:00Z"         "2025-03-25"
                :text    :Coercion/ISO8601->Time                      "1999-04-05T14:34:42Z"         "14:34:42"
-
-              ;; note fractional seconds in input, remains undefined for Seconds
+               ;; note fractional seconds in input, remains undefined for Seconds
                :int     :Coercion/UNIXSeconds->DateTime              "2025-03-25T14:34:42Z"         (quot (inst-ms #inst "2025-03-25T14:34:42Z") 1000)
                :bigint  :Coercion/UNIXMilliSeconds->DateTime         "2025-03-25T14:34:42.314Z"     (inst-ms #inst "2025-03-25T14:34:42.314Z")
-
-              ;; note fractional secs beyond millis are discarded   (lossy)
+               ;; note fractional secs beyond millis are discarded   (lossy)
                :bigint  :Coercion/UNIXMicroSeconds->DateTime         "2025-03-25T14:34:42.314121Z"  (* (inst-ms #inst "2025-03-25T14:34:42.314Z") 1000)
                :bigint  :Coercion/UNIXNanoSeconds->DateTime          "2025-03-25T14:34:42.3141212Z" (* (inst-ms #inst "2025-03-25T14:34:42.314Z") 1000000)
-
-              ;; nil safe
+               ;; nil safe
                :text    :Coercion/YYYYMMDDHHMMSSString->Temporal     nil                            nil
-
-              ;; seconds component does not work properly here, lost by qp output, bug in existing code?
+               ;; seconds component does not work properly here, lost by qp output, bug in existing code?
                #_#_#_#_:text :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:42Z"     "20250325143442"])
              (partition 4)
              (check-coercion-fn-coverage @#'coerce/unimplemented-coercion-functions)
@@ -547,22 +509,18 @@
                                    (recur)))]
           (binding [data-editing/*field-value-invalidate-queue* test-queue]
             (is (= [] (field-values)))
-
             (create! [{:n "a"}])
             (is (pos? (.size test-queue)))
             (process-queue!)
             (is (= ["a"] (field-values)))
-
             (create! [{:n "b"} {:n "c"}])
             (is (pos? (.size test-queue)))
             (process-queue!)
             (is (= ["a" "b" "c"] (field-values)))
-
             (update! [{:id 2, :n "d"}])
             (is (pos? (.size test-queue)))
             (process-queue!)
             (is (= ["a" "c" "d"] (field-values)))
-
             (create! [{:n "a"}])
             (is (zero? (.size test-queue)))
             (process-queue!)
@@ -586,7 +544,6 @@
                                             {:scope  {:table-id table-id}
                                              :action "data-grid.row/create"})
                       [:message])))))))
-
       (testing "Non auto-incrementing pk"
         (action-v2.tu/with-test-tables! [table-id [(ordered-map
                                                     :id        [:int]
@@ -606,7 +563,6 @@
                   update-id           "data-grid.row/update"
                   delete-id           "data-grid.row/delete"
                   scope               {:table-id table-id}]
-
               (testing "create"
                 (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "integer"  :optional false :readonly false}
                                       {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
@@ -619,7 +575,6 @@
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action create-id}))))
-
               (testing "update"
                 (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown" :optional false :readonly true}
                                       {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
@@ -632,13 +587,11 @@
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action update-id}))))
-
               (testing "delete"
                 (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "dropdown" :optional false :readonly true}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action delete-id}))))))))
-
       (testing "Auto incrementing pk"
         (action-v2.tu/with-test-tables! [table-id [(ordered-map
                                                     :id        'auto-inc-type
@@ -658,7 +611,6 @@
                   update-id           "data-grid.row/update"
                   delete-id           "data-grid.row/delete"
                   scope               {:table-id table-id}]
-
               (testing "create"
                 (is (=? {:parameters [{:id "text"      :display_name "Text"       :input_type "text",     :optional true, :readonly false}
                                       {:id "int"       :display_name "Int"        :input_type "integer",  :optional true, :readonly false}
@@ -670,7 +622,6 @@
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action create-id}))))
-
               (testing "update"
                 (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown", :optional false, :readonly true}
                                       {:id "text"      :display_name "Text"       :input_type "text",     :optional true, :readonly false}
@@ -683,7 +634,6 @@
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action update-id}))))
-
               (testing "delete"
                 (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "dropdown", :optional false, :readonly true}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
@@ -700,7 +650,6 @@
                                                     :active [:boolean]
                                                     :created_at [:timestamp]}
                                                    {:primary-key [:id]}]]
-
           (testing "Valid inputs return no errors"
             (let [result (action-v2.tu/create-rows! table-id [{"name"       "Test Product"
                                                                "price"      "123"
@@ -708,7 +657,6 @@
                                                                "created_at" "2024-03-15T14:30:00"}])]
               (is (nil? (:errors result)))
               (is (seq (:outputs result)))))
-
           (testing "Invalid inputs return validation errors"
             (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name"       "Test Product"
                                                                               "price"      "not-a-number"
@@ -716,12 +664,10 @@
                                                                               "created_at" "2024-03-15T14:30:00"}])]
               (is (= {table-id [{:price  "Must be an integer"
                                  :active "Must be true, false, 0, or 1"}]} (:errors result)))))
-
           (testing "Required field validation"
             (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name" nil
                                                                               "price" "123"}])]
               (is (= {table-id [{:name "This field is required"}]} (:errors result)))))
-
           (testing "Multiple rows with mixed validity"
             (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name"  "Valid Product"
                                                                               "price" "100"}

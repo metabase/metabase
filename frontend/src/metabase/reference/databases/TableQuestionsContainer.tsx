@@ -2,11 +2,13 @@ import cx from "classnames";
 import type { Location } from "history";
 import { Component } from "react";
 
+import { cardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
-import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import type { Dispatch } from "metabase/redux/store";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";
 
@@ -37,7 +39,8 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps = {
-  fetchQuestions: Questions.actions.fetchList,
+  fetchQuestions: () => (dispatch: Dispatch) =>
+    runRtkEndpoint({}, dispatch, cardApi.endpoints.listCards),
   ...metadataActions,
   ...actions,
 };

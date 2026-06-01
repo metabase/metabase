@@ -45,6 +45,7 @@ import type {
   SearchResult,
   Segment,
   Table,
+  TableRemapping,
   Task,
   TaskRun,
   Timeline,
@@ -62,7 +63,10 @@ import {
   SEARCH_MODELS,
 } from "metabase-types/api";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
-import type { Notification } from "metabase-types/api/notification";
+import type {
+  AdminNotification,
+  Notification,
+} from "metabase-types/api/notification";
 
 import { getLensKey } from "../utils/transform-inspector-lens";
 
@@ -462,6 +466,25 @@ export function provideNotificationTags(
   ];
 }
 
+export const provideAdminNotificationTags = (
+  notification: Pick<AdminNotification, "id" | "creator">,
+): TagDescription<TagType>[] => [
+  idTag("notification", notification.id),
+  ...(notification.creator ? provideUserTags(notification.creator) : []),
+];
+
+export const adminNotificationListTag = (): TagDescription<TagType> =>
+  idTag("notification", "LIST-ADMIN");
+
+export const provideAdminNotificationListTags = (
+  notifications: Pick<Notification, "id">[],
+): TagDescription<TagType>[] => [
+  adminNotificationListTag(),
+  ...notifications.map((notification) =>
+    idTag("notification", notification.id),
+  ),
+];
+
 export function providePermissionsGroupListTags(
   groups: GroupListQuery[],
 ): TagDescription<TagType>[] {
@@ -645,6 +668,21 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
     ...(table.measures ? provideMeasureListTags(table.measures) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
+  ];
+}
+
+export function provideTableRemappingTags(
+  remapping: TableRemapping,
+): TagDescription<TagType>[] {
+  return [idTag("table-remapping", remapping.id)];
+}
+
+export function provideTableRemappingListTags(
+  remappings: TableRemapping[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("table-remapping"),
+    ...remappings.flatMap(provideTableRemappingTags),
   ];
 }
 

@@ -16,14 +16,18 @@
    its own TTL and will be reaped independently; if a subsequent resource read
    finds it missing, `get-or-create-session-key!` will re-insert it."
   (:require
+   [clojure.string :as str]
    [metabase.app-db.core :as app-db]
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
-   (java.util UUID)
+   (java.nio.charset StandardCharsets)
+   (java.util Base64 UUID)
    (javax.crypto Mac)
    (javax.crypto.spec SecretKeySpec)))
 
@@ -76,17 +80,119 @@
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 
+(def ^:private session-payload-version
+  "Version for the unsigned JSON client-capability hint encoded in new MCP session ids."
+  1)
+
+(def ^:private max-session-id-length
+  "Maximum persisted length for `mcp_query_handle.mcp_session_id`."
+  254)
+
+(defn- encode-session-payload
+  "Encode a small JSON map for the second segment of `Mcp-Session-Id`.
+
+   MCP initialize capabilities are client-advertised hints, not authorization state. We include them in the
+   server-created session id so later requests can make the same tools/list decision on any Metabase webserver
+   without an in-memory cache or a DB row just for session metadata."
+  [payload]
+  (-> (json/encode payload)
+      (.getBytes StandardCharsets/UTF_8)
+      (->> (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))))
+
+(defn- decode-session-payload
+  "Decode the optional client-capability hint from an `Mcp-Session-Id`.
+
+   Invalid payloads return nil so the whole session id can be treated as invalid by [[session-parts]]."
+  [encoded]
+  (when-not (str/blank? encoded)
+    (try
+      (-> (Base64/getUrlDecoder)
+          (.decode ^String encoded)
+          (String. StandardCharsets/UTF_8)
+          json/decode+kw)
+      (catch Exception _
+        nil))))
+
+(defn- parse-session-payload
+  "Parse the optional base64url JSON capability segment.
+
+   Plain UUID session ids are legacy ids issued before capability-aware tools/list and remain valid. Two-part ids
+   with a known payload version must include a supported payload shape so malformed capability hints do not silently
+   fall back to legacy behavior. Unknown payload versions remain valid but default to no UI capability, so rolling
+   deploy version skew does not invalidate the whole session."
+  [payload]
+  (cond
+    (nil? payload)
+    {:extended false}
+
+    (str/blank? payload)
+    (do
+      (log/warn "MCP session id contains a blank capability payload")
+      nil)
+
+    :else
+    (if-let [decoded-payload (decode-session-payload payload)]
+      (let [payload-map?         (map? decoded-payload)
+            payload-version      (when payload-map? (:v decoded-payload))
+            has-payload-version? (and payload-map? (contains? decoded-payload :v))
+            known-version?       (and (integer? payload-version)
+                                      (<= payload-version session-payload-version))
+            unknown-version?     (and (integer? payload-version)
+                                      (> payload-version session-payload-version))]
+        (cond
+          (and payload-map?
+               known-version?
+               (boolean? (:ui decoded-payload)))
+          {:extended true
+           :payload  decoded-payload}
+
+          ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
+          ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
+          (and has-payload-version?
+               unknown-version?)
+          {:extended true
+           :payload  {:ui false}}))
+      (log/warn "MCP session id contains an undecodable capability payload"))))
+
+(defn- session-parts
+  "Parse an MCP session id into a UUID correlator plus optional client-capability hint.
+
+   New session ids have the form `<uuid>.<base64url-json>`, currently with payload `{\"v\":1,\"ui\":true}`.
+   We keep the UUID as the first segment because existing MCP session behavior derives the embedding session key
+   from this server-created id, while the JSON segment lets us remember initialize-time UI capability statelessly
+   across multiple Metabase webservers."
+  [session-id]
+  (when (and (string? session-id)
+             (<= (count session-id) max-session-id-length))
+    (let [[uuid payload :as parts] (str/split session-id #"\." -1)]
+      (when (#{1 2} (count parts))
+        (when-let [uuid (parse-uuid uuid)]
+          (some-> (parse-session-payload payload)
+                  (assoc :uuid uuid)))))))
+
+(defn- create-session-id
+  "Create a stateless MCP session id containing client capability hints.
+
+   The server creates this id during initialize; clients only echo it back. The unsigned payload is intentionally
+   limited to non-security-sensitive capability hints such as whether the client says it can render MCP Apps UI."
+  [{:keys [supports-mcp-ui?]}]
+  (let [session-id (str (UUID/randomUUID)
+                        "."
+                        (encode-session-payload {:v  session-payload-version
+                                                 :ui (true? supports-mcp-ui?)}))]
+    (assert (<= (count session-id) max-session-id-length)
+            "MCP session id is too long")
+    session-id))
+
 (defn valid-id?
-  "Return true if `session-id` looks like a UUID (the format `create!` produces).
+  "Return true if `session-id` has a UUID correlator (the format `create!` produces).
    Format check only — authentication is handled separately by cookie or bearer token,
    not by the session ID itself."
   [session-id]
-  (and (string? session-id)
-       (try (UUID/fromString session-id) true
-            (catch IllegalArgumentException _ false))))
+  (some? (session-parts session-id)))
 
 (defn create!
-  "Create a new MCP session. Returns a UUID string.
+  "Create a new MCP session. Returns a session id string.
    No database row is written — the session is just an opaque correlator until
    a resource read materializes it into a `core_session`.
 
@@ -94,8 +200,19 @@
    stateless (no server-side token store), we don't validate the user against
    future requests. This parameter exists so we can add durable, user-scoped
    sessions in the future without changing the call-site contract."
-  [_user-id]
-  (str (UUID/randomUUID)))
+  ([user-id]
+   (create! user-id nil))
+  ([_user-id metadata]
+   (create-session-id metadata)))
+
+(defn supports-mcp-ui?
+  "Return true if the client advertised MCP Apps UI support during initialize."
+  [session-id]
+  (when-let [{:keys [payload extended]} (session-parts session-id)]
+    (if extended
+      (true? (:ui payload))
+      ;; Legacy plain UUID sessions were issued before capability-aware tools/list; keep old behavior for them.
+      true)))
 
 (defn- get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.
@@ -148,41 +265,63 @@
 ;; encoded query.
 
 (defn store-handle!
-  "Insert a new handle row binding `encoded-query` to the MCP session, and return
-   the freshly minted handle UUID.
+  "Insert a new handle row binding `encoded-query` to the calling user, and return the handle UUID.
 
-   When `user-id` is non-nil, materializes the backing `core_session` so cleanup
-   happens via cascade when the session row is reaped. When nil — e.g. agent flows
-   that don't render an iframe — the row is stored without a `core_session_id` and
-   relies on explicit `delete!` for cleanup.
+   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and so reads can log
+   when a handle is resolved across sessions (see [[find-handle-row]]) — the read path itself is purely
+   user-scoped, since handle UUIDs are globally unique.
 
-   `prompt` is optional, but should be supplied for construct_query handles so
-   visualize_query can later return both the query and original user prompt to
-   the MCP iframe for feedback submission."
-  ([session-id user-id encoded-query]
-   (store-handle! session-id user-id encoded-query nil))
-  ([session-id user-id encoded-query prompt]
-   (let [core-session-id (when user-id
-                           (:id (get-or-create-embedding-session! session-id user-id)))
+   `prompt` is optional, but should be supplied for construct_query handles so visualize_query can later
+   return both the query and original user prompt to the MCP iframe for feedback submission."
+  ([mcp-session-id user-id encoded-query]
+   (store-handle! mcp-session-id user-id encoded-query nil))
+  ([mcp-session-id user-id encoded-query prompt]
+   ;; Materializing a core_session here serves two purposes: its FK is what makes handles
+   ;; cascade-delete when the session row is reaped, and its user_id is what find-handle-row
+   ;; filters on for cross-session ownership.
+   (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
      (t2/insert! :model/McpQueryHandle
                  (cond-> {:id              handle-id
-                          :mcp_session_id  session-id
+                          :mcp_session_id  mcp-session-id
                           :core_session_id core-session-id
                           :encoded_query   encoded-query}
                    prompt (assoc :prompt prompt)))
      handle-id)))
 
+(defn- find-handle-row
+  "Look up the handle row by `handle-id`, scoped to `user-id`.
+   Handle ids are globally unique UUIDs, so the join's `WHERE mqh.id = handle-id` returns at most one
+   row by definition — no ordering or session-preference logic is needed. `mcp-session-id` is recorded
+   on the row only so harnesses that rotate MCP sessions between calls (e.g. ChatGPT) can be logged as
+   cross-session resolutions for telemetry."
+  [mcp-session-id user-id handle-id]
+  (when (and user-id handle-id)
+    ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
+    ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
+    (let [row (t2/select-one :model/McpQueryHandle
+                             {:select [:mqh.*]
+                              :from   [[:mcp_query_handle :mqh]]
+                              :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
+                              :where  [:and
+                                       [:= :mqh.id handle-id]
+                                       [:= :cs.user_id user-id]]})]
+      (when (and row (not= mcp-session-id (:mcp_session_id row)))
+        (log/debugf "MCP handle %s resolved across sessions for user %s"
+                    handle-id user-id))
+      row)))
+
 (defn read-handle
-  "Return the encoded query for `handle-id` in `session-id`, or nil if no row exists."
-  [session-id handle-id]
-  (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id, :mcp_session_id session-id))
+  "Return the encoded query for `handle-id` owned by `user-id`, or nil if no row exists.
+   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
+  [mcp-session-id user-id handle-id]
+  (:encoded_query (find-handle-row mcp-session-id user-id handle-id)))
 
 (defn resolve-query-handle
-  "Return {:encoded_query ... :prompt ...} for `handle-id`, or nil if not found.
-   Used by visualize_query and execute_query to resolve construct_query handles."
-  [session-id handle-id]
-  (when-let [row (t2/select-one :model/McpQueryHandle :id handle-id, :mcp_session_id session-id)]
+  "Return {:encoded_query ... :prompt ...} for `handle-id` owned by `user-id`, or nil.
+   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
+  [mcp-session-id user-id handle-id]
+  (when-let [row (find-handle-row mcp-session-id user-id handle-id)]
     (select-keys row [:encoded_query :prompt])))
 
 (defn delete!

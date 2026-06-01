@@ -4,7 +4,6 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [metabase.analytics.core :as analytics]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -80,12 +79,12 @@
 (defn- track-sqlgen-event!
   "Track SQL generation usage via Snowplow simple_event."
   [{:keys [duration-ms result engine]}]
-  (snowplow/track-event! :snowplow/simple_event
-                         {:event        "metabot_oss_sqlgen_used"
-                          :event_detail (some-> engine name)
-                          :duration_ms  (some-> duration-ms long)
-                          :result       result}
-                         api/*current-user-id*))
+  (analytics/track-event! :snowplow/simple_event
+                          {:event        "metabot_oss_sqlgen_used"
+                           :event_detail (some-> engine name)
+                           :duration_ms  (some-> duration-ms long)
+                           :result       result}
+                          api/*current-user-id*))
 
 (api.macros/defendpoint :get "/list-models"
   :- [:map [:models [:sequential [:map
