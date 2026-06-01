@@ -31,23 +31,35 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
+(defn- transform-readable?
+  "Whether the current user can read `instance`, given a precomputed `source-readable?` (see
+  `transforms.u/source-tables-readable?`). Split out so the per-instance `can-read?` and the
+  batched `can_read` hydration share one logic path."
+  [instance source-readable?]
+  (and (transforms.u/check-feature-enabled instance)
+       (or api/*is-superuser?*
+           (and (api/is-data-analyst?)
+                source-readable?))))
+
+(defn- transform-writable?
+  "Whether the current user can write `instance`, given a precomputed `source-readable?`."
+  [instance source-readable?]
+  (and (remote-sync/transforms-editable?)
+       (transforms.u/check-feature-enabled instance)
+       (or api/*is-superuser?*
+           (and (transform-readable? instance source-readable?)
+                (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))))))
+
 (defmethod mi/can-read? :model/Transform
   ([instance]
-   (and (transforms.u/check-feature-enabled instance)
-        (or api/*is-superuser?*
-            (and (api/is-data-analyst?)
-                 (transforms.u/source-tables-readable? instance)))))
+   (transform-readable? instance (transforms.u/source-tables-readable? instance)))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-read? transform))))
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (and (remote-sync/transforms-editable?)
-        (transforms.u/check-feature-enabled instance)
-        (or api/*is-superuser?*
-            (and (mi/can-read? instance)
-                 (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))))))
+   (transform-writable? instance (transforms.u/source-tables-readable? instance)))
   ([_model pk]
    (and (remote-sync/transforms-editable?)
         (or api/*is-superuser?*
@@ -167,27 +179,33 @@
     transform))
 
 (defn- hydrate-permission
+  "Batched-hydrate helper: attach a permission under `k` by applying `pred` to each transform.
+   Source databases/tables are bulk-loaded once so a list of transforms doesn't issue a query per transform."
   [k transforms pred]
-  (mi/instances-with-hydrated-data
-   transforms k
-   #(u/index-by :id pred transforms)
-   :id
-   {:default false}))
+  (let [models-cache (transforms.u/prefetch-source-models transforms)]
+    (mi/instances-with-hydrated-data
+     transforms k
+     #(into {}
+            (map (fn [{:keys [id] :as transform}]
+                   [id (pred transform (transforms.u/source-tables-readable? transform models-cache))]))
+            transforms)
+     :id
+     {:default false})))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_read]
   "Add can_read to transforms."
   [_model k transforms]
-  (hydrate-permission k transforms mi/can-read?))
+  (hydrate-permission k transforms transform-readable?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_write]
   "Add can_write to transforms."
   [_model k transforms]
-  (hydrate-permission k transforms mi/can-write?))
+  (hydrate-permission k transforms transform-writable?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
   "Add can_execute to transforms. Executing a transform requires write permission."
   [_model k transforms]
-  (hydrate-permission k transforms mi/can-write?))
+  (hydrate-permission k transforms transform-writable?))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
