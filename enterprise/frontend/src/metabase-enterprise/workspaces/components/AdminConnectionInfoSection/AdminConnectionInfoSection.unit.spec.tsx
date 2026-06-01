@@ -1,5 +1,12 @@
-import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import userEvent from "@testing-library/user-event";
+
+import {
+  setupDatabaseHealthcheckEndpoint,
+  setupUpdateDatabaseEndpoint,
+  setupUpdateDatabaseEndpointError,
+} from "__support__/server-mocks/database";
 import { renderWithProviders, screen } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
@@ -7,13 +14,25 @@ import { AdminConnectionInfoSection } from "./AdminConnectionInfoSection";
 
 interface SetupOpts {
   database?: Database;
+  withError?: boolean;
 }
 
 function setup({
   database = createMockDatabase({ features: ["workspace"] }),
+  withError = false,
 }: SetupOpts = {}) {
-  setupDatabaseEndpoints(database);
-  renderWithProviders(<AdminConnectionInfoSection database={database} />);
+  setupDatabaseHealthcheckEndpoint(database.id);
+  if (withError) {
+    setupUpdateDatabaseEndpointError(database.id);
+  } else {
+    setupUpdateDatabaseEndpoint(database);
+  }
+  renderWithProviders(
+    <>
+      <AdminConnectionInfoSection database={database} />
+      <UndoListing />
+    </>,
+  );
 }
 
 describe("AdminConnectionInfoSection", () => {
@@ -79,5 +98,24 @@ describe("AdminConnectionInfoSection", () => {
         "Admin connection can't be enabled when Database Routing is enabled.",
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("should show an error toast when removing the admin connection fails", async () => {
+    const database = createMockDatabase({
+      features: ["workspace"],
+      admin_details: { user: "admin" },
+    });
+    setup({ database, withError: true });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove admin connection" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Remove" }),
+    );
+
+    expect(
+      await screen.findByText("Failed to remove admin connection"),
+    ).toBeInTheDocument();
   });
 });

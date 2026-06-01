@@ -255,4 +255,12 @@ describe("MetricToolbar", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("Explore button", () => {
+    it("should not render an Explore button in the toolbar", () => {
+      setup({ canWrite: true });
+
+      expect(screen.queryByTestId("explore-link")).not.toBeInTheDocument();
+    });
+  });
 });

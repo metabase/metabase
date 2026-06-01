@@ -6,7 +6,6 @@ import { Api } from "metabase/api";
 import { mainReducers } from "metabase/reducers-main";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { defer } from "metabase/utils/promise";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -99,7 +98,7 @@ async function setupRunQuestionQuery(question: Question) {
   fetchMock.post(getQueryEndpointPath(question), mockResult);
   const result = await runQuestionQuery(question, {
     dispatch: getRtkStore().dispatch,
-    cancelDeferred: defer(),
+    signal: new AbortController().signal,
   });
   return { result, mockResult };
 }
@@ -231,7 +230,7 @@ describe("metabase/services > runQuestionQuery", () => {
 
       const result = await runQuestionQuery(question, {
         dispatch: getRtkStore().dispatch,
-        cancelDeferred: defer(),
+        signal: new AbortController().signal,
       });
 
       // 4xx errors should be returned as successful responses with error data
@@ -253,7 +252,7 @@ describe("metabase/services > runQuestionQuery", () => {
 
       const result = await runQuestionQuery(question, {
         dispatch: getRtkStore().dispatch,
-        cancelDeferred: defer(),
+        signal: new AbortController().signal,
       });
 
       // 4xx errors should be returned as successful responses with error data
@@ -272,33 +271,33 @@ describe("metabase/services > runQuestionQuery", () => {
       await expect(
         runQuestionQuery(question, {
           dispatch: getRtkStore().dispatch,
-          cancelDeferred: defer(),
+          signal: new AbortController().signal,
         }),
       ).rejects.toMatchObject({
         status: 500,
       });
     });
 
-    it("rejects with { isCancelled: true } when cancelDeferred resolves (ad-hoc question)", async () => {
-      // Guards the RTK Query cancellation path: resolving `cancelDeferred`
-      // must abort the underlying `/api/dataset` request and reject with
-      // the legacy `{ isCancelled: true }` shape that `queryErrored` and
-      // other callers rely on.
+    it("rejects with AbortError when the signal aborts (ad-hoc question)", async () => {
+      // Guards the RTK Query cancellation path: aborting the signal must
+      // abort the underlying `/api/dataset` request and reject with the
+      // standard `DOMException` AbortError that `queryErrored` and other
+      // callers identify via `isAbortError`.
       const question = createMockAdHocQuestion();
       fetchMock.post(
         getQueryEndpointPath(question),
         new Promise(() => undefined),
       );
 
-      const cancelDeferred = defer();
+      const controller = new AbortController();
       const runPromise = runQuestionQuery(question, {
         dispatch: getRtkStore().dispatch,
-        cancelDeferred,
+        signal: controller.signal,
       });
 
-      cancelDeferred.resolve();
+      controller.abort();
 
-      await expect(runPromise).rejects.toEqual({ isCancelled: true });
+      await expect(runPromise).rejects.toMatchObject({ name: "AbortError" });
     });
 
     it("normalizes plain-text 4xx error bodies into a structured error result (EMB-1659)", async () => {
@@ -317,7 +316,7 @@ describe("metabase/services > runQuestionQuery", () => {
 
       const result = await runQuestionQuery(question, {
         dispatch: getRtkStore().dispatch,
-        cancelDeferred: defer(),
+        signal: new AbortController().signal,
       });
 
       expect(result).toEqual([{ error: errorMessage, status: 400 }]);

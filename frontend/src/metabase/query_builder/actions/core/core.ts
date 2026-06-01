@@ -7,11 +7,11 @@ import {
   revisionApi,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
@@ -63,7 +63,7 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
 
-    return entityCompatibleQuery(
+    return runRtkEndpoint(
       { id: outdatedCard?.id },
       dispatch,
       cardApi.endpoints.getCard,
@@ -82,7 +82,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
       return;
     }
 
-    const card = await entityCompatibleQuery(
+    const card = await runRtkEndpoint(
       { id: outdatedQuestion.id() },
       dispatch,
       cardApi.endpoints.getCard,
@@ -356,7 +356,7 @@ export const revertToRevision = createThunkAction(
   REVERT_CARD_TO_REVISION,
   (cardId, revision) => {
     return async (dispatch) => {
-      await entityCompatibleQuery(
+      await runRtkEndpoint(
         {
           id: cardId,
           entity: "card",

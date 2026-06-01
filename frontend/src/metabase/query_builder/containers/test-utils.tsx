@@ -37,7 +37,6 @@ import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
-import type { RequestState, State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
@@ -280,11 +279,7 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const {
-    store: { getState },
-    container,
-    history,
-  } = renderWithProviders(
+  const { container, history } = renderWithProviders(
     <div>
       <Route>
         <Route path="/" component={TestHome} />
@@ -324,34 +319,13 @@ export const setup = async ({
     },
   );
 
-  await waitForLoadingRequests(getState);
   await waitForLoaderToBeRemoved();
-  await waitForLoadingRequests(getState);
 
   return {
     container,
     history: checkNotNull(history),
     mockEventListener,
   };
-};
-
-const waitForLoadingRequests = async (getState: () => State) => {
-  await waitFor(
-    () => {
-      const requests = getRequests(getState());
-      const areRequestsLoading = requests.some((request) => request.loading);
-      expect(areRequestsLoading).toBe(false);
-    },
-    { timeout: 5000 },
-  );
-};
-
-const getRequests = (state: State): RequestState[] => {
-  return Object.values(state.requests).flatMap((group) =>
-    Object.values(group).flatMap((entity) =>
-      Object.values(entity).flatMap((request) => Object.values(request)),
-    ),
-  );
 };
 
 export const startNewNotebookModel = async () => {
