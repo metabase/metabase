@@ -234,7 +234,7 @@ describe("getAvailableDimensionsForPicker", () => {
   it("filters out dimensions whose id matches existingDimensionBreakoutDimensionIds", () => {
     const allIds = REVENUE_DIMENSIONS.flatMap((dimension) =>
       Object.values(dimension.dimensionBreakoutInfo.dimensionMapping),
-    );
+    ).filter((id): id is string => id != null);
 
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
@@ -927,7 +927,7 @@ describe("getComparableDimensionMapping", () => {
         label: "Birth Date",
         dimensionMapping: { 0: "dim-users-birth-date" },
       },
-    };
+    } as const;
 
     expect(
       getComparableDimensionMapping({
@@ -969,7 +969,7 @@ describe("getComparableDimensionMapping", () => {
         label: "Created At",
         dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
       },
-    };
+    } as const;
 
     expect(
       getComparableDimensionMapping({
@@ -1048,7 +1048,7 @@ describe("getComparableDimensionMapping", () => {
         label: "Birth Date",
         dimensionMapping: { 0: "dim-revenue-accounts-birth-date" },
       },
-    };
+    } as const;
 
     expect(
       getComparableDimensionMapping({
@@ -1130,7 +1130,7 @@ describe("getComparableDimensionMapping", () => {
         label: "Created At",
         dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
       },
-    };
+    } as const;
 
     expect(
       getComparableDimensionMapping({
@@ -1197,7 +1197,7 @@ describe("getComparableDimensionMapping", () => {
         label: "Product Country",
         dimensionMapping: { 0: "dim-product-country" },
       },
-    };
+    } as const;
 
     expect(
       getComparableDimensionMapping({
@@ -1240,7 +1240,7 @@ describe("getComparableDimensionMapping", () => {
         label: "Name",
         dimensionMapping: { 0: "dim-user-name" },
       },
-    };
+    } as const;
 
     expect(
       getComparableDimensionMapping({
@@ -1288,7 +1288,7 @@ describe("getComparableDimensionMapping", () => {
           label: fieldName,
           dimensionMapping: { 0: fieldId },
         },
-      };
+      } as const;
 
       expect(
         getComparableDimensionMapping({
@@ -1338,7 +1338,7 @@ describe("getComparableDimensionMapping", () => {
         label: "Total",
         dimensionMapping: { 0: "dim-orders-total" },
       },
-    };
+    } as const;
 
     expect(
       getComparableDimensionMapping({
@@ -1381,7 +1381,7 @@ describe("getComparableDimensionMapping", () => {
         label: "Name",
         dimensionMapping: { 0: "dim-user-name" },
       },
-    };
+    } as const;
 
     expect(
       getComparableDimensionMapping({

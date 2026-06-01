@@ -367,7 +367,9 @@ function mergeDimensionMappings(items: DimensionPickerItem[]) {
     for (const [slotIndex, dimensionId] of Object.entries(
       item.dimensionBreakoutInfo.dimensionMapping,
     )) {
-      mapping[Number(slotIndex)] ??= dimensionId;
+      if (dimensionId != null) {
+        mapping[Number(slotIndex)] ??= dimensionId;
+      }
     }
   }
 
