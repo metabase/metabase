@@ -44,7 +44,7 @@ const ListItemInner = ({
           {icon && <Icon className={S.chartIcon} name={icon} size={16} />}
         </div>
         <div className={cx(S.itemBody, CS.flexColumn)}>
-          <Box className={S.itemTitle} lh="1.5rem">
+          <Box className={S.itemTitle} lh="1.5">
             <Ellipsified tooltip={name}>{name}</Ellipsified>
           </Box>
           {(description || placeholder) && (
