@@ -106,7 +106,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 // keeps working. `forceRefetch` makes each call hit the network rather than
 // resolving from a stale cache entry, matching the legacy fetch-and-discard
 // behavior.
-function dispatchQueryEndpoint(dispatch, endpoint, requestBody, signal) {
+export function dispatchQueryEndpoint(dispatch, endpoint, requestBody, signal) {
   const action = dispatch(
     endpoint.initiate(requestBody, { forceRefetch: true }),
   );
@@ -179,9 +179,17 @@ async function runSavedCardQuery(
   { parameters, ignoreCache, collectionPreview, token, queryParamsOverride },
   signal,
 ) {
+  const [{ makePivotAwareQueryRunner }, { cardApi }, { dashboardApi }] =
+    await Promise.all([
+      import("metabase/api/query-endpoints"),
+      import("metabase/api/card"),
+      import("metabase/api/dashboard"),
+    ]);
+
   const card = question.card();
-  const isPivot = shouldUsePivotEndpoint(card, question.metadata());
+  const metadata = question.metadata();
   const { dashboardId, dashcardId } = question.getDashboardProps();
+  const runQuery = makePivotAwareQueryRunner(dispatch, signal);
 
   const body = {
     ignore_cache: ignoreCache,
@@ -192,28 +200,18 @@ async function runSavedCardQuery(
   };
 
   if (dashboardId != null) {
-    const { dashboardApi } = await import("metabase/api/dashboard");
-    const endpoint = isPivot
-      ? dashboardApi.endpoints.getDashboardCardQueryPivot
-      : dashboardApi.endpoints.getDashboardCardQuery;
-    return dispatchQueryEndpoint(
-      dispatch,
-      endpoint,
+    return runQuery(
+      dashboardApi.endpoints.getDashboardCardQuery,
+      card,
+      metadata,
       { dashboardId, dashcardId, cardId: question.id(), ...body },
-      signal,
     );
   }
 
-  const { cardApi } = await import("metabase/api/card");
-  const endpoint = isPivot
-    ? cardApi.endpoints.getCardQueryPivot
-    : cardApi.endpoints.getCardQuery;
-  return dispatchQueryEndpoint(
-    dispatch,
-    endpoint,
-    { cardId: question.id(), ...body },
-    signal,
-  );
+  return runQuery(cardApi.endpoints.getCardQuery, card, metadata, {
+    cardId: question.id(),
+    ...body,
+  });
 }
 
 /**
