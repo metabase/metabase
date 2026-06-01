@@ -19,7 +19,7 @@ export function PotentiallyInterestingMarker() {
         data-testid="potentially-interesting-marker"
         w="0.375rem"
         h="0.375rem"
-        bg="interesting"
+        bg="brand"
         bdrs="50%"
         className={S.indicator}
       />
