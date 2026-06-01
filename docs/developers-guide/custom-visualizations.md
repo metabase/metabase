@@ -7,9 +7,9 @@ summary: Use the Custom Visualizations SDK to build, develop, and package your o
 
 {% include plans-blockquote.html feature="Custom visualizations" %}
 
-A custom visualization is a Metabase chart type that you build with React and TypeScript and ship as a plugin.
+You can create a custom chart type for Metabase that you build with React and TypeScript and ship as a plugin.
 
-You scaffold a project with the `@metabase/custom-viz` package, write your visualization, package it into a `.tgz` bundle, and an admin uploads it to Metabase (see [Custom visualizations](../questions/visualizations/custom.md)).
+You scaffold a project with the `@metabase/custom-viz` package, write your visualization, and package it into a `.tgz` bundle. An admin uploads the plugin to Metabase (see [Custom visualizations](../questions/visualizations/custom.md)), and you're in business.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ You scaffold a project with the `@metabase/custom-viz` package, write your visua
 - Familiarity with React and TypeScript.
 - A Metabase on a [Pro or Enterprise plan](https://www.metabase.com/pricing/) to load your plugin into.
 
-## Scaffold a project
+## Scaffold a custom visualization project
 
 Generate a new project with the `@metabase/custom-viz` CLI:
 
@@ -52,7 +52,7 @@ tsconfig.json
 
 ### The starter visualization
 
-The scaffold ships a complete, working example: a chart that shows a thumbs-up image when a single numeric result meets a `threshold` setting, and a thumbs-down otherwise. Start dev mode (below) and it renders on any single-number question. Open `src/index.tsx` to see how it fits together: the factory function, `checkRenderable`, a `defineSetting` for the threshold, and the React component — then edit it into your own visualization.
+The scaffold ships a complete, working example: a chart that shows a thumbs-up image when a single numeric result meets a `threshold` setting, and a thumbs-down otherwise.
 
 ## Develop against a running Metabase
 
@@ -64,18 +64,17 @@ To develop your plugin against a live Metabase with hot reload:
 
 3. In Metabase, go to **Admin** > **Settings** > **Custom visualizations** > **Development** and set the **Dev server URL** to your dev server's address.
 
-Your plugin shows up in the **Custom visualizations** section of the visualization sidebar (alongside any installed plugins) and is labeled as a dev visualization. Metabase watches the dev server and re-registers your plugin whenever you rebuild, so you don't have to reload by hand.
+Your plugin shows up in the **Custom visualizations** section of the visualization sidebar (alongside any installed plugins) and is labeled as a dev visualization.
 
 ### If Metabase runs in Docker
 
-Metabase's backend — not your browser — fetches from the dev server: it pulls `metabase-plugin.json`, the JS bundle, and the hot-reload stream from the **Dev server URL**. The URL therefore has to resolve from wherever Metabase runs.
+Metabase's backend fetches from the dev server: it pulls `metabase-plugin.json`, the JS bundle, and the hot-reload stream from the **Dev server URL**. The URL therefore has to resolve from wherever Metabase runs.
 
 When Metabase runs in a container, `http://localhost:5174` points at the container itself, and the **Development** page reports "Could not fetch metabase-plugin.json from the dev server." Point the URL at the host instead:
 
-- **Docker Desktop (macOS or Windows):** set the Dev server URL to `http://host.docker.internal:5174`.
-- **Linux:** start the container with `--add-host=host.docker.internal:host-gateway` (in Docker Compose, `extra_hosts: ["host.docker.internal:host-gateway"]`), then use the same `http://host.docker.internal:5174`.
-
-The dev server listens on all network interfaces, so `npm run dev` needs no extra flags.
+```
+http://host.docker.internal:5174
+```
 
 ## The plugin manifest
 
