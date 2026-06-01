@@ -1,5 +1,6 @@
 .root {
   --control-hover-color: rgba(7, 23, 34, 0.05);
+  --ellipsis-button-size: 2rem;
 
   position: relative;
   width: 100%;
@@ -13,20 +14,20 @@
 }
 
 .centerCluster {
-  position: absolute;
-  top: 0;
   left: 50%;
   max-width: 100%;
+  position: absolute;
+  top: 0;
   transform: translateX(-50%);
 }
 
 .centerControls {
+  background: var(--mb-color-background-primary);
+  border-radius: 0.75rem;
+  border: 1px solid var(--mb-color-border);
   box-sizing: border-box;
   height: 2.5rem;
   overflow: hidden;
-  background: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
-  border-radius: 0.75rem;
 }
 
 .controlSection {
@@ -50,12 +51,18 @@
   }
 }
 
-.optionsButton {
-  width: 2rem;
-  height: 2rem;
+.ellipsisMenuButton {
   border-radius: 0.5rem;
+  height: var(--ellipsis-button-size);
+  position: absolute;
+  /** Make the container be centered without taking the ellipsis menu button into consideration */
+  right: calc(
+    -1 * calc(var(--mantine-spacing-sm) + var(--ellipsis-button-size))
+  );
+  top: 0.25rem;
+  width: var(--ellipsis-button-size);
 
-  &.optionsButton:hover {
+  &.ellipsisMenuButton:hover {
     background-color: var(--control-hover-color);
   }
 }
