@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -69,8 +70,10 @@
         credentials-provider (when token (credentials-provider remote-url token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
     (try
-      (-> command
-          (.setCredentialsProvider credentials-provider)
+      (-> (doto command
+            ;; bound the network operation so a stalled connection can't hang the sync forever (GHY-3727)
+            (.setTimeout (int (setting/get :remote-sync-git-timeout-seconds)))
+            (.setCredentialsProvider credentials-provider))
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
