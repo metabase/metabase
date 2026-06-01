@@ -7,31 +7,29 @@ summary: "Use a coding agent and the Metabase CLI to create Metabase content, th
 
 {% include plans-blockquote.html feature="Agent-driven development" %}
 
-Metabase content like questions and dashboards can be serialized as YAML files. You can edit those YAML files by hand, sure, but now that we have actual genies, you can just ask the genies to create the content for you (call it "lamp-rubbing development").
+Now that we have actual genies, you can just ask the genies to create the content for you (call it "lamp-rubbing development").
+
+Give an agent the [Metabase CLI](../installation-and-operation/metabase-cli.md), and it can create content for you. But since LLMs can be unpredictable, we recommend developing content in a dev instance of Metabase, then using [Remote Sync](../installation-and-operation/remote-sync.md) to get your changes into production.
 
 With this set up, a typical workflow using an agent with a development instance of Metabase would be:
 
 1. Prompt the agent with `/metabase-cli Create a dashboard based on the sales table.`
 2. Agent creates questions and a dashboard.
-3. You view the dashboard in your dev instance.
+3. View the dashboard in your dev instance.
 4. Iterate either in your Metabase or via the agent until you're happy with the dashboard.
-5. Use remote sync to push your changes to a repo.
+5. Use Remote Sync to push your changes to a repo.
 6. Create a PR.
 7. Merge the changes.
-8. Once merged, your production Metabase pulls in the changes via remote sync.
+8. Once merged, your production Metabase pulls in the changes via Remote Sync.
 
 ## The agent-driven development toolkit
 
 To develop your Metabase content with an agent, we've put together a set of tools.
 
-- [**Metabase CLI**](../installation-and-operation/metabase-cli.md): a command-line client (`mb`) your agent drives to introspect your warehouse (tables, fields, sample values) and to create content directly in your Metabase. Use it with the [`/metabase-cli` skill](https://github.com/metabase/agent-skills/tree/main/skills/metabase-cli).
+- A Metabase instance to use for development.
+- [**Metabase CLI**](../installation-and-operation/metabase-cli.md): a command-line client (`mb`) your agent uses to create content directly in your Metabase. Use the CLI with the [`/metabase-cli` skill](https://github.com/metabase/agent-skills/tree/main/skills/metabase-cli).
 - [**Metabase Representation Format**](https://github.com/metabase/representations): the YAML schema and spec for every Metabase entity (questions, dashboards, collections, transforms, and so on). This is the format your content takes once you version it as files.
 - [**Remote Sync**](../installation-and-operation/remote-sync.md): push content from a Read-write Metabase into a git repo, and pull it into a Read-only Metabase in production.
-- A Metabase instance to use for development.
-
-## How content moves between files and Metabase
-
-Your agent creates content directly in Metabase through the CLI. To version that content as YAML files, so your team can review a diff and promote it to production, use [Remote Sync](../installation-and-operation/remote-sync.md): a Read-write development Metabase pushes your content to a git repo, and a Read-only production Metabase pulls it back in.
 
 ## Initial setup
 
@@ -48,7 +46,7 @@ Once you have these set up, you can step through the example workflow.
 
 1. Set up a Metabase instance to check your work before pushing changes to production. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
 
-2. Create an [API key](../people-and-groups/api-keys.md#create-an-api-key) in this development Metabase and assign it to the Admin group, so the agent can create content and work with remote sync.
+2. Create an [API key](../people-and-groups/api-keys.md#create-an-api-key) in this development Metabase and assign it to the Admin group, so the agent can create content and work with Remote Sync.
 
 3. We also recommend turning off the sample content and usage analytics, so they don't pollute the data model. If you're using a [docker compose file](../installation-and-operation/running-metabase-on-docker.md), add these [environment variables](../configuring-metabase/environment-variables.md):
 
@@ -83,7 +81,7 @@ Add the [`/metabase-cli` skill](https://github.com/metabase/agent-skills/tree/ma
 
 ## Example prompts
 
-These examples assume you've completed the [Initial setup](#initial-setup). Run the `/metabase-cli` skill and give the agent a structured request. The agent introspects your warehouse and builds the content directly in your development Metabase:
+These examples assume you've completed the [Initial setup](#initial-setup). Run the `/metabase-cli` skill and give the agent a structured request. The agent will run CLI commands to create the content directly in your development Metabase:
 
 ```
 /metabase-cli Create a new dashboard called "Support overview". Add questions showing total ticket volume, open tickets, and average satisfaction rating.
@@ -95,7 +93,7 @@ Or, depending on how capable your model is, try a more open-ended request:
 /metabase-cli Analyze our support data. Look at the tickets, customers, and interactions tables, and build a dashboard that gives an overview of our team's support workload.
 ```
 
-The agent creates the questions and dashboard for you. You don't need to write any CLI commands yourself. Just describe what you want.
+The agent writes the CLI commands and creates the questions and dashboard for you—just describe what you want.
 
 ## Example workflow
 
@@ -103,7 +101,7 @@ The agent creates the questions and dashboard for you. You don't need to write a
 
 In your development Metabase, configure [Remote Sync in Read-write mode](../installation-and-operation/remote-sync.md#setting-up-remote-sync) pointed at your repo.
 
-Set up remote sync in your production Metabase in Read-only mode pointed at the same repo.
+Set up Remote Sync in your production Metabase in Read-only mode pointed at the same repo.
 
 ### 2. Create a branch from the Metabase UI
 
