@@ -490,7 +490,15 @@
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
+(defmethod sql.qp/add-interval-honeysql-form :postgres-mbql5
+  [driver hsql-form amount unit]
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
+
+(defmethod sql.qp/current-datetime-honeysql-form :postgres-mbql5
   [driver]
   (h2x/current-datetime-honeysql-form driver))
 
