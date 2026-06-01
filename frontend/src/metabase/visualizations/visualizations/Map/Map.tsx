@@ -55,6 +55,19 @@ function MapComponent(props: VisualizationProps) {
   const { settings } = props;
   const type = settings["map.type"];
 
+  if (props.clicked || props.clickedViaMention) {
+    const activeClicked = props.clickedViaMention ?? props.clicked;
+    console.warn("[metabot data-point map] render", {
+      type,
+      pinType: settings["map.pin_type"],
+      region: settings["map.region"],
+      dimension: settings["map.dimension"],
+      clickedDimensions: activeClicked?.dimensions,
+      clickedOrigin: activeClicked?.origin,
+      clickedViaMention: props.clickedViaMention != null,
+    });
+  }
+
   if (isPinMapType(type)) {
     return <PinMap {...props} />;
   }
@@ -70,8 +83,17 @@ function arePropsEqual(prev: VisualizationProps, next: VisualizationProps) {
   const sameSize = prev.width === next.width && prev.height === next.height;
   const sameSeries = isSameSeries(prev.series, next.series);
   const sameIsEditing = prev.isEditing === next.isEditing;
+  const sameClicked = prev.clicked === next.clicked;
+  const sameClickedViaMention =
+    prev.clickedViaMention === next.clickedViaMention;
 
-  return sameSize && sameSeries && sameIsEditing;
+  return (
+    sameSize &&
+    sameSeries &&
+    sameIsEditing &&
+    sameClicked &&
+    sameClickedViaMention
+  );
 }
 
 const MAP_VIZ_DEFINITION: VisualizationDefinition = {

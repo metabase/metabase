@@ -123,6 +123,9 @@ type OnChangeCardAndRunOpts = {
 type VisualizationOwnProps = {
   actionButtons?: ReactNode | null;
   className?: string;
+  clicked?: ClickObject | null;
+  clickedViaMention?: ClickObject | null;
+  clickedViaMentionGroup?: ClickObject[] | null;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
   error?: ReactNode;
@@ -735,7 +738,13 @@ class Visualization extends PureComponent<
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
-    let { series, hovered, clicked } = this.state;
+    let { series, hovered } = this.state;
+    const clicked =
+      this.props.clicked !== undefined
+        ? this.props.clicked
+        : this.state.clicked;
+    const clickedViaMention = this.props.clickedViaMention;
+    const clickedViaMentionGroup = this.props.clickedViaMentionGroup;
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
@@ -832,6 +841,17 @@ class Visualization extends PureComponent<
     }
 
     const CardVisualization = visualization as VisualizationType;
+
+    if (clicked || clickedViaMention) {
+      console.warn("[metabot data-point viz] render", {
+        visualization: visualization?.identifier,
+        uiName: visualization?.getUiName?.(),
+        clickedDimensions: clicked?.dimensions,
+        clickedOrigin: clicked?.origin,
+        clickedViaMentionDimensions: clickedViaMention?.dimensions,
+        clickedViaMentionOrigin: clickedViaMention?.origin,
+      });
+    }
 
     const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
 
@@ -930,6 +950,8 @@ class Visualization extends PureComponent<
                     card={series[0].card} // convenience for single-series visualizations
                     canToggleSeriesVisibility={canToggleSeriesVisibility}
                     clicked={clicked}
+                    clickedViaMention={clickedViaMention}
+                    clickedViaMentionGroup={clickedViaMentionGroup}
                     data={series[0].data} // convenience for single-series visualizations
                     dashboard={dashboard}
                     dashcard={dashcard}

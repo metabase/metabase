@@ -1,6 +1,7 @@
 import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, isMatching, match } from "ts-pattern";
+import { t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -18,6 +19,8 @@ import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import { clone } from "metabase/utils/clone";
+import { uuid } from "metabase/utils/uuid";
 import type {
   JSONValue,
   MetabotAgentRequest,
@@ -64,6 +67,7 @@ export const {
   setSelectedDatabaseId,
   setPrompt,
   setConversationTitle,
+  rememberDataPointTarget,
   focusPromptInput,
   toolCallStart,
   toolCallEnd,
@@ -655,6 +659,69 @@ export const retryPrompt = createAsyncThunk<
         metabot_id,
       }),
     ).unwrap();
+  },
+);
+
+export const forkConversation = createAsyncThunk<
+  { agentId: MetabotAgentId },
+  { agentId: MetabotAgentId; messageId: string }
+>(
+  "metabase/metabot/forkConversation",
+  ({ agentId, messageId }, { dispatch, getState }) => {
+    const source = getMetabotConversation(getState(), agentId);
+
+    // Branch the conversation: keep every message up to and including the one
+    // the fork was triggered from, dropping anything after it.
+    const messageIndex = source.messages.findLastIndex(
+      (m) => m.id === messageId,
+    );
+    const forkedMessages =
+      messageIndex > -1
+        ? source.messages.slice(0, messageIndex + 1)
+        : source.messages;
+
+    // Truncate the model history to the same number of complete turns. Each
+    // user message begins a turn, so we keep history up to (but not including)
+    // the user entry that would start the next turn. Counting turns rather than
+    // matching ids is robust to id differences between the flat message list
+    // and the backend-provided history, and it guarantees we cut on a turn
+    // boundary so no tool call is left without its result.
+    const turnCount = forkedMessages.filter((m) => m.role === "user").length;
+    let userEntriesSeen = 0;
+    let historyCutoff = source.history.length;
+    for (let i = 0; i < source.history.length; i++) {
+      if (source.history[i].role === "user") {
+        userEntriesSeen += 1;
+        if (userEntriesSeen > turnCount) {
+          historyCutoff = i;
+          break;
+        }
+      }
+    }
+    const forkedHistory = source.history.slice(0, historyCutoff);
+
+    const conversationId = uuid();
+    const newAgentId: MetabotAgentId = `chat_${conversationId}`;
+    const sourceTitle = source.title;
+
+    dispatch(
+      hydrateChatConversation({
+        agentId: newAgentId,
+        conversationId,
+        title: t`${sourceTitle} (forked)`,
+        messages: clone(forkedMessages),
+        history: clone(forkedHistory),
+        state: clone(source.state),
+      }),
+    );
+
+    // Open the fork and keep the original chat available as a background tab.
+    if (source.visible) {
+      dispatch(setVisible({ agentId, visible: false }));
+    }
+    dispatch(setVisible({ agentId: newAgentId, visible: true }));
+
+    return { agentId: newAgentId };
   },
 );
 

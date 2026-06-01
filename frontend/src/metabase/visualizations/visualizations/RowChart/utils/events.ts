@@ -21,6 +21,7 @@ import type {
   MetricDatum,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
+import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type {
   DataPoint,
   StackedTooltipModel,
@@ -223,6 +224,85 @@ export const getLegendClickData = (
     dimensions,
     settings: visualizationSettings,
   };
+};
+
+const isSameColumn = (
+  left: DatasetColumn | null | undefined,
+  right: DatasetColumn | null | undefined,
+) => {
+  if (!left || !right) {
+    return false;
+  }
+
+  return (
+    left === right ||
+    (left.name != null && left.name === right.name) ||
+    (left.display_name != null && left.display_name === right.display_name)
+  );
+};
+
+const isSameClickValue = (left: unknown, right: unknown) => {
+  return left === right || String(left) === String(right);
+};
+
+export const getClickedData = (
+  groupedData: GroupedDataset,
+  series: Series<GroupedDatum, SeriesInfo>[],
+  chartColumns: CartesianChartColumns,
+  clicked: ClickObject | null | undefined,
+): HoveredData | null => {
+  if (!clicked) {
+    return null;
+  }
+
+  for (const [seriesIndex, currentSeries] of series.entries()) {
+    if (
+      clicked.column != null &&
+      !isSameColumn(currentSeries.seriesInfo?.metricColumn, clicked.column)
+    ) {
+      continue;
+    }
+
+    if ("breakout" in chartColumns) {
+      const breakoutDimension = clicked.dimensions?.find((dimension) =>
+        isSameColumn(dimension.column, chartColumns.breakout.column),
+      );
+
+      if (
+        breakoutDimension != null &&
+        !isSameClickValue(
+          breakoutDimension.value,
+          currentSeries.seriesInfo?.breakoutValue,
+        )
+      ) {
+        continue;
+      }
+    }
+
+    const datumIndex = groupedData.findIndex((datum) => {
+      if (
+        clicked.value !== undefined &&
+        !isSameClickValue(currentSeries.xAccessor(datum), clicked.value)
+      ) {
+        return false;
+      }
+
+      const dimension = clicked.dimensions?.find((dimension) =>
+        isSameColumn(dimension.column, chartColumns.dimension.column),
+      );
+
+      return (
+        dimension == null ||
+        isSameClickValue(datum.dimensionValue, dimension.value)
+      );
+    });
+
+    if (datumIndex >= 0) {
+      return { seriesIndex, datumIndex };
+    }
+  }
+
+  return null;
 };
 
 export const getStackedTooltipRows = <TDatum>(

@@ -5,8 +5,10 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { entityToUrlableModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { modelToUrl } from "metabase/urls";
 
+import type { DataPointMentionTarget } from "../../MetabotChat/data-point-mentions";
 import S from "../AIMarkdown.module.css";
 
 import { InternalLink } from "./InternalLink";
@@ -16,11 +18,15 @@ export const MarkdownSmartLink = ({
   id,
   name,
   model,
+  target,
+  targets,
 }: {
   onInternalLinkClick?: (href: string) => void;
-  id: number;
+  id?: number | string;
   name: string;
-  model: MetabaseProtocolEntityModel | "data-point";
+  model: MetabaseProtocolEntityModel | "data-point" | "data-selection";
+  target?: DataPointMentionTarget;
+  targets?: DataPointMentionTarget[];
 }) => {
   const getIcon = useGetIcon();
 
@@ -28,9 +34,37 @@ export const MarkdownSmartLink = ({
     .with("model", () => "dataset" as const)
     .with("question", () => "card" as const)
     .otherwise((x) => x);
-  const icon = getIcon({ model: entityModel });
+  const queryModel: SuggestionModel | null =
+    model === "data-point" || model === "data-selection"
+      ? null
+      : (entityModel as SuggestionModel);
 
-  const { entity, isLoading, error } = useEntityData(id, entityModel);
+  const { entity, isLoading, error } = useEntityData(
+    model === "data-point" ||
+      model === "data-selection" ||
+      typeof id !== "number"
+      ? null
+      : id,
+    queryModel,
+  );
+
+  if (model === "data-selection") {
+    return (
+      <button
+        type="button"
+        className={S.smartLink}
+        onClick={() => {
+          window.dispatchEvent(
+            new CustomEvent("metabot:data-selection-mention-click", {
+              detail: { id, targets },
+            }),
+          );
+        }}
+      >
+        <span className={S.smartLinkInner}>{name}</span>
+      </button>
+    );
+  }
 
   if (model === "data-point") {
     return (
@@ -38,21 +72,32 @@ export const MarkdownSmartLink = ({
         type="button"
         className={S.smartLink}
         onClick={() => {
+          console.warn("[metabot data-point] markdown link click", {
+            id,
+            name,
+            target,
+          });
           window.dispatchEvent(
             new CustomEvent("metabot:data-point-mention-click", {
-              detail: { id },
+              detail: { id, target },
             }),
           );
         }}
       >
-        <span className={S.smartLinkInner}>@{name}</span>
+        <span className={S.smartLinkInner}>{name}</span>
       </button>
     );
   }
 
+  if (!queryModel) {
+    return null;
+  }
+
+  const icon = getIcon({ model: queryModel });
+
   const entityUrl =
     !isLoading && !error && entity
-      ? (modelToUrl(entityToUrlableModel(entity, entityModel)) ?? "")
+      ? (modelToUrl(entityToUrlableModel(entity, queryModel)) ?? "")
       : ""; // fallback to linking to nothing
 
   return (

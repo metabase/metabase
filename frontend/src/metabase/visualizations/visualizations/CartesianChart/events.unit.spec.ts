@@ -11,6 +11,7 @@ import type {
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ClickObject } from "metabase-lib";
 import {
   createMockColumn,
   createMockDatetimeColumn,
@@ -20,6 +21,7 @@ import {
 
 import {
   canBrush,
+  getClickedDataPoint,
   getEventDimensions,
   getTimelineEventsForEvent,
 } from "./events";
@@ -348,6 +350,177 @@ describe("canBrush", () => {
     expect(
       canBrush(series, baseSettings, sumSubtotalColumn, undefined, onBrush),
     ).toBe(true);
+  });
+});
+
+describe("getClickedDataPoint", () => {
+  it("finds the Cartesian data point matching a clicked mention target", () => {
+    const countColumn = createMockColumn({
+      name: "count",
+      display_name: "Count",
+      source: "aggregation",
+      base_type: "type/BigInteger",
+      effective_type: "type/BigInteger",
+    });
+    const countKey = `${CARD_ID}:count`;
+    const seriesModel = createMockSeriesModel({
+      dataKey: countKey,
+      column: countColumn,
+      cardId: CARD_ID,
+    });
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel,
+      seriesModels: [seriesModel],
+      dataset: [
+        { [X_AXIS_DATA_KEY]: "2026-01-01T00:00:00", [countKey]: 100 },
+        { [X_AXIS_DATA_KEY]: "2026-02-01T00:00:00", [countKey]: 200 },
+      ],
+      columnByDataKey: { [countKey]: countColumn },
+    });
+    const clicked: ClickObject = {
+      cardId: CARD_ID,
+      value: 200,
+      column: countColumn,
+      dimensions: [{ column: createdAtColumn, value: "2026-02-01" }],
+    };
+
+    expect(getClickedDataPoint(chartModel, clicked)).toEqual({
+      seriesIndex: 0,
+      datumIndex: 1,
+    });
+  });
+
+  it("matches breakout series by breakout dimension", () => {
+    const sumKeyAffiliate = `${CARD_ID}:sum:Affiliate`;
+    const sumKeyDirect = `${CARD_ID}:sum:Direct`;
+    const affiliateSeries = createMockBreakoutSeriesModel({
+      dataKey: sumKeyAffiliate,
+      column: sumColumn,
+      cardId: CARD_ID,
+      breakoutColumn: sourceColumn,
+      breakoutValue: "Affiliate",
+    });
+    const directSeries = createMockBreakoutSeriesModel({
+      dataKey: sumKeyDirect,
+      column: sumColumn,
+      cardId: CARD_ID,
+      breakoutColumn: sourceColumn,
+      breakoutValue: "Direct",
+    });
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel,
+      seriesModels: [affiliateSeries, directSeries],
+      dataset: [
+        {
+          [X_AXIS_DATA_KEY]: "2027-10-01T00:00:00",
+          [sumKeyAffiliate]: 6720,
+          [sumKeyDirect]: 3500,
+        },
+      ],
+      columnByDataKey: {
+        [sumKeyAffiliate]: sumColumn,
+        [sumKeyDirect]: sumColumn,
+      },
+    });
+    const clicked: ClickObject = {
+      cardId: CARD_ID,
+      value: 3500,
+      column: sumColumn,
+      dimensions: [
+        { column: createdAtColumn, value: "2027-10-01" },
+        { column: sourceColumn, value: "Direct" },
+      ],
+    };
+
+    expect(getClickedDataPoint(chartModel, clicked)).toEqual({
+      seriesIndex: 1,
+      datumIndex: 0,
+    });
+  });
+
+  // Regression test for the multi-series highlight bug: in a pivoted breakout dataset there is
+  // one data key per breakout value for the SAME column (SOURCE:Affiliate, SOURCE:Direct, ...).
+  // Resolving the breakout dimension by column alone picked the FIRST matching key (Affiliate)
+  // and compared its value against the clicked value (Direct), so no datum matched and the chart
+  // failed to highlight. The breakout dimension must be skipped here since the series is already
+  // matched by its breakout value in `seriesMatchesClicked`.
+  it("matches the right breakout series when series share the breakout column key (pivoted dataset)", () => {
+    const sumKeyAffiliate = `${CARD_ID}:sum:Affiliate`;
+    const sumKeyDirect = `${CARD_ID}:sum:Direct`;
+    const sourceKeyAffiliate = `${CARD_ID}:SOURCE:Affiliate`;
+    const sourceKeyDirect = `${CARD_ID}:SOURCE:Direct`;
+    const affiliateSeries = createMockBreakoutSeriesModel({
+      dataKey: sumKeyAffiliate,
+      column: sumColumn,
+      cardId: CARD_ID,
+      breakoutColumn: sourceColumn,
+      breakoutValue: "Affiliate",
+    });
+    const directSeries = createMockBreakoutSeriesModel({
+      dataKey: sumKeyDirect,
+      column: sumColumn,
+      cardId: CARD_ID,
+      breakoutColumn: sourceColumn,
+      breakoutValue: "Direct",
+    });
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel,
+      seriesModels: [affiliateSeries, directSeries],
+      dataset: [
+        {
+          [X_AXIS_DATA_KEY]: "2027-10-01T00:00:00",
+          [sourceKeyAffiliate]: "Affiliate",
+          [sumKeyAffiliate]: 6720,
+          [sourceKeyDirect]: "Direct",
+          [sumKeyDirect]: 3500,
+        },
+      ],
+      columnByDataKey: {
+        [sourceKeyAffiliate]: sourceColumn,
+        [sumKeyAffiliate]: sumColumn,
+        [sourceKeyDirect]: sourceColumn,
+        [sumKeyDirect]: sumColumn,
+      },
+    });
+    const clicked: ClickObject = {
+      cardId: CARD_ID,
+      value: 3500,
+      column: sumColumn,
+      dimensions: [
+        { column: createdAtColumn, value: "2027-10-01" },
+        { column: sourceColumn, value: "Direct" },
+      ],
+    };
+
+    expect(getClickedDataPoint(chartModel, clicked)).toEqual({
+      seriesIndex: 1,
+      datumIndex: 0,
+    });
+  });
+
+  it("returns null when the clicked mention does not match the chart", () => {
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel,
+      seriesModels: [
+        createMockSeriesModel({
+          dataKey: `${CARD_ID}:sum`,
+          column: sumColumn,
+          cardId: CARD_ID,
+        }),
+      ],
+      dataset: [
+        { [X_AXIS_DATA_KEY]: "2027-10-01T00:00:00", [`${CARD_ID}:sum`]: 6720 },
+      ],
+      columnByDataKey: { [`${CARD_ID}:sum`]: sumColumn },
+    });
+    const clicked: ClickObject = {
+      cardId: CARD_ID,
+      value: 6720,
+      column: sumColumn,
+      dimensions: [{ column: createdAtColumn, value: "2027-11-01" }],
+    };
+
+    expect(getClickedDataPoint(chartModel, clicked)).toBeNull();
   });
 });
 

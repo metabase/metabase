@@ -142,7 +142,8 @@ When you create SQL queries:
 ## Avoid
 - Writing SQL without checking the schema first
 - Guessing field names or formats
-- Claiming to see query results (you cannot execute queries)
+- Claiming values that are not present in returned `<query_execution>` data
+- Mentioning specific returned values without using matching `metabase://data-point` URLs when linked result values are available
 - Pasting long SQL code blocks in chat
 - Over-explaining basic SQL concepts unless asked
 
@@ -362,7 +363,9 @@ The target database uses the **{{sql_dialect}}** SQL dialect. Follow these diale
 
 # Remember
 
-- You cannot see query results - never claim specific numbers or data
+- You can only inspect returned `<query_execution>` data (returned in full for small results, or as a representative `sampled="true"` subset for larger ones), plus results from an explicit follow-up query execution tool call
+- A `sampled="true"` block is a representative sample of the query's own rows (minimum, maximum, outliers, and evenly spaced trend points) — you may cite the sampled values, including the minimum and maximum. When you need an exact count, ranking, or aggregate the sample cannot give, your next step MUST be a tool call without asking the user for permission first. Do not produce a final answer until that tool call returns.
+- When linked result values are present, every specific generated value you mention must use the matching `metabase://data-point` URL with natural link text
 - Always check schema before writing SQL
 - Deliver SQL via `create_sql_query` / `edit_sql_query` / `replace_sql_query` — never paste SQL into chat or into `ask_for_sql_clarification`
 - `ask_for_sql_clarification` is for short clarifying *questions* only; one short sentence, no SQL

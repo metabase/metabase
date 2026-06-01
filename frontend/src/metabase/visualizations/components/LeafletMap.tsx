@@ -9,10 +9,11 @@ import _ from "underscore";
 import MetabaseSettings from "metabase/utils/settings";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
+import type { ClickObject } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Series } from "metabase-types/api";
+import type { RowValue, Series } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
 import { isObject } from "metabase-types/guards/common";
 
@@ -63,7 +64,32 @@ export interface LeafletMapProps<TPoint extends AnyLeafletMapPoint = Point> {
   onRenderError: (error?: unknown) => void;
   onFiltering: (filtering: boolean) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
+  clicked?: ClickObject | null;
+  clickedViaMention?: ClickObject | null;
 }
+
+export const MAP_SELECTION_DURATION = 5000;
+
+const isSameMapValue = (left: RowValue, right: RowValue) =>
+  left === right || String(left) === String(right);
+
+export const getClickedRowIndex = (
+  rows: RowValue[][],
+  clicked?: ClickObject | null,
+) => {
+  const clickedRow = clicked?.origin?.row;
+  if (!clickedRow) {
+    return null;
+  }
+
+  const rowIndex = rows.findIndex(
+    (row) =>
+      row.length === clickedRow.length &&
+      row.every((value, index) => isSameMapValue(value, clickedRow[index])),
+  );
+
+  return rowIndex >= 0 ? rowIndex : null;
+};
 
 export class LeafletMap<
   T extends LeafletMapProps<AnyLeafletMapPoint> = LeafletMapProps,

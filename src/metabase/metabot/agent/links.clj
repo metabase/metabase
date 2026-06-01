@@ -54,12 +54,15 @@
            codecs/bytes->b64-str)))
 
 (defn query-and-viz-link
-  "Generate a question link for query and chart type. Chart type"
-  [query chart-type]
-  (pseudo-card->link
-   {:dataset_query query
-    :displayIsLocked true
-    :display (keyword chart-type)}))
+  "Generate a question link for query and chart type."
+  ([query chart-type]
+   (query-and-viz-link query chart-type nil))
+  ([query chart-type title]
+   (pseudo-card->link
+    (cond-> {:dataset_query query
+             :displayIsLocked true
+             :display (keyword chart-type)}
+      (seq title) (assoc :name title)))))
 
 (defn- resolve-query-link
   "Resolve a metabase://query/{id} link to a /question# URL."
@@ -132,12 +135,31 @@
 
 ;;; Main Link Resolution
 
+(defn- resolve-data-point-link
+  "Validate a metabase://data-point link. `entity-id` is the data-point id, optionally followed by
+  `/{column-index}` (e.g. \"abc-123/2\"). When we have a `data-points-state` map, drop links whose id
+  we don't recognize — the LLM occasionally fabricates ids (e.g. building one from a row's ID value)
+  — by returning nil, so [[resolve-links]] renders them as plain label text instead of a dead link.
+  When `data-points-state` is nil (callers that don't track data points) the link passes through
+  unchanged, preserving the previous behavior."
+  [uri entity-id data-points-state]
+  (if (nil? data-points-state)
+    uri
+    (let [data-point-id (first (str/split entity-id #"/" 2))]
+      (if (or (contains? data-points-state data-point-id)
+              (contains? data-points-state (keyword data-point-id)))
+        uri
+        (do
+          (log/warn "Dropping data-point link with unknown id" {:data-point-id data-point-id})
+          nil)))))
+
 (defn resolve-metabase-uri
   "Resolve a metabase:// URI to a proper Metabase URL.
 
   Supported URI formats:
   - metabase://query/{uuid} - Links to query results
   - metabase://chart/{uuid} - Links to chart visualizations
+  - metabase://data-point/{uuid} - Links to generated chart data point targets
   - metabase://question/{uuid} - Links to saved questions
   - metabase://model/{id} - Links to models
   - metabase://metric/{id} - Links to metrics
@@ -145,19 +167,25 @@
   - metabase://table/{id} - Links to tables (as questions)
   - metabase://transform/{id} - Links to transforms
 
+  When `data-points-state` is supplied, metabase://data-point links are validated against it and
+  dropped (resolved to nil) when the id is unknown. Omitting it leaves data-point links untouched.
+
   Returns the resolved URL or nil if resolution fails."
-  [uri queries-state charts-state]
-  (when (and uri (str/starts-with? uri "metabase://"))
-    (let [path (subs uri 11) ; Remove "metabase://"
-          [entity-type entity-id] (str/split path #"/" 2)]
-      (when-not (or (str/blank? entity-type) (str/blank? entity-id))
-        (case entity-type
-          "query"    (resolve-query-link entity-id queries-state)
-          "chart"    (resolve-chart-link entity-id charts-state queries-state)
-          "question" (resolve-entity-link "question" entity-id)
-          "table"    (resolve-table-link entity-id)
-          ;; For other types, use simple path mapping
-          (resolve-entity-link entity-type entity-id))))))
+  ([uri queries-state charts-state]
+   (resolve-metabase-uri uri queries-state charts-state nil))
+  ([uri queries-state charts-state data-points-state]
+   (when (and uri (str/starts-with? uri "metabase://"))
+     (let [path (subs uri 11) ; Remove "metabase://"
+           [entity-type entity-id] (str/split path #"/" 2)]
+       (when-not (or (str/blank? entity-type) (str/blank? entity-id))
+         (case entity-type
+           "query"    (resolve-query-link entity-id queries-state)
+           "chart"    (resolve-chart-link entity-id charts-state queries-state)
+           "data-point" (resolve-data-point-link uri entity-id data-points-state)
+           "question" (resolve-entity-link "question" entity-id)
+           "table"    (resolve-table-link entity-id)
+           ;; For other types, use simple path mapping
+           (resolve-entity-link entity-type entity-id)))))))
 
 ;;; Markdown Link Processing
 
@@ -176,20 +204,25 @@
   Every successful resolution is recorded so that resolved URLs can later be
   inverted back to metabase:// URIs (see [[invert-links]]).
 
+  When `data-points-state` is supplied, metabase://data-point links with an unknown id are dropped to
+  plain label text (see [[resolve-data-point-link]]).
+
   Returns the text with all resolvable links replaced."
-  [text queries-state charts-state link-registry-atom]
-  (when (string? text)
-    (str/replace text link-pattern
-                 (fn [[_ link-text url]]
-                   (if (str/starts-with? url "metabase://")
-                     (if-let [resolved (resolve-metabase-uri url queries-state charts-state)]
-                       (do
-                         (swap! link-registry-atom assoc resolved url)
-                         (str "[" link-text "](" resolved ")"))
-                       (do
-                         (log/warn "Failed to resolve link URL" {:url url})
-                         link-text))
-                     (str "[" link-text "](" url ")"))))))
+  ([text queries-state charts-state link-registry-atom]
+   (resolve-links text queries-state charts-state link-registry-atom nil))
+  ([text queries-state charts-state link-registry-atom data-points-state]
+   (when (string? text)
+     (str/replace text link-pattern
+                  (fn [[_ link-text url]]
+                    (if (str/starts-with? url "metabase://")
+                      (if-let [resolved (resolve-metabase-uri url queries-state charts-state data-points-state)]
+                        (do
+                          (swap! link-registry-atom assoc resolved url)
+                          (str "[" link-text "](" resolved ")"))
+                        (do
+                          (log/warn "Failed to resolve link URL" {:url url})
+                          link-text))
+                      (str "[" link-text "](" url ")")))))))
 
 ;;; Link Inversion
 

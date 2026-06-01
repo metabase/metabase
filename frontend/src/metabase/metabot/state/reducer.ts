@@ -267,6 +267,20 @@ export const metabot = createSlice({
         state.title = action.payload.title;
       },
     ),
+    rememberDataPointTarget: convoReducer(
+      (
+        state,
+        action: ConvoPayloadAction<{ id: string; target: Record<string, any> }>,
+      ) => {
+        state.state = {
+          ...state.state,
+          "data-points": {
+            ...(state.state?.["data-points"] ?? state.state?.data_points ?? {}),
+            [action.payload.id]: action.payload.target,
+          },
+        };
+      },
+    ),
     focusPromptInput: convoReducer((state) => {
       state.promptFocusToken += 1;
     }),

@@ -98,6 +98,10 @@
   position: relative;
 }
 
+.selectedHeaderCell [data-testid="header-cell"] {
+  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 80%);
+}
+
 .bodyCell {
   position: relative;
   cursor: pointer;

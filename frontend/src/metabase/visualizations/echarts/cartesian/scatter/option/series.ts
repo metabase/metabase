@@ -77,6 +77,16 @@ export function buildEChartsScatterSeries(
     emphasis: {
       focus: "series", // there is no blur for single series scatter plot
     },
+    selectedMode: "single",
+    select: {
+      itemStyle: {
+        borderColor: renderingContext.getColor("brand"),
+        borderWidth: 3,
+        opacity: 1,
+        shadowBlur: 4,
+        shadowColor: renderingContext.getColor("background-primary"),
+      },
+    },
     blur: {
       itemStyle: {
         opacity: CHART_STYLE.opacity.blur,

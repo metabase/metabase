@@ -1,12 +1,13 @@
 (ns metabase.metabot.tools.charts
   "Chart tool wrappers."
   (:require
-   [medley.core :as m]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
+   [metabase.metabot.tools.charts.select :as select-chart-tools]
+   [metabase.metabot.tools.query-results :as query-results]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -31,7 +32,17 @@
    [:data_source [:map {:closed true}
                   [:query_id :string]]]
    [:viz_settings [:map {:closed true}
-                   [:chart_type chart-type-enum]]]])
+                   [:chart_type chart-type-enum]
+                   [:name {:optional true
+                           :description "A concise, user-facing name for the generated chart."}
+                    [:maybe :string]]]]])
+
+(defn- chart->adhoc-viz-part
+  [{:keys [query chart-url chart-name chart-type]}]
+  (streaming/adhoc-viz-part {:query query
+                             :link chart-url
+                             :title chart-name
+                             :display (name chart-type)}))
 
 (mu/defn ^{:tool-name "create_chart"
            :scope     scope/agent-viz-create}
@@ -44,12 +55,12 @@
     (let [result     (create-chart-tools/create-chart
                       {:query-id      (get data_source :query_id)
                        :chart-type    (keyword (get viz_settings :chart_type))
+                       :title         (get viz_settings :name)
                        :queries-state (shared/current-queries-state)})
-          reactions  (:reactions result)
-          structured (assoc (dissoc result :reactions) :result-type :chart)]
-      (-> {:output            (format-chart-output structured)
-           :structured-output structured}
-          (m/assoc-some :reactions (not-empty reactions))))
+          structured (assoc result :result-type :chart)]
+      {:output            (format-chart-output structured)
+       :structured-output structured
+       :data-parts        [(chart->adhoc-viz-part result)]})
     (catch Exception e
       (log/error e "Error creating chart")
       (if (:agent-error? (ex-data e))
@@ -60,7 +71,10 @@
   [:map {:closed true}
    [:chart_id :string]
    [:new_viz_settings [:map {:closed true}
-                       [:chart_type chart-type-enum]]]])
+                       [:chart_type chart-type-enum]
+                       [:name {:optional true
+                               :description "A concise, user-facing name for the edited chart."}
+                        [:maybe :string]]]]])
 
 (mu/defn ^{:tool-name "edit_chart"
            :scope     scope/agent-viz-edit}
@@ -79,6 +93,7 @@
           (edit-chart-tools/edit-chart
            {:chart-id chart_id
             :new-chart-type new-viz
+            :new-chart-name (get new_viz_settings :name)
             :charts-state (shared/current-charts-state)})
 
           structured (assoc result :result-type :chart)]
@@ -88,13 +103,51 @@
                new-chart-data))
       {:output (format-chart-output structured)
        :structured-output structured
-       :data-parts [(streaming/navigate-to-part
-                     (links/pseudo-card->link
-                      {:dataset_query query
-                       :display new-viz
-                       :displayIsLocked true}))]})
+       :data-parts [(streaming/adhoc-viz-part
+                     {:query query
+                      :link (links/pseudo-card->link
+                             {:dataset_query query
+                              :name (:chart-name result)
+                              :display new-viz
+                              :displayIsLocked true})
+                      :title (:chart-name result)
+                      :display (name new-viz)})]})
     (catch Exception e
       (log/error e "Error editing chart")
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))}))))
+
+(def ^:private select-chart-points-schema
+  [:map {:closed true}
+   [:reasoning {:optional true} :string]
+   [:chart_id {:optional true} [:maybe :string]]
+   [:query_id {:optional true} [:maybe :string]]
+   [:filter [:sequential :any]]
+   [:label {:optional true} [:maybe :string]]])
+
+(mu/defn ^{:tool-name "select_chart_points"
+           :scope     scope/agent-query-execute}
+  select-chart-points-tool
+  "Select a subset of an existing chart's data points with a filter, returning a single highlightable
+  data-selection link that references all matching points."
+  [{:keys [chart_id query_id filter label]} :- select-chart-points-schema]
+  (try
+    (let [query   (select-chart-tools/resolve-selection-query
+                   (shared/current-charts-state) (shared/current-queries-state) chart_id query_id)
+          summary (query-results/execute-query-full query)]
+      (if (= :failed (:status summary))
+        {:output (str "Failed to select chart points: " (or (:error summary) "query execution failed"))}
+        (let [targets (select-chart-tools/select-targets summary filter)]
+          (if (empty? targets)
+            {:output (str "No chart points matched the selection filter. Adjust the filter and try "
+                          "again, or reference individual points with their metabase://data-point URLs.")}
+            (select-chart-tools/format-selection-result
+             {:selection-id (str (random-uuid))
+              :targets      targets
+              :label        label})))))
+    (catch Exception e
+      (log/error e "Error selecting chart points")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to select chart points: " (or (ex-message e) "Unknown error"))}))))

@@ -9,6 +9,7 @@
   State structure:
   {:queries {query-id query-map}
    :charts {chart-id chart-map}
+   :data-points {data-point-id target-map}
    :todos [...]
    :transforms {...}}"
   ([messages state]
@@ -17,7 +18,14 @@
    {:input-messages messages
     :steps-taken []
     :context context
-    :state (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}})}))
+    :state (or state
+               {:queries         {}
+                :charts          {}
+                :data-points     {}
+                :data-selections {}
+                :todos           []
+                :transforms      {}
+                :link-registry   {}})}))
 
 (defn add-step
   "Add a completed agent step to memory.
@@ -103,6 +111,19 @@
   [memory]
   (get-in memory [:state :charts] {}))
 
+;;; Data Point Management
+
+(defn remember-data-points
+  "Store generated chart data point targets in memory state by ID."
+  [memory data-points]
+  (update-in memory [:state :data-points] merge data-points))
+
+(defn remember-data-selections
+  "Store generated multi-point chart selections in memory state by selection ID.
+  Each selection is `{:targets [target...] :count n :label ...}`."
+  [memory data-selections]
+  (update-in memory [:state :data-selections] merge data-selections))
+
 ;;; Transform Management
 
 (defn remember-transform
@@ -155,6 +176,20 @@
   [memory state]
   (if-let [charts (:charts state)]
     (reduce-kv store-chart memory charts)
+    memory))
+
+(defn load-data-points-from-state
+  "Load data point targets from incoming state into memory."
+  [memory state]
+  (if-let [data-points (:data-points state)]
+    (remember-data-points memory data-points)
+    memory))
+
+(defn load-data-selections-from-state
+  "Load multi-point chart selections from incoming state into memory."
+  [memory state]
+  (if-let [data-selections (:data-selections state)]
+    (remember-data-selections memory data-selections)
     memory))
 
 (defn load-transforms-from-state

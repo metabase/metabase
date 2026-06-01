@@ -35,6 +35,11 @@ export const METABOT_PROFILES = {
       return t`SQL`;
     },
   },
+  nlq: {
+    get label() {
+      return t`Natural language query`;
+    },
+  },
   // deprecated
   slack: {
     get label() {

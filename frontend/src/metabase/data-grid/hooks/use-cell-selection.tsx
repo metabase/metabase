@@ -318,6 +318,16 @@ export const useCellSelection = ({
     [onChangeSelection],
   );
 
+  const setCellSelection = useCallback(
+    (cells: CellId[], focusedCell: CellId | null = null) => {
+      setSelectedCells(cells);
+      setFocusedCell(focusedCell);
+      setSelectedStartCell(cells[0] ?? null);
+      onChangeSelection?.(cells);
+    },
+    [onChangeSelection],
+  );
+
   // Attach keyboard handlers to window when we have selection or focused cell
   useEffect(() => {
     if (!isEnabled || selectedCells.length === 0) {
@@ -416,6 +426,7 @@ export const useCellSelection = ({
       isEnabled,
       selectedCells,
       focusedCell,
+      setCellSelection,
       isCellSelected,
       isCellFocused,
       isRowSelected,
@@ -436,6 +447,7 @@ export const useCellSelection = ({
       isCellSelected,
       isCellFocused,
       isRowSelected,
+      setCellSelection,
       selectedCells,
       focusedCell,
       isEnabled,

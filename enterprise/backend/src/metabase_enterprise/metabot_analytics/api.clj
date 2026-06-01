@@ -108,6 +108,7 @@
    [:total_tokens    ms/IntGreaterThanOrEqualToZero]
    [:profile_id      [:maybe :string]]
    [:slack_permalink [:maybe :string]]
+   [:state           [:maybe :map]]
    [:chat_messages   [:sequential :map]]
    [:queries         [:sequential GeneratedQuery]]
    [:search_count    ms/IntGreaterThanOrEqualToZero]

@@ -5,6 +5,9 @@ Edit an existing SQL query by applying targeted string replacements. This update
 - All edits are applied atomically: either all succeed or none are applied.
 - Copy `old_string` exactly, including whitespace, tabs, and newlines.
 
+After the edit succeeds, Metabase executes the updated query and includes a `<query_execution>` block in the tool result. Use those rows and columns to verify the edit and summarize the actual data. When `<query_execution>` is marked `sampled="true"`, it is a representative sample of the query's own rows (minimum, maximum, outliers, and evenly spaced trend points) — every sampled row is a real point on the chart the user sees, so you may cite the sampled values, including the minimum and maximum. Only run a follow-up query when you need an exact count, ranking, or aggregate the sample cannot give; do it without asking permission first and do not produce a final answer until it returns.
+The `<query_execution>` block may include result values linked with `metabase://data-point` URLs. Whenever you mention a specific value from the updated query or chart, use the matching URL and choose natural link text for your answer.
+
 **Examples:**
 - Targeted edit: `{"edits": [{"old_string": "SELECT *", "new_string": "SELECT id, name"}]}`
 - Global rename: `{"edits": [{"old_string": "users", "new_string": "customers", "replace_all": true}]}`

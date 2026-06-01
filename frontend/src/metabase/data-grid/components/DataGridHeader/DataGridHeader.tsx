@@ -5,7 +5,7 @@ import type React from "react";
 import { HEADER_BASE_HEIGHT } from "metabase/data-grid/constants";
 import { getColumnPositionStyles } from "metabase/data-grid/utils/stylings";
 
-import type { DataGridColumnType } from "../../types";
+import type { DataGridColumnType, DataGridSelection } from "../../types";
 import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
 import { SortableHeader } from "../SortableHeader/SortableHeader";
@@ -13,6 +13,7 @@ import { SortableHeader } from "../SortableHeader/SortableHeader";
 export interface DataGridHeaderProps<TData> extends DataGridStylesProps {
   headerGroup: HeaderGroup<TData>;
   columns: DataGridColumnType<TData>[];
+  selection: DataGridSelection;
   backgroundColor?: string;
   isColumnReorderingDisabled?: boolean;
   onHeaderCellClick?: (
@@ -24,6 +25,7 @@ export interface DataGridHeaderProps<TData> extends DataGridStylesProps {
 export const DataGridHeader = <TData,>({
   headerGroup,
   columns,
+  selection,
   backgroundColor,
   isColumnReorderingDisabled,
   onHeaderCellClick,
@@ -51,13 +53,20 @@ export const DataGridHeader = <TData,>({
         );
         const isUtilityColumn =
           header.column.columnDef.meta?.isUtilityColumn === true;
+        const isSelected =
+          !isUtilityColumn &&
+          selection.selectedCells.some(
+            (cell) => cell.columnId === column.origin.id,
+          );
         const columnPositionStyles = getColumnPositionStyles(column);
 
         const headerContent = isUtilityColumn ? (
           headerCell
         ) : (
           <SortableHeader
-            className={cx(S.headerCell, classNames?.headerCell)}
+            className={cx(S.headerCell, classNames?.headerCell, {
+              [S.selectedHeaderCell]: isSelected,
+            })}
             style={styles?.headerCell}
             isColumnReorderingDisabled={isColumnReorderingDisabled}
             header={header}
@@ -73,6 +82,7 @@ export const DataGridHeader = <TData,>({
             role="columnheader"
             style={columnPositionStyles}
             data-header-id={header.id}
+            data-column-selected={isSelected ? "true" : undefined}
           >
             {headerContent}
           </div>

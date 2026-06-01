@@ -1,7 +1,7 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import { forwardRef, memo, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -39,6 +39,10 @@ import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
+import type {
+  DataPointMentionTarget,
+  DataSelection,
+} from "./data-point-mentions";
 
 const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
@@ -46,7 +50,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "transform_suggestion" }, () => true)
     .with({ type: "navigate_to" }, () => true)
     .with({ type: "code_edit" }, () => true)
-    .with({ type: "adhoc_viz" }, () => false)
+    .with({ type: "adhoc_viz" }, () => true)
     .with({ type: "static_viz" }, () => false)
     .exhaustive();
 
@@ -172,7 +176,10 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   debug: boolean;
   readonly: boolean;
   onRetry?: (messageId: string) => void;
+  onFork?: (messageId: string) => void;
   getCopyText: () => string;
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+  dataSelections?: Record<string, DataSelection | undefined>;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
@@ -185,7 +192,10 @@ export const AgentMessage = ({
   debug,
   readonly,
   getCopyText,
+  dataPointTargets,
+  dataSelections,
   onRetry,
+  onFork,
   setFeedbackMessage,
   submittedFeedback,
   onInternalLinkClick,
@@ -203,6 +213,8 @@ export const AgentMessage = ({
           <AIMarkdown
             className={Styles.message}
             onInternalLinkClick={onInternalLinkClick}
+            dataPointTargets={dataPointTargets}
+            dataSelections={dataSelections}
           >
             {m.message}
           </AIMarkdown>
@@ -213,6 +225,7 @@ export const AgentMessage = ({
             message={m}
             debug={debug}
             readonly={readonly}
+            dataPointTargets={dataPointTargets}
           />
         ))
         .with({ type: "tool_call" }, (m) => (
@@ -270,6 +283,17 @@ export const AgentMessage = ({
                 data-testid="metabot-chat-message-retry"
               >
                 <Icon name="revert" size="1rem" />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {onFork && (
+            <Tooltip label={t`Fork chat`}>
+              <ActionIcon
+                onClick={() => onFork(message.id)}
+                h="sm"
+                data-testid="metabot-chat-message-fork"
+              >
+                <Icon name="git_branch" size="1rem" />
               </ActionIcon>
             </Tooltip>
           )}
@@ -411,23 +435,29 @@ export const getFullAgentReply = (
   return messages.slice(firstMessageIndex, lastMessageIndex + 1);
 };
 
-export const Messages = ({
+export const Messages = memo(function Messages({
   agentId,
   messages,
   onRetryMessage,
+  onForkMessage,
   isDoingScience,
   debug,
   readonly = false,
   onInternalLinkClick,
+  dataPointTargets,
+  dataSelections,
 }: {
   agentId: MetabotAgentId;
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
+  onForkMessage?: (messageId: string) => void;
   isDoingScience: boolean;
   debug: boolean;
   readonly?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
-}) => {
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+  dataSelections?: Record<string, DataSelection | undefined>;
+}) {
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
     [debug, messages],
@@ -488,7 +518,10 @@ export const Messages = ({
             debug={debug}
             readonly={readonly}
             onRetry={onRetryMessage}
+            onFork={onForkMessage}
             getCopyText={() => getAgentReplyCopyText(message.id)}
+            dataPointTargets={dataPointTargets}
+            dataSelections={dataSelections}
             setFeedbackMessage={(data) =>
               setFeedbackState((prev) => ({ ...prev, modal: data }))
             }
@@ -521,4 +554,4 @@ export const Messages = ({
       )}
     </>
   );
-};
+});

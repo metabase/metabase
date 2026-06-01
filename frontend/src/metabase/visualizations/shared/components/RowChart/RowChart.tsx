@@ -59,6 +59,7 @@ export interface RowChartProps<TDatum> {
   style?: React.CSSProperties;
 
   hoveredData?: HoveredData | null;
+  selectedData?: HoveredData | null;
   onClick?: (event: React.MouseEvent, bar: BarData<TDatum, SeriesInfo>) => void;
   onHover?: (
     event: React.MouseEvent,
@@ -101,6 +102,7 @@ export const RowChart = <TDatum,>({
   style,
 
   hoveredData,
+  selectedData,
   onClick,
   onHover,
 }: RowChartProps<TDatum>) => {
@@ -267,6 +269,7 @@ export const RowChart = <TDatum,>({
       yScale={yScale}
       goal={rowChartGoal}
       hoveredData={hoveredData}
+      selectedData={selectedData}
       yTickFormatter={yTickFormatter}
       xTickFormatter={xTickFormatter}
       labelsFormatter={labelsFormatter}

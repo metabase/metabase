@@ -29,7 +29,10 @@
               (is (str/includes? output "type=\"sql\""))
               (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions contain actual query ID link"
-              (is (str/includes? output (str "metabase://query/" query-id))))))))))
+              (is (str/includes? output (str "metabase://query/" query-id))))
+            (testing "returns an ad-hoc visualization data part"
+              (is (= "adhoc_viz" (-> result :data-parts first :data-type)))
+              (is (= "SQL query results" (-> result :data-parts first :data :title))))))))))
 
 (deftest create-sql-query-validation-error-output-test
   (testing "create_sql_query output contains appropriate info on validation failure"
@@ -70,7 +73,9 @@
                 (is (str/includes? output (str "metabase://query/" query-id))))
               (testing "instructions mention error-analysis flow"
                 (is (str/includes? output "If the returned SQL query is NOT correct"))
-                (is (str/includes? output "Make further refinements using this tool again"))))))))))
+                (is (str/includes? output "Make further refinements using this tool again")))
+              (testing "returns an ad-hoc visualization data part"
+                (is (= "adhoc_viz" (-> result :data-parts first :data-type)))))))))))
 
 (deftest edit-sql-query-validation-error-output-test
   (testing "edit_sql_query output contains appropriate info on validation failure"
@@ -117,7 +122,9 @@
               (testing "instructions reference the query ID"
                 (is (str/includes? output (str "metabase://query/" query-id))))
               (testing "instructions mention edit_sql_query as alternative"
-                (is (str/includes? output "this tool or edit_sql_query again"))))))))))
+                (is (str/includes? output "this tool or edit_sql_query again")))
+              (testing "returns an ad-hoc visualization data part"
+                (is (= "adhoc_viz" (-> result :data-parts first :data-type)))))))))))
 
 (deftest replace-sql-query-validtion-error-output-test
   (testing "replace_sql_query output contains appropriate info on validation failure"

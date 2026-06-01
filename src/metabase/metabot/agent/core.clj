@@ -145,11 +145,13 @@
   [:sequential ::message])
 
 (mr/def ::state
-  "Agent state containing queries, charts, chart-configs, todos, transforms, and link-registry."
+  "Agent state containing queries, charts, chart-configs, data-points, todos, transforms, and link-registry."
   [:map
    [:queries {:optional true} [:map-of [:or :string :keyword] :map]]
    [:charts {:optional true} [:map-of [:or :string :keyword] :map]]
    [:chart-configs {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:data-points {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:data-selections {:optional true} [:map-of [:or :string :keyword] :map]]
    [:todos {:optional true} [:sequential :map]]
    [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]
    [:link-registry {:optional true} [:map-of [:or :string :keyword] :string]]])
@@ -242,7 +244,8 @@
                    :tools     (vec tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
                                          (get-in memory [:state :charts] {})
-                                         link-registry-atom)
+                                         link-registry-atom
+                                         (get-in memory [:state :data-points] {}))
               (self/call-llm model (:content system-msg) input-parts tools tracking-opts llm-opts))))
 
 ;;; Memory management
@@ -271,12 +274,35 @@
          (map #(get-structured-output (:result %)))
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
-    (fn [mem {:keys [chart-id chart-type query]}]
+    (fn [mem {:keys [chart-id chart-name chart-type query]}]
       (memory/store-chart mem
                           chart-id
-                          {:chart_id chart-id
-                           :queries [query]
-                           :visualization_settings {:chart_type chart-type}})))
+                          (cond-> {:chart_id chart-id
+                                   :queries [query]
+                                   :visualization_settings {:chart_type chart-type}}
+                            chart-name (assoc :name chart-name)))))
+   memory
+   parts))
+
+(defn- extract-data-points
+  "Extract and store data point targets from tool outputs."
+  [memory parts]
+  (transduce
+   (comp (filter #(= :tool-output (:type %)))
+         (map #(get-structured-output (:result %)))
+         (keep :data-points))
+   (completing memory/remember-data-points)
+   memory
+   parts))
+
+(defn- extract-data-selections
+  "Extract and store multi-point chart selections from tool outputs."
+  [memory parts]
+  (transduce
+   (comp (filter #(= :tool-output (:type %)))
+         (map #(get-structured-output (:result %)))
+         (keep :data-selections))
+   (completing memory/remember-data-selections)
    memory
    parts))
 
@@ -286,7 +312,9 @@
   (-> memory
       (memory/add-step parts)
       (extract-queries parts)
-      (extract-charts parts)))
+      (extract-charts parts)
+      (extract-data-points parts)
+      (extract-data-selections parts)))
 
 ;;; Context seeding
 
@@ -433,6 +461,8 @@
         memory       (-> (memory/initialize messages seeded context)
                          (memory/load-queries-from-state seeded)
                          (memory/load-charts-from-state seeded)
+                         (memory/load-data-points-from-state seeded)
+                         (memory/load-data-selections-from-state seeded)
                          (memory/load-transforms-from-state seeded)
                          (memory/load-todos-from-state seeded)
                          (memory/load-link-registry-from-state seeded))

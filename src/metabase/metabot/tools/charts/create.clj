@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -15,8 +16,10 @@
 
 (defn- format-chart-for-llm
   "Format chart data as XML for LLM consumption."
-  [{:keys [chart-id query-id chart-type]}]
+  [{:keys [chart-id query-id chart-type chart-name]}]
   (str "<chart id=\"" chart-id "\">\n"
+       (when (seq chart-name)
+         (str "<name>" chart-name "</name>\n"))
        "<query-id>" query-id "</query-id>\n"
        "<visualization>{\"chart_type\": \"" (name chart-type) "\"}</visualization>\n"
        "</chart>"))
@@ -25,6 +28,12 @@
   "Format a metabase:// link to the chart."
   [chart-id]
   (str "metabase://chart/" chart-id))
+
+(defn- default-chart-name
+  [chart-type]
+  (if (= :table chart-type)
+    "Generated table"
+    (str "Generated " (name chart-type) " chart")))
 
 (defn create-chart
   "Create a chart from a query.
@@ -40,8 +49,8 @@
   - :chart-link - Metabase link to the chart
   - :chart-type - Type of chart created
   - :query-id - ID of the source query
-  - :reactions - Navigation action to show the chart"
-  [{:keys [query-id chart-type queries-state]}]
+  - :chart-url - URL for rendering the ad-hoc chart"
+  [{:keys [query-id chart-type queries-state title]}]
   (log/info "Creating chart" {:query-id query-id
                               :chart-type chart-type
                               :available-queries (keys queries-state)})
@@ -63,10 +72,14 @@
                       {:agent-error? true
                        :query-id query-id
                        :available-queries (keys queries-state)})))
-    ;; Create the chart and generate navigation URL
+
+    ;; Create the chart and generate a renderable ad-hoc question URL.
     (let [chart-id (str (random-uuid))
-          results-url (links/query-and-viz-link query chart-type)
+          chart-name (or (not-empty (some-> title str/trim))
+                         (default-chart-name chart-type))
+          results-url (links/query-and-viz-link query chart-type chart-name)
           chart-data {:chart-id chart-id
+                      :chart-name chart-name
                       :query-id query-id
                       :chart-type chart-type}]
       (log/info "Created chart" {:chart-id chart-id
@@ -75,9 +88,22 @@
       {:chart-id chart-id
        :chart-content (format-chart-for-llm chart-data)
        :chart-link (format-chart-link chart-id)
+       :chart-name chart-name
+       :chart-url results-url
        :chart-type chart-type
+       :query query
        :query-id query-id
        :instructions (str "Chart created successfully. The user is now viewing the chart.\n"
-                          "Reference the chart using: [Chart](" (format-chart-link chart-id) ") "
-                          "where 'Chart' is a meaningful description.")
-       :reactions [{:type :metabot.reaction/redirect :url results-url}]})))
+                          "Use the <query_execution> block in this tool result to inspect the executed chart data, "
+                          "and proactively mention one concrete observation from the data. "
+                          instructions/distribution-guidance " "
+                          "When <query_execution> is marked sampled=\"true\", it is a representative sample of the "
+                          "chart's own rows (minimum, maximum, outliers, and evenly spaced trend points); every "
+                          "sampled row is a real point on the user's chart, so you may cite the sampled values, "
+                          "including the minimum and maximum. Only run a follow-up query (for notebook queries, "
+                          "execute_notebook_query_silently) when you need an exact count, ranking, or aggregate the "
+                          "sample cannot give; do it without asking permission first and do not produce a final "
+                          "answer until it returns.\n"
+                          "When mentioning a specific value from the chart, use the matching metabase://data-point URL "
+                          "from the linked result value, and choose natural link text for your answer.\n"
+                          "Reference the chart using: [" chart-name "](" (format-chart-link chart-id) ").")})))

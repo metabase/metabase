@@ -49,6 +49,7 @@ import type {
 } from "metabase/visualizations/types";
 import {
   getClickData,
+  getClickedData,
   getHoverData,
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
@@ -121,6 +122,8 @@ const RowChartVisualization = ({
   height: outerHeight,
   getHref,
   hideLegend,
+  clicked,
+  clickedViaMention,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -247,6 +250,14 @@ const RowChartVisualization = ({
           datumIndex: hovered?.datumIndex,
         }
       : null;
+  const clickedData = useMemo(
+    () => getClickedData(groupedData, series, chartColumns, clicked),
+    [groupedData, series, chartColumns, clicked],
+  );
+  const clickedViaMentionData = useMemo(
+    () => getClickedData(groupedData, series, chartColumns, clickedViaMention),
+    [groupedData, series, chartColumns, clickedViaMention],
+  );
 
   const hasTitle = showTitle && settings["card.title"];
   const title = settings["card.title"] || card.name;
@@ -321,7 +332,8 @@ const RowChartVisualization = ({
           tickFormatters={tickFormatters}
           labelsFormatter={labelsFormatter}
           measureTextWidth={textMeasurer}
-          hoveredData={hoverData}
+          hoveredData={clickedViaMentionData ?? clickedData ?? hoverData}
+          selectedData={clickedViaMentionData}
           onClick={handleClick}
           onHover={handleHover}
           xLabel={xLabel}

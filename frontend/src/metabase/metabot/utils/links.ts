@@ -1,8 +1,8 @@
 export const METABSE_PROTOCOL_LINK =
-  /metabase:\/\/(?<model>[^\/]+)\/(?<id>\d+)/;
+  /metabase:\/\/(?<model>[^\/]+)\/(?<id>[^\/?#)\s]+)/;
 
 export const METABSE_PROTOCOL_MD_LINK =
-  /\[(?<name>[^\]]+)\]\(metabase:\/\/(?<model>[^\/]+)\/(?<id>\d+)\)/;
+  /\[(?<name>[^\]]+)\]\(metabase:\/\/(?<model>[^\/]+)\/(?<id>[^\/?#)\s]+)\)/;
 
 export const METABASE_PROTOCOL_ENTITY_MODELS = [
   "question",
@@ -13,6 +13,7 @@ export const METABASE_PROTOCOL_ENTITY_MODELS = [
   "database",
   "table",
   "transform",
+  "data-point",
 ] as const;
 
 export type MetabaseProtocolEntityModel =
@@ -25,10 +26,22 @@ const isMetabaseProtocolEntityModel = (
 };
 
 export interface MetabaseProtocolEntity {
-  id: number;
+  id: number | string;
   model: MetabaseProtocolEntityModel;
   name: string;
 }
+
+const parseMetabaseProtocolEntityId = (
+  model: MetabaseProtocolEntityModel,
+  id: string,
+) => {
+  if (model === "data-point") {
+    return id;
+  }
+
+  const numericId = parseInt(id, 10);
+  return Number.isNaN(numericId) ? undefined : numericId;
+};
 
 export const parseMetabaseProtocolLink = (
   href: string,
@@ -45,7 +58,8 @@ export const parseMetabaseProtocolLink = (
     return undefined;
   }
 
-  return { id: parseInt(id, 10), model };
+  const entityId = parseMetabaseProtocolEntityId(model, id);
+  return entityId == null ? undefined : { id: entityId, model };
 };
 
 export const parseMetabaseProtocolMarkdownLink = (
@@ -63,7 +77,8 @@ export const parseMetabaseProtocolMarkdownLink = (
     return undefined;
   }
 
-  return { id: parseInt(id, 10), model, name };
+  const entityId = parseMetabaseProtocolEntityId(model, id);
+  return entityId == null ? undefined : { id: entityId, model, name };
 };
 
 export const createMetabaseProtocolLink = ({

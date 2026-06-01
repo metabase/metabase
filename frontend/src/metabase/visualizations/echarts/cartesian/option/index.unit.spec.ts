@@ -141,3 +141,85 @@ describe("ensureRoomForLabels", () => {
     expect(axes.yAxis.map(getBoundaryGap)).toEqual([[0.026, 0]]);
   });
 });
+
+describe("buildEChartsSeries", () => {
+  beforeEach(() => {
+    seriesFn.mockReturnValue({ display: "bar" });
+  });
+
+  it("uses a visible select style for bar mention selections", () => {
+    const chartModel = getCartesianChartModel(
+      [mockSeries],
+      mockSettings,
+      hiddenSeries,
+      mockRenderingContext,
+    );
+    const chartLayout = getChartLayout(
+      chartModel,
+      mockSettings,
+      hasTimelineEvents,
+      chartWidth,
+      chartHeight,
+      mockRenderingContext,
+    );
+
+    const [series] = buildEChartsSeries(
+      chartModel,
+      mockSettings,
+      chartWidth,
+      chartLayout,
+      mockRenderingContext,
+    );
+
+    expect(series).toMatchObject({
+      type: "bar",
+      selectedMode: "single",
+      select: {
+        itemStyle: {
+          borderColor: "brand",
+          borderWidth: 2,
+          shadowBlur: 4,
+          shadowColor: "background-primary",
+        },
+      },
+    });
+  });
+
+  it("uses a hollow select marker for line mention selections", () => {
+    seriesFn.mockReturnValue({ display: "line" });
+    const chartModel = getCartesianChartModel(
+      [mockSeries],
+      mockSettings,
+      hiddenSeries,
+      mockRenderingContext,
+    );
+    const chartLayout = getChartLayout(
+      chartModel,
+      mockSettings,
+      hasTimelineEvents,
+      chartWidth,
+      chartHeight,
+      mockRenderingContext,
+    );
+
+    const [series] = buildEChartsSeries(
+      chartModel,
+      mockSettings,
+      chartWidth,
+      chartLayout,
+      mockRenderingContext,
+    );
+
+    expect(series).toMatchObject({
+      type: "line",
+      selectedMode: "single",
+      select: {
+        itemStyle: {
+          color: "background-primary",
+          borderColor: "brand",
+          borderWidth: 3,
+        },
+      },
+    });
+  });
+});

@@ -2,6 +2,7 @@ import L from "leaflet";
 import _ from "underscore";
 
 import { getSubpathSafeUrl } from "metabase/urls";
+import { animateMentionHighlightContract } from "metabase/visualizations/lib/mention-highlight";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -10,6 +11,8 @@ import {
   LeafletMap,
   type LeafletMapPoint,
   type LeafletMapProps,
+  MAP_SELECTION_DURATION,
+  getClickedRowIndex,
 } from "./LeafletMap";
 
 type IndexedPoint = LeafletMapPoint<[number]>;
@@ -22,6 +25,7 @@ interface LeafletMarkerPinMapProps extends LeafletMapProps<IndexedPoint> {
 export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
   pinMarkerLayer: L.LayerGroup | null = null;
   pinMarkerIcon: L.Icon | null = null;
+  selectionTimeoutId: number | null = null;
 
   componentDidMount() {
     super.componentDidMount();
@@ -39,11 +43,26 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
     });
 
     this.syncMarkerLayer();
+    this.syncSelectionLayer();
   }
 
   componentDidUpdate(prevProps: LeafletMarkerPinMapProps) {
     super.componentDidUpdate(prevProps);
     this.syncMarkerLayer();
+    if (
+      prevProps.clicked !== this.props.clicked ||
+      prevProps.clickedViaMention !== this.props.clickedViaMention ||
+      prevProps.points !== this.props.points
+    ) {
+      this.syncSelectionLayer();
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.selectionTimeoutId != null) {
+      window.clearTimeout(this.selectionTimeoutId);
+    }
+    super.componentWillUnmount();
   }
 
   private syncMarkerLayer() {
@@ -115,6 +134,10 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
         markers.push(marker);
       }
 
+      (
+        markers[i] as L.Marker & { _metabaseRowIndex?: number }
+      )._metabaseRowIndex = index;
+
       if (i < wrappedPoints.length) {
         const { lat, lng } = markers[i].getLatLng();
         // if any marker doesn't match the point, update it
@@ -135,6 +158,8 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
   };
 
   _setupMarkerEvents = (marker: L.Marker, rowIndex: number) => {
+    (marker as L.Marker & { _metabaseRowIndex?: number })._metabaseRowIndex =
+      rowIndex;
     marker.off("mousemove");
     marker.off("mouseout");
     marker.off("click");
@@ -198,4 +223,65 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
 
     return marker;
   };
+
+  private syncSelectionLayer() {
+    if (this.selectionTimeoutId != null) {
+      window.clearTimeout(this.selectionTimeoutId);
+      this.selectionTimeoutId = null;
+    }
+
+    const markers = this.pinMarkerLayer
+      ?.getLayers()
+      .filter((layer): layer is L.Marker => layer instanceof L.Marker);
+    if (!markers) {
+      return;
+    }
+
+    const rows = this.props.series[0].data.rows;
+    const selectedRowIndex = getClickedRowIndex(
+      rows,
+      this.props.clickedViaMention ?? this.props.clicked,
+    );
+    this.applyMarkerSelection(
+      markers,
+      selectedRowIndex,
+      this.props.clickedViaMention != null,
+    );
+
+    if (selectedRowIndex != null) {
+      this.selectionTimeoutId = window.setTimeout(() => {
+        this.applyMarkerSelection(markers, null, false);
+        this.selectionTimeoutId = null;
+      }, MAP_SELECTION_DURATION);
+    }
+  }
+
+  private applyMarkerSelection(
+    markers: L.Marker[],
+    selectedRowIndex: number | null,
+    selectedViaMention: boolean,
+  ) {
+    for (const marker of markers) {
+      const element = marker.getElement();
+      if (!element) {
+        continue;
+      }
+
+      const rowIndex = (marker as L.Marker & { _metabaseRowIndex?: number })
+        ._metabaseRowIndex;
+      const isSelected =
+        selectedRowIndex != null && rowIndex === selectedRowIndex;
+
+      element.style.opacity =
+        selectedRowIndex == null || isSelected ? "" : "0.3";
+      element.style.filter = isSelected
+        ? "drop-shadow(0 0 6px var(--mb-color-brand))"
+        : "";
+      element.style.zIndex = isSelected ? "1000" : "";
+
+      if (isSelected && selectedViaMention) {
+        animateMentionHighlightContract(element);
+      }
+    }
+  }
 }

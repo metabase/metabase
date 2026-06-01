@@ -1,31 +1,27 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { AdhocVizValue } from "metabase/api/ai-streaming/schemas";
 import { AdHocQuestionLoader } from "metabase/common/components/AdHocQuestionLoader";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { useMetabotAgent } from "metabase/metabot/hooks";
-import type {
-  MetabotAgentDataPartMessage,
-  MetabotAgentId,
+import {
+  type MetabotAgentDataPartMessage,
+  type MetabotAgentId,
+  focusPromptInput as focusPromptInputAction,
+  getPrompt,
+  rememberDataPointTarget,
+  setPrompt as setPromptAction,
 } from "metabase/metabot/state";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import {
-  ActionIcon,
-  Badge,
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { useDispatch, useStore } from "metabase/redux";
+import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { TableSelectionMention } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -42,13 +38,18 @@ import {
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
-import { useMetabotQuestionFullscreen } from "./MetabotQuestionFullscreenContext";
 import {
+  type DataPointMentionTarget,
   getChartData,
+  getClickedObjectFromDataPointTarget,
+  getClickedObjectsFromDataSelection,
+  getDataPointMention,
+  getDataPointMentionEvent,
   getDataPointMentionEventId,
   getDataPointMentionMarkdown,
   getDataPointRangeMentionMarkdown,
-  getNextDataPointMentionId,
+  getDataSelectionMentionEvent,
+  getNextDataPointRangeMentionId,
   getSelectedChartData,
   getSelectedChartRange,
 } from "./data-point-mentions";
@@ -58,6 +59,7 @@ type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
   readonly: boolean;
   debug: boolean;
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
 };
 
 export const AgentDataPartMessage = ({
@@ -65,6 +67,7 @@ export const AgentDataPartMessage = ({
   message,
   readonly,
   debug,
+  dataPointTargets,
 }: AgentDataPartMessageProps) =>
   match(message)
     .with({ part: { type: "todo_list" } }, ({ part }) => (
@@ -84,7 +87,11 @@ export const AgentDataPartMessage = ({
       return (
         <Stack gap="md">
           {debug && <NavigateToDataPart type={part.type} path={part.value} />}
-          <NavigateToQuestionCard agentId={agentId} path={part.value} />
+          <EmbeddedQuestionCard
+            agentId={agentId}
+            path={part.value}
+            dataPointTargets={dataPointTargets}
+          />
           {sourcePills}
         </Stack>
       );
@@ -105,9 +112,14 @@ export const AgentDataPartMessage = ({
         </Stack>
       );
     })
-    .with({ part: { type: "adhoc_viz" } }, ({ part }) =>
-      debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
-    )
+    .with({ part: { type: "adhoc_viz" } }, ({ part }) => (
+      <EmbeddedAdhocViz
+        agentId={agentId}
+        value={part.value}
+        debug={debug}
+        dataPointTargets={dataPointTargets}
+      />
+    ))
     .with({ part: { type: "static_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
     )
@@ -116,38 +128,111 @@ export const AgentDataPartMessage = ({
       return null;
     });
 
-const NavigateToQuestionCard = ({
+const EmbeddedAdhocViz = ({
+  agentId,
+  value,
+  debug,
+  dataPointTargets,
+}: {
+  agentId: MetabotAgentId;
+  value: AdhocVizValue;
+  debug: boolean;
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+}) => {
+  const sourcePills = (
+    <NavigateToTablePills path={value.link} messageId={undefined} />
+  );
+
+  return (
+    <Stack gap="md">
+      {debug && <DataPartJsonCard type="adhoc_viz" value={value} />}
+      <EmbeddedQuestionCard
+        agentId={agentId}
+        path={value.link}
+        title={value.title}
+        dataPointTargets={dataPointTargets}
+      />
+      {sourcePills}
+    </Stack>
+  );
+};
+
+// Memoized so the embedded chart only re-renders when its own inputs change
+// (question/result/selection), not when unrelated chat state churns — e.g. a
+// newly remembered data-point target or a streaming message. Re-rendering it
+// would recompute the ECharts option and wipe the active data-point highlight.
+// We compare on `result`/`question` rather than the derived `rawSeries` array,
+// which the loader re-creates on every render.
+const MemoizedQueryVisualization = memo(
+  QueryVisualization,
+  (prev, next) =>
+    prev.question === next.question &&
+    prev.result === next.result &&
+    prev.isRunning === next.isRunning &&
+    prev.clicked === next.clicked &&
+    prev.clickedViaMention === next.clickedViaMention &&
+    prev.clickedViaMentionGroup === next.clickedViaMentionGroup &&
+    prev.handleVisualizationClick === next.handleVisualizationClick &&
+    prev.onTableSelectionMention === next.onTableSelectionMention,
+);
+
+const EmbeddedQuestionCard = ({
   agentId,
   path,
+  title,
+  dataPointTargets,
 }: {
   agentId: MetabotAgentId;
   path: string;
+  title?: string;
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
 }) => {
-  const { prompt, setPrompt, focusPromptInput } = useMetabotAgent(agentId);
-  const { fullscreenQuestion, openFullscreenQuestion } =
-    useMetabotQuestionFullscreen();
+  const dispatch = useDispatch();
+  const store = useStore();
+  // Read the latest targets from a ref so the click handlers can stay stable
+  // (depending on the prop would re-create them and re-render the chart).
+  const dataPointTargetsRef = useRef(dataPointTargets);
+  dataPointTargetsRef.current = dataPointTargets;
+  // Read the prompt lazily from the store at click time instead of subscribing
+  // to it. Subscribing here would re-render this card (and its embedded chart)
+  // on every keystroke, which wipes and re-applies the data-point highlight,
+  // causing it to flash and resetting its auto-dismiss timer.
+  const setPrompt = useCallback(
+    (value: string) => dispatch(setPromptAction({ agentId, prompt: value })),
+    [dispatch, agentId],
+  );
+  const focusPromptInput = useCallback(
+    () => dispatch(focusPromptInputAction({ agentId })),
+    [dispatch, agentId],
+  );
   const cardRef = useRef<HTMLDivElement>(null);
+  const questionRef = useRef<Question | null>(null);
+  const resultRef = useRef<Dataset | null>(null);
   const [selectedContext, setSelectedContext] =
     useState<MetabotAdhocQueryInfo | null>(null);
   const [selectedClicked, setSelectedClicked] = useState<ClickObject | null>(
     null,
   );
+  const [selectedClickedViaMention, setSelectedClickedViaMention] =
+    useState<ClickObject | null>(null);
+  const [selectedClickedGroup, setSelectedClickedGroup] = useState<
+    ClickObject[] | null
+  >(null);
   const [isHighlightingSelection, setIsHighlightingSelection] = useState(false);
   const { questionHash, questionName } = useMemo(() => {
     try {
       const card = deserializeCardFromQuery(path);
       return {
         questionHash: path.replace(/^\/question#/, ""),
-        questionName: card.name || t`Untitled question`,
+        questionName: title || card.name || t`Generated question`,
       };
     } catch {
       return {
         questionHash: null,
-        questionName: t`Untitled question`,
+        questionName: title || t`Generated question`,
       };
     }
-  }, [path]);
-  const isOpenInFullscreen = fullscreenQuestion?.path === path;
+  }, [path, title]);
 
   useRegisterMetabotContextProvider(
     async () =>
@@ -157,6 +242,68 @@ const NavigateToQuestionCard = ({
 
   useEffect(() => {
     const handleMentionClick = (event: Event) => {
+      const mentionEvent = getDataPointMentionEvent(event);
+      const mentionTarget =
+        mentionEvent.target ??
+        (mentionEvent.id != null
+          ? dataPointTargets?.[String(mentionEvent.id)]
+          : undefined);
+      const clickedFromTarget = getClickedObjectFromDataPointTarget(
+        resultRef.current,
+        mentionTarget,
+      );
+      console.warn("[metabot data-point] embedded card mention event", {
+        mentionEvent,
+        mentionTarget,
+        hasResult: resultRef.current != null,
+        resultRowCount: resultRef.current?.data?.rows?.length,
+        clickedFromTarget,
+      });
+
+      if (clickedFromTarget) {
+        const question = questionRef.current;
+        const selectedData = getSelectedChartData(clickedFromTarget);
+        console.warn("[metabot data-point] embedded card target resolved", {
+          hasQuestion: question != null,
+          selectedData,
+        });
+        cardRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        setSelectedClicked(null);
+        setSelectedClickedViaMention(null);
+        setSelectedClickedGroup(null);
+        setIsHighlightingSelection(false);
+
+        if (question && selectedData) {
+          setSelectedContext({
+            type: "adhoc",
+            name: questionName,
+            query: question.datasetQuery(),
+            chart_configs: [
+              {
+                title: questionName,
+                description: question.description() ?? undefined,
+                query: question.datasetQuery(),
+                display_type: question.display(),
+                data: getChartData(resultRef.current),
+                selected_data: selectedData,
+              },
+            ],
+          });
+        }
+
+        requestAnimationFrame(() => {
+          console.warn("[metabot data-point] embedded card setting clicked", {
+            clickedFromTarget,
+          });
+          setSelectedClickedViaMention(clickedFromTarget);
+          setIsHighlightingSelection(true);
+        });
+        return;
+      }
+
       const mentionId = getDataPointMentionEventId(event);
       const selectedData = selectedContext?.chart_configs?.[0]?.selected_data;
       const selectedRange = selectedContext?.chart_configs?.[0]?.selected_range;
@@ -165,14 +312,23 @@ const NavigateToQuestionCard = ({
         (mentionId !== selectedData?.mention_id &&
           mentionId !== selectedRange?.mention_id)
       ) {
+        console.warn("[metabot data-point] embedded card mention ignored", {
+          mentionId,
+          selectedDataMentionId: selectedData?.mention_id,
+          selectedRangeMentionId: selectedRange?.mention_id,
+        });
         return;
       }
 
       cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       setSelectedClicked(null);
+      setSelectedClickedViaMention(null);
       setIsHighlightingSelection(false);
       requestAnimationFrame(() => {
-        setSelectedClicked(selectedClicked);
+        console.warn("[metabot data-point] embedded card restoring clicked", {
+          selectedClicked,
+        });
+        setSelectedClickedViaMention(selectedClicked);
         setIsHighlightingSelection(true);
       });
     };
@@ -187,39 +343,88 @@ const NavigateToQuestionCard = ({
         handleMentionClick,
       );
     };
-  }, [selectedClicked, selectedContext]);
+  }, [dataPointTargets, questionName, selectedClicked, selectedContext]);
+
+  useEffect(() => {
+    const handleSelectionClick = (event: Event) => {
+      const { targets } = getDataSelectionMentionEvent(event);
+      const clickedObjects = getClickedObjectsFromDataSelection(
+        resultRef.current,
+        targets,
+      );
+
+      if (clickedObjects.length === 0) {
+        return;
+      }
+
+      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setSelectedClicked(null);
+      setSelectedClickedViaMention(null);
+      setSelectedClickedGroup(null);
+      setIsHighlightingSelection(false);
+
+      requestAnimationFrame(() => {
+        setSelectedClickedGroup(clickedObjects);
+        setIsHighlightingSelection(true);
+      });
+    };
+
+    window.addEventListener(
+      "metabot:data-selection-mention-click",
+      handleSelectionClick,
+    );
+    return () => {
+      window.removeEventListener(
+        "metabot:data-selection-mention-click",
+        handleSelectionClick,
+      );
+    };
+  }, []);
 
   const handleVisualizationClick = useCallback(
-    ({
-      question,
-      result,
-      clicked,
-    }: {
-      question: Question;
-      result: Dataset | null;
-      clicked: ClickObject | null;
-    }) => {
+    (clicked: ClickObject | null) => {
+      const question = questionRef.current;
+      const result = resultRef.current;
+      if (!question) {
+        return;
+      }
+
       const selectedData = getSelectedChartData(clicked);
       if (!selectedData) {
         return;
       }
 
-      const mentionId = getNextDataPointMentionId();
+      const mention = getDataPointMention(
+        selectedData,
+        dataPointTargetsRef.current,
+      );
       const selectedDataWithMention = {
         ...selectedData,
-        mention_id: mentionId,
+        mention_id: mention.id,
       };
 
+      if (mention.isGenerated && mention.target) {
+        dispatch(
+          rememberDataPointTarget({
+            agentId,
+            id: mention.id,
+            target: mention.target,
+          }),
+        );
+      }
+
       setSelectedClicked(clicked);
+      setSelectedClickedViaMention(null);
+      setSelectedClickedGroup(null);
       setIsHighlightingSelection(false);
 
       setSelectedContext({
         type: "adhoc",
-        name: question.displayName() ?? undefined,
+        name: questionName,
         query: question.datasetQuery(),
         chart_configs: [
           {
-            title: question.displayName(),
+            title: questionName,
             description: question.description() ?? undefined,
             query: question.datasetQuery(),
             display_type: question.display(),
@@ -229,40 +434,44 @@ const NavigateToQuestionCard = ({
         ],
       });
 
-      const mention = getDataPointMentionMarkdown(selectedData, mentionId);
-      const trimmedPrompt = prompt.trim();
-      setPrompt(trimmedPrompt ? `${trimmedPrompt} ${mention}` : mention);
+      const mentionMarkdown = getDataPointMentionMarkdown(
+        selectedData,
+        mention.id,
+      );
+      const trimmedPrompt = (getPrompt(store.getState(), agentId) ?? "").trim();
+      setPrompt(
+        trimmedPrompt ? `${trimmedPrompt} ${mentionMarkdown}` : mentionMarkdown,
+      );
       focusPromptInput();
     },
-    [focusPromptInput, prompt, setPrompt],
+    [agentId, dispatch, focusPromptInput, questionName, setPrompt, store],
   );
 
   const handleTableSelectionMention = useCallback(
-    ({
-      question,
-      result,
-      selection,
-    }: {
-      question: Question;
-      result: Dataset | null;
-      selection: TableSelectionMention;
-    }) => {
+    (selection: TableSelectionMention) => {
+      const question = questionRef.current;
+      const result = resultRef.current;
+      if (!question) {
+        return;
+      }
+
       const selectedRange = getSelectedChartRange(selection);
-      const mentionId = getNextDataPointMentionId();
+      const mentionId = getNextDataPointRangeMentionId();
       const selectedRangeWithMention = {
         ...selectedRange,
         mention_id: mentionId,
       };
 
       setSelectedClicked(null);
+      setSelectedClickedViaMention(null);
       setIsHighlightingSelection(false);
       setSelectedContext({
         type: "adhoc",
-        name: question.displayName() ?? undefined,
+        name: questionName,
         query: question.datasetQuery(),
         chart_configs: [
           {
-            title: question.displayName(),
+            title: questionName,
             description: question.description() ?? undefined,
             query: question.datasetQuery(),
             display_type: question.display(),
@@ -276,11 +485,11 @@ const NavigateToQuestionCard = ({
         selectedRange,
         mentionId,
       );
-      const trimmedPrompt = prompt.trim();
+      const trimmedPrompt = (getPrompt(store.getState(), agentId) ?? "").trim();
       setPrompt(trimmedPrompt ? `${trimmedPrompt} ${mention}` : mention);
       focusPromptInput();
     },
-    [focusPromptInput, prompt, setPrompt],
+    [agentId, focusPromptInput, questionName, setPrompt, store],
   );
 
   return (
@@ -303,23 +512,6 @@ const NavigateToQuestionCard = ({
         <Text fw="bold" size="sm" truncate>
           {questionName}
         </Text>
-        {isOpenInFullscreen ? (
-          <Text c="text-secondary" size="sm" flex="0 0 auto">
-            {t`Opened in fullscreen`}
-          </Text>
-        ) : (
-          <Button
-            variant="subtle"
-            size="compact-sm"
-            flex="0 0 auto"
-            rightSection={<Icon name="expand" size="1rem" />}
-            onClick={() =>
-              openFullscreenQuestion({ path, title: questionName })
-            }
-          >
-            {t`Open in fullscreen`}
-          </Button>
-        )}
       </Flex>
       {questionHash ? (
         <AdHocQuestionLoader questionHash={questionHash}>
@@ -334,44 +526,35 @@ const NavigateToQuestionCard = ({
 
             return (
               <QuestionResultLoader question={question} collectionPreview>
-                {({ result, rawSeries, loading: isLoadingResult, error }) => (
-                  <Box className={Styles.navigateToQuestionVisualization}>
-                    {error ? (
-                      <NavigateToQuestionError />
-                    ) : (
-                      <QueryVisualization
-                        question={question}
-                        result={result}
-                        rawSeries={rawSeries}
-                        queryBuilderMode="view"
-                        isRunnable={false}
-                        isRunning={isLoadingResult || result == null}
-                        isDirty={false}
-                        isResultDirty={false}
-                        maxTableRows={10}
-                        clicked={selectedClicked}
-                        handleVisualizationClick={(
-                          clicked: ClickObject | null,
-                        ) =>
-                          handleVisualizationClick({
-                            question,
-                            result,
-                            clicked,
-                          })
-                        }
-                        onTableSelectionMention={(
-                          selection: TableSelectionMention,
-                        ) =>
-                          handleTableSelectionMention({
-                            question,
-                            result,
-                            selection,
-                          })
-                        }
-                      />
-                    )}
-                  </Box>
-                )}
+                {({ result, rawSeries, loading: isLoadingResult, error }) => {
+                  questionRef.current = question;
+                  resultRef.current = result;
+
+                  return (
+                    <Box className={Styles.navigateToQuestionVisualization}>
+                      {error ? (
+                        <NavigateToQuestionError />
+                      ) : (
+                        <MemoizedQueryVisualization
+                          question={question}
+                          result={result}
+                          rawSeries={rawSeries}
+                          queryBuilderMode="view"
+                          isRunnable={false}
+                          isRunning={isLoadingResult || result == null}
+                          isDirty={false}
+                          isResultDirty={false}
+                          maxTableRows={10}
+                          clicked={selectedClicked}
+                          clickedViaMention={selectedClickedViaMention}
+                          clickedViaMentionGroup={selectedClickedGroup}
+                          handleVisualizationClick={handleVisualizationClick}
+                          onTableSelectionMention={handleTableSelectionMention}
+                        />
+                      )}
+                    </Box>
+                  );
+                }}
               </QuestionResultLoader>
             );
           }}

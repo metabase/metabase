@@ -157,6 +157,7 @@ export const DataGrid = function DataGrid<TData>({
     <DataGridHeader
       headerGroup={headerGroup}
       columns={columns}
+      selection={selection}
       backgroundColor={backgroundColor}
       onHeaderCellClick={onHeaderCellClick}
       isColumnReorderingDisabled={isColumnReorderingDisabled}

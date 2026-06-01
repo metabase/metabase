@@ -64,11 +64,10 @@ export function mbProtocolModelToSuggestionModel(inputModel: string): string {
   // dom nodes record strings and it's better to not to error the input with invalid
   // data. casting here still afford some amount of internal type awareness as these
   // two types might diverge in the future.
-  const model: SuggestionModel = match(
-    inputModel as MetabaseProtocolEntityModel,
-  )
+  const model = match(inputModel as MetabaseProtocolEntityModel)
     .with("model", () => "dataset" as const)
     .with("question", () => "card" as const)
+    .with("data-point", () => "data-point" as const)
     .otherwise((x) => x);
 
   return model;

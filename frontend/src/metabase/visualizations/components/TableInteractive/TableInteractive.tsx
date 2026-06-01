@@ -48,7 +48,9 @@ import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
+import { CLICKED_DATA_POINT_HIGHLIGHT_DURATION } from "metabase/visualizations/constants";
 import { formatValue } from "metabase/visualizations/lib/formatting";
+import { animateMentionHighlightRing } from "metabase/visualizations/lib/mention-highlight";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -65,6 +67,7 @@ import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
+  DatasetData,
   MetabotColumnInfo,
   RowValue,
   RowValues,
@@ -128,6 +131,121 @@ const getColumnIndexFromSelectionColumnId = (
   return -1;
 };
 
+const getColumnId = (
+  column: DatasetColumn,
+  columnIndex: number,
+  isPivoted: boolean,
+) => {
+  if (isPivoted) {
+    return `${column.name}:${columnIndex}`;
+  }
+
+  if (column.name === "") {
+    return `${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:${columnIndex}`;
+  }
+
+  return column.name;
+};
+
+const isSameValue = (left: RowValue, right: RowValue) => {
+  return left === right || String(left) === String(right);
+};
+
+const isSameColumn = (
+  left: DatasetColumn | undefined,
+  right: DatasetColumn | undefined,
+) => {
+  return left?.name === right?.name;
+};
+
+const getRenderedColumnIndex = (
+  cols: DatasetColumn[],
+  originCols: DatasetColumn[],
+  column: DatasetColumn | undefined,
+) => {
+  const originColumnIndex = originCols.findIndex((originColumn) =>
+    isSameColumn(originColumn, column),
+  );
+
+  if (originColumnIndex >= 0) {
+    const renderedColumnIndex = cols.findIndex((renderedColumn) =>
+      isSameColumn(renderedColumn, originCols[originColumnIndex]),
+    );
+    if (renderedColumnIndex >= 0) {
+      return renderedColumnIndex;
+    }
+  }
+
+  return cols.findIndex((renderedColumn) =>
+    isSameColumn(renderedColumn, column),
+  );
+};
+
+const getRenderedRowIndex = (
+  rows: RowValues[],
+  cols: DatasetColumn[],
+  originRow: RowValues,
+  originCols: DatasetColumn[],
+) => {
+  return rows.findIndex((row) => {
+    if (row.length === originRow.length) {
+      return row.every((value, index) => isSameValue(value, originRow[index]));
+    }
+
+    return cols.every((column, index) => {
+      const originColumnIndex = originCols.findIndex((originColumn) =>
+        isSameColumn(originColumn, column),
+      );
+
+      return (
+        originColumnIndex >= 0 &&
+        isSameValue(row[index], originRow[originColumnIndex])
+      );
+    });
+  });
+};
+
+export const getMentionedTableCell = ({
+  clicked,
+  data,
+  isPivoted,
+}: {
+  clicked: ClickObject | null | undefined;
+  data: Pick<DatasetData, "cols" | "rows">;
+  isPivoted: boolean;
+}) => {
+  if (isPivoted || !clicked?.origin?.row) {
+    return null;
+  }
+
+  const { cols, rows } = data;
+  const { cols: originCols, row: originRow } = clicked.origin;
+  const rowIndex = getRenderedRowIndex(rows, cols, originRow, originCols);
+
+  if (rowIndex < 0 || cols.length === 0) {
+    return null;
+  }
+
+  const columnIndex = getRenderedColumnIndex(cols, originCols, clicked.column);
+
+  // The mention resolved to a row, but the referenced column isn't part of this
+  // table's columns — it's hidden via viz settings, or the table shows only a
+  // subset of the query's columns. Point at the first column so the effect still
+  // scrolls to and marks the row (it re-resolves against the visible cells and
+  // falls back to the row's first visible cell) instead of doing nothing.
+  const resolvedColumnIndex = columnIndex >= 0 ? columnIndex : 0;
+
+  return {
+    rowIndex,
+    columnIndex: resolvedColumnIndex,
+    columnId: getColumnId(
+      cols[resolvedColumnIndex],
+      resolvedColumnIndex,
+      isPivoted,
+    ),
+  };
+};
+
 const getMetabotColumnInfo = (column: DatasetColumn): MetabotColumnInfo => ({
   name: column.display_name || column.name,
   type: column.base_type as MetabotColumnInfo["type"],
@@ -188,6 +306,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isPivoted = false,
     question,
     clicked,
+    clickedViaMention,
     hasMetadataPopovers = true,
     mode,
     theme,
@@ -528,19 +647,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnName = getColumnTitle(columnIndex);
 
       let align;
-      let id;
+      const id = getColumnId(col, columnIndex, isPivoted);
       let sortDirection: "asc" | "desc" | undefined;
       if (isPivoted) {
         align = columnIndex === 0 ? "right" : columnSettings["text_align"];
-        id = `${col.name}:${columnIndex}`;
       } else {
         align = columnSettings["text_align"];
-        id = col.name;
         sortDirection = getColumnSortDirection(columnIndex);
-      }
-
-      if (id === "") {
-        id = `${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:${columnIndex}`;
       }
 
       const translatedColumnName = tc(columnName);
@@ -775,6 +888,128 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     enableSelection: true,
   });
   const { getCenterColumns, scrollTo, columnsReordering } = tableProps;
+
+  const mentionedCell = useMemo(
+    () =>
+      getMentionedTableCell({
+        clicked: clickedViaMention,
+        data,
+        isPivoted,
+      }),
+    [clickedViaMention, data, isPivoted],
+  );
+  const lastMentionedCellKeyRef = useRef<string | null>(null);
+  const mentionHighlightTimeoutIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (mentionHighlightTimeoutIdRef.current != null) {
+        window.clearTimeout(mentionHighlightTimeoutIdRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!clickedViaMention) {
+      if (mentionHighlightTimeoutIdRef.current != null) {
+        window.clearTimeout(mentionHighlightTimeoutIdRef.current);
+        mentionHighlightTimeoutIdRef.current = null;
+      }
+
+      if (lastMentionedCellKeyRef.current) {
+        tableProps.selection.setCellSelection([]);
+        lastMentionedCellKeyRef.current = null;
+      }
+      return;
+    }
+
+    if (!mentionedCell) {
+      return;
+    }
+
+    const { table } = tableProps;
+    const rowModel = table.getRowModel();
+    const rowPosition = rowModel.rows.findIndex(
+      (row) => row.index === mentionedCell.rowIndex,
+    );
+    const { pageSize } = table.getState().pagination;
+
+    if (rowPosition < 0 && tableProps.enablePagination && pageSize > 0) {
+      const sortedRowPosition = table
+        .getSortedRowModel()
+        .rows.findIndex((row) => row.index === mentionedCell.rowIndex);
+
+      table.setPageIndex(
+        Math.floor(
+          (sortedRowPosition >= 0
+            ? sortedRowPosition
+            : mentionedCell.rowIndex) / pageSize,
+        ),
+      );
+      return;
+    }
+
+    const row = rowModel.rows[rowPosition];
+    // Use *visible* cells so a referenced column that isn't rendered here — hidden
+    // via viz settings, or simply not part of this table's column subset — falls
+    // back to the row's first visible cell. That way clicking a mention still
+    // scrolls to and marks the mentioned row instead of doing nothing.
+    const visibleDataCells = row
+      ?.getVisibleCells()
+      .filter((cell) => cell.column.id !== ROW_ID_COLUMN_ID);
+
+    if (!visibleDataCells || visibleDataCells.length === 0) {
+      return;
+    }
+
+    const exactCell = visibleDataCells.find(
+      (cell) => cell.column.id === mentionedCell.columnId,
+    );
+    const targetCell = exactCell ?? visibleDataCells[0];
+
+    const selectionKey = `${row.id}:${targetCell.column.id}`;
+    if (selectionKey === lastMentionedCellKeyRef.current) {
+      return;
+    }
+
+    const selection = {
+      rowId: row.id,
+      columnId: targetCell.column.id,
+      cellId: targetCell.id,
+    };
+
+    const columnPosition = table
+      .getVisibleFlatColumns()
+      .findIndex((column) => column.id === targetCell.column.id);
+
+    lastMentionedCellKeyRef.current = selectionKey;
+    tableProps.selection.setCellSelection([selection], selection);
+    if (mentionHighlightTimeoutIdRef.current != null) {
+      window.clearTimeout(mentionHighlightTimeoutIdRef.current);
+    }
+    mentionHighlightTimeoutIdRef.current = window.setTimeout(() => {
+      tableProps.selection.setCellSelection([]);
+      mentionHighlightTimeoutIdRef.current = null;
+    }, CLICKED_DATA_POINT_HIGHLIGHT_DURATION);
+    scrollTo({
+      row: { index: rowPosition, options: { align: "center" } },
+      column:
+        columnPosition >= 0
+          ? { index: columnPosition, options: { align: "center" } }
+          : undefined,
+    });
+
+    // Once the cell is scrolled into view and rendered as selected, play the
+    // "contract onto the cell" ring so the highlight feels like it lands there.
+    requestAnimationFrame(() => {
+      const selectedCell = tableProps.gridRef.current?.querySelector(
+        '[role="gridcell"][aria-selected="true"]',
+      );
+      if (selectedCell) {
+        animateMentionHighlightRing(selectedCell);
+      }
+    });
+  }, [clickedViaMention, mentionedCell, scrollTo, tableProps]);
+
   const lastMentionedSelectionKeyRef = useRef("");
   useEffect(() => {
     if (!onTableSelectionMention) {

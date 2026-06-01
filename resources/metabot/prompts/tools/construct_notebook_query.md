@@ -4,7 +4,7 @@ Construct a Metabase MBQL 5 query as a JSON object describing the query shape. M
 
 Return:
 - `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by `entity_details` / metadata tools.
-- `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
+- `visualization`: optional `{"chart_type": "bar", "name": "Revenue by month"}` (sibling of `query`, never embedded inside it). Always include a concise, user-facing `name` when creating a chart.
 
 ## Minimal example — count of orders by month
 
@@ -386,3 +386,11 @@ Temporal:
 - Time truncation: `millisecond`, `second`, `minute`, `hour`
 - Time extraction (integer-returning): `second-of-minute`, `minute-of-hour`, `hour-of-day`
 - Plus `default` — let the system pick based on the field's base type.
+
+## After execution
+
+After this tool creates a query or chart, Metabase executes the generated query and includes a `<query_execution>` block in the tool result. Use that executed data in your response.
+
+When execution succeeds, proactively mention one concrete observation from the data, such as a trend, outlier, or notable category. When a breakout returns many categories, do not stop at the top few — also tell the user how concentrated the metric is and how much of the total falls outside the items you name (and on which measure), so your summary reflects the whole result and not just the head; otherwise it will diverge from a chart that groups the tail into a single "Other" bucket. When `<query_execution>` is marked `sampled="true"`, it is a representative sample of the chart's own rows (minimum, maximum, outliers, and evenly spaced trend points) — every sampled row is a real point on the user's chart, so you may cite the sampled values, including the minimum and maximum. Only run `execute_notebook_query_silently` when you need an exact count, ranking, or aggregate the sample cannot give; do it without asking permission first and do not produce a final answer until it returns. Do not merely describe the query or chart configuration.
+
+The `<query_execution>` block may include result values linked with `metabase://data-point` URLs. Whenever you mention a specific value from the generated query or chart, use the matching URL and choose natural link text for your answer.

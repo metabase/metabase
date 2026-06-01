@@ -24,7 +24,7 @@ import { useScrollManager } from "metabase/metabot/components/MetabotChat/hooks"
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useRouter } from "metabase/router";
 import { getSettingsLoading } from "metabase/selectors/settings";
 import {
@@ -47,14 +47,19 @@ import {
   usePromptInputFocusEffect,
   useUserMetabotPermissions,
 } from "../../hooks";
-import type { MetabotAgentId } from "../../state";
+import { type MetabotAgentId, rememberDataPointTarget } from "../../state";
 import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
 import {
+  type DataPointMentionTarget,
   getChartData,
+  getClickedObjectFromDataPointTarget,
+  getDataPointMention,
+  getDataPointMentionEvent,
   getDataPointMentionEventId,
   getDataPointMentionMarkdown,
   getDataPointRangeMentionMarkdown,
-  getNextDataPointMentionId,
+  getDataPointTargetsFromState,
+  getNextDataPointRangeMentionId,
   getSelectedChartData,
   getSelectedChartRange,
 } from "../MetabotChat/data-point-mentions";
@@ -97,6 +102,7 @@ const MetabotQueryBuilderInner = () => {
     messages,
     activeToolCalls,
     debugMode,
+    requestState,
     isLongConversation,
     prompt,
     setPrompt,
@@ -165,6 +171,7 @@ const MetabotQueryBuilderInner = () => {
   );
 
   const { router, routes } = useRouter();
+  const dataPointTargets = getDataPointTargetsFromState(requestState);
   const currentRoute = routes.at(-1);
   useEffect(
     function cancelRequestOnRouteLeave() {
@@ -267,6 +274,7 @@ const MetabotQueryBuilderInner = () => {
                   onRetryMessage={retryMessage}
                   isDoingScience={isDoingScience}
                   debug={debugMode}
+                  dataPointTargets={dataPointTargets}
                 />
                 {isDoingScience && (
                   <MetabotThinking toolCalls={activeToolCalls} />
@@ -324,6 +332,7 @@ const MetabotQueryBuilderInner = () => {
           <FullscreenQuestionPanel
             agentId={agentId}
             question={fullscreenQuestion}
+            dataPointTargets={dataPointTargets}
             onClose={() => setFullscreenQuestion(null)}
           />
         )}
@@ -339,19 +348,26 @@ const MetabotQueryBuilderInner = () => {
 const FullscreenQuestionPanel = ({
   agentId,
   question,
+  dataPointTargets,
   onClose,
 }: {
   agentId: MetabotAgentId;
   question: FullscreenQuestion;
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
   onClose: () => void;
 }) => {
   const { prompt, setPrompt, focusPromptInput } = useMetabotAgent(agentId);
+  const dispatch = useDispatch();
   const panelRef = useRef<HTMLDivElement>(null);
+  const questionRef = useRef<Question | null>(null);
+  const resultRef = useRef<Dataset | null>(null);
   const [selectedContext, setSelectedContext] =
     useState<MetabotAdhocQueryInfo | null>(null);
   const [selectedClicked, setSelectedClicked] = useState<ClickObject | null>(
     null,
   );
+  const [selectedClickedViaMention, setSelectedClickedViaMention] =
+    useState<ClickObject | null>(null);
   const [isHighlightingSelection, setIsHighlightingSelection] = useState(false);
   const questionHash = question.path.replace(/^\/question#/, "");
 
@@ -363,6 +379,67 @@ const FullscreenQuestionPanel = ({
 
   useEffect(() => {
     const handleMentionClick = (event: Event) => {
+      const mentionEvent = getDataPointMentionEvent(event);
+      const mentionTarget =
+        mentionEvent.target ??
+        (mentionEvent.id != null
+          ? dataPointTargets?.[String(mentionEvent.id)]
+          : undefined);
+      const clickedFromTarget = getClickedObjectFromDataPointTarget(
+        resultRef.current,
+        mentionTarget,
+      );
+      console.warn("[metabot data-point] fullscreen mention event", {
+        mentionEvent,
+        mentionTarget,
+        hasResult: resultRef.current != null,
+        resultRowCount: resultRef.current?.data?.rows?.length,
+        clickedFromTarget,
+      });
+
+      if (clickedFromTarget) {
+        const question = questionRef.current;
+        const selectedData = getSelectedChartData(clickedFromTarget);
+        console.warn("[metabot data-point] fullscreen target resolved", {
+          hasQuestion: question != null,
+          selectedData,
+        });
+        panelRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        setSelectedClicked(null);
+        setSelectedClickedViaMention(null);
+        setIsHighlightingSelection(false);
+
+        if (question && selectedData) {
+          setSelectedContext({
+            type: "adhoc",
+            name: question.displayName() ?? undefined,
+            query: question.datasetQuery(),
+            chart_configs: [
+              {
+                title: question.displayName(),
+                description: question.description() ?? undefined,
+                query: question.datasetQuery(),
+                display_type: question.display(),
+                data: getChartData(resultRef.current),
+                selected_data: selectedData,
+              },
+            ],
+          });
+        }
+
+        requestAnimationFrame(() => {
+          console.warn("[metabot data-point] fullscreen setting clicked", {
+            clickedFromTarget,
+          });
+          setSelectedClickedViaMention(clickedFromTarget);
+          setIsHighlightingSelection(true);
+        });
+        return;
+      }
+
       const mentionId = getDataPointMentionEventId(event);
       const selectedData = selectedContext?.chart_configs?.[0]?.selected_data;
       const selectedRange = selectedContext?.chart_configs?.[0]?.selected_range;
@@ -371,14 +448,23 @@ const FullscreenQuestionPanel = ({
         (mentionId !== selectedData?.mention_id &&
           mentionId !== selectedRange?.mention_id)
       ) {
+        console.warn("[metabot data-point] fullscreen mention ignored", {
+          mentionId,
+          selectedDataMentionId: selectedData?.mention_id,
+          selectedRangeMentionId: selectedRange?.mention_id,
+        });
         return;
       }
 
       panelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       setSelectedClicked(null);
+      setSelectedClickedViaMention(null);
       setIsHighlightingSelection(false);
       requestAnimationFrame(() => {
-        setSelectedClicked(selectedClicked);
+        console.warn("[metabot data-point] fullscreen restoring clicked", {
+          selectedClicked,
+        });
+        setSelectedClickedViaMention(selectedClicked);
         setIsHighlightingSelection(true);
       });
     };
@@ -393,7 +479,7 @@ const FullscreenQuestionPanel = ({
         handleMentionClick,
       );
     };
-  }, [selectedClicked, selectedContext]);
+  }, [dataPointTargets, selectedClicked, selectedContext]);
 
   const handleVisualizationClick = useCallback(
     ({
@@ -410,13 +496,24 @@ const FullscreenQuestionPanel = ({
         return;
       }
 
-      const mentionId = getNextDataPointMentionId();
+      const mention = getDataPointMention(selectedData, dataPointTargets);
       const selectedDataWithMention = {
         ...selectedData,
-        mention_id: mentionId,
+        mention_id: mention.id,
       };
 
+      if (mention.isGenerated && mention.target) {
+        dispatch(
+          rememberDataPointTarget({
+            agentId,
+            id: mention.id,
+            target: mention.target,
+          }),
+        );
+      }
+
       setSelectedClicked(clicked);
+      setSelectedClickedViaMention(null);
       setIsHighlightingSelection(false);
       setSelectedContext({
         type: "adhoc",
@@ -434,12 +531,17 @@ const FullscreenQuestionPanel = ({
         ],
       });
 
-      const mention = getDataPointMentionMarkdown(selectedData, mentionId);
+      const mentionMarkdown = getDataPointMentionMarkdown(
+        selectedData,
+        mention.id,
+      );
       const trimmedPrompt = prompt.trim();
-      setPrompt(trimmedPrompt ? `${trimmedPrompt} ${mention}` : mention);
+      setPrompt(
+        trimmedPrompt ? `${trimmedPrompt} ${mentionMarkdown}` : mentionMarkdown,
+      );
       focusPromptInput();
     },
-    [focusPromptInput, prompt, setPrompt],
+    [agentId, dataPointTargets, dispatch, focusPromptInput, prompt, setPrompt],
   );
 
   const handleTableSelectionMention = useCallback(
@@ -453,13 +555,14 @@ const FullscreenQuestionPanel = ({
       selection: TableSelectionMention;
     }) => {
       const selectedRange = getSelectedChartRange(selection);
-      const mentionId = getNextDataPointMentionId();
+      const mentionId = getNextDataPointRangeMentionId();
       const selectedRangeWithMention = {
         ...selectedRange,
         mention_id: mentionId,
       };
 
       setSelectedClicked(null);
+      setSelectedClickedViaMention(null);
       setIsHighlightingSelection(false);
       setSelectedContext({
         type: "adhoc",
@@ -528,6 +631,9 @@ const FullscreenQuestionPanel = ({
             return (
               <QuestionResultLoader question={question} collectionPreview>
                 {({ result, rawSeries, loading: isLoadingResult, error }) => {
+                  questionRef.current = question;
+                  resultRef.current = result;
+
                   if (error) {
                     return (
                       <FullscreenQuestionMessage
@@ -547,6 +653,7 @@ const FullscreenQuestionPanel = ({
                       isDirty={false}
                       isResultDirty={false}
                       clicked={selectedClicked}
+                      clickedViaMention={selectedClickedViaMention}
                       handleVisualizationClick={(clicked: ClickObject | null) =>
                         handleVisualizationClick({
                           question,

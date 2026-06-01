@@ -1,5 +1,6 @@
 (ns metabase.metabot.tools-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.agent.profiles :as profiles]
@@ -7,6 +8,7 @@
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.query-results :as query-results]
    [metabase.test :as mt]))
 
 (deftest all-tools-test
@@ -71,6 +73,7 @@
     (is (map? tools))
     (is (contains? tools "search"))
     (is (contains? tools "construct_notebook_query"))
+    (is (contains? tools "execute_notebook_query_silently"))
     (is (contains? tools "create_chart"))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
@@ -88,6 +91,7 @@
     (is (map? tools))
     (is (contains? tools "search"))
     (is (contains? tools "construct_notebook_query"))
+    (is (contains? tools "execute_notebook_query_silently"))
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "static_viz"))
@@ -126,12 +130,13 @@
                                   create-chart-tools/create-chart (fn [args]
                                                                     (reset! chart-called args)
                                                                     {:chart-id "c-1"
+                                                                     :chart-name "Seats by plan"
+                                                                     :chart-url "/question#hash"
                                                                      :chart-type :table
                                                                      :chart-link "metabase://chart/c-1"
                                                                      :chart-content "<chart/>"
-                                                                     :query-id (:query-id args)
-                                                                     :reactions [{:type :metabot.reaction/redirect
-                                                                                  :url "/question#hash"}]})]
+                                                                     :query {:database 1}
+                                                                     :query-id (:query-id args)})]
         (let [query-input {:lib/type "mbql/query"
                            :stages   [{:lib/type     "mbql.stage/mbql"
                                        :source-table ["Sample" "PUBLIC" "ORDERS"]
@@ -139,12 +144,46 @@
               result (agent-tools/construct-notebook-query-tool
                       {:reasoning     "check seats"
                        :query         query-input
-                       :visualization {:chart_type "table"}})]
+                       :visualization {:chart_type "table"
+                                       :name       "Seats by plan"}})]
           (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
+          (is (= "Seats by plan" (get-in result [:structured-output :chart-name])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
           (is (= :table (get @chart-called :chart-type)))
-          (is (seq (:data-parts result))))))))
+          (is (= "Seats by plan" (get @chart-called :title)))
+          (is (= "adhoc_viz" (-> result :data-parts first :data-type)))
+          (is (= "Seats by plan" (-> result :data-parts first :data :title))))))))
+
+(deftest execute-notebook-query-silently-tool-test
+  (testing "executes a notebook query without returning visualization data parts"
+    (let [query-captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                  (fn [external-query]
+                                    (reset! query-captured external-query)
+                                    {:structured-output {:query-id "q-1"
+                                                         :query {:database 1}
+                                                         :result-columns []}
+                                     :instructions "Query created."})
+                                  query-results/execute-query (fn [query]
+                                                                (is (= {:database 1} query))
+                                                                {:status :completed
+                                                                 :result_columns [{:name "name"
+                                                                                   :display_name "Name"
+                                                                                   :type :type/Text}]
+                                                                 :rows [["Ada"]]})]
+        (let [query-input {:lib/type "mbql/query"
+                           :stages   [{:lib/type     "mbql.stage/mbql"
+                                       :source-table ["Sample" "PUBLIC" "ORDERS"]}]}
+              result (agent-tools/execute-notebook-query-silently-tool
+                      {:reasoning "inspect all rows"
+                       :query     query-input})]
+          (is (= query-input @query-captured))
+          (is (nil? (:data-parts result)))
+          (is (str/includes? (:output result) "<query_execution status=\"completed\""))
+          (is (str/includes? (:output result) "Showing all 1 rows"))
+          (is (str/includes? (:output result) "[Ada](metabase://data-point/"))
+          (is (not (contains? (:structured-output result) :query))))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"

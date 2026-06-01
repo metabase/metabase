@@ -3,12 +3,18 @@ import { type MutableRefObject, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { formatPercent } from "metabase/static-viz/lib/numbers";
+import { color } from "metabase/ui/utils/colors";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTotalValue } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
+import { CLICKED_DATA_POINT_HIGHLIGHT_DURATION } from "metabase/visualizations/constants";
+import {
+  DIMENSIONS,
+  OPTION_NAME_SEPERATOR,
+} from "metabase/visualizations/echarts/pie/constants";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
 import type { EChartsSunburstSeriesMouseEvent } from "metabase/visualizations/echarts/pie/types";
@@ -21,12 +27,98 @@ import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
 } from "metabase/visualizations/echarts/tooltip";
+import { MENTION_HIGHLIGHT_CONTRACT_DURATION } from "metabase/visualizations/lib/mention-highlight";
 import { getValueFromDimensionKey } from "metabase/visualizations/shared/settings/pie";
 import type {
   ClickObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+
+const isSameColumn = (
+  left: ClickObject["column"],
+  right: ClickObject["column"],
+) => {
+  if (!left || !right) {
+    return false;
+  }
+
+  return (
+    left === right ||
+    (left.name != null && left.name === right.name) ||
+    (left.display_name != null && left.display_name === right.display_name)
+  );
+};
+
+const isSameClickValue = (left: unknown, right: unknown) => {
+  return left === right || String(left) === String(right);
+};
+
+const getClickedSliceKeyPath = (
+  chartModel: PieChartModel,
+  clicked: ClickObject | null | undefined,
+) => {
+  if (!clicked) {
+    return null;
+  }
+
+  const dimensions = clicked.dimensions ?? [];
+
+  const findClickedSliceKeyPath = (
+    sliceTree: PieChartModel["sliceTree"],
+    path: string[],
+    matchedDimensionsCount: number,
+  ): string[] | null => {
+    for (const slice of getArrayFromMapValues(sliceTree)) {
+      if (!slice.visible || slice.isOther) {
+        continue;
+      }
+
+      const dimension = dimensions.find((dimension) =>
+        isSameColumn(dimension.column, slice.column),
+      );
+
+      if (
+        dimension != null &&
+        !isSameClickValue(getValueFromDimensionKey(slice.key), dimension.value)
+      ) {
+        continue;
+      }
+
+      const nextPath = [...path, slice.key];
+      const nextMatchedDimensionsCount =
+        matchedDimensionsCount + (dimension == null ? 0 : 1);
+      const childMatch = findClickedSliceKeyPath(
+        slice.children,
+        nextPath,
+        nextMatchedDimensionsCount,
+      );
+      if (childMatch != null) {
+        return childMatch;
+      }
+
+      const hasMatchedDimension =
+        dimensions.length === 0 || nextMatchedDimensionsCount > 0;
+      const hasMatchingValue =
+        clicked.value === undefined ||
+        isSameClickValue(slice.value, clicked.value) ||
+        isSameClickValue(slice.rawValue, clicked.value);
+
+      if (hasMatchedDimension && hasMatchingValue) {
+        return nextPath;
+      }
+    }
+
+    return null;
+  };
+
+  return findClickedSliceKeyPath(chartModel.sliceTree, [], 0);
+};
+
+export const getClickedSliceName = (
+  chartModel: PieChartModel,
+  clicked: ClickObject | null | undefined,
+) => getClickedSliceKeyPath(chartModel, clicked)?.join(OPTION_NAME_SEPERATOR);
 
 export const getTooltipModel = (
   sliceKeyPath: string[],
@@ -181,6 +273,92 @@ function handleClick(
   }
 }
 
+let pieMentionRingCounter = 0;
+
+// Draws a brand-colored ring at a highlighted pie slice's centroid that starts
+// larger and contracts onto it, then fades out — so the highlight feels like it
+// "lands" on the slice. The persistent select border remains.
+function animatePieMentionContractRing(
+  chart: EChartsType,
+  slice: { startAngle: number; endAngle: number },
+) {
+  const { startAngle, endAngle } = slice;
+  if (!Number.isFinite(startAngle) || !Number.isFinite(endAngle)) {
+    return;
+  }
+
+  const width = chart.getWidth();
+  const height = chart.getHeight();
+  const cx = width / 2;
+  const cy = height / 2;
+  // Mirrors the pie radius computation (see getRadiusOption): the pie is square,
+  // inset by the side padding, with the inner ring at a fixed ratio.
+  const sideLength = Math.min(width, height);
+  const outerRadius = (sideLength - DIMENSIONS.padding.side * 2) / 2;
+  const innerRadius = outerRadius * DIMENSIONS.slice.innerRadiusRatio;
+  const midRadius = (innerRadius + outerRadius) / 2;
+  if (!Number.isFinite(midRadius) || midRadius <= 0) {
+    return;
+  }
+
+  // d3/ECharts pie angles are measured clockwise from the top (12 o'clock).
+  const midAngle = (startAngle + endAngle) / 2;
+  const px = cx + midRadius * Math.sin(midAngle);
+  const py = cy - midRadius * Math.cos(midAngle);
+
+  const brandColor = color("brand");
+  const id = `pie-mention-contract-ring-${pieMentionRingCounter++}`;
+
+  chart.setOption(
+    {
+      graphic: [
+        {
+          id,
+          type: "circle",
+          z: 1000,
+          silent: true,
+          shape: { cx: px, cy: py, r: 16 },
+          style: { fill: "none", stroke: brandColor, lineWidth: 2 },
+          originX: px,
+          originY: py,
+          scaleX: 1,
+          scaleY: 1,
+          transition: ["scaleX", "scaleY", "style"],
+          transitionDuration: MENTION_HIGHLIGHT_CONTRACT_DURATION / 1000,
+          enterFrom: { scaleX: 2.5, scaleY: 2.5, style: { opacity: 0 } },
+        },
+      ],
+    },
+    false,
+  );
+
+  window.setTimeout(() => {
+    if (chart.isDisposed()) {
+      return;
+    }
+    chart.setOption(
+      {
+        graphic: [
+          {
+            id,
+            scaleX: 0.6,
+            scaleY: 0.6,
+            style: { opacity: 0 },
+            transition: ["scaleX", "scaleY", "style"],
+            transitionDuration: MENTION_HIGHLIGHT_CONTRACT_DURATION / 1000,
+          },
+        ],
+      },
+      false,
+    );
+    window.setTimeout(() => {
+      if (!chart.isDisposed()) {
+        chart.setOption({ graphic: [{ id, $action: "remove" }] }, false);
+      }
+    }, MENTION_HIGHLIGHT_CONTRACT_DURATION);
+  }, MENTION_HIGHLIGHT_CONTRACT_DURATION);
+}
+
 export function useChartEvents(
   props: VisualizationProps,
   chartRef: MutableRefObject<EChartsType | undefined>,
@@ -226,7 +404,83 @@ export function useChartEvents(
     [chart, chartModel, legendHoverIndex],
   );
 
-  useClickedStateTooltipSync(chartRef.current, props.clicked);
+  useClickedStateTooltipSync(
+    chartRef.current,
+    props.clickedViaMention ?? props.clicked,
+  );
+
+  useEffect(
+    function highlightClickedSlice() {
+      const activeClicked = props.clickedViaMention ?? props.clicked;
+      const isMention = props.clickedViaMention != null;
+      const actionType = isMention ? "select" : "highlight";
+      const clearActionType = isMention ? "unselect" : "downplay";
+
+      if (chart == null || activeClicked == null) {
+        return;
+      }
+
+      const name = getClickedSliceName(chartModel, activeClicked);
+      if (name == null) {
+        return;
+      }
+
+      chart.dispatchAction({
+        type: actionType,
+        name,
+        seriesIndex: 0,
+      });
+
+      // The `select` state only adds the brand border to the clicked slice;
+      // it does not dim the others. Additionally emphasizing the slice triggers
+      // the series' `emphasis.focus: "ancestor"`, which blurs the sibling slices
+      // (fading them via the `blur` itemStyle) so the selected slice stands out.
+      if (isMention) {
+        chart.dispatchAction({
+          type: "highlight",
+          name,
+          seriesIndex: 0,
+        });
+      }
+
+      const sliceKeyPath = getClickedSliceKeyPath(chartModel, activeClicked);
+      if (sliceKeyPath != null) {
+        const { sliceTreeNode } = getSliceTreeNodesFromPath(
+          chartModel.sliceTree,
+          sliceKeyPath,
+        );
+        if (sliceTreeNode != null) {
+          animatePieMentionContractRing(chart, sliceTreeNode);
+        }
+      }
+
+      const clearHighlight = () => {
+        chart.dispatchAction({
+          type: clearActionType,
+          name,
+          seriesIndex: 0,
+        });
+        if (isMention) {
+          chart.dispatchAction({
+            type: "downplay",
+            name,
+            seriesIndex: 0,
+          });
+        }
+      };
+
+      const timeoutId = window.setTimeout(
+        clearHighlight,
+        CLICKED_DATA_POINT_HIGHLIGHT_DURATION,
+      );
+
+      return () => {
+        window.clearTimeout(timeoutId);
+        clearHighlight();
+      };
+    },
+    [chart, chartModel, props.clicked, props.clickedViaMention],
+  );
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [

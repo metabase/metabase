@@ -37,7 +37,17 @@ class CardRendererInner extends Component<CardRendererInnerProps> {
       this.props.width === nextProps.width &&
       this.props.height === nextProps.height;
     const sameSeries = isSameSeries(this.props.series, nextProps.series);
-    return !(sameSize && sameSeries);
+    const sameSelectedFeatureKey =
+      this.props.selectedFeatureKey === nextProps.selectedFeatureKey;
+    const sameSelectedFeatureViaMention =
+      this.props.selectedFeatureViaMention ===
+      nextProps.selectedFeatureViaMention;
+    return !(
+      sameSize &&
+      sameSeries &&
+      sameSelectedFeatureKey &&
+      sameSelectedFeatureViaMention
+    );
   }
 
   componentDidMount() {

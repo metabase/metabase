@@ -128,5 +128,30 @@ describe("MetabotChatEditor > utils", () => {
         ],
       });
     });
+
+    it("should parse data point protocol links with UUID ids", () => {
+      const result = parseMetabotMessageToTiptapDoc(
+        "[Dec 2026 · Widget · 119](metabase://data-point/5c3455ef-d9ac-4a46-9171-49b451d2657f)",
+      );
+
+      expect(result).toEqual({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "smartLink",
+                attrs: {
+                  label: "Dec 2026 · Widget · 119",
+                  model: "data-point",
+                  entityId: "5c3455ef-d9ac-4a46-9171-49b451d2657f",
+                },
+              },
+            ],
+          },
+        ],
+      });
+    });
   });
 });

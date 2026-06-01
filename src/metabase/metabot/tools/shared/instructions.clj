@@ -3,6 +3,29 @@
    These guide the LLM on how to interpret and use tool outputs.
    Matches Python AI Service InstructionResultSchema patterns exactly.")
 
+(def sampled-execution-guidance
+  "Shared guidance for interpreting a possibly-sampled <query_execution> block. When a result is
+  larger than the LLM row budget it is down-sampled to a representative subset of the query's own
+  rows, so the model can still cite real, chart-mapped values (including extremes) and only needs a
+  follow-up for exact aggregates."
+  (str "When <query_execution> is marked sampled=\"true\", it is a representative sample of the "
+       "query's own rows — the minimum, the maximum, notable outliers, and evenly spaced trend "
+       "points. Every sampled row is a real point on the chart the user is viewing, so you may cite "
+       "the sampled values, including the minimum and maximum, and link them with their "
+       "metabase://data-point URLs. Only run a follow-up query when you need an exact count, "
+       "ranking, or aggregate the sample cannot give (for notebook queries, use "
+       "execute_notebook_query_silently with the needed follow-up program so no chart is created); "
+       "do it without asking permission first and do not produce a final answer until it returns."))
+
+(def distribution-guidance
+  "Shared guidance to keep narration faithful to the whole result instead of only the top rows. When
+  a breakout returns many categories the chart groups the tail into a single 'Other' bucket, so a
+  summary that names only the head diverges from what the user actually sees — the model should also
+  characterize the distribution and the long tail."
+  (str "When a breakout returns many categories, do not stop at the top few — also tell the user how "
+       "concentrated the metric is and how much of the total falls outside the items you name (and on "
+       "which measure), so your summary reflects the whole result and not just the head."))
+
 (def search-result-instructions
   "Instructions for LLM when processing search results."
   "Search results ranked by relevance (highest first).
@@ -53,6 +76,12 @@ The assistant needs to:
   "Generate instructions for chart creation result."
   [chart-id]
   (str "Chart created successfully.\n"
+       "The tool result may include a <query_execution> block with the generated chart's executed data. "
+       "Use it to mention one concrete observation from the data, such as a trend, outlier, or notable category. "
+       distribution-guidance " "
+       sampled-execution-guidance " "
+       "Do not merely say the chart was created.\n"
+       "When you mention a specific value from the chart, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer.\n"
        "Present link to user using: [Chart](metabase://chart/" chart-id ")\n"
        "Replace 'Chart' with a meaningful description of what the chart shows."))
 
@@ -67,7 +96,11 @@ Reference items using: [name](metabase://type/id)")
    in the link template. Matches Python CreateSQLQueryToolV2._create_result."
   [query-id]
   (str "The assistant needs to:\n"
-       "- Remember you cannot view the results directly yourself\n"
+       "- Use the <query_execution> block in the result, when present, to inspect the executed query data\n"
+       "- Proactively mention one concrete observation from the data, such as a trend, outlier, or notable category\n"
+       "- " distribution-guidance "\n"
+       "- " sampled-execution-guidance "\n"
+       "- When mentioning a specific value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer\n"
        "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
        "so the user can open it themselves\n"
        "- Consider whether to create a chart or graph when that better matches the user's intent\n"
@@ -78,6 +111,8 @@ Reference items using: [name](metabase://type/id)")
    in the link template. Matches Python EditSqlQueryToolV2._create_result."
   [query-id]
   (str "The updated query is shown in the result data above.\n\n"
+       "If a <query_execution> block is present, use it to inspect the executed query data and mention one concrete observation from the results. " distribution-guidance " " sampled-execution-guidance "\n\n"
+       "When mentioning a specific value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer.\n\n"
        "After you have edited the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool again\n\n"
@@ -91,6 +126,8 @@ Reference items using: [name](metabase://type/id)")
    in the link template. Matches Python ReplaceSqlQueryToolV2._create_result."
   [query-id]
   (str "The updated query is shown in the result data above.\n\n"
+       "If a <query_execution> block is present, use it to inspect the executed query data and mention one concrete observation from the results. " distribution-guidance " " sampled-execution-guidance "\n\n"
+       "When mentioning a specific value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer.\n\n"
        "After you have replaced the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool or edit_sql_query again\n\n"

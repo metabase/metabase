@@ -16,6 +16,7 @@ import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMes
 import { MetabotDatabaseSelect } from "metabase/metabot/components/MetabotChat/MetabotDatabaseSelect";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
+import { getDataPointTargetsFromState } from "metabase/metabot/components/MetabotChat/data-point-mentions";
 import { useScrollManager } from "metabase/metabot/components/MetabotChat/hooks";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import {
@@ -89,6 +90,7 @@ export const MetabotConversationView = ({
     messages,
     activeToolCalls,
     debugMode,
+    requestState,
     isLongConversation,
     prompt,
     setPrompt,
@@ -290,6 +292,7 @@ export const MetabotConversationView = ({
                 onRetryMessage={retryMessage}
                 isDoingScience={isDoingScience}
                 debug={debugMode}
+                dataPointTargets={getDataPointTargetsFromState(requestState)}
               />
               {isDoingScience && (
                 <MetabotThinking toolCalls={activeToolCalls} />

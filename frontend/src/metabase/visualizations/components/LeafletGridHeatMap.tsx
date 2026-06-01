@@ -15,6 +15,8 @@ import {
   LeafletMap,
   type LeafletMapPoint,
   type LeafletMapProps,
+  MAP_SELECTION_DURATION,
+  getClickedRowIndex,
 } from "./LeafletMap";
 
 type GridHeatPoint = LeafletMapPoint<[number]>;
@@ -33,6 +35,7 @@ const isValidCoordinatesColumn = (column: DatasetColumn | undefined) =>
 
 export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
   gridLayer: L.LayerGroup | null = null;
+  selectionTimeoutId: number | null = null;
 
   static isSensible({ cols }: { cols: DatasetColumn[] }) {
     return (
@@ -50,11 +53,26 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
 
     this.gridLayer = L.layerGroup([]).addTo(this.map);
     this.syncGridLayer();
+    this.syncSelectionLayer();
   }
 
   componentDidUpdate(prevProps: LeafletGridHeatMapProps) {
     super.componentDidUpdate(prevProps);
     this.syncGridLayer();
+    if (
+      prevProps.clicked !== this.props.clicked ||
+      prevProps.clickedViaMention !== this.props.clickedViaMention ||
+      prevProps.points !== this.props.points
+    ) {
+      this.syncSelectionLayer();
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.selectionTimeoutId != null) {
+      window.clearTimeout(this.selectionTimeoutId);
+    }
+    super.componentWillUnmount();
   }
 
   private syncGridLayer() {
@@ -166,6 +184,9 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
       stroke: true,
       fillOpacity: 0.5,
     });
+    (
+      gridSquare as L.Rectangle & { _metabaseRowIndex?: number }
+    )._metabaseRowIndex = index;
     gridSquare.on("click", this._onVisualizationClick.bind(this, index));
     gridSquare.on("mousemove", this._onHoverChange.bind(this, index));
     gridSquare.on("mouseout", this._onHoverChange.bind(this, null));
@@ -219,6 +240,60 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
           event,
         ) satisfies HoveredObject;
         onHoverChange(hoveredObject);
+      }
+    }
+  }
+
+  private syncSelectionLayer() {
+    if (this.selectionTimeoutId != null) {
+      window.clearTimeout(this.selectionTimeoutId);
+      this.selectionTimeoutId = null;
+    }
+
+    const gridSquares = this.gridLayer?.getLayers().filter(isRectangleLayer);
+    if (!gridSquares) {
+      return;
+    }
+
+    const rows = this.props.series[0].data.rows;
+    const selectedRowIndex = getClickedRowIndex(
+      rows,
+      this.props.clickedViaMention ?? this.props.clicked,
+    );
+    this.applyGridSelection(
+      gridSquares,
+      selectedRowIndex,
+      this.props.clickedViaMention != null,
+    );
+
+    if (selectedRowIndex != null) {
+      this.selectionTimeoutId = window.setTimeout(() => {
+        this.applyGridSelection(gridSquares, null, false);
+        this.selectionTimeoutId = null;
+      }, MAP_SELECTION_DURATION);
+    }
+  }
+
+  private applyGridSelection(
+    gridSquares: L.Rectangle[],
+    selectedRowIndex: number | null,
+    selectedViaMention: boolean,
+  ) {
+    for (const gridSquare of gridSquares) {
+      const rowIndex = (
+        gridSquare as L.Rectangle & { _metabaseRowIndex?: number }
+      )._metabaseRowIndex;
+      const isSelected =
+        selectedRowIndex != null && rowIndex === selectedRowIndex;
+
+      gridSquare.setStyle({
+        fillOpacity: selectedRowIndex == null ? 0.5 : isSelected ? 0.85 : 0.15,
+        opacity: selectedRowIndex == null || isSelected ? 1 : 0.3,
+        weight: isSelected ? 3 : 1,
+        dashArray: isSelected && selectedViaMention ? "4" : "",
+      });
+      if (isSelected) {
+        gridSquare.bringToFront();
       }
     }
   }

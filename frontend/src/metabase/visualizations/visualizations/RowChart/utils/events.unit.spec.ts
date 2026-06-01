@@ -22,6 +22,7 @@ import {
 
 import {
   getClickData,
+  getClickedData,
   getHoverData,
   getLegendClickData,
   getStackedTooltipRows,
@@ -93,6 +94,44 @@ const barData: BarData<GroupedDatum> = {
 };
 
 describe("events utils", () => {
+  describe("getClickedData", () => {
+    it("finds the row-chart bar matching a clicked mention target", () => {
+      const matchingSeries = {
+        ...series1,
+        seriesInfo: {
+          metricColumn: chartColumns.metrics[0].column,
+          dimensionColumn: chartColumns.dimension.column,
+        },
+      };
+
+      expect(
+        getClickedData(multipleMetricsData, [matchingSeries], chartColumns, {
+          value: 100,
+          column: chartColumns.metrics[0].column,
+          dimensions: [{ column: chartColumns.dimension.column, value: "foo" }],
+        }),
+      ).toEqual({ seriesIndex: 0, datumIndex: 0 });
+    });
+
+    it("returns null when the clicked mention does not match a row", () => {
+      const matchingSeries = {
+        ...series1,
+        seriesInfo: {
+          metricColumn: chartColumns.metrics[0].column,
+          dimensionColumn: chartColumns.dimension.column,
+        },
+      };
+
+      expect(
+        getClickedData(multipleMetricsData, [matchingSeries], chartColumns, {
+          value: 100,
+          column: chartColumns.metrics[0].column,
+          dimensions: [{ column: chartColumns.dimension.column, value: "bar" }],
+        }),
+      ).toBeNull();
+    });
+  });
+
   describe("getHoverData", () => {
     it("returns dimension key based on axis title setting when set", () => {
       const keyValueData = getHoverData(

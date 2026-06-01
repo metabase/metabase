@@ -252,7 +252,8 @@
             [:state [:map
                      [:queries {:optional true} [:map-of :string :any]]
                      [:charts {:optional true} [:map-of :string :any]]
-                     [:chart-configs {:optional true} [:map-of :string :any]]]]
+                     [:chart-configs {:optional true} [:map-of :string :any]]
+                     [:data-points {:optional true} [:map-of :string :any]]]]
             [:database_id {:optional true} [:maybe ms/PositiveInt]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]

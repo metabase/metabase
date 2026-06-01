@@ -2,13 +2,20 @@ import { configureStore } from "@reduxjs/toolkit";
 import { createDraft } from "immer";
 
 import {
+  type MetabotAgentId,
+  type MetabotChatMessage,
   type MetabotState,
   activateSuggestedTransform,
   addSuggestedTransform,
   deactivateSuggestedTransform,
+  forkConversation,
+  getMetabotState,
   metabotReducer,
 } from "metabase/metabot/state";
-import type { MetabotSuggestedTransform } from "metabase-types/api";
+import type {
+  MetabotHistory,
+  MetabotSuggestedTransform,
+} from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
 
 import {
@@ -274,6 +281,129 @@ describe("metabot reducer", () => {
       };
 
       expect(getRequestConversation(state, action)).toBe(convo);
+    });
+  });
+
+  describe("forkConversation", () => {
+    const SOURCE_AGENT_ID: MetabotAgentId = "chat_source";
+
+    const SOURCE_MESSAGES: MetabotChatMessage[] = [
+      { id: "u1", role: "user", type: "text", message: "q1" },
+      {
+        id: "a1",
+        role: "agent",
+        type: "text",
+        message: "r1",
+        externalId: "e1",
+      },
+      { id: "u2", role: "user", type: "text", message: "q2" },
+      {
+        id: "a2",
+        role: "agent",
+        type: "text",
+        message: "r2",
+        externalId: "e2",
+      },
+    ];
+
+    const SOURCE_HISTORY: MetabotHistory = [
+      { id: "u1", role: "user", content: "q1" },
+      { role: "assistant", content: "r1" },
+      { id: "u2", role: "user", content: "q2" },
+      { role: "assistant", content: "r2" },
+    ];
+
+    const createForkStore = () => {
+      const store = configureStore({
+        reducer: {
+          metabot: metabotReducer,
+          // forkConversation -> setVisible reads the current user
+          currentUser: (state = { id: 1 }) => state,
+        },
+      });
+      store.dispatch({
+        type: "metabase/metabot/hydrateChatConversation",
+        payload: {
+          agentId: SOURCE_AGENT_ID,
+          conversationId: "source-convo-id",
+          title: "My chat",
+          messages: SOURCE_MESSAGES,
+          history: SOURCE_HISTORY,
+          state: { foo: "bar" },
+        },
+      });
+      store.dispatch({
+        type: "metabase/metabot/setVisible",
+        payload: { agentId: SOURCE_AGENT_ID, visible: true },
+      });
+      return store;
+    };
+
+    it("branches up to and including the forked message and titles the fork", async () => {
+      const store = createForkStore();
+
+      const { agentId: forkAgentId } = await store
+        .dispatch(
+          forkConversation({ agentId: SOURCE_AGENT_ID, messageId: "a1" }),
+        )
+        .unwrap();
+
+      const convos = getMetabotState(store.getState() as any).conversations;
+      const fork = convos[forkAgentId]!;
+
+      expect(forkAgentId).not.toBe(SOURCE_AGENT_ID);
+      expect(forkAgentId.startsWith("chat_")).toBe(true);
+      expect(fork.title).toBe("My chat (forked)");
+      // only the first turn is carried over
+      expect(fork.messages.map((m) => m.id)).toEqual(["u1", "a1"]);
+      // history is cut on the turn boundary (before the next user entry)
+      expect(fork.history).toEqual([
+        { id: "u1", role: "user", content: "q1" },
+        { role: "assistant", content: "r1" },
+      ]);
+      expect(fork.state).toEqual({ foo: "bar" });
+      // the fork gets its own conversation id and is opened
+      expect(fork.conversationId).not.toBe("source-convo-id");
+      expect(fork.visible).toBe(true);
+    });
+
+    it("keeps the full conversation when forking from the last turn", async () => {
+      const store = createForkStore();
+
+      const { agentId: forkAgentId } = await store
+        .dispatch(
+          forkConversation({ agentId: SOURCE_AGENT_ID, messageId: "a2" }),
+        )
+        .unwrap();
+
+      const convos = getMetabotState(store.getState() as any).conversations;
+      const fork = convos[forkAgentId]!;
+
+      expect(fork.messages.map((m) => m.id)).toEqual(["u1", "a1", "u2", "a2"]);
+      expect(fork.history).toEqual(SOURCE_HISTORY);
+    });
+
+    it("leaves the source conversation untouched but minimized", async () => {
+      const store = createForkStore();
+
+      await store
+        .dispatch(
+          forkConversation({ agentId: SOURCE_AGENT_ID, messageId: "a1" }),
+        )
+        .unwrap();
+
+      const source = getMetabotState(store.getState() as any).conversations[
+        SOURCE_AGENT_ID
+      ]!;
+      expect(source.messages.map((m) => m.id)).toEqual([
+        "u1",
+        "a1",
+        "u2",
+        "a2",
+      ]);
+      expect(source.title).toBe("My chat");
+      // the original stays available as a background tab
+      expect(source.visible).toBe(false);
     });
   });
 });

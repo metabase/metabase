@@ -11,6 +11,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
+   [metabase.metabot.tools.query-results :as query-results]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -30,7 +31,10 @@
 
 (def ^:private construct-visualization-schema
   [:map {:closed true}
-   [:chart_type :string]])
+   [:chart_type :string]
+   [:name {:optional true
+           :description "A concise, user-facing name for the generated chart."}
+    [:maybe :string]]])
 
 (def ^:private construct-notebook-query-args-schema
   "Args schema for `construct_notebook_query`.
@@ -50,6 +54,16 @@
    [:reasoning {:optional true} :string]
    [:query :map]
    [:visualization {:optional true} construct-visualization-schema]])
+
+(def ^:private silent-execute-notebook-query-args-schema
+  "Args schema for `execute_notebook_query_silently`.
+
+  Mirrors `construct-notebook-query-args-schema` minus the `:visualization` key — the query
+  body is a self-describing MBQL 5 external query and no chart is created. See
+  `execute-representations-query` for the repair/resolve pipeline the `:query` is run through."
+  [:map {:closed true}
+   [:reasoning {:optional true} :string]
+   [:query :map]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -348,7 +362,40 @@
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
+(defn- silent-execution-output
+  [execution-output]
+  (te/lines
+   "<result>"
+   execution-output
+   "</result>"
+   "<instructions>"
+   "Use these query results to answer the user. Do not create or mention a chart link for this silent inspection query."
+   "If the results are a representative sample, you may cite the sampled values — including the minimum and maximum — but use a follow-up aggregate query for any exact count, ranking, or total that requires the full result."
+   "When mentioning a specific value from the result, use the matching metabase://data-point URL from the linked result value and choose natural link text for your answer."
+   "</instructions>"))
+
 ;;; ---------------------------------------- Main tool ----------------------------------------
+
+(mu/defn ^{:tool-name "execute_notebook_query_silently"
+           :scope     scope/agent-query-execute}
+  execute-notebook-query-silently-tool
+  "Construct and execute a notebook query for agent-only inspection without creating a chart or visualization."
+  [{:keys [_reasoning query]} :- silent-execute-notebook-query-args-schema]
+  (try
+    (let [query-result (execute-representations-query query)
+          structured   (or (:structured-output query-result) (:structured_output query-result))]
+      (if-let [executable (:query structured)]
+        (let [{:keys [output structured-output]} (query-results/format-untruncated-execution-result
+                                                  (query-results/execute-query executable))]
+          (cond-> {:output (silent-execution-output output)
+                   :instructions "Use these query results to answer the user. No chart or visualization was created."}
+            structured-output (assoc :structured-output structured-output)))
+        {:output "Failed to execute notebook query: no executable query was constructed."}))
+    (catch Exception e
+      (log/error e "Failed to silently execute notebook query")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to execute notebook query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "construct_notebook_query"
            :scope     scope/agent-notebook-create}
@@ -362,33 +409,44 @@
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
                                       :table)
+          chart-name              (:name normalized-visualization)
           query-result            (execute-representations-query query)
           structured              (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
+                             :title         chart-name
                              :queries-state {(:query-id structured) (:query structured)}})
-              navigate-url (get-in chart-result [:reactions 0 :url])
+              adhoc-viz-value {:query   (:query structured)
+                               :link    (:chart-url chart-result)
+                               :title   (:chart-name chart-result)
+                               :display (name chart-type)}
               full-structured (assoc structured
                                      :result-type   :query
                                      :chart-id      (:chart-id chart-result)
+                                     :chart-name    (:chart-name chart-result)
                                      :chart-type    (:chart-type chart-result)
                                      :chart-link    (:chart-link chart-result)
                                      :chart-content (:chart-content chart-result))
               instruction-text
-              (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
+              (let [link (te/link (:chart-name chart-result) "metabase://chart/" (:chart-id chart-result))]
                 (te/lines
                  "Your query and chart have been created successfully."
                  ""
                  "Next steps to present the chart to the user:"
-                 (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+                 "- Use the <query_execution> block in this tool result to inspect the executed chart data"
+                 "- Proactively mention one concrete observation from the data, such as a trend, outlier, or notable category"
+                 (str "- " instructions/distribution-guidance)
+                 "- When <query_execution> is marked sampled=\"true\", it is a representative sample of the chart's own rows (minimum, maximum, outliers, and evenly spaced trend points). Every sampled row is a real point on the user's chart, so you may cite the sampled values — including the minimum and maximum — and link them"
+                 "- Only run execute_notebook_query_silently when you need an exact count, ranking, or aggregate that the sample cannot give. When you do, do it without asking permission first and do not produce a final answer until it returns"
+                 "- When mentioning a specific value from the chart, use the matching metabase://data-point URL from the linked result value, and choose natural link text for your answer"
+                 (str "- Always provide a direct link using: `" link "`")
                  "- If creating multiple charts, present all chart links"))
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
           {:output (str "<result>\n" chart-xml "\n</result>\n"
                         "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        (when navigate-url
-                                [(streaming/navigate-to-part navigate-url)])
+           :data-parts        [(streaming/adhoc-viz-part adhoc-viz-value)]
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output

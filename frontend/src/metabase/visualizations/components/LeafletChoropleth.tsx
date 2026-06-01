@@ -5,6 +5,7 @@ import L from "leaflet";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/ui/utils/colors";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
+import { animateMentionHighlightStroke } from "metabase/visualizations/lib/mention-highlight";
 import type { GeoJSONData, Series } from "metabase-types/api";
 
 import { CardRenderer } from "./CardRenderer";
@@ -19,9 +20,12 @@ interface LeafletChoroplethProps {
   geoJson?: GeoJSONData;
   minimalBounds?: L.LatLngBounds;
   getColor?: (feature: Feature) => string;
+  getFeatureKey?: (feature: Feature) => string;
   onHoverFeature?: (payload: FeatureInteraction | null) => void;
   onClickFeature?: (payload: FeatureInteraction) => void;
   onRenderError?: (error?: unknown) => void;
+  selectedFeatureKey?: string | null;
+  selectedFeatureViaMention?: boolean;
 }
 
 function isFeatureCollection(value: GeoJSONData): value is FeatureCollection {
@@ -37,12 +41,17 @@ export const LeafletChoropleth = ({
       )
     : undefined,
   getColor = () => color("brand"),
+  getFeatureKey = () => "",
   onHoverFeature = () => {},
   onClickFeature = () => {},
   onRenderError = () => {},
+  selectedFeatureKey = null,
+  selectedFeatureViaMention = false,
 }: LeafletChoroplethProps) => (
   <CardRenderer
     series={series}
+    selectedFeatureKey={selectedFeatureKey}
+    selectedFeatureViaMention={selectedFeatureViaMention}
     className={CS.spread}
     renderer={(element: HTMLElement) => {
       element.className = CS.spread;
@@ -68,15 +77,32 @@ export const LeafletChoropleth = ({
         keyboard: false,
       });
 
-      const style = (feature?: Feature): L.PathOptions => ({
-        fillColor: feature ? getColor(feature) : color("brand"),
-        weight: 1,
-        opacity: 1,
-        color: "white",
-        fillOpacity: 1,
-      });
+      const style = (feature?: Feature): L.PathOptions => {
+        const isSelected =
+          feature && selectedFeatureKey === getFeatureKey(feature);
+        const hasSelection = selectedFeatureKey != null;
+
+        return {
+          fillColor: feature ? getColor(feature) : color("brand"),
+          weight: isSelected ? 3 : 1,
+          opacity: hasSelection && !isSelected ? 0.3 : 1,
+          color:
+            isSelected && selectedFeatureViaMention
+              ? "var(--mb-color-brand)"
+              : "white",
+          fillOpacity: hasSelection && !isSelected ? 0.25 : 1,
+        };
+      };
+
+      let mentionSelectedLayer: L.Layer | null = null;
 
       const onEachFeature = (feature: Feature, layer: L.Layer) => {
+        if (
+          selectedFeatureViaMention &&
+          selectedFeatureKey === getFeatureKey(feature)
+        ) {
+          mentionSelectedLayer = layer;
+        }
         layer.on({
           mousemove: (e: L.LeafletMouseEvent) => {
             onHoverFeature({
@@ -110,7 +136,17 @@ export const LeafletChoropleth = ({
         map.fitBounds(minimalBounds);
       }
 
+      // Once the selected region's path is in the DOM, play the "contract onto
+      // the region" animation by tightening its stroke from thick to resting.
+      const mentionAnimationFrame = window.requestAnimationFrame(() => {
+        const path = (mentionSelectedLayer as L.Path | null)?.getElement?.();
+        if (path instanceof SVGElement) {
+          animateMentionHighlightStroke(path, 3);
+        }
+      });
+
       return () => {
+        window.cancelAnimationFrame(mentionAnimationFrame);
         map.remove();
       };
     }}
