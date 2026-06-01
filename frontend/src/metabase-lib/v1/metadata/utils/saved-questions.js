@@ -3,10 +3,6 @@ import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 export const SAVED_QUESTIONS_VIRTUAL_DB_ID = -1337;
 const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = "Everything else";
 
-export const ROOT_COLLECTION_VIRTUAL_SCHEMA = getCollectionVirtualSchemaId({
-  id: null,
-});
-
 export function getCollectionVirtualSchemaName(collection) {
   const isRoot =
     !collection || collection.id === null || collection.id === "root";
