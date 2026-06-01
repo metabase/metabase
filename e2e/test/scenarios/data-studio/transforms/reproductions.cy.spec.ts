@@ -174,6 +174,43 @@ describe("issue UXW-3160", () => {
   });
 });
 
+describe("issue #69904", () => {
+  const TRANSFORM_TARGET_TABLE = "deleted_transform_table";
+
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
+  });
+
+  it("should not crash the app when opening table created by a deleted transform (metabase#69904)", () => {
+    H.createAndRunSqlTransform({
+      name: "Transform to delete",
+      sourceQuery: "SELECT 1 AS answer",
+      targetTable: TRANSFORM_TARGET_TABLE,
+      targetSchema: "public",
+    }).then(({ transformId }) => {
+      cy.request("DELETE", `/api/transform/${transformId}`);
+
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: TRANSFORM_TARGET_TABLE,
+      }).then((tableId) => {
+        H.DataModel.visitDataStudio({
+          databaseId: WRITABLE_DB_ID,
+          schemaId: `${WRITABLE_DB_ID}:public`,
+          tableId,
+        });
+      });
+
+      H.DataModel.TableSection.get()
+        .findByText("Transform does not exist anymore")
+        .should("be.visible");
+    });
+  });
+});
+
 function visitTransformListPage() {
   return cy.visit("/data-studio/transforms");
 }
