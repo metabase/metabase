@@ -35,6 +35,8 @@
     (default-branch [_]
       "main")
     (snapshot [_]
+      nil)
+    (snapshot-at [_ _version]
       nil)))
 
 (use-fixtures :once
@@ -356,10 +358,11 @@
               (is (= "Remote sync task in progress"
                      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
 
-(deftest export-errors-if-external-changes-test
-  (testing "POST /api/ee/remote-sync/export errors when remote is ahead of the last sync"
+(deftest export-merges-if-external-changes-test
+  (testing "POST /api/ee/remote-sync/export merges (rather than hard-erroring) when remote is ahead of the last sync"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}
+                     :model/RemoteSyncTask _ {:sync_task_type "foo"
                                               :ended_at :%now
                                               :version "other-version"}]
         (let [mock-source (test-helpers/create-mock-source)]
@@ -367,8 +370,11 @@
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
-              (is (= "Cannot export changes that will overwrite new changes in the branch."
-                     (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))
+              (testing "export starts a task and reconciles instead of returning a 400 conflict"
+                (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+                      task     (wait-for-task-completion (:task_id response))]
+                  (is (remote-sync.task/successful? task)
+                      "non-conflicting remote changes are merged in, so the export succeeds")))
               (testing "Can export when the versions match"
                 (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
                                                         :ended_at :%now

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.source
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.ingestable :as ingestable]
@@ -63,6 +64,16 @@
                                            {:dumper-options {:flow-style :block :split-lines false}})}
     (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
 
+(defn serialize-specs
+  "Serializes a stream of entities into an eager vector of `{:path :content}` file specs — the exact specs
+  [[store!]] would write. Reports progress via `task-id` as specs are produced.
+
+  Throws Exception if any entity in the stream is an Exception instance."
+  [stream task-id]
+  (let [opts (serdes/storage-base-context)
+        stream-count (bounded-count 10000 stream)]
+    (into [] (map-indexed #(->file-spec task-id stream-count opts %1 %2)) stream)))
+
 (defn store!
   "Stores serialized entities from a stream to a remote source and commits the changes.
 
@@ -75,11 +86,41 @@
 
   Throws Exception if any entity in the stream is an Exception instance."
   [stream snapshot task-id message]
-  (let [opts (serdes/storage-base-context)
-        stream-count (bounded-count 10000 stream)]
-    (->> stream
-         (map-indexed #(->file-spec task-id stream-count opts %1 %2))
-         (source.p/write-files! snapshot message))))
+  (source.p/write-files! snapshot message (serialize-specs stream task-id)))
+
+(defn- snapshot->specs
+  "Reads a snapshot's managed-directory files into a sequence of `{:path :content}` specs, matching the
+  shape produced by [[serialize-specs]]. Used to read the merge base and remote-tip trees for merging."
+  [snapshot]
+  (into []
+        (keep (fn [path]
+                (when (contains? serialization/legal-top-level-paths
+                                 (when-let [idx (str/index-of path "/")]
+                                   (subs path 0 idx)))
+                  (when-let [content (source.p/read-file snapshot path)]
+                    {:path path :content content}))))
+        (source.p/list-files snapshot)))
+
+(defn merge-and-store!
+  "Like [[store!]], but reconciles the freshly serialized local state against a remote branch that has
+  advanced beyond the last sync. Performs an entity-identity 3-way merge of:
+  - the merge base (`base-snapshot`, the last successfully synced state),
+  - the local state (serialized from `stream`),
+  - the current remote tip (`snapshot`).
+
+  On a clean merge, writes the merged file set (which fast-forwards onto the remote tip) and returns
+  `{:status :success :version <sha> :summary {:added :updated :removed}}`. When the same entity changed
+  on both sides, returns `{:status :conflict :conflicts [..] :summary {..}}` without writing anything."
+  [stream snapshot base-snapshot task-id message]
+  (let [ours   (serialize-specs stream task-id)
+        base   (snapshot->specs base-snapshot)
+        theirs (snapshot->specs snapshot)
+        {:keys [merged conflicts summary]} (remote-sync.merge/three-way-merge base ours theirs)]
+    (if (seq conflicts)
+      {:status :conflict :conflicts conflicts :summary summary}
+      {:status  :success
+       :version (source.p/write-files! snapshot message merged)
+       :summary summary})))
 
 (defn source-from-settings
   "Creates a git source from the current remote sync settings.

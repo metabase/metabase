@@ -232,6 +232,11 @@ width: fixed
     "main")
 
   (snapshot [_this]
+    (->MockSourceSnapshot source-id base-url branch fail-mode files-atom managed-dirs))
+
+  (snapshot-at [_this _version]
+    ;; The mock is version-agnostic (always reports "mock-version"), so any historical snapshot is just
+    ;; the current view of the files.
     (->MockSourceSnapshot source-id base-url branch fail-mode files-atom managed-dirs)))
 
 (defn create-mock-source
