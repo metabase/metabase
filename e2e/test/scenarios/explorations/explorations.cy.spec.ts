@@ -380,45 +380,39 @@ describe("scenarios > explorations > detail page", () => {
 
       // After landing, the page auto-selects the most-interesting
       // entity (see `ExplorationPage` selection logic). The
-      // `ExplorationTreeItem` is a `<button role="listitem">` and
-      // toggles `aria-pressed`; testing-library's
-      // `{ pressed: true }` filter rejects that combo because
-      // `aria-pressed` is only formally valid on `role="button"`,
-      // so we use a CSS attribute selector to find pressed rows.
+      // `ExplorationTreeItem` is a `<a role="treeitem">` that
+      // toggles `aria-selected`. We identify the selected row via a
+      // CSS attribute selector rather than testing-library's
+      // `{ selected: true }` filter so each read goes through a
+      // fresh, reactive Cypress query.
       //
-      // Read the pressed id through Cypress's reactive query (so
-      // we don't hold a stale subject across the re-renders the
-      // keyboard handler triggers).
-      // Testing-library's `findByRole("listitem", { pressed: true })`
-      // rejects the combo (aria-pressed is formally only valid on
-      // role="button"), so we list every listitem and filter
-      // jQuery-side. The `ExplorationTreeItem` UnstyledButton has
-      // no `id` attribute, so we identify the row by its trimmed
-      // text content (group/query name). Each pressed-state read
-      // goes through a fresh selector so the detached-subject
-      // error can't bite after a keyboard-driven re-render.
-      const pressedRows = () =>
-        cy.findAllByRole("listitem").filter('[aria-pressed="true"]');
+      // The `ExplorationTreeItem` link has no `id` attribute, so we
+      // identify the row by its trimmed text content (group/query
+      // name). Each selected-state read goes through a fresh
+      // selector so the detached-subject error can't bite after a
+      // keyboard-driven re-render.
+      const selectedRows = () =>
+        cy.findAllByRole("treeitem").filter('[aria-selected="true"]');
 
-      pressedRows().should("have.length.at.least", 1);
+      selectedRows().should("have.length.at.least", 1);
 
-      const readPressedText = () =>
-        pressedRows()
+      const readSelectedText = () =>
+        selectedRows()
           .first()
           .invoke("text")
           .then((s: string) => s.trim());
 
-      readPressedText().then((initialText) => {
+      readSelectedText().then((initialText) => {
         cy.wrap(initialText).as("initialText");
 
         // The keyboard handler attaches to `window` (see
         // `ExplorationSidebar.tsx`), so we fire the event on the
         // body.
         cy.get("body").type("{rightarrow}");
-        readPressedText().should("not.eq", initialText);
+        readSelectedText().should("not.eq", initialText);
 
         cy.get("body").type("{leftarrow}");
-        readPressedText().should("eq", initialText);
+        readSelectedText().should("eq", initialText);
       });
     });
   });
@@ -465,16 +459,16 @@ describe("scenarios > explorations > detail page", () => {
           .first()
           .should("be.visible");
 
-        // Headings are `UnstyledButton`s with `aria-expanded`,
-        // accessible by their text content (the metric name).
-        // Leaf rows are also UnstyledButtons but with `role="listitem"`
-        // — ARIA's name-computation algorithm doesn't derive a
-        // listitem's accessible name from its text content, so
-        // `findByRole("listitem", { name })` won't match. We use
-        // `findByText` for the visible `By <dim>` label instead;
-        // it matches the inner `<Text>` rendered by `Ellipsified`.
+        // Headings render as `role="group"` with `aria-expanded`,
+        // accessible by their `aria-label` (the metric name).
+        // Leaf rows are `role="treeitem"` links — ARIA's
+        // name-computation derives a treeitem's accessible name
+        // from its text content, but we assert the visible
+        // `By <dim>` label via `findByText` (matching the inner
+        // `<Text>` rendered by `Ellipsified`) to keep parity with
+        // the heading assertions below.
         const metricHeading = () =>
-          cy.findByRole("button", { name: ordersMetric!.name });
+          cy.findByRole("group", { name: ordersMetric!.name });
 
         metricHeading().should("be.visible");
         for (const dim of pickedDimensions) {
@@ -540,11 +534,11 @@ describe("scenarios > explorations > detail page", () => {
         H.visitExploration(id);
 
         // Click the FIRST sidebar row explicitly. After click,
-        // that row owns `aria-pressed=true`.
-        cy.findAllByRole("listitem").first().click();
-        cy.findAllByRole("listitem")
+        // that row owns `aria-selected=true`.
+        cy.findAllByRole("treeitem").first().click();
+        cy.findAllByRole("treeitem")
           .first()
-          .should("have.attr", "aria-pressed", "true");
+          .should("have.attr", "aria-selected", "true");
 
         // Main area renders something — scope to `main` to avoid
         // matching the sidebar copy.
@@ -566,8 +560,8 @@ describe("scenarios > explorations > detail page", () => {
         timelineIds: [timelineId],
       }).then((id) => {
         cy.visit(`/question/research/${id}?timeline=${timelineId}`);
-        // Sidebar listitems appear once the BE returns query rows.
-        cy.findAllByRole("listitem", { timeout: 15000 })
+        // Sidebar treeitems appear once the BE returns query rows.
+        cy.findAllByRole("treeitem", { timeout: 15000 })
           .first()
           .should("be.visible");
         cy.location("search").should("include", `timeline=${timelineId}`);
@@ -575,7 +569,7 @@ describe("scenarios > explorations > detail page", () => {
         // Reload — the URL param is the source of truth and the
         // router shouldn't rewrite it away on hydration.
         cy.reload();
-        cy.findAllByRole("listitem", { timeout: 15000 })
+        cy.findAllByRole("treeitem", { timeout: 15000 })
           .first()
           .should("be.visible");
         cy.location("search").should("include", `timeline=${timelineId}`);
@@ -589,7 +583,7 @@ describe("scenarios > explorations > detail page", () => {
 
       // Expand the `Findings` heading so its child rows render
       const findingsHeading = () =>
-        cy.findByRole("button", { name: "Findings" });
+        cy.findByRole("group", { name: "Findings" });
       findingsHeading()
         .should("have.attr", "aria-expanded")
         .then((expanded) => {
@@ -755,12 +749,12 @@ describe("scenarios > explorations > detail page", () => {
       // Expand the `Findings` sidebar heading so the AI Summary
       // doc row is in the DOM. (It starts collapsed; the heading
       // is named after the user-doc, which shares the literal
-      // string — only the heading button has aria-expanded.)
-      cy.findByRole("button", { name: "Findings" })
+      // string — only the `role="group"` heading has aria-expanded.)
+      cy.findByRole("group", { name: "Findings" })
         .should("have.attr", "aria-expanded")
         .then((expanded) => {
           if (expanded !== "true") {
-            cy.findByRole("button", { name: "Findings" }).click();
+            cy.findByRole("group", { name: "Findings" }).click();
           }
         });
 
@@ -769,7 +763,7 @@ describe("scenarios > explorations > detail page", () => {
       // assertion to the sidebar (the `<nav>` element) so we
       // don't accidentally match an app-bar Loader.
       cy.findByText("AI Summary")
-        .closest('[role="listitem"]')
+        .closest('[role="treeitem"]')
         .findByLabelText("Loading…")
         .should("be.visible");
 
@@ -812,7 +806,7 @@ describe("scenarios > explorations > detail page", () => {
         // Sidebar icon flips: the AI Summary doc row now
         // exposes the `Ready` aria-label instead of `Loading…`.
         cy.findByText("AI Summary")
-          .closest('[role="listitem"]')
+          .closest('[role="treeitem"]')
           .findByLabelText("Ready")
           .should("be.visible");
 
