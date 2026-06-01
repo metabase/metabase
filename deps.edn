@@ -101,7 +101,7 @@
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   methodical/methodical                     {:mvn/version "1.0.127"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
   metosin/malli                             {:git/url "https://github.com/metabase/malli" ; Data-driven Schemas for Clojure/Script and babashka
-                                             :git/sha "b4a2d78647a049870b316753d7aae7fb4ade3ae5"} ; patched to resolve an issue causing OOM
+                                             :git/sha "80138076960e7820523b4cb932c5b5d1936d4e7f"} ; patched to resolve an issue causing OOM
   net.carcdr/oidc-provider                  {:mvn/version "0.6.2"}              ; OAuth/OIDC server abstract implementation
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
