@@ -1,6 +1,7 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { Box } from "metabase/ui";
 import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getTreemapBreadcrumbModel } from "metabase/visualizations/echarts/graph/treemap/model/breadcrumb";
@@ -122,7 +123,7 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
   }
 
   return (
-    <>
+    <Box py={48} px={96} w="100%" h="100%">
       <ResponsiveEChartsRenderer
         ref={containerRef}
         option={option}
@@ -137,7 +138,7 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
         )}
       </ResponsiveEChartsRenderer>
       {colorsCss}
-    </>
+    </Box>
   );
 };
 
