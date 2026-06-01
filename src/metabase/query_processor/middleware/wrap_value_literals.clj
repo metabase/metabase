@@ -21,6 +21,8 @@
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (mu/defn- value :- :mbql.clause/value
   [info :- :map v]
   [:value (assoc info :lib/uuid (str (random-uuid))) v])

@@ -713,7 +713,7 @@
           [:absolute-datetime {} #t "2019-11-04T12:00" :default]
           [:absolute-datetime {} #t "2019-11-07T01:00" :default]]
          [:between {:lib/expression-name "datetime_tz_between"}
-          [:field {:effective-type :type/DateTimeWithLocalTZ, :base-type :type/DateTimeWithLocalTZ} 602]
+          [:field {:effective-type :type/DateTimeWithLocalTZ, :base-type :type/DateTimeWithLocalTZ} int?]
           [:absolute-datetime {} (t/offset-date-time "2019-11-04T12:00Z") :default]
           [:absolute-datetime {} (t/offset-date-time "2019-11-07T01:00Z") :default]]]
         [["2019-11-01T00:00:00Z" false "2019-11-01T00:23:18.331Z" false "2019-11-01T07:23:18.331Z" false]
@@ -738,7 +738,7 @@
           [:absolute-datetime {} #t "2019-11-04T12:00" :default]
           [:absolute-datetime {} #t "2019-11-07T01:00" :default]]
          [:between {:lib/expression-name  "datetime_tz_between"}
-          [:field {:effective-type :type/DateTimeWithLocalTZ, :base-type :type/DateTimeWithLocalTZ} 602]
+          [:field {:effective-type :type/DateTimeWithLocalTZ, :base-type :type/DateTimeWithLocalTZ} int?]
           [:absolute-datetime {} (t/offset-date-time "2019-11-04T12:00Z") :default]
           [:absolute-datetime {} (t/offset-date-time "2019-11-07T01:00Z") :default]]]
         [["2019-11-01T00:00:00Z" false "2019-11-01T00:23:18.331Z" false "2019-11-01T07:23:18.331Z" false]
