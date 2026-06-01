@@ -42,17 +42,17 @@ jobs:
           script: | # js
             // Backport targets are the supported major lines from version-info.json.
             // A line is in support — and therefore a backport target — if and only if its EoL is
-            // today or later. `release_lines` is edition-agnostic (keyed by bare major),
-            // so the OSS file is sufficient. `lts` is display-only and intentionally ignored.
+            // today or later. `major_version_support` is edition-agnostic (keyed by bare
+            // major), so the OSS file is sufficient. `lts` is display-only and ignored here.
             const url = `http://${process.env.STATIC_BUCKET}.s3.${process.env.STATIC_REGION}.amazonaws.com/version-info.json`;
             const resp = await fetch(url);
             if (!resp.ok) {
               throw new Error(`Failed to fetch ${url}: ${resp.status} ${resp.statusText}`);
             }
 
-            const { release_lines: lines } = await resp.json();
+            const { major_version_support: lines } = await resp.json();
             if (!Array.isArray(lines) || lines.length === 0) {
-              throw new Error('version-info.json has no `release_lines` — cannot determine backport targets');
+              throw new Error('version-info.json has no `major_version_support` — cannot determine backport targets');
             }
 
             const today = new Date().toISOString().slice(0, 10); // UTC YYYY-MM-DD
@@ -92,7 +92,7 @@ jobs:
 
   # --- Legacy escape hatch: explicit depth backports -----------------------
   # `double-backport`/`triple-backport` keep their original behavior — backport to
-  # CURRENT_VERSION and the 1–2 lines below it — independent of `release_lines`.
+  # CURRENT_VERSION and the 1–2 lines below it — independent of `major_version_support`.
   # Kept for the short term for one-off manual depth control. If a branch from the
   # primary path above already exists, create-backport simply errors on the duplicate.
   legacy-backport:
