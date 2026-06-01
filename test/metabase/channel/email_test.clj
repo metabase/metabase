@@ -354,23 +354,28 @@
                  (m/mapply email/send-message! params)
                  (@inbox recipient)))))
         (testing "it does not wrap long, non-ASCII filenames"
-          (with-redefs [email/send-email! mock-send-email!]
-            (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
-                  csv-file                     (temp-csv basename csv-contents)
-                  params-with-problematic-file (-> params
-                                                   (assoc-in [:message 1 :file-name] (str basename ".csv"))
-                                                   (assoc-in [:message 1 :content] csv-file))]
-              ;; Bad string (ignore the linebreak):
-              ;; Content-Disposition: attachment; filename="=?UTF-8?Q?this-is-quite-long-and-ha?= =?UTF-8?Q?s-non-
-              ;; =C3=82\"; filename*1=\"=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
-              ;;           ^-- this is the problem
-              ;; Acceptable string (again, ignore the linebreak):
-              ;; Content-Disposition: attachment; filename= "=?UTF-8?Q?this-is-quite-long-and-ha?=
-              ;; =?UTF-8?Q?s-non-=C3=82=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
-
-              (is (re-find
-                   #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
-                   (m/mapply email/send-message! params-with-problematic-file))))))))))
+          ;; Capture the rendered message via the `send-email!` redef rather than the return value of
+          ;; `send-message!` — `send-message-or-throw!` sends each recipient batch for its side effect and does not
+          ;; return the message.
+          (let [sent (atom nil)]
+            (with-redefs [email/send-email! (fn [credentials email-details]
+                                              (reset! sent (mock-send-email! credentials email-details)))]
+              (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
+                    csv-file                     (temp-csv basename csv-contents)
+                    params-with-problematic-file (-> params
+                                                     (assoc-in [:message 1 :file-name] (str basename ".csv"))
+                                                     (assoc-in [:message 1 :content] csv-file))]
+                ;; Bad string (ignore the linebreak):
+                ;; Content-Disposition: attachment; filename="=?UTF-8?Q?this-is-quite-long-and-ha?= =?UTF-8?Q?s-non-
+                ;; =C3=82\"; filename*1=\"=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
+                ;;           ^-- this is the problem
+                ;; Acceptable string (again, ignore the linebreak):
+                ;; Content-Disposition: attachment; filename= "=?UTF-8?Q?this-is-quite-long-and-ha?=
+                ;; =?UTF-8?Q?s-non-=C3=82=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
+                (m/mapply email/send-message! params-with-problematic-file)
+                (is (re-find
+                     #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
+                     @sent))))))))))
 
 (deftest send-message!-cloud-test
   (premium-features.test-util/with-premium-features [:cloud-custom-smtp]

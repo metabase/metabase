@@ -138,9 +138,8 @@
         (string? message)))]])
 
 (defn send-message-or-throw!
-  "Send an email to one or more `recipients`. Upon success, this returns the result of the last message sent. This
-  function does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use
-  [[send-email-retrying!]] unless the caller has its own retry logic.
+  "Send an email to one or more `recipients`. This function does not catch and swallow thrown exceptions, it will
+  bubble up. Should prefer to use [[send-email-retrying!]] unless the caller has its own retry logic.
 
   When there are more recipients than [[channel.settings/email-max-recipients-per-message]], the email is split
   into multiple messages of at most that many recipients each (see [[partition-recipients]]), so a single message
@@ -168,13 +167,9 @@
                                                     :content message}])}
                          (when-let [reply-to (:reply-to smtp-settings)]
                            {:reply-to reply-to}))]
-      ;; `mapv` (not `doseq`) so every batch is sent and we return the last message's result, preserving this
-      ;; function's contract that it returns the message that was just sent.
-      (last
-       (mapv (fn [batch]
-               ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
-               (send-email! smtp-settings (assoc base-message to-type (seq batch))))
-             (partition-recipients recipients (channel.settings/email-max-recipients-per-message)))))
+      (doseq [batch (partition-recipients recipients (channel.settings/email-max-recipients-per-message))]
+        ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
+        (send-email! smtp-settings (assoc base-message to-type (seq batch)))))
     (catch Throwable e
       (analytics/inc! :metabase-email/message-errors)
       (when (not= :smtp-host-not-set (:cause (ex-data e)))
