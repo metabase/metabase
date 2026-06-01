@@ -70,8 +70,7 @@
   "List the static asset paths the backend will serve for a plugin.
    Custom viz plugins do not ship arbitrary assets — the only servable asset is the
    plugin `icon` (when it's an image with a safe relative path). Authors who need
-   images inline them (e.g. base64) into their single JS bundle.
-   See docs/adr/0001-no-custom-viz-asset-hosting.md."
+   images inline them (e.g. base64) into their single JS bundle."
   [manifest]
   (when-let [icon (:icon manifest)]
     (when (and (image-file? icon) (safe-relative-path? icon))
