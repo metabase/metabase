@@ -2,6 +2,7 @@
 import EventEmitter from "events";
 import querystring from "querystring";
 
+import { isWebFormBody } from "metabase/api/utils/is-web-form-body";
 import { substituteUrlTags } from "metabase/api/utils/substitute-url-tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
@@ -240,10 +241,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
         let body: string | FormData | URLSearchParams | undefined;
         if (options.hasBody) {
-          if (
-            rawData instanceof FormData ||
-            rawData instanceof URLSearchParams
-          ) {
+          if (isWebFormBody(rawData)) {
             // Pass `FormData` / `URLSearchParams` through unwrapped so the
             // browser sets the right Content-Type (multipart boundary /
             // urlencoded charset). Drops the legacy `body: { formData },
@@ -273,11 +271,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
         // `application/json` Content-Type — the browser sets the right value
         // (with the multipart boundary or urlencoded charset). XHR's
         // `xhr.send(formData)` honors this too.
-        if (
-          body instanceof FormData ||
-          body instanceof URLSearchParams ||
-          (options.formData && options.fetch)
-        ) {
+        if (isWebFormBody(body) || (options.formData && options.fetch)) {
           delete headers["Content-Type"];
         }
 
