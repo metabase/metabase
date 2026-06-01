@@ -4,7 +4,6 @@ export interface CustomVizPluginManifest {
   metabase?: {
     version?: string;
   };
-  assets?: string[];
 }
 
 export type CustomVizPluginId = number;

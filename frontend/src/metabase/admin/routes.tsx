@@ -75,7 +75,7 @@ import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { getTasksRoutes } from "./tools/routes";
+import { getNotificationsRoutes, getTasksRoutes } from "./tools/routes";
 import { UpsellTenants } from "./upsells/UpsellTenants";
 import {
   RedirectToAllowedSettings,
@@ -88,10 +88,9 @@ export const getRoutes = (
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
-  const hasSimpleEmbedding = getTokenFeature(
-    store.getState(),
-    "embedding_simple",
-  );
+  const state = store.getState();
+  const hasSimpleEmbedding = getTokenFeature(state, "embedding_simple");
+  const hasAuditApp = getTokenFeature(state, "audit_app");
 
   return (
     <Route path="/admin" component={CanAccessSettings}>
@@ -328,6 +327,9 @@ export const getRoutes = (
               )}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
+            {hasAuditApp && (
+              <Route path="notifications">{getNotificationsRoutes()}</Route>
+            )}
             <Route path="jobs" component={JobInfoApp}>
               <ModalRoute
                 path=":jobKey"

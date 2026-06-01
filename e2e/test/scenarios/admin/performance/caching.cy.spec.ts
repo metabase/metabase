@@ -132,7 +132,11 @@ describe("scenarios > admin > performance > caching", () => {
         cy.findByRole("switch").parent("label").click();
         cy.findByRole("switch").should("be.checked");
       });
+      // After saving, the form reloads its config; wait for that reload before
+      // re-opening so the assertion doesn't race a stale (pre-save) render.
+      cy.intercept("GET", "/api/cache?model=*&id=*").as("reloadCacheConfig");
       saveCacheStrategyForm();
+      cy.wait("@reloadCacheConfig");
       cy.findByLabelText("When to get new results").click();
       preemptiveCachingSwitch().findByRole("switch").should("be.checked");
 
