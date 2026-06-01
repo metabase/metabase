@@ -40,11 +40,10 @@ npm run dev
 ```
 src/
   index.tsx             # Your visualization code — start here
-metabase-plugin.json    # Plugin manifest (name, icon, assets, version)
+metabase-plugin.json    # Plugin manifest (name, icon, version)
 public/
   assets/
     icon.svg            # Visualization icon (shown in the chart type picker)
-    ...                 # Any other static assets
 vite.config.ts          # Build configuration — don't edit
 pack.mjs                # Packages the build into a .tgz — don't edit
 tsconfig.json
@@ -52,7 +51,7 @@ tsconfig.json
 
 ### The starter visualization
 
-The scaffold ships a complete, working example: a chart that shows a thumbs-up image when a single numeric result meets a `threshold` setting, and a thumbs-down otherwise.
+The scaffold ships a complete, working example: a chart that shows a thumbs-up emoji (👍) when a single numeric result meets a `threshold` setting, and a thumbs-down (👎) otherwise.
 
 ## Develop against a running Metabase
 
@@ -84,7 +83,6 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 {
   "name": "my-viz",
   "icon": "icon.svg",
-  "assets": ["image.png"],
   "metabase": {
     "version": ">=1.62.0"
   }
@@ -94,8 +92,7 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 | Field              | Description                                                                                                                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles. It doesn't have to match the `id` your visualization returns. |
-| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically.                                                                                                             |
-| `assets`           | Other static files to bundle (images and JSON only). Reference them in code with `getAssetUrl()`.                                                                                               |
+| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically. It's the only file Metabase serves alongside your bundle — see [Bundling assets](#bundling-assets).         |
 | `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                                 |
 
 ## Defining a visualization
@@ -115,7 +112,6 @@ type Settings = {
 
 const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
-  getAssetUrl,
   locale,
 }) => {
   const VisualizationComponent = ({
@@ -308,39 +304,18 @@ To match the app's look and follow [dark mode](../people-and-groups/account-sett
 
 ## Bundling assets
 
-To ship static files (images or JSON) with your plugin:
+The build produces a single JavaScript bundle (`dist/index.js`), and the [icon](#the-visualization-icon) is the only file Metabase serves alongside it. Metabase doesn't serve arbitrary static files, and the [sandbox](#sandbox-restrictions) blocks network access, so you can't load an external image at runtime either.
 
-1. List them under `"assets"` in `metabase-plugin.json`.
-2. Put the files in `public/assets/` — they're copied to `dist/assets/` when you build.
-3. Reference them in code with `getAssetUrl("filename.png")`, which returns the right URL in both interactive rendering and dev mode. `getAssetUrl` is provided by the factory parameters — destructure it from the factory argument, don't import it from `@metabase/custom-viz`.
+So anything your visualization renders has to live inside that bundle. For images, you have a few options:
 
-```tsx
-const createVisualization: CreateCustomVisualization<Settings> = ({
-  getAssetUrl,
-}) => {
-  const VisualizationComponent = () => (
-    <img src={getAssetUrl("my-image.png")} alt="" />
-  );
-
-  // ...return your visualization definition with this component
-};
-```
-
-`getAssetUrl` is only available inside the factory — it isn't a prop on your component. If your component lives in its own file (rather than inline, as above), resolve the URL in the factory and pass it down, instead of reaching for `getAssetUrl` from inside the component:
+- **Inline SVG or emoji.** What the starter visualization does (it renders 👍 / 👎). Drop the SVG markup straight into your JSX.
+- **Import the image.** Import an image from `src/` and the bundler inlines small files as a base64 data URL. Vite inlines assets below its `assetsInlineLimit` (4 KB by default); larger files are emitted as separate assets that won't ship in the single bundle, so keep imported images small or raise the limit.
+- **Embed a data URL directly.** Paste a `data:image/png;base64,...` string into your component's `src`.
 
 ```tsx
-// Visualization.tsx — a factory that closes over the resolved URL
-export function createVisualizationComponent(imageUrl: string) {
-  return function VisualizationComponent(props: CustomVisualizationProps<Settings>) {
-    return <img src={imageUrl} alt="" />;
-  };
-}
+import logo from "./logo.svg"; // inlined as a data URL at build time
 
-// index.tsx
-const createVisualization: CreateCustomVisualization<Settings> = ({ getAssetUrl }) => {
-  const VisualizationComponent = createVisualizationComponent(getAssetUrl("my-image.png"));
-  // ...return your visualization definition with this component
-};
+const VisualizationComponent = () => <img src={logo} alt="" />;
 ```
 
 ## The visualization icon
@@ -367,7 +342,7 @@ When your visualization is ready, run:
 npm run build
 ```
 
-This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and any whitelisted `dist/assets/*` files, and has to come in under 5 MB (5 MiB). The packaging step also rejects an archive whose uncompressed contents exceed 25 MiB. You don't need to commit `dist/`.
+This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and the whitelisted icon under `dist/assets/`, and has to come in under 5 MB (5 MiB). The packaging step also rejects an archive whose uncompressed contents exceed 25 MiB. You don't need to commit `dist/`.
 
 Upload the `.tgz` file in **Admin** > **Settings** > **Custom visualizations** > **Manage visualizations** > **Add**. See [Custom visualizations](../questions/visualizations/custom.md) for more on uploading and managing plugins.
 
