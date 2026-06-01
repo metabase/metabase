@@ -331,6 +331,10 @@
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
+(defmethod sql.qp/add-interval-honeysql-form :h2-mbql5
+  [driver hsql-form amount unit]
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+
 (defmethod driver/humanize-connection-error-message :h2
   [_ messages]
   (let [message (first messages)]
@@ -357,6 +361,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
+
+(defmethod sql.qp/current-datetime-honeysql-form :h2-mbql5
   [driver]
   (h2x/current-datetime-honeysql-form driver))
 
