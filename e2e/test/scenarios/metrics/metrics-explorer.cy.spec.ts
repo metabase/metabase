@@ -1358,6 +1358,43 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getMetricVisualization().should("be.visible");
     });
 
+    it("should select and reopen the No breakout state from the viewer controls", () => {
+      H.MetricsViewer.openDimensionPickerSidebar().within(() => {
+        cy.findByRole("button", { name: "No breakout" })
+          .should("be.visible")
+          .and("have.attr", "aria-pressed", "false")
+          .click();
+      });
+      cy.wait("@dataset");
+
+      H.MetricsViewer.dimensionPickerSidebar().within(() => {
+        cy.findByRole("button", { name: "No breakout" }).should(
+          "have.attr",
+          "aria-pressed",
+          "true",
+        );
+      });
+      H.MetricsViewer.assertVizType("Number");
+      H.MetricsViewer.breakoutLegend().should("not.exist");
+
+      H.MetricsViewer.closeDimensionPickerSidebar();
+      H.MetricsViewer.dimensionPickerSidebar().should("not.exist");
+
+      H.MetricsViewer.getMetricControls()
+        .findByRole("button", { name: "No breakout" })
+        .should("be.visible")
+        .click();
+
+      H.MetricsViewer.dimensionPickerSidebar().within(() => {
+        cy.findByRole("heading", { name: "Break out by" }).should("be.visible");
+        cy.findByRole("button", { name: "No breakout" }).should(
+          "have.attr",
+          "aria-pressed",
+          "true",
+        );
+      });
+    });
+
     it("should select dimension categories from the sidebar", () => {
       addMetricMath([
         { metricName: "Count of orders" },
@@ -2090,9 +2127,7 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should apply filters and dimensions to individual metric instances within expressions", () => {
-      selectBreakout("Count of orders", "Category");
-      cy.wait("@dataset");
-      cy.wait("@breakoutValues");
+      H.MetricsViewer.searchInput().clear();
       addMetricMath([
         { metricName: "Count of orders" },
         "+",
@@ -2100,37 +2135,36 @@ describe("scenarios > metrics > explorer", () => {
       ]);
       cy.wait("@dataset");
 
+      selectDimensionBreakout("Category");
+      cy.wait("@dataset");
+
       H.MetricsViewer.getFilterButton().click();
       H.popover().within(() => {
         cy.findAllByRole("button", { name: /Count of orders/ })
-          .should("have.length", 3)
+          .should("have.length", 2)
+          .eq(0)
+          .click();
+        cy.findByText("Category").click();
+        cy.findByText("Doohickey").click();
+        cy.button("Add filter").click();
+      });
+      cy.wait("@dataset");
+      H.MetricsViewer.getFilterButton().click();
+      H.popover().within(() => {
+        cy.findAllByRole("button", { name: /Count of orders/ })
           .eq(1)
           .click();
         cy.findByText("Category").click();
         cy.findByText("Doohickey").click();
         cy.button("Add filter").click();
       });
-      H.MetricsViewer.getFilterButton().click();
-      H.popover().within(() => {
-        cy.findAllByRole("button", { name: /Count of orders/ })
-          .eq(2)
-          .click();
-        cy.findByText("Category").click();
-        cy.findByText("Gadget").click();
-        cy.button("Add filter").click();
-      });
-      H.MetricsViewer.getMetricControls()
-        .findByRole("button", { name: /All time/i })
-        .click();
-      H.popover().findByText("Previous 12 months").click();
-
+      cy.wait("@dataset");
       function assertMetricMath() {
         cy.log("breakout is applied");
-        H.MetricsViewer.searchBarPills()
-          .contains("[data-testid=metrics-viewer-pill]", "Count of orders")
-          .findByTestId("color-indicator-container")
-          .children()
-          .should("have.length", 4);
+        H.MetricsViewer.getColumnPickerButton().should(
+          "contain.text",
+          "Category",
+        );
         cy.log(
           "filter pills are in place and show the badge indicating the unique metric instance",
         );
@@ -2158,7 +2192,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("refresh and assert again");
       cy.reload();
       cy.wait("@dataset");
-      cy.wait("@breakoutValues");
       assertMetricMath();
 
       cy.log("edit formula and assert again");
