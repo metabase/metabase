@@ -40,10 +40,13 @@ runs:
   using: "composite"
   steps:
     - name: Authenticate to prevent API rate limit
-      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2
       with:
-        username: ${{ inputs.username }}
-        password: ${{ inputs.password }}
+        timeout_minutes: 3
+        max_attempts: 3
+        retry_wait_seconds: 15
+        shell: bash
+        command: echo "${{ inputs.password }}" | docker login -u "${{ inputs.username }}" --password-stdin
 
     - name: Start Containers
       shell: bash
@@ -53,16 +56,28 @@ runs:
 
         cd e2e/test/scenarios/
 
-        docker compose up \
-          $([ ${{ inputs.postgres }} = true ] && echo "postgres-sample") \
-          $([ ${{ inputs.mysql }} = true ] && echo "mysql-sample") \
-          $([ ${{ inputs.mongo }} = true ] && echo "mongo-sample") \
-          $([ ${{ inputs.maildev }} = true ] && echo "maildev") \
-          $([ ${{ inputs.maildev }} = true ] && echo "maildev-ssl") \
-          $([ ${{ inputs.openldap }} = true ] && echo "ldap") \
-          $([ ${{ inputs.webhook }} = true ] && echo "webhook-tester") \
-          $([ ${{ inputs.snowplow }} = true ] && echo "snowplow-micro") \
-          -d
+        SERVICES="\
+          $([ ${{ inputs.postgres }} = true ] && echo 'postgres-sample') \
+          $([ ${{ inputs.mysql }} = true ] && echo 'mysql-sample') \
+          $([ ${{ inputs.mongo }} = true ] && echo 'mongo-sample') \
+          $([ ${{ inputs.maildev }} = true ] && echo 'maildev') \
+          $([ ${{ inputs.maildev }} = true ] && echo 'maildev-ssl') \
+          $([ ${{ inputs.openldap }} = true ] && echo 'ldap') \
+          $([ ${{ inputs.webhook }} = true ] && echo 'webhook-tester') \
+          $([ ${{ inputs.snowplow }} = true ] && echo 'snowplow-micro')"
+
+        for attempt in 1 2 3; do
+          if docker compose up $SERVICES -d; then
+            break
+          fi
+          if [ $attempt -eq 3 ]; then
+            echo "Docker compose up failed after 3 attempts"
+            exit 1
+          fi
+          echo "Docker compose up attempt $attempt failed, retrying in 30s..."
+          docker compose down 2>/dev/null || true
+          sleep 30
+        done
 
         if ${{ inputs.maildev }}; then
           echo -e "${Y}checking maildev container..." &&
