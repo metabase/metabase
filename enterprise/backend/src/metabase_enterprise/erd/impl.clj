@@ -93,7 +93,7 @@
   (into {} (map (juxt :id identity)) xs))
 
 (defn- readable-tables
-  "Fetch readable, active, visible tables in `database-id`.
+  "Fetch readable, active tables in `database-id`.
    Optional `table-ids` restricts by IDs; optional `schema` restricts by schema.
    `schema=\"\"` matches both nil and empty-string schemas."
   [database-id & {:keys [table-ids schema] :as opts}]
@@ -101,8 +101,7 @@
     []
     (let [where (cond-> [:and
                          [:= :db_id database-id]
-                         [:= :active true]
-                         [:= :visibility_type nil]]
+                         [:= :active true]]
                   (contains? opts :table-ids) (conj [:in :id table-ids])
                   (contains? opts :schema)    (conj (schema-clause schema)))]
       (->> (t2/select :model/Table
