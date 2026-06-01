@@ -735,6 +735,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
         sourceId: REVENUE_SOURCE_ID,
         metricName: "Revenue",
         colors: ["#509ee3"],
+        isExpressionToken: false,
         value: "dim-created-at",
         options: [
           { value: "dim-created-at", label: "Created At", icon: "calendar" },
@@ -746,6 +747,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
         sourceId: ORDERS_SOURCE_ID,
         metricName: "Orders",
         colors: ["#f9d45c"],
+        isExpressionToken: false,
         value: "dim-placed-at",
         options: [
           { value: "dim-placed-at", label: "Placed At", icon: "calendar" },
@@ -817,6 +819,87 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
       "Orders → Created At",
       "Products → Created At",
     ]);
+  });
+
+  it("marks expression token rows", () => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions: {
+        shared: [
+          {
+            icon: "calendar",
+            dimensionBreakoutInfo: {
+              type: "time",
+              label: "Time",
+              dimensionMapping: {
+                0: "dim-revenue-created-at",
+                1: "dim-orders-created-at",
+              },
+            },
+          },
+        ],
+        bySource: {},
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      metricSlots: [
+        {
+          slotIndex: 0,
+          entityIndex: 0,
+          sourceId: REVENUE_SOURCE_ID,
+          tokenPosition: 0,
+        },
+        {
+          slotIndex: 1,
+          entityIndex: 0,
+          sourceId: ORDERS_SOURCE_ID,
+          tokenPosition: 2,
+        },
+      ],
+    });
+    const timeCategory = categories.find(
+      (category) => category.name === "Time",
+    );
+
+    expect(timeCategory).toBeDefined();
+
+    const rows = buildDimensionPickerSidebarCategorySelectRows({
+      category: timeCategory!,
+      activeDimensionBreakout: {
+        id: "time",
+        type: "time",
+        label: "Time",
+        display: "line",
+        dimensionMapping: {
+          0: "dim-revenue-created-at",
+          1: "dim-orders-created-at",
+        },
+        projectionConfig: {},
+      },
+      metricSlots: [
+        {
+          slotIndex: 0,
+          entityIndex: 0,
+          sourceId: REVENUE_SOURCE_ID,
+          tokenPosition: 0,
+        },
+        {
+          slotIndex: 1,
+          entityIndex: 0,
+          sourceId: ORDERS_SOURCE_ID,
+          tokenPosition: 2,
+        },
+      ],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      sourceColors: { 0: ["#509ee3"] },
+    });
+
+    expect(rows.map((row) => row.isExpressionToken)).toEqual([true, true]);
   });
 });
 

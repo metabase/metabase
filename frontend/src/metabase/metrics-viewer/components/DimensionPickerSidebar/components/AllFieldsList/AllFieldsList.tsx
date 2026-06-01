@@ -20,7 +20,6 @@ import { buildAllFieldsMetricGroups } from "./buildAllFieldsMetricGroups";
 type AllFieldsListProps = {
   activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
   sections: DimensionPickerSection[];
-  metricSourceOrder: MetricSourceId[];
   metricSourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   sourceColors: SourceColorMap;
   metricSlots: MetricSlot[];
@@ -30,7 +29,6 @@ type AllFieldsListProps = {
 export function AllFieldsList({
   activeDimensionBreakout,
   sections,
-  metricSourceOrder,
   metricSourceDataById,
   sourceColors,
   metricSlots,
@@ -44,17 +42,18 @@ export function AllFieldsList({
 
   const metricGroups = buildAllFieldsMetricGroups({
     sections,
-    sourceOrder: metricSourceOrder,
     sourceDataById: metricSourceDataById,
     metricSlots,
     sourceColors,
   });
 
-  if (metricSourceOrder.length > 1 && metricGroups.length > 1) {
+  if (metricSlots.length > 1 && metricGroups.length > 1) {
     return (
       <MetricAccordionList
         activeDimensionBreakout={activeDimensionBreakout}
-        defaultExpandedGroupKeys={metricSourceOrder.slice(0, 1)}
+        defaultExpandedGroupKeys={metricGroups
+          .slice(0, 1)
+          .map((group) => group.key)}
         groups={metricGroups}
         onSelect={onSelect}
       />

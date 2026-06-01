@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
   MetricSourceId,
   MetricsViewerDimensionBreakoutState,
@@ -768,6 +768,168 @@ describe("DimensionPickerSidebar", () => {
     expect(
       screen.getByRole("button", { name: "Order Status" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows one See all accordion per metric slot when the same metric is selected twice", async () => {
+    setup({
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "calendar",
+              group: { id: "orders", type: "main", displayName: "Orders" },
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: {
+                  0: "dim-created-at",
+                  1: "dim-created-at",
+                },
+              },
+            },
+          ],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+      },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    const revenueAccordions = screen.getAllByRole("button", {
+      name: "Revenue",
+    });
+    expect(revenueAccordions).toHaveLength(2);
+    expect(revenueAccordions[0]).toHaveAttribute("aria-expanded", "true");
+    expect(revenueAccordions[1]).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(revenueAccordions[1]);
+
+    expect(revenueAccordions[0]).toHaveAttribute("aria-expanded", "true");
+    expect(revenueAccordions[1]).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("uses circle indicators for expression metric dropdown rows", async () => {
+    setup({
+      dimensionBreakout: timeDimensionBreakout,
+      dimensions: {
+        shared: [
+          {
+            icon: "calendar",
+            dimensionBreakoutInfo: {
+              type: "time",
+              label: "Time",
+              dimensionMapping: {
+                0: "dim-revenue-created-at",
+                1: "dim-feedback-created-at",
+              },
+            },
+          },
+        ],
+        bySource: {},
+      },
+      slots: [
+        {
+          slotIndex: 0,
+          entityIndex: 0,
+          sourceId: SOURCE_ID,
+          tokenPosition: 0,
+        },
+        {
+          slotIndex: 1,
+          entityIndex: 0,
+          sourceId: SECOND_SOURCE_ID,
+          tokenPosition: 2,
+        },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Feedback, Count" },
+      },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Configure Time" }),
+    );
+
+    for (const indicator of screen.getAllByTestId(
+      "color-indicator-container",
+    )) {
+      expect(
+        within(indicator).queryByRole("img", { hidden: true }),
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  it("uses circle indicators for expression metric See all accordions", async () => {
+    setup({
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 0: "dim-revenue-created-at" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 1: "dim-feedback-created-at" },
+              },
+            },
+          ],
+        },
+      },
+      slots: [
+        {
+          slotIndex: 0,
+          entityIndex: 0,
+          sourceId: SOURCE_ID,
+          tokenPosition: 0,
+        },
+        {
+          slotIndex: 1,
+          entityIndex: 0,
+          sourceId: SECOND_SOURCE_ID,
+          tokenPosition: 2,
+        },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Feedback, Count" },
+      },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    expect(screen.getByRole("button", { name: "Revenue" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Feedback, Count" }),
+    ).toBeInTheDocument();
+    for (const indicator of screen.getAllByTestId(
+      "color-indicator-container",
+    )) {
+      expect(
+        within(indicator).queryByRole("img", { hidden: true }),
+      ).not.toBeInTheDocument();
+    }
   });
 
   it("merges shared and metric sections with the same table name", async () => {

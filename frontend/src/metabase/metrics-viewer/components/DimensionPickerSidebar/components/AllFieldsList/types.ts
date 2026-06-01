@@ -1,9 +1,9 @@
-import type { MetricSourceId } from "metabase/metrics-viewer/types";
 import type { DimensionPickerSection } from "metabase/metrics-viewer/utils";
 
 export type AllFieldsMetricGroup = {
-  key: MetricSourceId;
+  key: string;
   name: string;
   colors?: string[];
+  isExpressionToken: boolean;
   sections: DimensionPickerSection[];
 };

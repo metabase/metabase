@@ -24,7 +24,7 @@ export function MetricDimensionSelect({
       leftSection={
         <SourceColorIndicator
           colors={row.colors}
-          fallbackIcon="metric"
+          fallbackIcon={row.isExpressionToken ? undefined : "metric"}
           size={14}
         />
       }

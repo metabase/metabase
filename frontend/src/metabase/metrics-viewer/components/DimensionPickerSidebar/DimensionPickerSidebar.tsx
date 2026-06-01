@@ -302,7 +302,6 @@ export function DimensionPickerSidebar({
           <AllFieldsList
             activeDimensionBreakout={activeDimensionBreakout}
             sections={filteredSections}
-            metricSourceOrder={metricSourceOrder}
             metricSourceDataById={metricSourceDataById}
             sourceColors={sourceColors}
             metricSlots={metricSlots}
