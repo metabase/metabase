@@ -138,7 +138,13 @@ describe("scenarios > dashboard", () => {
 
       H.checkSavedToCollectionQuestionToast(true);
 
-      H.entityPickerModal().findByText("New dashboard").click();
+      // The "New dashboard" button stays disabled until the selected
+      // collection's details (incl. can_write) load; clicking too early is a
+      // no-op, so wait for it to be enabled before clicking.
+      H.entityPickerModal()
+        .findByRole("button", { name: "New dashboard" })
+        .should("be.enabled")
+        .click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
         cy.findByText("Create").click();

@@ -116,6 +116,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
 
     it("should be able to create, edit, and delete alerts", () => {
+      // The alerts modal stays in a null-render limbo until
+      // /api/notification?card_id=... resolves and QuestionAlertListModal
+      // picks "create-modal" vs "list-modal". On fetch (microtask resolution
+      // + SDK JWT bootstrap) the click can land before the user-recipients
+      // and channels queries have been issued; wait for the GET so the
+      // create modal is rendered when we assert its heading.
+      cy.intercept("GET", "/api/notification?card_id=*").as("listAlerts");
+
       cy.get<number>("@sqlQuestionId").then((sqlQuestionId) => {
         mountSdkContent(
           <InteractiveQuestion questionId={sqlQuestionId} withAlerts />,
@@ -126,6 +134,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       getSdkRoot().button("Alerts").should("be.visible").click();
 
       cy.log("alerts modal is open");
+      cy.wait("@listAlerts");
       modal().within(() => {
         cy.findByRole("heading", { name: "New alert" }).should("be.visible");
         cy.button("Done").click();
