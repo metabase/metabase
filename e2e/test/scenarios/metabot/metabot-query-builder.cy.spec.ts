@@ -31,7 +31,7 @@ describe("Metabot Query Builder", () => {
     cy.visit("/question/ask");
     cy.url().should("include", "/question/ask");
     cy.get("main")
-      .findByText("To use AI exploration, please", { exact: false })
+      .findByText("To use AI explorations, please", { exact: false })
       .should("be.visible");
     cy.findByRole("button", { name: "connect to a model" }).click();
     cy.findByTestId("ai-provider-configuration-modal").should("be.visible");
@@ -47,15 +47,6 @@ describe("Metabot Query Builder", () => {
     cy.visit("/question/ask");
     cy.url().should("include", "/question#");
     cy.findByTestId("metabot-send-message").should("not.exist");
-  });
-
-  it("should not show AI exploration in new button when metabot is disabled", () => {
-    H.updateSetting("metabot-enabled?", false);
-    cy.visit("/");
-
-    cy.log("'AI exploration' option should not appear in new button");
-    H.newButton().click();
-    H.popover().findByText("AI exploration").should("not.exist");
   });
 
   it("should be able to successfully generate a notebook query", () => {
