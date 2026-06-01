@@ -1,6 +1,5 @@
 import { isNative } from "metabase/common/utils/card";
 import type { Dispatch } from "metabase/redux/store";
-import { dispatchQueryEndpoint } from "metabase/services";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card, Dataset } from "metabase-types/api";
@@ -80,6 +79,54 @@ export function maybeUsePivotEndpoint<Arg>(
     return endpoint;
   }
   return (PIVOT_ENDPOINTS.get(endpoint) as QueryEndpoint<Arg>) ?? endpoint;
+}
+
+/**
+ * Dispatches an RTK Query endpoint and wires `signal` to RTK Query's `.abort()`.
+ * Translates aborts into the legacy `{ isCancelled: true }` shape so existing
+ * error handling (e.g. queryErrored) keeps working. `forceRefetch` makes each
+ * call hit the network rather than resolving from a stale cache entry, matching
+ * the legacy fetch-and-discard behavior.
+ */
+export function dispatchQueryEndpoint<Arg>(
+  dispatch: Dispatch,
+  endpoint: QueryEndpoint<Arg>,
+  requestBody: Arg,
+  signal?: AbortSignal,
+): Promise<Dataset> {
+  // RTK's initiate() returns a thunk; dispatching it yields a result that
+  // carries abort/unwrap/unsubscribe.
+  const action = dispatch(
+    endpoint.initiate(requestBody, { forceRefetch: true }) as never,
+  ) as unknown as {
+    abort?: () => void;
+    unsubscribe?: () => void;
+    unwrap: () => Promise<Dataset>;
+  };
+
+  let isCancelled = false;
+  const onAbort = () => {
+    isCancelled = true;
+    action.abort?.();
+  };
+  // The signal may already be aborted by the time we get here (e.g. the
+  // user cancelled while we were awaiting a dynamic import in the caller).
+  // In that case the "abort" event already fired and a listener won't run.
+  if (signal?.aborted) {
+    onAbort();
+  } else {
+    signal?.addEventListener("abort", onAbort, { once: true });
+  }
+
+  return action
+    .unwrap()
+    .catch((error) => {
+      if (isCancelled) {
+        throw { isCancelled: true };
+      }
+      throw error;
+    })
+    .finally(() => action.unsubscribe?.());
 }
 
 /**

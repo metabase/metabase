@@ -64,42 +64,6 @@ async function handleQueryApiError(apiPromise) {
   }
 }
 
-// Dispatches an RTK Query query endpoint and wires `signal` to RTK Query's
-// `.abort()`. Translates aborts into the `{ isCancelled: true }` shape that the
-// legacy fetch helper threw, so existing error-handling code (e.g. queryErrored)
-// keeps working. `forceRefetch` makes each call hit the network rather than
-// resolving from a stale cache entry, matching the legacy fetch-and-discard
-// behavior.
-export function dispatchQueryEndpoint(dispatch, endpoint, requestBody, signal) {
-  const action = dispatch(
-    endpoint.initiate(requestBody, { forceRefetch: true }),
-  );
-
-  let isCancelled = false;
-  const onAbort = () => {
-    isCancelled = true;
-    action.abort?.();
-  };
-  // The signal may already be aborted by the time we get here (e.g. the
-  // user cancelled while we were awaiting the dynamic import in the caller).
-  // In that case the "abort" event already fired and a listener won't run.
-  if (signal?.aborted) {
-    onAbort();
-  } else {
-    signal?.addEventListener("abort", onAbort, { once: true });
-  }
-
-  return action
-    .unwrap()
-    .catch((error) => {
-      if (isCancelled) {
-        throw { isCancelled: true };
-      }
-      throw error;
-    })
-    .finally(() => action.unsubscribe?.());
-}
-
 // Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot).
 let adhocDatasetQueryCounter = 0;
 export async function runAdhocDatasetQuery(
@@ -113,10 +77,11 @@ export async function runAdhocDatasetQuery(
   // in `metabase/api` → `metabase/redux/user` → `metabase/redux/query-builder`
   // → `metabase/services` (this module). Deferring resolution until call time
   // means the cycle closes only after every module has finished initializing.
-  const [{ datasetApi }, { shouldUsePivotEndpoint }] = await Promise.all([
-    import("metabase/api/dataset"),
-    import("metabase/api/query-endpoints"),
-  ]);
+  const [{ datasetApi }, { shouldUsePivotEndpoint, dispatchQueryEndpoint }] =
+    await Promise.all([
+      import("metabase/api/dataset"),
+      import("metabase/api/query-endpoints"),
+    ]);
   const isPivot = shouldUsePivotEndpoint(card, metadata);
   // Disambiguate the RTK cache key so two callers running the same MBQL
   // query get independent cache entries and abort signals. Without this,
