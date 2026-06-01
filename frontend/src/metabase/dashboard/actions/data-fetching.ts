@@ -34,18 +34,13 @@ import {
 } from "metabase/dashboard/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import { runAdhocDatasetQuery } from "metabase/querying/run-query";
 import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  AutoApi,
-  DashboardApi,
-  EmbedApi,
-  PublicApi,
-  runAdhocDatasetQuery,
-} from "metabase/services";
+import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
 import {
   getDashboardType,
   isQuestionDashCard,

@@ -25,7 +25,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { runQuestionQuery } from "./services";
+import { runQuestionQuery } from "./run-query";
 
 const MOCK_QUERY = createMockStructuredDatasetQuery({
   database: SAMPLE_DB_ID,
@@ -103,7 +103,7 @@ async function setupRunQuestionQuery(question: Question) {
   return { result, mockResult };
 }
 
-describe("metabase/services > runQuestionQuery", () => {
+describe("metabase/querying/run-query > runQuestionQuery", () => {
   describe("saved questions", () => {
     it("should use the card query endpoint", async () => {
       const question = createMockSavedQuestion();
