@@ -361,7 +361,7 @@
   "Notify admins of a catastrophic job failure (not individual transform failures).
 
   Publishes a single event; the seeded `system-event/transform-job-failed` notification
-  fans out to all admins in one bcc email (see [[metabase.notification.seed]])."
+  fans out to all admins in one bcc email (see [[metabase.notification.seed/seed-notification!]])."
   [job-id message]
   (let [job (t2/select-one :model/TransformJob job-id)]
     (events/publish-event! :event/transform-job-failed
