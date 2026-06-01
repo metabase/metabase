@@ -157,7 +157,14 @@ export function appBar() {
 }
 
 export function openNavigationSidebar() {
-  appBar().findByTestId("sidebar-toggle").click();
+  // The toggle flips the sidebar, so blindly clicking it closes an
+  // already-open sidebar (e.g. right after visiting a dashboard, before it
+  // settles). Only click when it isn't already open so this is idempotent.
+  navigationSidebar().then(($nav) => {
+    if (!$nav.is(":visible")) {
+      appBar().findByTestId("sidebar-toggle").click();
+    }
+  });
   navigationSidebar().should("be.visible");
 }
 

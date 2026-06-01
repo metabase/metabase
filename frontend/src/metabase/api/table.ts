@@ -98,6 +98,7 @@ export const tableApi = Api.injectEndpoints({
           tag("database"),
           tag("card"),
           tag("dataset"),
+          listTag("erd"),
         ]),
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
@@ -112,17 +113,17 @@ export const tableApi = Api.injectEndpoints({
           tag("database"),
           tag("card"),
           tag("dataset"),
+          listTag("erd"),
         ]),
     }),
     updateTableFieldsOrder: builder.mutation<
       Table,
       UpdateTableFieldsOrderRequest
     >({
-      query: ({ id, ...body }) => ({
+      query: ({ id, field_order }) => ({
         method: "PUT",
         url: `/api/table/${id}/fields/order`,
-        body,
-        bodyParamName: "field_order",
+        body: { field_order },
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
@@ -130,6 +131,7 @@ export const tableApi = Api.injectEndpoints({
           listTag("field"),
           tag("card"),
           tag("dataset"),
+          listTag("erd"),
         ]),
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
@@ -152,6 +154,7 @@ export const tableApi = Api.injectEndpoints({
           listTag("field-values"),
           listTag("parameter-values"),
           tag("card"),
+          listTag("erd"),
         ]),
     }),
     discardTableFieldValues: builder.mutation<void, TableId>({
@@ -178,6 +181,7 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", tableId),
           listTag("field"),
           listTag("field-values"),
+          listTag("erd"),
         ]),
     }),
     replaceTableCsv: builder.mutation<
@@ -196,6 +200,7 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", tableId),
           listTag("field"),
           listTag("field-values"),
+          listTag("erd"),
         ]),
     }),
 
