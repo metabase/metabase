@@ -110,13 +110,29 @@
                     :pk-table (:pktable_name (first ordered))
                     :pk-cols  (mapv :pkcolumn_name ordered)}))))))
 
-(defn- create-table-sql [table cols fks]
+(defn- pk-defs
+  "Return the ordered primary-key column names for schema.table by reading H2's
+  primary keys. Emitted as a table-level `PRIMARY KEY (...)` constraint (rather
+  than an inline `INTEGER PRIMARY KEY`) so the declared column types — and thus
+  Metabase's synced `:database_type`/`:base_type` — stay identical to H2. SQLite
+  records the constraint in its catalog, so JDBC `getPrimaryKeys` reports it and
+  sync assigns `:type/PK`, restoring ID-filter widgets and PK drills."
+  [h2 schema table]
+  (with-open [conn (jdbc/get-connection h2)]
+    (->> (resultset-seq (.getPrimaryKeys (.getMetaData conn) nil schema table))
+         (sort-by :key_seq)
+         (mapv :column_name))))
+
+(defn- create-table-sql [table cols fks pks]
   (format "CREATE TABLE \"%s\" (%s)"
           table
           (str/join ", "
                     (concat
                      (for [{:keys [name sqlite-type]} cols]
                        (format "\"%s\" %s" name sqlite-type))
+                     (when (seq pks)
+                       [(format "PRIMARY KEY (%s)"
+                                (str/join ", " (map #(format "\"%s\"" %) pks)))])
                      (for [{:keys [fk-cols pk-table pk-cols]} fks]
                        (format "FOREIGN KEY (%s) REFERENCES \"%s\" (%s)"
                                (str/join ", " (map #(format "\"%s\"" %) fk-cols))
@@ -148,7 +164,8 @@
   [h2 sqlite schema table]
   (let [cols     (column-defs h2 schema table)
         fks      (fk-defs h2 schema table)
-        ddl      (create-table-sql table cols fks)
+        pks      (pk-defs h2 schema table)
+        ddl      (create-table-sql table cols fks pks)
         ins-sql  (insert-sql table cols)]
     (println "  Creating table" table "with" (count cols) "columns")
     (jdbc/execute! sqlite [ddl])
