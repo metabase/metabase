@@ -4,6 +4,7 @@
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase-enterprise.security-center.matching :as matching]
    [metabase-enterprise.security-center.notification :as notification]
+   [metabase-enterprise.security-center.settings :as settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
@@ -181,12 +182,54 @@
     (mt/with-premium-features #{:admin-security-center}
       (testing "non-superuser gets 403"
         (mt/user-http-request :rasta :post 403 "ee/security-center/test-notification"))
-      (testing "superuser can send test notification"
+      (testing "superuser can send test notification with no body — falls back to saved settings"
         (with-redefs [notification/send-test-notification! (constantly nil)]
           (is (= {:success true}
                  (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification")))))
       (testing "returns 400 when no channels are configured"
         (with-redefs [notification/send-test-notification!
-                      (fn [] (throw (ex-info "No notification channels are configured."
-                                             {:status-code 400})))]
+                      (fn [_] (throw (ex-info "No notification channels are configured."
+                                              {:status-code 400})))]
           (mt/user-http-request :crowberto :post 400 "ee/security-center/test-notification"))))))
+
+(deftest test-notification-uses-body-test
+  (testing "POST /api/ee/security-center/test-notification forwards the request body so the test reflects unsaved form state"
+    (mt/with-premium-features #{:admin-security-center}
+      (testing "body values are passed through to send-test-notification!"
+        (let [captured (atom nil)]
+          (with-redefs [notification/send-test-notification! #(reset! captured %)]
+            (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
+                                  {:email_recipients [{:type "notification-recipient/raw-value"
+                                                       :details {:value "form@example.com"}}
+                                                      {:type "notification-recipient/user"
+                                                       :user_id (str (mt/user->id :crowberto))}]
+                                   :slack_channel    "#form-channel"})
+            (is (= [{:type    :notification-recipient/raw-value
+                     :details {:value "form@example.com"}}
+                    {:type :notification-recipient/user
+                     :user_id (mt/user->id :crowberto)}]
+                   (:email-recipients @captured)))
+            (is (= "#form-channel" (:slack-channel @captured))))))
+      (testing "body distinguishes explicit nil slack_channel (disable) from missing key (fall back to setting)"
+        (let [captured (atom nil)]
+          (with-redefs [notification/send-test-notification! #(reset! captured %)
+                        settings/security-center-slack-channel (constantly "#saved-channel")]
+            (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
+                                  {:email_recipients [{:type "notification-recipient/group"
+                                                       :permissions_group_id 2}]
+                                   :slack_channel    nil})
+            (is (nil? (:slack-channel @captured)) "explicit nil disables Slack for the test"))
+          (with-redefs [notification/send-test-notification! #(reset! captured %)
+                        settings/security-center-slack-channel (constantly "#saved-channel")]
+            (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
+                                  {:email_recipients [{:type "notification-recipient/group"
+                                                       :permissions_group_id 2}]})
+            (is (= "#saved-channel" (:slack-channel @captured)) "missing key falls back to saved setting"))))
+      (testing "missing email_recipients falls back to saved setting"
+        (let [captured       (atom nil)
+              saved-emails   [{:type :notification-recipient/raw-value :details {:value "saved@example.com"}}]]
+          (with-redefs [notification/send-test-notification!         #(reset! captured %)
+                        settings/security-center-email-recipients     (constantly saved-emails)
+                        settings/security-center-slack-channel        (constantly nil)]
+            (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification" {})
+            (is (= saved-emails (:email-recipients @captured)))))))))

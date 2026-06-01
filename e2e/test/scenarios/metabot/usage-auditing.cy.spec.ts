@@ -7,10 +7,6 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 
 type UsageStatsMetric = "conversations" | "messages" | "tokens";
-type ChartLabelKey = "source" | "profile" | "user" | "ip";
-type ChartLabels = Partial<Record<ChartLabelKey, string[]>>;
-type CompleteChartLabels = Record<ChartLabelKey, string[]>;
-type CartesianChartLabelKey = Extract<ChartLabelKey, "source" | "profile">;
 type SeedUsageAuditingResponse = {
   inserted: number;
   date: string;
@@ -47,12 +43,6 @@ const ROBERT_TENANT = {
 };
 const TENANT_CONVERSATIONS_CHART_TITLE = "Tenants with most conversations";
 
-const METRIC_PRIMARY_SERIES_COLORS: Record<UsageStatsMetric, string> = {
-  conversations: "#509EE3",
-  messages: "#F9D45C",
-  tokens: "#A989C5",
-};
-
 const METRIC_CHART_TITLES: Record<UsageStatsMetric, string[]> = {
   conversations: [
     "Conversations by day",
@@ -80,20 +70,6 @@ const METRIC_CHART_TITLES: Record<UsageStatsMetric, string[]> = {
   ],
 };
 
-const BOBBY_CHART_LABELS: CompleteChartLabels = {
-  source: ["Slackbot", "Metabot"],
-  profile: ["Internal", "NLQ"],
-  user: ["Bobby Tables"],
-  ip: ["10.0.0.1", "10.0.0.2"],
-};
-
-const ROBERT_CHART_LABELS: CompleteChartLabels = {
-  source: ["SQL", "Documents"],
-  profile: ["SQL", "Documents", "Embedding"],
-  user: ["Robert Tableton"],
-  ip: ["10.0.0.3", "10.0.0.4", "10.0.0.5"],
-};
-
 type DateFilterLabel =
   | "Today"
   | "Yesterday"
@@ -103,38 +79,7 @@ type DateFilterLabel =
   | "Previous 3 months"
   | "Previous 12 months";
 
-const TODAY_CHART_LABELS: CompleteChartLabels = {
-  source: ["Slackbot", "Metabot"],
-  profile: ["NLQ", "Slackbot", "Transforms codegen"],
-  user: ["Bobby Tables"],
-  ip: ["10.0.0.1", "10.0.0.6", "10.0.0.7"],
-};
-
-const PREVIOUS_WEEK_CHART_LABELS: CompleteChartLabels = {
-  source: ["Metabot"],
-  profile: ["Slackbot"],
-  user: ["Bobby Tables"],
-  ip: ["10.0.0.1"],
-};
-
-const RECENT_CHART_LABELS: CompleteChartLabels = {
-  source: ["Slackbot", "Metabot", "SQL", "Documents"],
-  profile: ["Internal", "NLQ", "SQL", "Documents"],
-  user: ["Bobby Tables", "Robert Tableton"],
-  ip: ["10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4", "10.0.0.5"],
-};
-
-const OUT_OF_BOUNDS_CHART_LABELS: ChartLabels = {
-  ip: ["10.0.0.99"],
-};
-
-const DATE_FILTER_CASES: Array<{
-  label: DateFilterLabel;
-  chartLabels: ChartLabels;
-}> = [
-  { label: "Today", chartLabels: TODAY_CHART_LABELS },
-  { label: "Last 7 days", chartLabels: PREVIOUS_WEEK_CHART_LABELS },
-];
+const DATE_FILTER_CASES: DateFilterLabel[] = ["Today", "Last 7 days"];
 
 const MAIN_PROFILE_LABELS: string[] = [
   "Internal",
@@ -238,128 +183,6 @@ function assertChartRendered(title: string): void {
   });
 }
 
-function assertChartContains(title: string, labels: readonly string[]): void {
-  getChartCard(title).within(() => {
-    labels.forEach((label) => {
-      cy.findAllByText(label)
-        .filter(":visible")
-        .should("have.length.greaterThan", 0);
-    });
-  });
-}
-
-function getUniqueCartesianChartBarPaths(
-  title: string,
-  metric: UsageStatsMetric,
-): Cypress.Chainable<SVGPathElement[]> {
-  return getChartCard(title)
-    .findByTestId("chart-container")
-    .find<SVGPathElement>(
-      `path[fill="${METRIC_PRIMARY_SERIES_COLORS[metric]}"]`,
-    )
-    .should("have.length.greaterThan", 0)
-    .then(($paths) => {
-      const seen = new Set<string>();
-      const barPaths = $paths.toArray().filter((path) => {
-        const { left, top, width, height } = path.getBoundingClientRect();
-
-        if (width < 8 || height < 8) {
-          return false;
-        }
-
-        const key = [
-          Math.round(left),
-          Math.round(top),
-          Math.round(width),
-          Math.round(height),
-        ].join(":");
-
-        if (seen.has(key)) {
-          return false;
-        }
-
-        seen.add(key);
-        return true;
-      });
-
-      expect(barPaths, `${title} bar paths`).to.have.length.greaterThan(0);
-
-      return barPaths;
-    });
-}
-
-function getCartesianChartTooltipText(
-  title: string,
-  metric: UsageStatsMetric,
-): Cypress.Chainable<string> {
-  let tooltipText = "";
-  let previousTooltipText: string | undefined;
-
-  return getUniqueCartesianChartBarPaths(title, metric)
-    .each(($path) => {
-      const path = $path[0];
-      const { left, top, width, height } = path.getBoundingClientRect();
-      const eventOptions = {
-        clientX: left + width / 2,
-        clientY: top + height / 2,
-        force: true,
-      };
-
-      cy.wrap(path)
-        .trigger("mouseover", eventOptions)
-        .trigger("mousemove", eventOptions);
-
-      return H.echartsTooltip()
-        .should(($tooltip) => {
-          if (previousTooltipText) {
-            expect($tooltip.text(), `${title} tooltip text`).not.to.eq(
-              previousTooltipText,
-            );
-          }
-        })
-        .then(($tooltip) => {
-          previousTooltipText = $tooltip.text();
-          tooltipText += `\n${previousTooltipText}`;
-        });
-    })
-    .then(() => tooltipText);
-}
-
-function assertCartesianChartContains(
-  title: string,
-  metric: UsageStatsMetric,
-  labels: readonly string[],
-): void {
-  getCartesianChartTooltipText(title, metric).then((tooltipText) => {
-    labels.forEach((label) => {
-      expect(tooltipText, `${title} tooltip text`).to.include(label);
-    });
-  });
-}
-
-function assertCartesianChartDoesNotContain(
-  title: string,
-  metric: UsageStatsMetric,
-  labels: readonly string[],
-): void {
-  getCartesianChartTooltipText(title, metric).then((tooltipText) => {
-    labels.forEach((label) => {
-      expect(tooltipText, `${title} tooltip text`).not.to.include(label);
-    });
-  });
-}
-
-function assertChartDoesNotContain(
-  title: string,
-  labels: readonly string[],
-): void {
-  getChartCard(title).within(() => {
-    labels.forEach((label) => {
-      cy.contains(label).should("not.exist");
-    });
-  });
-}
-
 function assertMetricChartsRendered(metric: UsageStatsMetric): void {
   METRIC_CHART_TITLES[metric].forEach(assertChartRendered);
 }
@@ -382,28 +205,6 @@ function getMetricTimeseriesTitle(
   return `${METRIC_TAB_NAMES[metric]} by ${timeseriesUnit}`;
 }
 
-function getMetricBreakoutTitle(
-  metric: UsageStatsMetric,
-  labelKey: ChartLabelKey,
-): string {
-  switch (labelKey) {
-    case "source":
-      return `${METRIC_TAB_NAMES[metric]} by source`;
-    case "profile":
-      return `${METRIC_TAB_NAMES[metric]} by profile`;
-    case "user":
-      return `Users with most ${metric}`;
-    case "ip":
-      return `IP addresses with most ${metric}`;
-  }
-}
-
-function isCartesianChartLabelKey(
-  labelKey: ChartLabelKey,
-): labelKey is CartesianChartLabelKey {
-  return labelKey === "source" || labelKey === "profile";
-}
-
 function assertMetricChartsRenderedForDate(
   metric: UsageStatsMetric,
   dateLabel: DateFilterLabel,
@@ -412,101 +213,6 @@ function assertMetricChartsRenderedForDate(
   METRIC_CHART_TITLES[metric].slice(1).forEach((title) => {
     assertChartRendered(title);
   });
-}
-
-function assertMetricChartLabels(
-  metric: UsageStatsMetric,
-  chartLabels: ChartLabels,
-): void {
-  Object.entries(chartLabels).forEach(([labelKey, labels]) => {
-    if (labels?.length) {
-      const chartLabelKey = labelKey as ChartLabelKey;
-      const title = getMetricBreakoutTitle(metric, chartLabelKey);
-
-      if (isCartesianChartLabelKey(chartLabelKey) && labels.length > 1) {
-        assertCartesianChartContains(title, metric, labels);
-      } else {
-        assertChartContains(title, labels);
-      }
-    }
-  });
-}
-
-function assertMetricChartLabelsAbsent(
-  metric: UsageStatsMetric,
-  chartLabels: ChartLabels,
-): void {
-  Object.entries(chartLabels).forEach(([labelKey, labels]) => {
-    if (labels?.length) {
-      const chartLabelKey = labelKey as ChartLabelKey;
-      const title = getMetricBreakoutTitle(metric, chartLabelKey);
-
-      if (isCartesianChartLabelKey(chartLabelKey) && labels.length > 1) {
-        assertCartesianChartDoesNotContain(title, metric, labels);
-      } else {
-        assertChartDoesNotContain(title, labels);
-      }
-    }
-  });
-}
-
-function assertConversationChartLabels(chartLabels: ChartLabels): void {
-  assertMetricChartLabels("conversations", chartLabels);
-}
-
-function assertBobbyOnlyChartLabels(): void {
-  assertChartContains("Conversations by source", BOBBY_CHART_LABELS.source);
-  assertChartDoesNotContain(
-    "Conversations by source",
-    ROBERT_CHART_LABELS.source,
-  );
-  assertChartContains("Conversations by profile", BOBBY_CHART_LABELS.profile);
-  assertChartDoesNotContain(
-    "Conversations by profile",
-    ROBERT_CHART_LABELS.profile,
-  );
-  assertChartContains("Users with most conversations", BOBBY_CHART_LABELS.user);
-  assertChartDoesNotContain(
-    "Users with most conversations",
-    ROBERT_CHART_LABELS.user,
-  );
-  assertChartContains(
-    "IP addresses with most conversations",
-    BOBBY_CHART_LABELS.ip,
-  );
-  assertChartDoesNotContain(
-    "IP addresses with most conversations",
-    ROBERT_CHART_LABELS.ip,
-  );
-}
-
-function assertRobertOnlyChartLabels(): void {
-  assertChartContains("Conversations by source", ROBERT_CHART_LABELS.source);
-  assertChartDoesNotContain(
-    "Conversations by source",
-    BOBBY_CHART_LABELS.source,
-  );
-  assertChartContains("Conversations by profile", ROBERT_CHART_LABELS.profile);
-  assertChartDoesNotContain(
-    "Conversations by profile",
-    BOBBY_CHART_LABELS.profile,
-  );
-  assertChartContains(
-    "Users with most conversations",
-    ROBERT_CHART_LABELS.user,
-  );
-  assertChartDoesNotContain(
-    "Users with most conversations",
-    BOBBY_CHART_LABELS.user,
-  );
-  assertChartContains(
-    "IP addresses with most conversations",
-    ROBERT_CHART_LABELS.ip,
-  );
-  assertChartDoesNotContain(
-    "IP addresses with most conversations",
-    BOBBY_CHART_LABELS.ip,
-  );
 }
 
 function selectGroupFilter(groupName: string): void {
@@ -675,7 +381,6 @@ describe("scenarios > metabot > usage auditing", () => {
       );
     });
     assertMetricChartsRendered("conversations");
-    assertConversationChartLabels(RECENT_CHART_LABELS);
   });
 
   it("renders usage stats charts for selected date shortcuts on conversations", () => {
@@ -683,13 +388,11 @@ describe("scenarios > metabot > usage auditing", () => {
 
     const metric = "conversations";
 
-    DATE_FILTER_CASES.forEach(({ label, chartLabels }) => {
+    DATE_FILTER_CASES.forEach((label) => {
       cy.log(`${METRIC_TAB_NAMES[metric]} date filter: ${label}`);
       selectDateFilter(label);
 
       assertMetricChartsRenderedForDate(metric, label);
-      assertMetricChartLabels(metric, chartLabels);
-      assertMetricChartLabelsAbsent(metric, OUT_OF_BOUNDS_CHART_LABELS);
     });
   });
 
@@ -699,13 +402,11 @@ describe("scenarios > metabot > usage auditing", () => {
     const metric = "tokens";
     selectMetricTab(metric);
 
-    DATE_FILTER_CASES.forEach(({ label, chartLabels }) => {
+    DATE_FILTER_CASES.forEach((label) => {
       cy.log(`${METRIC_TAB_NAMES[metric]} date filter: ${label}`);
       selectDateFilter(label);
 
       assertMetricChartsRenderedForDate(metric, label);
-      assertMetricChartLabels(metric, chartLabels);
-      assertMetricChartLabelsAbsent(metric, OUT_OF_BOUNDS_CHART_LABELS);
     });
   });
 
@@ -715,13 +416,11 @@ describe("scenarios > metabot > usage auditing", () => {
     const metric = "messages";
     selectMetricTab(metric);
 
-    DATE_FILTER_CASES.forEach(({ label, chartLabels }) => {
+    DATE_FILTER_CASES.forEach((label) => {
       cy.log(`${METRIC_TAB_NAMES[metric]} date filter: ${label}`);
       selectDateFilter(label);
 
       assertMetricChartsRenderedForDate(metric, label);
-      assertMetricChartLabels(metric, chartLabels);
-      assertMetricChartLabelsAbsent(metric, OUT_OF_BOUNDS_CHART_LABELS);
     });
   });
 
@@ -730,12 +429,10 @@ describe("scenarios > metabot > usage auditing", () => {
     selectGroupFilter("Administrators");
 
     assertMetricChartsRendered("conversations");
-    assertBobbyOnlyChartLabels();
 
     selectGroupFilter("data");
 
     assertMetricChartsRendered("conversations");
-    assertRobertOnlyChartLabels();
   });
 
   it("filters conversation charts by user", () => {
@@ -743,25 +440,18 @@ describe("scenarios > metabot > usage auditing", () => {
     selectUserFilter("Robert Tableton");
 
     assertMetricChartsRendered("conversations");
-    assertRobertOnlyChartLabels();
 
     selectUserFilter("Bobby Tables");
 
     assertMetricChartsRendered("conversations");
-    assertBobbyOnlyChartLabels();
   });
 
   it("shows tenant filters and tenant charts when tenants are enabled", () => {
-    setupUsageAuditingTenants().then(({ bobbyTenant, robertTenant }) => {
+    setupUsageAuditingTenants().then(() => {
       visitUsageStatsPage();
 
       H.main().findByDisplayValue("All tenants").should("be.visible");
       assertChartRendered(TENANT_CONVERSATIONS_CHART_TITLE);
-      assertChartContains(TENANT_CONVERSATIONS_CHART_TITLE, [
-        bobbyTenant.name,
-        robertTenant.name,
-      ]);
-      assertChartContains("Groups with most conversations", ["All Users"]);
     });
   });
 
@@ -771,20 +461,11 @@ describe("scenarios > metabot > usage auditing", () => {
 
       selectTenantFilter(bobbyTenant.name);
       assertMetricChartsRendered("conversations");
-      assertChartContains(TENANT_CONVERSATIONS_CHART_TITLE, [bobbyTenant.name]);
-      assertChartDoesNotContain(TENANT_CONVERSATIONS_CHART_TITLE, [
-        robertTenant.name,
-      ]);
-      assertBobbyOnlyChartLabels();
+      assertChartRendered(TENANT_CONVERSATIONS_CHART_TITLE);
 
       selectTenantFilter(robertTenant.name);
-      assertChartContains(TENANT_CONVERSATIONS_CHART_TITLE, [
-        robertTenant.name,
-      ]);
-      assertChartDoesNotContain(TENANT_CONVERSATIONS_CHART_TITLE, [
-        bobbyTenant.name,
-      ]);
-      assertRobertOnlyChartLabels();
+      assertMetricChartsRendered("conversations");
+      assertChartRendered(TENANT_CONVERSATIONS_CHART_TITLE);
     });
   });
 

@@ -114,7 +114,7 @@ function QuestionRowCountInner({
   }
 
   return (
-    <Popover opened={opened} onClose={close} position="bottom-start">
+    <Popover opened={opened} onDismiss={close} position="bottom-end">
       <Popover.Target>
         <UnstyledButton onClick={toggle} id={POPOVER_ID} aria-haspopup="dialog">
           <RowCountLabel

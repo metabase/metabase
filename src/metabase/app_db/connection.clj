@@ -156,7 +156,6 @@
                               (str "Error rolling back after previous error: " (ex-message txn-e))
                               {:rollback-error rollback-e}
                               txn-e))))
-
                   (throw txn-e)))))]
     ;; optimization: don't set and unset autocommit if it's already false
     (if (.getAutoCommit connection)

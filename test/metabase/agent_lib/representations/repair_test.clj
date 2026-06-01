@@ -100,14 +100,14 @@
 ;;; Pass 1 - insert `{}` options on clauses
 ;;; ============================================================
 
-(deftest insert-options-on-bare-clause-test
+(deftest ^:parallel insert-options-on-bare-clause-test
   (testing "clause without options gets {} inserted"
     (is (= ["count" {}]
            (repair/repair trivial-mp ["count"])))
     (is (= ["sum" {} ["field" {} ["Sample" "S" "T" "F"]]]
            (repair/repair trivial-mp ["sum" ["field" ["Sample" "S" "T" "F"]]])))))
 
-(deftest do-not-corrupt-fk-paths-test
+(deftest ^:parallel do-not-corrupt-fk-paths-test
   (testing "FK paths (all-string vectors) are left alone"
     (let [fk ["Sample" "PUBLIC" "TBL" "COL"]]
       (is (= fk (repair/repair trivial-mp fk))))
@@ -118,7 +118,7 @@
           output (repair/repair trivial-mp input)]
       (is (= ["field" {} ["Sample" "PUBLIC" "TBL" "COL"]] output)))))
 
-(deftest nested-clause-repair-test
+(deftest ^:parallel nested-clause-repair-test
   (testing "options filled in at every nesting level"
     (let [input  ["and"
                   ["="
@@ -133,7 +133,7 @@
               [">" {} ["field" {} ["Sample" "S" "T" "B"]] 5]]
              output)))))
 
-(deftest nil-options-replaced-test
+(deftest ^:parallel nil-options-replaced-test
   (testing "nil in options slot is replaced with {}"
     ;; clj-yaml sometimes hands us nil for `~` where we'd want {}
     (is (= ["count" {}] (repair/repair trivial-mp ["count" nil])))))
@@ -151,20 +151,24 @@
 ;;; `["field" {<merged opts>} [<FK>]]`.
 ;;; ============================================================
 
-(deftest unwrap-nested-field-test
+(deftest ^:parallel unwrap-nested-field-test
   (testing "outer field wrapping an inner field with an FK is collapsed"
     (let [input  ["field" {"temporal-unit" "month"}
                   ["field" {} ["Sample" "PUBLIC" "ACCOUNTS" "CANCELED_AT"]]]
           output (repair/repair trivial-mp input)]
       (is (= ["field" {"temporal-unit" "month"}
               ["Sample" "PUBLIC" "ACCOUNTS" "CANCELED_AT"]]
-             output))))
+             output)))))
+
+(deftest ^:parallel unwrap-nested-field-test-2
   (testing "outer options win on conflict (outer temporal-unit overrides inner)"
     (let [input  ["field" {"temporal-unit" "month"}
                   ["field" {"temporal-unit" "day"} ["Sample" "PUBLIC" "T" "COL"]]]
           output (repair/repair trivial-mp input)]
       (is (= ["field" {"temporal-unit" "month"} ["Sample" "PUBLIC" "T" "COL"]]
-             output))))
+             output)))))
+
+(deftest ^:parallel unwrap-nested-field-test-3
   (testing "inner-only options are preserved when outer doesn't set them"
     (let [input  ["field" {"temporal-unit" "month"}
                   ["field" {"source-field" ["Sample" "PUBLIC" "T" "FK"]}
@@ -173,13 +177,17 @@
       (is (= ["field" {"temporal-unit" "month"
                        "source-field" ["Sample" "PUBLIC" "T" "FK"]}
               ["Sample" "PUBLIC" "T" "COL"]]
-             output))))
+             output)))))
+
+(deftest ^:parallel unwrap-nested-field-test-4
   (testing "outer empty opts + nested field: outer gets inner's opts"
     (let [input  ["field" {}
                   ["field" {"temporal-unit" "day"} ["Sample" "PUBLIC" "T" "COL"]]]
           output (repair/repair trivial-mp input)]
       (is (= ["field" {"temporal-unit" "day"} ["Sample" "PUBLIC" "T" "COL"]]
-             output))))
+             output)))))
+
+(deftest ^:parallel unwrap-nested-field-test-5
   (testing "nested inside a larger clause (e.g. breakout of a stage) is collapsed"
     (let [input  ["and" {}
                   ["=" {}
@@ -191,7 +199,9 @@
               ["=" {}
                ["field" {"temporal-unit" "month"} ["Sample" "PUBLIC" "T" "COL"]]
                "Bikes"]]
-             output))))
+             output)))))
+
+(deftest ^:parallel unwrap-nested-field-test-6
   (testing "triple-nested field collapses to one"
     (let [input  ["field" {"temporal-unit" "month"}
                   ["field" {}
@@ -201,10 +211,14 @@
       (is (= ["field" {"temporal-unit" "month"
                        "source-field" ["Sample" "PUBLIC" "T" "FK"]}
               ["Sample" "PUBLIC" "T" "COL"]]
-             output))))
+             output)))))
+
+(deftest ^:parallel unwrap-nested-field-test-7
   (testing "non-nested `field` clauses are left alone"
     (let [input  ["field" {"temporal-unit" "month"} ["Sample" "PUBLIC" "T" "COL"]]]
-      (is (= input (repair/repair trivial-mp input)))))
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest ^:parallel unwrap-nested-field-test-8
   (testing "cross-stage string-column field inside outer field is preserved"
     ;; [field {temporal-unit ...} [field {} "some-col-name"]] is the same bug pattern but
     ;; with a cross-stage (string) target. Still unwrap.
@@ -218,7 +232,7 @@
 ;;; Pass 1.81 - rewrite operator-name aliases to canonical lib heads
 ;;; ============================================================
 
-(deftest rewrite-shell-style-comparison-aliases-test
+(deftest ^:parallel rewrite-shell-style-comparison-aliases-test
   (testing "shell-style comparison operators rewrite to canonical"
     (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
       (doseq [[alias canonical] [["eq"  "="]
@@ -233,7 +247,7 @@
                (repair/repair trivial-mp [alias {} field 10]))
             (str alias " -> " canonical))))))
 
-(deftest rewrite-verbose-comparison-aliases-test
+(deftest ^:parallel rewrite-verbose-comparison-aliases-test
   (testing "verbose comparison spellings"
     (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
       (is (= ["=" {} field 10]
@@ -241,7 +255,7 @@
       (is (= ["!=" {} field 10]
              (repair/repair trivial-mp ["not-equals" {} field 10]))))))
 
-(deftest rewrite-aggregation-aliases-test
+(deftest ^:parallel rewrite-aggregation-aliases-test
   (testing "aggregation lib-renames"
     (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]
           pred  ["=" {} field 1]]
@@ -256,7 +270,7 @@
       (is (= ["distinct" {} field]
              (repair/repair trivial-mp ["distinct-count" {} field]))))))
 
-(deftest rewrite-temporal-and-null-aliases-test
+(deftest ^:parallel rewrite-temporal-and-null-aliases-test
   (testing "temporal & null lib-renames"
     (let [field ["field" {} ["Sample" "PUBLIC" "X" "DATE"]]]
       (is (= ["relative-datetime" {} -7 "day"]
@@ -266,7 +280,7 @@
       (is (= ["not-null" {} field]
              (repair/repair trivial-mp ["is-not-null" {} field]))))))
 
-(deftest operator-alias-case-insensitive-test
+(deftest ^:parallel operator-alias-case-insensitive-test
   (testing "alias matching is case-insensitive"
     (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
       (doseq [variant ["EQ" "Eq" "EQUALS" "Equals"]]
@@ -274,14 +288,14 @@
                (repair/repair trivial-mp [variant {} field 10]))
             variant)))))
 
-(deftest operator-alias-canonical-untouched-test
+(deftest ^:parallel operator-alias-canonical-untouched-test
   (testing "already-canonical heads are not double-rewritten (cheap idempotency)"
     (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
       (doseq [canonical ["=" "!=" "<" "<=" ">" ">="]]
         (let [input [canonical {} field 10]]
           (is (= input (repair/repair trivial-mp input)) canonical))))))
 
-(deftest operator-alias-nested-test
+(deftest ^:parallel operator-alias-nested-test
   (testing "alias nested deep inside a tree gets rewritten"
     (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]
           input ["and" {}
@@ -292,7 +306,7 @@
               [">" {} field 5]]
              (repair/repair trivial-mp input))))))
 
-(deftest operator-alias-fk-path-untouched-test
+(deftest ^:parallel operator-alias-fk-path-untouched-test
   (testing "a column literally named 'eq' or 'gt' inside an FK path is NOT rewritten"
     (is (= ["field" {} ["Sample" "PUBLIC" "T" "eq"]]
            (repair/repair trivial-mp ["field" {} ["Sample" "PUBLIC" "T" "eq"]])))
@@ -303,7 +317,7 @@
 ;;; Pass 1.8 - rewrite temporal-bucket-extraction aliases to canonical names
 ;;; ============================================================
 
-(deftest rewrite-temporal-bucket-aliases-test
+(deftest ^:parallel rewrite-temporal-bucket-aliases-test
   (testing "each alias rewrites to its canonical lib head"
     (doseq [[alias canonical] [["dayofweek"       "get-day-of-week"]
                                ["day-of-week"     "get-day-of-week"]
@@ -339,7 +353,7 @@
 ;;; Pass 1.85 - rewrite order-by direction aliases to canonical asc/desc
 ;;; ============================================================
 
-(deftest rewrite-direction-aliases-test
+(deftest ^:parallel rewrite-direction-aliases-test
   (testing "long-form aliases rewrite to canonical short form"
     (is (= ["asc" {} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
            (repair/repair trivial-mp
@@ -384,21 +398,21 @@
 ;;; Pass 1.84 - normalise alternative case / if argument shapes
 ;;; ============================================================
 
-(deftest case-three-bare-args-test
+(deftest ^:parallel case-three-bare-args-test
   (testing "[case {} pred then else] -> canonical pairs + default"
     (let [pred  ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
           input ["case" {} pred 100 0]]
       (is (= ["case" {} [[pred 100]] 0]
              (repair/repair trivial-mp input))))))
 
-(deftest case-two-bare-args-test
+(deftest ^:parallel case-two-bare-args-test
   (testing "[case {} pred then] (no default) -> canonical pairs only"
     (let [pred  ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
           input ["case" {} pred 100]]
       (is (= ["case" {} [[pred 100]]]
              (repair/repair trivial-mp input))))))
 
-(deftest case-branch-pairs-as-separate-args-test
+(deftest ^:parallel case-branch-pairs-as-separate-args-test
   (testing "branch pairs as separate args + trailing default"
     (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
           p2 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 2]
@@ -412,7 +426,7 @@
       (is (= ["case" {} [[p1 100] [p2 200]]]
              (repair/repair trivial-mp input))))))
 
-(deftest case-flat-alternating-args-test
+(deftest ^:parallel case-flat-alternating-args-test
   (testing "flat even-arity alternating: [case {} p1 t1 p2 t2]"
     (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
           p2 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 2]
@@ -426,7 +440,7 @@
       (is (= ["case" {} [[p1 100] [p2 200]] 0]
              (repair/repair trivial-mp input))))))
 
-(deftest case-trailing-else-branch-test
+(deftest ^:parallel case-trailing-else-branch-test
   (testing "trailing [\"else\" x] inside the pairs vector is stripped, x becomes default"
     (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
           input ["case" {} [[p1 100] ["else" 0]]]]
@@ -440,7 +454,7 @@
       (is (= ["case" {} [[p1 100]] 0]
              (repair/repair trivial-mp input))))))
 
-(deftest case-already-canonical-test
+(deftest ^:parallel case-already-canonical-test
   (testing "canonical [case {} [[p t]]] is unchanged"
     (let [p1 ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
           input ["case" {} [[p1 100]]]]
@@ -450,14 +464,14 @@
           input ["case" {} [[p1 100]] 0]]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest case-if-alias-test
+(deftest ^:parallel case-if-alias-test
   (testing "`if` alias is normalised the same way as case"
     (let [pred  ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]
           input ["if" {} pred 100 0]]
       (is (= ["if" {} [[pred 100]] 0]
              (repair/repair trivial-mp input))))))
 
-(deftest case-idempotent-test
+(deftest ^:parallel case-idempotent-test
   (testing "normalisation is idempotent"
     (let [pred ["=" {} ["field" {} ["Sample" "PUBLIC" "X" "A"]] 1]]
       (doseq [input [["case" {} pred 100 0]
@@ -473,7 +487,7 @@
 ;;; Pass 1.82 - normalise list-valued comparison/in clauses to flat positional args
 ;;; ============================================================
 
-(deftest splat-in-values-list-test
+(deftest ^:parallel splat-in-values-list-test
   (testing "[in {} lhs [v1 v2 v3]] splats values into positional args"
     (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
           input ["in" {} field ["alice" "bob" "carol"]]]
@@ -489,7 +503,7 @@
           input ["in" {} field "alice" "bob" "carol"]]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest convert-eq-with-list-to-in-test
+(deftest ^:parallel convert-eq-with-list-to-in-test
   (testing "[= {} lhs [v1 v2 v3]] becomes [in {} lhs v1 v2 v3]"
     (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
           input ["=" {} field ["alice" "bob"]]]
@@ -505,7 +519,7 @@
           input ["=" {} field "alice"]]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest in-with-clause-rhs-untouched-test
+(deftest ^:parallel in-with-clause-rhs-untouched-test
   (testing "a clause-shaped rhs (e.g. nested expression) is not splatted"
     (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "CREATED_AT"]]
           abs   ["absolute-datetime" {} "2024-01-01" "day"]
@@ -520,7 +534,7 @@
       ;; Untouched because abs is a clause, not a scalar.
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest splat-mixed-scalars-test
+(deftest ^:parallel splat-mixed-scalars-test
   (testing "a values list with mixed scalar types splats correctly"
     (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "AGE"]]
           input ["in" {} field [18 21 65]]]
@@ -531,7 +545,7 @@
       (is (= ["in" {} field true false]
              (repair/repair trivial-mp input))))))
 
-(deftest splat-idempotent-test
+(deftest ^:parallel splat-idempotent-test
   (testing "splat is idempotent"
     (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]]
       (doseq [input [["in" {} field ["alice" "bob"]]
@@ -546,7 +560,7 @@
 ;;; Pass 1.83 - unwrap boolean wrapper clauses
 ;;; ============================================================
 
-(deftest unwrap-boolean-wrapper-true-test
+(deftest ^:parallel unwrap-boolean-wrapper-true-test
   (testing "[true {} x] unwraps to x"
     (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
           inner ["=" {} field "alice"]
@@ -559,7 +573,7 @@
           input ["true" ["=" field "alice"]]]
       (is (= ["=" {} field "alice"] (repair/repair trivial-mp input))))))
 
-(deftest unwrap-boolean-wrapper-false-test
+(deftest ^:parallel unwrap-boolean-wrapper-false-test
   (testing "[false {} x] rewrites to [not {} x]"
     (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
           inner ["=" {} field "alice"]
@@ -567,13 +581,13 @@
       (is (= ["not" {} inner]
              (repair/repair trivial-mp input))))))
 
-(deftest boolean-literal-clauses-untouched-test
+(deftest ^:parallel boolean-literal-clauses-untouched-test
   (testing "[true {}] (0-arg boolean literal) is left alone"
     (is (= ["true" {}] (repair/repair trivial-mp ["true" {}]))))
   (testing "[false {}] (0-arg boolean literal) is left alone"
     (is (= ["false" {}] (repair/repair trivial-mp ["false" {}])))))
 
-(deftest boolean-wrapper-mixed-case-test
+(deftest ^:parallel boolean-wrapper-mixed-case-test
   (testing "case-insensitive head matching"
     (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
           inner ["=" {} field "alice"]]
@@ -584,7 +598,7 @@
         (is (= ["not" {} inner] (repair/repair trivial-mp [variant {} inner]))
             variant)))))
 
-(deftest boolean-wrapper-nested-test
+(deftest ^:parallel boolean-wrapper-nested-test
   (testing "nested wrapper clauses unwrap from the inside out"
     (let [field ["field" {} ["Sample" "PUBLIC" "USERS" "NAME"]]
           inner ["=" {} field "alice"]
@@ -600,7 +614,7 @@
 ;;; Pass 1.86 - wrap bare ISO-date strings as absolute-datetime in between
 ;;; ============================================================
 
-(deftest wrap-iso-date-bounds-both-bare-test
+(deftest ^:parallel wrap-iso-date-bounds-both-bare-test
   (testing "both bounds are bare yyyy-mm-dd strings: both get wrapped"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-01-01" "2024-12-31"]]
@@ -610,7 +624,7 @@
               ["absolute-datetime" {} "2024-12-31" "day"]]
              (repair/repair trivial-mp input))))))
 
-(deftest wrap-iso-date-bounds-mixed-test
+(deftest ^:parallel wrap-iso-date-bounds-mixed-test
   (testing "one bound already absolute-datetime, the other a bare string: bare side
            gets wrapped"
     (let [field   ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
@@ -630,13 +644,13 @@
               ["absolute-datetime" {} "2024-12-31" "day"]]
              (repair/repair trivial-mp input))))))
 
-(deftest wrap-iso-date-bounds-numeric-untouched-test
+(deftest ^:parallel wrap-iso-date-bounds-numeric-untouched-test
   (testing "both bounds numeric: not wrapped (between also works for numbers)"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
           input ["between" {} field 10 100]]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest wrap-iso-date-bounds-with-time-portion-test
+(deftest ^:parallel wrap-iso-date-bounds-with-time-portion-test
   (testing "yyyy-mm-ddThh:mm:ss bounds also get wrapped"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-06-15T09:00:00" "2024-06-15T18:00:00"]]
@@ -646,7 +660,7 @@
               ["absolute-datetime" {} "2024-06-15T18:00:00" "day"]]
              (repair/repair trivial-mp input))))))
 
-(deftest wrap-iso-date-bounds-idempotent-test
+(deftest ^:parallel wrap-iso-date-bounds-idempotent-test
   (testing "wrapping is idempotent: two wraps == one wrap"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-01-01" "2024-12-31"]
@@ -654,7 +668,7 @@
           twice (repair/repair trivial-mp once)]
       (is (= once twice)))))
 
-(deftest wrap-iso-date-bounds-then-swap-test
+(deftest ^:parallel wrap-iso-date-bounds-then-swap-test
   (testing "wrap + swap compose: out-of-order bare ISO strings wrap then swap"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           input ["between" {} field "2024-12-31" "2024-01-01"]]
@@ -664,7 +678,7 @@
               ["absolute-datetime" {} "2024-12-31" "day"]]
              (repair/repair trivial-mp input))))))
 
-(deftest wrap-iso-date-bounds-non-iso-untouched-test
+(deftest ^:parallel wrap-iso-date-bounds-non-iso-untouched-test
   (testing "random strings (not yyyy-mm-dd shaped) are left alone"
     (let [field ["field" {} ["Sample" "PUBLIC" "X"]]
           input ["between" {} field "hello" "world"]]
@@ -674,7 +688,7 @@
 ;;; Pass 1.865 - wrap bare "now" literals in temporal-comparison contexts
 ;;; ============================================================
 
-(deftest wrap-now-literals-comparison-test
+(deftest ^:parallel wrap-now-literals-comparison-test
   (testing "`<` between a temporal-bucketed field and bare 'now': now gets wrapped"
     (let [field-with-unit ["field" {"temporal-unit" "day"}
                            ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
@@ -701,7 +715,7 @@
           input ["<" {} abs ["now" {}]]]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest wrap-now-literals-between-test
+(deftest ^:parallel wrap-now-literals-between-test
   (testing "between(<temporal-field>, ISO-string, 'now') wraps both bounds"
     (let [field-with-unit ["field" {"temporal-unit" "day"}
                            ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
@@ -723,7 +737,7 @@
 ;;; Pass 1.87 - swap out-of-order between bounds (literal scalars only)
 ;;; ============================================================
 
-(deftest swap-between-bounds-numeric-test
+(deftest ^:parallel swap-between-bounds-numeric-test
   (testing "numeric lower > upper is swapped"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
           input ["between" {} field 100 10]]
@@ -744,7 +758,7 @@
           twice   (repair/repair trivial-mp once)]
       (is (= once twice)))))
 
-(deftest swap-between-bounds-iso-string-test
+(deftest ^:parallel swap-between-bounds-iso-string-test
   ;; Note: bare ISO strings are wrapped by Pass 1.86 ("wrap-iso-date-bounds*") *before*
   ;; this swap pass runs, so the canonical post-repair form has \"[absolute-datetime ...]\"
   ;; bounds. The swap still proceeds because \"swap-between-bounds*\" knows how to extract
@@ -774,7 +788,7 @@
               ["absolute-datetime" {} "2024-12-31" "day"]]
              (repair/repair trivial-mp input))))))
 
-(deftest swap-between-bounds-absolute-datetime-test
+(deftest ^:parallel swap-between-bounds-absolute-datetime-test
   (testing "out-of-order absolute-datetime clauses: swap by inner ISO string"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
           hi    ["absolute-datetime" {} "2024-12-31" "day"]
@@ -789,7 +803,7 @@
           input ["between" {} field lo hi]]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest swap-between-bounds-non-literal-untouched-test
+(deftest ^:parallel swap-between-bounds-non-literal-untouched-test
   (testing "non-literal bound (a relative-datetime clause) is left alone - we can't
            compare without execution"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
@@ -803,7 +817,7 @@
           input ["between" {} field other 100]]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest swap-between-bounds-mixed-types-untouched-test
+(deftest ^:parallel swap-between-bounds-mixed-types-untouched-test
   (testing "mixed-kind bounds (number vs string) are left alone"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "X"]]
           input ["between" {} field 10 "hello"]]
@@ -813,7 +827,7 @@
 ;;; Pass 1.55 - normalise `fields:` to sequential-of-clause when given a single clause
 ;;; ============================================================
 
-(deftest normalise-fields-on-stage-test
+(deftest ^:parallel normalise-fields-on-stage-test
   (testing "single clause as `fields:` value gets wrapped in a one-element list"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]
           input {"lib/type"     "mbql/query"
@@ -833,7 +847,7 @@
           output (repair/repair trivial-mp input)]
       (is (= [field] (get-in output ["stages" 0 "fields"]))))))
 
-(deftest normalise-fields-on-join-test
+(deftest ^:parallel normalise-fields-on-join-test
   (testing "single clause as join `fields:` gets wrapped"
     (let [field ["field" {} ["Sample" "PUBLIC" "PRODUCTS" "NAME"]]
           stage {"lib/type"     "mbql.stage/mbql"
@@ -872,7 +886,7 @@
         (is (= enum-value (get-in output ["stages" 0 "joins" 0 "fields"]))
             enum-value)))))
 
-(deftest normalise-fields-idempotent-test
+(deftest ^:parallel normalise-fields-idempotent-test
   (testing "after wrap, second pass is a no-op"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]
           input {"lib/type"     "mbql/query"
@@ -888,7 +902,7 @@
 ;;; Pass 2 - fill in missing `lib/type`
 ;;; ============================================================
 
-(deftest add-query-lib-type-test
+(deftest ^:parallel add-query-lib-type-test
   (testing "top-level query without lib/type gets mbql/query"
     (let [input  {"database" "Sample"
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -902,7 +916,7 @@
                               "source-table" ["Sample" "PUBLIC" "ORDERS"]}]}]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest add-stage-lib-type-test
+(deftest ^:parallel add-stage-lib-type-test
   (testing "stage without lib/type gets mbql.stage/mbql"
     (let [input  {"lib/type" "mbql/query"
                   "database" "Sample"
@@ -930,7 +944,7 @@
 ;;; before this repair pass even runs.
 ;;; ============================================================
 
-(deftest stamp-top-level-database-from-source-table-test
+(deftest ^:parallel stamp-top-level-database-from-source-table-test
   (testing "Pass 1.9 stamps `database:` onto a query that doesn't have one, using the MP name."
     (let [input  {"lib/type" "mbql/query"
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -939,7 +953,7 @@
           output (repair/repair mp-fks input)]
       (is (= "Sample" (get output "database"))))))
 
-(deftest stamp-top-level-database-overwrites-mismatch-test
+(deftest ^:parallel stamp-top-level-database-overwrites-mismatch-test
   (testing "Pass 1.9 silently overwrites a stale / wrong `database:` with the MP's canonical name."
     (let [input  {"lib/type" "mbql/query"
                   "database" "DatabaseFormerlyKnownAsSample"
@@ -949,7 +963,7 @@
           output (repair/repair mp-fks input)]
       (is (= "Sample" (get output "database"))))))
 
-(deftest stamp-top-level-database-idempotent-test
+(deftest ^:parallel stamp-top-level-database-idempotent-test
   (testing "Pass 1.9 is a fixed point: running it twice gives the same output."
     (let [input  {"lib/type" "mbql/query"
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -959,7 +973,7 @@
           twice  (repair/repair mp-fks once)]
       (is (= once twice)))))
 
-(deftest stamp-top-level-database-no-mp-fallback-test
+(deftest ^:parallel stamp-top-level-database-no-mp-fallback-test
   (testing "With no MP we still use the raw `source-table[0]` string as a fallback (unit-test isolation path)."
     (let [input  {"lib/type" "mbql/query"
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -985,7 +999,7 @@
 (defn- agg-uuid-of [stage idx]
   (get-in stage ["aggregation" idx 1 "lib/uuid"]))
 
-(deftest rewrite-order-by-inline-agg-happy-path-test
+(deftest ^:parallel rewrite-order-by-inline-agg-happy-path-test
   (testing "inline aggregation in order-by gets rewritten to an aggregation ref"
     (let [input    {"lib/type" "mbql/query"
                     "database" "Sample"
@@ -1007,7 +1021,7 @@
         (is (= ["aggregation" {} agg-uuid]
                (get-in stage ["order-by" 0 2])))))))
 
-(deftest rewrite-order-by-multiple-aggregations-test
+(deftest ^:parallel rewrite-order-by-multiple-aggregations-test
   (testing "order-by entries match the right aggregation by structural equality"
     (let [input    {"lib/type" "mbql/query"
                     "database" "Sample"
@@ -1034,7 +1048,7 @@
       (is (= ["aggregation" {} sum-uuid] (get-in stage ["order-by" 1 2]))
           "second order-by (sum TOTAL) refers to the sum aggregation"))))
 
-(deftest rewrite-order-by-reuses-existing-uuid-test
+(deftest ^:parallel rewrite-order-by-reuses-existing-uuid-test
   (testing "if the matching aggregation already has a lib/uuid, reuse it"
     (let [existing-uuid "11111111-2222-3333-4444-555555555555"
           input    {"lib/type" "mbql/query"
@@ -1054,7 +1068,7 @@
           "the pre-existing uuid is preserved")
       (is (= ["aggregation" {} existing-uuid] (get-in stage ["order-by" 0 2]))))))
 
-(deftest rewrite-order-by-leaves-existing-aggregation-ref-alone-test
+(deftest ^:parallel rewrite-order-by-leaves-existing-aggregation-ref-alone-test
   (testing "an order-by that already uses [\"aggregation\" {} <uuid>] is left alone"
     (let [agg-uuid "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
           input    {"lib/type" "mbql/query"
@@ -1068,7 +1082,7 @@
                                                   ["aggregation" {} agg-uuid]]]}]}]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest rewrite-order-by-leaves-non-aggregation-orderings-alone-test
+(deftest ^:parallel rewrite-order-by-leaves-non-aggregation-orderings-alone-test
   (testing "order-by on a plain field is left alone"
     (let [input    {"lib/type" "mbql/query"
                     "database" "Sample"
@@ -1080,7 +1094,7 @@
                                                    ["Sample" "PUBLIC" "ORDERS" "ID"]]]]}]}]
       (is (= input (repair/repair trivial-mp input))))))
 
-(deftest rewrite-order-by-leaves-non-matching-aggregation-alone-test
+(deftest ^:parallel rewrite-order-by-leaves-non-matching-aggregation-alone-test
   (testing (str "if the inline order-by aggregation does NOT match any aggregation in the\n"
                 "stage, leave it alone (let validation/normalize surface the real error)")
     (let [input    {"lib/type" "mbql/query"
@@ -1096,7 +1110,7 @@
       (is (= ["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
              (get-in repaired ["stages" 0 "order-by" 0 2]))))))
 
-(deftest rewrite-order-by-idempotent-test
+(deftest ^:parallel rewrite-order-by-idempotent-test
   (testing "running repair twice produces the same result (UUID is stable across runs)"
     (let [input  {"lib/type" "mbql/query"
                   "database" "Sample"
@@ -1117,7 +1131,7 @@
 ;;; End-to-end repair against an LLM shortcut shape
 ;;; ============================================================
 
-(deftest end-to-end-shortcut-repair-test
+(deftest ^:parallel end-to-end-shortcut-repair-test
   (testing "LLM-style shortcut missing both lib/types and options maps still validates after repair"
     ;; The `:lib.schema/external-query` validation at the API boundary rejects this shape, but
     ;; the repair pipeline itself is still expected to handle it for callers that bypass
@@ -1136,7 +1150,7 @@
 ;;; Idempotency - unit + property based
 ;;; ============================================================
 
-(deftest idempotency-happy-path-test
+(deftest ^:parallel idempotency-happy-path-test
   (testing "a fully-valid query is a fixed point"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1148,7 +1162,7 @@
       (is (= q (repair/repair trivial-mp q)))
       (is (= (repair/repair trivial-mp q) (repair/repair trivial-mp (repair/repair trivial-mp q)))))))
 
-(deftest idempotency-degenerate-test
+(deftest ^:parallel idempotency-degenerate-test
   (testing "repair(repair(x)) == repair(x) for a broken LLM input"
     (let [broken {"database" "Sample"
                   "stages"   [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
@@ -1389,14 +1403,14 @@
                 "breakout"     [["field" {}
                                  ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]})
 
-(deftest implicit-join-happy-path-test
+(deftest ^:parallel implicit-join-happy-path-test
   (testing "cross-table field gets `source-field` auto-filled to the unique FK path"
     (let [out (repair/repair mp-fks base-query)
           field-opts (get-in out ["stages" 0 "breakout" 0 1])]
       (is (= ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]
              (get field-opts "source-field"))))))
 
-(deftest implicit-join-preserves-existing-source-field-test
+(deftest ^:parallel implicit-join-preserves-existing-source-field-test
   (testing "if the clause already has source-field, leave it alone"
     (let [q (assoc-in base-query
                       ["stages" 0 "breakout" 0 1]
@@ -1405,7 +1419,7 @@
       (is (= {"source-field" ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]}
              (get-in out ["stages" 0 "breakout" 0 1]))))))
 
-(deftest implicit-join-skips-join-alias-test
+(deftest ^:parallel implicit-join-skips-join-alias-test
   (testing "field with join-alias is treated as an explicit-join reference and untouched"
     (let [q (assoc-in base-query
                       ["stages" 0 "breakout" 0 1]
@@ -1414,7 +1428,7 @@
       (is (= {"join-alias" "Products"}
              (get-in out ["stages" 0 "breakout" 0 1]))))))
 
-(deftest implicit-join-skips-source-field-name-test
+(deftest ^:parallel implicit-join-skips-source-field-name-test
   (testing (str "a field clause carrying `source-field-name` (multi-stage implicit-join via a "
                 "previous-stage column name) is left alone - we don't auto-fill `source-field`, "
                 "even though the target table is otherwise reachable via a unique FK")
@@ -1425,7 +1439,7 @@
       (is (= opts out-opts))
       (is (not (contains? out-opts "source-field"))))))
 
-(deftest implicit-join-skips-source-field-join-alias-test
+(deftest ^:parallel implicit-join-skips-source-field-join-alias-test
   (testing (str "a field clause carrying `source-field-join-alias` (implicit-join where the FK "
                 "column lives on an explicitly-joined table) is left alone")
     (let [opts {"source-field-join-alias" "Orders_A"}
@@ -1435,7 +1449,7 @@
       (is (= opts out-opts))
       (is (not (contains? out-opts "source-field"))))))
 
-(deftest implicit-join-skips-field-on-source-table-test
+(deftest ^:parallel implicit-join-skips-field-on-source-table-test
   (testing "field that already lives on source-table doesn't get source-field added"
     (let [q (assoc-in base-query
                       ["stages" 0 "breakout"]
@@ -1443,7 +1457,7 @@
           out (repair/repair mp-fks q)]
       (is (= {} (get-in out ["stages" 0 "breakout" 0 1]))))))
 
-(deftest implicit-join-no-fk-path-test
+(deftest ^:parallel implicit-join-no-fk-path-test
   (testing "throws :no-fk-path when the target table isn't reachable via any FK"
     (try
       (repair/repair mp-no-fk base-query)
@@ -1454,7 +1468,7 @@
           (is (true? (:agent-error? d)))
           (is (re-find #"no foreign key" (ex-message e))))))))
 
-(deftest implicit-join-ambiguous-fk-test
+(deftest ^:parallel implicit-join-ambiguous-fk-test
   (testing (str "throws :ambiguous-fk when multiple FKs exist, and does NOT enumerate the "
                 "candidate FK column names (parity with the S1 info-leak strip: the "
                 "un-sandboxed metadata provider could otherwise surface bridge-table "
@@ -1475,7 +1489,7 @@
           (testing "message tells the LLM how to disambiguate via `source-field`"
             (is (re-find #"source-field" msg))))))))
 
-(deftest implicit-join-skips-joins-subtree-test
+(deftest ^:parallel implicit-join-skips-joins-subtree-test
   (testing "field references inside explicit joins are not auto-wired with source-field"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1500,13 +1514,13 @@
       (testing "breakout field with join-alias is preserved as-is"
         (is (= {"join-alias" "P"} breakout-opts))))))
 
-(deftest implicit-join-idempotent-test
+(deftest ^:parallel implicit-join-idempotent-test
   (testing "implicit-join repair is idempotent"
     (let [once  (repair/repair mp-fks base-query)
           twice (repair/repair mp-fks once)]
       (is (= once twice)))))
 
-(deftest implicit-join-no-op-when-mp-cannot-resolve-source-table-test
+(deftest ^:parallel implicit-join-no-op-when-mp-cannot-resolve-source-table-test
   (testing "when the MP can't resolve the source-table, the pass is a no-op (let later stages report)"
     ;; trivial-mp has only a Database, no tables. Source-table resolution fails silently.
     (let [out (repair/repair trivial-mp base-query)]
@@ -1536,7 +1550,7 @@
                 "breakout"     [["field" {}
                                  ["Sample" "PUBLIC" "CATEGORIES" "NAME"]]]}]})
 
-(deftest source-field-join-alias-happy-path-test
+(deftest ^:parallel source-field-join-alias-happy-path-test
   (testing (str "a field whose target is reachable through exactly one explicit join via a "
                 "single FK gets both `source-field-join-alias` and the matching portable "
                 "`source-field` filled in")
@@ -1546,13 +1560,13 @@
       (is (= ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY_ID"]
              (get field-opts "source-field"))))))
 
-(deftest source-field-join-alias-idempotent-test
+(deftest ^:parallel source-field-join-alias-idempotent-test
   (testing "running repair twice produces the same query (Pass 3.5 is idempotent)"
     (let [once  (repair/repair mp-via-join join-base-query)
           twice (repair/repair mp-via-join once)]
       (is (= once twice)))))
 
-(deftest source-field-join-alias-preserves-existing-disambiguators-test
+(deftest ^:parallel source-field-join-alias-preserves-existing-disambiguators-test
   (testing "if the clause already carries `source-field-join-alias`, leave it alone"
     (let [q (assoc-in join-base-query ["stages" 0 "breakout" 0 1]
                       {"source-field-join-alias" "P"
@@ -1568,7 +1582,7 @@
       (is (= {"source-field-name" "PRODUCT_ID"}
              (get-in out ["stages" 0 "breakout" 0 1]))))))
 
-(deftest source-field-join-alias-defers-to-pass-4-when-source-table-can-reach-target-test
+(deftest ^:parallel source-field-join-alias-defers-to-pass-4-when-source-table-can-reach-target-test
   (testing (str "if the field's target is reachable directly from `source-table`, Pass 3.5 "
                 "backs off and lets the basic implicit-join pass (Pass 4) handle it - we get "
                 "a plain `source-field`, NOT `source-field-join-alias`")
@@ -1587,7 +1601,7 @@
       (is (= ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"] (get opts "source-field")))
       (is (not (contains? opts "source-field-join-alias"))))))
 
-(deftest source-field-join-alias-no-op-when-no-joins-test
+(deftest ^:parallel source-field-join-alias-no-op-when-no-joins-test
   (testing "when the stage has no `joins:`, Pass 3.5 doesn't touch anything; Pass 4 reports as usual"
     ;; CATEGORIES isn't reachable from ORDERS - no joins available either - so Pass 4 raises
     ;; :no-fk-path. We're asserting Pass 3.5 didn't get in the way.
@@ -1604,7 +1618,7 @@
       (catch clojure.lang.ExceptionInfo e
         (is (= :no-fk-path (:error (ex-data e))))))))
 
-(deftest source-field-join-alias-ambiguous-error-test
+(deftest ^:parallel source-field-join-alias-ambiguous-error-test
   (testing "raises :ambiguous-fk-via-join when the target is reachable through multiple distinct join aliases"
     (let [q (assoc-in join-base-query ["stages" 0 "joins"]
                       [{"alias"      "P"
@@ -1641,7 +1655,7 @@
             (testing "message tells the LLM how to disambiguate via `source-field-join-alias`"
               (is (re-find #"source-field-join-alias" msg)))))))))
 
-(deftest source-field-join-alias-skips-joins-subtree-test
+(deftest ^:parallel source-field-join-alias-skips-joins-subtree-test
   (testing (str "a field clause inside an explicit join's `conditions:` is NOT touched - those "
                 "clauses live in the join's own resolution context")
     (let [out (repair/repair mp-via-join join-base-query)
@@ -1678,7 +1692,7 @@
                {"lib/type" "mbql.stage/mbql"
                 "filters"  [[">" {} ["field" {} "count"] 10]]}]})
 
-(deftest cross-stage-field-type-inference-happy-path-test
+(deftest ^:parallel cross-stage-field-type-inference-happy-path-test
   (testing "String-named cross-stage field ref gets `base-type` + `effective-type` inferred
            from the previous stage's `lib/returned-columns`."
     (let [out (repair/repair mp-fks multi-stage-base-query)
@@ -1690,7 +1704,7 @@
       (testing "the string column name in position 2 is preserved"
         (is (= "count" (nth field-clause 2)))))))
 
-(deftest cross-stage-field-type-preserves-existing-base-type-test
+(deftest ^:parallel cross-stage-field-type-preserves-existing-base-type-test
   (testing "If the LLM actually wrote `base-type`, we don't overwrite it."
     (let [q (assoc-in multi-stage-base-query
                       ["stages" 1 "filters" 0 2 1]
@@ -1700,7 +1714,7 @@
       (is (= "type/Text" (get opts "base-type")))
       (is (= "type/Text" (get opts "effective-type"))))))
 
-(deftest cross-stage-field-type-breakout-column-test
+(deftest ^:parallel cross-stage-field-type-breakout-column-test
   (testing "A later stage can reference a BREAKOUT column from the previous stage by name;
            repair infers its base-type from the source column's metadata."
     (let [q {"lib/type" "mbql/query"
@@ -1715,7 +1729,7 @@
           opts (get-in out ["stages" 1 "order-by" 0 2 1])]
       (is (= "type/Integer" (get opts "base-type"))))))
 
-(deftest cross-stage-field-type-leaves-vector-field-fks-alone-test
+(deftest ^:parallel cross-stage-field-type-leaves-vector-field-fks-alone-test
   (testing "A field clause that uses a portable FK path (vector in position 2) is a normal
            cross-table reference, not a cross-stage one - do not touch it."
     (let [out (repair/repair mp-fks multi-stage-base-query)
@@ -1725,7 +1739,7 @@
         ;; NOT have been stamped in by the cross-stage pass (different code path).
         (is (vector? (nth stage-0-breakout-field 2)))))))
 
-(deftest cross-stage-field-type-no-previous-stage-test
+(deftest ^:parallel cross-stage-field-type-no-previous-stage-test
   (testing "String-named field in stage 0 has no previous stage to look at - we can't
            infer, so we leave the clause alone (the schema validator will surface the error)."
     (let [q {"lib/type" "mbql/query"
@@ -1737,7 +1751,7 @@
           opts (get-in out ["stages" 0 "filters" 0 2 1])]
       (is (not (contains? opts "base-type"))))))
 
-(deftest cross-stage-field-type-unknown-column-name-test
+(deftest ^:parallel cross-stage-field-type-unknown-column-name-test
   (testing "If the referenced name isn't produced by the previous stage, leave the clause
            alone (the resolver will surface :unknown-column or similar with a better message)."
     (let [q (assoc-in multi-stage-base-query
@@ -1746,13 +1760,50 @@
           opts (get-in out ["stages" 1 "filters" 0 2 1])]
       (is (not (contains? opts "base-type"))))))
 
-(deftest cross-stage-field-type-idempotent-test
+(deftest ^:parallel cross-stage-field-type-strips-surrounding-double-quotes-test
+  (testing (str "BOT-1587: when the LLM quotes a cross-stage column name like a SQL identifier\n"
+                "(`\"count\"` instead of `count`), repair strips the surrounding double-quotes so\n"
+                "the name matches the previous stage's output, rewrites the ref to the canonical\n"
+                "name, and stamps `base-type`. Without this the typeless, mis-named ref reaches\n"
+                "the FE and crashes display-info calculation.")
+    (let [q   (assoc-in multi-stage-base-query
+                        ["stages" 1 "filters" 0 2 2] "\"count\"")
+          out (repair/repair mp-fks q)
+          field-clause (get-in out ["stages" 1 "filters" 0 2])
+          opts (nth field-clause 1)]
+      (testing "name canonicalised (quotes stripped)"
+        (is (= "count" (nth field-clause 2))))
+      (testing "base-type / effective-type stamped from the previous stage"
+        (is (= "type/Integer" (get opts "base-type")))
+        (is (= "type/Integer" (get opts "effective-type")))))))
+
+(deftest ^:parallel cross-stage-field-type-unmatched-quoted-name-left-alone-test
+  (testing (str "Quote-stripping only rewrites when the stripped name matches a real column.\n"
+                "A quoted name whose stripped form still isn't produced by the previous stage is\n"
+                "left verbatim (the resolver surfaces the real error with a better message).")
+    (let [q   (assoc-in multi-stage-base-query
+                        ["stages" 1 "filters" 0 2 2] "\"no_such_column\"")
+          out (repair/repair mp-fks q)
+          field-clause (get-in out ["stages" 1 "filters" 0 2])
+          opts (nth field-clause 1)]
+      (is (= "\"no_such_column\"" (nth field-clause 2)) "name left untouched")
+      (is (not (contains? opts "base-type"))))))
+
+(deftest ^:parallel cross-stage-field-type-idempotent-test
   (testing "cross-stage field-type inference is idempotent"
     (let [once  (repair/repair mp-fks multi-stage-base-query)
           twice (repair/repair mp-fks once)]
       (is (= once twice)))))
 
-(deftest cross-stage-field-type-end-to-end-resolve-test
+(deftest ^:parallel cross-stage-field-type-quoted-name-idempotent-test
+  (testing "the quote-stripping rewrite is also idempotent"
+    (let [q     (assoc-in multi-stage-base-query
+                          ["stages" 1 "filters" 0 2 2] "\"count\"")
+          once  (repair/repair mp-fks q)
+          twice (repair/repair mp-fks once)]
+      (is (= once twice)))))
+
+(deftest ^:parallel cross-stage-field-type-end-to-end-resolve-test
   (testing (str "End-to-end: a multi-stage YAML with a stage-1 cross-stage ref lacking\n"
                 "base-type is repaired and then `resolve-query` + `lib/query` accept the\n"
                 "result without a validation error.")
@@ -1770,7 +1821,7 @@
 ;;; Pass 1.5 - expressions shape normalisation (repr-plan step 9)
 ;;; ============================================================
 
-(deftest expressions-map-shape-normalised-to-sequential-test
+(deftest ^:parallel expressions-map-shape-normalised-to-sequential-test
   (testing "map-form `expressions:` is converted to a vector of clauses with `lib/expression-name` stamped from the key"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1788,7 +1839,7 @@
         (is (= "+" (first clause)))
         (is (= "Subtotal" (get opts "lib/expression-name")))))))
 
-(deftest expressions-sequential-shape-passes-through-test
+(deftest ^:parallel expressions-sequential-shape-passes-through-test
   (testing "sequential-form `expressions:` is left alone when each clause already carries `lib/expression-name`"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1801,7 +1852,7 @@
       (is (= (get-in q ["stages" 0 "expressions"])
              (get-in repaired ["stages" 0 "expressions"]))))))
 
-(deftest expressions-sequential-without-name-left-alone-test
+(deftest ^:parallel expressions-sequential-without-name-left-alone-test
   (testing (str "sequential-form without `lib/expression-name` is left as-is; schema\n"
                 "validation will surface the missing-name error rather than us making one up.")
     (let [q {"lib/type" "mbql/query"
@@ -1815,7 +1866,7 @@
           opts     (get-in repaired ["stages" 0 "expressions" 0 1])]
       (is (not (contains? opts "lib/expression-name"))))))
 
-(deftest expressions-map-with-existing-name-in-options-preserved-test
+(deftest ^:parallel expressions-map-with-existing-name-in-options-preserved-test
   (testing (str "if a map-form entry's clause already has `lib/expression-name` in its options,\n"
                 "authored metadata wins and we don't overwrite it.")
     (let [q {"lib/type" "mbql/query"
@@ -1830,7 +1881,7 @@
           clause   (get-in repaired ["stages" 0 "expressions" 0])]
       (is (= "FromOpts" (get-in clause [1 "lib/expression-name"]))))))
 
-(deftest expressions-absent-no-op-test
+(deftest ^:parallel expressions-absent-no-op-test
   (testing "stages without `expressions:` are left alone"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1841,7 +1892,7 @@
       (is (= (get-in q ["stages" 0])
              (get-in repaired ["stages" 0]))))))
 
-(deftest expressions-idempotent-test
+(deftest ^:parallel expressions-idempotent-test
   (testing "repair is idempotent on expressions: applying twice equals applying once"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1854,7 +1905,7 @@
           twice (repair/repair trivial-mp once)]
       (is (= once twice)))))
 
-(deftest expressions-multi-stage-test
+(deftest ^:parallel expressions-multi-stage-test
   (testing "expression-name stamping works across multiple stages independently"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1878,7 +1929,7 @@
 ;;; Pass 2.8 - integer-index aggregation refs → canonical UUID form (repr-plan step 10)
 ;;; ============================================================
 
-(deftest aggregation-ref-integer-index-happy-path-test
+(deftest ^:parallel aggregation-ref-integer-index-happy-path-test
   (testing "a 0-based integer agg-ref in order-by is rewritten to the canonical UUID form"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1900,7 +1951,7 @@
         (is (= "type/BigInteger" (get-in ref-clause [1 "base-type"])))
         (is (= "type/BigInteger" (get-in ref-clause [1 "effective-type"])))))))
 
-(deftest aggregation-ref-preserves-authored-options-test
+(deftest ^:parallel aggregation-ref-preserves-authored-options-test
   (testing "authored base-type / name in the ref's options are not overwritten"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1918,7 +1969,7 @@
       (is (= "type/Float"  (get opts "effective-type")))
       (is (= "custom-name" (get opts "name"))))))
 
-(deftest aggregation-ref-out-of-range-raises-agent-error-test
+(deftest ^:parallel aggregation-ref-out-of-range-raises-agent-error-test
   (testing "an index past the stage's aggregation vector surfaces an agent-error"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1939,7 +1990,7 @@
             (is (re-find #"sum at 0" (ex-message e)))
             (is (re-find #"count at 1" (ex-message e)))))))))
 
-(deftest aggregation-ref-string-uuid-is-idempotent-test
+(deftest ^:parallel aggregation-ref-string-uuid-is-idempotent-test
   (testing "a ref whose last slot is already a UUID string is left unchanged"
     (let [uuid "11111111-1111-1111-1111-111111111111"
           q {"lib/type" "mbql/query"
@@ -1955,7 +2006,7 @@
       (is (= uuid (get-in repaired ["stages" 0 "order-by" 0 2 2])))
       (is (= uuid (get-in repaired ["stages" 0 "aggregation" 0 1 "lib/uuid"]))))))
 
-(deftest aggregation-ref-no-aggregations-in-stage-raises-agent-error-test
+(deftest ^:parallel aggregation-ref-no-aggregations-in-stage-raises-agent-error-test
   (testing "`[aggregation, {}, 0]` with no `aggregation:` clause in the stage is an agent-error"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1970,7 +2021,7 @@
             (is (true? (:agent-error? d)))
             (is (= :aggregation-ref-no-aggregations (:error d)))))))))
 
-(deftest aggregation-ref-noop-when-no-int-refs-test
+(deftest ^:parallel aggregation-ref-noop-when-no-int-refs-test
   (testing "a stage without integer-indexed agg-refs is left alone by this pass"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1982,7 +2033,7 @@
       (is (= [["count" {}]]
              (get-in repaired ["stages" 0 "aggregation"]))))))
 
-(deftest aggregation-ref-idempotent-test
+(deftest ^:parallel aggregation-ref-idempotent-test
   (testing "repair is a fixed point under repeated application"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -1997,7 +2048,7 @@
           twice (repair/repair trivial-mp once)]
       (is (= once twice)))))
 
-(deftest aggregation-ref-type-inference-by-head-test
+(deftest ^:parallel aggregation-ref-type-inference-by-head-test
   (testing "base-type inference from aggregation head"
     (let [mk (fn [agg-clause]
                {"lib/type" "mbql/query"
@@ -2022,7 +2073,7 @@
       (testing "unknown head → type/*"
         (is (= "type/*" (type-of ["some-new-agg-fn" {}])))))))
 
-(deftest aggregation-ref-multi-stage-same-stage-ref-test
+(deftest ^:parallel aggregation-ref-multi-stage-same-stage-ref-test
   (testing "a later stage can use integer agg-ref against its own aggregation list"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2045,7 +2096,7 @@
 ;;; Pass 2.9 - auto-split post-aggregation filter into a second stage
 ;;; ============================================================
 
-(deftest split-post-agg-filter-simple-count-test
+(deftest ^:parallel split-post-agg-filter-simple-count-test
   (testing "filter [> count 10] on stage with aggregation [count] is split into two stages"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2069,7 +2120,7 @@
         (is (= [[">" {} ["field" {} "count"] 10]]
                (get-in stages [1 "filters"])))))))
 
-(deftest split-post-agg-filter-keeps-pre-agg-filters-test
+(deftest ^:parallel split-post-agg-filter-keeps-pre-agg-filters-test
   (testing "pre-agg filters stay in stage 0; only the post-agg filter moves"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2088,7 +2139,7 @@
         (is (= [[">" {} ["field" {} "count"] 10]]
                (get-in stages [1 "filters"])))))))
 
-(deftest split-post-agg-refuses-when-order-by-present-test
+(deftest ^:parallel split-post-agg-refuses-when-order-by-present-test
   (testing (str "post-agg filter + `order-by` in the same stage is refused with a clean "
                 ":agent-error? — auto-relocating ordering is unsafe (the order-by may "
                 "reference a pre-agg column that doesn't survive the split, and forcing the "
@@ -2111,7 +2162,7 @@
             (testing "diagnostic names the offending stage shape"
               (is (re-find #"order-by" (ex-message e))))))))))
 
-(deftest split-post-agg-refuses-when-limit-present-test
+(deftest ^:parallel split-post-agg-refuses-when-limit-present-test
   (testing "post-agg filter + bare `limit` in the same stage is also refused"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2127,7 +2178,7 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
-(deftest split-post-agg-refuses-when-fields-present-test
+(deftest ^:parallel split-post-agg-refuses-when-fields-present-test
   (testing "post-agg filter + `fields` in the same stage is also refused"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2143,7 +2194,7 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
-(deftest split-post-agg-refuses-when-raw-column-order-by-test
+(deftest ^:parallel split-post-agg-refuses-when-raw-column-order-by-test
   (testing (str "specifically the pre-agg `order-by [desc TOTAL]` case the reviewer flagged "
                 "as silent-intent-destruction in the prior implementation: TOTAL doesn't "
                 "survive aggregation and naively moving it to stage 1 produced either a "
@@ -2164,7 +2215,7 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
-(deftest split-post-agg-uses-name-override-when-present-test
+(deftest ^:parallel split-post-agg-uses-name-override-when-present-test
   (testing "an aggregation with `name` override produces a cross-stage ref by that name"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2178,7 +2229,7 @@
       (is (= [[">" {} ["field" {} "Total Orders"] 10]]
              (get-in stages [1 "filters"]))))))
 
-(deftest split-post-agg-multiple-aggregations-test
+(deftest ^:parallel split-post-agg-multiple-aggregations-test
   (testing "with multiple aggregations of DIFFERENT heads, each gets its own column-name mapping"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2195,7 +2246,7 @@
               [">" {} ["field" {} "sum"]   100]]
              (get-in stages [1 "filters"]))))))
 
-(deftest split-post-agg-refuses-on-duplicate-column-names-test
+(deftest ^:parallel split-post-agg-refuses-on-duplicate-column-names-test
   (testing (str "two `sum` aggregations on different fields would both map to the static "
                 "column name \"sum\"; lib's `unique-name-generator` would dedup to "
                 "`sum` / `sum_2` based on field order, which our static table cannot "
@@ -2225,7 +2276,7 @@
             (testing "message offers the `name` opts override as a remedy"
               (is (re-find #"name" msg)))))))))
 
-(deftest split-post-agg-same-head-with-name-overrides-test
+(deftest ^:parallel split-post-agg-same-head-with-name-overrides-test
   (testing (str "explicit `name` opts override resolves the duplicate-name collision: the "
                 "user gets the split they intended.")
     (let [q {"lib/type" "mbql/query"
@@ -2246,7 +2297,7 @@
         (is (= [[">" {} ["field" {} "sum_tax"] 100]]
                (get-in stages [1 "filters"])))))))
 
-(deftest split-post-agg-metric-emits-diagnostic-test
+(deftest ^:parallel split-post-agg-metric-emits-diagnostic-test
   (testing "metric aggregation we can't auto-resolve raises clean :agent-error?"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2261,7 +2312,7 @@
           (is (true? (:agent-error? (ex-data e))))
           (is (= :post-agg-filter-needs-multi-stage (:error (ex-data e)))))))))
 
-(deftest split-post-agg-no-trigger-when-no-agg-ref-test
+(deftest ^:parallel split-post-agg-no-trigger-when-no-agg-ref-test
   (testing "stage with aggregation but no agg-ref-filter is left alone"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2272,7 +2323,7 @@
           stages (get (repair/repair trivial-mp q) "stages")]
       (is (= 1 (count stages))))))
 
-(deftest split-post-agg-no-trigger-when-no-aggregations-test
+(deftest ^:parallel split-post-agg-no-trigger-when-no-aggregations-test
   (testing "stage with no aggregations is never split, even if filter has an aggregation-ref shape"
     ;; The agg-ref points to nothing in this stage - resolve-aggregation-ref-indexes will
     ;; have already raised. We just verify split doesn't add a phantom stage on its own.
@@ -2284,7 +2335,7 @@
           stages (get (repair/repair trivial-mp q) "stages")]
       (is (= 1 (count stages))))))
 
-(deftest split-post-agg-idempotent-test
+(deftest ^:parallel split-post-agg-idempotent-test
   (testing "repair on an already-split query is a no-op"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2298,7 +2349,7 @@
       (is (= 2 (count (get once "stages"))))
       (is (= once twice)))))
 
-(deftest split-post-agg-handles-distinct-and-count-where-test
+(deftest ^:parallel split-post-agg-handles-distinct-and-count-where-test
   (testing "distinct and count-where get correct lib column names"
     (let [build (fn [agg]
                   {"lib/type" "mbql/query"
@@ -2324,7 +2375,7 @@
 
 ;;; ----- E1: [field, ...] in aggregation block ---------------------------------------
 
-(deftest friendly-error-field-as-aggregation-entry-test
+(deftest ^:parallel friendly-error-field-as-aggregation-entry-test
   (testing "a `[field, ...]` directly inside `aggregation:` raises clean :agent-error?"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2343,7 +2394,7 @@
             (is (re-find #"aggregation" (ex-message e)))
             (is (re-find #"breakout" (ex-message e)))))))))
 
-(deftest friendly-error-canonical-aggregation-passes-test
+(deftest ^:parallel friendly-error-canonical-aggregation-passes-test
   (testing "canonical aggregation entries (count, sum, avg, metric) do NOT trigger"
     (doseq [agg [["count" {}]
                  ["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
@@ -2356,7 +2407,7 @@
                             "aggregation"  [agg]}]}]
         (is (some? (repair/repair trivial-mp q)) (str "should not throw on " agg))))))
 
-(deftest friendly-error-field-nested-inside-aggregation-passes-test
+(deftest ^:parallel friendly-error-field-nested-inside-aggregation-passes-test
   (testing "a `field` clause NESTED inside an aggregation (its argument) does NOT trigger"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2365,7 +2416,7 @@
                           "aggregation"  [["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]}]}]
       (is (some? (repair/repair trivial-mp q))))))
 
-(deftest friendly-error-multi-stage-stage-index-test
+(deftest ^:parallel friendly-error-multi-stage-stage-index-test
   (testing "multi-stage: error names the correct stage index"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2383,7 +2434,7 @@
 
 ;;; ----- E2: case/if with "default" in opts ------------------------------------------
 
-(deftest friendly-error-case-default-in-opts-test
+(deftest ^:parallel friendly-error-case-default-in-opts-test
   (testing "`case` with `default` in options raises clean :agent-error?"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2412,7 +2463,7 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :case-default-in-opts (:error (ex-data e)))))))))
 
-(deftest friendly-error-case-canonical-default-passes-test
+(deftest ^:parallel friendly-error-case-canonical-default-passes-test
   (testing "canonical `case` with default as 3rd arg does NOT trigger"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2433,7 +2484,7 @@
 
 ;;; ----- E3: sexp-legacy top-level ops used as clause heads --------------------------
 
-(deftest friendly-error-sexp-legacy-aggregate-test
+(deftest ^:parallel friendly-error-sexp-legacy-aggregate-test
   (testing "`[aggregate, ...]` as a clause head raises clean :agent-error?"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2450,7 +2501,7 @@
             (is (= "aggregate" (:head data)))
             (is (re-find #"top-level operation" (ex-message e)))))))))
 
-(deftest friendly-error-sexp-legacy-filter-test
+(deftest ^:parallel friendly-error-sexp-legacy-filter-test
   (testing "`[filter, ...]` as a clause head triggers"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2463,7 +2514,7 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= "filter" (:head (ex-data e)))))))))
 
-(deftest friendly-error-sexp-legacy-each-op-mentioned-test
+(deftest ^:parallel friendly-error-sexp-legacy-each-op-mentioned-test
   (testing "every legacy op (aggregate/filter/order-by/breakout/limit) is recognised"
     (doseq [head ["aggregate" "filter" "order-by" "breakout" "limit"]]
       (let [q {"lib/type" "mbql/query"
@@ -2480,7 +2531,7 @@
           (catch clojure.lang.ExceptionInfo e
             (is (= head (:head (ex-data e))) (str "head mismatch for " head))))))))
 
-(deftest friendly-error-canonical-stage-keys-pass-test
+(deftest ^:parallel friendly-error-canonical-stage-keys-pass-test
   (testing "canonical stage-level keys (aggregation:, filters:, etc.) do NOT trigger"
     ;; The sexp-legacy detector targets clause heads (vector slot-0 strings), not stage
     ;; map keys. A perfectly valid stage with `aggregation:` / `filters:` keys passes.
@@ -2497,7 +2548,7 @@
 
 ;;; ----- E4: `[measure, ...]` was historically rejected; now a first-class clause -----
 
-(deftest measure-clause-passes-repair-test
+(deftest ^:parallel measure-clause-passes-repair-test
   (testing (str "`[measure, {}, <portable_entity_id>]` is a first-class aggregation clause "
                 "(was rejected by the now-deleted E4 sexp-legacy-measure-error! check). "
                 "Lookup/resolution happens in the resolve layer, not repair.")
@@ -2508,7 +2559,7 @@
                           "aggregation"  [["measure" {} "@card-1"]]}]}]
       (is (some? (repair/repair trivial-mp q))))))
 
-(deftest friendly-error-canonical-metric-passes-test
+(deftest ^:parallel friendly-error-canonical-metric-passes-test
   (testing "canonical `[metric, {}, <portable_entity_id>]` does NOT trigger E4"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2519,7 +2570,7 @@
 
 ;;; ----- E5: blank [expression, opts, ""] reference ----------------------------------
 
-(deftest friendly-error-blank-expression-ref-test
+(deftest ^:parallel friendly-error-blank-expression-ref-test
   (testing "`[expression, {}, \"\"]` blank ref raises clean :agent-error?"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2558,7 +2609,7 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :blank-expression-ref (:error (ex-data e)))))))))
 
-(deftest friendly-error-non-blank-expression-ref-passes-test
+(deftest ^:parallel friendly-error-non-blank-expression-ref-passes-test
   (testing "valid `[expression, {}, \"my-expr\"]` does NOT trigger"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2571,7 +2622,7 @@
 
 ;;; ----- E6: numeric [field, opts, 100] (sexp legacy form) ---------------------------
 
-(deftest friendly-error-numeric-field-id-test
+(deftest ^:parallel friendly-error-numeric-field-id-test
   (testing "`[field, {}, 100]` (numeric id) raises clean :agent-error?"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2588,7 +2639,7 @@
             (is (re-find #"portable FK" (ex-message e)))
             (is (re-find #"column-name" (ex-message e)))))))))
 
-(deftest friendly-error-portable-fk-passes-test
+(deftest ^:parallel friendly-error-portable-fk-passes-test
   (testing "canonical portable-FK `[field, {}, [Sample, PUBLIC, ORDERS, COL]]` does NOT trigger"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2597,7 +2648,7 @@
                           "filters"      [["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]}]}]
       (is (some? (repair/repair trivial-mp q))))))
 
-(deftest friendly-error-cross-stage-string-col-passes-test
+(deftest ^:parallel friendly-error-cross-stage-string-col-passes-test
   (testing "cross-stage string column-name `[field, {}, \"count\"]` does NOT trigger"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
@@ -2607,3 +2658,134 @@
                          {"lib/type" "mbql.stage/mbql"
                           "filters"  [[">" {} ["field" {} "count"] 10]]}]}]
       (is (some? (repair/repair trivial-mp q))))))
+
+;;; ============================================================
+;;; Pass 1.88 - merge trailing options-map into position-1 opts
+;;; ============================================================
+
+(deftest ^:parallel merge-trailing-options-time-interval-test
+  (testing (str "BOT-1603: when the LLM puts a clause's options at the END of a fixed-arity\n"
+                "tuple clause instead of position 1, repair merges the trailing map into the\n"
+                "position-1 options and drops the trailing element. The canonical example is\n"
+                "`time-interval` with `{include-current true}` written as a 6th element.")
+    (let [bug      ["time-interval" {}
+                    ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                    -1 "month" {"include-current" true}]
+          repaired (repair/repair trivial-mp bug)]
+      (is (= ["time-interval" {"include-current" true}
+              ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+              -1 "month"]
+             repaired)))))
+
+(deftest ^:parallel merge-trailing-options-other-fixed-arity-test
+  (testing "the pass is generic, not time-interval-specific: works for any fixed-arity tuple"
+    (testing "during (5-tuple)"
+      (is (= ["during" {"foo" "bar"}
+              ["field" {} ["S" "P" "T" "C"]]
+              "2024-01-01" "day"]
+             (repair/repair trivial-mp
+                            ["during" {}
+                             ["field" {} ["S" "P" "T" "C"]]
+                             "2024-01-01" "day" {"foo" "bar"}]))))
+    (testing "power (4-tuple)"
+      (is (= ["power" {"lib/uuid" "u"} 2 3]
+             (repair/repair trivial-mp
+                            ["power" {} 2 3 {"lib/uuid" "u"}]))))
+    (testing "regex-match-first (4-tuple)"
+      (is (= ["regex-match-first" {"case-sensitive" false}
+              ["field" {} ["S" "P" "T" "C"]] "x.*"]
+             (repair/repair trivial-mp
+                            ["regex-match-first" {}
+                             ["field" {} ["S" "P" "T" "C"]]
+                             "x.*" {"case-sensitive" false}]))))))
+
+(deftest ^:parallel merge-trailing-options-nested-in-filters-test
+  (testing (str "the misplaced trailing options can be nested arbitrarily deep - repair's\n"
+                "postwalk reaches a time-interval clause nested inside `and` inside the\n"
+                "stage's filters: block.")
+    (let [q   {"lib/type" "mbql/query"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "filters"      [["and" {}
+                                             ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]
+                                             ["time-interval" {}
+                                              ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                              -1 "month" {"include-current" true}]]]}]}
+          out (repair/repair trivial-mp q)
+          ti  (get-in out ["stages" 0 "filters" 0 3])]
+      (is (= ["time-interval" {"include-current" true}
+              ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+              -1 "month"]
+             ti)))))
+
+(deftest ^:parallel merge-trailing-options-trailing-keys-win-test
+  (testing (str "when both position-1 opts and the trailing map carry content, trailing keys\n"
+                "win on conflict. Rationale: the trailing map is where the LLM wrote\n"
+                "deliberate content; position 1 is almost always `{}`.")
+    (let [bug      ["time-interval" {"include-current" false "lib/uuid" "stays"}
+                    ["field" {} ["S" "P" "T" "C"]]
+                    -1 "month" {"include-current" true}]
+          repaired (repair/repair trivial-mp bug)]
+      (is (= ["time-interval" {"include-current" true "lib/uuid" "stays"}
+              ["field" {} ["S" "P" "T" "C"]]
+              -1 "month"]
+             repaired)))))
+
+(deftest ^:parallel merge-trailing-options-no-op-on-correct-arity-test
+  (testing "well-formed clause is unchanged"
+    (let [ti ["time-interval" {"include-current" true}
+              ["field" {} ["S" "P" "T" "C"]]
+              -1 "month"]]
+      (is (= ti (repair/repair trivial-mp ti))))))
+
+(deftest ^:parallel merge-trailing-options-skips-variadic-test
+  (testing (str "variadic clauses (`and`, `or`, `=`, `in`, `case`, ...) use `:catn` and are\n"
+                "excluded from the registry-derived fixed-arity map. A trailing map on a\n"
+                "variadic clause might be a legitimate arg (or just bad input the schema will\n"
+                "reject) - we don't second-guess.")
+    (let [bug ["and" {}
+               [">" {} ["field" {} ["S" "P" "T" "X"]] 10]
+               [">" {} ["field" {} ["S" "P" "T" "Y"]] 20]
+               {"trailing" "stays"}]]
+      (is (= bug (repair/repair trivial-mp bug))))))
+
+(deftest ^:parallel merge-trailing-options-skips-off-by-two-test
+  (testing (str "the pass only fires when count is exactly `expected + 1`. Two extra\n"
+                "elements is too ambiguous - leave it for the schema validator to reject.")
+    (let [bug ["time-interval" {}
+               ["field" {} ["S" "P" "T" "C"]]
+               -1 "month" {"include-current" true} {"extra" 1}]]
+      (is (= bug (repair/repair trivial-mp bug))))))
+
+(deftest ^:parallel merge-trailing-options-skips-unknown-clause-test
+  (testing "clauses whose head is not in the fixed-arity registry are left alone"
+    (let [bug ["totally-made-up-op" {} "arg1" {"trailing" "map"}]]
+      (is (= bug (repair/repair trivial-mp bug))))))
+
+(deftest ^:parallel merge-trailing-options-idempotent-test
+  (testing "repair(repair(q)) = repair(q)"
+    (let [bug   ["time-interval" {}
+                 ["field" {} ["S" "P" "T" "C"]]
+                 -1 "month" {"include-current" true}]
+          once  (repair/repair trivial-mp bug)
+          twice (repair/repair trivial-mp once)]
+      (is (= once twice)))))
+
+(deftest ^:parallel fixed-arity-clause-counts-populated-test
+  (testing (str "registry-derived fixed-arity map is populated and contains the well-known\n"
+                "entries. Catches accidents like the schema namespaces not being loaded at the\n"
+                "time the namespace initializes the delay.")
+    (let [counts (force @#'repair/fixed-arity-clause-element-counts)]
+      (is (pos? (count counts)))
+      (testing "well-known fixed-arity clauses are in the map with correct counts"
+        (is (= 5 (get counts "time-interval")))
+        (is (= 5 (get counts "during")))
+        (is (= 7 (get counts "relative-time-interval")))
+        (is (= 3 (get counts "segment")))
+        (is (= 3 (get counts "sum")))
+        (is (= 4 (get counts "power"))))
+      (testing "variadic clauses are excluded"
+        (is (not (contains? counts "and")))
+        (is (not (contains? counts "or")))
+        (is (not (contains? counts "case")))
+        (is (not (contains? counts "coalesce")))))))

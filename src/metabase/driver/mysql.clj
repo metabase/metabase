@@ -443,7 +443,6 @@
      ;; non-positive position
      [:< pos 1]
      ""
-
      ;; position greater than number of parts
      [:> pos
       [:+ 1
@@ -453,7 +452,6 @@
           [:length [:replace text div ""]]]
          [:length div]]]]]
      ""
-
      ;; This needs some explanation.
      ;; The inner substring_index returns the string up to the `pos` instance of `div`
      ;; The outer substring_index returns the string from the last instance of `div` to the end
@@ -1194,14 +1192,12 @@
                         [[:= :c.column_key [:inline "PRI"]] :pk?]
                         [[:= :is_nullable [:inline "YES"]] :database-is-nullable]
                         [[:if [:= [:lower :column_default] [:inline "null"]] nil :column_default] :database-default]
-
                         [[:and
                           ;; mariadb
                           [:!= :generation_expression nil]
                           ;; mysql
                           [:<> :generation_expression ""]]
                          :database-is-generated]
-
                         [[:nullif :c.column_comment [:inline ""]] :field-comment]]
                :from [[:information_schema.columns :c]]
                :where
@@ -1300,6 +1296,9 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- quote-schema [s] (sql.u/quote-name :mysql :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :mysql :field s))
+
 (defn- mysql-user-exists?
   "Check if a MySQL user exists."
   [conn username]
@@ -1312,21 +1311,26 @@
   (let [db-name          (driver.u/workspace-isolation-namespace-name workspace)
         user             (driver.u/workspace-isolation-user-name workspace)
         password         (driver.u/random-workspace-password)
-        escaped-password (sql.u/escape-sql password :ansi)]
+        escaped-password (sql.u/escape-sql password :ansi)
+        quoted-db        (quote-schema db-name)
+        quoted-user      (quote-field user)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (let [user-sql (if (mysql-user-exists? t-conn user)
-                       (format "ALTER USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user escaped-password)
-                       (format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user escaped-password))]
+                       (format "ALTER USER %s@'%%' IDENTIFIED BY '%s'"
+                               quoted-user escaped-password)
+                       (format "CREATE USER %s@'%%' IDENTIFIED BY '%s'"
+                               quoted-user escaped-password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; Create the isolated database
-                       (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
+                       (format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
                        user-sql
                        ;; Grant all privileges on the isolated database
-                       (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name user)]]
+                       (format "GRANT ALL PRIVILEGES ON %s.* TO %s@'%%'" quoted-db quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))
+          (try
+            (.executeBatch ^Statement stmt)
+            (catch Throwable t
+              (throw (driver.u/scrub-exceptions t [password escaped-password])))))))
     {:schema           db-name
      ;; Intentionally omit `:db` from `:database_details`: when the workspace
      ;; loader merges these over the canonical Database's `:details`, we must
@@ -1339,13 +1343,15 @@
 
 (defmethod driver/destroy-workspace-isolation! :mysql
   [_driver database workspace]
-  (let [db-name  (:schema workspace)
-        username (-> workspace :database_details :user)]
+  (let [db-name     (:schema workspace)
+        username    (-> workspace :database_details :user)
+        quoted-db   (quote-schema db-name)
+        quoted-user (quote-field username)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS `%s`" db-name)]
+        (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS %s" quoted-db)]
                       (mysql-user-exists? t-conn username)
-                      (conj (format "DROP USER IF EXISTS `%s`@'%%'" username)))]
+                      (conj (format "DROP USER IF EXISTS %s@'%%'" quoted-user)))]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
@@ -1355,11 +1361,11 @@
   is `[]` — so each entry in `schemas` is interpreted as a database name.
   Workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
   [username schemas]
-  (let [qu               (sql.u/quote-name :mysql :field username)
+  (let [quoted-user      (quote-field username)
         source-databases (set schemas)]
     (perf/mapv (fn [db]
                  (format "GRANT SELECT ON %s.* TO %s@'%%'"
-                         (sql.u/quote-name :mysql :schema db) qu))
+                         (quote-schema db) quoted-user))
                source-databases)))
 
 (defmethod driver/grant-workspace-read-access! :mysql
@@ -1409,7 +1415,7 @@
                                                                    [(:schema test-table)])
                               (catch Exception e
                                 (throw (ex-info (tru "Failed to grant read access to database {0}: {1}"
-                                                     (:schema test-table) (ex-message e))
+                                                     (quote-schema (:schema test-table)) (ex-message e))
                                                 {:step :grant :table test-table} e)))))
                           (try
                             (driver/destroy-workspace-isolation! driver database workspace-with-details)

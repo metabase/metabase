@@ -77,13 +77,28 @@ describe("admin > custom visualizations", () => {
 
         H.visitCustomVizSettings();
 
+        cy.log(
+          "Enabling custom viz is blocked until the image CSP setting is on",
+        );
         H.main()
           .findByRole("button", { name: /Enable custom visualizations/ })
-          .should("be.visible")
+          .should("be.disabled");
+        H.main()
+          .findByText(/Turn on "Restrict image domains"/)
+          .should("be.visible");
+
+        cy.log("Turn on the image CSP setting, then custom viz can be enabled");
+        H.updateSetting("csp-img-enabled", true);
+        cy.reload();
+
+        H.main()
+          .findByRole("button", { name: /Enable custom visualizations/ })
+          .should("be.enabled")
           .click();
 
         H.getAddVisualizationLink().should("be.visible");
 
+        cy.log("Deactivate custom visualizations");
         H.main()
           .findByRole("button", { name: /More options/ })
           .click();
@@ -124,6 +139,7 @@ describe("admin > custom visualizations", () => {
         });
 
         H.activateToken("bleeding-edge");
+        H.updateSetting("csp-img-enabled", true);
         H.updateSetting("custom-viz-enabled", true);
         H.visitCustomVizSettings();
         H.getAddVisualizationLink().click();
@@ -167,6 +183,7 @@ describe("admin > custom visualizations", () => {
   describe("admin settings page", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
     });
 
@@ -518,6 +535,7 @@ describe("admin > custom visualizations", () => {
   describe("using a plugin — question", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
@@ -775,6 +793,7 @@ describe("admin > custom visualizations", () => {
   describe("using a plugin — dashboard", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
     });
@@ -1044,6 +1063,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
@@ -1174,6 +1194,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
@@ -1396,6 +1417,7 @@ describe("admin > custom visualizations", () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
     });
 
@@ -1577,6 +1599,7 @@ describe("sandbox", () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.updateSetting("csp-img-enabled", true);
     H.updateSetting("custom-viz-enabled", true);
     H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
     H.createQuestion(
@@ -2501,6 +2524,44 @@ describe("sandbox", () => {
     cy.get("@consoleError").should(
       "have.been.calledWithMatch",
       /\[plugin \d+\] swapped out-of-scope <body> with decoy/,
+    );
+  });
+
+  it("blocks forbidden apis in widget settings", () => {
+    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
+
+    H.createQuestion(
+      {
+        name: "Custom Viz Question Test",
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "table",
+      },
+      { wrapId: true, idAlias: "questionId" },
+    );
+
+    H.visitQuestion("@questionId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("custom-viz-plugins-toggle").click();
+    cy.findByTestId(`${H.CUSTOM_VIZ_IDENTIFIER_3_SECURITY}-button`).click();
+    cy.findByTestId("viz-type-button").click();
+
+    cy.log("open viz settings");
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      Cypress.sinon.match.has(
+        "message",
+        Cypress.sinon.match(/blocked API call: window\.fetch/),
+      ),
     );
   });
 });

@@ -40,7 +40,6 @@
                      (map (comp :long-display-name #(lib/display-info query 0 %))))]
     (is (= ["ID" "Name" "Category ID" "Latitude" "Longitude" "Price" "Category → ID" "Category → Name"]
            results)))
-
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
         results (->> query
                      lib/visible-columns
@@ -289,14 +288,12 @@
           (is (= []
                  (->> (lib/visible-columns query)
                       (remove (comp #{:source/card} :lib/source)))))))
-
       (testing "metadata for the FK target field is not sufficient"
         (let [query (query-with-user-id-tweaks {:fk-target-field-id (meta/id :people :id)})]
           (is (= 9 (count (lib/visible-columns query))))
           (is (= []
                  (->> (lib/visible-columns query)
                       (remove (comp #{:source/card} :lib/source)))))))
-
       (testing "an ID for the FK field itself is not sufficient"
         (let [query (query-with-user-id-tweaks {:id            (meta/id :orders :user-id)
                                                 :semantic-type nil})]
@@ -959,7 +956,6 @@
   (testing "temporal unit should not be incorrectly propagated in returned-columns past the stage where the bucketing was done"
     (let [query (lib/query
                  meta/metadata-provider
-
                  (lib.tu.macros/mbql-query people
                    {:source-query {:source-table $$people
                                    :breakout     [!month.created-at]

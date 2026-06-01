@@ -67,6 +67,7 @@
      [:pinned :boolean]
      [:verified :boolean]
      [:collection_type :text]
+     [:root_collection_type :text]
      [:data_layer :text]
      [:dashboardcard_count :int]
      [:view_count :int]
@@ -152,7 +153,8 @@
   "Convert a document to a database record with a provided embedding."
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
-                     pinned dashboardcard_count view_count last_viewed_at collection_type data_layer] :as doc}]
+                     pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
+                     data_layer] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -168,6 +170,7 @@
    :pinned              (some-> pinned to-boolean)
    :verified            (some-> verified to-boolean)
    :collection_type     collection_type
+   :root_collection_type root_collection_type
    :data_layer          data_layer
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
@@ -284,7 +287,7 @@
   (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
-     :version 3}))
+     :version 4}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -585,6 +588,7 @@
    [:pinned :pinned]
    [:verified :verified]
    [:collection_type :collection_type]
+   [:root_collection_type :root_collection_type]
    [:data_layer :data_layer]
    [:dashboardcard_count :dashboardcard_count]
    [:view_count :view_count]
@@ -766,16 +770,13 @@
         slow-filtered (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) slow-docs)
         result (into fast-filtered slow-filtered)
         time-ms (u/since-ms timer)]
-
     (log/debug "Permission filtering" {:before-count (count docs)
                                        :after-count (count result)
                                        :fast-count (count fast-docs)
                                        :slow-count (count slow-docs)
                                        :slow-fetched-count (count slow-t2-instances)
                                        :time-ms time-ms})
-
     (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
-
     result))
 
 (defn- filter-by-collection-id
@@ -860,7 +861,6 @@
                                (scoring/with-appdb-scores search-context appdb-scorers weights))
             appdb-scores-time-ms (u/since-ms appdb-scores-timer)
             total-time-ms (u/since-ms timer)]
-
         (log/debug "Semantic search"
                    {:search-string-length (count search-string)
                     :raw-results-count (count raw-results)
@@ -870,7 +870,6 @@
                     :filter-time-ms filter-time-ms
                     :appdb-scores-time-ms appdb-scores-time-ms
                     :total-time-ms total-time-ms})
-
         (analytics/inc! :metabase-search/semantic-embedding-ms
                         {:embedding-model (:name embedding-model)}
                         embedding-time-ms)
@@ -882,10 +881,8 @@
         (analytics/inc! :metabase-search/semantic-search-ms
                         {:embedding-model (:name embedding-model)}
                         total-time-ms)
-
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
-
         {:results final-results
          :raw-count (count raw-results)}))))
 

@@ -20,6 +20,10 @@ export function createMockWorkspaceInstance(
   return {
     name: "Test workspace",
     databases: {},
+    // Default to a non-writable workspace so tests that don't care about
+    // lock state behave like a deployment-managed instance. Opt into the
+    // editable case with createMockWorkspaceInstance({ can_write: true }).
+    can_write: false,
     ...opts,
   };
 }
