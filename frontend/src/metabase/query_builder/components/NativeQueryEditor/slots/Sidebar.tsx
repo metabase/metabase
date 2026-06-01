@@ -50,7 +50,10 @@ export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
       onFormatQuery={onFormatQuery}
       question={question}
       snippets={snippets}
+<<<<<<< HEAD
       snippetCollections={snippetCollections}
+=======
+>>>>>>> 151befd0c (Add composable NativeQueryEditor with backward-compatible shim)
       isRunnable={isRunnable}
       isRunning={isRunning}
       isResultDirty={isResultDirty}
