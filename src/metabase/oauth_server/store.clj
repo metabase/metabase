@@ -158,21 +158,17 @@
     true)
 
   (get-authorization-code [_ code]
-    (-> (t2/select-one :model/OAuthAuthorizationCode :code code :decision "pending")
+    (-> (t2/select-one :model/OAuthAuthorizationCode :code code)
         db-row->auth-code))
 
   (delete-authorization-code [_ code]
-    (t2/update! :model/OAuthAuthorizationCode {:code code :decision "pending"}
-                {:decision   "denied"
-                 :decided_at :%now})
+    (t2/delete! :model/OAuthAuthorizationCode :code code)
     true)
 
   (consume-authorization-code [_ code]
     (t2/with-transaction [_conn]
-      (when-let [row (t2/select-one :model/OAuthAuthorizationCode :code code :decision "pending" {:for :update})]
-        (t2/update! :model/OAuthAuthorizationCode (:id row)
-                    {:decision   "authorized"
-                     :decided_at :%now})
+      (when-let [row (t2/select-one :model/OAuthAuthorizationCode :code code {:for :update})]
+        (t2/delete! :model/OAuthAuthorizationCode :code code)
         (db-row->auth-code row)))))
 
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------

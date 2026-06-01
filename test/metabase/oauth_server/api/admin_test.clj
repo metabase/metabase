@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.test :as mt]
-   [oidc-provider.util :as oidc-util]))
+   [oidc-provider.util :as oidc-util]
+   [toucan2.core :as t2]))
 
 (defn- client-defaults []
   {:client_id          (str (random-uuid))
@@ -14,17 +15,15 @@
    :response_types     ["code"]
    :scopes             ["profile"]
    :application_type   "web"
-   :registration_type  "static"})
+   :registration_type  "dynamic"})
 
-(defn- auth-code-defaults [client-id user-id decision]
-  (cond-> {:code         (str (random-uuid))
-           :user_id      user-id
-           :client_id    client-id
-           :redirect_uri "https://example.com/callback"
-           :scope        ["profile"]
-           :expiry       (+ (System/currentTimeMillis) 600000)
-           :decision     decision}
-    (not= decision "pending") (assoc :decided_at :%now)))
+(defn- event-defaults
+  ([oauth-client-id event-type]
+   (event-defaults oauth-client-id event-type nil))
+  ([oauth-client-id event-type user-id]
+   (cond-> {:oauth_client_id oauth-client-id
+            :event_type      event-type}
+     user-id (assoc :user_id user-id))))
 
 ;;; ----------------------------------------- GET /api/oauth/authorizations ----------------------------------------
 
@@ -41,88 +40,81 @@
       (is (pos-int? (:limit response)))
       (is (number? (:offset response))))))
 
-(deftest authorizations-excludes-pending-test
-  (testing "Pending authorizations are not returned"
-    (mt/with-temp [:model/OAuthClient client (client-defaults)
-                   :model/OAuthAuthorizationCode _code
-                   (auth-code-defaults (:client_id client) (mt/user->id :crowberto) "pending")]
-      (let [response (mt/user-http-request :crowberto :get 200 "oauth/authorizations"
-                                           :client-id (:client_id client))]
-        (is (= 0 (:total response)))))))
-
-(deftest authorizations-returns-decided-rows-test
-  (testing "Authorized and denied decisions are returned with client and user info"
+(deftest authorizations-returns-events-test
+  (testing "Registration and decision events are returned with client info"
     (mt/with-temp [:model/OAuthClient client (merge (client-defaults)
                                                     {:client_name "My MCP Client"
                                                      :client_uri  "https://mcp.example.com"})
-                   :model/OAuthAuthorizationCode auth1
-                   (auth-code-defaults (:client_id client) (mt/user->id :crowberto) "authorized")
-                   :model/OAuthAuthorizationCode auth2
-                   (auth-code-defaults (:client_id client) (mt/user->id :rasta) "denied")]
+                   :model/OAuthClientEvent registered (event-defaults (:id client) "registered")
+                   :model/OAuthClientEvent approved (event-defaults (:id client) "approved" (mt/user->id :crowberto))
+                   :model/OAuthClientEvent denied (event-defaults (:id client) "denied" (mt/user->id :rasta))]
       (let [response (mt/user-http-request :crowberto :get 200 "oauth/authorizations"
                                            :client-id (:client_id client))
             ids      (set (map :id (:data response)))]
-        (is (= 2 (:total response)))
-        (is (= #{(:id auth1) (:id auth2)} ids))
-        (let [decisions (set (map :decision (:data response)))]
-          (is (= #{"authorized" "denied"} decisions)))
+        (is (= 3 (:total response)))
+        (is (= #{(:id registered) (:id approved) (:id denied)} ids))
+        (is (= #{"registered" "approved" "denied"} (set (map :event_type (:data response)))))
         (doseq [row (:data response)]
           (is (= "My MCP Client" (:client_name row)))
           (is (= "https://mcp.example.com" (:client_uri row)))
-          (is (some? (:user_email row)))
-          (is (some? (:decided_at row))))))))
+          (is (= (:client_id client) (:client_id row)))
+          (is (= (:id client) (:oauth_client_id row))))))))
 
-(deftest authorizations-filter-by-decision-test
-  (testing "Can filter by decision=authorized"
+(deftest authorizations-decision-events-have-user-test
+  (testing "Decision events expose the deciding user; registration events have no user"
     (mt/with-temp [:model/OAuthClient client (client-defaults)
-                   :model/OAuthAuthorizationCode _auth
-                   (auth-code-defaults (:client_id client) (mt/user->id :crowberto) "authorized")
-                   :model/OAuthAuthorizationCode _denied
-                   (auth-code-defaults (:client_id client) (mt/user->id :rasta) "denied")]
+                   :model/OAuthClientEvent _registered (event-defaults (:id client) "registered")
+                   :model/OAuthClientEvent _approved (event-defaults (:id client) "approved" (mt/user->id :crowberto))]
+      (let [rows   (:data (mt/user-http-request :crowberto :get 200 "oauth/authorizations"
+                                                :client-id (:client_id client)))
+            by-typ (into {} (map (juxt :event_type identity)) rows)]
+        (is (= (mt/user->id :crowberto) (:user_id (get by-typ "approved"))))
+        (is (some? (:user_email (get by-typ "approved"))))
+        (is (nil? (:user_id (get by-typ "registered"))))
+        (is (nil? (:user_email (get by-typ "registered"))))))))
+
+(deftest authorizations-filter-by-event-type-test
+  (testing "Can filter by event-type=approved"
+    (mt/with-temp [:model/OAuthClient client (client-defaults)
+                   :model/OAuthClientEvent _registered (event-defaults (:id client) "registered")
+                   :model/OAuthClientEvent _approved (event-defaults (:id client) "approved" (mt/user->id :crowberto))
+                   :model/OAuthClientEvent _denied (event-defaults (:id client) "denied" (mt/user->id :rasta))]
       (let [response (mt/user-http-request :crowberto :get 200 "oauth/authorizations"
                                            :client-id (:client_id client)
-                                           :decision "authorized")]
+                                           :event-type "approved")]
         (is (= 1 (:total response)))
-        (is (= "authorized" (:decision (first (:data response)))))))))
+        (is (= "approved" (:event_type (first (:data response)))))))))
 
 (deftest authorizations-filter-by-client-id-test
   (testing "Can filter by client-id"
     (mt/with-temp [:model/OAuthClient client-a (merge (client-defaults) {:client_name "Client A"})
                    :model/OAuthClient client-b (merge (client-defaults) {:client_name "Client B"})
-                   :model/OAuthAuthorizationCode _a
-                   (auth-code-defaults (:client_id client-a) (mt/user->id :crowberto) "authorized")
-                   :model/OAuthAuthorizationCode _b
-                   (auth-code-defaults (:client_id client-b) (mt/user->id :crowberto) "authorized")]
+                   :model/OAuthClientEvent _a (event-defaults (:id client-a) "registered")
+                   :model/OAuthClientEvent _b (event-defaults (:id client-b) "registered")]
       (let [response (mt/user-http-request :crowberto :get 200 "oauth/authorizations"
                                            :client-id (:client_id client-a))]
         (is (= 1 (:total response)))
         (is (= "Client A" (:client_name (first (:data response)))))))))
 
-(deftest authorizations-ordered-by-decided-at-desc-test
-  (testing "Results are ordered by decided_at descending"
+(deftest authorizations-ordered-by-created-at-desc-test
+  (testing "Results are ordered by created_at descending"
     (mt/with-temp [:model/OAuthClient client (client-defaults)
-                   :model/OAuthAuthorizationCode _first
-                   (auth-code-defaults (:client_id client) (mt/user->id :crowberto) "authorized")]
-      ;; Insert second row after a short delay so decided_at differs
+                   :model/OAuthClientEvent _first (event-defaults (:id client) "registered")]
+      ;; Insert second event after a short delay so created_at differs
       (Thread/sleep 50)
-      (mt/with-temp [:model/OAuthAuthorizationCode _second
-                     (auth-code-defaults (:client_id client) (mt/user->id :rasta) "denied")]
-        (let [response (mt/user-http-request :crowberto :get 200 "oauth/authorizations"
-                                             :client-id (:client_id client))
-              rows     (:data response)]
+      (mt/with-temp [:model/OAuthClientEvent _second (event-defaults (:id client) "approved" (mt/user->id :crowberto))]
+        (let [rows (:data (mt/user-http-request :crowberto :get 200 "oauth/authorizations"
+                                                :client-id (:client_id client)))]
           (is (= 2 (count rows)))
-          (is (= "denied" (:decision (first rows))))
-          (is (= "authorized" (:decision (second rows)))))))))
+          (is (= "approved" (:event_type (first rows))))
+          (is (= "registered" (:event_type (second rows)))))))))
 
 (deftest authorizations-pagination-test
   (testing "Pagination works with limit and offset"
     (mt/with-temp [:model/OAuthClient client (client-defaults)
-                   :model/OAuthAuthorizationCode _a
-                   (auth-code-defaults (:client_id client) (mt/user->id :crowberto) "authorized")
-                   :model/OAuthAuthorizationCode _b
-                   (auth-code-defaults (:client_id client) (mt/user->id :crowberto) "authorized")
-                   :model/OAuthAuthorizationCode _c
-                   (auth-code-defaults (:client_id client) (mt/user->id :crowberto) "authorized")]
+                   :model/OAuthClientEvent _a (event-defaults (:id client) "registered")
+                   :model/OAuthClientEvent _b (event-defaults (:id client) "approved" (mt/user->id :crowberto))
+                   :model/OAuthClientEvent _c (event-defaults (:id client) "denied" (mt/user->id :crowberto))]
       (let [response (mt/user-http-request :crowberto :get 200 "oauth/authorizations"
                                            :client-id (:client_id client)
                                            :limit 2 :offset 0)]
@@ -136,16 +128,25 @@
         (is (= 3 (:total response)))
         (is (= 1 (count (:data response))))))))
 
-(deftest authorizations-does-not-leak-sensitive-fields-test
-  (testing "Response does not include code, redirect_uri, nonce, or PKCE fields"
+(deftest authorizations-retains-events-for-deleted-client-test
+  (testing "Events whose client has been deleted still surface (LEFT JOIN), with null client fields"
     (mt/with-temp [:model/OAuthClient client (client-defaults)
-                   :model/OAuthAuthorizationCode _auth
-                   (auth-code-defaults (:client_id client) (mt/user->id :crowberto) "authorized")]
+                   :model/OAuthClientEvent event (event-defaults (:id client) "registered")]
+      (t2/delete! :model/OAuthClient (:id client))
+      (let [rows (:data (mt/user-http-request :crowberto :get 200 "oauth/authorizations"))
+            row  (first (filter #(= (:id event) (:id %)) rows))]
+        (is (some? row) "The orphaned audit event should still be returned")
+        (is (= "registered" (:event_type row)))
+        (is (nil? (:oauth_client_id row)))
+        (is (nil? (:client_id row)))
+        (is (nil? (:client_name row)))))))
+
+(deftest authorizations-does-not-leak-sensitive-fields-test
+  (testing "Response does not include secrets or token-endpoint auth details"
+    (mt/with-temp [:model/OAuthClient client (client-defaults)
+                   :model/OAuthClientEvent _registered (event-defaults (:id client) "registered")]
       (let [row (first (:data (mt/user-http-request :crowberto :get 200 "oauth/authorizations"
                                                     :client-id (:client_id client))))]
-        (is (nil? (:code row)))
-        (is (nil? (:redirect_uri row)))
-        (is (nil? (:nonce row)))
-        (is (nil? (:code_challenge row)))
-        (is (nil? (:code_challenge_method row)))
-        (is (nil? (:expiry row)))))))
+        (is (nil? (:client_secret_hash row)))
+        (is (nil? (:registration_access_token_hash row)))
+        (is (nil? (:token_endpoint_auth_method row)))))))

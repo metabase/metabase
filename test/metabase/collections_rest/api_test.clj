@@ -27,8 +27,6 @@
   (:import
    (java.time ZonedDateTime ZoneId)))
 
-t2/select-one-fn
-
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections :row-lock))
