@@ -174,6 +174,37 @@ describe("issue UXW-3160", () => {
   });
 });
 
+describe("issue GDGT-2429", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
+  });
+
+  function startNewSqlTransform() {
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("SQL query").click();
+    H.popover().findByText("Writable Postgres12").click();
+    H.NativeEditor.type("SELECT 42", { allowFastSet: true }).blur();
+  }
+
+  function openSaveModal() {
+    getQueryEditor().button("Save").click();
+    H.modal().findByText("Save your transform").should("be.visible");
+  }
+
+  it("should warn about unsaved changes when navigating away while the save modal is open (metabase#GDGT-2429)", () => {
+    startNewSqlTransform();
+    openSaveModal();
+
+    cy.log("navigating away while the save modal is open should warn");
+    cy.go("back");
+    H.leaveConfirmationModal().should("be.visible");
+  });
+});
+
 function visitTransformListPage() {
   return cy.visit("/data-studio/transforms");
 }
