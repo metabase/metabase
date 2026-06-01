@@ -23,7 +23,7 @@ export interface NativeQueryEditorContextValue {
   setDatasetQuery: (query: NativeQuery) => void;
 
   focusEditor: () => void;
-  onFormatQuery: () => void;
+  onFormatQuery: () => Promise<void>;
 
   readOnly?: boolean;
   isNativeEditorOpen: boolean;
