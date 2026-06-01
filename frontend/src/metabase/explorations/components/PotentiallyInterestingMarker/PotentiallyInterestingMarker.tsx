@@ -2,8 +2,6 @@ import { t } from "ttag";
 
 import { Box, Tooltip } from "metabase/ui";
 
-import S from "./PotentiallyInterestingMarker.module.css";
-
 /**
  * Small colored dot used across the exploration UI to mark items whose
  * interestingness score passes the threshold (queries, groups, timelines).
@@ -21,7 +19,7 @@ export function PotentiallyInterestingMarker() {
         h="0.375rem"
         bg="brand"
         bdrs="50%"
-        className={S.indicator}
+        flex="none"
       />
     </Tooltip>
   );
