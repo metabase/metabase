@@ -66,6 +66,12 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
+(defmethod driver/validate-db-details! :databricks
+  [_driver details]
+  (when-let [opts (not-empty (:additional-options details))]
+    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths" opts)
+      (throw (Exception. "Potentially dangerous keys in connection details")))))
+
 (defn- catalog-present?
   [jdbc-spec catalog]
   (let [sql "select 0 from `system`.`information_schema`.`catalogs` where catalog_name = ?"]
@@ -73,6 +79,7 @@
 
 (defmethod driver/can-connect? :databricks
   [driver details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (and (catalog-present? jdbc-spec (:catalog details))
          (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))

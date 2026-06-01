@@ -6,6 +6,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
+  PLUGIN_SCHEMA_VIEWER,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
@@ -26,6 +27,7 @@ import {
   DependenciesUpsellPage,
   DependencyDiagnosticsUpsellPage,
   LibraryUpsellPage,
+  SchemaViewerUpsellPage,
 } from "./upsells/pages";
 
 export function getDataStudioRoutes(
@@ -79,6 +81,13 @@ export function getDataStudioRoutes(
             path="dependency-diagnostics"
             component={DependencyDiagnosticsUpsellPage}
           />
+        )}
+        {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
+          <Route path="schema-viewer">
+            {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
+          </Route>
+        ) : (
+          <Route path="schema-viewer" component={SchemaViewerUpsellPage} />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>

@@ -34,7 +34,7 @@ import {
   provideCardTags,
   provideParameterValuesTags,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
@@ -78,7 +78,7 @@ export const cardApi = Api.injectEndpoints({
           params,
         }),
         providesTags: (cards = []) => provideCardListTags(cards),
-        onQueryStarted: hydrateLegacyEntities([QuestionSchema]),
+        onQueryStarted: hydrateMetadataStore([QuestionSchema]),
       }),
       getCard: builder.query<Card, GetCardRequest>({
         query: ({ id, ignore_error, ...params }) => ({
@@ -88,7 +88,7 @@ export const cardApi = Api.injectEndpoints({
           noEvent: ignore_error,
         }),
         providesTags: (card) => (card ? provideCardTags(card) : []),
-        onQueryStarted: hydrateLegacyEntities(QuestionSchema),
+        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
         query: (id) => ({
@@ -97,7 +97,7 @@ export const cardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata, _error, id) =>
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
-        onQueryStarted: hydrateLegacyEntities(QueryMetadataSchema),
+        onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
       getCardQuery: builder.query<Dataset, CardQueryRequest>({
         query: ({ cardId, ...body }) => ({

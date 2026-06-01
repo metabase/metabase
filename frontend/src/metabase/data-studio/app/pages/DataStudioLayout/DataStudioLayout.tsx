@@ -46,7 +46,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   const {
     value: _isNavbarOpened,
     setValue: setIsNavbarOpened,
-    isLoading,
+    isLoading: isLoadingNavbarKey,
   } = useUserKeyValue({
     namespace: "data_studio",
     key: "isNavbarOpened",
@@ -63,7 +63,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
     [isNavbarOpened],
   );
 
-  return isLoading ? (
+  return isLoadingNavbarKey ? (
     <Center h="100%">
       <Loader />
     </Center>
@@ -94,7 +94,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canManageWorkspaces = useSelector(
     PLUGIN_WORKSPACES.canManageWorkspaces,
   );
-  const hasActiveWorkspace = useSelector(PLUGIN_WORKSPACES.hasActiveWorkspace);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -102,6 +101,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
+  const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
   const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
 
@@ -146,11 +146,12 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           )}
           <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
+            label={t`Schema viewer`}
+            icon="network"
+            to={Urls.dataStudioSchemaViewer()}
+            isSelected={currentTab === "schema-viewer"}
             showLabel={isNavbarOpened}
+            isGated={!hasSchemaViewerFeature}
           />
           <DataStudioTab
             label={t`Dependency graph`}
@@ -184,6 +185,13 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               }
             />
           )}
+          <DataStudioTab
+            label={t`Glossary`}
+            icon="glossary"
+            to={Urls.dataStudioGlossary()}
+            isSelected={currentTab === "glossary"}
+            showLabel={isNavbarOpened}
+          />
         </Stack>
         <Stack gap="0.75rem">
           {hasRemoteSyncFeature ? (
@@ -201,20 +209,11 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isGated
             />
           )}
-          {hasActiveWorkspace && (
-            <DataStudioTab
-              label={t`Workspace`}
-              icon="folder"
-              to={Urls.workspaceInstance()}
-              isSelected={currentTab === "workspaces"}
-              showLabel={isNavbarOpened}
-            />
-          )}
-          {!hasActiveWorkspace && canManageWorkspaces && (
+          {canManageWorkspaces && (
             <DataStudioTab
               label={t`Workspaces`}
               icon="folder"
-              to={Urls.workspaceList()}
+              to={Urls.workspaces()}
               isSelected={currentTab === "workspaces"}
               showLabel={isNavbarOpened}
             />

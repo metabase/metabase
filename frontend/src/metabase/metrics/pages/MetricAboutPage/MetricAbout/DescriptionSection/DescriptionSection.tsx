@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { jt, msgid, ngettext, t } from "ttag";
 
 import {
   useGetDatabaseQuery,
@@ -7,17 +7,19 @@ import {
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
-import { Link } from "metabase/common/components/Link/Link";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
-import { getUserName } from "metabase/utils/user";
+import { useSelector } from "metabase/redux";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
+import { Box, Stack, Text, Tooltip } from "metabase/ui";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { Card as CardApiType, CardType } from "metabase-types/api";
 
 import type { MetricUrls } from "../../../../types";
 
-import S from "./DescriptionSection.module.css";
+import { MetadataCard, MetadataRow, MetadataRowLink } from "./MetadataCard";
+import { MetricSubSection } from "./MetricSubSection";
 
 interface DescriptionSectionProps {
   card: CardApiType;
@@ -28,7 +30,9 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
+  const canSeeRelationships =
+    useSelector((state) => getUserIsAdmin(state) || getUserIsAnalyst(state)) &&
+    PLUGIN_DEPENDENCIES.isEnabled;
 
   const { data: database } = useGetDatabaseQuery(
     { id: card.database_id! },
@@ -59,11 +63,34 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
     }
   };
 
+  const hasSource = Boolean(database || table);
+  const dependenciesUrl = urls.dependencies(card.id);
   const databaseUrl = database && urls.database?.(database.id);
+  const tableUrl =
+    table && card.database_id != null
+      ? urls.table?.(card.database_id, table.id)
+      : undefined;
 
   return (
-    <Stack gap={0} align="stretch" data-testid="metric-description-sidebar">
-      <Box data-testid="metric-description-section" p={rem(20)}>
+    <Stack
+      p="md"
+      gap={0}
+      align="stretch"
+      data-testid="metric-description-sidebar"
+    >
+      <Text fz="lg" fw={700}>{t`About`}</Text>
+      <Tooltip label={<DateTime value={card.updated_at} />} offset={8}>
+        <Text
+          size="sm"
+          c="text-secondary"
+          w="fit-content"
+          mt="sm"
+          data-testid="metric-last-updated"
+        >
+          {t`Last updated ${getRelativeTime(card.updated_at)}`}
+        </Text>
+      </Tooltip>
+      <Box mt="md" data-testid="metric-description-section">
         {card.can_write ? (
           <EditableText
             initialValue={card.description ?? ""}
@@ -79,96 +106,66 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
         )}
       </Box>
 
-      <Card mx="lg" bg="background-secondary" shadow="none" radius="1rem">
-        <Card.Section withBorder p="md">
-          <Group gap="sm" mb={4}>
-            <Icon name="pencil" c="brand" />
-            <Text size="md" fw={600} lh="1rem">
-              <DateTime value={card.updated_at} />
-            </Text>
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {card["last-edit-info"]
-              ? t`Last edited by ${getUserName(card["last-edit-info"])}`
-              : t`Last edited at`}
-          </Text>
-        </Card.Section>
-        {database && (
-          <Card.Section withBorder p="md">
-            <Group gap="sm" mb={4}>
-              <Icon name="database" c="brand" />
-              {databaseUrl ? (
-                <Link to={databaseUrl} className={S.metricLink}>
-                  <Text size="md" fw={600} lh="1rem">
+      {hasSource && (
+        <MetricSubSection title={t`Source`} mt="xl">
+          <MetadataCard>
+            {database && (
+              <MetadataRow icon="database">
+                {databaseUrl ? (
+                  <MetadataRowLink to={databaseUrl}>
                     {database.name}
-                  </Text>
-                </Link>
-              ) : (
-                <Text size="md" fw={600} lh="1rem">
-                  {database.name}
-                </Text>
-              )}
-            </Group>
-            <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-              {t`Database`}
-            </Text>
-          </Card.Section>
-        )}
-        {table && (
-          <Card.Section withBorder p="md">
-            <Group gap="sm" mb={4}>
-              <Icon name="table" c="brand" />
-              <Text size="md" fw={600} lh="1rem">
-                {table.display_name || table.name}
-              </Text>
-            </Group>
-            <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-              {t`Source table`}
-            </Text>
-          </Card.Section>
-        )}
-      </Card>
+                  </MetadataRowLink>
+                ) : (
+                  database.name
+                )}
+              </MetadataRow>
+            )}
+            {table && (
+              <MetadataRow icon="table">
+                {tableUrl ? (
+                  <MetadataRowLink to={tableUrl}>
+                    {table.display_name || table.name}
+                  </MetadataRowLink>
+                ) : (
+                  (table.display_name ?? table.name)
+                )}
+              </MetadataRow>
+            )}
+          </MetadataCard>
+        </MetricSubSection>
+      )}
 
-      {isDependenciesEnabled && (
-        <Card mx="lg" my="lg" shadow="none">
-          <Card.Section withBorder py={rem(12)} px="md">
-            <Flex justify="space-between" align="center">
-              <Text size="md" c="text-secondary">
-                {t`Dependencies`}
-              </Text>
+      {canSeeRelationships && (
+        <MetricSubSection title={t`Relationships`} mt="xl">
+          <MetadataCard>
+            <MetadataRow icon="dependencies" muted={dependenciesCount === 0}>
               {dependenciesCount > 0 ? (
-                <Link to={urls.dependencies(card.id)} className={S.metricLink}>
-                  <Text size="xl" fw={600}>
-                    {dependenciesCount}
-                  </Text>
-                </Link>
+                <MetadataRowLink to={dependenciesUrl}>
+                  {ngettext(
+                    msgid`${dependenciesCount} dependency`,
+                    `${dependenciesCount} dependencies`,
+                    dependenciesCount,
+                  )}
+                </MetadataRowLink>
               ) : (
-                <Text size="xl" fw={600}>
-                  {dependenciesCount}
-                </Text>
+                t`No dependencies`
               )}
-            </Flex>
-          </Card.Section>
-          <Card.Section withBorder py={rem(12)} px="md">
-            <Flex justify="space-between" align="center">
-              <Text size="md" c="text-secondary">
-                {t`Dependents`}
-              </Text>
-
-              {dependentsCount > 0 ? (
-                <Link to={urls.dependencies(card.id)} className={S.metricLink}>
-                  <Text size="xl" fw={600}>
-                    {dependentsCount}
-                  </Text>
-                </Link>
-              ) : (
-                <Text size="xl" fw={600}>
-                  {dependentsCount}
-                </Text>
-              )}
-            </Flex>
-          </Card.Section>
-        </Card>
+            </MetadataRow>
+            <MetadataRow icon="dependent" muted={dependentsCount === 0}>
+              {dependentsCount > 0
+                ? jt`${(
+                    <MetadataRowLink key="count" to={dependenciesUrl}>
+                      {ngettext(
+                        msgid`${dependentsCount} chart`,
+                        `${dependentsCount} charts`,
+                        dependentsCount,
+                      )}
+                    </MetadataRowLink>
+                  )} ${ngettext(msgid`uses`, `use`, dependentsCount)} this metric`
+                : t`No charts use this metric`}
+            </MetadataRow>
+          </MetadataCard>
+        </MetricSubSection>
       )}
     </Stack>
   );

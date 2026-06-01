@@ -39,6 +39,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import type { SandboxMode } from "./sandbox";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -105,7 +106,10 @@ function useCustomVizDevReload(
       );
       setLoading(true);
       try {
-        await loadCustomVizPlugin(plugin, `?t=${Date.now()}`, onInfo);
+        await loadCustomVizPlugin(plugin, {
+          cacheBustSuffix: `?t=${Date.now()}`,
+          onInfo,
+        });
       } finally {
         setLoading(false);
       }
@@ -161,7 +165,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       loadingRef.current = identifier;
       setLoading(true);
       try {
-        await loadCustomVizPlugin(pluginToLoad, undefined, onInfo);
+        await loadCustomVizPlugin(pluginToLoad, { onInfo });
       } finally {
         loadingRef.current = null;
         setLoading(false);
@@ -246,6 +250,12 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   return { loading: needsCustomViz && !isReady };
 }
 
+export type LoadCustomVizPluginOptions = {
+  cacheBustSuffix?: string;
+  onInfo?: (message: string) => void;
+  sandboxMode?: SandboxMode;
+};
+
 /**
  * Dynamically load a custom viz plugin bundle, call its factory,
  * decompose the returned definition, and register it as a Metabase
@@ -253,9 +263,9 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
  */
 export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
-  cacheBustSuffix?: string,
-  onInfo?: (message: string) => void,
+  options: LoadCustomVizPluginOptions = {},
 ): Promise<string | null> {
+  const { cacheBustSuffix, onInfo, sandboxMode = "hosted" } = options;
   const existing = loadedPlugins.get(plugin.id);
   const currentHash = plugin.bundle_hash ?? null;
   if (
@@ -291,7 +301,7 @@ export async function loadCustomVizPlugin(
     // up in the static-viz bundle, which is evaluated by GraalVM and has no
     // DOM constructors.
     const { createPluginSandbox } = await import("./sandbox");
-    const sandbox = createPluginSandbox(plugin.id);
+    const sandbox = await createPluginSandbox(plugin.id, sandboxMode);
     const factory = sandbox.evaluate(text);
 
     if (typeof factory !== "function") {
@@ -300,16 +310,11 @@ export async function loadCustomVizPlugin(
       );
     }
 
-    const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
-
     const props: CreateCustomVisualizationProps<Record<string, unknown>> = {
       defineSetting(definition) {
         return definition as unknown as CustomVisualizationSettingDefinition<
           Record<string, unknown>
         >;
-      },
-      getAssetUrl(path: string) {
-        return `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
       },
       locale:
         window.MetabaseUserLocalization?.headers?.language ??

@@ -14,6 +14,8 @@ available-fonts: null
 available-locales: null
 available-timezones: null
 breakout-bins-num: null
+csp-img-allowed-hosts: null
+csp-img-enabled: null
 csv-field-separator: nil
 custom-formatting: null
 custom-geojson: null
@@ -56,6 +58,7 @@ metabot-quota-reached-message: null
 metabot-show-illustrations: null
 metabot-sql-system-prompt: null
 mcp-enabled?: null
+mcp-execute-sql-enabled: null
 native-query-autocomplete-match-style: null
 no-data-illustration: null
 no-data-illustration-custom: null

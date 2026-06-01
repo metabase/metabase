@@ -18,6 +18,7 @@ import type {
 
 import { HelpMenu } from "../../components/HelpMenu";
 
+import { DeleteSection } from "./DeleteSection";
 import { TableRemappingSection } from "./TableRemappingSection";
 import { getDatabasesInfo } from "./utils";
 
@@ -79,7 +80,7 @@ function WorkspaceInstancePageBody({
       <PaneHeader
         title={<Title order={3}>{workspace.name}</Title>}
         breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Workspace`}</DataStudioBreadcrumbs>
+          <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
         actions={<HelpMenu />}
         py={0}
@@ -92,6 +93,7 @@ function WorkspaceInstancePageBody({
             remappings={remappings}
           />
         ))}
+        {workspace.can_write && <DeleteSection />}
       </Stack>
     </PageContainer>
   );

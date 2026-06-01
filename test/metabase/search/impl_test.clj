@@ -197,7 +197,6 @@
           (test-search "2021-05-05~2023-05-04" new-result)
           (test-search "~2023-05-03" old-result)
           (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
-
           ;; relative times
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)
@@ -278,7 +277,6 @@
           (test-search "2021-05-05~2023-05-04" new-result)
           (test-search "~2023-05-03" old-result)
           (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
-
           ;; relative times
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)

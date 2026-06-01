@@ -137,7 +137,6 @@
                               $user_last_login]
                      :order-by [[direction $timestamp]]
                      :limit    2})))))))
-
     (testing "for a query with :fields"
       (doseq [[direction expected-rows] {:desc [["Señor Fish"                "Mexican"   "2015-12-29T00:00:00Z"]
                                                 ["Empress of China"          "Chinese"   "2015-12-26T00:00:00Z"]]
@@ -158,7 +157,6 @@
            (mt/first-row
             (run-mbql-query checkins
               {:aggregation [[:count]]}))))
-
     (testing "count of field"
       (is (= [1000]
              (mt/first-row
@@ -221,7 +219,6 @@
              (mt/rows+column-names
               (run-mbql-query checkins
                 {:breakout [$user_name]})))))
-
     (testing "2 breakouts"
       (is (= {:columns ["user_name" "venue_category_name"]
               :rows    [["Broen Olujimi" "American"]
@@ -258,7 +255,6 @@
                 {:breakout [$user_name]
                  :order-by [[:desc $user_name]]
                  :limit    10})))))
-
     (testing "2 breakouts w/ explicit order by"
       (is (= {:columns ["user_name" "venue_category_name"]
               :rows    [["Broen Olujimi"       "American"]
@@ -300,7 +296,6 @@
               (run-mbql-query checkins
                 {:aggregation [[:count]]
                  :breakout    [$user_name]})))))
-
     (testing "count w/ 2 breakouts"
       (is (= {:columns ["user_name" "venue_category_name" "count"]
               :rows    [["Broen Olujimi" "American"  8]
@@ -327,21 +322,18 @@
               (run-mbql-query checkins
                 {:aggregation [[:count]]
                  :filter      [:> $venue_price 3]})))))
-
     (testing "filter <"
       (is (= [836]
              (mt/first-row
               (run-mbql-query checkins
                 {:aggregation [[:count]]
                  :filter      [:< $venue_price 3]})))))
-
     (testing "filter >="
       (is (= [164]
              (mt/first-row
               (run-mbql-query checkins
                 {:aggregation [[:count]]
                  :filter      [:>= $venue_price 3]})))))
-
     (testing "filter <="
       (is (= [951]
              (mt/first-row
@@ -363,7 +355,6 @@
                 {:fields [$user_name $venue_name $venue_category_name $timestamp]
                  :filter [:= $user_name "Plato Yeshua"]
                  :limit  5})))))
-
     (testing "filter !="
       (is (= [969]
              (mt/first-row
@@ -382,7 +373,6 @@
                  :filter [:and
                           [:= $venue_category_name "Bar"]
                           [:= $user_name "Plato Yeshua"]]})))))
-
     (testing "filter OR"
       (is (= [199]
              (mt/first-row
@@ -435,14 +425,12 @@
             (run-mbql-query checkins
               {:breakout [$venue_category_name]
                :filter   [:starts-with $venue_category_name "Me"]}))))
-
     (is (= {:columns ["venue_category_name"]
             :rows    []}
            (mt/rows+column-names
             (run-mbql-query checkins
               {:breakout [$venue_category_name]
                :filter   [:starts-with $venue_category_name "ME"]}))))
-
     (testing "case insensitive"
       (is (= {:columns ["venue_category_name"]
               :rows    [["Mediterannian"] ["Mexican"]]}
@@ -466,14 +454,12 @@
             (run-mbql-query checkins
               {:breakout [$venue_category_name]
                :filter   [:ends-with $venue_category_name "an"]}))))
-
     (is (= {:columns ["venue_category_name"]
             :rows    []}
            (mt/rows+column-names
             (run-mbql-query checkins
               {:breakout [$venue_category_name]
                :filter   [:ends-with $venue_category_name "AN"]}))))
-
     (testing "case insensitive"
       (is (= {:columns ["venue_category_name"]
               :rows    [["American"]
@@ -504,14 +490,12 @@
             (run-mbql-query checkins
               {:breakout [$venue_category_name]
                :filter   [:contains $venue_category_name "er"]}))))
-
     (is (= {:columns ["venue_category_name"]
             :rows    []}
            (mt/rows+column-names
             (run-mbql-query checkins
               {:breakout [$venue_category_name]
                :filter   [:contains $venue_category_name "eR"]}))))
-
     (testing "case insensitive"
       (is (= {:columns ["venue_category_name"]
               :rows    [["American"]
@@ -596,7 +580,6 @@
             [[:minute-of-hour
               [[0 1000]]
               [int int]]
-
              [:hour
               [["2013-01-03T00:00:00Z" 1]
                ["2013-01-10T00:00:00Z" 1]
@@ -604,11 +587,9 @@
                ["2013-01-22T00:00:00Z" 1]
                ["2013-01-23T00:00:00Z" 1]]
               [iso8601 int]]
-
              [:hour-of-day
               [[0 1000]]
               [int int]]
-
              [:week
               [["2012-12-30" 1]
                ["2013-01-06" 1]
@@ -616,7 +597,6 @@
                ["2013-01-20" 4]
                ["2013-01-27" 1]]
               [iso8601-date-part int]]
-
              [:day
               [["2013-01-03T00:00:00Z" 1]
                ["2013-01-10T00:00:00Z" 1]
@@ -624,7 +604,6 @@
                ["2013-01-22T00:00:00Z" 1]
                ["2013-01-23T00:00:00Z" 1]]
               [iso8601 int]]
-
              [:day-of-week
               [[1 135]
                [2 143]
@@ -632,7 +611,6 @@
                [4 136]
                [5 139]]
               [int int]]
-
              [:day-of-month
               [[1 36]
                [2 36]
@@ -640,7 +618,6 @@
                [4 35]
                [5 43]]
               [int int]]
-
              [:day-of-year
               [[3 2]
                [4 6]
@@ -648,7 +625,6 @@
                [6 1]
                [7 2]]
               [int int]]
-
              [:week-of-year
               [[1  8]
                [2  7]
@@ -656,7 +632,6 @@
                [4  8]
                [5 14]]
               [int int]]
-
              [:month
               [["2013-01-01"  8]
                ["2013-02-01" 11]
@@ -664,7 +639,6 @@
                ["2013-04-01" 26]
                ["2013-05-01" 23]]
               [iso8601-date-part int]]
-
              [:month-of-year
               [[1  38]
                [2  70]
@@ -672,7 +646,6 @@
                [4  89]
                [5 111]]
               [int int]]
-
              [:quarter
               [["2013-01-01" 40]
                ["2013-04-01" 75]
@@ -680,14 +653,12 @@
                ["2013-10-01" 65]
                ["2014-01-01" 107]]
               [iso8601-date-part int]]
-
              [:quarter-of-year
               [[1 200]
                [2 284]
                [3 278]
                [4 238]]
               [int int]]
-
              [:year
               [["2013-01-01" 235]
                ["2014-01-01" 498]
@@ -729,7 +700,6 @@
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:= $id 1]]})))))
-
       (testing :!=
         (is (= [1]
                (mt/first-row
@@ -742,70 +712,60 @@
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:< $id 40]]})))))
-
       (testing :>
         (is (= [40]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:> $id 40]]})))))
-
       (testing :<=
         (is (= [960]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:<= $id 40]]})))))
-
       (testing :>=
         (is (= [39]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:>= $id 40]]})))))
-
       (testing :is-null
         (is (= [1000]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:is-null $id]]})))))
-
       (testing :between
         (is (= [989]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:between $id 30 40]]})))))
-
       (testing :inside
         (is (= [377]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:inside $venue_latitude $venue_longitude 40 -120 30 -110]]})))))
-
       (testing :starts-with
         (is (= [795]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:starts-with $venue_name "T"]]})))))
-
       (testing :contains
         (is (= [971]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:contains $venue_name "BBQ"]]})))))
-
       (testing :ends-with
         (is (= [884]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:ends-with $venue_name "a"]]})))))
-
       (testing :and
         (is (= [975]
                (mt/first-row
@@ -814,7 +774,6 @@
                    :filter      [:not [:and
                                        [:> $id 32]
                                        [:contains $venue_name "BBQ"]]]})))))
-
       (testing :or
         (is (= [28]
                (mt/first-row
@@ -822,7 +781,6 @@
                   {:aggregation [[:count]]
                    :filter      [:not [:or [:> $id 32]
                                        [:contains $venue_name "BBQ"]]]})))))
-
       (testing "nested and/or"
         (is (= [969]
                (mt/first-row
@@ -832,14 +790,12 @@
                                             [:> $id 32]
                                             [:< $id 35]]
                                        [:contains $venue_name "BBQ"]]]})))))
-
       (testing "nested :not"
         (is (= [29]
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:not [:not [:contains $venue_name "BBQ"]]]})))))
-
       (testing ":not nested inside and/or"
         (is (= [4]
                (mt/first-row
@@ -848,7 +804,6 @@
                    :filter      [:and
                                  [:not [:> $id 32]]
                                  [:contains $venue_name "BBQ"]]})))))
-
       (testing :time-interval
         (is (= [1000]
                (mt/first-row
@@ -865,14 +820,12 @@
                [double]
                (run-mbql-query checkins
                  {:aggregation [[:min $venue_price]]})))))
-
     (testing "metric columns"
       (is (= [[1.0]]
              (mt/formatted-rows
               [double]
               (run-mbql-query checkins
                 {:aggregation [[:min $count]]})))))
-
     (testing "with breakout"
       ;; some sort of weird quirk w/ druid where all columns in breakout get converted to strings
       (is (= [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]]
@@ -891,14 +844,12 @@
               [double]
               (run-mbql-query checkins
                 {:aggregation [[:max $venue_price]]})))))
-
     (testing "metric columns"
       (is (= [[1.0]]
              (mt/formatted-rows
               [double]
               (run-mbql-query checkins
                 {:aggregation [[:max $count]]})))))
-
     (testing "with breakout"
       (is (= [["1" 37.8078] ["2" 40.7794] ["3" 40.7262] ["4" 40.7677]]
              (mt/formatted-rows

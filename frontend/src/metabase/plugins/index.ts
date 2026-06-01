@@ -16,6 +16,7 @@ export {
 export {
   PLUGIN_CACHING,
   type InvalidateNowButtonProps,
+  type MetricCachingModalProps,
   type SidebarCacheSectionProps,
   type SidebarCacheFormProps,
   type PreemptiveCachingSwitchProps,
@@ -39,6 +40,7 @@ export {
 export {
   PLUGIN_APP_INIT_FUNCTIONS,
   PLUGIN_LANDING_PAGE,
+  PLUGIN_HOMEPAGE_SETTING,
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
@@ -66,7 +68,6 @@ export {
   type SdkIframeEmbedSetupModalInitialState,
 } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
-export { PLUGIN_ENTITIES } from "./oss/entities";
 export {
   PLUGIN_LIBRARY,
   type CollectionPermissionsModalProps,
@@ -110,8 +111,10 @@ export {
   type SourceReplacementButtonChildProps,
   type SourceReplacementButtonProps,
   type SourceReplacementModalProps,
+  type SourceReplacementTriggeredFrom,
 } from "./oss/replacement";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
+export { PLUGIN_SCHEMA_VIEWER } from "./oss/schema-viewer";
 export {
   PLUGIN_SEMANTIC_SEARCH,
   type SearchSettingsWidgetProps,
@@ -183,7 +186,6 @@ import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
 import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
-import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
@@ -192,6 +194,7 @@ import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
+import { reinitialize as reinitializeSchemaViewer } from "./oss/schema-viewer";
 import { reinitialize as reinitializeSecurityCenter } from "./oss/security-center";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
 import { reinitialize as reinitializeSettings } from "./oss/settings";
@@ -227,7 +230,6 @@ export function reinitialize() {
   reinitializeEmbeddingIframeSdk();
   reinitializeEmbeddingIframeSdkSetup();
   reinitializeEmbeddingSdk();
-  reinitializeEntities();
   reinitializeLibrary();
   reinitializeMetabot();
   reinitializeModelPersistence();
@@ -236,6 +238,7 @@ export function reinitialize() {
   reinitializeRemoteSync();
   reinitializeReplacement();
   reinitializeResourceDownloads();
+  reinitializeSchemaViewer();
   reinitializeSecurityCenter();
   reinitializeSemanticSearch();
   reinitializeSettings();

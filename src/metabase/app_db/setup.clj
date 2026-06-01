@@ -86,7 +86,6 @@
         ;; Releasing the locks does not depend on the changesets, so we skip this step as it might require locking.
         (when-not (= :release-locks direction)
           (liquibase/consolidate-liquibase-changesets! conn liquibase))
-
         (log/info "Liquibase is ready.")
         (case direction
           :up            (liquibase/migrate-up-if-needed! liquibase data-source)

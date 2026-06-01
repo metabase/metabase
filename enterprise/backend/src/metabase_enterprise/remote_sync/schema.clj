@@ -134,3 +134,8 @@
    [:local_version [:maybe :string]]
    [:cached :boolean]
    [:branch_missing {:optional true} :boolean]])
+
+(def TestConnectionResponse
+  "Schema for POST /test-connection response."
+  [:map
+   [:status [:= :success]]])
