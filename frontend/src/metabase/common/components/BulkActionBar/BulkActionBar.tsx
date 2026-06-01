@@ -4,7 +4,7 @@ import type { HTMLAttributes } from "react";
 import Animation from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { Box, type BoxProps, Flex, Portal, Text } from "metabase/ui";
+import { type BoxProps, Flex, Portal, Text } from "metabase/ui";
 
 import { BulkActionsToast, ToastCard } from "./BulkActionBar.styled";
 
@@ -48,12 +48,12 @@ export const BulkActionBarPortal = ({
         isNavbarOpen={isNavbarOpen}
         className={cx(className, Animation.popToast)}
       >
-        <Box component={ToastCard} data-testid="toast-card" {...props}>
+        <ToastCard data-testid="toast-card" {...props}>
           {message && <Text color="text-primary-inverse">{message}</Text>}
           <Flex gap="sm" align="center">
             {children}
           </Flex>
-        </Box>
+        </ToastCard>
       </BulkActionsToast>
     </Portal>
   );

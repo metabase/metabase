@@ -23,4 +23,4 @@ export const ToastCard = styled(Card)`
   align-items: center;
   justify-content: space-between;
   gap: 2.5rem;
-`;
+` as unknown as typeof Card;

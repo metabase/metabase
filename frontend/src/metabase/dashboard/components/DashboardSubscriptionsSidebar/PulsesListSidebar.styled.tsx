@@ -2,14 +2,17 @@
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import type { ComponentPropsWithoutRef, ComponentType } from "react";
 
+import type { CardProps } from "metabase/ui";
 import { Card } from "metabase/ui";
 
-interface PulesCardProps {
-  canEdit: boolean;
-}
+type PulseCardProps = CardProps &
+  ComponentPropsWithoutRef<"div"> & {
+    canEdit: boolean;
+  };
 
-export const PulseCard = styled(Card)<PulesCardProps>`
+export const PulseCard = styled(Card)<{ canEdit: boolean }>`
   margin-bottom: 2rem;
 
   ${({ canEdit }) =>
@@ -21,7 +24,7 @@ export const PulseCard = styled(Card)<PulesCardProps>`
         background-color: var(--mb-color-brand);
       }
     `}
-`;
+` as unknown as ComponentType<PulseCardProps>;
 
 export const SidebarActions = styled.div`
   display: flex;

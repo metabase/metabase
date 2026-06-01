@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
 
 import { Link } from "metabase/common/components/Link";
-import type { BoxProps } from "metabase/ui";
+import type { BoxProps, CardProps } from "metabase/ui";
 import { Box, Card, Icon } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
 
@@ -19,10 +19,11 @@ export const UndoList = styled.ul`
   align-items: flex-start;
 `;
 
-interface ToastCardProps extends ComponentPropsWithoutRef<typeof Card> {
-  dark?: boolean;
-  noBorder?: boolean;
-}
+type ToastCardProps = CardProps &
+  ComponentPropsWithoutRef<"div"> & {
+    dark?: boolean;
+    noBorder?: boolean;
+  };
 
 export const ToastCard = forwardRef<HTMLDivElement, ToastCardProps>(
   function ToastCard({ dark = true, noBorder, style, ...props }, ref) {
