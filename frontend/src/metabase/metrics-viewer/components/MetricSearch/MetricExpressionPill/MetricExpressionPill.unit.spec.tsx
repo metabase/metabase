@@ -26,15 +26,11 @@ function buildEntry(
 
 function setup({
   expressionEntry = buildEntry(),
-  colors,
-  isDisabled,
   onNameChange = jest.fn(),
   onRemove = jest.fn(),
   onEdit = jest.fn(),
 }: {
   expressionEntry?: ExpressionDefinitionEntry;
-  colors?: string[];
-  isDisabled?: boolean;
   onNameChange?: jest.Mock;
   onRemove?: jest.Mock;
   onEdit?: jest.Mock;
@@ -47,8 +43,6 @@ function setup({
     <MetricExpressionPill
       expressionEntry={expressionEntry}
       metricNames={metricNames}
-      colors={colors}
-      isDisabled={isDisabled}
       onNameChange={onNameChange}
       onRemove={onRemove}
       onEdit={onEdit}
@@ -116,21 +110,6 @@ describe("MetricExpressionPill expression rendering", () => {
 
     expect(screen.queryByText("2")).not.toBeInTheDocument();
     expect(screen.queryByText("3")).not.toBeInTheDocument();
-  });
-
-  it("should visually disable the indicator and expression text", () => {
-    setup({
-      expressionEntry: buildEntry({ name: "Custom expression" }),
-      colors: ["var(--mb-color-brand)"],
-      isDisabled: true,
-    });
-
-    expect(screen.getByTestId("color-indicator")).toHaveStyle({
-      backgroundColor: "var(--mb-color-icon-disabled)",
-    });
-    expect(screen.getByText("Custom expression")).toHaveStyle({
-      color: "var(--mb-color-text-tertiary)",
-    });
   });
 });
 

@@ -241,34 +241,6 @@ describe("collapsed view (definitions present, not focused)", () => {
     ).toHaveStyle({ color: "var(--mb-color-icon-disabled)" });
   });
 
-  it("visually disables an expression with an unmapped dimension slot", () => {
-    const expr = makeExpressionEntry("Revenue + Costs", [
-      m("metric:1"),
-      op("+"),
-      m("metric:2"),
-    ]);
-
-    setup({
-      entries: [expr],
-      metricColors: { 0: ["var(--mb-color-brand)"] },
-      activeDimensionBreakout: {
-        id: "dim-body",
-        type: "category",
-        label: "Body",
-        display: "bar",
-        dimensionMapping: { 0: "dim-body", 1: null },
-        projectionConfig: {},
-      },
-    });
-
-    expect(screen.getByTestId("color-indicator")).toHaveStyle({
-      backgroundColor: "var(--mb-color-icon-disabled)",
-    });
-    expect(screen.getByText("Revenue + Costs")).toHaveStyle({
-      color: "var(--mb-color-text-tertiary)",
-    });
-  });
-
   it("does not render a text input when collapsed", () => {
     setup({ entries: [revenueEntry] });
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();

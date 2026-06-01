@@ -4,17 +4,19 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
+import type {
+  MetricsViewerDefinitionEntry,
+  SelectedMetric,
+} from "metabase/metrics-viewer/types";
+import {
+  getDimensionsByType,
+  getEntryBreakout,
+} from "metabase/metrics-viewer/utils";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type {
-  MetricsViewerDefinitionEntry,
-  SelectedMetric,
-} from "../../../types/viewer-state";
-import { getEntryBreakout } from "../../../utils/definition-entries";
-import { getDimensionsByType } from "../../../utils/dimension-breakouts";
 import { BreakoutDimensionPicker } from "../../BreakoutDimensionPicker";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 

@@ -21,7 +21,6 @@ export function SingleMetricDimensionList({
             className={S.item}
             aria-label={option.label}
             aria-pressed={isSelected}
-            data-selected={isSelected || undefined}
             onClick={() => onChange(option.value)}
           >
             <Icon className={S.itemIcon} name={option.icon} size={16} />

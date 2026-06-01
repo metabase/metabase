@@ -1,11 +1,12 @@
+import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
+import type { ExpressionDefinitionEntry } from "metabase/metrics-viewer/types";
 import { Badge, Flex, Icon, Menu, Pill } from "metabase/ui";
 
-import type { ExpressionDefinitionEntry } from "../../../types/viewer-state";
 import {
   type MetricNameMap,
   buildExpressionForPill,
@@ -46,9 +47,6 @@ export function MetricExpressionPill({
     () => buildExpressionForPill(expressionEntry.tokens, metricNames),
     [expressionEntry.tokens, metricNames],
   );
-  const disabledTextStyle = isDisabled
-    ? { color: "var(--mb-color-text-tertiary)" }
-    : undefined;
 
   useEffect(() => {
     if (isRenaming) {
@@ -134,7 +132,14 @@ export function MetricExpressionPill({
               <Flex align="center" gap={0}>
                 {expressionEntry.name &&
                 expressionEntry.name !== expressionText ? (
-                  <span style={disabledTextStyle}>{expressionEntry.name}</span>
+                  <span
+                    className={cx(
+                      S.expressionText,
+                      isDisabled && S.disabledText,
+                    )}
+                  >
+                    {expressionEntry.name}
+                  </span>
                 ) : (
                   expressionForPill.map((segment, i) => {
                     if (typeof segment === "number") {
@@ -152,15 +157,19 @@ export function MetricExpressionPill({
                     return (
                       <span
                         key={i}
-                        className={S.expressionText}
-                        style={disabledTextStyle}
+                        className={cx(
+                          S.expressionText,
+                          isDisabled && S.disabledText,
+                        )}
                       >
                         {segment}
                       </span>
                     );
                   })
                 )}
-                <span className={S.expressionText} style={disabledTextStyle}>
+                <span
+                  className={cx(S.expressionText, isDisabled && S.disabledText)}
+                >
                   {"\u00a0"}
                 </span>
               </Flex>

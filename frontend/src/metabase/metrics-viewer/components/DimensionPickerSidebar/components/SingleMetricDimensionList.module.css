@@ -22,13 +22,13 @@
   background-color: var(--mb-color-background-hover);
 }
 
-.item[data-selected] {
+.item[aria-pressed="true"] {
   background-color: var(--mb-color-background-selected);
   border-radius: 0.5rem;
   color: var(--mb-color-text-brand);
 }
 
-.item[data-selected]:hover {
+.item[aria-pressed="true"]:hover {
   background-color: var(--mb-color-background-hover);
 }
 
