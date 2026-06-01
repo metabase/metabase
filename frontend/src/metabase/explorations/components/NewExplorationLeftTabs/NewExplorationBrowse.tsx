@@ -40,7 +40,7 @@ export function NewExplorationBrowse({
           navigation.setBrowseTab(value);
         }
       }}
-      classNames={{ root: S.tabsRoot }}
+      classNames={{ root: S.tabsRoot, tab: S.browseTab }}
       keepMounted={false}
     >
       <Tabs.List className={S.tabList}>
