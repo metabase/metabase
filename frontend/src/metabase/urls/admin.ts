@@ -139,6 +139,10 @@ export function dataModelSegmentRevisions(segmentId: SegmentId) {
   return `${dataModelSegment(segmentId)}/revisions`;
 }
 
+export function generalSettings() {
+  return "/admin/settings/general";
+}
+
 export function uploadsSettings() {
   return "/admin/settings/uploads";
 }

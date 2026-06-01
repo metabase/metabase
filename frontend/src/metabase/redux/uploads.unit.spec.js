@@ -46,6 +46,24 @@ const mockAppendCSV = (valid = true) => {
   );
 };
 
+// Asserts the matching request was sent as multipart form data — locks down
+// that table.ts hands the FormData through unwrapped (a JSON-stringified
+// `{ formData }` would set Content-Type: application/json instead).
+const expectMultipartBody = (urlSuffix) => {
+  const call = fetchMock.callHistory
+    .calls()
+    .find((c) => c.url.endsWith(urlSuffix));
+  expect(call).toBeDefined();
+  const headers = call.options?.headers ?? {};
+  const contentType =
+    headers instanceof Headers
+      ? headers.get("content-type")
+      : (headers["content-type"] ?? headers["Content-Type"]);
+  // Either absent (browser sets it with the multipart boundary) or multipart;
+  // application/json would mean FormData got JSON-stringified.
+  expect(contentType ?? "").not.toMatch(/application\/json/);
+};
+
 const mockReplaceCSV = (valid = true) => {
   fetchMock.post(
     "glob:*/api/table/*/replace-csv",
@@ -125,6 +143,8 @@ describe("csv uploads", () => {
       await uploadFile({ file, tableId: 123, uploadMode: "append" })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
+      expectMultipartBody("append-csv");
+
       expect(dispatch).toHaveBeenCalledWith({
         type: UPLOAD_FILE_START,
         payload: {
@@ -156,6 +176,8 @@ describe("csv uploads", () => {
 
       await uploadFile({ file, tableId: 123, uploadMode: "replace" })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
+
+      expectMultipartBody("replace-csv");
 
       expect(dispatch).toHaveBeenCalledWith({
         type: UPLOAD_FILE_START,

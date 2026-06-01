@@ -571,7 +571,13 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
 }
 
 export const MiniPickerListLoader = () => (
-  <Stack px="1rem" pt="0.5rem" pb="13px" gap="1rem">
+  <Stack
+    data-testid="mini-picker-list-loader"
+    px="1rem"
+    pt="0.5rem"
+    pb="13px"
+    gap="1rem"
+  >
     <Repeat times={3}>
       <Skeleton
         height="1.5rem"
