@@ -1,5 +1,6 @@
 import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
@@ -14,9 +15,13 @@ jest.mock(
   () => "Postgres MD Content",
 );
 
-const setup = () => {
-  renderWithProviders(<Route path="/" component={DatabasePage} />, {
+const setup = ({
+  initialRoute = "/",
+  routePath = "/",
+}: { initialRoute?: string; routePath?: string } = {}) => {
+  renderWithProviders(<Route path={routePath} component={DatabasePage} />, {
     withRouter: true,
+    initialRoute,
     storeInitialState: createMockState({
       settings: mockSettings({
         engines: createMockEngines(),
@@ -44,6 +49,23 @@ describe("DatabasePage", () => {
           screen.getByTestId("database-help-side-panel"),
         ).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("non-existing database (metabase#11037)", () => {
+    it("renders the backend error message when the database is not found", async () => {
+      fetchMock.get("path:/api/database/999", {
+        status: 404,
+        body: { message: "Not found." },
+      });
+
+      setup({
+        routePath: "/admin/databases/:databaseId",
+        initialRoute: "/admin/databases/999",
+      });
+
+      expect(await screen.findByText("Not found.")).toBeInTheDocument();
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
     });
   });
 });

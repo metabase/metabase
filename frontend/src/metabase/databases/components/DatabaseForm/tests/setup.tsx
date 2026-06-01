@@ -11,6 +11,7 @@ import type {
 
 import { DatabaseForm } from "../DatabaseForm";
 
+import { bigqueryFormConfig } from "./bigquery-form-config.mock";
 import { postgresFormConfig } from "./postgres-form-config.mock";
 
 export const TEST_ENGINES: Record<string, Engine> = {
@@ -95,6 +96,7 @@ export const TEST_ENGINES: Record<string, Engine> = {
     "extra-info": null,
   },
   postgres: postgresFormConfig,
+  "bigquery-cloud-sdk": bigqueryFormConfig,
 };
 
 export interface SetupOpts {

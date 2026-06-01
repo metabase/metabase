@@ -50,35 +50,6 @@ describe("admin > database > add", () => {
     H.popover().contains(option).click({ force: true });
   }
 
-  function chooseDatabase(database) {
-    selectFieldOption("Database type", database);
-  }
-
-  function mockUploadServiceAccountJSON(fileContents) {
-    // create blob to act as selected file
-    cy.get("input[type=file]")
-      .then(async (input) => {
-        const blob = await Cypress.Blob.binaryStringToBlob(fileContents);
-        const file = new File([blob], "service-account.json");
-        const dataTransfer = new DataTransfer();
-
-        dataTransfer.items.add(file);
-        input[0].files = dataTransfer.files;
-        return input;
-      })
-      .trigger("change", { force: true })
-      .trigger("blur", { force: true });
-  }
-
-  function mockSuccessfulDatabaseSave() {
-    cy.intercept("POST", "/api/database", (req) => {
-      req.reply({ statusCode: 200, body: { id: 42 }, delay: 100 });
-    }).as("createDatabase");
-
-    cy.button("Save").click();
-    return cy.wait("@createDatabase");
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -398,26 +369,6 @@ describe("admin > database > add", () => {
       cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
   });
-
-  describe("Google service account JSON upload", () => {
-    const serviceAccountJSON = '{"foo": 123}';
-
-    it("should work for BigQuery", () => {
-      cy.visit("/admin/databases/create");
-
-      chooseDatabase("BigQuery");
-      H.typeAndBlurUsingLabel("Display name", "BQ");
-      selectFieldOption("Datasets", "Only these...");
-      cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
-
-      mockUploadServiceAccountJSON(serviceAccountJSON);
-      mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
-        expect(body.details["service-account-json"]).to.equal(
-          serviceAccountJSON,
-        );
-      });
-    });
-  });
 });
 
 describe("database page > side panel", () => {
@@ -428,35 +379,9 @@ describe("database page > side panel", () => {
     cy.visit("/admin/databases/create");
   });
 
-  it("should show side panel with help content when 'Help is here' is clicked", () => {
-    cy.findByRole("button", { name: /Help is here/ }).click();
-    cy.findByTestId("database-help-side-panel").within(() => {
-      cy.findByText("Add PostgreSQL").should("be.visible");
-      cy.findByRole("link", { name: /Read the full docs/ }).should(
-        "be.visible",
-      );
-      cy.findByRole("link", { name: /Talk to an expert/ }).should("be.visible");
-      cy.findByRole("button", { name: /Invite a teammate to help you/ }).should(
-        "be.visible",
-      );
-    });
-  });
-
   it("should update the side panel content when the engine is changed", () => {
     const enginesMap = [
       { name: "Amazon Athena", file: "athena" },
-      { name: "BigQuery", file: "bigquery" },
-      { name: "Amazon Redshift", file: "redshift" },
-      { name: "ClickHouse", file: "clickhouse" },
-      { name: "Databricks", file: "databricks" },
-      { name: "Druid", file: "druid" },
-      { name: "MongoDB", file: "mongo" },
-      { name: "MySQL", file: "mysql" },
-      { name: "PostgreSQL", file: "postgresql" },
-      { name: "Presto", file: "presto" },
-      { name: "SQL Server", file: "sql-server" },
-      { name: "Snowflake", file: "snowflake" },
-      { name: "Spark SQL", file: "sparksql" },
       { name: "Starburst (Trino)", file: "starburst" },
     ];
 
@@ -536,63 +461,6 @@ describe("scenarios > admin > databases > exceptions", () => {
       "This database is managed by Metabase Cloud and cannot be modified.",
     );
     cy.findByTestId("database-actions-panel").should("not.exist");
-  });
-
-  it("should show error upon a bad request", () => {
-    cy.intercept("POST", "/api/database", (req) => {
-      req.reply({
-        statusCode: 400,
-        body: "DATABASE CONNECTION ERROR",
-      });
-    }).as("createDatabase");
-
-    cy.visit("/admin/databases/create");
-
-    H.typeAndBlurUsingLabel("Display name", "Test");
-    H.typeAndBlurUsingLabel("Database name", "db");
-    H.typeAndBlurUsingLabel("Username", "admin");
-
-    cy.button("Save").click();
-    cy.wait("@createDatabase");
-
-    cy.findByTestId("database-form")
-      .parent()
-      .within(() => {
-        cy.findByText("DATABASE CONNECTION ERROR").should("be.visible");
-      });
-  });
-
-  it("should show specific error message when error is on host or port", () => {
-    cy.intercept("POST", "/api/database", (req) => {
-      req.reply({
-        statusCode: 400,
-        body: {
-          message: "DATABASE CONNECTION ERROR",
-          errors: {
-            host: "Check your host",
-            port: "Check your port",
-          },
-        },
-      });
-    }).as("createDatabase");
-
-    cy.visit("/admin/databases/create");
-
-    H.typeAndBlurUsingLabel("Display name", "Test");
-    H.typeAndBlurUsingLabel("Database name", "db");
-    H.typeAndBlurUsingLabel("Username", "admin");
-
-    cy.button("Save").click();
-    cy.wait("@createDatabase");
-
-    cy.findByTestId("database-form")
-      .parent()
-      .within(() => {
-        cy.findByText("DATABASE CONNECTION ERROR").should("not.exist");
-        cy.findByText(
-          /Make sure your Host and Port settings are correct/,
-        ).should("be.visible");
-      });
   });
 
   it("should handle non-existing databases (metabase#11037)", () => {

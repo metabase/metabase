@@ -187,5 +187,20 @@ describe("DatabaseConnectionInfoSection", () => {
         screen.queryByText(/Re-scan field values/i),
       ).not.toBeInTheDocument();
     });
+
+    it("disables the 'Edit connection details' button and explains why on hover", async () => {
+      setup({ database: createMockDatabase({ is_attached_dwh: true }) });
+      const editButton = screen.getByRole("button", {
+        name: "Edit connection details",
+      });
+      expect(editButton).toBeDisabled();
+
+      await userEvent.hover(editButton);
+      expect(
+        await screen.findByText(
+          "This database is managed by Metabase Cloud and cannot be modified.",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 });
