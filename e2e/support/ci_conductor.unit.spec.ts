@@ -70,6 +70,18 @@ const test = (
 });
 
 describe("extractFailedTests", () => {
+  // Pin the default to "first attempt" so these tests are deterministic even
+  // when the CI job running them is itself a re-run (GITHUB_RUN_ATTEMPT > 1).
+  // The global afterEach restores the original via envBackups. Re-run cases
+  // override process.env.GITHUB_RUN_ATTEMPT in the test body.
+  beforeEach(() => {
+    envBackups.push({
+      key: "GITHUB_RUN_ATTEMPT",
+      previous: process.env.GITHUB_RUN_ATTEMPT,
+    });
+    delete process.env.GITHUB_RUN_ATTEMPT;
+  });
+
   it("reports broken tests with the full displayError as message", () => {
     const displayError =
       "AssertionError: expected true to be false\n    at Context.eval (foo.cy.spec.ts:42)";
@@ -88,10 +100,11 @@ describe("extractFailedTests", () => {
     expect(extractFailedTests(spec, results)).toEqual([
       {
         name: "shows an error",
-        class: "Dashboard > filters",
+        path: "Dashboard > filters",
         file: "e2e/test/scenarios/foo/foo.cy.spec.ts",
         duration: 100,
         attempts: [{ state: "failed" }, { state: "failed" }],
+        status: "failure",
         message: displayError,
       },
     ]);
@@ -110,6 +123,7 @@ describe("extractFailedTests", () => {
     expect(failures[0]).toMatchObject({
       name: "flaky",
       attempts: [{ state: "failed" }, { state: "passed" }],
+      status: "flake",
       message: null,
     });
   });
@@ -130,14 +144,14 @@ describe("extractFailedTests", () => {
     expect(extractFailedTests(spec, makeResults({}))).toEqual([]);
   });
 
-  it("omits `class` for a top-level test with no suite", () => {
+  it("omits `path` for a top-level test with no suite", () => {
     const results = makeResults({
       tests: [test(["lonely test"], ["failed"], "boom")],
     });
 
     const [failure] = extractFailedTests(spec, results);
-    expect(failure).toMatchObject({ name: "lonely test" });
-    expect(failure.class).toBeUndefined();
+    expect(failure).toMatchObject({ name: "lonely test", status: "failure" });
+    expect(failure.path).toBeUndefined();
   });
 
   it("sends message: null when a failed test has no displayError", () => {
@@ -147,7 +161,7 @@ describe("extractFailedTests", () => {
 
     expect(extractFailedTests(spec, results)[0]).toMatchObject({
       name: "no error string",
-      class: "a",
+      path: "a",
       message: null,
     });
   });
@@ -163,6 +177,7 @@ describe("extractFailedTests", () => {
         name: "foo.cy.spec.ts",
         file: "e2e/test/scenarios/foo/foo.cy.spec.ts",
         attempts: [{ state: "failed" }],
+        status: "failure",
         message: "SyntaxError: Unexpected token\n  at compile",
       },
     ]);
@@ -183,6 +198,50 @@ describe("extractFailedTests", () => {
     expect(extractFailedTests(spec, makeResults({ tests: undefined }))).toEqual(
       [],
     );
+  });
+
+  it("does not report passing tests on the first attempt", () => {
+    process.env.GITHUB_RUN_ATTEMPT = "1";
+    const results = makeResults({
+      tests: [test(["a", "passing"], ["passed"])],
+    });
+
+    expect(extractFailedTests(spec, results)).toEqual([]);
+  });
+
+  it("on a re-run (attempt > 1) also reports passing tests with status passed", () => {
+    process.env.GITHUB_RUN_ATTEMPT = "2";
+    const results = makeResults({
+      tests: [
+        test(["a", "now passing"], ["passed"]),
+        test(["a", "still broken"], ["failed", "failed"], "boom"),
+      ],
+    });
+
+    const reported = extractFailedTests(spec, results);
+    expect(reported).toHaveLength(2);
+    expect(reported).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "now passing",
+          status: "passed",
+          message: null,
+        }),
+        expect.objectContaining({ name: "still broken", status: "failure" }),
+      ]),
+    );
+  });
+
+  it("still excludes pending and skipped tests on a re-run", () => {
+    process.env.GITHUB_RUN_ATTEMPT = "3";
+    const results = makeResults({
+      tests: [
+        test(["a", "pending test"], ["pending"]),
+        test(["a", "skipped test"], ["skipped"]),
+      ],
+    });
+
+    expect(extractFailedTests(spec, results)).toEqual([]);
   });
 });
 
@@ -221,6 +280,8 @@ describe("reportFailedTestsToConductor", () => {
       GITHUB_RUN_ID: "456",
       GITHUB_RUN_ATTEMPT: "2",
       CYPRESS_RETRIES: "1",
+      COMMIT_SHA: "abc123",
+      TARGET_BRANCH: "master",
     });
 
     await reportFailedTestsToConductor(oneTest);
@@ -235,25 +296,50 @@ describe("reportFailedTestsToConductor", () => {
     expect(JSON.parse(options.body)).toEqual({
       repo_id: 123,
       run_id: 456,
-      run_attempt: 2,
+      attempt: 2,
       job_id: null,
+      test_suite: "e2e",
+      sha: "abc123",
+      target_branch: "master",
       retries: 1,
       tests: oneTest,
     });
   });
 
-  it("sends null run_attempt and retries when their envs are missing", async () => {
+  it("prefers COMMIT_SHA/TARGET_BRANCH but falls back to the ambient GITHUB_* vars", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
       CI_CONDUCTOR_WEBHOOK_URL: url,
-      GITHUB_RUN_ATTEMPT: undefined,
-      CYPRESS_RETRIES: undefined,
+      COMMIT_SHA: undefined,
+      GITHUB_SHA: "ambient-sha",
+      TARGET_BRANCH: undefined,
+      GITHUB_BASE_REF: "ambient-branch",
     });
 
     await reportFailedTestsToConductor(oneTest);
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.run_attempt).toBeNull();
+    expect(body.sha).toBe("ambient-sha");
+    expect(body.target_branch).toBe("ambient-branch");
+  });
+
+  it("sends null attempt, sha, target_branch, and retries when their envs are missing", async () => {
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_WEBHOOK_URL: url,
+      GITHUB_RUN_ATTEMPT: undefined,
+      CYPRESS_RETRIES: undefined,
+      COMMIT_SHA: undefined,
+      GITHUB_SHA: undefined,
+      TARGET_BRANCH: undefined,
+      GITHUB_BASE_REF: undefined,
+    });
+
+    await reportFailedTestsToConductor(oneTest);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.attempt).toBeNull();
     expect(body.retries).toBeNull();
+    expect(body.sha).toBeNull();
+    expect(body.target_branch).toBeNull();
   });
 
   it("sends the x-internal-secret header when the secret is configured", async () => {

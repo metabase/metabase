@@ -22,6 +22,14 @@ const {
   GITHUB_RUN_ID,
   GITHUB_RUN_ATTEMPT,
   JOB_ID,
+  // The commit and PR target branch under test. On PRs the ambient GITHUB_SHA is
+  // a synthetic merge commit and GITHUB_BASE_REF the target, so e2e-test.yml sets
+  // COMMIT_SHA/TARGET_BRANCH to the PR's head sha / base ref; we fall back to the
+  // ambient vars (push runs, local) when they're unset. See DEV-1999.
+  COMMIT_SHA,
+  GITHUB_SHA,
+  TARGET_BRANCH,
+  GITHUB_BASE_REF,
 } = process.env;
 
 // When set, the payload is logged instead of POSTed — used to validate env
@@ -31,11 +39,18 @@ const isDryRun = CI_CONDUCTOR_DRY_RUN === "true";
 /** Matches the `tests[]` shape consumed by ci-conductor's `ingestFailedTests`. */
 type ConductorTest = {
   name: string;
-  class?: string;
+  /** The test's suite path (the joined `describe` titles), formerly `class`. */
+  path?: string;
   file?: string;
   duration?: number;
   /** Raw per-attempt shape from Cypress, e.g. [{state:"failed"},{state:"passed"}]. */
   attempts?: { state: string }[];
+  /**
+   * "failure" when every attempt failed (broken), "flake" when it failed then
+   * passed on retry, "passed" when every attempt passed. Passes are only
+   * reported on re-runs (run attempt > 1). Derived from `attempts`.
+   */
+  status?: "failure" | "flake" | "passed";
   /**
    * Cypress' final `displayError` blob for the test. Null for flaky tests
    * (Cypress drops it when the final attempt passes); only broken tests carry a
@@ -43,6 +58,22 @@ type ConductorTest = {
    */
   message?: string | null;
 };
+
+/**
+ * Classify a test from its attempts: "passed" if every attempt passed,
+ * "failure" if every attempt failed, "flake" if it failed at least once but
+ * ultimately passed on retry. Callers only pass tests that ran (a non-empty
+ * attempts array of passes and/or fails), never pending/skipped.
+ */
+function classifyStatus(
+  attempts: { state: string }[],
+): "failure" | "flake" | "passed" {
+  if (attempts.every((attempt) => attempt.state === "passed")) {
+    return "passed";
+  }
+  const allFailed = attempts.every((attempt) => attempt.state === "failed");
+  return allFailed ? "failure" : "flake";
+}
 
 /**
  * GitHub doesn't expose the current job's numeric `workflow_jobs.id` to a
@@ -65,11 +96,13 @@ function toNumber(value: string | undefined): number | null {
 }
 
 /**
- * Pull the reportable tests out of a single spec's run results. We include any
- * test that had at least one failed attempt — so both "broken" (every attempt
- * failed) and "flaky" (failed at least once, passed on retry) are reported.
- * Healthy tests (no failed attempts) are omitted. Conductor classifies the
- * row from the raw `attempts` array.
+ * Pull the reportable tests out of a single spec's run results. We always
+ * include any test that had at least one failed attempt — so both "broken"
+ * (every attempt failed) and "flaky" (failed at least once, passed on retry)
+ * are reported. On a re-run (GITHUB_RUN_ATTEMPT > 1) we additionally include
+ * tests that passed, so conductor can see a previously-failing test recover.
+ * Pending/skipped tests are never reported. Each row carries a derived `status`
+ * ("failure" | "flake" | "success"); see `classifyStatus`.
  *
  * Cypress only populates `displayError` for the *final* state, so flaky tests
  * arrive with `message: null` — we know *that* they flaked from `attempts`,
@@ -85,20 +118,34 @@ export function extractFailedTests(
 ): ConductorTest[] {
   const file = spec?.relative;
 
+  // On a re-run we also report passing tests (not just failures) so conductor
+  // can see a previously-failing test recover. Read at call time rather than the
+  // module-level destructure so it's controllable per-call in tests.
+  const isRerun = (toNumber(process.env.GITHUB_RUN_ATTEMPT) ?? 0) > 1;
+
   const tests = (results?.tests ?? [])
-    .filter((test) =>
-      (test.attempts ?? []).some((attempt) => attempt.state === "failed"),
-    )
+    .filter((test) => {
+      const attempts = test.attempts ?? [];
+      const failed = attempts.some((attempt) => attempt.state === "failed");
+      // A test "passed" only if it ran and every attempt passed — this excludes
+      // pending/skipped tests, which we never report.
+      const passed =
+        attempts.length > 0 &&
+        attempts.every((attempt) => attempt.state === "passed");
+      return failed || (isRerun && passed);
+    })
     .map((test) => {
       const titlePath = test.title ?? [];
       const name = titlePath[titlePath.length - 1] ?? "(unknown test)";
       const suite = titlePath.slice(0, -1).join(" > ");
+      const attempts = test.attempts ?? [];
       return {
         name,
-        class: suite || undefined,
+        path: suite || undefined,
         file,
         duration: test.duration,
-        attempts: test.attempts ?? [],
+        attempts,
+        status: classifyStatus(attempts),
         message: test.displayError ?? null,
       };
     });
@@ -109,6 +156,7 @@ export function extractFailedTests(
         name: spec?.name ?? "(spec failed to run)",
         file,
         attempts: [{ state: "failed" }],
+        status: "failure",
         message: results.error,
       },
     ];
@@ -136,8 +184,13 @@ export async function reportFailedTestsToConductor(
     const body = {
       repo_id: toNumber(REPO_ID),
       run_id: toNumber(GITHUB_RUN_ID),
-      run_attempt: toNumber(GITHUB_RUN_ATTEMPT),
+      attempt: toNumber(GITHUB_RUN_ATTEMPT),
       job_id: getJobId(),
+      test_suite: "e2e",
+      // PR head sha / target branch when set by e2e-test.yml, else the ambient
+      // (push/local) values. Empty strings collapse to null.
+      sha: COMMIT_SHA || GITHUB_SHA || null,
+      target_branch: TARGET_BRANCH || GITHUB_BASE_REF || null,
       // The retry ceiling so conductor can interpret per-test `attempts`.
       // CYPRESS_RETRIES isn't set in CI by default; e2e/support/config.js
       // surfaces the resolved Cypress config value into this env at startup.

@@ -44,6 +44,12 @@ env:
   # Shared secret sent as the `x-internal-secret` header to authenticate.
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
   REPO_ID: ${{ github.event.repository.id }}
+  # Commit + PR target branch under test, so conductor can tie failures to the
+  # right code. On PRs the ambient GITHUB_SHA is the synthetic merge commit and
+  # GITHUB_BASE_REF the target, so we pass the PR head sha / base ref explicitly
+  # (falling back to push-event values). The reporter reads these. DEV-1999.
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 
 jobs:
   e2e-tests:
