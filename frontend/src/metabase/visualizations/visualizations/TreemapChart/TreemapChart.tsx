@@ -17,17 +17,18 @@ import {
   useCloseTooltipOnScroll,
   useInjectSeriesColorsClasses,
 } from "metabase/visualizations/echarts/tooltip";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
 import { dispatchTreemapViewRoot, useChartEvents } from "./events";
 
-// Bottom inset (px) reserved for the breadcrumb overlay while drilled in. The
-// overview uses 0 (full-bleed); see option.ts.
-const BREADCRUMB_BOTTOM_SPACE = 48;
-
-export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
+export const TreemapChart = ({
+  rawSeries,
+  settings,
+  fontFamily,
+}: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
     [rawSeries],
@@ -58,13 +59,19 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
     return { tree, colors, treemapColumns };
   }, [rawSeriesWithRemappings, settings]);
 
+  const renderingContext = useBrowserRenderingContext({ fontFamily });
+
   const option = useMemo(() => {
     if (!chartData) {
       return null;
     }
     const { tree, colors, treemapColumns } = chartData;
-    const bottomSpace = viewRootId != null ? BREADCRUMB_BOTTOM_SPACE : 0;
-    const seriesOption = getTreemapChartOption(tree, colors, bottomSpace);
+    const seriesOption = getTreemapChartOption({
+      tree,
+      colors,
+      isDrilled: viewRootId != null,
+      renderingContext,
+    });
     const formatters = getTreemapFormatters(treemapColumns, settings);
 
     return {
@@ -78,7 +85,7 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
         treemapColumns.grouping.column.display_name,
       ),
     };
-  }, [chartData, settings, viewRootId]);
+  }, [chartData, settings, viewRootId, renderingContext]);
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;

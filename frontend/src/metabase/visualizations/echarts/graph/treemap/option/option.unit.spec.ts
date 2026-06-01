@@ -1,7 +1,20 @@
+import Color from "color";
+
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
+import type { RenderingContext } from "metabase/visualizations/types";
+
 import { getTreemapColors } from "../model/colors";
 import type { TreemapTree } from "../model/types";
 
 import { getTreemapChartOption } from "./option";
+
+const renderingContext: RenderingContext = {
+  getColor: (name) => name,
+  measureText: () => 0,
+  measureTextHeight: () => 0,
+  fontFamily: "",
+  theme: DEFAULT_VISUALIZATION_THEME,
+};
 
 const TWO_LEVEL_TREE: TreemapTree = [
   {
@@ -27,7 +40,7 @@ describe("getTreemapChartOption (1-level)", () => {
       { rawName: "A", displayName: "A", value: 10, rowIndices: [0] },
     ];
 
-    const option = getTreemapChartOption(tree);
+    const option = getTreemapChartOption({ tree, renderingContext });
 
     expect(option.series).toMatchObject({ type: "treemap" });
   });
@@ -39,7 +52,7 @@ describe("getTreemapChartOption (1-level)", () => {
       { rawName: "C", displayName: "C", value: 7, rowIndices: [3] },
     ];
 
-    const option = getTreemapChartOption(tree);
+    const option = getTreemapChartOption({ tree, renderingContext });
     const data = option.series.data;
 
     expect(data).toHaveLength(3);
@@ -54,7 +67,7 @@ describe("getTreemapChartOption (1-level)", () => {
       { rawName: "A", displayName: "A", value: 8, rowIndices: [2] },
     ];
 
-    const option = getTreemapChartOption(tree);
+    const option = getTreemapChartOption({ tree, renderingContext });
     const data = option.series.data;
 
     expect(data[0]).toMatchObject({
@@ -68,7 +81,7 @@ describe("getTreemapChartOption (1-level)", () => {
   });
 
   it("returns an empty data array for an empty tree", () => {
-    const option = getTreemapChartOption([]);
+    const option = getTreemapChartOption({ tree: [], renderingContext });
     expect(option.series.data).toEqual([]);
   });
 });
@@ -81,7 +94,7 @@ describe("getTreemapChartOption colors", () => {
     ];
 
     const colors = getTreemapColors(tree);
-    const { series } = getTreemapChartOption(tree);
+    const { series } = getTreemapChartOption({ tree, renderingContext });
 
     expect(series.data[0].itemStyle?.color).toBe(colors["A"]);
     expect(series.data[1].itemStyle?.color).toBe(colors["B"]);
@@ -94,14 +107,17 @@ describe("getTreemapChartOption colors", () => {
       { rawName: "C", displayName: "C", value: 7, rowIndices: [2] },
     ];
 
-    const { series } = getTreemapChartOption(tree);
+    const { series } = getTreemapChartOption({ tree, renderingContext });
     const used = series.data.map((node) => node.itemStyle?.color);
 
     expect(new Set(used).size).toBe(3);
   });
 
   it("does not set explicit colors on sub-grouping leaves so they inherit the parent hue", () => {
-    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
     const [root] = series.data;
 
     expect(root.itemStyle?.color).toBeTruthy();
@@ -112,7 +128,10 @@ describe("getTreemapChartOption colors", () => {
   });
 
   it("emits a colorSaturation offset on the leaf level so children render as lighter shades", () => {
-    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
 
     expect(series.levels?.[1]?.colorSaturation).toBeDefined();
   });
@@ -120,7 +139,10 @@ describe("getTreemapChartOption colors", () => {
 
 describe("getTreemapChartOption ids", () => {
   it("assigns path-based ids so the tooltip can resolve a hovered node", () => {
-    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
 
     expect(series.data[0].id).toBe("0");
     expect(series.data[0].children?.[0].id).toBe("0-0");
@@ -130,25 +152,37 @@ describe("getTreemapChartOption ids", () => {
 
 describe("getTreemapChartOption zoom", () => {
   it("disables native click (drilling is handled by a custom click handler)", () => {
-    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
 
     expect(series.nodeClick).toBe(false);
   });
 
   it("keeps the initial view at two levels via leafDepth", () => {
-    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
 
     expect(series.leafDepth).toBe(2);
   });
 
   it("disables wheel/drag roam zoom on the series", () => {
-    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
 
     expect(series.roam).toBe(false);
   });
 
   it("hides the native breadcrumb (a custom React breadcrumb replaces it)", () => {
-    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
 
     expect(series.breadcrumb).toMatchObject({ show: false });
   });
@@ -156,18 +190,69 @@ describe("getTreemapChartOption zoom", () => {
 
 describe("getTreemapChartOption layout", () => {
   it("is full-bleed with no bottom inset at the overview", () => {
-    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
 
     expect(series).toMatchObject({ top: 0, left: 0, right: 0, bottom: 0 });
   });
 
-  it("reserves the requested bottom space for the breadcrumb when drilled", () => {
-    const { series } = getTreemapChartOption(
-      TWO_LEVEL_TREE,
-      getTreemapColors(TWO_LEVEL_TREE),
-      48,
-    );
+  it("reserves bottom space for the breadcrumb when drilled", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      colors: getTreemapColors(TWO_LEVEL_TREE),
+      isDrilled: true,
+      renderingContext,
+    });
 
-    expect(series.bottom).toBe(48);
+    expect(series.bottom).toBeGreaterThan(0);
+  });
+});
+
+describe("getTreemapChartOption group header", () => {
+  it("shows an upperLabel so each top-level group is labelled at the overview", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
+
+    expect(series.upperLabel).toMatchObject({ show: true });
+    expect(series.upperLabel?.height).toBeGreaterThan(0);
+  });
+
+  it("hides the group header when drilled (the breadcrumb shows the group)", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      colors: getTreemapColors(TWO_LEVEL_TREE),
+      isDrilled: true,
+      renderingContext,
+    });
+
+    expect(series.upperLabel).toMatchObject({ show: false });
+  });
+
+  it("keeps the header identical on hover so it doesn't shift (emphasis mirrors normal)", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
+
+    expect(series.emphasis?.upperLabel).toEqual(series.upperLabel);
+  });
+
+  it("backs each group header with the group's color at reduced opacity", () => {
+    const colors = getTreemapColors(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      colors,
+      renderingContext,
+    });
+
+    const headerBg = series.data[0].upperLabel?.backgroundColor;
+    expect(headerBg).toMatch(/^rgba\(/);
+    // Same hue as the group's tile color, just translucent.
+    expect(Color(headerBg).hex()).toBe(Color(colors["Europe"]).hex());
+    expect(Color(headerBg).alpha()).toBeCloseTo(0.85);
   });
 });
