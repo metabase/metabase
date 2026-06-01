@@ -1,4 +1,5 @@
 import type { EChartsType } from "echarts/core";
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Box } from "metabase/ui";
@@ -11,7 +12,10 @@ import {
   getTreemapData,
 } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
+import {
+  DRILLED_BOTTOM_INSET,
+  getTreemapChartOption,
+} from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
 import {
   useCloseTooltipOnScroll,
@@ -21,6 +25,7 @@ import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-br
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
+import S from "./TreemapChart.module.css";
 import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
 import { dispatchTreemapViewRoot, useChartEvents } from "./events";
 
@@ -130,7 +135,22 @@ export const TreemapChart = ({
   }
 
   return (
-    <Box py={48} px={96} w="100%" h="100%">
+    <Box
+      className={S.root}
+      // Match the rounded-corner clip's bottom inset to the treemap content
+      // rectangle: while drilled, ECharts reserves a bottom strip for the
+      // breadcrumb, so the clip must inset the bottom by the same amount or the
+      // bottom rounding lands in the empty strip instead of on the drilled tiles.
+      style={
+        {
+          "--treemap-bottom-inset": `${viewRootId != null ? DRILLED_BOTTOM_INSET : 0}px`,
+        } as CSSProperties
+      }
+      py={48}
+      px={96}
+      w="100%"
+      h="100%"
+    >
       <ResponsiveEChartsRenderer
         ref={containerRef}
         option={option}

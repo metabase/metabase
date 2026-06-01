@@ -1,0 +1,16 @@
+.root {
+  /* Round the 4 outer corners of the treemap by clipping the SVG to a rounded
+     rect. Clipping the SVG (rather than an overflow:hidden wrapper) leaves the
+     breadcrumb pill — a sibling overlay with its own shadow — untouched.
+
+     The bottom inset matches the treemap content rectangle, not the SVG box:
+     while drilled, ECharts reserves a bottom strip for the breadcrumb (the
+     `series.bottom` inset), so without the matching clip inset the bottom
+     rounding would land in that empty strip instead of on the drilled tiles.
+     `--treemap-bottom-inset` is set from TreemapChart (0 at the overview, the
+     breadcrumb space while drilled). The top stays at 0: the synthetic root
+     reserves no header height, so the group headers reach the top edge. */
+  & [data-testid="chart-container"] svg {
+    clip-path: inset(0 0 var(--treemap-bottom-inset, 0) 0 round 1rem);
+  }
+}

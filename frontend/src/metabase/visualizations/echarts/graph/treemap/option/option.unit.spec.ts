@@ -211,14 +211,24 @@ describe("getTreemapChartOption layout", () => {
 });
 
 describe("getTreemapChartOption group header", () => {
-  it("shows an upperLabel so each top-level group is labelled at the overview", () => {
+  it("shows the group header on the group level (levels[1]) at the overview", () => {
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,
       renderingContext,
     });
 
-    expect(series.upperLabel).toMatchObject({ show: true });
-    expect(series.upperLabel?.height).toBeGreaterThan(0);
+    expect(series.levels?.[1]?.upperLabel).toMatchObject({ show: true });
+    expect(series.levels?.[1]?.upperLabel?.height).toBeGreaterThan(0);
+  });
+
+  it("keeps the synthetic root's header (levels[0] + series) off so it doesn't inset the top of the treemap", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
+
+    expect(series.upperLabel).toMatchObject({ show: false });
+    expect(series.levels?.[0]?.upperLabel).toMatchObject({ show: false });
   });
 
   it("hides the group header when drilled (the breadcrumb shows the group)", () => {
@@ -229,7 +239,7 @@ describe("getTreemapChartOption group header", () => {
       renderingContext,
     });
 
-    expect(series.upperLabel).toMatchObject({ show: false });
+    expect(series.levels?.[1]?.upperLabel).toMatchObject({ show: false });
   });
 
   it("keeps the header identical on hover so it doesn't shift (emphasis mirrors normal)", () => {
@@ -238,7 +248,9 @@ describe("getTreemapChartOption group header", () => {
       renderingContext,
     });
 
-    expect(series.emphasis?.upperLabel).toEqual(series.upperLabel);
+    expect(series.levels?.[1]?.emphasis?.upperLabel).toEqual(
+      series.levels?.[1]?.upperLabel,
+    );
   });
 
   it("backs each group header with the group's color at reduced opacity", () => {

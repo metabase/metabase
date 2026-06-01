@@ -12,7 +12,9 @@ import type { TreemapNode, TreemapTree } from "../model/types";
 const GROUP_HEADER_BG_OPACITY = 0.85;
 
 // Bottom inset (px) reserved for the breadcrumb overlay while drilled in.
-const DRILLED_BOTTOM_INSET = 48;
+// Exported so the rounded-corner clip in TreemapChart can match it (otherwise
+// the clip rounds the empty breadcrumb strip instead of the drilled tiles).
+export const DRILLED_BOTTOM_INSET = 48;
 
 export interface TreemapSeriesNode {
   id: string;
@@ -29,16 +31,6 @@ type TreemapChartSeriesOption = TreemapSeriesOption & {
   type: "treemap";
   data: TreemapSeriesNode[];
 };
-
-const TWO_LEVEL_LEVELS: TreemapSeriesOption["levels"] = [
-  {
-    itemStyle: { borderWidth: 0, gapWidth: 2 },
-  },
-  {
-    itemStyle: { borderWidth: 1, gapWidth: 1 },
-    colorSaturation: [0.3, 0.5],
-  },
-];
 
 export function getTreemapChartOption({
   tree,
@@ -58,23 +50,42 @@ export function getTreemapChartOption({
   // its name, so we hide the group header and reserve bottom space for the pill.
   const bottomSpace = isDrilled ? DRILLED_BOTTOM_INSET : 0;
 
-  // Header band labelling each top-level group at the overview. `upperLabel`
-  // renders on nodes shown *with* their children (the groupings in the 2-level
-  // view); leaves keep their normal `label`. No-op for 1-level treemaps (no
-  // parent nodes). Reused for the emphasis (hover) state so the label doesn't
-  // shift — ECharts' default `emphasis.upperLabel` drops our position/padding.
-  const upperLabel: TreemapChartSeriesOption["upperLabel"] = {
+  // Header band labelling each top-level group at the overview. ECharts wraps
+  // `series.data` in a synthetic root, so depths are: root=0 (`levels[0]`),
+  // groups=1 (`levels[1]`), leaves=2. The header therefore goes on `levels[1]`
+  // (the groups) — NOT the series or `levels[0]`, which target the synthetic
+  // root. A root with `upperLabel.show: true` reserves its `upperLabel.height`
+  // as an empty strip across the top of the whole treemap (see
+  // `getUpperLabelHeight` in treemapLayout), so we keep the root's header off,
+  // letting the group headers start at y=0 so the rounded top corners land on
+  // them. Reused for the emphasis (hover) state so the label doesn't shift —
+  // ECharts' default `emphasis.upperLabel` drops our padding.
+  const groupUpperLabel: NonNullable<TreemapChartSeriesOption["upperLabel"]> = {
     show: !isDrilled,
     height: 32,
-    position: [0, 12],
     color: renderingContext.getColor("text-primary"),
     fontSize: 12,
     fontWeight: 700,
     // Chip shape; the per-node `backgroundColor` (the group hue with opacity)
     // is set in `toSeriesData`.
     padding: [0, 12],
-    // borderRadius: 4,
   };
+
+  const levels: TreemapSeriesOption["levels"] = [
+    // levels[0] → synthetic root. Keep its header off so it reserves no top
+    // strip; its `gapWidth` spaces the top-level groups apart.
+    {
+      itemStyle: { borderWidth: 0, gapWidth: 2 },
+      upperLabel: { show: false },
+    },
+    // levels[1] → the groups. The header band lives here.
+    {
+      itemStyle: { borderWidth: 1, gapWidth: 1 },
+      colorSaturation: [0.3, 0.5],
+      upperLabel: groupUpperLabel,
+      emphasis: { upperLabel: groupUpperLabel },
+    },
+  ];
 
   const series: TreemapChartSeriesOption = {
     type: "treemap",
@@ -88,10 +99,9 @@ export function getTreemapChartOption({
     label: {
       ...TREEMAP_CHART_STYLE.nodeLabels,
     },
-    upperLabel,
-    // Mirror the normal upperLabel on hover so the group header doesn't shift
-    // (ECharts' default `emphasis.upperLabel` resets position/padding).
-    emphasis: { upperLabel },
+    // Base for the synthetic root: no upper-label height, or it insets the whole
+    // treemap from the top. Group headers come from `levels[1]` instead.
+    upperLabel: { show: false },
     // Full-bleed layout. ECharts' default reserves `top`/`bottom: 50px` (where
     // the native breadcrumb sat) — we zero it out so the overview fills the
     // whole area, and reserve `bottomSpace` only while drilled in, so the
@@ -104,7 +114,7 @@ export function getTreemapChartOption({
     bottom: bottomSpace,
     data: toSeriesData(tree, colors),
     leafDepth: 2,
-    ...(hasChildren ? { levels: TWO_LEVEL_LEVELS } : {}),
+    ...(hasChildren ? { levels } : {}),
   };
 
   return { series };
