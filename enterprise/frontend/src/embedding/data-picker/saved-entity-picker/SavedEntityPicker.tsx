@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -6,6 +5,7 @@ import {
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
+import type { CollectionTreeItem } from "metabase/collections/utils";
 import {
   buildCollectionTree,
   currentUserPersonalCollections,
@@ -13,54 +13,50 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Icon } from "metabase/ui";
+import type {
+  CardType,
+  Collection,
+  CollectionId,
+  DatabaseId,
+} from "metabase-types/api";
 
 import SavedEntityList from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
 import { findCollectionById } from "./utils";
 
-const propTypes = {
-  type: PropTypes.string,
-  onSelect: PropTypes.func.isRequired,
-  onBack: PropTypes.func.isRequired,
-  databaseId: PropTypes.string,
-  tableId: PropTypes.string,
-  collectionId: PropTypes.number,
-};
+type SavedEntityType = Extract<CardType, "model" | "question">;
 
-const getOurAnalyticsCollection = (collectionEntity) => {
-  return {
-    ...collectionEntity,
-    schemaName: "Everything else",
-    icon: "folder",
-  };
-};
+interface SavedEntityPickerProps {
+  type: SavedEntityType;
+  collectionId?: CollectionId;
+  tableId?: string;
+  databaseId?: DatabaseId;
+  onSelect: (cardId: string) => void;
+  onBack: () => void;
+}
 
+const getOurAnalyticsCollection = (
+  collectionEntity: Collection,
+): CollectionTreeItem => ({
+  ...collectionEntity,
+  children: [],
+  schemaName: "Everything else",
+  icon: "folder",
+});
+
+// A sentinel root node that buildCollectionTree special-cases by id; it isn't a
+// real Collection, so we assert the type here rather than fabricate every field.
 const ALL_PERSONAL_COLLECTIONS_ROOT = {
   ...PERSONAL_COLLECTIONS,
-};
+} as Collection;
 
-/**
- * @typedef {import("metabase/embedding-sdk/types/components/data-picker").DataSourceSelectorProps} DataSourceSelectorProps
- *
- * @typedef {object} SavedEntityPickerOwnProps
- * @property {DataSourceSelectorProps['selectedCollectionId']} collectionId
- * @property {Extract<import("metabase-types/api").CardType, 'model' | 'question'>} type
- * @property {string} tableId
- * @property {DataSourceSelectorProps['selectedDatabaseId']} databaseId
- * @property {(cardId: string) => void} onSelect
- * @property {() => void} onBack
- */
-
-/**
- * @param {SavedEntityPickerOwnProps} props
- * @returns {JSX.Element | null}
- */
-export function SavedEntityPicker(props) {
+export function SavedEntityPicker(props: SavedEntityPickerProps) {
   const { data: collections } = useListCollectionsTreeQuery({
     "exclude-archived": true,
     namespaces: ["", "shared-tenant-collection", "tenant-specific"],
@@ -78,6 +74,11 @@ export function SavedEntityPicker(props) {
   );
 }
 
+interface InnerSavedEntityPickerProps extends SavedEntityPickerProps {
+  collections: Collection[];
+  rootCollection?: Collection;
+}
+
 function InnerSavedEntityPicker({
   collectionId,
   type,
@@ -87,13 +88,17 @@ function InnerSavedEntityPicker({
   onBack,
   collections,
   rootCollection,
-}) {
+}: InnerSavedEntityPickerProps) {
   const currentUser = useSelector(getUser);
 
-  const collectionTree = useMemo(() => {
-    const modelFilter = (model) => CARD_INFO[type].model === model;
+  const collectionTree = useMemo<CollectionTreeItem[]>(() => {
+    if (!currentUser) {
+      return [];
+    }
 
-    const preparedCollections = [];
+    const modelFilter = (model: string) => CARD_INFO[type].model === model;
+
+    const preparedCollections: Collection[] = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
       currentUser.id,
@@ -127,7 +132,10 @@ function InnerSavedEntityPicker({
   }, [collections, rootCollection, currentUser, type]);
 
   const initialCollection = useMemo(
-    () => findCollectionById(collectionTree, collectionId) ?? collectionTree[0],
+    () =>
+      (collectionId != null
+        ? findCollectionById(collectionTree, collectionId)
+        : null) ?? collectionTree[0],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -135,11 +143,13 @@ function InnerSavedEntityPicker({
   const [selectedCollection, setSelectedCollection] =
     useState(initialCollection);
 
-  const handleSelect = useCallback((collection) => {
+  const handleSelect = useCallback((collection: ITreeNodeItem) => {
     if (collection.id === PERSONAL_COLLECTIONS.id) {
       return;
     }
-    setSelectedCollection(collection);
+    // Tree erases the concrete item type to ITreeNodeItem, but at runtime the
+    // selected node is one of the CollectionTreeItem entries we passed in.
+    setSelectedCollection(collection as CollectionTreeItem);
   }, []);
 
   return (
@@ -171,10 +181,3 @@ function InnerSavedEntityPicker({
     </Box>
   );
 }
-
-SavedEntityPicker.propTypes = propTypes;
-InnerSavedEntityPicker.propTypes = {
-  ...propTypes,
-  collections: PropTypes.array.isRequired,
-  rootCollection: PropTypes.object,
-};
