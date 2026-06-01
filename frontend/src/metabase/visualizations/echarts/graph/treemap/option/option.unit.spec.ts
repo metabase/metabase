@@ -188,6 +188,74 @@ describe("getTreemapChartOption zoom", () => {
   });
 });
 
+describe("getTreemapChartOption within-group borders", () => {
+  it("colors a group's internal borders with its own hue via the group node's borderColor", () => {
+    const colors = getTreemapColors(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      colors,
+      renderingContext,
+    });
+
+    // ECharts fills a parent node's background with its borderColor and draws
+    // the leaf children on top with gaps, so the within-group gaps/frame show
+    // the group's hue.
+    expect(series.data[0].itemStyle?.borderColor).toBe(colors["Europe"]);
+  });
+
+  it("leaves the between-group separators white (no borderColor override on the root level)", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
+
+    // The synthetic root's gaps separate the groups; leaving its borderColor at
+    // the ECharts default keeps those separators white.
+    expect(series.levels?.[0]?.itemStyle?.borderColor).toBeUndefined();
+  });
+
+  it("uses a hueless transparent border when drilled into a group (level 2)", () => {
+    const colors = getTreemapColors(TWO_LEVEL_TREE);
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      colors,
+      isDrilled: true,
+      renderingContext,
+    });
+
+    // Drilled in, the group fills the canvas; a transparent border reveals the
+    // white canvas in the gaps instead of the group hue.
+    expect(series.data[0].itemStyle?.borderColor).toBe("transparent");
+  });
+
+  it("tints only the inter-leaf gaps, not the group's outer frame (group borderWidth is 0)", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
+
+    // The group's outer frame (borderWidth) is filled with borderColor too, so
+    // keeping it at 0 means only the gapWidth separators between leaves show the
+    // tint — the group's outer edge stays untinted (white root gap separates
+    // groups).
+    expect(series.levels?.[1]?.itemStyle?.borderWidth).toBe(0);
+    expect(series.levels?.[1]?.itemStyle?.gapWidth).toBeGreaterThan(0);
+  });
+
+  it("does not set a group borderColor on the tiles of a 1-level treemap", () => {
+    const tree: TreemapTree = [
+      { rawName: "A", displayName: "A", value: 10, rowIndices: [0] },
+      { rawName: "B", displayName: "B", value: 25, rowIndices: [1] },
+    ];
+
+    const { series } = getTreemapChartOption({ tree, renderingContext });
+
+    series.data.forEach((node) => {
+      expect(node.itemStyle?.borderColor).toBeUndefined();
+    });
+  });
+});
+
 describe("getTreemapChartOption small-node labels", () => {
   it("hides the label on a leaf whose area share is below the threshold", () => {
     const tree: TreemapTree = [

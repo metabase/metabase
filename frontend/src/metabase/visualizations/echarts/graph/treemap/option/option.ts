@@ -30,7 +30,7 @@ export interface TreemapSeriesNode {
   value: number;
   rawName: TreemapNode["rawName"];
   rowIndices: number[];
-  itemStyle?: { color?: string };
+  itemStyle?: { color?: string; borderColor?: string };
   label?: { show?: boolean };
   upperLabel?: { backgroundColor?: string };
   children?: TreemapSeriesNode[];
@@ -87,9 +87,14 @@ export function getTreemapChartOption({
       itemStyle: { borderWidth: 0, gapWidth: 2 },
       upperLabel: { show: false },
     },
-    // levels[1] → the groups. The header band lives here.
+    // levels[1] → the groups. The header band lives here. `borderWidth` is kept
+    // at 0: a group's bg rect is filled with its `borderColor` (the group hue),
+    // so any borderWidth would paint a tinted frame around the group's outer
+    // edge. We only want the tint on the inter-leaf gaps, so we rely on
+    // `gapWidth` alone; the white between-group separators come from the root's
+    // `gapWidth`.
     {
-      itemStyle: { borderWidth: 1, gapWidth: 1 },
+      itemStyle: { borderWidth: 0, gapWidth: 1 },
       colorSaturation: [0.3, 0.5],
       upperLabel: groupUpperLabel,
       emphasis: { upperLabel: groupUpperLabel },
@@ -121,7 +126,7 @@ export function getTreemapChartOption({
     left: 0,
     right: 0,
     bottom: bottomSpace,
-    data: toSeriesData(tree, colors),
+    data: toSeriesData(tree, colors, isDrilled),
     leafDepth: 2,
     ...(hasChildren ? { levels } : {}),
   };
@@ -132,6 +137,7 @@ export function getTreemapChartOption({
 function toSeriesData(
   tree: TreemapTree,
   colors: Record<string, string>,
+  isDrilled: boolean,
 ): TreemapSeriesNode[] {
   // A leaf's share of the whole chart is its value over the total (the root
   // values already sum the leaves), which equals its share of the rendered area.
@@ -147,7 +153,19 @@ function toSeriesData(
       value: node.value,
       rawName: node.rawName,
       rowIndices: node.rowIndices,
-      itemStyle: { color: groupColor },
+      // For a group (a node with children), ECharts fills the background with
+      // the node's borderColor and draws the leaves on top with gaps, so setting
+      // borderColor to the group hue paints the within-group gaps in that hue.
+      // The between-group separators come from the synthetic root's gaps, whose
+      // borderColor we leave at the ECharts default (white). When drilled into a
+      // group it fills the canvas, and we want hueless gaps there — a transparent
+      // border reveals the white canvas behind instead of the group hue.
+      itemStyle: {
+        color: groupColor,
+        ...(node.children != null
+          ? { borderColor: isDrilled ? "transparent" : groupColor }
+          : {}),
+      },
       // Top-level nodes with children render a header chip (always shown), not
       // their own tile label, so only hide the label for childless tiles — i.e.
       // a 1-level treemap's tiles.
