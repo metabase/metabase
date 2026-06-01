@@ -38,9 +38,9 @@
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))
 
-;; One endpoint per MCP route alias (kept in sync with [[metabase.mcp.api/endpoint-paths]] and the route-map
-;; in [[metabase.api-routes.routes]]). Each advertises *its own* path as the `:resource` so a strict RFC 9728
-;; client connecting via an alias sees a resource value matching the URL it hit.
+;; One endpoint per MCP route alias, kept in sync with [[metabase.mcp.api/endpoint-paths]].
+;; Each advertises its own path as `:resource`, so a strict RFC 9728 client connecting via an
+;; alias sees a resource value matching the URL it hit.
 (def ^:private resource-metadata-response-schema
   [:map
    [:status [:= 200]]
