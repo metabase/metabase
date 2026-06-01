@@ -124,7 +124,7 @@ describe("getRunDurationMs", () => {
     overrides: Partial<{ start_time: string; end_time: string | null }>,
   ) => ({
     start_time: overrides.start_time ?? "2026-01-01T00:00:00.000Z",
-    end_time: overrides.end_time === undefined ? null : overrides.end_time,
+    end_time: overrides.end_time ?? null,
   });
 
   it("returns null when end_time is null (run in progress)", () => {

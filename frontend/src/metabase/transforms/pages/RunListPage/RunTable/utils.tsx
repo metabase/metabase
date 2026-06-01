@@ -1,6 +1,15 @@
 import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
+import {
+  formatDurationLong,
+  formatRunMethod,
+  formatStatus,
+  getRunDurationMs,
+  getTransformRunName,
+  isErrorStatus,
+  parseTimestampWithTimezone,
+} from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
@@ -18,13 +27,6 @@ import {
   type TransformTagId,
 } from "metabase-types/api";
 
-import {
-  formatRunMethod,
-  formatStatus,
-  getTransformRunName,
-  isErrorStatus,
-  parseTimestampWithTimezone,
-} from "../../../utils";
 import type { TransformRunSortOptions } from "../types";
 
 import { TagList } from "./TagList";
@@ -123,6 +125,32 @@ function getEndedAtColumn(
   };
 }
 
+function getDurationColumn(): TreeTableColumnDef<TransformRun> {
+  return {
+    id: "duration" satisfies TransformRunSortColumn,
+    header: ({ header }) => (
+      <SortableHeaderPill
+        name={t`Duration`}
+        sort={header.column.getIsSorted() || undefined}
+      />
+    ),
+    width: 120,
+    enableSorting: true,
+    // No sortDescFirst: matches codebase convention for non-timestamp columns.
+    // Every existing sortDescFirst in the FE is on a timestamp
+    // (NotificationsTable last_check/last_send, TransformListPage updated_at).
+    // Admins who want longest-first click twice — same as any other numeric.
+    accessorFn: (run) => getRunDurationMs(run),
+    cell: ({ getValue }) => {
+      const ms = getValue<number | null>();
+      if (ms == null) {
+        return null;
+      }
+      return <Ellipsified>{formatDurationLong(ms)}</Ellipsified>;
+    },
+  };
+}
+
 function getStatusColumn(): TreeTableColumnDef<TransformRun> {
   return {
     id: "status" satisfies TransformRunSortColumn,
@@ -200,6 +228,7 @@ export function getColumns(
     getTransformColumn(),
     getStartedAtColumn(systemTimezone),
     getEndedAtColumn(systemTimezone),
+    getDurationColumn(),
     getStatusColumn(),
     getRunMethodColumn(),
     getTransformTagsColumn(tagsById),

@@ -321,7 +321,7 @@ export function formatDurationLong(durationMs: number): string {
  * measured (run still in progress, missing timestamps, unparseable values).
  */
 export function getRunDurationMs(
-  run: { start_time: string; end_time: string | null } | null | undefined,
+  run: Pick<TransformRun, "start_time" | "end_time"> | null | undefined,
 ): number | null {
   if (run == null || run.end_time == null) {
     return null;
