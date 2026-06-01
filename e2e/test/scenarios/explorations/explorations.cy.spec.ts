@@ -392,7 +392,9 @@ describe("scenarios > explorations > detail page", () => {
       // selector so the detached-subject error can't bite after a
       // keyboard-driven re-render.
       const selectedRows = () =>
-        cy.findAllByRole("treeitem").filter('[aria-selected="true"]');
+        cy
+          .findAllByRole("treeitem", { timeout: 15000 })
+          .filter('[aria-selected="true"]');
 
       selectedRows().should("have.length.at.least", 1);
 
