@@ -1,6 +1,5 @@
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
-import _ from "underscore";
 
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import {
@@ -39,6 +38,25 @@ import { getUser } from "metabase/selectors/user";
 import { modelToUrl } from "metabase/urls";
 import type { SearchResult } from "metabase-types/api";
 
+type SearchResultSelection =
+  | { type: "zoom"; objectId: SearchResult["id"] }
+  | { type: "navigate"; url: string };
+
+/**
+ * Decides what should happen when a search result is selected from the app bar.
+ * When the result is an indexed-entity row that belongs to the model we're
+ * already viewing, we zoom into that row in place instead of navigating away.
+ */
+export function getSearchResultSelection(
+  result: SearchResult,
+  currentCardId: number | undefined,
+): SearchResultSelection {
+  if (result.model === "indexed-entity" && result.model_id === currentCardId) {
+    return { type: "zoom", objectId: result.id };
+  }
+  return { type: "navigate", url: modelToUrl(result) };
+}
+
 const mapStateToProps = (state: State, props: RouterProps) => ({
   currentUser: getUser(state),
   isNavBarOpen: getIsNavbarOpen(state),
@@ -62,7 +80,7 @@ const mapDispatchToProps = {
   onCloseNavbar: closeNavbar,
 };
 
-function AppBarContainer(props: AppBarProps & RouterProps) {
+function AppBarContainerInner(props: AppBarProps & RouterProps) {
   const collectionId = useInitialCollectionId(props) ?? undefined;
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
@@ -75,16 +93,11 @@ function AppBarContainer(props: AppBarProps & RouterProps) {
   const locationState = props.location.state as { cardId?: number } | undefined;
 
   const onSearchItemSelect = (result: SearchResult) => {
-    // Skip the navigation when we're already viewing the model that owns
-    // the indexed-entity row — just update the zoomed-in row in place.
-    const isSameModel = result?.model_id === locationState?.cardId;
-    if (isSameModel && result.model === "indexed-entity") {
-      dispatch(zoomInRow({ objectId: result.id }));
+    const selection = getSearchResultSelection(result, locationState?.cardId);
+    if (selection.type === "zoom") {
+      dispatch(zoomInRow({ objectId: selection.objectId }));
     } else {
-      const url = modelToUrl(result);
-      if (url) {
-        dispatch(push(url));
-      }
+      dispatch(push(selection.url));
     }
   };
 
@@ -104,7 +117,6 @@ function AppBarContainer(props: AppBarProps & RouterProps) {
   );
 }
 
-export const AppBar = _.compose(
-  withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
-)(AppBarContainer);
+export const AppBarContainer = withRouter(
+  connect(mapStateToProps, mapDispatchToProps)(AppBarContainerInner),
+);

@@ -23,14 +23,16 @@ import {
   createMockQueryBuilderState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import { modelToUrl } from "metabase/urls";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
-import { AppBar } from "./AppBar";
+import { AppBarContainer, getSearchResultSelection } from "./AppBar";
 
 const FOO_COLLECTION = createMockCollection({
   id: 3,
@@ -275,6 +277,45 @@ describe("AppBar", () => {
   });
 });
 
+describe("getSearchResultSelection", () => {
+  const indexedEntity = createMockSearchResult({
+    id: 42,
+    model: "indexed-entity",
+    model_id: 7,
+    model_name: "People",
+  });
+
+  it("zooms into the row for an indexed-entity result on the current model", () => {
+    expect(getSearchResultSelection(indexedEntity, 7)).toEqual({
+      type: "zoom",
+      objectId: 42,
+    });
+  });
+
+  it("navigates for an indexed-entity result on a different model", () => {
+    expect(getSearchResultSelection(indexedEntity, 9)).toEqual({
+      type: "navigate",
+      url: modelToUrl(indexedEntity),
+    });
+  });
+
+  it("navigates when there is no current card", () => {
+    expect(getSearchResultSelection(indexedEntity, undefined)).toEqual({
+      type: "navigate",
+      url: modelToUrl(indexedEntity),
+    });
+  });
+
+  it("navigates for a non indexed-entity result even when ids match", () => {
+    const card = createMockSearchResult({ id: 7, model: "card", model_id: 7 });
+
+    expect(getSearchResultSelection(card, 7)).toEqual({
+      type: "navigate",
+      url: modelToUrl(card),
+    });
+  });
+});
+
 function setup({
   embedOptions,
   card = createMockCard(),
@@ -297,7 +338,7 @@ function setup({
   setupCardEndpoints(card);
   setupDashboardEndpoints(BAR_DASHBOARD);
 
-  return renderWithProviders(<Route path="*" component={AppBar} />, {
+  return renderWithProviders(<Route path="*" component={AppBarContainer} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {

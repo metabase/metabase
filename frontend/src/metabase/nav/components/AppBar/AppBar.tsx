@@ -11,7 +11,7 @@ import { AppBarLarge } from "./AppBarLarge";
 import { AppBarSmall } from "./AppBarSmall";
 
 export interface AppBarProps {
-  currentUser: User;
+  currentUser: User | null;
   collectionId?: CollectionId;
   detailView: DetailViewState | null;
   isNavBarOpen?: boolean;

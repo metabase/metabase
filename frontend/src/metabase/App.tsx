@@ -2,7 +2,7 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { AppBar } from "metabase/app/nav/AppBar";
+import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import {
@@ -116,7 +116,7 @@ function App({
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
-            {isAppBarVisible && <AppBar />}
+            {isAppBarVisible && <AppBarContainer />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
               <AppContent ref={setViewportElement}>
