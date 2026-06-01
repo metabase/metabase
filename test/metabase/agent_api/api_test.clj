@@ -11,6 +11,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -504,6 +507,38 @@
                  :description   "A test question"}
                 create-resp))
         (t2/delete! :model/Card :id (:id create-resp))))))
+
+(deftest create-question-permission-checks-test
+  (testing "POST /v1/question mirrors REST card-create permission checks (security regression for #74458)"
+    (testing "Returns 403 when caller cannot write to the target collection"
+      ;; The reported P1: a non-admin could plant a question in a collection
+      ;; (e.g. an admin's personal collection) they have no write access to.
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {locked-id :id} {:name "Locked For Create-Q"}]
+          ;; rasta has data perms by default in test setup, but no write on `locked-id`.
+          (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                     {:source     {:type "table" :id (mt/id :orders)}
+                                                      :operations [["limit" 10]]})]
+            (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                  {:name          "Should Not Save"
+                                   :query         (:query construct-resp)
+                                   :collection_id locked-id})))))
+    (testing "Returns 403 when caller cannot run the proposed query"
+      ;; Collection write does not imply the right to save a card whose query
+      ;; references data the user cannot run.
+      (mt/with-restored-data-perms!
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable For Create-Q"}]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+            ;; crowberto (admin) constructs the query since rasta's data access is blocked.
+            (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                       {:source     {:type "table" :id (mt/id :orders)}
+                                                        :operations [["limit" 10]]})]
+              (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                    {:name          "Should Not Save"
+                                     :query         (:query construct-resp)
+                                     :collection_id writable-id}))))))))
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
 
