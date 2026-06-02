@@ -1012,15 +1012,15 @@
 (deftest update-glossary-requires-admin-test
   (testing "Non-admin callers are rejected with 403"
     (mt/user-http-request :rasta :post 403 "agent/v1/glossary"
-                          {"MAU" "Monthly active users"})
+                          {:terms {"MAU" "Monthly active users"}})
     (is (nil? (glossary-def "MAU")))))
 
 (deftest update-glossary-insert-test
   (testing "String definitions for new terms insert them and report :upserted"
     (try
       (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
-                                       {"MAU"   "Monthly active users"
-                                        "Churn" "Rate at which customers leave"})]
+                                       {:terms {"MAU"   "Monthly active users"
+                                                "Churn" "Rate at which customers leave"}})]
         (is (=? {:upserted #(= #{"MAU" "Churn"} (set %))
                  :deleted  empty?}
                 resp))
@@ -1038,7 +1038,7 @@
                                                  :definition "Annual recurring revenue"
                                                  :creator_id (mt/user->id :rasta)}]
       (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
-                                       {"ARR" "Annual recurring revenue (corrected)"})]
+                                       {:terms {"ARR" "Annual recurring revenue (corrected)"}})]
         (is (=? {:upserted ["ARR"] :deleted empty?} resp))
         (is (= "Annual recurring revenue (corrected)" (glossary-def "ARR")))
         ;; Updating reuses the existing row, so the original creator is preserved.
@@ -1051,14 +1051,14 @@
                                       :definition "Single-page sessions"
                                       :creator_id (mt/user->id :crowberto)}]
       (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
-                                       {"Bounce Rate" nil})]
+                                       {:terms {"Bounce Rate" nil}})]
         (is (=? {:upserted empty? :deleted ["Bounce Rate"]} resp))
         (is (nil? (glossary-def "Bounce Rate")))))))
 
 (deftest update-glossary-delete-unknown-is-noop-test
   (testing "A null definition for an unknown term is a no-op and is not reported as deleted"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
-                                     {"Never Existed" nil})]
+                                     {:terms {"Never Existed" nil}})]
       (is (=? {:upserted empty? :deleted empty?} resp)))))
 
 (deftest update-glossary-mixed-batch-test
@@ -1071,9 +1071,9 @@
                                       :creator_id (mt/user->id :crowberto)}]
       (try
         (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
-                                         {"ToInsert" "fresh"
-                                          "ToUpdate" "new"
-                                          "ToDelete" nil})]
+                                         {:terms {"ToInsert" "fresh"
+                                                  "ToUpdate" "new"
+                                                  "ToDelete" nil}})]
           (is (=? {:upserted #(= #{"ToInsert" "ToUpdate"} (set %))
                    :deleted  ["ToDelete"]}
                   resp))
@@ -1087,7 +1087,7 @@
   (testing "Terms containing '/' round-trip correctly despite key keyword-ization"
     (try
       (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
-                                       {"revenue/cost" "Revenue divided by cost"})]
+                                       {:terms {"revenue/cost" "Revenue divided by cost"}})]
         (is (=? {:upserted ["revenue/cost"] :deleted empty?} resp))
         (is (= "Revenue divided by cost" (glossary-def "revenue/cost"))))
       (finally
@@ -1096,7 +1096,7 @@
 (deftest update-glossary-rejects-blank-definition-test
   (testing "A blank (non-null) definition is rejected by the request schema"
     (mt/user-http-request :crowberto :post 400 "agent/v1/glossary"
-                          {"Blank" "   "})
+                          {:terms {"Blank" "   "}})
     (is (nil? (glossary-def "Blank")))))
 
 ;;; --------------------------------------------------- List Glossary Tests ---------------------------------------

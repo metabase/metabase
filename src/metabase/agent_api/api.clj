@@ -1125,19 +1125,26 @@
 ;;; ------------------------------------------------- Update Glossary ------------------------------------------------
 
 (mr/def ::update-glossary-request
-  "Request body for `update_glossary`: a JSON object mapping each glossary term to its
-  definition. A non-blank string definition upserts the term (insert if new, replace the
-  definition if it already exists); an explicit `null` definition deletes the term.
+  "Request body for `update_glossary`: a JSON object with a single `terms` key whose value maps each
+  glossary term to its definition. A non-blank string definition upserts the term (insert if new,
+  replace the definition if it already exists); an explicit `null` definition deletes the term.
 
-  Keys arrive keyword-ized by the JSON body middleware, so the key schema is `:keyword`; the
-  handler reconstructs the original term string (including any namespace-like `/`) via
-  `u/qualified-name`.
+  The term map is nested under `terms` rather than being the bare request body so the generated MCP
+  `inputSchema` declares a named property. A bare `[:map-of :keyword ...]` body produces a JSON
+  Schema with no named `:properties` (only `:additionalProperties`); strict MCP clients forward only
+  the properties listed in `:properties`, so they drop every term key and the handler receives an
+  empty body.
 
-  The value is `[:maybe :string]` rather than `[:maybe NonBlankString]` deliberately: a failed
+  Keys inside `terms` arrive keyword-ized by the JSON body middleware, so the value-map key schema is
+  `:keyword`; the handler reconstructs the original term string (including any namespace-like `/`)
+  via `u/qualified-name`.
+
+  The definition is `[:maybe :string]` rather than `[:maybe NonBlankString]` deliberately: a failed
   value-level constraint inside a `:map-of` trips a Malli error-rendering limitation
   (`malli.util/get-in` can't navigate map-of value paths) and surfaces as a 500. The handler
   rejects blank definitions explicitly so the caller gets a clean 400 instead."
-  [:map-of :keyword [:maybe :string]])
+  [:map
+   [:terms [:map-of :keyword [:maybe :string]]]])
 
 (mr/def ::update-glossary-response
   "Returned by `update_glossary`. `:upserted` lists the terms created or updated; `:deleted`
@@ -1150,14 +1157,14 @@
 (api.macros/defendpoint :post "/v1/glossary" :- ::update-glossary-response
   "Bulk-update the Metabase glossary. Admin only.
 
-  The body is a JSON object mapping each glossary term to its definition. A string value
-  upserts the term (creating it if new, replacing its definition if it already exists). A
+  The body is a JSON object with a single `terms` key mapping each glossary term to its definition. A
+  string value upserts the term (creating it if new, replacing its definition if it already exists). A
   `null` value deletes the term. The whole batch is applied in a single transaction."
   {:scope metabot/agent-glossary-write
    :tool  {:name "update_glossary"
-           :description (str "Update the Metabase glossary (admin only). Pass a JSON object "
+           :description (str "Update the Metabase glossary (admin only). Pass a `terms` object "
                              "mapping each term to its definition, e.g. "
-                             "{\"MAU\": \"Monthly active users\", \"Churn\": \"...\"}. "
+                             "{\"terms\": {\"MAU\": \"Monthly active users\", \"Churn\": \"...\"}}. "
                              "A string value creates or updates the term; a null value "
                              "deletes it. Applied as a single transaction.")
            ;; A null definition deletes the term, so this is genuinely destructive (the POST
@@ -1208,7 +1215,7 @@
                              (swap! events* conj [:event/glossary-create {:object created}])
                              (update acc :upserted conj term))))))
                    {:upserted [] :deleted []}
-                   body))]
+                   (:terms body)))]
     ;; Publish events after the transaction commits, mirroring the other write endpoints.
     (doseq [[topic data] @events*]
       (events/publish-event! topic (assoc data :user-id api/*current-user-id*)))
