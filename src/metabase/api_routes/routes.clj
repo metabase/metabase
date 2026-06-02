@@ -5,7 +5,7 @@
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
    [metabase.analytics.api]
-   [metabase.analytics.proxy-api]
+   [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
    [metabase.api.docs]
    [metabase.api.macros :as api.macros]
@@ -78,7 +78,7 @@
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
          metabase.analytics.api/keep-me
-         metabase.analytics.proxy-api/keep-me
+         metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -164,9 +164,7 @@
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
-   ;; Intentionally PUBLIC (no +auth): anonymous Snowplow telemetry passthrough for the Embedding SDK, whose
-   ;; browser-tracker can't carry a Metabase session cross-origin. Mirrors the public collector. See EMB-1758.
-   "/analytics-proxy"      (+public-exceptions 'metabase.analytics.proxy-api)
+   "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)

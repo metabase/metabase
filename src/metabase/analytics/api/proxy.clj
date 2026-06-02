@@ -1,4 +1,4 @@
-(ns metabase.analytics.proxy-api
+(ns metabase.analytics.api.proxy
   "Public, anonymous Snowplow telemetry passthrough for the Embedding SDK.
 
   The SDK runs inside the customer's page, where the customer's `connect-src` CSP blocks a direct browser POST to
@@ -46,7 +46,6 @@
                                  :connection-timeout forward-timeout-ms
                                  :socket-timeout     forward-timeout-ms
                                  :throw-exceptions   false})]
-        (log/infof "analytics-proxy -> %s : %s" collector-url (:status response))
         ;; Relay status + body unchanged: 2xx clears the tracker's event, non-2xx schedules a retry.
         {:status (:status response)
          :body   (:body response)})
@@ -54,5 +53,4 @@
         ;; Collector unreachable (connection refused / timeout). Return a deliberate 502 (retryable by the tracker)
         ;; and log the cause server-side rather than synthesizing a fake 2xx that would drop the event.
         (log/errorf e "analytics-proxy failed forwarding to %s" collector-url)
-        {:status 502
-         :body   {:error (ex-message e)}}))))
+        {:status 502}))))

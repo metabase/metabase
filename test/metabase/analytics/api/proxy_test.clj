@@ -1,4 +1,4 @@
-(ns metabase.analytics.proxy-api-test
+(ns metabase.analytics.api.proxy-test
   "Integration tests for the public Snowplow telemetry proxy (`POST /api/analytics-proxy`, EMB-1758).
 
   Mirrors `metabase.geojson.api-test`: a public endpoint that forwards an outbound HTTP call, exercised with
