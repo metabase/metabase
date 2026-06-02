@@ -644,22 +644,23 @@
 (defn- brute-force-search-query
   "Build the semantic vector subquery as an exact, filter-first search over the rows matching `filters`."
   [index embedding-literal filters]
-  ;; Compute the cosine distance once, in `with-distance`; the wrapping query applies the cutoff against the
-  ;; `:distance` alias so the (dominant) distance computation isn't repeated for the filter. The whole thing
-  ;; is a MATERIALIZED CTE: that fences the planner off the HNSW index (so the scan is exact), and applying
-  ;; the cutoff before materializing keeps the stored set down to rows that can actually be returned.
-  (let [with-distance  (cond-> {:select (into common-search-columns
+  ;; The filtered rows and their cosine distance are computed once, inside a MATERIALIZED CTE: that fences
+  ;; the planner off the HNSW index (so the scan is exact) and stores the `distance` column, so the outer
+  ;; query reads it rather than recomputing it. The cutoff and ranking run in the outer query.
+  ;; We deliberately don't push the cutoff into the CTE to avoid materializing rows beyond it: that would
+  ;; either recompute the distance for the qual, or need a subquery optimization fence (Postgres pulls a
+  ;; plain subquery back up and re-inlines the expression) -- not worth it for an exact scan that already
+  ;; touches every filtered row.
+  (let [filtered-query (cond-> {:select (into common-search-columns
                                               [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                                 :from   [(keyword (:table-name index))]}
-                         filters (assoc :where filters))
-        filtered-query {:select [:*]
-                        :from   [[with-distance :candidates]]
-                        :where  [:<= :distance max-cosine-distance]}]
+                         filters (assoc :where filters))]
     {:with     [[:vector_candidates filtered-query :materialized]]
      :select   (into common-search-columns
                      [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
                       [:distance :semantic_score]])
      :from     [:vector_candidates]
+     :where    [:<= :distance max-cosine-distance]
      :order-by [[:semantic_rank :asc]]
      :limit    (semantic-settings/semantic-search-results-limit)}))
 

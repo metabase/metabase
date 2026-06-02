@@ -35,9 +35,10 @@
   (testing ":brute-force applies the non-vector filters inside a MATERIALIZED CTE (filter-first, exact)"
     (let [sql (vector-search-sql :brute-force)]
       (is (str/includes? sql "AS MATERIALIZED"))
-      ;; filter lives inside the CTE, before distance is computed/ordered
+      ;; filter lives inside the CTE, alongside the distance computation
       (is (re-find #"AS MATERIALIZED \(SELECT.*\"archived\" = FALSE.*\)" sql))
-      ;; the (dominant) distance expression is computed exactly once -- the cutoff filters the alias
+      ;; the distance expression appears once -- it is computed and stored in the materialized CTE, and the
+      ;; outer query reads that column rather than recomputing it
       (is (= 1 (count (re-seq #"embedding <=>" sql))))
       ;; no pure-vector ORDER BY ... LIMIT that would trigger the HNSW index
       (is (not (re-find #"ORDER BY embedding <=>[^)]*LIMIT" sql)))))
