@@ -73,9 +73,9 @@
                  (u.password/is-valid? input))))))))
 
 (deftest default-password-complexity-config-test
-  (testing "When MB_PASSWORD_COMPLEXITY is unset, default is :strong-enough"
+  (testing "When MB_PASSWORD_COMPLEXITY is unset, default is :normal"
     (with-redefs [env/env (dissoc env/env :mb-password-complexity)]
-      (is (= :strong-enough (config/config-kw :mb-password-complexity))))))
+      (is (= :normal (config/config-kw :mb-password-complexity))))))
 
 (deftest is-valid?-weak-test
   (testing "Do some tests with password complexity requirements set to :weak.

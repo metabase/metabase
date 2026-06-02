@@ -54,7 +54,7 @@
    :mb-jetty-port                   "3000"
    :mb-jetty-join                   "true"
    ;; other application settings
-   :mb-password-complexity          "strong-enough"
+   :mb-password-complexity          "normal"
    :mb-version-info-url             "https://static.metabase.com/version-info.json"
    :mb-version-info-ee-url          "https://static.metabase.com/version-info-ee.json"
    :mb-ns-trace                     ""                      ; comma-separated namespaces to trace

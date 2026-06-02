@@ -2772,7 +2772,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 ### `MB_PASSWORD_COMPLEXITY`
 
 Type: string (`"weak"`, `"normal"`, `"strong"`, `"strong-enough"`)<br>
-Default: `"strong-enough"`
+Default: `"normal"`
 
 Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#mb_password_length)
 
