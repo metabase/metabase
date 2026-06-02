@@ -1473,6 +1473,12 @@
             (is (= 3 (count events))
                 "library, universe, and metabot totals re-emitted from the cached snapshot")
             (is (= "names_split" (get-in (first events) ["parameters" "text_variant"]))
-                "keyword :meta values survive the JSON round-trip into the emitted parameters")))
+                "keyword :meta values survive the JSON round-trip into the emitted parameters")
+            ;; Round-tripped :embedding-model flows through the recursive snake-keys walk. Its
+            ;; `:provider` value comes back as the string "ai-service", so it stays "ai-service" — a
+            ;; fresh in-memory `:ai-service` keyword would instead snake to "ai_service".
+            (is (= {"provider" "ai-service" "model_name" "minilm" "model_dimensions" 384}
+                   (get-in (first events) ["parameters" "embedding_model"]))
+                "nested :embedding-model survives the recursive snake-keys walk over round-tripped data")))
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
