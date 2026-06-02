@@ -149,6 +149,7 @@ export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
   debugMode: boolean;
+  overlayAgentId: MetabotAgentId | null;
 }
 
 export interface SlashCommand {

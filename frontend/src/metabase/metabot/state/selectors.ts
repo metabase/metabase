@@ -43,9 +43,17 @@ export const getNonExpandedChatAgentIds = createSelector(
       >
     )
       .filter(
-        ([id, convo]) => id.startsWith("chat_") && convo?.expanded === false,
+        ([id, convo]) =>
+          id.startsWith("chat_") &&
+          convo?.expanded === false &&
+          id !== state.overlayAgentId,
       )
       .map(([id]) => id),
+);
+
+export const getOverlayAgentId = createSelector(
+  getMetabotState,
+  (state) => state.overlayAgentId,
 );
 
 export const getVisibleAgentId = createSelector(

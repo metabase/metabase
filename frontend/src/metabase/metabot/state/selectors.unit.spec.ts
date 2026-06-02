@@ -4,9 +4,14 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 
-import { getMetabotInitialState } from "./reducer-utils";
+import { createConversation, getMetabotInitialState } from "./reducer-utils";
 
-import { type MetabotChatMessage, getUserPromptForMessageId } from "./index";
+import {
+  type MetabotChatMessage,
+  getNonExpandedChatAgentIds,
+  getOverlayAgentId,
+  getUserPromptForMessageId,
+} from "./index";
 
 function setup(messages: MetabotChatMessage[]): State {
   setupEnterprisePlugins();
@@ -63,6 +68,37 @@ describe("metabot selectors", () => {
         type: "text",
         message: "bleh bleh",
       });
+    });
+  });
+
+  describe("overlay selectors", () => {
+    const setupChats = (overlayAgentId: string | null): State => {
+      const base = getMetabotInitialState();
+      const withChats = {
+        ...base,
+        conversations: {
+          ...base.conversations,
+          chat_a: createConversation("chat_a"),
+          chat_b: createConversation("chat_b"),
+        },
+        overlayAgentId,
+      } as typeof base;
+      return createMockState({ metabot: withChats });
+    };
+
+    it("getOverlayAgentId returns the overlaid agent slot", () => {
+      expect(getOverlayAgentId(setupChats("chat_a"))).toBe("chat_a");
+      expect(getOverlayAgentId(setupChats(null))).toBeNull();
+    });
+
+    it("getNonExpandedChatAgentIds excludes the overlaid agent", () => {
+      expect(getNonExpandedChatAgentIds(setupChats(null))).toEqual([
+        "chat_a",
+        "chat_b",
+      ]);
+      expect(getNonExpandedChatAgentIds(setupChats("chat_a"))).toEqual([
+        "chat_b",
+      ]);
     });
   });
 });

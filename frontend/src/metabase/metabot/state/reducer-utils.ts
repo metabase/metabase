@@ -177,5 +177,6 @@ export const getMetabotInitialState = (): MetabotState => {
       suggestedTransforms: [],
     },
     debugMode: false,
+    overlayAgentId: null,
   };
 };

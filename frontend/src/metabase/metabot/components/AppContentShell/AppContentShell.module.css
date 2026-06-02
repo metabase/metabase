@@ -15,6 +15,19 @@
   gap: 0;
 }
 
+.shellExpanded {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.contentArea {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
 .content {
   flex: 1 1 auto;
   width: 100%;
@@ -24,6 +37,22 @@
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-background-primary);
+}
+
+.overlay {
+  position: absolute;
+  top: 8px;
+  right: -8px;
+  bottom: 0;
+  left: -8px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background-primary);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .contentBare {

@@ -8,6 +8,7 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { useDispatch } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   ActionIcon,
@@ -27,7 +28,11 @@ import {
   usePromptInputFocusEffect,
   useUserMetabotPermissions,
 } from "../../hooks";
-import { type MetabotAgentId, isChatAgentId } from "../../state";
+import {
+  type MetabotAgentId,
+  expandConversation,
+  isChatAgentId,
+} from "../../state";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
@@ -68,6 +73,7 @@ export const MetabotChat = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
+  const dispatch = useDispatch();
   const metabot = useMetabotAgent(agentId);
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
   usePromptInputFocusEffect(
@@ -101,8 +107,7 @@ export const MetabotChat = ({
 
   const canExpand = isChatAgentId(agentId);
   const handleExpand = () => {
-    // TODO: re-implement expanding a conversation into a full page
-    console.warn("TODO: expand conversation", agentId);
+    dispatch(expandConversation({ agentId }));
   };
 
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);

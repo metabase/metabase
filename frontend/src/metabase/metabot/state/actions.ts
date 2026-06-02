@@ -79,6 +79,7 @@ export const {
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   setExpanded,
+  setOverlayAgentId,
 } = metabot.actions;
 
 type HandledResponseError = {
@@ -148,6 +149,20 @@ export const setVisible =
     }
 
     dispatch(metabot.actions.setVisible(payload));
+  };
+
+export const expandConversation =
+  ({ agentId }: { agentId: MetabotAgentId }) =>
+  (dispatch: Dispatch) => {
+    dispatch(metabot.actions.setVisible({ agentId, visible: false }));
+    dispatch(metabot.actions.setOverlayAgentId({ agentId }));
+  };
+
+export const collapseConversation =
+  ({ agentId }: { agentId: MetabotAgentId }) =>
+  (dispatch: Dispatch) => {
+    dispatch(metabot.actions.setOverlayAgentId({ agentId: null }));
+    dispatch(metabot.actions.setVisible({ agentId, visible: true }));
   };
 
 export const executeSlashCommand = createAsyncThunk<
