@@ -11,8 +11,13 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { DatabaseId, Table } from "metabase-types/api";
+import {
+  type DatabaseId,
+  type Table,
+  isConcreteTableId,
+} from "metabase-types/api";
 
 import { RELOAD_INTERVAL } from "../../constants";
 
@@ -55,8 +60,16 @@ const getDatabaseId = (
 const getSchemaName = (props: TableBrowserContainerProps): string | undefined =>
   props.schemaName || props.params?.schemaName || undefined;
 
-export const getTableUrl = (table: Table): string =>
-  Urls.table({ id: table.id, name: table.display_name });
+export const getTableUrl = (table: Table, metadata?: Metadata): string => {
+  // The Saved Questions virtual database exposes cards as "tables" with virtual
+  // ids (e.g. card__17). Those have no /table/:slug route, so fall back to the
+  // ad-hoc question URL for them.
+  if (!isConcreteTableId(table.id)) {
+    const question = metadata?.table(table.id)?.newQuestion();
+    return question ? Urls.question(question) : "";
+  }
+  return Urls.table({ id: table.id, name: table.display_name });
+};
 
 export const TableBrowser = (props: TableBrowserContainerProps) => {
   const dbId = getDatabaseId(props, { includeVirtual: true });

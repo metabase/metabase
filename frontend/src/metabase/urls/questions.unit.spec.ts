@@ -73,12 +73,6 @@ describe("urls > questions", () => {
       expect(table({ id: 2 })).toBe("/table/2");
       expect(table({ id: 2, name: null })).toBe("/table/2");
     });
-
-    it("supports string (entity) ids", () => {
-      expect(table({ id: "card__1", name: "My Model" })).toBe(
-        "/table/card__1-my-model",
-      );
-    });
   });
 
   describe("newQuestion", () => {

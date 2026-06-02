@@ -107,7 +107,7 @@ export function getTableUrlForPristineQuestion(
     question.parameters().length === 0;
 
   return isPristine
-    ? Urls.table({ id: table.id, name: table.display_name })
+    ? Urls.table({ id: sourceTableId, name: table.display_name })
     : null;
 }
 

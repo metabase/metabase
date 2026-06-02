@@ -3,6 +3,7 @@ import { parse as parseUrl } from "url";
 import type { LocationDescriptor } from "history";
 import { push, replace } from "react-router-redux";
 
+import api from "metabase/api/legacy-client";
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
 import * as Lib from "metabase-lib";
@@ -95,7 +96,11 @@ export const updateUrl = createThunkAction(
       // pristine default view of that table, keep the canonical /table URL.
       // Any edit falls through to /question#hash and stays there — we don't
       // convert a /question entry point into /table.
-      const isOnTableRoute = window.location.pathname.startsWith("/table/");
+      // Compare against the basename-aware path so this still works under
+      // subpath deployments (e.g. /mb/table/...).
+      const isOnTableRoute = window.location.pathname.startsWith(
+        `${api.basename}/table/`,
+      );
       const tableUrl =
         isOnTableRoute && objectId == null && queryBuilderMode === "view"
           ? getTableUrlForPristineQuestion(question)

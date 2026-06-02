@@ -1,4 +1,5 @@
 import * as Urls from "metabase/urls";
+import { isConcreteTableId } from "metabase-types/api";
 
 import type { MetricUrls } from "./types";
 
@@ -9,5 +10,8 @@ export const metricUrls: MetricUrls = {
   dependencies: Urls.metricDependencies,
   history: Urls.metricHistory,
   database: (id) => Urls.browseDatabase({ id }),
-  table: (_databaseId, tableId) => Urls.table({ id: tableId }),
+  table: (databaseId, tableId) =>
+    isConcreteTableId(tableId)
+      ? Urls.table({ id: tableId })
+      : Urls.tableRowsQuery(databaseId, tableId),
 };
