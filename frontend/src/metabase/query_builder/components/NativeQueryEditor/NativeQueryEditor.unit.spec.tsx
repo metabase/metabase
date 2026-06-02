@@ -45,7 +45,6 @@ describe("NativeQueryEditor", () => {
         setDatasetQuery={jest.fn()}
         setIsNativeEditorOpen={setIsNativeEditorOpen}
         isInitiallyOpen={false}
-        hasTopBar={false}
       />,
       {
         storeInitialState: createMockState({

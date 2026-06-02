@@ -1,6 +1,4 @@
-import { Fragment, type ReactNode, forwardRef } from "react";
-
-import type { SidebarFeatures } from "metabase/querying/editor/types";
+import { type ReactNode, forwardRef } from "react";
 
 import {
   type NativeQueryEditorCoreProps,
@@ -14,19 +12,12 @@ import { VisibilityToggler } from "./slots/VisibilityToggler";
 
 type NativeQueryEditorProps = NativeQueryEditorCoreProps & {
   children?: ReactNode;
-  extraButton?: ReactNode;
-  hasEditingSidebar?: boolean;
-  hasParametersList?: boolean;
-  hasRunButton?: boolean;
-  hasTopBar?: boolean;
-  sidebarFeatures?: SidebarFeatures;
-  topBarInnerContent?: ReactNode;
 };
 
 /**
  * Native (SQL) query editor.
  *
- * Prefer the composition API, assembling only the parts you need:
+ * Assemble only the parts you need via the composition API:
  *
  *     <NativeQueryEditor question={question} query={query} setDatasetQuery={...}>
  *       <NativeQueryEditor.TopBar>
@@ -36,58 +27,14 @@ type NativeQueryEditorProps = NativeQueryEditorCoreProps & {
  *       </NativeQueryEditor.TopBar>
  *       <NativeQueryEditor.RunButton />
  *     </NativeQueryEditor>
- *
- * The legacy boolean-flag API (`hasTopBar`, `hasEditingSidebar`,
- * `hasParametersList`, `hasRunButton`, `sidebarFeatures`, `extraButton`,
- * `topBarInnerContent`) is still supported as a thin shim over the composition
- * internals and will be removed once all consumers have migrated. When
- * `children` are provided they take precedence and the legacy flags are ignored.
  */
 const NativeQueryEditorBase = forwardRef<
   HTMLDivElement,
   NativeQueryEditorProps
->(function NativeQueryEditor(props, ref) {
-  const {
-    children,
-    extraButton,
-    hasEditingSidebar = true,
-    hasParametersList,
-    hasRunButton = hasEditingSidebar,
-    hasTopBar = true,
-    sidebarFeatures,
-    topBarInnerContent,
-    ...coreProps
-  } = props;
-
-  if (children != null) {
-    return (
-      <NativeQueryEditorRoot {...coreProps} ref={ref}>
-        {children}
-      </NativeQueryEditorRoot>
-    );
-  }
-
-  const legacyChildren: ReactNode[] = [];
-  if (hasTopBar) {
-    legacyChildren.push(
-      <TopBar key="top-bar">
-        {hasParametersList !== false && <ParametersList />}
-        {topBarInnerContent}
-        {hasEditingSidebar && <Sidebar features={sidebarFeatures} />}
-        <VisibilityToggler />
-      </TopBar>,
-    );
-  }
-  if (extraButton != null) {
-    legacyChildren.push(<Fragment key="extra-button">{extraButton}</Fragment>);
-  }
-  if (hasRunButton) {
-    legacyChildren.push(<RunButton key="run-button" />);
-  }
-
+>(function NativeQueryEditor({ children, ...coreProps }, ref) {
   return (
     <NativeQueryEditorRoot {...coreProps} ref={ref}>
-      {legacyChildren}
+      {children}
     </NativeQueryEditorRoot>
   );
 });
