@@ -15,11 +15,23 @@ export {
 } from "./oss/auth";
 export {
   PLUGIN_CACHING,
+  PerformanceTabId,
+  defaultMinDurationMs,
+  doNotCacheStrategyValidationSchema,
+  getAdaptiveStrategyValidationSchema,
+  getPerformanceTabMetadata,
+  getPositiveIntegerSchema,
+  inheritStrategyValidationSchema,
+  isModelWithClearableCache,
+  strategies,
   type InvalidateNowButtonProps,
   type MetricCachingModalProps,
+  type ModelWithClearableCache,
   type SidebarCacheSectionProps,
   type SidebarCacheFormProps,
   type PreemptiveCachingSwitchProps,
+  type StrategyData,
+  type StrategyLabel,
 } from "./oss/caching";
 export {
   PLUGIN_COLLECTIONS,
