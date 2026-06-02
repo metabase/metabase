@@ -458,6 +458,26 @@ describe("getTreemapChartOption group header", () => {
     expect(series.levels?.[0]?.upperLabel).toMatchObject({ show: false });
   });
 
+  it("hides the group header at the overview when showParentLabels is false", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      showParentLabels: false,
+      renderingContext,
+    });
+
+    expect(series.levels?.[1]?.upperLabel).toMatchObject({ show: false });
+  });
+
+  it("shows the group header at the overview when showParentLabels is true (the default)", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      showParentLabels: true,
+      renderingContext,
+    });
+
+    expect(series.levels?.[1]?.upperLabel).toMatchObject({ show: true });
+  });
+
   it("hides the group header when drilled (the breadcrumb shows the group)", () => {
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,

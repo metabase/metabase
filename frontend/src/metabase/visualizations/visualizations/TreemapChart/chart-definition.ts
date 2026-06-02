@@ -79,6 +79,22 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     },
     readDependencies: ["treemap.grouping"],
   }),
+  "treemap.show_parent_labels": {
+    getSection: () => t`Display`,
+    get title() {
+      return t`Show parent labels`;
+    },
+    widget: "toggle",
+    default: true,
+    inline: true,
+    // The parent labels are the top-level group header chips, which only exist
+    // in a 2-level treemap — hide the setting until a sub-grouping is selected.
+    getHidden: (
+      _series: RawSeries,
+      vizSettings: ComputedVisualizationSettings,
+    ) => !vizSettings["treemap.sub_grouping"],
+    readDependencies: ["treemap.sub_grouping"],
+  },
 };
 
 export const TREEMAP_CHART_DEFINITION: VisualizationDefinition = {

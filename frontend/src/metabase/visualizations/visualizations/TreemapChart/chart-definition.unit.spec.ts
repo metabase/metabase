@@ -396,4 +396,28 @@ describe("TREEMAP_CHART_DEFINITION", () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe("treemap.show_parent_labels setting", () => {
+    const showParentLabelsSetting = checkNotNull(
+      TREEMAP_CHART_DEFINITION.settings?.["treemap.show_parent_labels"],
+    );
+
+    it("is a toggle in the Display section that defaults to true", () => {
+      expect(showParentLabelsSetting.widget).toBe("toggle");
+      expect(showParentLabelsSetting.default).toBe(true);
+      expect(showParentLabelsSetting.getSection?.()).toBe("Display");
+    });
+
+    it("is hidden when no sub-grouping is selected", () => {
+      const getHidden = checkNotNull(showParentLabelsSetting.getHidden);
+      expect(getHidden([], {}, {} as never)).toBe(true);
+    });
+
+    it("is visible once a sub-grouping is selected", () => {
+      const getHidden = checkNotNull(showParentLabelsSetting.getHidden);
+      expect(
+        getHidden([], { "treemap.sub_grouping": "SubCategory" }, {} as never),
+      ).toBe(false);
+    });
+  });
 });

@@ -359,6 +359,7 @@ export type VisualizationSettings = {
   "treemap.grouping"?: string;
   "treemap.sub_grouping"?: string;
   "treemap.value"?: string;
+  "treemap.show_parent_labels"?: boolean;
 
   // BoxPlot settings
   "boxplot.whisker_type"?: BoxPlotWhiskerType;

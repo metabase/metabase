@@ -50,12 +50,19 @@ export function getTreemapChartOption({
   tree,
   colors = getTreemapColors(tree),
   isDrilled = false,
+  showParentLabels = true,
   labelLayout = {},
   renderingContext,
 }: {
   tree: TreemapTree;
   colors?: Record<string, string>;
   isDrilled?: boolean;
+  /**
+   * Whether the top-level group header chips (the parent labels) render at the
+   * overview. Controlled by the `treemap.show_parent_labels` setting; only
+   * meaningful for a 2-level treemap (a 1-level tree has no group headers).
+   */
+  showParentLabels?: boolean;
   /**
    * Per-leaf label layout (show + wrap width), keyed by node id, measured from
    * the rendered tile after layout (see `model/labels.ts`). Takes precedence
@@ -83,7 +90,7 @@ export function getTreemapChartOption({
   // them. Reused for the emphasis (hover) state so the label doesn't shift —
   // ECharts' default `emphasis.upperLabel` drops our padding.
   const groupUpperLabel: NonNullable<TreemapChartSeriesOption["upperLabel"]> = {
-    show: !isDrilled,
+    show: showParentLabels && !isDrilled,
     height: 32,
     color: renderingContext.getColor("text-primary"),
     fontSize: 12,
