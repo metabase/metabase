@@ -31,7 +31,7 @@ export function MetricAccordionItem({
         <Flex align="center" gap="sm" miw={0}>
           <SourceColorIndicator
             colors={group.colors}
-            fallbackIcon="metric"
+            fallbackIcon={group.isExpressionToken ? undefined : "metric"}
             size={16}
           />
           <Text className={S.metricAccordionLabel} component="span">

@@ -16,6 +16,7 @@ import {
   buildDimensionPickerSidebarCategories,
   buildDimensionPickerSidebarCategorySelectRows,
   getAvailableDimensionsForPicker,
+  getComparableDimensionMapping,
   getExistingDimensionBreakoutDimensionIds,
 } from "./dimension-picker";
 
@@ -233,7 +234,7 @@ describe("getAvailableDimensionsForPicker", () => {
   it("filters out dimensions whose id matches existingDimensionBreakoutDimensionIds", () => {
     const allIds = REVENUE_DIMENSIONS.flatMap((dimension) =>
       Object.values(dimension.dimensionBreakoutInfo.dimensionMapping),
-    );
+    ).filter((id): id is string => id != null);
 
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
@@ -400,6 +401,263 @@ describe("buildDimensionPickerSidebarCategories", () => {
 
     expect(categories.map((category) => category.name)).toEqual(["Category"]);
   });
+
+  it("groups time fields across tables when every metric slot has one", () => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions: {
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              group: { id: "orders", type: "main", displayName: "Orders" },
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 0: "dim-orders-created-at" },
+              },
+            },
+          ],
+          [ORDERS_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              group: { id: "users", type: "main", displayName: "Users" },
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Birth Date",
+                dimensionMapping: { 1: "dim-users-birth-date" },
+              },
+            },
+          ],
+        },
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      metricSlots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+      ],
+    });
+
+    expect(categories).toEqual([
+      expect.objectContaining({
+        name: "Time",
+        dimensionBreakoutInfo: expect.objectContaining({
+          type: "time",
+          label: "Time",
+          dimensionMapping: {
+            0: "dim-orders-created-at",
+            1: "dim-users-birth-date",
+          },
+        }),
+      }),
+    ]);
+  });
+
+  it("groups country fields across tables when every metric slot has one", () => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions: {
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "location",
+              geoSubtype: "country",
+              group: { id: "products", type: "main", displayName: "Products" },
+              dimensionBreakoutInfo: {
+                type: "geo",
+                label: "Product Country",
+                dimensionMapping: { 0: "dim-product-country" },
+              },
+            },
+          ],
+          [ORDERS_SOURCE_ID]: [
+            {
+              icon: "location",
+              geoSubtype: "country",
+              group: { id: "users", type: "main", displayName: "Users" },
+              dimensionBreakoutInfo: {
+                type: "geo",
+                label: "User Country",
+                dimensionMapping: { 1: "dim-user-country" },
+              },
+            },
+          ],
+        },
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      metricSlots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+      ],
+    });
+
+    expect(categories).toEqual([
+      expect.objectContaining({
+        name: "Country",
+        targetItems: [
+          expect.objectContaining({ name: "Product Country" }),
+          expect.objectContaining({ name: "User Country" }),
+        ],
+        dimensionBreakoutInfo: expect.objectContaining({
+          type: "geo",
+          label: "Country",
+          dimensionMapping: {
+            0: "dim-product-country",
+            1: "dim-user-country",
+          },
+        }),
+      }),
+    ]);
+  });
+
+  it("does not show same-named category fields from different tables as shared", () => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions: {
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "label",
+              group: { id: "users", type: "main", displayName: "Users" },
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Name",
+                dimensionMapping: { 0: "dim-user-name" },
+              },
+            },
+          ],
+          [ORDERS_SOURCE_ID]: [
+            {
+              icon: "label",
+              group: { id: "products", type: "main", displayName: "Products" },
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Name",
+                dimensionMapping: { 1: "dim-product-name" },
+              },
+            },
+          ],
+        },
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      metricSlots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+      ],
+    });
+
+    expect(categories).toEqual([]);
+  });
+
+  it("shows exact same table and column category fields across all metrics", () => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions: {
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "label",
+              group: { id: "users", type: "main", displayName: "Users" },
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Name",
+                dimensionMapping: { 0: "dim-user-name" },
+              },
+            },
+          ],
+          [ORDERS_SOURCE_ID]: [
+            {
+              icon: "label",
+              group: { id: "users", type: "main", displayName: "Users" },
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Name",
+                dimensionMapping: { 1: "dim-user-name" },
+              },
+            },
+          ],
+        },
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      metricSlots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+      ],
+    });
+
+    expect(categories).toEqual([
+      expect.objectContaining({
+        name: "Name",
+        dimensionBreakoutInfo: expect.objectContaining({
+          type: "category",
+          label: "Name",
+          dimensionMapping: { 0: "dim-user-name", 1: "dim-user-name" },
+        }),
+      }),
+    ]);
+  });
+
+  it("hides categories that do not match every metric slot", () => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions: {
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 0: "dim-created-at" },
+              },
+            },
+          ],
+          [ORDERS_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Placed At",
+                dimensionMapping: { 1: "dim-placed-at" },
+              },
+            },
+          ],
+        },
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      metricSlots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+        { slotIndex: 2, entityIndex: 2, sourceId: "metric:4" },
+      ],
+    });
+
+    expect(categories).toEqual([]);
+  });
 });
 
 describe("buildDimensionPickerSidebarCategorySelectRows", () => {
@@ -477,6 +735,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
         sourceId: REVENUE_SOURCE_ID,
         metricName: "Revenue",
         colors: ["#509ee3"],
+        isExpressionToken: false,
         value: "dim-created-at",
         options: [
           { value: "dim-created-at", label: "Created At", icon: "calendar" },
@@ -488,6 +747,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
         sourceId: ORDERS_SOURCE_ID,
         metricName: "Orders",
         colors: ["#f9d45c"],
+        isExpressionToken: false,
         value: "dim-placed-at",
         options: [
           { value: "dim-placed-at", label: "Placed At", icon: "calendar" },
@@ -559,5 +819,594 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
       "Orders → Created At",
       "Products → Created At",
     ]);
+  });
+
+  it("marks expression token rows", () => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions: {
+        shared: [
+          {
+            icon: "calendar",
+            dimensionBreakoutInfo: {
+              type: "time",
+              label: "Time",
+              dimensionMapping: {
+                0: "dim-revenue-created-at",
+                1: "dim-orders-created-at",
+              },
+            },
+          },
+        ],
+        bySource: {},
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      metricSlots: [
+        {
+          slotIndex: 0,
+          entityIndex: 0,
+          sourceId: REVENUE_SOURCE_ID,
+          tokenPosition: 0,
+        },
+        {
+          slotIndex: 1,
+          entityIndex: 0,
+          sourceId: ORDERS_SOURCE_ID,
+          tokenPosition: 2,
+        },
+      ],
+    });
+    const timeCategory = categories.find(
+      (category) => category.name === "Time",
+    );
+
+    expect(timeCategory).toBeDefined();
+
+    const rows = buildDimensionPickerSidebarCategorySelectRows({
+      category: timeCategory!,
+      activeDimensionBreakout: {
+        id: "time",
+        type: "time",
+        label: "Time",
+        display: "line",
+        dimensionMapping: {
+          0: "dim-revenue-created-at",
+          1: "dim-orders-created-at",
+        },
+        projectionConfig: {},
+      },
+      metricSlots: [
+        {
+          slotIndex: 0,
+          entityIndex: 0,
+          sourceId: REVENUE_SOURCE_ID,
+          tokenPosition: 0,
+        },
+        {
+          slotIndex: 1,
+          entityIndex: 0,
+          sourceId: ORDERS_SOURCE_ID,
+          tokenPosition: 2,
+        },
+      ],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      sourceColors: { 0: ["#509ee3"] },
+    });
+
+    expect(rows.map((row) => row.isExpressionToken)).toEqual([true, true]);
+  });
+});
+
+describe("getComparableDimensionMapping", () => {
+  const metricSlots = [
+    { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+    { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+  ];
+  const activeDimensionBreakout = {
+    id: "active-dimension-breakout",
+    type: "time",
+    label: "Time",
+    display: "line",
+    dimensionMapping: {},
+    projectionConfig: {},
+  } satisfies MetricsViewerDimensionBreakoutState;
+
+  it("maps time fields across metric slots", () => {
+    const selectedItem = {
+      icon: "calendar",
+      name: "Birth Date",
+      group: { id: "users", type: "main", displayName: "Users" },
+      dimensionBreakoutInfo: {
+        type: "time" as const,
+        label: "Birth Date",
+        dimensionMapping: { 0: "dim-users-birth-date" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: { id: "orders", type: "main", displayName: "Orders" },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 1: "dim-orders-created-at" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({
+      0: "dim-users-birth-date",
+      1: "dim-orders-created-at",
+    });
+  });
+
+  it("prefers same-named time fields when multiple time fields are comparable", () => {
+    const selectedItem = {
+      icon: "calendar",
+      name: "Created At",
+      group: { id: "accounts", type: "main", displayName: "Accounts" },
+      dimensionBreakoutInfo: {
+        type: "time" as const,
+        label: "Created At",
+        dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Canceled At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Canceled At",
+                  dimensionMapping: { 0: "dim-revenue-accounts-canceled-at" },
+                },
+              },
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 0: "dim-revenue-accounts-created-at" },
+                },
+              },
+            ],
+            sourceId: REVENUE_SOURCE_ID,
+          },
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Canceled At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Canceled At",
+                  dimensionMapping: { 1: "dim-feedback-accounts-canceled-at" },
+                },
+              },
+              selectedItem,
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({
+      0: "dim-revenue-accounts-created-at",
+      1: "dim-feedback-accounts-created-at",
+    });
+  });
+
+  it("preserves another slot's compatible active time field", () => {
+    const selectedItem = {
+      icon: "calendar",
+      name: "Birth Date",
+      group: { id: "accounts", type: "main", displayName: "Accounts" },
+      dimensionBreakoutInfo: {
+        type: "time" as const,
+        label: "Birth Date",
+        dimensionMapping: { 0: "dim-revenue-accounts-birth-date" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          {
+            items: [
+              selectedItem,
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 0: "dim-revenue-accounts-created-at" },
+                },
+              },
+            ],
+            sourceId: REVENUE_SOURCE_ID,
+          },
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Canceled At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Canceled At",
+                  dimensionMapping: { 1: "dim-feedback-accounts-canceled-at" },
+                },
+              },
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout: {
+          ...activeDimensionBreakout,
+          dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
+        },
+      }),
+    ).toEqual({
+      0: "dim-revenue-accounts-birth-date",
+      1: "dim-feedback-accounts-created-at",
+    });
+  });
+
+  it("preserves another slot's compatible active time field over a same-named fallback", () => {
+    const selectedItem = {
+      icon: "calendar",
+      name: "Created At",
+      group: { id: "accounts", type: "main", displayName: "Accounts" },
+      dimensionBreakoutInfo: {
+        type: "time" as const,
+        label: "Created At",
+        dimensionMapping: { 1: "dim-feedback-accounts-created-at" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Birth Date",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Birth Date",
+                  dimensionMapping: { 0: "dim-revenue-accounts-birth-date" },
+                },
+              },
+              {
+                icon: "calendar",
+                name: "Created At",
+                group: {
+                  id: "accounts",
+                  type: "main",
+                  displayName: "Accounts",
+                },
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 0: "dim-revenue-accounts-created-at" },
+                },
+              },
+            ],
+            sourceId: REVENUE_SOURCE_ID,
+          },
+          {
+            items: [selectedItem],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout: {
+          ...activeDimensionBreakout,
+          dimensionMapping: { 0: "dim-revenue-accounts-birth-date" },
+        },
+      }),
+    ).toEqual({
+      0: "dim-revenue-accounts-birth-date",
+      1: "dim-feedback-accounts-created-at",
+    });
+  });
+
+  it("maps country fields across metric slots", () => {
+    const selectedItem = {
+      icon: "location",
+      name: "Product Country",
+      geoSubtype: "country" as const,
+      group: { id: "products", type: "main", displayName: "Products" },
+      dimensionBreakoutInfo: {
+        type: "geo" as const,
+        label: "Product Country",
+        dimensionMapping: { 0: "dim-product-country" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "location",
+                name: "User Country",
+                geoSubtype: "country",
+                group: { id: "users", type: "main", displayName: "Users" },
+                dimensionBreakoutInfo: {
+                  type: "geo",
+                  label: "User Country",
+                  dimensionMapping: { 1: "dim-user-country" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({
+      0: "dim-product-country",
+      1: "dim-user-country",
+    });
+  });
+
+  it("does not map same-named category fields from different tables", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Name",
+      group: { id: "users", type: "main", displayName: "Users" },
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Name",
+        dimensionMapping: { 0: "dim-user-name" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "label",
+                name: "Name",
+                group: {
+                  id: "products",
+                  type: "main",
+                  displayName: "Products",
+                },
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Name",
+                  dimensionMapping: { 1: "dim-product-name" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({ 0: "dim-user-name", 1: null });
+  });
+
+  it.each([
+    ["Address", "dim-revenue-user-address"],
+    ["Name", "dim-revenue-user-name"],
+  ])(
+    "does not preserve an incompatible active field when selecting %s",
+    (fieldName, fieldId) => {
+      const selectedItem = {
+        icon: "label",
+        name: fieldName,
+        group: { id: "users", type: "main", displayName: "Users" },
+        dimensionBreakoutInfo: {
+          type: "category" as const,
+          label: fieldName,
+          dimensionMapping: { 0: fieldId },
+        },
+      } as const;
+
+      expect(
+        getComparableDimensionMapping({
+          item: selectedItem,
+          sections: [
+            { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+            {
+              items: [
+                {
+                  icon: "label",
+                  name: "Email",
+                  group: {
+                    id: "accounts",
+                    type: "main",
+                    displayName: "Accounts",
+                  },
+                  dimensionBreakoutInfo: {
+                    type: "category",
+                    label: "Email",
+                    dimensionMapping: { 1: "dim-accounts-email" },
+                  },
+                },
+              ],
+              sourceId: ORDERS_SOURCE_ID,
+            },
+          ],
+          metricSlots,
+          activeDimensionBreakout: {
+            ...activeDimensionBreakout,
+            type: "category",
+            label: "Email",
+            display: "bar",
+            dimensionMapping: { 1: "dim-accounts-email" },
+          },
+        }),
+      ).toEqual({ 0: fieldId, 1: null });
+    },
+  );
+
+  it("does not map same-typed numeric fields from different tables", () => {
+    const selectedItem = {
+      icon: "int",
+      name: "Total",
+      group: { id: "orders", type: "main", displayName: "Orders" },
+      dimensionBreakoutInfo: {
+        type: "numeric" as const,
+        label: "Total",
+        dimensionMapping: { 0: "dim-orders-total" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "int",
+                name: "Price",
+                group: {
+                  id: "products",
+                  type: "main",
+                  displayName: "Products",
+                },
+                dimensionBreakoutInfo: {
+                  type: "numeric",
+                  label: "Price",
+                  dimensionMapping: { 1: "dim-products-price" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({ 0: "dim-orders-total", 1: null });
+  });
+
+  it("maps exact same table and column category fields across metric slots", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Name",
+      group: { id: "users", type: "main", displayName: "Users" },
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Name",
+        dimensionMapping: { 0: "dim-user-name" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "label",
+                name: "Name",
+                group: { id: "users", type: "main", displayName: "Users" },
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Name",
+                  dimensionMapping: { 1: "dim-user-name" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({ 0: "dim-user-name", 1: "dim-user-name" });
   });
 });

@@ -73,6 +73,10 @@ function getSourceSlotIndices(
   );
 }
 
+function getSlotIndices(slotIndex: number) {
+  return new Set([slotIndex]);
+}
+
 function scopeItemToSlotIndices(
   item: DimensionPickerItem,
   slotIndices: Set<number>,
@@ -98,11 +102,8 @@ function scopeItemToSlotIndices(
 
 function scopeSectionsToSource(
   sections: DimensionPickerSection[],
-  metricSlots: MetricSlot[],
-  sourceId: MetricSourceId,
+  slotIndices: Set<number>,
 ) {
-  const slotIndices = getSourceSlotIndices(metricSlots, sourceId);
-
   return sections
     .map((section) => ({
       ...section,
@@ -115,28 +116,62 @@ function scopeSectionsToSource(
 
 export function buildAllFieldsMetricGroups({
   sections,
-  sourceOrder,
   sourceDataById,
   metricSlots,
   sourceColors,
 }: {
   sections: DimensionPickerSection[];
-  sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   metricSlots: MetricSlot[];
   sourceColors: SourceColorMap;
 }): AllFieldsMetricGroup[] {
-  return sourceOrder
-    .map((sourceId) => {
-      const metricSlot = metricSlots.find((slot) => slot.sourceId === sourceId);
+  const hasRepeatedSources =
+    new Set(metricSlots.map((slot) => slot.sourceId)).size < metricSlots.length;
 
+  if (hasRepeatedSources) {
+    return metricSlots
+      .map((slot) => {
+        const matchingSections = sections.filter(
+          (section) =>
+            section.isShared ||
+            section.sourceId == null ||
+            section.sourceId === slot.sourceId,
+        );
+        const scopedSections = scopeSectionsToSource(
+          matchingSections,
+          getSlotIndices(slot.slotIndex),
+        );
+
+        return {
+          key: `${slot.slotIndex}:${slot.sourceId}`,
+          name: sourceDataById[slot.sourceId]?.name ?? slot.sourceId,
+          colors: sourceColors[slot.entityIndex],
+          isExpressionToken: slot.tokenPosition != null,
+          sections: mergeSectionsByName(scopedSections),
+        };
+      })
+      .filter((group) => group.sections.length > 0);
+  }
+
+  const uniqueSourceIds = [
+    ...new Set(metricSlots.map((slot) => slot.sourceId)),
+  ];
+
+  return uniqueSourceIds
+    .map((sourceId) => {
+      const sourceSlots = metricSlots.filter(
+        (slot) => slot.sourceId === sourceId,
+      );
+      const metricSlot = sourceSlots[0];
       const matchingSections = sections.filter(
-        (section) => section.isShared || section.sourceId === sourceId,
+        (section) =>
+          section.isShared ||
+          section.sourceId == null ||
+          section.sourceId === sourceId,
       );
       const scopedSections = scopeSectionsToSource(
         matchingSections,
-        metricSlots,
-        sourceId,
+        getSourceSlotIndices(metricSlots, sourceId),
       );
 
       return {
@@ -144,6 +179,9 @@ export function buildAllFieldsMetricGroups({
         name: sourceDataById[sourceId]?.name ?? sourceId,
         colors:
           metricSlot != null ? sourceColors[metricSlot.entityIndex] : undefined,
+        isExpressionToken: sourceSlots.every(
+          (slot) => slot.tokenPosition != null,
+        ),
         sections: mergeSectionsByName(scopedSections),
       };
     })

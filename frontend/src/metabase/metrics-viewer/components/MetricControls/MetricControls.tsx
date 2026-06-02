@@ -127,7 +127,7 @@ export function MetricControls({
   if (dimensionBreakoutType === "scalar") {
     return (
       <Box className={S.root} data-testid="metrics-viewer-controls">
-        <Flex className={S.centerCluster} align="center" gap="sm">
+        <Flex className={S.centerCluster}>
           <Flex className={S.centerControls} align="center">
             <ControlSection>
               <Button
@@ -168,7 +168,7 @@ export function MetricControls({
         )}
       </Flex>
       {(hasCenterControls || canToggleColumnLabels) && (
-        <Flex className={S.centerCluster} align="center" gap="sm">
+        <Box className={S.centerCluster}>
           {hasCenterControls && (
             <Flex className={S.centerControls} align="center">
               {hasFilterControls && projectionInfo.filterDimension && (
@@ -230,7 +230,7 @@ export function MetricControls({
             <Menu position="bottom-start" withinPortal>
               <Menu.Target>
                 <ActionIcon
-                  className={S.optionsButton}
+                  className={S.ellipsisMenuButton}
                   aria-label={t`Column label options`}
                   variant="subtle"
                 >
@@ -250,7 +250,7 @@ export function MetricControls({
               </Menu.Dropdown>
             </Menu>
           )}
-        </Flex>
+        </Box>
       )}
     </Box>
   );

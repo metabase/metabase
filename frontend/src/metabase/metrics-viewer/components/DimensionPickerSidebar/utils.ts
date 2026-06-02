@@ -8,6 +8,8 @@ import type {
   DimensionPickerSidebarCategory,
 } from "metabase/metrics-viewer/utils";
 
+import type { MetricSlot } from "../../utils/metric-slots";
+
 function getDimensionMappingEntries(
   dimensionBreakoutInfo:
     | DimensionBreakoutInfo
@@ -108,5 +110,29 @@ export function isCategorySelected(
     category.targetItems.some((item) =>
       hasSameDimensions(item, activeDimensionBreakout),
     )
+  );
+}
+
+export function hasMultipleMetricSources(metricSlots: MetricSlot[]) {
+  return new Set(metricSlots.map((slot) => slot.sourceId)).size > 1;
+}
+
+export function getDimensionBreakoutId(item: DimensionPickerItem) {
+  return Object.values(item.dimensionBreakoutInfo.dimensionMapping).find(
+    (dimensionId) => dimensionId != null,
+  );
+}
+
+export function isMatchingActiveDimensionBreakout(
+  item: DimensionPickerItem,
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState,
+) {
+  const dimensionBreakoutId = getDimensionBreakoutId(item);
+
+  return (
+    hasMatchingDimensions(item, activeDimensionBreakout) &&
+    item.dimensionBreakoutInfo.label === activeDimensionBreakout.label &&
+    (dimensionBreakoutId == null ||
+      dimensionBreakoutId === activeDimensionBreakout.id)
   );
 }

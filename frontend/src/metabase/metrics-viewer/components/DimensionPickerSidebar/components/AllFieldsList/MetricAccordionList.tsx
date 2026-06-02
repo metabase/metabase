@@ -1,9 +1,6 @@
 import { useState } from "react";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDimensionBreakoutState,
-} from "metabase/metrics-viewer/types";
+import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types";
 import type { DimensionPickerItem } from "metabase/metrics-viewer/utils";
 import { Stack } from "metabase/ui";
 
@@ -12,7 +9,7 @@ import type { AllFieldsMetricGroup } from "./types";
 
 type MetricAccordionListProps = {
   activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
-  defaultExpandedGroupKeys: MetricSourceId[];
+  defaultExpandedGroupKeys: string[];
   groups: AllFieldsMetricGroup[];
   onSelect: (item: DimensionPickerItem) => void;
 };
@@ -23,11 +20,11 @@ export function MetricAccordionList({
   groups,
   onSelect,
 }: MetricAccordionListProps) {
-  const [expandedGroupKeys, setExpandedGroupKeys] = useState<MetricSourceId[]>(
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<string[]>(
     defaultExpandedGroupKeys,
   );
 
-  const handleToggleAccordion = (sourceId: MetricSourceId) => {
+  const handleToggleAccordion = (sourceId: string) => {
     setExpandedGroupKeys((currentSourceIds) => {
       if (currentSourceIds.includes(sourceId)) {
         return currentSourceIds.filter(

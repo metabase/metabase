@@ -16,6 +16,7 @@ import { isCategorySelected } from "../utils";
 import { CategoryButton } from "./CategoryButton";
 import S from "./CategoryItem.module.css";
 import { MetricDimensionSelect } from "./MetricDimensionSelect";
+import { SingleMetricDimensionList } from "./SingleMetricDimensionList";
 
 export function CategoryItem({
   category,
@@ -47,32 +48,55 @@ export function CategoryItem({
     sourceDataById,
     sourceColors,
   });
+  const hasRedundantSingleOption = isRedundantSingleOption(categorySelectRows);
+  const canConfigure =
+    categorySelectRows.length > 0 && !hasRedundantSingleOption;
 
   return (
     <Box>
       <CategoryButton
         item={category}
         isSelected={isSelected}
-        canConfigure={categorySelectRows.length > 0}
+        canConfigure={canConfigure}
         isExpanded={isExpanded}
         onClick={onCategorySelect}
         onConfigure={onToggleCategorySettings}
       />
-      {isExpanded && categorySelectRows.length > 0 && (
+      {isExpanded && canConfigure && (
         <Stack className={S.categorySelectList} gap="xs">
-          {categorySelectRows.map((row) => (
-            <MetricDimensionSelect
-              key={row.slotIndex}
-              row={row}
+          {metricSlots.length === 1 ? (
+            <SingleMetricDimensionList
+              row={categorySelectRows[0]}
               onChange={(dimensionId) =>
-                onDimensionChange(row.slotIndex, dimensionId)
+                onDimensionChange(categorySelectRows[0].slotIndex, dimensionId)
               }
             />
-          ))}
+          ) : (
+            categorySelectRows.map((row) => (
+              <MetricDimensionSelect
+                key={row.slotIndex}
+                row={row}
+                onChange={(dimensionId) =>
+                  onDimensionChange(row.slotIndex, dimensionId)
+                }
+              />
+            ))
+          )}
         </Stack>
       )}
     </Box>
   );
+}
+
+function isRedundantSingleOption(
+  categorySelectRows: ReturnType<typeof getCategorySelectRows>,
+) {
+  if (categorySelectRows.length !== 1) {
+    return false;
+  }
+
+  const [row] = categorySelectRows;
+  return row.options.length === 1 && row.value === row.options[0].value;
 }
 
 function getCategorySelectRows({
