@@ -857,10 +857,6 @@
   (let [inner-query ((get-method sql.qp/preprocess :sql) :sql mbql5-query)]
     (postgres.pivot/merge-native-pivot-keys mbql5-query inner-query)))
 
-(defmethod sql.qp/preprocess :postgres-mbql5
-  [_driver mbql5-query]
-  ((get-method sql.qp/preprocess :sql-mbql5) :sql-mbql5 mbql5-query))
-
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
