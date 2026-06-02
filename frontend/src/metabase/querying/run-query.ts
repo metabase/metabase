@@ -1,3 +1,11 @@
+import { cardApi } from "metabase/api/card";
+import { dashboardApi } from "metabase/api/dashboard";
+import { datasetApi } from "metabase/api/dataset";
+import {
+  dispatchQueryEndpoint,
+  makePivotAwareQueryRunner,
+  shouldUsePivotEndpoint,
+} from "metabase/api/query-endpoints";
 import type { Dispatch } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -74,15 +82,6 @@ export async function runAdhocDatasetQuery(
   body: DatasetQuery & { parameters?: unknown[]; ignore_cache?: boolean },
   signal?: AbortSignal,
 ): Promise<Dataset> {
-  // Dynamic import to avoid a module-init cycle: the RTK api modules transitively
-  // pull in the redux store graph, which (far downstream) imports this module's
-  // consumers. Deferring resolution until call time means the cycle closes only
-  // after every module has finished initializing.
-  const [{ datasetApi }, { shouldUsePivotEndpoint, dispatchQueryEndpoint }] =
-    await Promise.all([
-      import("metabase/api/dataset"),
-      import("metabase/api/query-endpoints"),
-    ]);
   const isPivot = shouldUsePivotEndpoint(card, metadata);
   // Disambiguate the RTK cache key so two callers running the same MBQL
   // query get independent cache entries and abort signals. Without this,
@@ -118,13 +117,6 @@ async function runSavedCardQuery(
   }: SavedCardQueryOptions,
   signal?: AbortSignal,
 ): Promise<Dataset> {
-  const [{ makePivotAwareQueryRunner }, { cardApi }, { dashboardApi }] =
-    await Promise.all([
-      import("metabase/api/query-endpoints"),
-      import("metabase/api/card"),
-      import("metabase/api/dashboard"),
-    ]);
-
   const card = question.card();
   const metadata = question.metadata();
   const { dashboardId, dashcardId } = question.getDashboardProps();
