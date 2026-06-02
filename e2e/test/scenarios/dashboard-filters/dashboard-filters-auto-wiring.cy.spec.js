@@ -451,11 +451,10 @@ describe("dashboard filters auto-wiring", () => {
 
   describe("adding cards with foreign keys to the dashboard (metabase#36275)", () => {
     beforeEach(() => {
-      cy.intercept(
-        "POST",
-        "/api/dashboard/*/dashcard/*/card/*/query",
-        cy.spy().as("cardQueryRequest"),
-      ).as("cardQuery");
+      cy.intercept("POST", "/api/dashboard/*/card-query-batch").as(
+        "batchQuery",
+      );
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
       H.createQuestion({
         name: "Products Question",
@@ -526,7 +525,7 @@ describe("dashboard filters auto-wiring", () => {
         cy.button("Add filter").click();
       });
 
-      cy.wait("@cardQuery");
+      cy.wait("@batchQuery");
 
       H.getDashboardCard(0).within(() => {
         getTableCell("ID", 0).should("contain", "1");
@@ -576,7 +575,7 @@ describe("dashboard filters auto-wiring", () => {
         cy.button("Add filter").click();
       });
 
-      cy.wait("@cardQuery");
+      cy.wait("@batchQuery");
 
       H.getDashboardCard(0).within(() => {
         getTableCell("ID", 0).should("contain", "1");

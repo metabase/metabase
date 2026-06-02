@@ -389,7 +389,9 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
     beforeEach(() => {
       cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/*/card-query-batch*").as(
+        "cardQuery",
+      );
       cy.intercept("GET", "/api/embed/dashboard/**/search/*").as("searchQuery");
       H.restore("with-translations" as any);
     });
@@ -472,7 +474,9 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
       beforeEach(() => {
         cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
-        cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+        cy.intercept("GET", "/api/embed/dashboard/*/card-query-batch*").as(
+          "cardQuery",
+        );
         cy.intercept("GET", "/api/embed/dashboard/**/search/*").as(
           "searchQuery",
         );

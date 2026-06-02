@@ -566,9 +566,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
   });
 
   it("click behavior to custom destination should work (metabase#29517-2)", () => {
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
 
     H.visitDashboard("@dashboardId");
 

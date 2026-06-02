@@ -133,9 +133,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
     mockAuthProviderAndJwtSignIn();
 
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should allow external URL click behaviors in the SDK (EMB-878)", () => {

@@ -393,11 +393,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     const dashboardDetails = { parameters };
 
-    cy.intercept(
-      "POST",
-      "/api/dashboard/*/dashcard/*/card/*/query",
-      cy.spy().as("cardQueryRequest"),
-    ).as("cardQuery");
+    H.interceptDashboardCardRequests({ alias: "cardQuery" });
 
     cy.intercept(
       "GET",
@@ -447,7 +443,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.wait("@cardQuery");
     // Multiple filters shouldn't affect the number of card query requests (metabase#13150)
-    cy.get("@cardQueryRequest").should("have.been.calledOnce");
+    cy.get("@cardQuery.all").should("have.length", 1);
 
     // Open category dropdown
     H.filterWidget().contains("Widget").click();
@@ -622,11 +618,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       const { interceptor } = H.spyRequestFinished("dashcardRequestSpy");
 
-      cy.intercept(
-        "POST",
-        "/api/dashboard/*/dashcard/*/card/*/query",
-        interceptor,
-      );
+      cy.intercept("POST", "/api/dashboard/*/card-query-batch", interceptor);
     });
 
     it("should not fetch dashcard data when filter is disconnected", () => {
@@ -646,7 +638,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.saveDashboard();
 
-      cy.get("@dashcardRequestSpy").should("have.callCount", 2);
+      cy.get("@dashcardRequestSpy").should("have.callCount", 1);
     });
 
     it("should fetch dashcard data when parameter mapping is removed", () => {

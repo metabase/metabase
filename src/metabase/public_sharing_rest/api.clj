@@ -18,6 +18,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.core :as qp.core]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -101,8 +102,11 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-(defmulti ^:private transform-qp-result
-  "Transform results to be suitable for a public endpoint"
+(defmulti transform-qp-result
+  "Transform results to be suitable for a public endpoint. Used by the per-card public path's
+  `:make-run` and by the batch path's `:transform-result` to keep the same redaction policy on
+  both paths (e.g. dropping `:json_query`, redacting raw error text for non-show-in-embeds
+  error types)."
   {:arglists '([results])}
   :status)
 
@@ -308,6 +312,31 @@
       ;; dashboard in Metabase proper.)
       (binding [api/*current-user-id* nil]
         (m/mapply qp.dashboard/process-query-for-dashcard options)))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/dashboard/:uuid/card-query-batch"
+  "Run queries for multiple cards on a publicly-accessible Dashboard in a single request.
+   Results are streamed back as NDJSON. Does not require auth credentials. Public sharing must be enabled."
+  [{:keys [uuid]} :- [:map [:uuid ms/UUIDString]]
+   {:keys [parameters cards]} :- [:map
+                                  [:parameters {:optional true} [:maybe ms/JSONString]]
+                                  [:cards      {:optional true} [:maybe ms/JSONString]]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
+        cards-parsed (some-> cards json/decode+kw)
+        params       (cond-> parameters (string? parameters) json/decode+kw)]
+    (request/as-admin
+      (binding [api/*current-user-id* nil]
+        (qp.core/process-batch-queries
+         {:dashboard-id     dashboard-id
+          :parameters       params
+          :context          :public-dashboard
+          :cards            (some->> cards-parsed
+                                     (mapv (fn [{:keys [dashcard_id card_id]}]
+                                             {:dashcard-id dashcard_id :card-id card_id})))
+          ;; Sanitize per-card failure envelopes the same way the single-card public path does
+          ;; (drops `:json_query`, redacts raw error text unless `qp.error-type/show-in-embeds?`).
+          :transform-result transform-qp-result})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

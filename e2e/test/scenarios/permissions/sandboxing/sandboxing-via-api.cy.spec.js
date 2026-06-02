@@ -1123,7 +1123,8 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         H.assertTableRowsCount(11);
       });
       H.assertDatasetReqIsSandboxed({
-        requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
+        requestAlias: "@batchQuery",
+        dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
         columnId: ORDERS.USER_ID,
         columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
       });
@@ -1230,7 +1231,8 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         });
 
         H.assertDatasetReqIsSandboxed({
-          requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
+          requestAlias: "@batchQuery",
+          dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
           columnId: ORDERS.USER_ID,
           columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });

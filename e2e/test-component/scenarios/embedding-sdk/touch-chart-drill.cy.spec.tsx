@@ -86,9 +86,7 @@ describe("scenarios > embedding-sdk > touch chart drill popover", () => {
     mockAuthProviderAndJwtSignIn();
 
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   describe("touch device", () => {

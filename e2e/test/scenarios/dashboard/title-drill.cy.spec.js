@@ -248,10 +248,7 @@ describe("scenarios > dashboard > title drill", () => {
 
           H.editDashboardCard(dashboardCard, mapFiltersToCard);
 
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
-          ).as("cardQuery");
+          H.interceptDashboardCardRequests({ alias: "cardQuery" });
 
           H.visitDashboard(dashboard_id);
         },

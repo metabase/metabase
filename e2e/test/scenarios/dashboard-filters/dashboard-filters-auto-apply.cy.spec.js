@@ -513,15 +513,13 @@ const getParameterMapping = ({ card_id }, parameters) => ({
 });
 
 const openDashboard = (params = {}) => {
-  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-    "cardQuery",
-  );
+  H.interceptDashboardCardRequests({ alias: "cardQuery" });
 
   H.visitDashboard("@dashboardId", { params });
 };
 
 const openSlowPublicDashboard = (params = {}) => {
-  cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
+  cy.intercept("GET", "/api/public/dashboard/*/card-query-batch*").as(
     "cardQuery",
   );
 
@@ -533,7 +531,7 @@ const openSlowPublicDashboard = (params = {}) => {
 };
 
 const openSlowEmbeddingDashboard = (params = {}) => {
-  cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/card/*").as(
+  cy.intercept("GET", "/api/embed/dashboard/*/card-query-batch*").as(
     "cardQuery",
   );
 

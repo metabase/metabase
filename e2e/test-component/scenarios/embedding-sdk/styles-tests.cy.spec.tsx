@@ -477,9 +477,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         cy.signOut();
 
         cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-        cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-          "dashcardQuery",
-        );
+        H.interceptDashboardCardRequests();
       });
 
       it("should render legacy Popover with our styles", () => {

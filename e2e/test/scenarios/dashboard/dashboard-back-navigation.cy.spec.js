@@ -24,9 +24,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should display a back to the dashboard button when navigating to a question", () => {
@@ -245,9 +243,7 @@ describe(
       cy.signInAsAdmin();
       cy.intercept("GET", "/api/dashboard/*").as("dashboard");
       cy.intercept("GET", "/api/card/*").as("card");
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
+      H.interceptDashboardCardRequests();
     });
 
     it("should preserve filter value when navigating between the dashboard and the question without re-fetch", () => {

@@ -199,9 +199,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       mockAuthProviderAndJwtSignIn();
 
       cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
+      H.interceptDashboardCardRequests();
     });
 
     it("should pass parameters to the linked dashboard", () => {
@@ -671,9 +669,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       signInAsAdminAndEnableEmbeddingSdk();
 
       cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
+      H.interceptDashboardCardRequests();
     });
 
     it("should switch tab and pass parameters when click behavior points to a different tab on the same dashboard", () => {
@@ -1097,9 +1093,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       signInAsAdminAndEnableEmbeddingSdk();
 
       cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
+      H.interceptDashboardCardRequests();
     });
 
     it("should open the target dashboard on the requested tab", () => {

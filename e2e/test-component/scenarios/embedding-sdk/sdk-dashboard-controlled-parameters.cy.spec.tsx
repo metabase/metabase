@@ -74,9 +74,7 @@ const findDateFilterValue = () =>
 describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", () => {
   beforeEach(() => {
     setup();
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("forwards values pushed via the `parameters` prop to the dashcard query", () => {
