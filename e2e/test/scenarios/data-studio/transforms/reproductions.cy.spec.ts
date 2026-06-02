@@ -252,7 +252,9 @@ describe("issue GDGT-2365", { tags: ["@external", "@python"] }, () => {
     H.entityPickerModal().should("be.visible");
 
     cy.log("the search panel must not paint over the modal");
-    cy.findByTestId("python-editor").find(".cm-panels").should("not.be.visible");
+    cy.findByTestId("python-editor")
+      .find(".cm-panels")
+      .should("not.be.visible");
   });
 });
 
