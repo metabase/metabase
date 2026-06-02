@@ -174,8 +174,59 @@ describe("issue UXW-3160", () => {
   });
 });
 
+describe("issue GDGT-2365", { tags: ["@external", "@python"] }, () => {
+  const DB_NAME = "Writable Postgres12";
+
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
+    H.setPythonRunnerSettings();
+  });
+
+  it("should not render the editor search panel over the table picker modal (GDGT-2365)", () => {
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("Python script").click();
+
+    cy.log("select a database so the table picker becomes available");
+    cy.findByTestId("python-transform-top-bar").findByText(DB_NAME).click();
+    H.popover().findByText(DB_NAME).click();
+
+    cy.log("open the editor search panel with Cmd/Ctrl+F");
+    H.PythonEditor.focus();
+    cy.realPress([H.metaKey, "f"]);
+    cy.findByTestId("python-editor").find(".cm-panels").should("be.visible");
+
+    cy.log("open the table picker modal");
+    getPythonDataPicker().findByText("Select a table…").click();
+    H.entityPickerModal().should("be.visible");
+
+    cy.log("the search panel must paint below the modal, not over it");
+    H.entityPickerModal()
+      .findByRole("dialog")
+      .invoke("css", "z-index")
+      .then((modalZIndex) => {
+        cy.findByTestId("python-editor")
+          .find(".cm-panels")
+          .invoke("css", "z-index")
+          .then((panelZIndex) => {
+            expect(
+              Number(panelZIndex),
+              "search panel z-index stacks below the modal",
+            ).to.be.lessThan(Number(modalZIndex));
+          });
+      });
+  });
+});
+
 function visitTransformListPage() {
   return cy.visit("/data-studio/transforms");
+}
+
+function getPythonDataPicker() {
+  return cy.findByTestId("python-data-picker");
 }
 
 function getQueryEditor() {
