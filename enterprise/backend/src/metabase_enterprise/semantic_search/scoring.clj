@@ -69,13 +69,19 @@
      [:* [:cast keyword-weight :float]
       [:coalesce [:/ 1.0 [:+ k :keyword_rank]] 0]]]))
 
+(def ^:private cosine-distance-ceiling
+  "Largest possible pgvector cosine distance (`<=>`): `1 - cos(theta)` tops out at 2 for opposed vectors."
+  2.0)
+
 (defn- semantic-distance-score-expr
-  "Score a cosine `distance` expression (0 = identical) into [0, 1] where a distance of zero scores 1.
-  The single place to reshape the distance->score curve."
+  "Map a cosine `distance` (pgvector `<=>`, range [0, 2]) to a [0, 1] score.
+  Linear over the raw range: distance 0 scores 1, the maximum distance of 2 scores 0. This is the single place to
+  reshape the distance->score curve."
   [distance]
-  ;; TODO (Chris 2026-06-02) -- apply a non-linear curve here (e.g. exponential decay) to sharpen the falloff near
-  ;; the cutoff; linear is fine until we have relevance data to tune against.
-  [:- [:inline 1] distance])
+  ;; TODO (Chris 2026-06-02) -- consider rescaling against the retrieval cutoff (index/max-cosine-distance) so the
+  ;; [0, cutoff] band spans the full [0, 1], and/or a non-linear curve. For now keep the raw distance as transparent
+  ;; as possible.
+  [:- [:inline 1] [:/ distance [:inline cosine-distance-ceiling]]])
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
@@ -86,7 +92,7 @@
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf        rrf-rank-exp
      ;; Keyword-only hits have no vector distance, so treat them as maximally distant (score 0).
-     :semantic-distance (semantic-distance-score-expr [:coalesce :semantic_score [:inline 1]])
+     :semantic-distance (semantic-distance-score-expr [:coalesce :semantic_score [:inline cosine-distance-ceiling]])
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
      :recency    (search.scoring/inverse-duration
