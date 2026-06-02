@@ -42,7 +42,10 @@
     (conj "EmbeddingTheme")
 
     (not (:no-custom-viz-plugins opts))
-    (conj "CustomVizPlugin")))
+    (conj "CustomVizPlugin")
+
+    (not (:no-search-prompt-entities opts))
+    (conj "SearchPromptEntity")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"

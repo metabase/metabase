@@ -82,7 +82,19 @@
 (def legal-top-level-paths
   "Known top-level paths for directory with serialization output.
   We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
-  #{"actions" "channels" "collections" "custom_viz_plugins" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "snippets" "transforms"})
+  #{"actions"
+    "channels"
+    "collections"
+    "custom_viz_plugins"
+    "databases"
+    "embedding_themes"
+    "glossary"
+    "metabots"
+    "python_libraries"
+    "python-libraries"
+    "search_prompt_entities"
+    "snippets"
+    "transforms"})
 
 (defn- ingest-all
   "Returns {:entities {unlabeled-hierarchy [hierarchy File]}, :errors [Exception...]}.
