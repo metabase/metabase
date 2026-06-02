@@ -1087,6 +1087,98 @@
      :location      (:location coll)
      :description   (:description coll)}))
 
+;;; ------------------------------------------------- Update Glossary ------------------------------------------------
+
+(mr/def ::update-glossary-request
+  "Request body for `update_glossary`: a JSON object mapping each glossary term to its
+  definition. A non-blank string definition upserts the term (insert if new, replace the
+  definition if it already exists); an explicit `null` definition deletes the term.
+
+  Keys arrive keyword-ized by the JSON body middleware, so the key schema is `:keyword`; the
+  handler reconstructs the original term string (including any namespace-like `/`) via
+  `u/qualified-name`.
+
+  The value is `[:maybe :string]` rather than `[:maybe NonBlankString]` deliberately: a failed
+  value-level constraint inside a `:map-of` trips a Malli error-rendering limitation
+  (`malli.util/get-in` can't navigate map-of value paths) and surfaces as a 500. The handler
+  rejects blank definitions explicitly so the caller gets a clean 400 instead."
+  [:map-of :keyword [:maybe :string]])
+
+(mr/def ::update-glossary-response
+  "Returned by `update_glossary`. `:upserted` lists the terms created or updated; `:deleted`
+  lists the terms that existed and were removed (null definitions for unknown terms are no-ops
+  and are not reported)."
+  [:map
+   [:upserted [:sequential ms/NonBlankString]]
+   [:deleted  [:sequential ms/NonBlankString]]])
+
+(api.macros/defendpoint :post "/v1/glossary" :- ::update-glossary-response
+  "Bulk-update the Metabase glossary. Admin only.
+
+  The body is a JSON object mapping each glossary term to its definition. A string value
+  upserts the term (creating it if new, replacing its definition if it already exists). A
+  `null` value deletes the term. The whole batch is applied in a single transaction."
+  {:scope metabot/agent-glossary-write
+   :tool  {:name "update_glossary"
+           :description (str "Update the Metabase glossary (admin only). Pass a JSON object "
+                             "mapping each term to its definition, e.g. "
+                             "{\"MAU\": \"Monthly active users\", \"Churn\": \"...\"}. "
+                             "A string value creates or updates the term; a null value "
+                             "deletes it. Applied as a single transaction.")
+           ;; A null definition deletes the term, so this is genuinely destructive (the POST
+           ;; default is destructiveHint false).
+           :annotations {:destructive? true}}}
+  [_route-params
+   _query-params
+   body :- ::update-glossary-request]
+  ;; Glossary is an instance-wide admin resource. The `agent:glossary:write` scope only gates
+  ;; tool availability; this superuser check is the actual authorization gate.
+  (api/check-superuser)
+  (let [events* (atom [])
+        result  (t2/with-transaction [_conn]
+                  (reduce
+                   (fn [acc [k definition]]
+                     (let [term (u/qualified-name k)]
+                       (when (str/blank? term)
+                         (throw (ex-info "Glossary terms must be non-blank." {:status-code 400})))
+                       ;; A present-but-blank definition isn't a delete (only `null` is) and can't
+                       ;; be a valid upsert either, so reject it rather than persisting junk.
+                       (when (and (some? definition) (str/blank? definition))
+                         (throw (ex-info (str "Glossary definition for term " (pr-str term)
+                                              " must be non-blank or null.")
+                                         {:status-code 400})))
+                       (let [existing (t2/select-one :model/Glossary :term term)]
+                         (cond
+                           ;; null definition -> delete (no-op when the term doesn't exist)
+                           (nil? definition)
+                           (do (when existing
+                                 (t2/delete! :model/Glossary :id (:id existing))
+                                 (swap! events* conj [:event/glossary-delete {:object existing}]))
+                               (cond-> acc existing (update :deleted conj term)))
+
+                           ;; existing term -> update definition
+                           existing
+                           (do (t2/update! :model/Glossary (:id existing) {:definition definition})
+                               (swap! events* conj [:event/glossary-update
+                                                    {:object          (t2/select-one :model/Glossary :id (:id existing))
+                                                     :previous-object existing}])
+                               (update acc :upserted conj term))
+
+                           ;; new term -> insert
+                           :else
+                           (let [created (t2/insert-returning-instance! :model/Glossary
+                                                                        {:term       term
+                                                                         :definition definition
+                                                                         :creator_id api/*current-user-id*})]
+                             (swap! events* conj [:event/glossary-create {:object created}])
+                             (update acc :upserted conj term))))))
+                   {:upserted [] :deleted []}
+                   body))]
+    ;; Publish events after the transaction commits, mirroring the other write endpoints.
+    (doseq [[topic data] @events*]
+      (events/publish-event! topic (assoc data :user-id api/*current-user-id*)))
+    result))
+
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
 ;; The Agent API supports two authentication modes:

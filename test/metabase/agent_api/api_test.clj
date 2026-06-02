@@ -1001,3 +1001,100 @@
       (is (= 1 (count (:resources resp))))
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))
+
+;;; -------------------------------------------------- Update Glossary Tests --------------------------------------
+
+(defn- glossary-def
+  "Definition string for `term`, or nil if the term doesn't exist."
+  [term]
+  (t2/select-one-fn :definition :model/Glossary :term term))
+
+(deftest update-glossary-requires-admin-test
+  (testing "Non-admin callers are rejected with 403"
+    (mt/user-http-request :rasta :post 403 "agent/v1/glossary"
+                          {"MAU" "Monthly active users"})
+    (is (nil? (glossary-def "MAU")))))
+
+(deftest update-glossary-insert-test
+  (testing "String definitions for new terms insert them and report :upserted"
+    (try
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
+                                       {"MAU"   "Monthly active users"
+                                        "Churn" "Rate at which customers leave"})]
+        (is (=? {:upserted #(= #{"MAU" "Churn"} (set %))
+                 :deleted  empty?}
+                resp))
+        (is (= "Monthly active users" (glossary-def "MAU")))
+        (is (= "Rate at which customers leave" (glossary-def "Churn")))
+        ;; The creating admin is recorded as the creator.
+        (is (= (mt/user->id :crowberto)
+               (t2/select-one-fn :creator_id :model/Glossary :term "MAU"))))
+      (finally
+        (t2/delete! :model/Glossary :term [:in ["MAU" "Churn"]])))))
+
+(deftest update-glossary-update-existing-test
+  (testing "A string definition for an existing term replaces its definition without changing creator"
+    (mt/with-temp [:model/Glossary {:keys [id]} {:term       "ARR"
+                                                 :definition "Annual recurring revenue"
+                                                 :creator_id (mt/user->id :rasta)}]
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
+                                       {"ARR" "Annual recurring revenue (corrected)"})]
+        (is (=? {:upserted ["ARR"] :deleted empty?} resp))
+        (is (= "Annual recurring revenue (corrected)" (glossary-def "ARR")))
+        ;; Updating reuses the existing row, so the original creator is preserved.
+        (is (= (mt/user->id :rasta)
+               (t2/select-one-fn :creator_id :model/Glossary :id id)))))))
+
+(deftest update-glossary-delete-test
+  (testing "A null definition deletes an existing term"
+    (mt/with-temp [:model/Glossary _ {:term       "Bounce Rate"
+                                      :definition "Single-page sessions"
+                                      :creator_id (mt/user->id :crowberto)}]
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
+                                       {"Bounce Rate" nil})]
+        (is (=? {:upserted empty? :deleted ["Bounce Rate"]} resp))
+        (is (nil? (glossary-def "Bounce Rate")))))))
+
+(deftest update-glossary-delete-unknown-is-noop-test
+  (testing "A null definition for an unknown term is a no-op and is not reported as deleted"
+    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
+                                     {"Never Existed" nil})]
+      (is (=? {:upserted empty? :deleted empty?} resp)))))
+
+(deftest update-glossary-mixed-batch-test
+  (testing "A single batch can insert, update, and delete terms together"
+    (mt/with-temp [:model/Glossary _ {:term       "ToUpdate"
+                                      :definition "old"
+                                      :creator_id (mt/user->id :crowberto)}
+                   :model/Glossary _ {:term       "ToDelete"
+                                      :definition "doomed"
+                                      :creator_id (mt/user->id :crowberto)}]
+      (try
+        (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
+                                         {"ToInsert" "fresh"
+                                          "ToUpdate" "new"
+                                          "ToDelete" nil})]
+          (is (=? {:upserted #(= #{"ToInsert" "ToUpdate"} (set %))
+                   :deleted  ["ToDelete"]}
+                  resp))
+          (is (= "fresh" (glossary-def "ToInsert")))
+          (is (= "new" (glossary-def "ToUpdate")))
+          (is (nil? (glossary-def "ToDelete"))))
+        (finally
+          (t2/delete! :model/Glossary :term [:in ["ToInsert" "ToUpdate" "ToDelete"]]))))))
+
+(deftest update-glossary-preserves-slashes-in-terms-test
+  (testing "Terms containing '/' round-trip correctly despite key keyword-ization"
+    (try
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/glossary"
+                                       {"revenue/cost" "Revenue divided by cost"})]
+        (is (=? {:upserted ["revenue/cost"] :deleted empty?} resp))
+        (is (= "Revenue divided by cost" (glossary-def "revenue/cost"))))
+      (finally
+        (t2/delete! :model/Glossary :term "revenue/cost")))))
+
+(deftest update-glossary-rejects-blank-definition-test
+  (testing "A blank (non-null) definition is rejected by the request schema"
+    (mt/user-http-request :crowberto :post 400 "agent/v1/glossary"
+                          {"Blank" "   "})
+    (is (nil? (glossary-def "Blank")))))
