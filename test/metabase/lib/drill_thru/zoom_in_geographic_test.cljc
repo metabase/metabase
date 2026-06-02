@@ -473,11 +473,15 @@
                                        :column-ref (lib/ref col-longitude)
                                        :value      50.0}]}]
       (testing "for nil latitude"
-        (let [context (assoc-in base-context [:row 0 :value] nil)]
+        (let [context (-> base-context
+                          (assoc-in [:row 0 :value] nil)
+                          (assoc-in [:dimensions 0 :value] nil))]
           (is (nil? (m/find-first #(= (:type %) :drill-thru/zoom-in.geographic)
                                   (lib/available-drill-thrus query context))))))
       (testing "for nil longitude"
-        (let [context (assoc-in base-context [:row 1 :value] nil)]
+        (let [context (-> base-context
+                          (assoc-in [:row 1 :value] nil)
+                          (assoc-in [:dimensions 1 :value] nil))]
           (is (nil? (m/find-first #(= (:type %) :drill-thru/zoom-in.geographic)
                                   (lib/available-drill-thrus query context)))))))))
 
