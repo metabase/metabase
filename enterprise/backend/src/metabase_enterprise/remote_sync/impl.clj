@@ -368,70 +368,84 @@
                 (not (t2/exists? :model/RemoteSyncObject :model_type mt :model_id id))))
          (export-closure model-type model-id))))
 
+(defn- distinct-upsert-paths?
+  "True if no two upserts in `plan` target the same path. Two same-named new entities in one batch
+  could otherwise resolve to the same file and clobber each other."
+  [plan]
+  (let [paths (map :path (:upserts plan))]
+    (or (< (count paths) 2) (apply distinct? paths))))
+
 (defn- incremental-plan
   "Builds a plan for a safe incremental export of the current `dirty-rows`, or nil if any row can't be
   handled incrementally (caller falls back to the full export).
 
   Every row must be on an entity-id model and be one of:
-  - `update` — re-serialize the entity. If its path is unchanged (or its stored `file_path` matches),
-    it's an in-place overwrite; if the stored `file_path` differs, it's a rename, so we also delete
-    the old file. Either way the target path must not be occupied by a different entity.
+  - `create`/`update` — re-serialize the entity and upsert its file. A create, or an update whose path
+    is unchanged, is an overwrite-in-place; an update whose stored `file_path` differs is a rename, so
+    the old file is also deleted. The target path must be free or already hold this same entity, and
+    the change must not reference remote-sync content that isn't already in the repo (else a full
+    export, which pulls that dependency via `serdes/descendants`, is required).
   - `delete`/`removed` — delete the entity's stored `file_path`. Requires a stored `file_path`
     (after a fresh import none is recorded yet, so we fall back to a full export, which self-heals).
 
-  Returns {:upserts [file-spec] :delete-paths [path] :synced [{:id :file_path}] :removed-ids [id]}."
+  Returns {:upserts [file-spec] :delete-paths [path] :synced [{:id :file_path}] :removed-ids [id]},
+  or nil to signal a full export."
   [snapshot dirty-rows]
-  (let [opts (serdes/storage-base-context)]
-    (reduce
-     (fn [plan {:keys [status file_path] :as row}]
-       (cond
-         (not (entity-id-model? (:model_type row)))
-         (reduced nil)
+  (let [opts (serdes/storage-base-context)
+        plan (reduce
+              (fn [plan {:keys [status file_path] :as row}]
+                (cond
+                  (not (entity-id-model? (:model_type row)))
+                  (reduced nil)
 
-         (#{"removed" "delete"} status)
-         (if (str/blank? file_path)
-           (reduced nil)
-           (-> plan
-               (update :delete-paths conj file_path)
-               (update :removed-ids conj (:id row))))
+                  (#{"removed" "delete"} status)
+                  (if (str/blank? file_path)
+                    (reduced nil)
+                    (-> plan
+                        (update :delete-paths conj file_path)
+                        (update :removed-ids conj (:id row))))
 
-         ;; A change that references remote-sync content not yet in the repo would have it pulled
-         ;; by a full export but omitted by an incremental write -> fall back to full.
-         (and (= "update" status)
-              (unresolved-content-deps? (:model_type row) (:model_id row)))
-         (reduced nil)
+                  (#{"create" "update"} status)
+                  ;; A change that references remote-sync content not yet in the repo would have it
+                  ;; pulled by a full export but omitted by an incremental write -> fall back to full.
+                  (if (unresolved-content-deps? (:model_type row) (:model_id row))
+                    (reduced nil)
+                    (if-let [entity (extract-dirty-entity row)]
+                      (let [spec     (source/entity->file-spec opts entity)
+                            new-path (:path spec)
+                            eid      (:entity_id entity)
+                            synced!  #(-> % (update :upserts conj spec)
+                                          (update :synced conj {:id (:id row) :file_path new-path}))]
+                        (cond
+                          ;; create: brand-new file, no old path to delete. Target must be free or
+                          ;; already this entity (guards against a dedup name collision).
+                          (and (= "create" status)
+                               (path-free-for? snapshot new-path eid))
+                          (synced! plan)
 
-         (= "update" status)
-         (if-let [entity (extract-dirty-entity row)]
-           (let [spec     (source/entity->file-spec opts entity)
-                 new-path (:path spec)
-                 eid      (:entity_id entity)]
-             (cond
-               ;; in-place: stored path matches, or (no stored path) the repo file at new-path is
-               ;; already this entity — overwrite in place.
-               (or (= file_path new-path)
-                   (and (str/blank? file_path)
-                        (= eid (file-entity-id (source.p/read-file snapshot new-path)))))
-               (-> plan
-                   (update :upserts conj spec)
-                   (update :synced conj {:id (:id row) :file_path new-path}))
+                          ;; in-place update: at its stored path, or (no stored path) the repo file at
+                          ;; new-path is already this entity — overwrite.
+                          (and (= "update" status)
+                               (or (= file_path new-path)
+                                   (and (str/blank? file_path)
+                                        (= eid (file-entity-id (source.p/read-file snapshot new-path))))))
+                          (synced! plan)
 
-               ;; rename: stored path differs from the new path. Write the new file, delete the old
-               ;; one — provided the new path isn't occupied by a different entity.
-               (and (not (str/blank? file_path))
-                    (path-free-for? snapshot new-path eid))
-               (-> plan
-                   (update :upserts conj spec)
-                   (update :delete-paths conj file_path)
-                   (update :synced conj {:id (:id row) :file_path new-path}))
+                          ;; rename: an update whose known stored path differs from the new path.
+                          ;; Write the new file and delete the old one. (A rename with no stored path
+                          ;; can't be resolved, so it falls through to a full export.)
+                          (and (= "update" status) (not (str/blank? file_path)) (not= file_path new-path)
+                               (path-free-for? snapshot new-path eid))
+                          (-> (synced! plan) (update :delete-paths conj file_path))
 
-               :else (reduced nil)))
-           (reduced nil))
+                          :else (reduced nil)))
+                      (reduced nil)))
 
-         ;; create or any other status -> full export
-         :else (reduced nil)))
-     {:upserts [] :delete-paths [] :synced [] :removed-ids []}
-     dirty-rows)))
+                  :else (reduced nil)))
+              {:upserts [] :delete-paths [] :synced [] :removed-ids []}
+              dirty-rows)]
+    (when (and plan (distinct-upsert-paths? plan))
+      plan)))
 
 (defn- record-exported-paths!
   "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
@@ -459,7 +473,7 @@
     against any path that mutates the setting between scheduling and the work running).
 
   Takes the incremental fast-path when every pending change can be applied incrementally (see
-  `incremental-plan` — in-place updates, renames, and deletes of entity-id models). Otherwise does a
+  `incremental-plan` — creates, in-place updates, renames, and deletes of entity-id models). Otherwise does a
   full export: re-serializes the entire synced set, writes it, marks all RemoteSyncObject rows synced,
   and records each entity's `file_path` so future renames/deletes can go incremental.
 

@@ -191,31 +191,53 @@
         (is (= "write-files-version" (written-version task))
             "delete without a stored file_path falls back to full")))))
 
-(deftest create-falls-back-to-full-export-test
+(deftest create-uses-incremental-path-test
   (with-exported-collection!
     (fn [{:keys [mock coll-id]}]
       (mt/with-temp [:model/Card {card-c :id} {:name "Card C" :collection_id coll-id}]
         (seed-synced-row! "Card" card-c)
         (set-status! "Card" card-c "create")
-        (let [task   (new-task!)
-              result (impl/export! (source.p/snapshot mock) task "add card C")]
-          (is (= :success (:status result)))
-          (is (= "write-files-version" (written-version task))
-              "a create falls back to the full export"))))))
+        (let [files-before (files mock)
+              c-eid        (t2/select-one-fn :entity_id :model/Card :id card-c)
+              task         (new-task!)]
+          (impl/export! (source.p/snapshot mock) task "add card C")
+          (is (= "apply-changes-version" (written-version task)) "a create is incremental")
+          (is (entity-exported? mock c-eid) "the new card's file is written")
+          (is (some? (:file_path (rso "Card" card-c))) "file_path recorded for the new card")
+          (is (every? (fn [[p c]] (= c (get (files mock) p))) files-before)
+              "existing files are preserved unchanged")
+          (is (not (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))))))))
 
-(deftest mixed-batch-falls-back-to-full-export-test
+(deftest create-with-name-collision-falls-back-test
   (with-exported-collection!
-    (fn [{:keys [mock coll-id card-a]}]
-      (mt/with-temp [:model/Card {card-c :id} {:name "Card C" :collection_id coll-id}]
-        (t2/update! :model/Card card-a {:description "edit A"})
-        (set-status! "Card" card-a "update")
+    (fn [{:keys [mock coll-id]}]
+      ;; A new card whose name collides with an existing card resolves (in isolation) to the existing
+      ;; card's path. The safety check sees a different occupant and falls back to full, which dedups.
+      (mt/with-temp [:model/Card {card-c :id} {:name "Card A" :collection_id coll-id}]
         (seed-synced-row! "Card" card-c)
         (set-status! "Card" card-c "create")
         (let [task   (new-task!)
-              result (impl/export! (source.p/snapshot mock) task "mixed")]
+              result (impl/export! (source.p/snapshot mock) task "collision create")]
           (is (= :success (:status result)))
           (is (= "write-files-version" (written-version task))
-              "a single non-qualifying row forces the whole batch to full export"))))))
+              "a create whose path collides with a different entity falls back to full")
+          (is (entity-exported? mock (t2/select-one-fn :entity_id :model/Card :id card-c))
+              "the colliding new card is still exported (at a deduped path) by the full export"))))))
+
+(deftest mixed-batch-with-unhandled-row-falls-back-test
+  (with-exported-collection!
+    (fn [{:keys [mock card-a card-b]}]
+      ;; One incremental-able update batched with a delete that has no stored path (so it can't be
+      ;; handled incrementally) -> the whole batch falls back to a full export.
+      (t2/update! :model/Card card-a {:description "edit A"})
+      (set-status! "Card" card-a "update")
+      (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id card-b {:file_path nil})
+      (set-status! "Card" card-b "delete")
+      (let [task   (new-task!)
+            result (impl/export! (source.p/snapshot mock) task "mixed")]
+        (is (= :success (:status result)))
+        (is (= "write-files-version" (written-version task))
+            "a single non-incremental row forces the whole batch to full export")))))
 
 (deftest name-collision-backfill-falls-back-test
   (with-exported-collection!
