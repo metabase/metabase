@@ -29,11 +29,15 @@ For example, say you enable HTTPS redirect for a Metabase instance at the site U
 
 > Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
 
-## Custom homepage
+## Homepage
 
-Admins can pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
+Set what people see when they land on your Metabase. Choose between:
 
-To revert to the default Metabase homepage, simply toggle off Custom homepage.
+- **Default Metabase home**: The standard Metabase homepage.
+- **Dashboard**: Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
+- **Custom URL**: Send people to a specific URL (a collection, question, dashboard, or other page). Make sure people have access to the URL.
+
+> The **Custom URL** option is only available on Pro and Enterprise plans with whitelabeling enabled.
 
 ## Email address for help requests
 
