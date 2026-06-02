@@ -48,6 +48,7 @@ type CreateTransformModalProps = {
   targetDescription?: string;
   validateOnMount?: boolean;
   showIncrementalSettings?: boolean;
+  closeOnEscape?: boolean;
 };
 
 export function CreateTransformModal({
@@ -61,6 +62,7 @@ export function CreateTransformModal({
   targetDescription,
   validateOnMount,
   showIncrementalSettings,
+  closeOnEscape,
 }: CreateTransformModalProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -117,7 +119,13 @@ export function CreateTransformModal({
   };
 
   return (
-    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
+    <Modal
+      title={t`Save your transform`}
+      opened
+      padding="xl"
+      closeOnEscape={closeOnEscape}
+      onClose={onClose}
+    >
       <FormProvider
         initialValues={initialValues}
         validationSchema={validationSchema}
