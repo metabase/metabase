@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import {
+  trackExplorationAgentMessageSent,
+  trackExplorationPlanEdited,
+} from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
@@ -59,6 +63,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
   } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
 
   const handleSubmit = useCallback(() => {
+    trackExplorationAgentMessageSent();
     submitInput(prompt, {
       preventOpenSidebar: true,
       profile: "explorations",
@@ -72,6 +77,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       if (messages.length === 0) {
         return;
       }
+
+      trackExplorationPlanEdited("agent", "metrics");
 
       try {
         for (const message of messages) {
@@ -120,6 +127,9 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       if (messages.length === 0) {
         return;
       }
+
+      trackExplorationPlanEdited("agent", "timelines");
+
       try {
         const timelineIds = messages.flatMap((message) => {
           const parsed = JSON.parse(message.result) as {

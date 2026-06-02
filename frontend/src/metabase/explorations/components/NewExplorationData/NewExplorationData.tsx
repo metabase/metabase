@@ -4,6 +4,10 @@ import { t } from "ttag";
 
 import { useCreateExplorationMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import {
+  trackExplorationCreated,
+  trackExplorationPlanEdited,
+} from "metabase/explorations/analytics";
 import type {
   ExplorationNavigation,
   ExplorationSelection,
@@ -106,6 +110,7 @@ export function NewExplorationData({
     );
     try {
       const exploration = await createExploration(request).unwrap();
+      trackExplorationCreated(exploration.id);
       dispatch(push(Urls.exploration(exploration.id)));
     } catch (error) {
       console.error(error);
@@ -135,6 +140,7 @@ export function NewExplorationData({
 
   const handleRemoveMetric = useCallback(
     (id: number | string) => {
+      trackExplorationPlanEdited("manual", "metrics");
       const { metrics: nextMetrics, dimensions: nextDimensions } =
         removeMetricFromSelection(
           metrics,
@@ -151,6 +157,7 @@ export function NewExplorationData({
 
   const handleRemoveDimensionPill = useCallback(
     (pill: DimensionPillGroup) => {
+      trackExplorationPlanEdited("manual", "dimensions");
       const dimensionsToRemove = new Set(pill.dimensions.map((d) => d.id));
       setDimensions(
         dimensions.filter((dimension) => !dimensionsToRemove.has(dimension.id)),
@@ -161,6 +168,7 @@ export function NewExplorationData({
 
   const handleRemoveTimeline = useCallback(
     (id: number | string) => {
+      trackExplorationPlanEdited("manual", "timelines");
       const timeline = timelines.find((t) => t.id === id);
       if (timeline) {
         toggleTimeline(timeline);

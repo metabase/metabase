@@ -16,6 +16,11 @@ import type {
 } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import {
+  trackExplorationAISummaryOpened,
+  trackExplorationStopped,
+  trackExplorationVisualizationChanged,
+} from "metabase/explorations/analytics";
+import {
   EXPLORATION_NAME_MAX_LENGTH,
   QUERY_INTERESTINGNESS_SCORE_THRESHOLD,
 } from "metabase/explorations/constants";
@@ -142,6 +147,11 @@ export function ExplorationSidebar({
         } else if (nextItem.data.type === "document") {
           setSelectedEntityId({ type: "document", id: nextItem.data.id });
         }
+        if (nextItem.data.type === "group") {
+          trackExplorationVisualizationChanged(exploration.id, "keyboard");
+        } else if (nextItem.data.isAiSummary) {
+          trackExplorationAISummaryOpened(exploration.id);
+        }
         event.preventDefault();
         pendingKeyboardSelectionRef.current = true;
         // prefetch the following item
@@ -174,18 +184,20 @@ export function ExplorationSidebar({
     setSelectedEntityId,
     handlePrefetch,
     collapse,
+    exploration.id,
   ]);
 
   const TreeNode = useCallback(
     (props: TreeNodeProps<ExplorationTreeNode>) => (
       <ExplorationTreeNode
         {...props}
+        explorationId={exploration.id}
         handlePrefetch={handlePrefetch}
         pendingKeyboardSelectionRef={pendingKeyboardSelectionRef}
         getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       />
     ),
-    [handlePrefetch, getSelectedEntityIdUrl],
+    [exploration.id, handlePrefetch, getSelectedEntityIdUrl],
   );
 
   return (
@@ -216,6 +228,7 @@ export function ExplorationSidebar({
 }
 
 interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
+  explorationId: ExplorationId;
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
   pendingKeyboardSelectionRef: React.MutableRefObject<boolean>;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
@@ -284,7 +297,9 @@ function ExplorationThreadMenu({
         sendToast({
           message: t`Failed to stop`,
         });
+        return;
       }
+      trackExplorationStopped(explorationId);
     },
     [cancelThread, sendToast],
   );
@@ -345,6 +360,7 @@ function ExplorationTreeItem({
   item,
   isSelected,
   depth,
+  explorationId,
   handlePrefetch,
   pendingKeyboardSelectionRef,
   getSelectedEntityIdUrl,
@@ -359,6 +375,16 @@ function ExplorationTreeItem({
       pendingKeyboardSelectionRef.current = false;
     }
   }, [isSelected, pendingKeyboardSelectionRef]);
+
+  const handleClick = useCallback(() => {
+    if (!isSelected) {
+      if (item.data?.type === "group") {
+        trackExplorationVisualizationChanged(explorationId, "click");
+      } else if (item.data?.isAiSummary) {
+        trackExplorationAISummaryOpened(explorationId);
+      }
+    }
+  }, [isSelected, item.data, explorationId]);
 
   if (!item.data) {
     return null;
@@ -382,6 +408,7 @@ function ExplorationTreeItem({
         [S.treeRowSelected]: isSelected,
       })}
       onMouseEnter={() => handlePrefetch(item)}
+      onClick={handleClick}
       style={{ marginLeft: depth * 16 }}
     >
       <ExplorationTreeItemIcon

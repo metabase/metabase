@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useGetExplorationDataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { Box, Icon, Stack, TextInput } from "metabase/ui";
@@ -123,12 +124,13 @@ export function BrowseDimensionsPanel({
           <DimensionList
             dimensions={groupRows}
             isSelected={isSelected}
-            onToggle={(dimension) =>
+            onToggle={(dimension) => {
+              trackExplorationPlanEdited("manual", "dimensions");
               toggleDimension(dimension, {
                 group: groupByRowId.get(dimension.id) ?? null,
                 metricsByDimension,
-              })
-            }
+              });
+            }}
           />
         </LoadingAndErrorWrapper>
       </Box>

@@ -86,6 +86,8 @@ describe("scenarios > explorations > new research > manual flow", () => {
     cy.signInAsAdmin();
     H.enableExplorations();
     seedMetrics();
+    H.resetSnowplow();
+    H.enableTracking();
     // Match by pathname so the alias fires for both the initial
     // mount request AND debounced search refetches like
     // `/api/exploration/dimensions?q=over%20time` (the string-form
@@ -94,6 +96,10 @@ describe("scenarios > explorations > new research > manual flow", () => {
       method: "GET",
       pathname: "/api/exploration/dimensions",
     }).as("getDimensions");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("renders the empty research-mode landing with a disabled CTA", () => {
@@ -158,6 +164,16 @@ describe("scenarios > explorations > new research > manual flow", () => {
       .should("be.visible");
 
     H.beginResearch().then((id) => {
+      H.expectUnstructuredSnowplowEvent({
+        event: "exploration_plan_edited",
+        triggered_from: "manual",
+        event_detail: "metrics",
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "exploration_created",
+        target_id: id,
+      });
+
       // Detail page (`/question/research/:id`) renders. The BE
       // defaults `name` to "New exploration" when the user hasn't
       // set one — see `buildCreateExplorationRequest` in
@@ -273,6 +289,23 @@ describe("scenarios > explorations > new research > manual flow", () => {
               marketingId,
             ]);
             const id = response?.body?.id as number;
+            H.expectUnstructuredSnowplowEvent({
+              event: "exploration_plan_edited",
+              triggered_from: "manual",
+              event_detail: "metrics",
+            });
+            H.expectUnstructuredSnowplowEvent(
+              {
+                event: "exploration_plan_edited",
+                triggered_from: "manual",
+                event_detail: "timelines",
+              },
+              2,
+            );
+            H.expectUnstructuredSnowplowEvent({
+              event: "exploration_created",
+              target_id: id,
+            });
             cy.url().should("include", `/question/research/${id}`);
           });
         },
@@ -287,10 +320,16 @@ describe("scenarios > explorations > new research > metabot flow", () => {
     cy.signInAsAdmin();
     H.enableExplorations();
     seedMetrics();
+    H.resetSnowplow();
+    H.enableTracking();
     cy.intercept({
       method: "GET",
       pathname: "/api/exploration/dimensions",
     }).as("getDimensions");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("auto-populates metrics + dimensions + name from agent tool calls, then Begin research succeeds", () => {
@@ -359,8 +398,21 @@ describe("scenarios > explorations > new research > metabot flow", () => {
       // should carry the name the agent picked.
       cy.intercept("POST", "/api/exploration").as("createExploration");
       cy.findByRole("button", { name: /Begin research/i }).click();
-      cy.wait("@createExploration").then(({ request }) => {
+      cy.wait("@createExploration").then(({ request, response }) => {
         expect(request.body.name).to.eq(agentName);
+        const id = response?.body?.id as number;
+        H.expectUnstructuredSnowplowEvent({
+          event: "exploration_agent_message_sent",
+        });
+        H.expectUnstructuredSnowplowEvent({
+          event: "exploration_plan_edited",
+          triggered_from: "agent",
+          event_detail: "metrics",
+        });
+        H.expectUnstructuredSnowplowEvent({
+          event: "exploration_created",
+          target_id: id,
+        });
       });
     });
   });
@@ -372,6 +424,12 @@ describe("scenarios > explorations > detail page", () => {
     cy.signInAsAdmin();
     H.enableExplorations();
     seedMetrics();
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("auto-selects a sidebar entity on first load and toggles via ArrowRight/ArrowLeft", () => {
@@ -415,6 +473,11 @@ describe("scenarios > explorations > detail page", () => {
 
         cy.get("body").type("{leftarrow}");
         readSelectedText().should("eq", initialText);
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "exploration_visualization_changed",
+          triggered_from: "keyboard",
+        });
       });
     });
   });
@@ -826,6 +889,11 @@ describe("scenarios > explorations > detail page", () => {
         // editor mounted, so the new text appears in place of
         // the BE placeholder copy.
         cy.findByText(FINISHED_TEXT).should("be.visible");
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "exploration_ai_summary_opened",
+          target_id: id,
+        });
       });
     });
   });
@@ -918,6 +986,12 @@ describe("scenarios > explorations > collection placement + archive", () => {
     cy.signInAsAdmin();
     H.enableExplorations();
     seedMetrics();
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("places a newly-created exploration in the creator's personal collection and lets the user move it to trash from there", () => {

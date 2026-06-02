@@ -128,6 +128,7 @@ function setup({
 
   return renderWithProviders(
     <ExplorationGroupVisualization
+      explorationId={1}
       group={{ ...group, query_ids: queries.map((q) => q.id) }}
       queries={queries}
       explorationThread={thread}

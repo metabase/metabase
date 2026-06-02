@@ -1,5 +1,6 @@
 import { Group, Text } from "metabase/ui";
 import type {
+  ExplorationId,
   ExplorationQuery,
   ExplorationThread,
   Timeline,
@@ -12,6 +13,7 @@ import type { ExplorationChartForDocumentEmbed } from "./utils";
 
 interface ExplorationVisualizationHeaderProps {
   name: string;
+  explorationId?: ExplorationId;
   explorationQuery?: ExplorationQuery;
   explorationThread?: ExplorationThread;
   availableTimelines?: Timeline[];
@@ -25,6 +27,7 @@ interface ExplorationVisualizationHeaderProps {
 
 export function ExplorationVisualizationHeader({
   name,
+  explorationId,
   explorationThread,
   availableTimelines,
   selectedTimelineId,
@@ -50,8 +53,10 @@ export function ExplorationVisualizationHeader({
           availableTimelines &&
           availableTimelines.length > 0 &&
           selectedTimelineId !== undefined &&
-          onSelectTimelineId && (
+          onSelectTimelineId &&
+          explorationId != null && (
             <TimelineDropdown
+              explorationId={explorationId}
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={onSelectTimelineId}

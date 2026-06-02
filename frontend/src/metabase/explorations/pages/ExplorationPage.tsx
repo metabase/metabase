@@ -25,6 +25,7 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
+import { trackExplorationAISummaryOpened } from "../analytics";
 import {
   ExplorationDocument as ExplorationDocumentComponent,
   type ExplorationDocumentWithIsAiSummary,
@@ -237,8 +238,10 @@ export function ExplorationPage({
           ? {}
           : {
               actionLabel: t`View`,
-              action: () =>
-                setSelectedEntityId({ type: "document", id: autoDoc.id }),
+              action: () => {
+                trackExplorationAISummaryOpened(exploration.id);
+                setSelectedEntityId({ type: "document", id: autoDoc.id });
+              },
             }),
       });
     }
@@ -411,6 +414,7 @@ export function ExplorationPage({
           // the lifetime of a single mount; remounting on group switch
           // guarantees that.
           key={selectedGroup.group.id}
+          explorationId={exploration.id}
           group={selectedGroup.group}
           queries={selectedGroup.queries}
           explorationThread={selectedGroup.thread}

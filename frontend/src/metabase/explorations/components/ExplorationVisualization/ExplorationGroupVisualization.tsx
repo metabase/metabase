@@ -9,6 +9,7 @@ import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import type {
+  ExplorationId,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationThread,
@@ -25,6 +26,7 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
 import { buildSeriesGroups } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
+  explorationId: ExplorationId;
   group: ExplorationQueryGroup;
   queries: ExplorationQuery[];
   explorationThread: ExplorationThread;
@@ -144,6 +146,7 @@ function ExplorationGroupVisualizationBody(
 }
 
 function ExplorationGroupVisualizationChart({
+  explorationId,
   group,
   queries,
   explorationThread,
@@ -213,6 +216,7 @@ function ExplorationGroupVisualizationChart({
     <>
       <ExplorationVisualizationHeader
         name={groupName}
+        explorationId={explorationId}
         explorationThread={explorationThread}
         availableTimelines={availableTimelines}
         selectedTimelineId={selectedTimelineId}
