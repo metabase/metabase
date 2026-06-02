@@ -121,6 +121,28 @@
      []
      (str/split (sanitize text) #" "))))
 
+(defn- text-width
+  [^PDType1Font font font-pt ^String s]
+  (* font-pt (/ (.getStringWidth font s) 1000.0)))
+
+(defn- wrap-clamped
+  "Wrap text to at most `max-lines` lines. If it would need more, truncate the last kept line
+  and append an ellipsis (trimming characters until `line...` fits `max-w`)."
+  [^PDType1Font font font-pt text max-w max-lines]
+  (let [lines (wrap-text font font-pt text max-w)]
+    (cond
+      (<= max-lines 0)          []
+      (<= (count lines) max-lines) lines
+      :else
+      (let [kept     (vec (take max-lines lines))
+            ellipsis "..."
+            fitted   (loop [s (peek kept)]
+                       (cond
+                         (str/blank? s)                                      ellipsis
+                         (<= (text-width font font-pt (str s ellipsis)) max-w) (str s ellipsis)
+                         :else                                               (recur (subs s 0 (dec (count s))))))]
+        (conj (pop kept) fitted)))))
+
 (defn- draw-line!
   "Draw a single pre-sanitized line of text at a baseline."
   [^PDPageContentStream cs ^PDType1Font font font-pt x baseline-y ^String text]
@@ -129,6 +151,16 @@
   (.newLineAtOffset cs (float x) (float baseline-y))
   (.showText cs text)
   (.endText cs))
+
+(defn- draw-lines!
+  "Draw a seq of already-wrapped lines top-down from `top-y`, optionally in `color`."
+  [^PDPageContentStream cs ^PDType1Font font font-pt ^Color color x top-y lines]
+  (when color (.setNonStrokingColor cs color))
+  (loop [ls lines, y (- (double top-y) font-pt)]
+    (when (seq ls)
+      (draw-line! cs font font-pt x y (first ls))
+      (recur (rest ls) (- y (* font-pt line-height-factor)))))
+  (when color (.setNonStrokingColor cs Color/BLACK)))
 
 (defn- draw-text-block!
   "Draw wrapped text top-aligned within `[x, top-y]` bounded by `max-w`/`max-h`, optionally in
@@ -229,13 +261,14 @@
 ;; Drawing
 ;; --------------------------------------------------------------------------------------------
 
-(defn- card-png
-  "Rasterize a whole `:card` part (title + description + chart/table) to PNG bytes, like the
-  email. Used as the fallback for card types that can't fill an arbitrary box."
+(defn- card-body-png
+  "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or
+  description -- those are drawn natively at the PDF level. Used for card types that can't fill
+  an arbitrary box (pie, gauge, funnel, progress, scalar, table, ...); fit preserving aspect."
   ^bytes [timezone {:keys [card dashcard result]} px-width]
   (-> (render.card/render-pulse-card :inline timezone card dashcard result
-                                     {:channel.render/include-title?       true
-                                      :channel.render/include-description? true})
+                                     {:channel.render/include-title?       false
+                                      :channel.render/include-description? false})
       (render.card/png-from-render-info px-width)))
 
 (defn- draw-image-in-cell!
@@ -265,10 +298,11 @@
        (cons {:card card :data data})
        (m/distinct-by #(get-in % [:card :id]))))
 
-(defn- rectangular-chart-png
-  "Render a rectangular (ECharts/visx) chart to a PNG of exactly `w-px` x `h-px`, telling
-  static-viz to lay the chart out into that box (so it fills it the way the frontend does).
-  Returns nil if the chart doesn't produce an SVG."
+(defn- sized-chart-png
+  "Render an isomorphic chart to a PNG of exactly `w-px` x `h-px`, telling static-viz to lay the
+  chart out into that box (so it fills it the way the frontend does). Used for rectangular
+  charts and for square/wide pies (which then place their legend to the side). Returns nil if
+  the chart doesn't produce an SVG."
   ^bytes [card dashcard data w-px h-px]
   (binding [js.svg/*chart-size* {:width w-px :height h-px}]
     (let [viz (or (:visualization_settings dashcard) (:visualization_settings card))
@@ -287,28 +321,43 @@
       (* (min lines (max 0 fit)) lh))))
 
 (defn- render-card-cell!
-  "Render a chart/query card into its cell rectangle. Rectangular (ECharts/visx) charts get a
-  native title/description and a chart image rendered to exactly fill the rest of the cell (so
-  it matches the frontend). Other types fall back to a whole-card PNG fit preserving aspect."
+  "Render a chart/query card into its cell rectangle. The title and description are always drawn
+  natively at the PDF level (crisp text), and the space they consume is reserved before the body
+  is rendered. Rectangular (ECharts/visx) charts are then rendered to exactly fill the remaining
+  body area (matching the frontend); other types render their body title-less and fit preserving
+  aspect into the body area."
   [^PDDocument doc ^PDPageContentStream cs timezone {:keys [card dashcard] :as part} x top-y cell-w cell-h]
-  (let [data    (get-in part [:result :data])
-        title   (card-title card dashcard)
-        desc    (card-description card dashcard)
-        fill?   (contains? rectangular-displays (keyword (:display card)))
-        th      (when fill? (text-block-height (bold-font) chart-title-pt cell-w (* 0.5 cell-h) title))
-        dh      (when fill? (text-block-height (regular-font) chart-desc-pt cell-w (* 0.35 cell-h) desc))
-        header  (when fill? (+ th dh (if (or (pos? th) (pos? dh)) 4.0 0.0)))
-        chart-h (when fill? (- cell-h header))
-        png     (when (and fill? (> chart-h 16.0))
-                  (rectangular-chart-png card dashcard data (pt->px cell-w) (pt->px chart-h)))]
-    (if png
-      (do
-        (draw-text-block! cs (bold-font) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
-        (draw-text-block! cs (regular-font) chart-desc-pt desc-color x (- (double top-y) th) cell-w (* 0.35 cell-h) desc)
+  (let [data       (get-in part [:result :data])
+        title      (card-title card dashcard)
+        desc       (card-description card dashcard)
+        th         (text-block-height (bold-font) chart-title-pt cell-w (* 0.5 cell-h) title)
+        desc-lh    (* chart-desc-pt line-height-factor)
+        ;; Descriptions clip to at most two lines (with an ellipsis), further bounded by cell size.
+        desc-max   (min 2 (long (Math/floor (/ (* 0.35 cell-h) desc-lh))))
+        desc-lines (when-not (str/blank? (str desc))
+                     (wrap-clamped (regular-font) chart-desc-pt desc cell-w desc-max))
+        dh         (* (count desc-lines) desc-lh)
+        header     (+ th dh (if (or (pos? th) (pos? dh)) 4.0 0.0))
+        body-top   (- (double top-y) header)
+        body-h     (- cell-h header)
+        display    (keyword (:display card))
+        ;; Rectangular charts always fill their box; pies fill (and move their legend to the
+        ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
+        fill?      (or (contains? rectangular-displays display)
+                       (and (= :pie display) (>= cell-w body-h)))]
+    ;; Native title + (clipped) description for every card type.
+    (draw-text-block! cs (bold-font) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
+    (when (seq desc-lines)
+      (draw-lines! cs (regular-font) chart-desc-pt desc-color x (- (double top-y) th) desc-lines))
+    (when (> body-h 12.0)
+      (if-let [png (when fill?
+                     (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
+        ;; rendered at exactly cell-w x body-h px -> draw to fill the body area exactly
         (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
-                    (float x) (float (- (double top-y) header chart-h)) (float cell-w) (float chart-h)))
-      (when-let [whole (card-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
-        (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc whole "card") x top-y cell-w cell-h)))))
+                    (float x) (float (- body-top body-h)) (float cell-w) (float body-h))
+        ;; fallback: title-less body PNG, fit preserving aspect into the body area
+        (when-let [body (card-body-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
+          (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card") x body-top cell-w body-h))))))
 
 (defn- draw-header!
   [^PDPageContentStream cs page-height {:keys [dashboard-title tab-title]}]
