@@ -175,6 +175,10 @@ const elements = [
     pattern: "frontend/src/metabase/app/nav/**",
     enforceOutgoing: true,
   }),
+  // static-viz must come after the app entries rather than in the
+  // alphabetical shared list: its entry point (static-viz/index.tsx) is app
+  // tier, and the first matching element wins.
+  createElement({ type: "shared", name: "static-viz" }),
   // catch-all for unmoduled files - must be last
   createElement({
     type: "shared",
