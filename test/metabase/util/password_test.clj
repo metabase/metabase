@@ -92,10 +92,11 @@
 (deftest is-valid?-strong-enough-test
   (testing "Do some tests with password complexity requirements set to :strong-enough."
     (mt/with-temp-env-var-value! [:mb-password-complexity "strong-enough"]
-      (doseq [[input expected] {"ABC"               false
-                                "ABCDEFGHIJKLM"   false
-                                "abcdefghijklmno" true
-                                "unc0mmonpw12345" true
+      (doseq [[input expected] {"ABC"                false
+                                "ABCDEFGHIJKLM"    false
+                                "abcdefghijklmno"  true
+                                "123456789012345"  true
+                                "unc0mmonpw12345"  true
                                 "123456789987654321" false}]
         (testing (pr-str (list 'is-valid? input))
           (is (= expected
