@@ -300,7 +300,6 @@ describe("api", () => {
         headers: { "X-Custom": "header" },
         retry: true,
         retryCount: 5,
-        formData: true,
         noEvent: false,
         rawResponse: true,
       };
@@ -390,27 +389,25 @@ describe("api", () => {
       fetchMock.removeRoutes().clearHistory();
     });
 
-    // Regression: `rawResponse` implies the fetch path, so a form-encoded
-    // download must drop the default `application/json` Content-Type and let
-    // the browser set `application/x-www-form-urlencoded`. Keeping the JSON
-    // header made the backend reject the request with a 400. The deletion must
-    // not depend on the legacy `fetch: true` flag being passed alongside.
-    it("drops the application/json Content-Type for a formData + rawResponse request", async () => {
+    // Regression: a `URLSearchParams` body (e.g. a dataset download) must be
+    // passed through verbatim — not JSON-stringified — and must drop our
+    // default `application/json` Content-Type so the browser can set
+    // `application/x-www-form-urlencoded`. Keeping the JSON header made the
+    // backend reject the request with a 400.
+    //
+    // The Content-Type strip is gated on `body instanceof URLSearchParams`, so
+    // this assertion doubles as proof the body reached `fetch` as a real
+    // `URLSearchParams` rather than a JSON string.
+    it("drops the application/json Content-Type for a URLSearchParams body", async () => {
       fetchMock.post("path:/api/download", { status: 200, body: "" });
 
-      const formData = new URLSearchParams();
-      formData.append("query", JSON.stringify({ foo: "bar" }));
+      const body = new URLSearchParams();
+      body.append("query", JSON.stringify({ foo: "bar" }));
 
-      await apiInstance.POST("/api/download")(
-        { formData },
-        { formData: true, rawResponse: true },
-      );
+      await apiInstance.POST("/api/download")(body, { rawResponse: true });
 
       const call = fetchMock.callHistory.lastCall("path:/api/download");
       const headers = new Headers(call?.options?.headers);
-      // We must not force `application/json`; with the header dropped the
-      // browser sets `application/x-www-form-urlencoded` for the
-      // URLSearchParams body.
       expect(headers.get("Content-Type")).not.toContain("application/json");
     });
   });

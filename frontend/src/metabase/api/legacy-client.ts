@@ -36,7 +36,6 @@ type RequestOptions = {
   retry: boolean;
   retryCount: number;
   retryDelayIntervals: number[];
-  formData?: boolean;
   fetch?: boolean;
   signal?: AbortSignal;
 };
@@ -228,15 +227,17 @@ export class LegacyApi extends EventEmitter<EventMap> {
           }
         }
 
-        let body: string | FormData | undefined;
+        let body: string | FormData | URLSearchParams | undefined;
         if (options.hasBody) {
-          if (rawData instanceof FormData) {
-            // Pass `FormData` through unwrapped so the browser sets the right
-            // multipart Content-Type (with boundary). Drops the legacy
-            // `body: { formData }, formData: true` wrapper shape.
+          if (
+            rawData instanceof FormData ||
+            rawData instanceof URLSearchParams
+          ) {
+            // Pass `FormData` / `URLSearchParams` bodies straight through so
+            // the browser sets the right Content-Type itself (multipart with
+            // boundary, or `application/x-www-form-urlencoded`). Replaces the
+            // legacy `body: { formData }, formData: true` wrapper shape.
             body = rawData;
-          } else if (options.formData) {
-            body = rawData["formData"] as FormData;
           } else {
             body = JSON.stringify(data);
           }
@@ -255,13 +256,11 @@ export class LegacyApi extends EventEmitter<EventMap> {
           ...options.headers,
         };
 
-        // FormData must NOT carry our default `application/json` Content-Type —
-        // the browser sets the right value (with the multipart boundary). XHR's
-        // `xhr.send(formData)` honors this too. `rawResponse` (and `isTest`)
-        // route through fetch as well, so gate on the same condition the
-        // dispatcher uses rather than `options.fetch` alone.
-        const usesFetch = isTest || options.fetch || options.rawResponse;
-        if (body instanceof FormData || (options.formData && usesFetch)) {
+        // A `FormData` / `URLSearchParams` body must NOT carry our default
+        // `application/json` Content-Type — the browser (or XHR's
+        // `send(body)`) sets the correct value, with the multipart boundary
+        // for `FormData`. Both transports honor this.
+        if (body instanceof FormData || body instanceof URLSearchParams) {
           delete headers["Content-Type"];
         }
 
@@ -285,7 +284,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -328,7 +327,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -360,7 +359,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -454,7 +453,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    requestBody: string | FormData | undefined,
+    requestBody: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {

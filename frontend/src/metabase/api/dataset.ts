@@ -50,8 +50,7 @@ export const datasetApi = Api.injectEndpoints({
           return {
             method: "POST",
             url,
-            body: { formData },
-            formData: true,
+            body: formData,
             rawResponse: true,
           };
         }
