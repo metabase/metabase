@@ -2,7 +2,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v62.g43w3qr4
+      id: v63.g43w3qr4
       author: nvoxland
       comment: Create exploration table
       changes:
@@ -85,7 +85,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.92fasdf
+      id: v63.92fasdf
       author: nvoxland
       comment: Index on exploration.creator_id
       changes:
@@ -97,7 +97,7 @@ databaseChangeLog:
                   name: creator_id
 
   - changeSet:
-      id: v62.g442xf
+      id: v63.g442xf
       author: nvoxland
       comment: FK exploration.creator_id -> core_user.id
       changes:
@@ -110,7 +110,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.expcollidx
+      id: v63.expcollidx
       author: jdswanson
       comment: Index on exploration.collection_id
       changes:
@@ -122,7 +122,7 @@ databaseChangeLog:
                   name: collection_id
 
   - changeSet:
-      id: v62.expcollfk
+      id: v63.expcollfk
       author: jdswanson
       comment: FK exploration.collection_id -> collection.id
       changes:
@@ -135,7 +135,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v62.bnweradf
+      id: v63.bnweradf
       author: nvoxland
       comment: Create exploration_thread table
       changes:
@@ -205,7 +205,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.g89asrdg
+      id: v63.g89asrdg
       author: nvoxland
       comment: Index on exploration_thread.exploration_id
       changes:
@@ -217,7 +217,7 @@ databaseChangeLog:
                   name: exploration_id
 
   - changeSet:
-      id: v62.gpores
+      id: v63.gpores
       author: nvoxland
       comment: FK exploration_thread.exploration_id -> exploration.id
       changes:
@@ -230,7 +230,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.bjiofd
+      id: v63.bjiofd
       author: nvoxland
       comment: Create exploration_thread_metric join table
       changes:
@@ -287,7 +287,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.98ubfd
+      id: v63.98ubfd
       author: nvoxland
       comment: Unique constraint on exploration_thread_metric (thread, card)
       changes:
@@ -297,7 +297,7 @@ databaseChangeLog:
             constraintName: uq_exploration_thread_metric_thread_card
 
   - changeSet:
-      id: v62.ifddba
+      id: v63.ifddba
       author: nvoxland
       comment: FK exploration_thread_metric.exploration_thread_id -> exploration_thread.id
       changes:
@@ -310,7 +310,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.bjiare
+      id: v63.bjiare
       author: nvoxland
       comment: FK exploration_thread_metric.card_id -> report_card.id
       changes:
@@ -323,7 +323,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.jibredf
+      id: v63.jibredf
       author: nvoxland
       comment: Create exploration_thread_dimension join table
       changes:
@@ -392,7 +392,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.nbwerg
+      id: v63.nbwerg
       author: nvoxland
       comment: Index on exploration_thread_dimension.exploration_thread_id
       changes:
@@ -404,7 +404,7 @@ databaseChangeLog:
                   name: exploration_thread_id
 
   - changeSet:
-      id: v62.4598gd
+      id: v63.4598gd
       author: nvoxland
       comment: FK exploration_thread_dimension.exploration_thread_id -> exploration_thread.id
       changes:
@@ -417,7 +417,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.bhresdfg
+      id: v63.bhresdfg
       author: nvoxland
       comment: Create exploration_thread_timeline join table
       changes:
@@ -468,7 +468,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.89yrbea
+      id: v63.89yrbea
       author: nvoxland
       comment: Unique constraint on exploration_thread_timeline (thread, timeline)
       changes:
@@ -478,7 +478,7 @@ databaseChangeLog:
             constraintName: uq_exploration_thread_timeline_thread_timeline
 
   - changeSet:
-      id: v62.b89rae
+      id: v63.b89rae
       author: nvoxland
       comment: FK exploration_thread_timeline.exploration_thread_id -> exploration_thread.id
       changes:
@@ -491,7 +491,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.hvdawe
+      id: v63.hvdawe
       author: nvoxland
       comment: FK exploration_thread_timeline.timeline_id -> timeline.id
       changes:
@@ -504,7 +504,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.iowdfzx
+      id: v63.iowdfzx
       author: nvoxland
       comment: Create exploration_query table
       changes:
@@ -636,7 +636,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.badwes
+      id: v63.badwes
       author: nvoxland
       comment: Index on exploration_query.exploration_thread_id
       changes:
@@ -648,7 +648,7 @@ databaseChangeLog:
                   name: exploration_thread_id
 
   - changeSet:
-      id: v62.bwbaxcz
+      id: v63.bwbaxcz
       author: nvoxland
       comment: FK exploration_query.exploration_thread_id -> exploration_thread.id
       changes:
@@ -661,7 +661,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.expquerycardidx
+      id: v63.expquerycardidx
       author: nvoxland
       comment: Index on exploration_query.card_id
       changes:
@@ -673,7 +673,7 @@ databaseChangeLog:
                   name: card_id
 
   - changeSet:
-      id: v62.28easd
+      id: v63.28easd
       author: nvoxland
       comment: FK exploration_query.card_id -> report_card.id
       changes:
@@ -686,7 +686,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.expquerysegidx
+      id: v63.expquerysegidx
       author: nvoxland
       comment: Index on exploration_query.segment_id
       changes:
@@ -698,7 +698,7 @@ databaseChangeLog:
                   name: segment_id
 
   - changeSet:
-      id: v62.qsegfk
+      id: v63.qsegfk
       author: johnswanson
       comment: FK exploration_query.segment_id -> segment.id
       changes:
@@ -711,7 +711,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.qstatusidx
+      id: v63.qstatusidx
       author: nvoxland
       comment: Index on exploration_query.status for the worker poll
       changes:
@@ -723,7 +723,7 @@ databaseChangeLog:
                   name: status
 
   - changeSet:
-      id: v62.storedresult
+      id: v63.storedresult
       author: nvoxland
       comment: Create stored_result table
       changes:
@@ -779,7 +779,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.storedresultcreatoridx
+      id: v63.storedresultcreatoridx
       author: nvoxland
       comment: Index on stored_result.creator_id
       changes:
@@ -791,7 +791,7 @@ databaseChangeLog:
                   name: creator_id
 
   - changeSet:
-      id: v62.storedresultcreatorfk
+      id: v63.storedresultcreatorfk
       author: nvoxland
       comment: FK stored_result.creator_id -> core_user.id
       changes:
@@ -804,7 +804,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v62.qrescreate
+      id: v63.qrescreate
       author: nvoxland
       comment: Create exploration_query_result table
       changes:
@@ -853,7 +853,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.qresuq
+      id: v63.qresuq
       author: nvoxland
       comment: Unique constraint on exploration_query_result.exploration_query_id (1:1)
       changes:
@@ -863,7 +863,7 @@ databaseChangeLog:
             constraintName: uq_exploration_query_result_query_id
 
   - changeSet:
-      id: v62.qresfk
+      id: v63.qresfk
       author: nvoxland
       comment: FK exploration_query_result.exploration_query_id -> exploration_query.id
       changes:
@@ -876,7 +876,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.qresstoredidx
+      id: v63.qresstoredidx
       author: nvoxland
       comment: Index on exploration_query_result.stored_result_id
       changes:
@@ -888,7 +888,7 @@ databaseChangeLog:
                   name: stored_result_id
 
   - changeSet:
-      id: v62.qresstoredfk
+      id: v63.qresstoredfk
       author: nvoxland
       comment: FK exploration_query_result.stored_result_id -> stored_result.id
       changes:
@@ -901,7 +901,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.643243
+      id: v63.643243
       author: nvoxland
       comment: Backfill dimension_interestingness=0 for hard-zero semantic types
       changes:
@@ -934,7 +934,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v62.gjdases
+      id: v63.gjdases
       author: nvoxland
       comment: Force re-analyze for any Field still missing a dimension_interestingness score.
       changes:
@@ -948,7 +948,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v62.62346w
+      id: v63.62346w
       author: nvoxland
       comment: Add nullable exploration_thread_id column to document table
       changes:
@@ -963,7 +963,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.64fsvsd
+      id: v63.64fsvsd
       author: nvoxland
       comment: Index on document.exploration_thread_id
       changes:
@@ -975,7 +975,7 @@ databaseChangeLog:
                   name: exploration_thread_id
 
   - changeSet:
-      id: v62.g43sdfg
+      id: v63.g43sdfg
       author: nvoxland
       comment: FK document.exploration_thread_id -> exploration_thread.id
       changes:
@@ -988,7 +988,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.7gjeaasdg
+      id: v63.7gjeaasdg
       author: nvoxland
       comment: Backfill an empty Findings document for each existing exploration_thread that doesn't already have one
       changes:
@@ -1002,7 +1002,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v62.qtinterest
+      id: v63.qtinterest
       author: jdswanson
       comment: Create exploration_query_timeline_interestingness scoring table
       changes:
@@ -1058,7 +1058,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.qtinterestuq
+      id: v63.qtinterestuq
       author: jdswanson
       comment: Unique constraint on exploration_query_timeline_interestingness (query, timeline)
       changes:
@@ -1068,7 +1068,7 @@ databaseChangeLog:
             constraintName: uq_eqti_query_timeline
 
   - changeSet:
-      id: v62.qtinterestidx
+      id: v63.qtinterestidx
       author: jdswanson
       comment: Index exploration_query_timeline_interestingness.exploration_query_id for hydration
       changes:
@@ -1080,7 +1080,7 @@ databaseChangeLog:
                   name: exploration_query_id
 
   - changeSet:
-      id: v62.qtinterestfkq
+      id: v63.qtinterestfkq
       author: jdswanson
       comment: FK exploration_query_timeline_interestingness.exploration_query_id -> exploration_query.id
       changes:
@@ -1093,7 +1093,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.qtinterestfkt
+      id: v63.qtinterestfkt
       author: jdswanson
       comment: FK exploration_query_timeline_interestingness.timeline_id -> timeline.id
       changes:
@@ -1106,7 +1106,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.g4ersd
+      id: v63.g4ersd
       author: nvoxland
       comment: Add exploration_thread.completed_at as the gate for completion hooks
       changes:
@@ -1121,7 +1121,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.7438dfsed
+      id: v63.7438dfsed
       author: nvoxland
       comment: Backfill completed_at for pre-existing threads so legacy data doesn't trigger auto-insights on first deploy
       changes:
@@ -1135,7 +1135,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v62.startedat
+      id: v63.startedat
       author: nvoxland
       comment: Add exploration_thread.analysis_started_at — CAS claim gate for the auto-insights handler. completed_at now marks end of analysis (after auto-insights doc is written); analysis_started_at marks when the handler claimed the thread.
       changes:
@@ -1150,7 +1150,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.startedatbf
+      id: v63.startedatbf
       author: nvoxland
       comment: Backfill analysis_started_at for pre-existing threads so the CAS predicate doesn't re-fire the handler on already-completed legacy data.
       changes:
@@ -1164,7 +1164,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v62.gr324asd
+      id: v63.gr324asd
       author: nvoxland
       comment: Raw stats on the chart
       changes:
@@ -1179,7 +1179,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.aitranscript
+      id: v63.aitranscript
       author: nvoxland
       comment: Capture the LLM transcript used to generate the AI Summary document
       changes:
@@ -1194,7 +1194,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.j5tdfdg
+      id: v63.j5tdfdg
       author: nvoxland
       comment: Add exploration_thread.ai_summary_document_id
       changes:
@@ -1209,7 +1209,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.expthreadaidocidx
+      id: v63.expthreadaidocidx
       author: nvoxland
       comment: Index on exploration_thread.ai_summary_document_id
       changes:
@@ -1221,7 +1221,7 @@ databaseChangeLog:
                   name: ai_summary_document_id
 
   - changeSet:
-      id: v62.t4fsce
+      id: v63.t4fsce
       author: nvoxland
       comment: FK exploration_thread.ai_summary_document_id -> document.id
       changes:
@@ -1234,7 +1234,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v62.864345s
+      id: v63.864345s
       author: nvoxland
       comment: Backfill exploration_thread.ai_summary_document_id from the existing 'AI Summary' document on each thread, if any.
       changes:
@@ -1254,7 +1254,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v62.qresdesc
+      id: v63.qresdesc
       author: nvoxland
       comment: Add metric_description column to exploration_query_result
       changes:
@@ -1269,7 +1269,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.87hjhh
+      id: v63.87hjhh
       author: nvoxland
       comment: Add chart_description column to exploration_query_result
       changes:
@@ -1284,7 +1284,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.sruse
+      id: v63.sruse
       author: nvoxland
       comment: Create stored_result_use table tracking what references a stored_result
       changes:
@@ -1334,7 +1334,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.srusesridx
+      id: v63.srusesridx
       author: nvoxland
       comment: Index on stored_result_use.stored_result_id
       changes:
@@ -1346,7 +1346,7 @@ databaseChangeLog:
                   name: stored_result_id
 
   - changeSet:
-      id: v62.srusesrfk
+      id: v63.srusesrfk
       author: nvoxland
       comment: FK stored_result_use.stored_result_id -> stored_result.id
       changes:
@@ -1359,7 +1359,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.srusecardidx
+      id: v63.srusecardidx
       author: nvoxland
       comment: Index on stored_result_use.card_id
       changes:
@@ -1371,7 +1371,7 @@ databaseChangeLog:
                   name: card_id
 
   - changeSet:
-      id: v62.srusecardfk
+      id: v63.srusecardfk
       author: nvoxland
       comment: FK stored_result_use.card_id -> report_card.id
       changes:
@@ -1384,7 +1384,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.sruseexplidx
+      id: v63.sruseexplidx
       author: nvoxland
       comment: Index on stored_result_use.exploration_id
       changes:
@@ -1396,7 +1396,7 @@ databaseChangeLog:
                   name: exploration_id
 
   - changeSet:
-      id: v62.sruseexplfk
+      id: v63.sruseexplfk
       author: nvoxland
       comment: FK stored_result_use.exploration_id -> exploration.id
       changes:
@@ -1409,7 +1409,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.qplanstate
+      id: v63.qplanstate
       author: johnswanson
       comment: Add query_plan_started_at column to exploration_thread
       changes:
@@ -1424,7 +1424,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.h9yuhk
+      id: v63.h9yuhk
       author: johnswanson
       comment: Add query_plan_transcript column to exploration_thread
       changes:
@@ -1439,7 +1439,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.qparams
+      id: v63.qparams
       author: johnswanson
       comment: Add params JSON column to exploration_query (deferred MBQL recipe)
       changes:
@@ -1454,7 +1454,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.qdsetqnull
+      id: v63.qdsetqnull
       author: johnswanson
       comment: Make exploration_query.dataset_query nullable (lazy build at execution)
       changes:
@@ -1464,7 +1464,7 @@ databaseChangeLog:
             columnDataType: ${text.type}
 
   - changeSet:
-      id: v62.expeidnull
+      id: v63.expeidnull
       author: nvoxland
       comment: Make exploration.entity_id nullable so serdes drop-entity-ids! can NULL it (#36365)
       changes:
@@ -1474,7 +1474,7 @@ databaseChangeLog:
             columnDataType: char(21)
 
   - changeSet:
-      id: v62.expthreadeidnull
+      id: v63.expthreadeidnull
       author: nvoxland
       comment: Make exploration_thread.entity_id nullable so serdes drop-entity-ids! can NULL it (#36365)
       changes:
@@ -1484,7 +1484,7 @@ databaseChangeLog:
             columnDataType: char(21)
 
   - changeSet:
-      id: v62.expqueryeidnull
+      id: v63.expqueryeidnull
       author: nvoxland
       comment: Make exploration_query.entity_id nullable so serdes drop-entity-ids! can NULL it (#36365)
       changes:
@@ -1494,7 +1494,7 @@ databaseChangeLog:
             columnDataType: char(21)
 
   - changeSet:
-      id: v62.expthreadcancelat
+      id: v63.expthreadcancelat
       author: johnswanson
       comment: Add exploration_thread.canceled_at — set when the user clicks "Stop running" on an in-flight thread. Stamped together with completed_at so existing terminal-state predicates keep working; canceled_at IS NOT NULL is the cause marker that distinguishes a user cancel from a natural completion.
       changes:
