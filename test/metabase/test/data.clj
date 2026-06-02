@@ -158,6 +158,7 @@
 
   ([table-name inner-query]
    {:pre [(map? inner-query)]}
+   (assert (not (:type inner-query)) "Should be an inner-query, not an outer query")
    (as-> inner-query <>
      (mbql-query-impl/parse-tokens table-name <>)
      (mbql-query-impl/maybe-add-source-table <> table-name)
@@ -192,7 +193,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   {:database (id)
    :type     :native
-   :native   (mbql.normalize/normalize ::mbql.s/NativeQuery inner-native-query)})
+   :native   (mbql.normalize/normalize ::mbql.s/TopLevelNativeInnerQuery inner-native-query)})
 
 (defn run-mbql-query* [query]
   ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.

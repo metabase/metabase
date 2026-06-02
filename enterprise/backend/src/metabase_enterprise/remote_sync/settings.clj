@@ -89,6 +89,14 @@
   :encryption :no
   :default (* 1000 60 5))
 
+(defsetting remote-sync-git-timeout-seconds
+  (deferred-tru "Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.")
+  :type :integer
+  :visibility :authenticated
+  :export? false
+  :encryption :no
+  :default 60)
+
 (def ^:const transforms-root-id
   "Sentinel value for the virtual Transforms root collection.
    Used to represent the entire transforms feature being enabled/disabled."
