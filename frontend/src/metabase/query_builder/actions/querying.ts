@@ -1,6 +1,7 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
+import { isAbortError } from "metabase/api/legacy-client";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { createThunkAction } from "metabase/redux";
 import {
@@ -249,7 +250,7 @@ export const queryErrored = createThunkAction(
   QUERY_ERRORED_TYPE,
   (startTime, error) => {
     return async (dispatch) => {
-      if (error && error.isCancelled) {
+      if (isAbortError(error)) {
         return null;
       } else {
         dispatch(loadErrorUIControls());

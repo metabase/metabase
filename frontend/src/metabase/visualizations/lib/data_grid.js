@@ -6,7 +6,7 @@ import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_form
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 
 export function isPivotGroupColumn(col) {
-  return col.name === "pivot-grouping";
+  return col?.name === "pivot-grouping";
 }
 
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
