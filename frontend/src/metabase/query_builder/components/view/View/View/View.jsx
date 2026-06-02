@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import { Api, cardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { deletePermanently } from "metabase/archive/actions";
 import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -16,7 +17,6 @@ import { Toaster } from "metabase/common/components/Toaster";
 import { useSetCollection } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import {
   rememberLastUsedDatabase,
   runOrCancelQuestionOrSelectedQuery,
@@ -304,7 +304,7 @@ const mapDispatchToProps = (dispatch) => ({
   },
   onDeletePermanently: (id) => {
     const deleteAction = (dispatch) =>
-      entityCompatibleQuery(id, dispatch, cardApi.endpoints.deleteCard);
+      runRtkEndpoint(id, dispatch, cardApi.endpoints.deleteCard);
     dispatch(deletePermanently(deleteAction));
   },
   runQuery: () => {

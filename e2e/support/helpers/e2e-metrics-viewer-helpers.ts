@@ -6,7 +6,10 @@ export const MetricsViewer = {
     cy.findByTestId("metrics-formula-input").click("right");
     return cy.findByTestId("metrics-viewer-search-input");
   },
-  searchBarPills: () => cy.findAllByTestId("metrics-viewer-search-pill"),
+  // Pills commit asynchronously after the formula is run and its @dataset query
+  // resolves; on a loaded CI this re-render can exceed the default 4s timeout.
+  searchBarPills: () =>
+    cy.findAllByTestId("metrics-viewer-search-pill", { timeout: 15000 }),
   searchResults: () => cy.findByTestId("mini-picker"),
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
   getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
@@ -21,7 +24,10 @@ export const MetricsViewer = {
       MetricsViewer.tablist().findByRole("tab", { name: tab }).should("exist"),
     );
   },
-  getMetricVisualization: () => cy.findByTestId("visualization-root"),
+  // The visualization re-renders after the @dataset query resolves, which can
+  // exceed the default 4s timeout on a loaded CI.
+  getMetricVisualization: () =>
+    cy.findByTestId("visualization-root", { timeout: 15000 }),
   getMetricVisualizationDataPoints: () =>
     MetricsViewer.getMetricVisualization().get(
       "path[fill='hsla(0, 0%, 100%, 1.00)']",

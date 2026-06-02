@@ -1,7 +1,7 @@
 import { createAction } from "redux-actions";
 
 import { cardApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -57,7 +57,7 @@ export const openDataReferenceAtQuestion = createThunkAction(
     // forceRefetch: false so a permanently-forbidden card (403) is served from
     // RTK Query's cache instead of re-hitting /api/card/:id on every open, matching
     // the former `useCachedForbiddenError` behavior.
-    const card = await entityCompatibleQuery(
+    const card = await runRtkEndpoint(
       { id, ignore_error: true },
       dispatch,
       cardApi.endpoints.getCard,

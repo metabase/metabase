@@ -807,7 +807,10 @@ export const applyVisualizationSettingsDataTransformations = (
           : value;
       }),
     },
-    getStackedDataLabelTransform(settings, seriesDataKeys),
+    getStackedDataLabelTransform(
+      settings,
+      stackModels.flatMap((stackModel) => stackModel.seriesKeys),
+    ),
     getBarSeriesDataLabelTransform(barSeriesModels),
     {
       condition:

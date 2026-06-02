@@ -30,6 +30,28 @@
                                      (= r 2) vec)))))]
       (is (= (apply concat inputs) (apply perf/concat inputs))))))
 
+(deftest insert-test
+  (testing "basic insertion positions"
+    (is (= [0 1 2 3]    (perf/insert [1 2 3] 0 0)))
+    (is (= [1 2 99 3 4] (perf/insert [1 2 3 4] 2 99)))
+    (is (= [1 2 99 3]   (perf/insert [1 2 3] 2 99)))
+    (is (= [1 2 3 99]   (perf/insert [1 2 3] 3 99))))
+  (testing "empty and single-element vectors"
+    (is (= [42]    (perf/insert [] 0 42)))
+    (is (= [99 1]  (perf/insert [1] 0 99)))
+    (is (= [1 99]  (perf/insert [1] 1 99))))
+  (testing "accepts non-vector collection inputs"
+    (is (= [0 1 2 3]    (perf/insert '(1 2 3) 0 0)))
+    (is (= [0 1 99 2 3 4] (perf/insert (range 5) 2 99))))
+  (testing "works for long collections"
+    (is (= (concat [0] (range 50)) (perf/insert (range 50) 0 0)))
+    (is (= (concat (range 50) [0]) (perf/insert (range 50) 50 0)))
+    (is (= (concat (range 20) [0] (range 20 50)) (perf/insert (range 50) 20 0))))
+  (testing "throws on illegal inputs"
+    (is (thrown? #?(:clj Exception :cljs js/Error) (perf/insert [] 1 99)))
+    (is (thrown? #?(:clj Exception :cljs js/Error) (perf/insert [1 2 3] -1 99)))
+    (is (thrown? #?(:clj Exception :cljs js/Error) (perf/insert [1 2 3] 10 99)))))
+
 (defn- mapv-via-run! [f coll]
   (let [v (volatile! [])]
     (perf/run! #(vswap! v conj (f %)) coll)

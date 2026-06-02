@@ -331,10 +331,6 @@ export const NativeQueryModal = ({
                   query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
-                  hasTopBar
-                  hasEditingSidebar
-                  hasParametersList={false}
-                  sidebarFeatures={MODAL_SIDEBAR_FEATURES}
                   availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}
@@ -374,7 +370,14 @@ export const NativeQueryModal = ({
                     setModifiedQuestion(newQuestion);
                   }}
                   resizable
-                />
+                >
+                  <NativeQueryEditor.TopBar>
+                    <NativeQueryEditor.Sidebar
+                      features={MODAL_SIDEBAR_FEATURES}
+                    />
+                  </NativeQueryEditor.TopBar>
+                  <NativeQueryEditor.RunButton />
+                </NativeQueryEditor>
               )}
             </Box>
 

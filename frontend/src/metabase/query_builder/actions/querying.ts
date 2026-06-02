@@ -1,6 +1,7 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
+import { isAbortError } from "metabase/api/legacy-client";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { createThunkAction } from "metabase/redux";
 import {
@@ -15,7 +16,6 @@ import {
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
-import { defer } from "metabase/utils/promise";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -158,18 +158,18 @@ export const runQuestionQuery = ({
     }
 
     const startTime = new Date();
-    const cancelQueryDeferred = defer();
+    const cancelQueryController = new AbortController();
 
     apiRunQuestionQuery(question, {
       dispatch,
-      cancelDeferred: cancelQueryDeferred,
+      signal: cancelQueryController.signal,
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
     })
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
       .catch((error) => dispatch(queryErrored(startTime, error)));
 
-    dispatch({ type: RUN_QUERY_TYPE, payload: { cancelQueryDeferred } });
+    dispatch({ type: RUN_QUERY_TYPE, payload: { cancelQueryController } });
   };
 };
 
@@ -250,7 +250,7 @@ export const queryErrored = createThunkAction(
   QUERY_ERRORED_TYPE,
   (startTime, error) => {
     return async (dispatch) => {
-      if (error && error.isCancelled) {
+      if (isAbortError(error)) {
         return null;
       } else {
         dispatch(loadErrorUIControls());
@@ -264,9 +264,9 @@ export const queryErrored = createThunkAction(
 export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
   const isRunning = getIsRunning(getState());
   if (isRunning) {
-    const { cancelQueryDeferred } = getState().qb;
-    if (cancelQueryDeferred) {
-      cancelQueryDeferred.resolve();
+    const { cancelQueryController } = getState().qb;
+    if (cancelQueryController) {
+      cancelQueryController.abort();
     }
     dispatch(setDocumentTitle(""));
 

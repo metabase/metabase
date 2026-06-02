@@ -86,4 +86,24 @@ describe("WorkspaceInstancePage", () => {
       await screen.findByTestId("workspace-instance-delete-section"),
     ).toBeInTheDocument();
   });
+
+  it("hides the delete section when can_write is false", async () => {
+    setup({
+      workspace: createMockWorkspaceInstance({
+        name: "Dev workspace",
+        databases: {
+          [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
+            input_schemas: ["public"],
+            output: { schema: "ws_dev" },
+          }),
+        },
+        can_write: false,
+      }),
+    });
+
+    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("workspace-instance-delete-section"),
+    ).not.toBeInTheDocument();
+  });
 });
