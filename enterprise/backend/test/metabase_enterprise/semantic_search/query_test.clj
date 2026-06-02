@@ -26,6 +26,28 @@
                                 semantic.tu/filter-for-mock-embeddings)]
                 (is (= "Bird Watching Tips" (-> results first :name)))))))))))
 
+(deftest brute-force-strategy-test
+  (testing "Brute-force vector search returns the same closest results as HNSW for these queries"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
+          (semantic.tu/with-only-semantic-weights
+            (testing "Dog-related query finds dog content"
+              (let [results (-> (semantic.tu/query-index {:search-string "puppy"
+                                                          :vector-search-strategy :brute-force})
+                                semantic.tu/filter-for-mock-embeddings)]
+                (is (= "Dog Training Guide" (-> results first :name)))))
+            (testing "Filters are honored under brute-force search"
+              (let [active   (semantic.tu/query-index {:search-string "feline"
+                                                       :archived? false
+                                                       :vector-search-strategy :brute-force})
+                    archived (semantic.tu/query-index {:search-string "feline"
+                                                       :archived? true
+                                                       :vector-search-strategy :brute-force})]
+                (is (every? #(not (:archived %)) active))
+                (is (pos? (count (semantic.tu/filter-for-mock-embeddings archived))))
+                (is (every? :archived archived))))))))))
+
 (defn- index-of-name
   "Return the index of the item with :name `name` in `coll`"
   [coll name]

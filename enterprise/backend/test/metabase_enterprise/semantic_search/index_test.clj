@@ -3,9 +3,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
@@ -19,6 +21,33 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
+
+(defn- vector-search-sql
+  "Format the private vector subquery for `strategy` against a stub index, returning the SQL string."
+  [strategy]
+  (let [index   {:table-name "idx_tbl"}
+        ctx     (cond-> {:search-string "pasta" :archived? false}
+                  strategy (assoc :vector-search-strategy strategy))
+        embedding [0.1 0.2 0.3]]
+    (first (sql/format (#'semantic.index/semantic-search-query index embedding ctx) :quoted true))))
+
+(deftest semantic-search-query-strategy-test
+  (testing ":brute-force applies the non-vector filters inside a MATERIALIZED CTE (filter-first, exact)"
+    (let [sql (vector-search-sql :brute-force)]
+      (is (str/includes? sql "AS MATERIALIZED"))
+      ;; filter lives inside the CTE, before distance is computed/ordered
+      (is (re-find #"AS MATERIALIZED \(SELECT.*\"archived\" = FALSE.*\)" sql))
+      ;; no pure-vector ORDER BY ... LIMIT that would trigger the HNSW index
+      (is (not (re-find #"ORDER BY embedding <=>[^)]*LIMIT" sql)))))
+  (testing ":hnsw does a pure vector search in the inner CTE then post-filters (approximate)"
+    (let [sql (vector-search-sql :hnsw)]
+      (is (not (str/includes? sql "MATERIALIZED")))
+      (is (re-find #"ORDER BY embedding <=>" sql))
+      ;; the filter is applied in the outer query, after the candidate set is chosen
+      (is (str/includes? sql "\"archived\" = FALSE"))))
+  (testing "no explicit strategy falls back to the configured default setting"
+    (is (= (vector-search-sql (semantic.settings/semantic-search-vector-strategy))
+           (vector-search-sql nil)))))
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}

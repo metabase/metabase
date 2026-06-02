@@ -617,14 +617,16 @@
 
 (def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
 
-(defn- semantic-search-query
-  "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage."
-  [index embedding search-context]
-  (let [filters (search-filters search-context)
-        embedding-literal (format-embedding embedding)
-        ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
-        ;; TODO: only pull in necessary extra columns from configured filters
-        hnsw-query {:select (into common-search-columns
+(defn- hnsw-search-query
+  "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage.
+
+  The inner `vector_candidates` CTE does a pure vector search so the planner uses the HNSW index; the
+  non-vector filters are applied afterwards in the outer query. This is fast but approximate: when the
+  globally-closest rows are dominated by a cluster that the filters reject, the slightly-further-away rows
+  that would have survived the filters never make it into the candidate set."
+  [index embedding-literal filters]
+  ;; TODO: only pull in necessary extra columns from configured filters
+  (let [hnsw-query {:select (into common-search-columns
                                   [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                     :from   [(keyword (:table-name index))]
                     :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
@@ -640,6 +642,45 @@
       (update base-query :where #(into [:and] [% filters]))
       base-query)))
 
+(defn- brute-force-search-query
+  "Build a semantic search query that computes exact cosine distance over the filtered rows.
+
+  The non-vector filters are applied first, inside a MATERIALIZED CTE. Materializing fences the planner off
+  the HNSW index, so distance is computed for every surviving row, then ordered and limited. This is exact
+  (it always returns the closest results among the filtered set) at the cost of a sequential scan over the
+  rows that pass the filters."
+  [index embedding-literal filters]
+  (let [filtered-query {:select (into common-search-columns
+                                      [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
+                        :from   [(keyword (:table-name index))]
+                        :where  (if filters filters [:= 1 1])}]
+    {:with     [[:vector_candidates filtered-query :materialized]]
+     :select   (into common-search-columns
+                     [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
+                      [:distance :semantic_score]])
+     :from     [:vector_candidates]
+     :where    [:<= :distance max-cosine-distance]
+     :order-by [[:semantic_rank :asc]]
+     :limit    (semantic-settings/semantic-search-results-limit)}))
+
+(defn- vector-search-strategy
+  "Resolve the vector-search strategy for `search-context`, falling back to the configured default setting."
+  [search-context]
+  (or (:vector-search-strategy search-context)
+      (semantic-settings/semantic-search-vector-strategy)))
+
+(defn- semantic-search-query
+  "Build a semantic search query using vector similarity.
+
+  Dispatches on the resolved [[vector-search-strategy]]: `:brute-force` for exact filter-first search,
+  `:hnsw` (the default) for approximate index-backed search."
+  [index embedding search-context]
+  (let [filters           (search-filters search-context)
+        embedding-literal (format-embedding embedding)]
+    (case (vector-search-strategy search-context)
+      :brute-force (brute-force-search-query index embedding-literal filters)
+      (hnsw-search-query index embedding-literal filters))))
+
 (defn- flatten-ctes
   "Flatten nested :with clauses into a single top-level :with.
   PostgreSQL doesn't support nested CTEs, so we need to extract all nested :with clauses
@@ -650,9 +691,10 @@
   (if-not (:with query)
     {:ctes [] :query query}
     (let [ctes (reduce
-                (fn [acc [cte-name cte-query]]
+                ;; `opts` carries any trailing CTE options (e.g. `:materialized`) so they survive hoisting.
+                (fn [acc [cte-name cte-query & opts]]
                   (let [{:keys [ctes query]} (flatten-ctes cte-query)]
-                    (into acc (conj ctes [cte-name query]))))
+                    (into acc (conj ctes (into [cte-name query] opts)))))
                 []
                 (:with query))]
       {:ctes ctes
