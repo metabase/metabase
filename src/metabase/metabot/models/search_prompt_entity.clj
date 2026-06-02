@@ -12,15 +12,14 @@
 ;;   - Rename column `prompt` -> `search_prompt` (clearer, matches the tool/embedding vocabulary).
 ;;     Needs a follow-up migration since v62.2026-06-02T00:00:00 is already applied.
 ;;   - Rename model `:model/SearchPromptEntity` -> `:model/SearchPromptEntities` (plural, like the table).
-;;   - Consider adding `created_at`/`updated_at` (the mirror branch had them; useful for audit + cache
-;;     invalidation). Also needs a follow-up migration.
 ;;   - entities shape contract: the tool's scoring expects a discriminated map —
 ;;     {"type":"canonical","entity":{...}} or {"type":"sources","entities":[...]} — not a bare array.
 ;;     The CRUD POST currently accepts `:any`; tighten it to this shape (and have the FE write it).
 (methodical/defmethod t2/table-name :model/SearchPromptEntity [_model] :search_prompt_entities)
 
 (doto :model/SearchPromptEntity
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
 
 (t2/deftransforms :model/SearchPromptEntity
   {:entities mi/transform-json})
@@ -41,7 +40,7 @@
 
 (t2/define-after-insert :model/SearchPromptEntity
   [row]
-  (mirror! #(prompt-entities/upsert-prompt-entity! (:id row) (:prompt row) (:entities row)))
+  (mirror! #(prompt-entities/upsert-prompt-entity! (:id row) (:prompt row) (:entities row) (:verified row)))
   row)
 
 (t2/define-after-update :model/SearchPromptEntity
@@ -49,7 +48,7 @@
   ;; after-update hands us a lazy instance; realize it to get the full post-update row, then
   ;; re-embed unconditionally (cheap, hackathon-simple).
   (let [row (t2.realize/realize row)]
-    (mirror! #(prompt-entities/upsert-prompt-entity! (:id row) (:prompt row) (:entities row)))
+    (mirror! #(prompt-entities/upsert-prompt-entity! (:id row) (:prompt row) (:entities row) (:verified row)))
     row))
 
 (t2/define-before-delete :model/SearchPromptEntity

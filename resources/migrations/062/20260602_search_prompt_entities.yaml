@@ -42,3 +42,27 @@ databaseChangeLog:
       rollback:
         - dropTable:
             tableName: search_prompt_entities
+
+  - changeSet:
+      id: v62.2026-06-02T00:00:01
+      author: christruter
+      comment: Add created_at/updated_at to search_prompt_entities (backfilled, not null)
+      changes:
+        - addColumn:
+            tableName: search_prompt_entities
+            columns:
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  # Backfills existing rows with the current timestamp so the column can be NOT NULL.
+                  defaultValueComputed: current_timestamp
+                  remarks: When the prompt-entity mapping was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the prompt-entity mapping was last updated
+                  constraints:
+                    nullable: false

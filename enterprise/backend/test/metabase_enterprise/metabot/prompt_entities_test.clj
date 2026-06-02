@@ -9,16 +9,22 @@
 
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
-(deftest score-blends-similarity-and-canonical-boost-test
+(deftest score-blends-similarity-canonical-and-verified-boosts-test
   (let [score (var-get #'prompt-entities/score)]
-    (testing "similarity = 1 - cosine distance; canonical adds a flat boost"
-      (is (=? {:cosine_distance 0.2 :similarity (approx 0.8) :canonical true  :canonical_boost 0.15 :total (approx 0.95)}
-              (score {:distance 0.2 :canonical true})))
-      (is (=? {:cosine_distance 0.2 :similarity (approx 0.8) :canonical false :canonical_boost 0.0 :total (approx 0.8)}
-              (score {:distance 0.2 :canonical false}))))
-    (testing "a canonical hit outranks a source-set hit at the same distance"
-      (is (> (:total (score {:distance 0.2 :canonical true}))
-             (:total (score {:distance 0.2 :canonical false})))))))
+    (testing "similarity = 1 - cosine distance; canonical and verified each add a flat boost"
+      (is (=? {:cosine_distance 0.2 :similarity (approx 0.8)
+               :canonical true  :canonical_boost 0.15 :verified false :verified_boost 0.0 :total (approx 0.95)}
+              (score {:distance 0.2 :canonical true :verified false})))
+      (is (=? {:canonical false :canonical_boost 0.0 :verified true :verified_boost 0.1 :total (approx 0.9)}
+              (score {:distance 0.2 :canonical false :verified true})))
+      (is (=? {:canonical true :verified true :total (approx 1.05)}
+              (score {:distance 0.2 :canonical true :verified true})))
+      (is (=? {:canonical false :canonical_boost 0.0 :verified false :verified_boost 0.0 :total (approx 0.8)}
+              (score {:distance 0.2 :canonical false :verified false}))))
+    (testing "boosts strictly increase the total"
+      (is (> (:total (score {:distance 0.2 :canonical true :verified true}))
+             (:total (score {:distance 0.2 :canonical true :verified false}))
+             (:total (score {:distance 0.2 :canonical false :verified false})))))))
 
 (deftest canonical-entities?-test
   (let [canonical? (var-get #'prompt-entities/canonical-entities?)]
@@ -33,5 +39,5 @@
     (mt/with-premium-features #{:semantic-search}
       (with-redefs [semantic.db.datasource/db-url nil]
         (is (= [] (prompt-entities/search-prompt-entities "anything" 10)))
-        (is (nil? (prompt-entities/upsert-prompt-entity! 1 "p" {:type "canonical"})))
+        (is (nil? (prompt-entities/upsert-prompt-entity! 1 "p" {:type "canonical"} false)))
         (is (nil? (prompt-entities/delete-prompt-entity! 1)))))))

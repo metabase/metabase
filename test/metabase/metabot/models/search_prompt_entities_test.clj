@@ -16,9 +16,11 @@
   (testing "the entities column is JSON, round-tripping to a Clojure map with keyword keys"
     (mt/with-temp [:model/SearchPromptEntity {:keys [id]}
                    {:prompt "monthly revenue by region" :entities canonical-entities}]
-      (is (=? {:prompt   "monthly revenue by region"
-               :entities canonical-entities
-               :verified false}
+      (is (=? {:prompt     "monthly revenue by region"
+               :entities   canonical-entities
+               :verified   false
+               :created_at some?
+               :updated_at some?}
               (t2/select-one :model/SearchPromptEntity :id id))))))
 
 (deftest both-entity-shapes-persist-test

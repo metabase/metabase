@@ -8,8 +8,8 @@
    Metabot tool. These are `defenterprise` impls; the OSS shims live in [[metabase.metabot.prompt-entities]].
 
    Hackathon-grade: the companion table is created lazily and never migrated; the embedding is fetched
-   from the configured embedding service; scoring blends cosine similarity with a flat canonical
-   boost. Reuses the semantic-search datasource and embedding API."
+   from the configured embedding service; scoring blends cosine similarity with flat canonical and
+   verified boosts. Reuses the semantic-search datasource and embedding API."
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -29,8 +29,10 @@
 (def ^:private hnsw-index-name "search_prompt_entities_index_embed_hnsw_idx")
 
 ;; Cosine distance is in [0, 2]; similarity = 1 - distance. Canonical prompts point at a single
-;; entity that directly answers the request, so they get a flat boost over source-entity sets.
+;; entity that directly answers the request, so they get a flat boost over source-entity sets;
+;; curator-verified prompts get a (smaller) flat boost too.
 (def ^:private canonical-boost 0.15)
+(def ^:private verified-boost 0.1)
 (def ^:private default-limit 10)
 
 (defn- pgvector-available?
@@ -69,8 +71,12 @@
             [:search_prompt :text :not-null]
             [:entities :jsonb :not-null]
             [:canonical :boolean :not-null]
+            [:verified :boolean [:default false] :not-null]
             [:embedding [:raw (format "vector(%d)" dims)] :not-null]])
          sql-format-quoted))
+    ;; Backfill the column on tables created before `verified` existed (hackathon table, no migrations).
+    (jdbc/execute! ds [(str "ALTER TABLE " table-name
+                            " ADD COLUMN IF NOT EXISTS verified boolean NOT NULL DEFAULT false")])
     (jdbc/execute!
      ds
      (-> (sql.helpers/create-index
@@ -81,7 +87,7 @@
 (defenterprise upsert-prompt-entity!
   "Embed `search-prompt` and upsert the companion pgvector row keyed on `id`."
   :feature :semantic-search
-  [id search-prompt entities]
+  [id search-prompt entities verified]
   (when (pgvector-available?)
     (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
           embedding (embedding/get-embedding (configured-model) search-prompt
@@ -90,6 +96,7 @@
                      :search_prompt search-prompt
                      :entities      [:cast (json/encode entities) :jsonb]
                      :canonical     (canonical-entities? entities)
+                     :verified      (boolean verified)
                      :embedding     [:raw (format-embedding embedding)]}]
       (ensure-table! ds)
       (jdbc/execute!
@@ -97,7 +104,7 @@
        (-> (sql.helpers/insert-into (keyword table-name))
            (sql.helpers/values [record])
            (sql.helpers/on-conflict :prompt_id)
-           (sql.helpers/do-update-set :search_prompt :entities :canonical :embedding)
+           (sql.helpers/do-update-set :search_prompt :entities :canonical :verified :embedding)
            sql-format-quoted)))))
 
 (defenterprise delete-prompt-entity!
@@ -118,20 +125,21 @@
     (string? v)            (json/decode v true)
     :else                  v))
 
-;; TODO (Chris 2026-06-02) -- the appdb table also has a `verified` flag (from the CRUD branch). Once
-;; the mirror carries it, fold it in here as an additional boost, like search does for verified content.
-(defn- score [{:keys [distance canonical]}]
+(defn- score [{:keys [distance canonical verified]}]
   (let [similarity (- 1.0 (double distance))
-        boost      (if canonical canonical-boost 0.0)]
+        c-boost    (if canonical canonical-boost 0.0)
+        v-boost    (if verified verified-boost 0.0)]
     {:cosine_distance (double distance)
      :similarity      similarity
      :canonical       (boolean canonical)
-     :canonical_boost boost
-     :total           (+ similarity boost)}))
+     :canonical_boost c-boost
+     :verified        (boolean verified)
+     :verified_boost  v-boost
+     :total           (+ similarity c-boost v-boost)}))
 
 (defenterprise search-prompt-entities
   "Embed `user-search-prompt`, find the nearest saved prompts by cosine distance, and return up to
-   `limit` results ranked by blended score (similarity + canonical boost). Each result is
+   `limit` results ranked by blended score (similarity + canonical + verified boosts). Each result is
    `{:saved_search_prompt :entities :score}`. Returns [] when pgvector is unconfigured."
   :feature :semantic-search
   [user-search-prompt limit]
@@ -144,7 +152,7 @@
           lit       (format-embedding embedding)
           rows      (jdbc/execute!
                      ds
-                     (-> (sql.helpers/select :search_prompt :entities :canonical
+                     (-> (sql.helpers/select :search_prompt :entities :canonical :verified
                                              [[:raw (str "embedding <=> " lit)] :distance])
                          (sql.helpers/from (keyword table-name))
                          (sql.helpers/order-by [[:raw (str "embedding <=> " lit)] :asc])
