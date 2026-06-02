@@ -35,30 +35,29 @@ export function SourceColorIndicator({
       </Flex>
     );
   }
+
   const color = colors?.[0] ?? "var(--mb-color-text-primary)";
-  if (fallbackIcon) {
-    return (
-      <Flex align="center" data-testid="color-indicator-container">
+
+  return (
+    <Flex align="center" data-testid="color-indicator-container">
+      {fallbackIcon ? (
         <Icon
           name={fallbackIcon}
           data-testid="color-indicator"
           size={size}
           style={{ color }}
         />
-      </Flex>
-    );
-  }
-  return (
-    <Flex align="center" data-testid="color-indicator-container">
-      <Box
-        className={S.colorDot}
-        data-testid="color-indicator"
-        w={size}
-        h={size}
-        style={{
-          backgroundColor: color,
-        }}
-      />
+      ) : (
+        <Box
+          className={S.colorDot}
+          data-testid="color-indicator"
+          w={size}
+          h={size}
+          style={{
+            backgroundColor: color,
+          }}
+        />
+      )}
     </Flex>
   );
 }
