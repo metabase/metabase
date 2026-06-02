@@ -95,6 +95,7 @@
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
       (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
                                            {:definition
                                             {:expression [:+ {}
@@ -102,6 +103,7 @@
                                                           [:metric {:lib/uuid "b"} (:id metric)]]}})]
         (is (= "completed" (:status response)))
         (is (= 1 (:row_count response)))))))
+
 (deftest arithmetic-nested-expression-test
   (testing "POST /api/metric/dataset with nested (A + B) * C"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"

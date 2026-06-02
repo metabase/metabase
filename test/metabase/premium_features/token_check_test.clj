@@ -70,20 +70,28 @@
 
 (deftest not-found-test
   (mt/with-log-level :fatal
-    (is (=? {:valid false, :status "Token does not exist."}
-            (token-check/check-token (tu/random-token))))))
+    (mt/with-dynamic-fn-redefs [token-check/http-fetch
+                                (fn [& _]
+                                  {:status 400
+                                   :body   "{\"valid\":false,\"status\":\"Token does not exist.\"}"})]
+      (is (=? {:valid false, :status "Token does not exist."}
+              (token-check/check-token (tu/random-token)))))))
 
 (deftest fetch-token-does-not-call-db-when-cached
   (testing "No DB calls are made when checking token status if the status is in local cache"
-    (let [token (tu/random-token)
-          _ (token-check/check-token token)
-          ;; The local cache has a 5s TTL, so repeated checks within that window should not hit the DB.
-          call-counts (repeatedly 3 (fn []
-                                      (t2/with-call-count [call-count]
-                                        (token-check/check-token token)
-                                        (call-count))))]
-      ;; At least some of these should be zero (served from local in-memory cache)
-      (is (some zero? call-counts)))))
+    (mt/with-dynamic-fn-redefs [token-check/http-fetch
+                                (fn [& _]
+                                  {:status 200
+                                   :body   "{\"valid\":true,\"status\":\"OK\",\"features\":[\"x\"]}"})]
+      (let [token (tu/random-token)
+            _ (token-check/check-token token)
+            ;; The local cache has a 5s TTL, so repeated checks within that window should not hit the DB.
+            call-counts (repeatedly 3 (fn []
+                                        (t2/with-call-count [call-count]
+                                          (token-check/check-token token)
+                                          (call-count))))]
+        ;; At least some of these should be zero (served from local in-memory cache)
+        (is (some zero? call-counts))))))
 
 (deftest token-checker-test
   (let [token          (tu/random-token)
@@ -302,8 +310,12 @@
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
             from the store.metabase.com endpoint for that token."
-    (is (= {:valid false, :status "Token does not exist.", :canonical? true}
-           (token-check/check-token (tu/random-token)))))
+    (mt/with-dynamic-fn-redefs [token-check/http-fetch
+                                (fn [& _]
+                                  {:status 400
+                                   :body   "{\"valid\":false,\"status\":\"Token does not exist.\"}"})]
+      (is (= {:valid false, :status "Token does not exist.", :canonical? true}
+             (token-check/check-token (tu/random-token))))))
   (testing "If premium-embedding-token is nil, the token-status setting should also be nil."
     (mt/with-temporary-setting-values [premium-embedding-token nil]
       (is (nil? (premium-features/token-status))))))
