@@ -32,12 +32,12 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-limit :description limit-desc}]]]])
 
 (defn- entity-summary
-  "One-line description of a result's entities for the text output."
-  [{:keys [type entity entities]}]
-  (case type
-    "canonical" (str "canonical " (pr-str entity))
-    "sources"   (str (count entities) " source entit" (if (= 1 (count entities)) "y" "ies"))
-    (pr-str (or entity entities type))))
+  "One-line description of a result's entity list for the text output."
+  [entities]
+  (let [n (count entities)]
+    (if (= 1 n)
+      (str "1 entity " (pr-str (first entities)))
+      (str n " entities"))))
 
 (defn- format-output [results]
   (if (empty? results)

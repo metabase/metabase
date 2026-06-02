@@ -18,23 +18,24 @@
 (deftest format-output-test
   (let [format-output (var-get #'search-prompt-entities/format-output)
         results       [{:saved_search_prompt "monthly revenue by region"
-                        :entities {:type "canonical" :entity {:model "table" :id 42}}
+                        :entities [{:model "table" :id 42}]
                         :score    {:total_score 0.95}}
                        {:saved_search_prompt "orders joined to customers"
-                        :entities {:type "sources" :entities [{:model "table" :id 1} {:model "card" :id 9}]}
+                        :entities [{:model "table" :id 1} {:model "card" :id 9}]
                         :score    {:total_score 0.80}}]
         out           (format-output results)]
-    (testing "canonical hits render the total score and the prompt"
+    (testing "renders the total score, the prompt, and a single-entity hit"
       (is (str/includes? out "score=\"0.950\""))
-      (is (str/includes? out "monthly revenue by region")))
-    (testing "source-entity hits report the source count"
-      (is (str/includes? out "2 source entities")))))
+      (is (str/includes? out "monthly revenue by region"))
+      (is (str/includes? out "1 entity")))
+    (testing "multi-entity hits report the count"
+      (is (str/includes? out "2 entities")))))
 
 (deftest entity-summary-test
   (let [entity-summary (var-get #'search-prompt-entities/entity-summary)]
-    (testing "a single source is singular"
-      (is (= "1 source entity"
-             (entity-summary {:type "sources" :entities [{:model "table" :id 1}]}))))
-    (testing "canonical summarizes the single entity"
-      (is (str/includes? (entity-summary {:type "canonical" :entity {:model "table" :id 42}})
-                         "canonical")))))
+    (testing "a single entity is summarized inline"
+      (is (= "1 entity {:model \"table\", :id 1}"
+             (entity-summary [{:model "table" :id 1}]))))
+    (testing "multiple entities report the count"
+      (is (= "3 entities"
+             (entity-summary [{:model "table" :id 1} {:model "card" :id 2} {:model "table" :id 3}]))))))

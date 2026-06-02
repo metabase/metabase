@@ -33,11 +33,6 @@
              (:total_score (score {:distance 0.2 :canonical true :verified false}))
              (:total_score (score {:distance 0.2 :canonical false :verified false})))))))
 
-(deftest canonical-entities?-test
-  (let [canonical? (var-get #'prompt-entities/canonical-entities?)]
-    (is (true?  (canonical? {:type "canonical" :entity {:model "table" :id 42}})))
-    (is (false? (canonical? {:type "sources" :entities [{:model "table" :id 1}]})))))
-
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
     ;; Pin db-url to nil so the result is deterministic regardless of any ambient MB_PGVECTOR_DB_URL:
@@ -46,21 +41,15 @@
     (mt/with-premium-features #{:semantic-search}
       (with-redefs [semantic.db.datasource/db-url nil]
         (is (= [] (prompt-entities/search-prompt-entities "anything" 10)))
-        (is (nil? (prompt-entities/upsert-prompt-entity! 1 "p" {:type "canonical"} false)))
+        (is (nil? (prompt-entities/upsert-prompt-entity! 1 "p" [{:model "table" :id 1}] false true)))
         (is (nil? (prompt-entities/delete-prompt-entity! 1)))))))
 
 (defn- create-prompt!
   "POST a prompt through the CRUD API; returns the created row's id."
-  [prompt entities verified]
+  [prompt type entities verified]
   (:id (mt/user-http-request :crowberto :post 200 "metabot/search-prompt/"
-                             {:prompt prompt :entities entities :verified verified})))
+                             {:prompt prompt :type type :entities entities :verified verified})))
 
-;; TODO (Chris 2026-06-02) -- this drives the real CRUD API, which currently types `entities` as
-;; `[:sequential ...]` (lbrdnk's commit) while we settled on the discriminated map
-;; `{:type "canonical"|"sources" ...}`. Until that schema is reconciled to the map (note the inner
-;; `:type` key in lbrdnk's tests means *model type*, which collides with our canonical/sources
-;; discriminator — needs a conversation, not a blind revert), the POSTs below 400 and this test fails
-;; *locally* when pgvector is configured. It stays green in CI because it's gated on MB_PGVECTOR_DB_URL.
 (deftest ^:sequential crud-api-to-tool-end-to-end-test
   (testing "CRUD API write -> mirror hook -> pgvector -> search_prompt_entities tool, end to end"
     ;; Self-gated on MB_PGVECTOR_DB_URL — CI without semantic-search infra skips this; locally with the
@@ -70,9 +59,9 @@
     (when semantic.db.datasource/db-url
       (let [tbl       (str "search_prompt_entities_index_test_" (System/nanoTime))
             ds        (semantic.db.datasource/ensure-initialized-data-source!)
-            canonical {:type "canonical" :entity {:model "table" :id 1}}
-            sources-a {:type "sources" :entities [{:model "table" :id 2}]}
-            sources-b {:type "sources" :entities [{:model "table" :id 3}]}
+            ent-1     [{:model "table" :id 1}]
+            ent-2     [{:model "table" :id 2}]
+            ent-3     [{:model "table" :id 3}]
             ;; All prompts + the query embed to the same vector, so cosine distance ties and the
             ;; canonical (0.15) > verified (0.10) > plain (0.0) boosts alone decide the ranking.
             vec1      [1.0 0.0 0.0 0.0]
@@ -85,17 +74,17 @@
             (binding [prompt-entities/*table-name* tbl]
               (semantic.tu/with-mock-embeddings {p-canon vec1 p-verif vec1 p-plain vec1 q vec1}
                 (try
-                  (let [id-canon (create-prompt! p-canon canonical false)
-                        id-verif (create-prompt! p-verif sources-a true)
-                        _id-pln  (create-prompt! p-plain sources-b false)
+                  (let [id-canon (create-prompt! p-canon "canonical" ent-1 false)
+                        id-verif (create-prompt! p-verif "sources" ent-2 true)
+                        _id-pln  (create-prompt! p-plain "sources" ent-3 false)
                         results  (get-in (tools.spe/search-prompt-entities-tool {:user_search_prompt q})
                                          [:structured-output :data])]
                     (testing "all three rows mirrored and returned, ranked by boost"
                       (is (= [p-canon p-verif p-plain] (mapv :saved_search_prompt results))))
                     (testing "entities round-trip; total_score reflects the weighted boosts (vectors tie, so similarity=1.0)"
-                      (is (=? [{:entities canonical  :score {:total_score (approx 1.15)}}
-                               {:entities sources-a  :score {:total_score (approx 1.1)}}
-                               {:entities sources-b  :score {:total_score (approx 1.0)}}]
+                      (is (=? [{:entities ent-1 :score {:total_score (approx 1.15)}}
+                               {:entities ent-2 :score {:total_score (approx 1.1)}}
+                               {:entities ent-3 :score {:total_score (approx 1.0)}}]
                               results)))
                     (testing "deleting via the CRUD API removes the row from search results"
                       (mt/user-http-request :crowberto :delete 204 (str "metabot/search-prompt/" id-canon))

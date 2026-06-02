@@ -58,9 +58,6 @@
 
 (defn- configured-model [] (embedding/get-configured-model))
 
-(defn- canonical-entities? [entities]
-  (= "canonical" (:type entities)))
-
 (defn ensure-table!
   "Idempotently create the companion pgvector table and its HNSW cosine index.
    Vector size tracks the configured embedding model's dimensions."
@@ -89,9 +86,10 @@
          sql-format-quoted))))
 
 (defenterprise upsert-prompt-entity!
-  "Embed `search-prompt` and upsert the companion pgvector row keyed on `id`."
+  "Embed `search-prompt` and upsert the companion pgvector row keyed on `id`. `entities` is the bare
+   list of entity refs; `canonical?` comes from the appdb row's `type`."
   :feature :semantic-search
-  [id search-prompt entities verified]
+  [id search-prompt entities verified canonical?]
   (when (pgvector-available?)
     (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
           embedding (embedding/get-embedding (configured-model) search-prompt
@@ -99,7 +97,7 @@
           record    {:prompt_id     id
                      :search_prompt search-prompt
                      :entities      [:cast (json/encode entities) :jsonb]
-                     :canonical     (canonical-entities? entities)
+                     :canonical     (boolean canonical?)
                      :verified      (boolean verified)
                      :embedding     [:raw (format-embedding embedding)]}]
       (ensure-table! ds)

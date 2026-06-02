@@ -19,15 +19,15 @@ Each result is `{saved_search_prompt, entities, score}`, sorted best-first.
 
 - `saved_search_prompt` — the curated prompt that matched. Skim it to confirm the match is really about the same thing the user asked; a high score on a subtly different prompt is still the wrong data.
 - `score` — a `{scores, total_score}` breakdown like regular search: `scores` is a list of weighted factors (`similarity` = 1 − cosine distance; `canonical` and `verified` indicators), each with its `score`, `weight`, and `contribution` (= score × weight). `total_score` is the sum of contributions and is what the list is sorted by. Treat it as relative ranking, not an absolute threshold.
-- `entities` — what to actually use. There are two shapes:
+- `entities` — a list of entity refs `[{"model":"table","id":42,"name":"Orders"}, ...]` to actually use. The result's `canonical` score factor tells you how to treat them:
 
-## `entities.type = "canonical"`
+## Canonical (the `canonical` factor scored 1)
 
-A single specific entity that **directly answers** the request — `{"type":"canonical","entity":{"model":"table","id":42}}` (or a `card`/`model`/`metric`). Prefer these: the curator has already decided this is the right thing. Read it with `read_resource` (e.g. `metabase://table/42/fields`) to confirm its columns, then query it directly.
+A single specific entity that **directly answers** the request (the list has exactly one). Prefer these: the curator has already decided this is the right thing. Read it with `read_resource` (e.g. `metabase://table/42/fields`) to confirm its columns, then query it directly.
 
-## `entities.type = "sources"`
+## Sources (the `canonical` factor scored 0)
 
-A set of one or more source entities you are expected to combine yourself — `{"type":"sources","entities":[{"model":"table","id":1},{"model":"card","id":9}]}`. The curator is telling you *which* data to start from, not the finished answer. Read each source's fields and lineage (`read_resource` on `/fields` and `/sources`), then construct the query — filtering, aggregating, and joining as the request needs.
+A set of one or more source entities you are expected to combine yourself. The curator is telling you *which* data to start from, not the finished answer. Read each source's fields and lineage (`read_resource` on `/fields` and `/sources`), then construct the query — filtering, aggregating, and joining as the request needs.
 
 # Best practices
 

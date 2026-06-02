@@ -578,8 +578,8 @@
       (t2/update! :model/SearchPromptEntity id changes)))
   (t2/select-one :model/SearchPromptEntity :id id))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/search-prompt/:id"
-  :- :nil
   "Delete a search prompt entity by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
