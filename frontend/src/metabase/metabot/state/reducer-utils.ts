@@ -67,7 +67,7 @@ export const createConversation = (
     isProcessing: false,
     messages: [],
     visible: false,
-    expanded: false,
+    inBar: false,
     history: [],
     state: {},
     activeToolCalls: [],
@@ -177,5 +177,6 @@ export const getMetabotInitialState = (): MetabotState => {
       suggestedTransforms: [],
     },
     debugMode: false,
+    overlayAgentId: null,
   };
 };

@@ -51,6 +51,7 @@ type SetupOptions = {
   suggestedPrompts?: { prompt: string }[];
   initialRoute?: string;
   seedAgentId?: string;
+  seedMessages?: any[];
   conversationQuery?: ConversationQueryState;
 };
 
@@ -60,6 +61,7 @@ function setup({
   suggestedPrompts = [],
   initialRoute = "/",
   seedAgentId,
+  seedMessages = [],
   conversationQuery = { isLoading: true },
 }: SetupOptions = {}) {
   jest.mocked(useUserMetabotPermissions).mockReturnValue({
@@ -94,9 +96,9 @@ function setup({
       prompt: "",
       promptFocusToken: 0,
       isProcessing: false,
-      messages: [],
+      messages: seedMessages,
       visible: false,
-      expanded: false,
+      inBar: false,
       history: [],
       state: {},
       activeToolCalls: [],
@@ -255,5 +257,25 @@ describe("MetabotPage at /chat/:conversationId", () => {
     const lastCall = jest.mocked(useGetMetabotChatConversationQuery).mock
       .calls[0];
     expect(lastCall?.[1]).toEqual({ skip: true });
+  });
+
+  it("minimize docks the conversation into the bar and navigates home", async () => {
+    const { store } = setup({
+      initialRoute: "/chat/live-id",
+      seedAgentId: "chat_live-id",
+      seedMessages: [{ id: "m1", role: "user", type: "text", message: "hi" }],
+      conversationQuery: { isLoading: true },
+    });
+
+    await userEvent.click(screen.getByTestId("metabot-minimize-chat"));
+
+    const convo = (store.getState() as any).metabot.conversations[
+      "chat_live-id"
+    ];
+    expect(convo.inBar).toBe(true);
+    expect(convo.visible).toBe(true);
+    expect(
+      (store.getState() as any).routing.locationBeforeTransitions.pathname,
+    ).toBe("/");
   });
 });

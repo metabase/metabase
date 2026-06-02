@@ -15,6 +15,7 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { AppContentShell } from "metabase/metabot/components/AppContentShell/AppContentShell";
 import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor, State } from "metabase/redux/store";
@@ -26,7 +27,6 @@ import {
 } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { StatusListing } from "metabase/status/components/StatusListing";
-import { AppContentShell } from "metabase/tabs/components/AppContentShell/AppContentShell";
 import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContentContainer } from "./App.styled";

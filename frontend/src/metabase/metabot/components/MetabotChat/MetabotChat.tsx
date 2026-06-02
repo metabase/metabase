@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useMemo, useRef } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
@@ -11,7 +10,6 @@ import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIPro
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { useDispatch } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { addTab } from "metabase/tabs/tabs.slice";
 import {
   ActionIcon,
   Box,
@@ -32,9 +30,8 @@ import {
 } from "../../hooks";
 import {
   type MetabotAgentId,
+  expandConversation,
   isChatAgentId,
-  setExpanded,
-  setVisible,
 } from "../../state";
 
 import Styles from "./MetabotChat.module.css";
@@ -110,15 +107,7 @@ export const MetabotChat = ({
 
   const canExpand = isChatAgentId(agentId);
   const handleExpand = () => {
-    if (!canExpand) {
-      return;
-    }
-    const urlId = agentId.replace(/^chat_/, "");
-    const path = `/chat/${urlId}`;
-    dispatch(setExpanded({ agentId, expanded: true }));
-    dispatch(setVisible({ agentId, visible: false }));
-    dispatch(addTab({ path, title: metabot.title, icon: "metabot" }));
-    dispatch(push(path));
+    dispatch(expandConversation({ agentId }));
   };
 
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);

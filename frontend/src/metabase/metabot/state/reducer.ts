@@ -26,6 +26,7 @@ import {
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
+  MetabotAgentId,
   MetabotChatMessage,
   MetabotToolCall,
   MetabotUserChatMessage,
@@ -41,6 +42,7 @@ export const metabot = createSlice({
       state,
       action: ConvoPayloadAction<{
         visible?: boolean;
+        inBar?: boolean;
         conversationId?: string;
         selectedDatabaseId?: number;
       }>,
@@ -61,7 +63,6 @@ export const metabot = createSlice({
         messages: MetabotChatMessage[];
         history: MetabotHistory;
         state: any;
-        expanded?: boolean;
       }>,
     ) => {
       const {
@@ -71,7 +72,6 @@ export const metabot = createSlice({
         messages,
         history,
         state: snapshotState,
-        expanded,
       } = action.payload;
       if (state.conversations[agentId]) {
         return;
@@ -83,13 +83,21 @@ export const metabot = createSlice({
       convo.messages = messages;
       convo.history = history ?? [];
       convo.state = snapshotState ?? {};
-      convo.expanded = expanded ?? false;
       state.conversations[agentId] = castDraft(convo);
     },
     destroyAgent: (state, action: ConvoPayloadAction) => {
       const { agentId } = action.payload;
       delete state.conversations[agentId];
+      if (state.overlayAgentId === agentId) {
+        state.overlayAgentId = null;
+      }
       resetReactionState(state, agentId);
+    },
+    setOverlayAgentId: (
+      state,
+      action: PayloadAction<{ agentId: MetabotAgentId | null }>,
+    ) => {
+      state.overlayAgentId = action.payload.agentId;
     },
     resetConversation: (state, action: ConvoPayloadAction) => {
       const { agentId } = action.payload;
@@ -244,9 +252,9 @@ export const metabot = createSlice({
         state.visible = action.payload.visible;
       },
     ),
-    setExpanded: convoReducer(
-      (state, action: ConvoPayloadAction<{ expanded: boolean }>) => {
-        state.expanded = action.payload.expanded;
+    setInBar: convoReducer(
+      (state, action: ConvoPayloadAction<{ inBar: boolean }>) => {
+        state.inBar = action.payload.inBar;
       },
     ),
     setPrompt: convoReducer(

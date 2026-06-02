@@ -4,9 +4,15 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 
-import { getMetabotInitialState } from "./reducer-utils";
+import { createConversation, getMetabotInitialState } from "./reducer-utils";
 
-import { type MetabotChatMessage, getUserPromptForMessageId } from "./index";
+import {
+  type MetabotChatMessage,
+  getBarChatAgentIds,
+  getOverlayAgentId,
+  getUserPromptForMessageId,
+  getVisibleAgentId,
+} from "./index";
 
 function setup(messages: MetabotChatMessage[]): State {
   setupEnterprisePlugins();
@@ -63,6 +69,54 @@ describe("metabot selectors", () => {
         type: "text",
         message: "bleh bleh",
       });
+    });
+  });
+
+  describe("bar membership selectors", () => {
+    const setupChats = (overlayAgentId: string | null): State => {
+      const base = getMetabotInitialState();
+      const withChats = {
+        ...base,
+        conversations: {
+          ...base.conversations,
+          chat_a: createConversation("chat_a", { inBar: true }),
+          chat_b: createConversation("chat_b", { inBar: true }),
+          // a full-page conversation that is not docked in the bar
+          chat_page: createConversation("chat_page", { inBar: false }),
+        },
+        overlayAgentId,
+      } as typeof base;
+      return createMockState({ metabot: withChats });
+    };
+
+    it("getOverlayAgentId returns the overlaid agent slot", () => {
+      expect(getOverlayAgentId(setupChats("chat_a"))).toBe("chat_a");
+      expect(getOverlayAgentId(setupChats(null))).toBeNull();
+    });
+
+    it("getBarChatAgentIds returns only inBar agents and excludes the overlaid one", () => {
+      expect(getBarChatAgentIds(setupChats(null))).toEqual([
+        "chat_a",
+        "chat_b",
+      ]);
+      expect(getBarChatAgentIds(setupChats("chat_a"))).toEqual(["chat_b"]);
+    });
+
+    it("getVisibleAgentId ignores a visible conversation that is not in the bar", () => {
+      const base = getMetabotInitialState();
+      const state = createMockState({
+        metabot: {
+          ...base,
+          conversations: {
+            ...base.conversations,
+            chat_page: createConversation("chat_page", {
+              inBar: false,
+              visible: true,
+            }),
+          },
+        } as typeof base,
+      });
+      expect(getVisibleAgentId(state)).toBeNull();
     });
   });
 });
