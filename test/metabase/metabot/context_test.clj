@@ -9,7 +9,8 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.context :as context]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def ^:private users-native-query (lib/native-query meta/metadata-provider "SELECT * FROM users"))
 (def ^:private users-mbql-query (lib/query meta/metadata-provider (meta/table-metadata :users)))
@@ -240,6 +241,18 @@
           ;; Assert that collection is excluded even though it was viewed most recently
           (is (= #{"question" "model" "dashboard" "table"}
                  (set (map :type recently-viewed)))))))))
+
+(deftest recent-views-disabled-by-setting-test
+  (testing "Omits recent views from context when metabot-recent-views-enabled? is false"
+    (mt/with-test-user :rasta
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (mt/with-temp [:model/Card  {card-id :id}  {:type "question" :name "my question"}
+                       :model/Table {table-id :id} {}]
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
+          (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
+            (let [context (context/create-context {})]
+              (is (not (contains? context :user_recently_viewed))))))))))
 
 (deftest recent-views-verified-content-filter-test
   (testing "Recent views filtering by verified content"
