@@ -1156,8 +1156,7 @@
                     "a new append-only snapshot should be written for each run")))))))))
 
 (deftest ^:sequential run-scoring-advances-fingerprint-only-on-confirmed-publish-test
-  (testing "fingerprint advances only when Snowplow accepted the event — any other outcome leaves the
-           stale fingerprint in place so the next boot / cron retries"
+  (testing "fingerprint advances only when Snowplow accepted the event; any other outcome leaves it stale to retry"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
       (testing "successful publish → fingerprint advances to the claim's fingerprint"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
@@ -1244,8 +1243,7 @@
 (deftest ^:sequential maybe-emit-boot-score-claim-protocol-test
   (testing "the shared scoring claim serializes boot-time emission against sibling nodes and cron ticks"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (testing "a fresh claim (sibling node OR concurrent cron tick) blocks duplicate emission, even
-               when the last-successful fingerprint is stale"
+      (testing "a fresh claim (sibling node or concurrent cron tick) blocks duplicate emission even when last-fp is stale"
         (let [current-fp   (#'task.complexity-score/current-fingerprint)
               ;; Serialize a sibling/cron claim for the same fingerprint, timestamped just now so
               ;; it's well inside the TTL.
@@ -1369,8 +1367,7 @@
   (testing "the cron path — with-scoring-claim! + run-claim!, exactly what the Quartz job body calls"
     (mt/initialize-if-needed! :db)
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (testing "skips when a boot-time run already holds an active claim for the current fingerprint —
-               the shared claim serializes the two paths so they can't both compute and publish"
+      (testing "skips when a boot-time run already holds an active claim for the current fingerprint"
         (let [current-fp   (#'task.complexity-score/current-fingerprint)
               boot-claim   (pr-str {:fingerprint current-fp
                                     :claimed-at  (#'task.complexity-score/now-ms)
@@ -1386,8 +1383,7 @@
                   "cron tick skipped because the boot run holds the scoring claim")
               (is (= boot-claim (settings/data-complexity-scoring-claim))
                   "boot's claim preserved — cron never took it, so it doesn't clear it")))))
-      (testing "regression: a snapshot scored-but-never-published within the cooldown must NOT make the
-               cron skip for a week — it re-publishes the cached score and advances the fingerprint instead"
+      (testing "regression: a scored-but-unpublished snapshot within the cooldown re-publishes instead of skipping for a week"
         (let [current      (#'task.complexity-score/current-fingerprint)
               recompute?   (atom false)
               republished? (atom false)]
@@ -1450,8 +1446,7 @@
               (is (= score result) "the score value is returned untouched"))))))))
 
 (deftest ^:sequential republish-from-cached-snapshot-round-trip-test
-  (testing "the real round-trip — record-score! → latest-score (JSON round-tripped) → republish-score! →
-           emit-snowplow! — actually emits events for a cached snapshot"
+  (testing "the real latest-score → republish-score! → emit-snowplow! round-trip emits events from a cached snapshot"
     (mt/initialize-if-needed! :db)
     (let [fingerprint "republish-round-trip-test/fp"
           ;; :meta carries keyword values (:text-variant and nested :embedding-model) that JSON storage
