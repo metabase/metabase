@@ -1,16 +1,20 @@
-(ns metabase.query-processor.middleware.optimize-temporal-filters-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.optimize-temporal-filters-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.attempted-murders-metadata-provider :as lib.tu.attempted-murders-metadata-provider]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
+   [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]))
 
@@ -22,7 +26,7 @@
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
     (or (-> clause
             lib/->mbql5
-            (->> (#'optimize-temporal-filters/optimize-filter query [:stages 0]))
+            (->> (#'optimize-temporal-clauses/optimize-clause query [:stages 0]))
             lib/->legacy-MBQL)
         clause)))
 
@@ -33,7 +37,7 @@
   ([metadata-provider query]
    (let [query (lib/query metadata-provider query)]
      (-> query
-         optimize-temporal-filters/optimize-temporal-filters
+         optimize-temporal-clauses/optimize-temporal-clauses
          lib/->legacy-MBQL))))
 
 (defn- optimize-filters
@@ -120,7 +124,7 @@
 (defn- assoc-field-options [legacy-ref & kvs]
   (apply update (vec legacy-ref) 2 assoc kvs))
 
-(deftest ^:parallel optimize-temporal-filters-test
+(deftest ^:parallel optimize-temporal-clauses-test
   (doseq [field-or-expr [[:field (meta/id :orders :created-at) {}]
                          [:expression "date" {}]]
           {:keys [unit filter-value lower upper]} test-units-and-values]
@@ -244,10 +248,10 @@
           (mt/with-report-timezone-id! timezone-id
             (testing "lower-bound and upper-bound util fns"
               (is (= lower
-                     (#'optimize-temporal-filters/temporal-literal-lower-bound :day t))
+                     (#'optimize-temporal-clauses/temporal-literal-lower-bound :day t))
                   (format "lower bound of day(%s) in the %s timezone should be %s" t timezone-id lower))
               (is (= upper
-                     (#'optimize-temporal-filters/temporal-literal-upper-bound :day t))
+                     (#'optimize-temporal-clauses/temporal-literal-upper-bound :day t))
                   (format "upper bound of day(%s) in the %s timezone should be %s" t timezone-id upper)))
             (testing "optimize-with-datetime"
               (let [expected [:and
@@ -517,7 +521,7 @@
                                   [:interval 10 :minute]]
                                  [:relative-datetime 1 :minute]]]}}
               (-> query
-                  optimize-temporal-filters/optimize-temporal-filters
+                  optimize-temporal-clauses/optimize-temporal-clauses
                   lib/->legacy-MBQL))))))
 
 (deftest ^:parallel optimize-filter-with-nested-compatible-field-3
@@ -537,7 +541,7 @@
                                 [:relative-datetime -1 :week]
                                 [:relative-datetime 0 :week]]}}
               (-> query
-                  optimize-temporal-filters/optimize-temporal-filters
+                  optimize-temporal-clauses/optimize-temporal-clauses
                   lib/->legacy-MBQL))))))
 
 (deftest ^:parallel optimize-date-equals-date-filters-test
@@ -642,3 +646,116 @@
                     [:field (meta/id :products :created-at) {:base-type :type/DateTime, :temporal-unit :day}]]]
         (is (= clause
                (optimize-filter clause)))))))
+
+(defn- local-date= [expected-date]
+  (fn [actual]
+    (= (t/local-date expected-date) (t/local-date actual))))
+
+(defn- temporal? [x]
+  (instance? java.time.temporal.Temporal x))
+
+(deftest ^:parallel optimize-temporal-between-clauses-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:test/date-type :test/timestamptz-type]})
+    (mt/dataset attempted-murders-no-time
+      (are [start-date end-date expect-expressions expect-rows]
+           (let [mp (mt/metadata-provider)
+                 attempts (lib.metadata/table mp (mt/id :attempts))
+                 date (lib.metadata/field mp (mt/id :attempts :date))
+                 datetime (lib.metadata/field mp (mt/id :attempts :datetime))
+                 datetime-tz (lib.metadata/field mp (mt/id :attempts :datetime_tz))
+                 query (-> (lib/query mp attempts)
+                           (lib/expression "date_between" (lib/between date start-date end-date))
+                           (lib/expression "datetime_between" (lib/between datetime start-date end-date))
+                           (lib/expression "datetime_tz_between" (lib/between datetime-tz start-date end-date))
+                           (lib/limit 10)
+                           (as-> q (lib/with-fields q [(lib/expression-ref q "date_between")
+                                                       (lib/expression-ref q "datetime_between")
+                                                       (lib/expression-ref q "datetime_tz_between")])))
+                 opt-expressions (-> query
+                                     qp.preprocess/preprocess
+                                     lib/expressions
+                                     lib.schema.util/remove-lib-uuids)]
+             (is (=? expect-expressions opt-expressions))
+             (is (= expect-rows (mt/formatted-rows [mt/boolish->bool mt/boolish->bool mt/boolish->bool]
+                                                   (qp/process-query query)))))
+
+        ;; Date strings with no time component should have bucketing of `:day` and get optimized
+        "2019-11-04" "2019-11-07"
+        [[:between {:lib/expression-name "date_between"}
+          [:field map? int?]
+          [:absolute-datetime {} #t "2019-11-04" :default]
+          [:absolute-datetime {} #t "2019-11-07" :default]]
+         [:and {:lib/expression-name "datetime_between"}
+          [:>= {}
+           [:field map? int?]
+           [:absolute-datetime {} (local-date= "2019-11-04") :default]]
+          [:< {}
+           [:field map? int?]
+           [:absolute-datetime {} (local-date= "2019-11-08") :default]]]
+         [:and {:lib/expression-name "datetime_tz_between"}
+          [:>= {}
+           [:field map? int?]
+           [:absolute-datetime {} (local-date= "2019-11-04") :default]]
+          [:< {}
+           [:field map? int?]
+           [:absolute-datetime {} (local-date= "2019-11-08") :default]]]]
+        [[false false false]
+         [false false false]
+         [false false true]
+         [true true true]
+         [true true true]
+         [true true true]
+         [true true true]
+         [false false false]
+         [false false false]
+         [false false false]]
+
+        ;; Datetime strings should have bucketing of `:default` and not get optimized
+        "2019-11-04T12:00:00" "2019-11-07T01:00:00"
+        [[:between {:lib/expression-name "date_between"}
+          [:field map? int?]
+          [:absolute-datetime {} #t "2019-11-04" :default]
+          [:absolute-datetime {} #t "2019-11-07" :default]]
+         [:between {:lib/expression-name "datetime_between"}
+          [:field map? int?]
+          [:absolute-datetime {} temporal? :default]
+          [:absolute-datetime {} temporal? :default]]
+         [:between {:lib/expression-name "datetime_tz_between"}
+          [:field map? int?]
+          [:absolute-datetime {} temporal? :default]
+          [:absolute-datetime {} temporal? :default]]]
+        [[false false false]
+         [false false false]
+         [false false false]
+         [true false false]
+         [true true true]
+         [true true false]
+         [true false false]
+         [false false false]
+         [false false false]
+         [false false false]]
+
+        ;; Datetime strings without a T should have bucketing of `:default` and not get optimized
+        "2019-11-04 12:00:00" "2019-11-07 01:00:00"
+        [[:between {:lib/expression-name "date_between"}
+          [:field map? int?]
+          [:absolute-datetime {} #t "2019-11-04" :default]
+          [:absolute-datetime {} #t "2019-11-07" :default]]
+         [:between {:lib/expression-name "datetime_between"}
+          [:field map? int?]
+          [:absolute-datetime {} temporal? :default]
+          [:absolute-datetime {} temporal? :default]]
+         [:between {:lib/expression-name  "datetime_tz_between"}
+          [:field map? int?]
+          [:absolute-datetime {} temporal? :default]
+          [:absolute-datetime {} temporal? :default]]]
+        [[false false false]
+         [false false false]
+         [false false false]
+         [true false false]
+         [true true true]
+         [true true false]
+         [true false false]
+         [false false false]
+         [false false false]
+         [false false false]]))))
