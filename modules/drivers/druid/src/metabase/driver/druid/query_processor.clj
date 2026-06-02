@@ -722,7 +722,7 @@
     [:aggregation-options ag options]
     (deduplicate-aggregation-options [:aggregation-options (add-expression-aggregation-output-names ag) options])
 
-    [(clause :guard #{:count :avg :distinct :stddev :sum :min :max}) & _]
+    [(clause :guard #{:count :avg :distinct :stddev :sum :min :max :sum-where :count-where :share}) & _]
     [:aggregation-options &match {:name (aggregation-unique-identifier clause)}]))
 
 (defn- post-aggregator-type

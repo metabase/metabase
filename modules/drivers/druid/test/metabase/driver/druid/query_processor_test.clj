@@ -421,6 +421,19 @@
              (druid-query-returning-rows
                {:aggregation [[:share [:< $venue_price 4]]]}))))))
 
+(deftest ^:parallel share-aggregation-test-2
+  (testing ":share inside an arithmetic expression should still work (#12327, QUE2-232)"
+    (mt/test-driver :druid
+      (testing "share"
+        (is (= [[0.951]] ; should be same as the share less than 4 in test above
+               (druid-query-returning-rows
+                 {:aggregation [[:aggregation-options
+                                 [:+
+                                  [:share [:= $venue_price 1]]
+                                  [:share [:= $venue_price 2]]
+                                  [:share [:= $venue_price 3]]]
+                                 {:name "Test", :display-name "Test"}]]})))))))
+
 (deftest ^:parallel count-where-aggregation-test
   (mt/test-driver :druid
     (testing "count-where"
@@ -428,12 +441,36 @@
              (druid-query-returning-rows
                {:aggregation [[:count-where [:< $venue_price 4]]]}))))))
 
+(deftest ^:parallel count-where-aggregation-test-2
+  (testing ":count-where inside an arithmetic expression should still work (#12327, QUE2-232)"
+    (mt/test-driver :druid
+      (testing "count-where"
+        (is (= [[-36.0]] ; 35 'Steakhouse' - 71 'BBQ' = -36
+               (druid-query-returning-rows
+                 {:aggregation [[:aggregation-options
+                                 [:-
+                                  [:count-where [:= $venue_category_name "Steakhouse"]]
+                                  [:count-where [:= $venue_category_name "BBQ"]]]
+                                 {:name "Test", :display-name "Test"}]]})))))))
+
 (deftest ^:parallel sum-where-aggregation-test
   (mt/test-driver :druid
     (testing "sum-where"
       (is (= [[1796.0]]
              (druid-query-returning-rows
                {:aggregation [[:sum-where $venue_price [:< $venue_price 4]]]}))))))
+
+(deftest ^:parallel sum-where-aggregation-test-2
+  (testing ":sum-where inside an arithmetic expression should still work (#12327, QUE2-232)"
+    (mt/test-driver :druid
+      (testing "sum-where"
+        (is (= [[-36.0]] ; 35 'Steakhouse' - 71 'BBQ' = -36
+               (druid-query-returning-rows
+                 {:aggregation [[:aggregation-options
+                                 [:-
+                                  [:sum-where $count [:= $venue_category_name "Steakhouse"]]
+                                  [:sum-where $count [:= $venue_category_name "BBQ"]]]
+                                 {:name "Test", :display-name "Test"}]]})))))))
 
 (deftest ^:parallel count-aggregation-test
   (mt/test-driver :druid

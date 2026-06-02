@@ -446,6 +446,7 @@
    [:base-type      {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]])
 
+;; schema for an `[:aggregation <index>]` clause
 (defclause* aggregation
   [:and
    (helpers/clause
