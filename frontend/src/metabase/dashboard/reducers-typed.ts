@@ -306,7 +306,7 @@ export const dashboards = createReducer(
       .addCase(
         setDashboardAttributes,
         (state, { payload: { id, attributes, isDirty = true } }) => {
-          // Cast to avoid infinite type instantiotion error.
+          // Cast to avoid infinite type instantiation error.
           const dashboards = state as Record<string, StoreDashboard>;
           dashboards[id] = newDashboard(dashboards[id], attributes, isDirty);
         },
