@@ -7,7 +7,6 @@
   (:require
    [clj-http.fake :as fake]
    [clojure.test :refer :all]
-   [metabase.analytics.settings :as analytics.settings]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]))
