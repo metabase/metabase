@@ -2,23 +2,15 @@ import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { CopyDashboardFormConnected } from "metabase/common/components/CopyDashboardForm";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
 import { DocumentCopyForm } from "metabase/documents/components/DocumentCopyForm/DocumentCopyForm";
 import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
 import { Modal } from "metabase/ui";
 
-import type {
-  CopyableEntityType,
-  EntityCopyModalProps,
-  GenericEntityCopyModalProps,
-} from "./EntityCopyModal.types";
+import type { CopyModalProps } from "./types";
 
-function EntityCopyModal<T extends CopyableEntityType>(
-  props: EntityCopyModalProps<T>,
-): React.JSX.Element;
-function EntityCopyModal(props: GenericEntityCopyModalProps): React.JSX.Element;
-function EntityCopyModal(props: GenericEntityCopyModalProps) {
+export function CopyModal(props: CopyModalProps) {
   const {
     entityType,
     entityObject,
@@ -87,6 +79,3 @@ function EntityCopyModal(props: GenericEntityCopyModalProps) {
     </Modal>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EntityCopyModal;

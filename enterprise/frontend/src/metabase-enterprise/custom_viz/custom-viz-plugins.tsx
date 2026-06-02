@@ -310,16 +310,11 @@ export async function loadCustomVizPlugin(
       );
     }
 
-    const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
-
     const props: CreateCustomVisualizationProps<Record<string, unknown>> = {
       defineSetting(definition) {
         return definition as unknown as CustomVisualizationSettingDefinition<
           Record<string, unknown>
         >;
-      },
-      getAssetUrl(path: string) {
-        return `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
       },
       locale:
         window.MetabaseUserLocalization?.headers?.language ??

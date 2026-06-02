@@ -12,9 +12,7 @@ export const advancedConfigApi = EnterpriseApi.injectEndpoints({
         return {
           method: "POST",
           url: "/api/ee/advanced-config",
-          body: { formData },
-          formData: true,
-          fetch: true,
+          body: formData,
         };
       },
       invalidatesTags: (_, error) =>

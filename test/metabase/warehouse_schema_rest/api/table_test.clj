@@ -1086,6 +1086,16 @@
                  (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
                       :fields
                       (map u/the-id))))))
+      (testing "Can we set custom field ordering with a wrapped {:field_order [...]} body?"
+        (let [custom-field-order [(mt/id :venues :name) (mt/id :venues :id) (mt/id :venues :price)
+                                  (mt/id :venues :latitude) (mt/id :venues :longitude) (mt/id :venues :category_id)]]
+          (is (=? {:success true}
+                  (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
+                                        {:field_order custom-field-order})))
+          (is (= custom-field-order
+                 (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
+                      :fields
+                      (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))
 

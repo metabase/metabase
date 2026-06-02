@@ -52,6 +52,18 @@ title: Driver interface changelog
   `:db` AST slot for cross-DB consumers); drivers that emit a 3-part `catalog.schema.table`
   identifier (SQL Server, BigQuery) override to `[:db :schema]`.
 
+- The `metabase.driver.common.parameters.values` namespace, deprecated in 0.57.0, has been removed. Use the equivalent
+  QP namespace, `metabase.query-processor.parameters.values`, instead. Note that this namespace operates on MBQL 5
+  rather than MBQL 4.
+
+- `metabase.driver/substitute-native-parameters` has been deprecated; `substitute-native-parameters-in-stage-method`
+  replaces it. The new method operates on MBQL 5 rather than MBQL 4. `substitute-native-parameters` is no longer
+  called in Metabase 0.62.0+; on the off chance that you implemented it, please implement
+  `substitute-native-parameters-in-stage-method` instead as soon as possible.
+
+- `metabase.driver-api.core/wrap-value-literals-in-mbql` has been removed; use
+  `metabase.driver-api.core/wrap-value-literals-in-mbql5` instead.
+
 ## Metabase 0.61.0
 
 - Added the following driver multimethods to support MBQL5 compilation migration:
