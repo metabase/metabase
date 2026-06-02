@@ -20,11 +20,8 @@
                            {:type :metabot.reaction/message
                             :repl/message-color :green
                             :repl/message-emoji "🤖"
-                            :message message})
-        navigate-reaction (when-let [nav-path (:navigate-to msg)]
-                            {:type :metabot.reaction/redirect
-                             :url nav-path})]
-    (remove nil? [message-reaction navigate-reaction])))
+                            :message message})]
+    (remove nil? [message-reaction])))
 
 (defn reactions
   "Gets the reactions from the LLM."

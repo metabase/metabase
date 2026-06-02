@@ -56,7 +56,9 @@ import {
 import {
   type DataPointCard,
   type OnDemandHandler,
+  isQuestionLikeHref,
   nextDataPointCardMountOrder,
+  normalizeQuestionLink,
   registerDataPointCard,
   setDataPointOnDemandHandler,
 } from "./data-point-router";
@@ -83,26 +85,6 @@ export const AgentDataPartMessage = ({
     .with({ part: { type: "transform_suggestion" } }, (msg) => (
       <AgentSuggestionMessage message={msg} readonly={readonly} />
     ))
-    .with({ part: { type: "navigate_to" } }, ({ part }) => {
-      const sourcePills = (
-        <NavigateToTablePills
-          path={part.value}
-          messageId={readonly ? undefined : message.externalId}
-        />
-      );
-
-      return (
-        <Stack gap="md">
-          {debug && <NavigateToDataPart type={part.type} path={part.value} />}
-          <EmbeddedQuestionCard
-            agentId={agentId}
-            path={part.value}
-            dataPointTargets={dataPointTargets}
-          />
-          {sourcePills}
-        </Stack>
-      );
-    })
     .with({ part: { type: "code_edit" } }, ({ part, metadata }) => {
       const sourcePills = (
         <CodeEditTablePills
@@ -231,17 +213,22 @@ const EmbeddedQuestionCard = ({
     ClickObject[] | null
   >(null);
   const [isHighlightingSelection, setIsHighlightingSelection] = useState(false);
-  const { questionHash, questionName } = useMemo(() => {
+  const { questionHash, questionName, questionKey } = useMemo(() => {
+    // Computed from the raw path so the card can be matched to a chart link in
+    // the reply text even if its query fails to deserialize/execute.
+    const questionKey = normalizeQuestionLink(path);
     try {
       const card = deserializeCardFromQuery(path);
       return {
         questionHash: path.replace(/^\/question#/, ""),
         questionName: title || card.name || t`Generated question`,
+        questionKey,
       };
     } catch {
       return {
         questionHash: null,
         questionName: title || t`Generated question`,
+        questionKey,
       };
     }
   }, [path, title]);
@@ -321,6 +308,10 @@ const EmbeddedQuestionCard = ({
     return true;
   }, []);
 
+  // Briefly pulse the card border. Used when a chart link in the reply text is
+  // clicked, to draw attention after scrolling the card into view.
+  const flash = useCallback(() => setIsHighlightingSelection(true), []);
+
   const { cardId, cardMountOrder } = useMemo(() => {
     const order = nextDataPointCardMountOrder();
     return { cardId: `dpcard_${order}`, cardMountOrder: order };
@@ -338,9 +329,20 @@ const EmbeddedQuestionCard = ({
           block: "center",
         }),
       resolveMentionId,
+      questionKey: questionKey ?? undefined,
+      questionName,
+      flash,
     };
     return registerDataPointCard(card);
-  }, [cardId, cardMountOrder, highlightClickedViaMention, resolveMentionId]);
+  }, [
+    cardId,
+    cardMountOrder,
+    highlightClickedViaMention,
+    resolveMentionId,
+    questionKey,
+    questionName,
+    flash,
+  ]);
 
   // On-demand cards highlight their target once the result is available. The
   // result arrives asynchronously through the loader's render prop (not as a
@@ -545,9 +547,24 @@ const EmbeddedQuestionCard = ({
         gap="md"
         className={Styles.navigateToQuestionHeader}
       >
-        <Text fw="bold" size="sm" truncate>
-          {questionName}
-        </Text>
+        {isQuestionLikeHref(path) ? (
+          <Text
+            component={ForwardRefLink}
+            to={path}
+            target="_blank"
+            rel="noopener noreferrer"
+            fw="bold"
+            size="sm"
+            truncate
+            className={Styles.navigateToQuestionTitleLink}
+          >
+            {questionName}
+          </Text>
+        ) : (
+          <Text fw="bold" size="sm" truncate>
+            {questionName}
+          </Text>
+        )}
       </Flex>
       {questionHash ? (
         <AdHocQuestionLoader questionHash={questionHash}>
@@ -752,34 +769,6 @@ const DataPartJsonCard = ({
     </Box>
   );
 };
-
-const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
-  <Flex
-    direction="row"
-    align="center"
-    justify="space-between"
-    bd="1px solid var(--mb-color-border)"
-    bdrs="sm"
-    className={Styles.agentPartCard}
-    p="sm"
-    pl="md"
-  >
-    <Flex align="center">
-      <Icon name="document" c="text-secondary" mr="sm" />
-      <Text fw="bold">{type}</Text>
-    </Flex>
-    <ActionIcon
-      component={ForwardRefLink}
-      to={path}
-      target="_blank"
-      h="sm"
-      aria-label={t`Visit`}
-      className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
-    >
-      <Icon name="external" size="1rem" />
-    </ActionIcon>
-  </Flex>
-);
 
 const CodeEditDataPart = ({
   type,

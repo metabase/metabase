@@ -90,11 +90,26 @@
 }
 
 .messagesContainer {
+  --metabot-thinking-content-max-width: 54rem;
+  --metabot-thinking-content-padding: 0.5rem;
+  --metabot-thinking-field-bleed: 1rem;
+
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 1rem 1rem 1.5rem;
+  /* query container so the thinking dot-field can break out full-width */
+  container-type: inline-size;
+  padding-top: 1rem;
+  padding-inline: 1rem;
+  /* Reserve room for the floating input box so the last message can scroll
+   * clear of it. The height is measured at runtime and set as a custom
+   * property; the fallback covers the input box before JS measures it. */
+  padding-bottom: calc(var(--metabot-input-height, 11rem) + 1rem);
+  /* Keep the messages centered on the same axis as the input box even when a
+   * classic scrollbar is shown, so the two stay aligned (no-op for overlay
+   * scrollbars). */
+  scrollbar-gutter: stable both-edges;
 }
 
 .messages {
@@ -106,15 +121,45 @@
   padding-inline: 0.5rem;
 }
 
+.messageFiller {
+  flex: 0 0 auto;
+  min-height: calc(var(--metabot-input-height, 11rem) + 1rem);
+  transition:
+    height 260ms cubic-bezier(0.2, 0, 0, 1),
+    min-height 260ms cubic-bezier(0.2, 0, 0, 1);
+}
+
 .bottomInputContainer {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 2;
   width: 100%;
   max-width: 54rem;
   margin: 0 auto;
-  padding: 0 1.5rem 0.5rem;
+  isolation: isolate;
+  /* Match .messages' horizontal padding so the input box lines up with the
+   * agent text (left) and user bubbles (right) instead of being inset. */
+  padding: 0 0.5rem;
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset-inline: 0;
+    top: 2rem;
+    bottom: 0;
+    background: var(--mb-color-background-secondary);
+    pointer-events: none;
+  }
 }
 
 .disclaimer {
-  margin-top: 0.5rem;
+  position: relative;
+  z-index: 1;
+  margin: 0 -0.5rem;
+  padding: 0.5rem;
+  background: var(--mb-color-background-secondary);
 }
 
 .fullscreenQuestionPanel {
@@ -156,7 +201,15 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .messageFiller {
+    transition: none;
+  }
+}
+
 .inputContainer {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   padding: 0.5rem 1rem 1rem;

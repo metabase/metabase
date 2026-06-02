@@ -1,5 +1,4 @@
-import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
+import { isRejected, nanoid } from "@reduxjs/toolkit";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,7 +9,6 @@ import {
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { metabotApi } from "metabase/api/metabot";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
@@ -60,7 +58,7 @@ export const {
   addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
-  setNavigateToPath,
+  setCurrentQuestionPath,
   setPendingMessageExternalId,
   setModelOverride,
   setProfileOverride,
@@ -259,7 +257,6 @@ export const submitInput = createAsyncThunk<
     agentId: MetabotAgentId;
     metabot_id?: string;
     profile?: MetabotProfileId;
-    suppressNavigateTo?: boolean;
   }
 >(
   "metabase/metabot/submitInput",
@@ -311,7 +308,7 @@ export const submitInput = createAsyncThunk<
       dispatch(
         addUserMessage({
           id: messageId,
-          ..._.omit(data, ["context", "metabot_id", "suppressNavigateTo"]),
+          ..._.omit(data, ["context", "metabot_id"]),
           message: prompt,
           agentId,
         }),
@@ -394,7 +391,6 @@ export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & {
     agentId: MetabotAgentId;
-    suppressNavigateTo?: boolean;
   },
   { rejectValue: SendAgentRequestError }
 >(
@@ -403,7 +399,7 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const { agentId, suppressNavigateTo, ...request } = payload;
+    const { agentId, ...request } = payload;
 
     let state = {};
     let response: ProcessedChatResponse | undefined;
@@ -451,16 +447,6 @@ export const sendAgentRequest = createAsyncThunk<
                   },
                 });
               })
-              .with({ type: "navigate_to" }, (part) => {
-                if (!suppressNavigateTo) {
-                  dispatch(setNavigateToPath(part.value));
-
-                  if (!isEmbeddingSdk()) {
-                    dispatch(push(part.value) as UnknownAction);
-                  }
-                }
-                pushDataPart({ type: "data_part", part });
-              })
               .with({ type: "transform_suggestion" }, (part) => {
                 const suggestionId = nanoid();
                 const suggestedTransform = {
@@ -483,6 +469,9 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "adhoc_viz" }, (part) => {
+                // Surface the latest chart in the SDK's question pane /
+                // CurrentChart without navigating the user away.
+                dispatch(setCurrentQuestionPath(part.value.link));
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "static_viz" }, (part) => {

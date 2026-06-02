@@ -100,10 +100,10 @@
 
 (deftest ^:parallel message->chat-messages-test-9
   (testing "data parts are converted to data_part chat messages"
-    (let [blocks [{:type "data" :data-type "navigate_to" :data "/question/1"}
+    (let [blocks [{:type "data" :data-type "adhoc_viz"   :version 1 :data {:link "/question#1"}}
                   {:type "data" :data-type "todo_list"   :version 1 :data [{:id "t1"}]}
                   {:type "data" :data-type "code_edit"   :version 1 :data {:buffer_id "b" :value "v"}}]]
-      (is (=? [{:role "agent" :type "data_part" :part {:type "navigate_to" :version 1 :value "/question/1"}}
+      (is (=? [{:role "agent" :type "data_part" :part {:type "adhoc_viz"   :version 1 :value {:link "/question#1"}}}
                {:role "agent" :type "data_part" :part {:type "todo_list"   :version 1 :value [{:id "t1"}]}}
                {:role "agent" :type "data_part" :part {:type "code_edit"   :version 1 :value {:buffer_id "b" :value "v"}}}]
               (metabot-persistence/message->chat-messages {:role :assistant :data blocks}))))))
@@ -795,7 +795,7 @@
                :text      "just text"}
               {:type      :tool-input
                :id        "n1"
-               :function  "navigate_user"
+               :function  "search"
                :arguments {}}
               {:type      :tool-output
                :id        "n1"

@@ -62,10 +62,16 @@
 }
 
 .messagesContainer {
+  --metabot-thinking-content-max-width: 54rem;
+  --metabot-thinking-content-padding: 0.5rem;
+  --metabot-thinking-field-bleed: 1rem;
+
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* query container so the thinking dot-field can break out full-width */
+  container-type: inline-size;
   padding: 1rem 1rem 1.5rem;
 }
 
@@ -76,6 +82,11 @@
   flex-direction: column;
   margin: 0 auto;
   padding-inline: 0.5rem;
+}
+
+.messageFiller {
+  flex: 0 0 auto;
+  transition: height 260ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .bottomInputContainer {
@@ -124,6 +135,12 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .messageFiller {
+    transition: none;
+  }
+}
+
 .inputContainer {
   display: flex;
   flex-direction: column;
@@ -159,6 +176,19 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+}
+
+.inputActionsLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+}
+
+.inputActionsRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .sendButton {

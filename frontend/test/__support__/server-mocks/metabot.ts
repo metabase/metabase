@@ -26,6 +26,24 @@ const METABASE_TIERED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"]
   "metabase-ai-tiered";
 const METABASE_MANAGED_AI_UNIT_MULTIPLIER = 1_000_000;
 
+export const MOCK_METABOT_MODELS_RESPONSE: MetabotSettingsResponse = {
+  value: "anthropic/claude-haiku-4-5",
+  models: [
+    {
+      id: "claude-haiku-4-5",
+      value: "anthropic/claude-haiku-4-5",
+      display_name: "Claude Haiku 4.5",
+      original_provider: "anthropic",
+    },
+    {
+      id: "claude-opus-4-1",
+      value: "anthropic/claude-opus-4-1",
+      display_name: "Claude Opus 4.1",
+      original_provider: "anthropic",
+    },
+  ],
+};
+
 export function setupMetabotsEndpoints(
   metabots: MetabotInfo[],
   statusCode?: number,
@@ -153,7 +171,13 @@ export function setupMetabotSettingsEndpoint({
   provider: UpdateMetabotSettingsRequest["provider"];
   response: MetabotSettingsResponse;
 }) {
-  fetchMock.get(`path:/api/metabot/settings?provider=${provider}`, response);
+  fetchMock.get(`path:/api/metabot/list-models?provider=${provider}`, response);
+}
+
+export function setupMetabotListModelsEndpoint(
+  response: MetabotSettingsResponse = MOCK_METABOT_MODELS_RESPONSE,
+) {
+  fetchMock.get("path:/api/metabot/list-models", response);
 }
 
 export function setupUpdateMetabotSettingsEndpoint(

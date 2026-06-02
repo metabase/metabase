@@ -251,7 +251,11 @@ export const MetabotChat = ({
               <MetabotThinking toolCalls={metabot.activeToolCalls} />
             )}
             {/* filler - height gets set via ref mutation */}
-            <div ref={fillerRef} data-testid="metabot-message-filler" />
+            <div
+              ref={fillerRef}
+              className={Styles.messageFiller}
+              data-testid="metabot-message-filler"
+            />
             {/* long convo warning */}
             {metabot.isLongConversation && (
               <MetabotResetLongChatButton

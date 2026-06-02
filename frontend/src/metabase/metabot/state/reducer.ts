@@ -147,12 +147,9 @@ export const metabot = createSlice({
     ),
     addAgentTextDelta: convoReducer(
       (convo, action: ConvoPayloadAction<{ text: string }>) => {
-        const hasToolCalls = convo.activeToolCalls.length > 0;
         const lastMessage = _.last(convo.messages);
         const canAppend =
-          !hasToolCalls &&
-          lastMessage?.role === "agent" &&
-          lastMessage.type === "text";
+          lastMessage?.role === "agent" && lastMessage.type === "text";
 
         if (canAppend) {
           lastMessage.message = lastMessage.message + action.payload.text;
@@ -166,8 +163,6 @@ export const metabot = createSlice({
             ...(externalId ? { externalId } : {}),
           });
         }
-
-        convo.activeToolCalls = hasToolCalls ? [] : convo.activeToolCalls;
       },
     ),
     setPendingMessageExternalId: convoReducer(
@@ -311,8 +306,8 @@ export const metabot = createSlice({
       },
     ),
     // REACTIONS REDUCERS
-    setNavigateToPath: (state, action: PayloadAction<string | null>) => {
-      state.reactions.navigateToPath = action.payload;
+    setCurrentQuestionPath: (state, action: PayloadAction<string | null>) => {
+      state.reactions.currentQuestionPath = action.payload;
     },
     addSuggestedTransform: (
       state,

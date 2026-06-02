@@ -110,7 +110,7 @@
   (testing "tool calls outside `query-generation-tool-names` produce no rows"
     (let [parts [{:type      :tool-input
                   :id        "n1"
-                  :function  "navigate_user"
+                  :function  "search"
                   :arguments {}}
                  {:type   :tool-output
                   :id     "n1"

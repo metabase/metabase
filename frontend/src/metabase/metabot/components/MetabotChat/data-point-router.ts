@@ -22,6 +22,15 @@ export type DataPointCard = {
   // cell or a range) when its mention id is clicked again. Returns true if it
   // handled the id.
   resolveMentionId?: (id: DataPointMentionId) => boolean;
+  // Normalized identity of this card's question (see `normalizeQuestionLink`),
+  // used to match a chart link in the reply text back to this embedded chart.
+  questionKey?: string;
+  // The card's displayed title; used as a fallback match when a chart link's
+  // identity differs from this card's (e.g. a saved-question id vs. an adhoc
+  // hash) but its label is the chart name.
+  questionName?: string;
+  // Briefly pulse this card to draw attention after scrolling it into view.
+  flash?: () => void;
 };
 
 export type OnDemandHandler = (
@@ -121,4 +130,76 @@ export const routeDataPointMention = (
   }
 
   return false;
+};
+
+// The hash of an adhoc question url (`/question#<hash>`), tolerant of an
+// absolute url prefix (the agent sometimes links the full site url).
+const QUESTION_HASH_RE = /\/question#([^\s?#]+)/;
+// A saved question id, whether linked as a route (`/question/<id>`) or via the
+// metabase protocol (`metabase://question/<id>`).
+const QUESTION_ROUTE_ID_RE = /\/question\/(\d+)/;
+const QUESTION_PROTOCOL_ID_RE = /metabase:\/\/question\/(\d+)/;
+
+// Reduce a link (or an embedded card's path) to a stable identity so a chart
+// link in the reply text can be matched back to the chart it embeds. Returns
+// `undefined` for links that don't reference a question.
+export const normalizeQuestionLink = (
+  href: string | undefined,
+): string | undefined => {
+  if (!href) {
+    return undefined;
+  }
+  const hash = href.match(QUESTION_HASH_RE);
+  if (hash) {
+    return `hash:${hash[1]}`;
+  }
+  const id =
+    href.match(QUESTION_ROUTE_ID_RE) ?? href.match(QUESTION_PROTOCOL_ID_RE);
+  if (id) {
+    return `id:${id[1]}`;
+  }
+  return undefined;
+};
+
+// Whether a link points at a question at all — used to gate the title-based
+// fallback match so we never hijack an unrelated link that happens to share its
+// label with an embedded chart.
+export const isQuestionLikeHref = (href: string | undefined): boolean =>
+  !!href &&
+  (/\/question(?:[/#?]|$)/.test(href) || /metabase:\/\/question\//.test(href));
+
+const normalizeChartTitle = (title: string | undefined): string =>
+  (title ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+
+// Find the embedded chart, if any, that a reply-text link refers to: first by
+// question identity, then (for question links whose identity differs from the
+// embed's) by matching the link's label against a chart's title. Prefers the
+// most recently mounted card when several match.
+export const resolveChartCardForLink = (
+  href: string | undefined,
+  linkText: string | undefined,
+): DataPointCard | undefined => {
+  const cards = cardsByRecency();
+
+  const key = normalizeQuestionLink(href);
+  if (key) {
+    const byKey = cards.find((card) => card.questionKey === key);
+    if (byKey) {
+      return byKey;
+    }
+  }
+
+  if (isQuestionLikeHref(href)) {
+    const title = normalizeChartTitle(linkText);
+    if (title) {
+      const byTitle = cards.find(
+        (card) => normalizeChartTitle(card.questionName) === title,
+      );
+      if (byTitle) {
+        return byTitle;
+      }
+    }
+  }
+
+  return undefined;
 };

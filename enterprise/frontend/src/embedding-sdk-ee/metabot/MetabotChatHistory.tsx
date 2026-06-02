@@ -9,17 +9,19 @@ import { Stack } from "metabase/ui";
 
 import S from "./MetabotQuestion.module.css";
 
-const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
-  message.type === "data_part" && message.part.type === "navigate_to";
+const isAdhocVizMessage = (message: MetabotChatMessage) =>
+  message.type === "data_part" && message.part.type === "adhoc_viz";
 
 export function MetabotChatHistory() {
   const metabot = useMetabotAgent();
   const { messages } = metabot;
-  const { setNavigateToPath } = useMetabotReactions();
+  const { setCurrentQuestionPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Charts are surfaced in the dedicated question pane, so keep them out of the
+  // chat transcript here.
   const chatMessages = useMemo(
-    () => messages.filter((message) => !isQuestionNavigationMessage(message)),
+    () => messages.filter((message) => !isAdhocVizMessage(message)),
     [messages],
   );
 
@@ -49,7 +51,7 @@ export function MetabotChatHistory() {
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}
           debug={metabot.debugMode}
-          onInternalLinkClick={setNavigateToPath}
+          onInternalLinkClick={setCurrentQuestionPath}
         />
       ) : null}
       {metabot.isLongConversation && (

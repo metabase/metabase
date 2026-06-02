@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+import { Route } from "react-router";
 
 import {
-  act,
+  getScrollIntoViewMock,
   renderWithProviders,
   screen,
   waitFor,
@@ -16,6 +17,7 @@ import type {
 
 import { AgentMessage, Messages } from "./MetabotChatMessage";
 import type { DataPointMentionTarget } from "./data-point-mentions";
+import { routeDataPointMention } from "./data-point-router";
 
 const mockSetPrompt = jest.fn();
 const mockFocusPromptInput = jest.fn();
@@ -195,30 +197,6 @@ describe("AgentMessage", () => {
     jest.restoreAllMocks();
   });
 
-  it("renders navigate_to responses as embedded question cards", () => {
-    const cardHash = serializeCardForUrl({
-      name: "Revenue by month",
-      display: "table",
-      dataset_query: {
-        type: "query",
-        database: 1,
-        query: {},
-      },
-    } as any);
-
-    setup({
-      id: "msg",
-      role: "agent",
-      type: "data_part",
-      part: { type: "navigate_to", version: 1, value: `/question#${cardHash}` },
-    });
-
-    expect(screen.getByText("Revenue by month")).toBeInTheDocument();
-    expect(screen.queryByText(/generated question/i)).not.toBeInTheDocument();
-    expect(screen.queryByText("Open in fullscreen")).not.toBeInTheDocument();
-    expect(screen.getByTestId("embedded-question")).toBeInTheDocument();
-  });
-
   it("renders adhoc_viz responses as embedded question cards", () => {
     const cardHash = serializeCardForUrl({
       name: "Revenue by month",
@@ -266,7 +244,14 @@ describe("AgentMessage", () => {
       id: "msg",
       role: "agent",
       type: "data_part",
-      part: { type: "navigate_to", version: 1, value: `/question#${cardHash}` },
+      part: {
+        type: "adhoc_viz",
+        version: 1,
+        value: {
+          query: { type: "query", database: 1, query: {} },
+          link: `/question#${cardHash}`,
+        },
+      },
     });
 
     await userEvent.click(screen.getByTestId("embedded-question"));
@@ -331,9 +316,12 @@ describe("AgentMessage", () => {
         role: "agent",
         type: "data_part",
         part: {
-          type: "navigate_to",
+          type: "adhoc_viz",
           version: 1,
-          value: `/question#${cardHash}`,
+          value: {
+            query: { type: "query", database: 1, query: {} },
+            link: `/question#${cardHash}`,
+          },
         },
       },
       {
@@ -383,9 +371,12 @@ describe("AgentMessage", () => {
             role: "agent",
             type: "data_part",
             part: {
-              type: "navigate_to",
+              type: "adhoc_viz",
               version: 1,
-              value: `/question#${cardHash}`,
+              value: {
+                query: { type: "query", database: 1, query: {} },
+                link: `/question#${cardHash}`,
+              },
             },
           },
           {
@@ -436,6 +427,115 @@ describe("AgentMessage", () => {
     });
   });
 
+  it("scrolls to the embedded chart when its link in the reply text is clicked", async () => {
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+
+    renderWithProviders(
+      <Route
+        path="/"
+        component={() => (
+          <Messages
+            agentId="omnibot"
+            messages={[
+              {
+                id: "chart",
+                role: "agent",
+                type: "data_part",
+                part: {
+                  type: "adhoc_viz",
+                  version: 1,
+                  value: {
+                    query: { type: "query", database: 1, query: {} },
+                    link: `/question#${cardHash}`,
+                  },
+                },
+              },
+              {
+                id: "text",
+                role: "agent",
+                type: "text",
+                message: `Here's your [the chart](/question#${cardHash}) — take a look.`,
+              },
+            ]}
+            isDoingScience={false}
+            debug={false}
+          />
+        )}
+      />,
+      { withRouter: true, initialRoute: "/" },
+    );
+
+    const scrollIntoView = getScrollIntoViewMock() as jest.Mock;
+    scrollIntoView.mockClear();
+
+    const link = screen.getByRole("link", { name: "the chart" });
+    // Clicking scrolls to the embedded chart instead of navigating away.
+    await userEvent.click(link);
+
+    expect(scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("renders the embedded chart title as a link that opens in a new tab", () => {
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+
+    renderWithProviders(
+      <Route
+        path="/"
+        component={() => (
+          <AgentMessage
+            agentId="omnibot"
+            debug={false}
+            readonly={false}
+            hideActions
+            setFeedbackMessage={() => {}}
+            submittedFeedback={undefined}
+            getCopyText={() => ""}
+            message={{
+              id: "chart",
+              role: "agent",
+              type: "data_part",
+              part: {
+                type: "adhoc_viz",
+                version: 1,
+                value: {
+                  query: { type: "query", database: 1, query: {} },
+                  link: `/question#${cardHash}`,
+                },
+              },
+            }}
+          />
+        )}
+      />,
+      { withRouter: true, initialRoute: "/" },
+    );
+
+    const card = screen.getByTestId("metabot-generated-question");
+    const titleLink = within(card).getByRole("link", {
+      name: "Revenue by month",
+    });
+    expect(titleLink).toHaveAttribute("target", "_blank");
+    expect(titleLink).toHaveAttribute(
+      "href",
+      expect.stringContaining(`/question#${cardHash}`),
+    );
+  });
+
   it("highlights generated chart values when mention clicks only include state-backed ids", async () => {
     const cardHash = serializeCardForUrl({
       name: "Revenue by month",
@@ -462,9 +562,12 @@ describe("AgentMessage", () => {
             role: "agent",
             type: "data_part",
             part: {
-              type: "navigate_to",
+              type: "adhoc_viz",
               version: 1,
-              value: `/question#${cardHash}`,
+              value: {
+                query: { type: "query", database: 1, query: {} },
+                link: `/question#${cardHash}`,
+              },
             },
           },
         ]}
@@ -474,13 +577,10 @@ describe("AgentMessage", () => {
       />,
     );
 
-    act(() => {
-      window.dispatchEvent(
-        new CustomEvent("metabot:data-point-mention-click", {
-          detail: { id: dataPointId },
-        }),
-      );
-    });
+    await screen.findByTestId("embedded-question");
+    await waitFor(() =>
+      expect(routeDataPointMention(dataPointTarget, dataPointId)).toBe(true),
+    );
 
     await waitFor(() =>
       expect(screen.getByTestId("embedded-question")).toHaveAttribute(
@@ -529,9 +629,12 @@ describe("AgentMessage", () => {
         role: "agent",
         type: "data_part",
         part: {
-          type: "navigate_to",
+          type: "adhoc_viz",
           version: 1,
-          value: `/question#${cardHash}`,
+          value: {
+            query: { type: "query", database: 1, query: {} },
+            link: `/question#${cardHash}`,
+          },
         },
       },
     ];

@@ -35,9 +35,9 @@ const adHocQuestionPathProducts = buildAdHocPath({
   limit: 2,
 });
 
-const buildNavigateToResponse = (path: string) =>
+const buildAdhocVizResponse = (path: string) =>
   `0:"Here is the [question link](${path})"
-2:{"type":"navigate_to","version":1,"value":"${path}"}`;
+2:{"type":"adhoc_viz","version":1,"value":{"link":"${path}","query":{}}}`;
 
 type MetabotConsumerProps = {
   prompts: string[];
@@ -93,10 +93,10 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("exposes Metabot and renders CurrentChart after navigate_to", () => {
+  it("exposes Metabot and renders CurrentChart after adhoc_viz", () => {
     H.mockMetabotResponse({
       statusCode: 200,
-      body: buildNavigateToResponse(adHocQuestionPathOrders),
+      body: buildAdhocVizResponse(adHocQuestionPathOrders),
     });
 
     mountSdkContent(<MetabotConsumer prompts={["Show me orders"]} />);
@@ -118,7 +118,7 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
     });
   });
 
-  it("swaps CurrentChart when a second navigate_to reaction arrives with a new path", () => {
+  it("swaps CurrentChart when a second adhoc_viz reaction arrives with a new path", () => {
     cy.intercept("POST", "/api/metabot/agent-streaming", (request) => {
       const path =
         request.body.message === "Show me products"
@@ -126,7 +126,7 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
           : adHocQuestionPathOrders;
       request.reply({
         statusCode: 200,
-        body: buildNavigateToResponse(path),
+        body: buildAdhocVizResponse(path),
         headers: { "content-type": "text/event-stream; charset=utf-8" },
       });
     }).as("metabotAgent");

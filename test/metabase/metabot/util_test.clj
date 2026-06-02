@@ -44,16 +44,16 @@
              {:role       "assistant"
               :_type      :TOOL_CALL
               :tool_calls [{:id        "call_oPCH01Dt3jlFAwRuemtq9fTt"
-                            :name      "navigate_user"
-                            :arguments #"\{\"destination\":.*\}"}]}
-             {:type    "navigate_to"
+                            :name      "show_inline_chart"
+                            :arguments #"\{\"chart_id\":.*\}"}]}
+             {:type    "adhoc_viz"
               :_type   :DATA
               :version 1
-              :value   #"/question#eyJ.*"}
+              :value   {:link #"/question#eyJ.*"}}
              {:role         "tool"
               :_type        :TOOL_RESULT
               :tool_call_id "call_oPCH01Dt3jlFAwRuemtq9fTt"
-              :content      #"(?s)The user now can see the result of the chart.*"}
+              :content      #"(?s)The chart is available inline.*"}
              {:role    "assistant"
               :_type   :TEXT
               :content #"(?s)I created.*more details!"}

@@ -50,10 +50,10 @@ const MetabotQuestionInner = ({
   const isEmbeddedMetabotEnabled = useMetabotEnabledEmbeddingAware();
   const metabotName = useMetabotName();
   const { isLocaleLoading } = useLocale();
-  const { navigateToPath } = useMetabotReactions();
+  const { currentQuestionPath } = useMetabotReactions();
   const { ref: containerRef, width: containerWidth } = useElementSize();
 
-  const hasQuestion = !!navigateToPath;
+  const hasQuestion = !!currentQuestionPath;
 
   const derivedLayout = useMemo(() => {
     return match(layout)
@@ -86,7 +86,7 @@ const MetabotQuestionInner = ({
 
     return (
       <SdkAdHocQuestion
-        questionPath={navigateToPath}
+        questionPath={currentQuestionPath}
         title={false}
         isSaveEnabled={isSaveEnabled}
         targetCollection={targetCollection}

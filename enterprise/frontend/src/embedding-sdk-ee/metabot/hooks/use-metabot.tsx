@@ -16,7 +16,7 @@ import type {
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
-import { getFinalNavigateToMessageIdsPerTurn } from "metabase/metabot/state";
+import { getFinalAdhocVizMessageIdsPerTurn } from "metabase/metabot/state";
 import type { MetabotChatMessage } from "metabase/metabot/state/types";
 import { useSelector } from "metabase/redux";
 
@@ -33,7 +33,7 @@ import { useSelector } from "metabase/redux";
  */
 export const useMetabot = (): UseMetabotResult => {
   const agent = useMetabotAgent();
-  const { navigateToPath } = useMetabotReactions();
+  const { currentQuestionPath } = useMetabotReactions();
   const chartComponentsCache = useRef(
     new Map<string, ReturnType<typeof createChartComponent>>(),
   );
@@ -46,14 +46,14 @@ export const useMetabot = (): UseMetabotResult => {
 
   const CurrentChart = useMemo(
     () =>
-      navigateToPath && authConfig
+      currentQuestionPath && authConfig
         ? getCachedChartComponent(
-            navigateToPath,
+            currentQuestionPath,
             chartComponentsCache.current,
             authConfig,
           )
         : null,
-    [navigateToPath, authConfig],
+    [currentQuestionPath, authConfig],
   );
 
   const agentSubmitMessage = agent.submitInput;
@@ -80,18 +80,18 @@ export const useMetabot = (): UseMetabotResult => {
     agentResetConversation();
   }, [agentResetConversation]);
 
-  // keep only the last navigate_to per turn — agent may emit several mid-stream
-  const finalNavigateToIds = useSelector((state) =>
-    getFinalNavigateToMessageIdsPerTurn(state, "omnibot"),
+  // keep only the last adhoc_viz per turn — agent may emit several mid-stream
+  const finalAdhocVizIds = useSelector((state) =>
+    getFinalAdhocVizMessageIdsPerTurn(state, "omnibot"),
   );
   const messages = useMemo<MetabotMessage[]>(
     () =>
       agent.messages
-        .filter((message) => isPublicMessage(message, finalNavigateToIds))
+        .filter((message) => isPublicMessage(message, finalAdhocVizIds))
         .map((message) =>
           mapMessage(message, chartComponentsCache.current, authConfig),
         ),
-    [agent.messages, finalNavigateToIds, authConfig],
+    [agent.messages, finalAdhocVizIds, authConfig],
   );
 
   const errorMessages = useMemo<SdkMetabotErrorMessage[]>(
@@ -120,7 +120,7 @@ export const useMetabot = (): UseMetabotResult => {
 };
 
 /**
- * Creates a chart component bound to a `navigateTo` path.
+ * Creates a chart component bound to an `adhoc_viz` link path.
  * `drills={false}` (default) renders a StaticQuestion;
  * `drills={true}` renders an InteractiveQuestion.
  *
@@ -160,17 +160,17 @@ function getCachedChartComponent(
 type PublicChatMessage =
   | Extract<MetabotChatMessage, { type: "text" }>
   | (Extract<MetabotChatMessage, { type: "data_part" }> & {
-      part: { type: "navigate_to" };
+      part: { type: "adhoc_viz" };
     });
 
 const isPublicMessage = (
   message: MetabotChatMessage,
-  finalNavigateToIds: Set<string>,
+  finalAdhocVizIds: Set<string>,
 ): message is PublicChatMessage =>
   message.type === "text" ||
   (message.type === "data_part" &&
-    message.part.type === "navigate_to" &&
-    finalNavigateToIds.has(message.id));
+    message.part.type === "adhoc_viz" &&
+    finalAdhocVizIds.has(message.id));
 
 const mapMessage = (
   message: PublicChatMessage,
@@ -189,9 +189,9 @@ const mapMessage = (
         ({ id, role: "agent", type: "text", message }) as const,
     )
     .with(
-      { role: "agent", type: "data_part", part: { type: "navigate_to" } },
+      { role: "agent", type: "data_part", part: { type: "adhoc_viz" } },
       ({ id, part }) => {
-        const questionPath = part.value;
+        const questionPath = part.value.link;
         const Chart = authConfig
           ? getCachedChartComponent(questionPath, cache, authConfig)
           : FallbackChartComponent;

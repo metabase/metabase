@@ -304,7 +304,7 @@ async function setup({
     const response = responseMap[provider];
 
     fetchMock.get({
-      url: "path:/api/metabot/settings",
+      url: "path:/api/metabot/list-models",
       query: { provider },
       response,
     });
@@ -636,7 +636,7 @@ describe("MetabotSetup", () => {
     expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
 
     const settingsRequest = fetchMock.callHistory.calls(
-      "path:/api/metabot/settings",
+      "path:/api/metabot/list-models",
     )[0];
     expect(settingsRequest?.url).toContain("provider=anthropic");
     expect(settingsRequest?.url).not.toContain("api-key");

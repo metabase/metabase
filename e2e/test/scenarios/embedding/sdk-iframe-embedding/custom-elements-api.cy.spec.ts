@@ -529,13 +529,13 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       )}`;
 
       const metabotResponse = `0:"Here is the [question link](${adHocQuestionPath})"`;
-      const metabotResponseWithNavigateTo = `${metabotResponse}
-    2:{"type":"navigate_to","version":1,"value":"${adHocQuestionPath}"}`;
+      const metabotResponseWithAdhocViz = `${metabotResponse}
+    2:{"type":"adhoc_viz","version":1,"value":{"link":"${adHocQuestionPath}","query":${JSON.stringify(query)}}}`;
 
       it("should allow to save a new question", () => {
         H.mockMetabotResponse({
           statusCode: 200,
-          body: metabotResponseWithNavigateTo,
+          body: metabotResponseWithAdhocViz,
         });
 
         cy.intercept("POST", "http://localhost:4000/api/card").as("postCard");

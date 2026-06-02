@@ -48,7 +48,6 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
     .with({ type: "todo_list" }, () => true)
     .with({ type: "transform_suggestion" }, () => true)
-    .with({ type: "navigate_to" }, () => true)
     .with({ type: "code_edit" }, () => true)
     .with({ type: "adhoc_viz" }, () => true)
     .with({ type: "static_viz" }, () => false)
@@ -454,7 +453,7 @@ export const Messages = memo(function Messages({
   isDoingScience: boolean;
   debug: boolean;
   readonly?: boolean;
-  onInternalLinkClick?: (navigateToPath: string) => void;
+  onInternalLinkClick?: (link: string) => void;
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
   dataSelections?: Record<string, DataSelection | undefined>;
 }) {

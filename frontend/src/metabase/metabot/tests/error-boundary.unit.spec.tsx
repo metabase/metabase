@@ -3,6 +3,10 @@ import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupDatabaseListEndpoint,
+  setupMetabotListModelsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { MetabotPanel } from "metabase/metabot/components/MetabotBar/MetabotPanel";
@@ -52,6 +56,8 @@ function setup() {
     "path:/api/metabot/permissions/user-permissions",
     createMockUserMetabotPermissions(),
   );
+  setupMetabotListModelsEndpoint();
+  setupDatabaseListEndpoint([]);
 
   renderWithProviders(
     <MetabotProvider>

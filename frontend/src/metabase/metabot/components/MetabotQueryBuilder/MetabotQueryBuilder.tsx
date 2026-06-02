@@ -21,6 +21,7 @@ import {
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
 import { useScrollManager } from "metabase/metabot/components/MetabotChat/hooks";
+import { MetabotModelSelector } from "metabase/metabot/components/MetabotModelSelector";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
@@ -109,6 +110,8 @@ const MetabotQueryBuilderInner = () => {
     submitInput,
     retryMessage,
     cancelRequest,
+    modelOverride,
+    setModelOverride,
   } = useMetabotAgent(agentId);
 
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
@@ -135,16 +138,21 @@ const MetabotQueryBuilderInner = () => {
     useScrollManager(showConversation);
 
   const handleSubmitPrompt = async (prompt: string) => {
+    const selectedModelOverride = modelOverride;
     if (!hasMessages) {
       // Start a fresh NLQ conversation for the first prompt from this page.
       resetConversation();
+      // resetConversation clears the per-conversation model override, so
+      // re-apply the user's selection to the new conversation.
+      if (selectedModelOverride) {
+        setModelOverride(selectedModelOverride);
+      }
     }
     setHasError(false);
 
     const action = await submitInput(prompt, {
       profile: "nlq",
       preventOpenSidebar: true,
-      suppressNavigateTo: true,
     });
 
     if (isRejected(action)) {
@@ -218,25 +226,34 @@ const MetabotQueryBuilderInner = () => {
         )}
       </Box>
       <Box className={S.inputActions}>
-        {hasError ? (
-          <Text c="error" ta="center">
-            {t`Something went wrong. Please try again.`}
-          </Text>
-        ) : (
-          <div />
-        )}
-        <ActionIcon
-          className={S.sendButton}
-          variant="filled"
-          size="2rem"
-          disabled={!canUseNlq || inputDisabled}
-          loading={isDoingScience}
-          onClick={handleEditorSubmit}
-          data-testid="metabot-send-message"
-          aria-label={t`Send`}
-        >
-          <Icon name="arrow_up" />
-        </ActionIcon>
+        <Box className={S.inputActionsLeft}>
+          {hasError && (
+            <Text c="error" ta="center">
+              {t`Something went wrong. Please try again.`}
+            </Text>
+          )}
+        </Box>
+        <Box className={S.inputActionsRight}>
+          {canUseNlq && (
+            <MetabotModelSelector
+              disabled={isDoingScience}
+              modelOverride={modelOverride}
+              onModelOverrideChange={setModelOverride}
+            />
+          )}
+          <ActionIcon
+            className={S.sendButton}
+            variant="filled"
+            size="2rem"
+            disabled={!canUseNlq || inputDisabled}
+            loading={isDoingScience}
+            onClick={handleEditorSubmit}
+            data-testid="metabot-send-message"
+            aria-label={t`Send`}
+          >
+            <Icon name="arrow_up" />
+          </ActionIcon>
+        </Box>
       </Box>
     </Paper>
   );
@@ -279,7 +296,11 @@ const MetabotQueryBuilderInner = () => {
                 {isDoingScience && (
                   <MetabotThinking toolCalls={activeToolCalls} />
                 )}
-                <div ref={fillerRef} data-testid="metabot-message-filler" />
+                <div
+                  ref={fillerRef}
+                  className={S.messageFiller}
+                  data-testid="metabot-message-filler"
+                />
                 {isLongConversation && (
                   <MetabotResetLongChatButton
                     onResetConversation={resetConversation}

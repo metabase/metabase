@@ -30,8 +30,8 @@ const adHocQuestionPath = `/question#${btoa(
 )}`;
 
 const metabotResponse = `0:"Here is the [question link](${adHocQuestionPath})"`;
-const metabotResponseWithNavigateTo = `${metabotResponse}
-2:{"type":"navigate_to","version":1,"value":"${adHocQuestionPath}"}`;
+const metabotResponseWithAdhocViz = `${metabotResponse}
+2:{"type":"adhoc_viz","version":1,"value":{"link":"${adHocQuestionPath}","query":${JSON.stringify(query)}}}`;
 
 const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuestionPath})"`;
 
@@ -72,7 +72,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   };
 
   it("should show drill-through results after drilling from a metabot question", () => {
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithAdhocViz);
 
     mountSdkContent(<MetabotQuestion />);
 
@@ -96,7 +96,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 
   it("should automatically show the ad-hoc question for the last agent message containing ad-hoc question link", () => {
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithAdhocViz);
 
     mountSdkContent(<MetabotQuestion />);
 
@@ -110,7 +110,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   it("should allow saving a question", () => {
     cy.intercept("POST", "/api/card").as("postCard");
 
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithAdhocViz);
 
     cy.get("@collectionId").then((collectionId) => {
       mountSdkContent(

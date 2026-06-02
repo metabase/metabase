@@ -53,14 +53,14 @@ export const Centered = {
   },
 };
 
-export const RedirectReaction = {
+export const AdhocVizReaction = {
   render: Template,
   parameters: {
     msw: {
       handlers: [
         mockStreamResponse([
           `0:"Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})"`,
-          `2:{"type":"navigate_to","version":1,"value":"${MOCK_AD_HOC_QUESTION_ID}"}
+          `2:{"type":"adhoc_viz","version":1,"value":{"link":"${MOCK_AD_HOC_QUESTION_ID}","query":{}}}
 `,
         ]),
       ],

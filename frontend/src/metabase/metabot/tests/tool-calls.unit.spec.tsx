@@ -15,7 +15,7 @@ import {
 } from "./utils";
 
 describe("metabot > tool calls", () => {
-  it("should show list each tool being called as it comes in and cleared when finished", async () => {
+  it("should show the latest tool being called and clear it when finished", async () => {
     setup();
 
     const [pause1, pause2] = createPauses(2);
@@ -42,10 +42,10 @@ describe("metabot > tool calls", () => {
 
     pause1.resolve();
 
-    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
     expect(
       await screen.findByText("Inspecting the visualization"),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
 
     pause2.resolve();
 
@@ -59,7 +59,7 @@ describe("metabot > tool calls", () => {
     });
   });
 
-  it("should clear out list of tool calls when new text comes in", async () => {
+  it("should keep the latest tool call visible while new text streams", async () => {
     setup();
 
     const [pause1, pause2, pause3] = createPauses(3);
@@ -88,9 +88,7 @@ describe("metabot > tool calls", () => {
 
     pause1.resolve();
 
-    await waitFor(() => {
-      expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
-    });
+    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
     expect(screen.getByText("Hey.")).toBeInTheDocument();
     await waitFor(() => {
       expect(

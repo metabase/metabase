@@ -1,10 +1,8 @@
 (ns metabase.metabot.api-test
   (:require
-   [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [compojure.response]
    [medley.core :as m]
    [metabase.api.common :as mb.api]
    [metabase.config.core :as config]
@@ -24,13 +22,12 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.premium-features.core :as premium-features]
-   [metabase.search.test-util :as search.tu]
-   [metabase.server.instance :as server.instance]
-   [metabase.server.streaming-response :as sr]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -63,10 +60,10 @@
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
                   ;; Native agent emits AI SDK v4 line protocol directly
                   (testing "response contains expected line types"
-                    ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
-                    (is (=? [#"f:.*"
+                    ;; 2:{conversation_title}, f:{start}, 0:"text" chunks, d:{finish with usage}
+                    (is (=? [#"2:.*conversation_title.*"
+                             #"f:.*"
                              #"0:.*"
-                             #"2:.*"
                              #"d:.*"]
                             (m/distinct-by #(subs % 0 2) lines)))
                     ;; Text chunks reassemble to full message
@@ -86,125 +83,53 @@
                             :data         [{:type "text" :text "Hello from native agent!"}]}]
                           messages)))))))))))
 
-(defn ^:private sse-event
-  "Format an SSE event as a string for a mock LLM server."
-  ^String [data]
-  (str "data: " (json/encode data) "\n\n"))
-
 (deftest closing-connection-native-agent-test
-  (testing "When the client closes a native-agent streaming connection, the
-            pipeline tears down and the partial turn is persisted as aborted."
-    ;; We set up a fake OpenRouter-compatible (Chat Completions) SSE server that
-    ;; streams text-delta events. The Metabase server connects to it via the
-    ;; full native-agent pipeline:
-    ;;   openrouter-raw → sse-reducible → openrouter->aisdk-chunks-xf → tool-executor-xf
-    ;;   → lite-aisdk-xf → agent loop → aisdk-line-xf → streaming-writer-rf → client
-    ;; The test client reads one byte and closes. The streaming-writer-rf's poll
-    ;; of `canceled-chan` flips the `canceled?` volatile and returns `reduced`,
-    ;; the agent loop unwinds, and `finalize-assistant-turn!` is called from the
-    ;; `finally` with `:finished? false`, UPDATEing the placeholder row inserted
-    ;; by `start-turn!`.
-    (let [total-chunks  30
-          cnt           (atom total-chunks)
-          stored-parts  (atom nil)
+  (testing "When the native-agent streaming body observes cancellation, it finalizes the partial turn as aborted."
+    (let [stored-parts  (atom nil)
           stored-kwargs (atom nil)
-          chat-id       (str "chatcmpl-" (random-uuid))
-          ;; Fake OpenRouter API: streams Chat Completions SSE text deltas.
-          llm-handler
-          (fn [req respond _raise]
-            (respond
-             (compojure.response/render
-              (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os llm-canceled-chan]
-                (try
-                  (let [write!    (fn [^String s]
-                                    (.write os (.getBytes s "UTF-8"))
-                                    (.flush os))
-                        canceled? #(some? (a/poll! llm-canceled-chan))]
-                    ;; First chunk: role assignment (empty content to establish assistant role)
-                    (write! (sse-event {:id      chat-id
-                                        :model   "anthropic/claude-haiku-4-5"
-                                        :choices [{:index         0
-                                                   :delta         {:role "assistant" :content ""}
-                                                   :finish_reason nil}]}))
-                    ;; Stream text content chunks slowly, stop early if the consumer disconnects
-                    (loop []
-                      (when (and (pos? @cnt) (not (canceled?)))
-                        (write! (sse-event {:id      chat-id
-                                            :model   "anthropic/claude-haiku-4-5"
-                                            :choices [{:index         0
-                                                       ;; pad past Jetty's 8 KB buffer so .flush reaches the client mid-stream
-                                                       :delta         {:content (str "chunk-" @cnt " " (apply str (repeat 512 \x)))}
-                                                       :finish_reason nil}]}))
-                        (swap! cnt dec)
-                        (Thread/sleep 10)
-                        (recur)))
-                    (when-not (canceled?)
-                      ;; Finish reason
-                      (write! (sse-event {:id      chat-id
-                                          :model   "anthropic/claude-haiku-4-5"
-                                          :choices [{:index         0
-                                                     :delta         {}
-                                                     :finish_reason "stop"}]}))
-                      ;; Usage (separate final chunk, as OpenRouter does)
-                      (write! (sse-event {:id      chat-id
-                                          :model   "anthropic/claude-haiku-4-5"
-                                          :choices []
-                                          :usage   {:prompt_tokens     10
-                                                    :completion_tokens 50}}))
-                      (write! "data: [DONE]\n\n")))
-                  (catch Exception _e nil)))
-              req)))
-          llm-server
-          (doto (server.instance/create-server llm-handler {:port 0 :join? false})
-            .start)
-          llm-url       (str "http://localhost:" (.. llm-server getURI getPort))]
-      (try
-        (mt/test-helpers-set-global-values!
-          (search.tu/with-index-disabled
-            (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
-              (let [real-http-post http/post]
-                (with-redefs [llm.settings/llm-openrouter-api-key            (constantly "fake-key")
-                              llm.settings/llm-openrouter-api-base-url       (constantly llm-url)
-                              scope/resolve-user-permissions                 (constantly scope/all-yes-permissions)
-                              ;; The fake LLM server doesn't gzip, but clj-http wraps with
-                              ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
-                              http/post                                      (fn [url opts]
-                                                                               (real-http-post url (assoc opts :decompress-body false)))
-                              metabot.context/create-context                 (fn [ctx & _] ctx)
-                              metabot.persistence/finalize-assistant-turn!   (fn [_conv-id _pk parts & kwargs]
-                                                                               (reset! stored-parts parts)
-                                                                               (reset! stored-kwargs (apply hash-map kwargs)))
-                              sr/async-cancellation-poll-interval-ms         5]
-                  (testing "Closing stream body tears down the pipeline and persists the aborted turn"
-                    (reset! cnt total-chunks)
-                    (reset! stored-parts nil)
-                    (reset! stored-kwargs nil)
-                    (mt/with-model-cleanup [:model/MetabotMessage
-                                            [:model/MetabotConversation :created_at]]
-                      (let [conversation-id (str (random-uuid))
-                            body (mt/user-real-request :rasta :post 202 "metabot/agent-streaming"
-                                                       {:request-options {:as              :stream
-                                                                          :decompress-body false}}
-                                                       {:message         "Test closure"
-                                                        :context         {}
-                                                        :conversation_id conversation-id
-                                                        :history         []
-                                                        :state           {}})]
-                        (.read ^java.io.InputStream body) ;; start the handler
-                        (.close ^java.io.Closeable body)
-                        (u/poll {:thunk       #(deref stored-parts)
-                                 :done?       some?
-                                 :interval-ms 10
-                                 :timeout-ms  3000})
-                        (is (some? @stored-parts)
-                            "finalize-assistant-turn! was called even though the client disconnected")
-                        (is (false? (:finished? @stored-kwargs))
-                            "the finalized turn is marked :finished? false — the cancel was detected")
-                        (is (= 2 (count (t2/select :model/MetabotMessage
-                                                   :conversation_id conversation-id)))
-                            "start-turn! inserted exactly user + placeholder; no extra row from finalize")))))))))
-        (finally
-          (.stop llm-server))))))
+          canceled-chan (a/chan 1)
+          first-write?  (atom true)
+          cancel!       (fn []
+                          (when (compare-and-set! first-write? true false)
+                            (a/>!! canceled-chan ::client-closed)))
+          os            (proxy [java.io.ByteArrayOutputStream] []
+                          (write
+                            ([b]
+                             (proxy-super write b)
+                             (cancel!))
+                            ([b off len]
+                             (proxy-super write b off len)
+                             (cancel!))))]
+      (with-redefs [agent/run-agent-loop
+                    (fn [_]
+                      [{:type :start :id "msg-1"}
+                       {:type :text :text "this should not finish"}])
+                    metabot.context/create-context
+                    (fn [ctx & _] ctx)
+                    metabot.persistence/finalize-assistant-turn!
+                    (fn [_conv-id _pk parts & kwargs]
+                      (reset! stored-parts parts)
+                      (reset! stored-kwargs (apply hash-map kwargs)))]
+        (let [streaming-response (#'api/native-agent-streaming-request
+                                  {:metabot-id       metabot.config/internal-metabot-id
+                                   :profile-id       "default"
+                                   :message          {:role "user" :content "Test closure"}
+                                   :context          {}
+                                   :history          []
+                                   :conversation-id  (str (random-uuid))
+                                   :model            nil
+                                   :state            {}
+                                   :debug?           false
+                                   :database-id      nil
+                                   :assistant-msg-id (random-uuid)
+                                   :external-id      "msg-1"
+                                   :title            "Test title"})
+              f                  (.f ^StreamingResponse streaming-response)]
+          (f os canceled-chan)
+          (is (some? @stored-parts)
+              "finalize-assistant-turn! was called even though the client disconnected")
+          (is (false? (:finished? @stored-kwargs))
+              "the finalized turn is marked :finished? false — the cancel was detected"))))))
 
 (deftest thrown-during-agent-setup-persists-as-errored-test
   (testing "A throwable escaping the agent loop (e.g. permission/setup throw before
@@ -289,7 +214,7 @@
                         :display_name "Claude Sonnet 4.5"
                         :original_provider "anthropic"
                         :group "Sonnet"}]}
-             (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "anthropic"))))))
+             (mt/user-http-request :crowberto :get 200 "metabot/list-models" :provider "anthropic"))))))
 
 (deftest settings-model-original-provider-test
   (doseq [[provider-and-model expected] [["metabase/anthropic/claude-sonnet-4" "anthropic"]
@@ -303,6 +228,17 @@
                                          ["google/gemini-2.5-flash" nil]]]
     (let [[provider model-id] (str/split provider-and-model #"/" 2)]
       (is (= expected (#'api/original-provider provider {:id model-id}))))))
+
+(deftest model-override-enabled-check-test
+  (testing "rejects model overrides when conversation model selection is disabled"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-conversation-model-selection-enabled false]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Model selection is disabled"
+                            (#'api/check-model-override-enabled! "anthropic/claude-opus-4-1")))))
+  (testing "accepts model overrides when conversation model selection is enabled"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-conversation-model-selection-enabled true]
+      (is (= "anthropic/claude-opus-4-1"
+             (#'api/check-model-override-enabled! "anthropic/claude-opus-4-1"))))))
 
 (deftest settings-get-normalizes-legacy-anthropic-ids-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-valid"]
@@ -323,7 +259,7 @@
                         :display_name "Claude Haiku 4.5"
                         :original_provider "anthropic"
                         :group "Haiku"}]}
-             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+             (mt/user-http-request :crowberto :get 200 "metabot/list-models"
                                    :provider "anthropic"))))))
 
 (deftest settings-get-groups-openrouter-models-test
@@ -345,7 +281,7 @@
                         :display_name "OpenAI: GPT-4.1 mini"
                         :original_provider "openai"
                         :group "OpenAI"}]}
-             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+             (mt/user-http-request :crowberto :get 200 "metabot/list-models"
                                    :provider "openrouter"))))))
 
 (deftest settings-get-returns-metabase-models-without-api-key-test
@@ -363,7 +299,7 @@
               :models [{:id "anthropic/claude-haiku-4-5" :value "metabase/anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5" :original_provider "anthropic"}
                        {:id "anthropic/claude-sonnet-4-6" :value "metabase/anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6" :original_provider "anthropic"}
                        {:id "anthropic/claude-opus-4-1" :value "metabase/anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1" :original_provider "anthropic"}]}
-             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+             (mt/user-http-request :crowberto :get 200 "metabot/list-models"
                                    :provider "metabase"))))))
 
 (deftest settings-put-updates-provider-test
@@ -615,14 +551,30 @@
       (is (= {:value         (metabot.settings/llm-metabot-provider)
               :api-key-error "OpenAI API key expired or invalid"
               :models        []}
-             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+             (mt/user-http-request :crowberto :get 200 "metabot/list-models"
                                    :provider "openai"))))))
 
 (deftest settings-permissions-test
-  (mt/user-http-request :rasta :get 403 "metabot/settings" :provider "anthropic")
   (mt/user-http-request :rasta :put 403 "metabot/settings"
                         {:provider "anthropic"
                          :model    "claude-haiku-4-5"}))
+
+(deftest list-models-does-not-require-setting-permission-test
+  (mt/with-temporary-setting-values [metabot-enabled? false
+                                     metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                     llm.settings/llm-anthropic-api-key    "sk-ant-valid"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                                           (is (= "anthropic" provider))
+                                                           (is (= "sk-ant-valid" api-key))
+                                                           {:models [{:id "claude-haiku-4-5"
+                                                                      :display_name "Claude Haiku 4.5"}]})]
+      (is (= {:value  "anthropic/claude-haiku-4-5"
+              :models [{:id "claude-haiku-4-5"
+                        :value "anthropic/claude-haiku-4-5"
+                        :display_name "Claude Haiku 4.5"
+                        :original_provider "anthropic"
+                        :group "Haiku"}]}
+             (mt/user-http-request :rasta :get 200 "metabot/list-models" :provider "anthropic"))))))
 
 (deftest metabot-provider-without-api-key-is-configured-test
   (mt/with-premium-features #{:metabase-ai-managed}
@@ -847,7 +799,6 @@
                conv-id assistant-msg-id
                [{:type :start :id "msg-1"}
                 {:type :text :text "Hi"}
-                {:type :data :data-type "navigate_to" :data "/question/1"}
                 {:type :data :data-type "todo_list" :version 1 :data [{:id "1" :content "x" :status "pending" :priority "low"}]}
                 {:type :data :data-type "code_edit" :version 1 :data {:buffer_id "b" :value "v"}}
                 {:type :data :data-type "transform_suggestion" :version 1 :data {}}
@@ -860,7 +811,7 @@
                     conv       (t2/select-one :model/MetabotConversation :id conv-id)
                     data-types (into #{} (keep :data-type) (:data msg))
                     part-types (into #{} (map :type) (:data msg))]
-                (is (= #{"navigate_to" "todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
+                (is (= #{"todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
                        data-types)
                     "all persistable data parts (not state) should be in :data")
                 (is (contains? part-types "text")
@@ -882,7 +833,7 @@
              :result {:output            "<result>XML</result>"
                       :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
                       :structured-output {:result-type :search :data [{:id 1}]}
-                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+                      :data-parts        [{:type :data :data-type "adhoc_viz"}]}}))))
   (testing "keeps the query-related subset of :structured-output for analytics extraction"
     (let [query-map {:database 1 :type :native :native {:query "SELECT 1"}}]
       (is (= {:type   :tool-output

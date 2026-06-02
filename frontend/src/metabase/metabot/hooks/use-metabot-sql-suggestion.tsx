@@ -45,7 +45,13 @@ export function useMetabotSQLSuggestion({
   bufferId,
   onGenerated,
 }: UseMetabotSQLSuggestionOptions) {
-  const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent("sql");
+  const {
+    isDoingScience,
+    submitInput,
+    cancelRequest,
+    modelOverride,
+    setModelOverride,
+  } = useMetabotAgent("sql");
 
   const [error, setError] = useState<MetabotAgentTurnDisplayError>();
 
@@ -119,6 +125,8 @@ export function useMetabotSQLSuggestion({
     generate,
     error,
     cancelRequest,
+    modelOverride,
+    setModelOverride,
     clear,
     reject,
     reset,

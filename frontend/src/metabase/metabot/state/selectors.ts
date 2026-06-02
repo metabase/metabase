@@ -83,9 +83,9 @@ export const getMetabotReactionsState = createSelector(
   (state) => state.reactions,
 );
 
-export const getNavigateToPath = createSelector(
+export const getCurrentQuestionPath = createSelector(
   getMetabotReactionsState,
-  (reactionsState) => reactionsState.navigateToPath,
+  (reactionsState) => reactionsState.currentQuestionPath,
 );
 
 export const getMetabotSuggestedTransforms = createSelector(
@@ -181,15 +181,17 @@ const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
     return turns;
   }, []);
 
-export const getFinalNavigateToMessageIdsPerTurn = createSelector(
+// The agent may emit several `adhoc_viz` parts mid-turn (e.g. while iterating on
+// a query); only the last one per turn represents the final chart to surface.
+export const getFinalAdhocVizMessageIdsPerTurn = createSelector(
   getMessages,
   (messages) =>
     new Set(
       splitByTurn(messages).flatMap((turn) => {
-        const lastNav = turn.findLast(
-          (m) => m.type === "data_part" && m.part.type === "navigate_to",
+        const lastViz = turn.findLast(
+          (m) => m.type === "data_part" && m.part.type === "adhoc_viz",
         );
-        return lastNav ? [lastNav.id] : [];
+        return lastViz ? [lastViz.id] : [];
       }),
     ),
 );

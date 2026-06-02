@@ -4,6 +4,7 @@ import { Route } from "react-router";
 import {
   setupBookmarksEndpoints,
   setupDatabasesEndpoints,
+  setupMetabotListModelsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -80,6 +81,7 @@ function setup({
 
   setupBookmarksEndpoints([]);
   setupDatabasesEndpoints([]);
+  setupMetabotListModelsEndpoint();
 
   const settings = mockSettings({
     "metabot-show-illustrations": showIllustrations,

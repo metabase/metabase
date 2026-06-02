@@ -15,6 +15,13 @@ import {
 
 import { useMetabot } from "./use-metabot";
 
+const makeAdhocVizPart = (link: string) =>
+  ({
+    type: "adhoc_viz",
+    version: 1,
+    value: { link, query: {} },
+  }) as const;
+
 /**
  * Covers `useMetabot()` non-passthrough wiring: `CurrentChart`,
  * `messages[n].Chart`, `submitMessage`, `messages` mapping. Chart mocks
@@ -59,7 +66,7 @@ describe("useMetabot", () => {
       return CurrentChart ? <CurrentChart drills={drills} /> : null;
     };
 
-    it("renders nothing before navigate_to fires", () => {
+    it("renders nothing before adhoc_viz fires", () => {
       setup({ ui: <TestCurrentChart /> });
 
       expect(
@@ -67,7 +74,7 @@ describe("useMetabot", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("renders a chart after navigate_to fires", async () => {
+    it("renders a chart after adhoc_viz fires", async () => {
       const { store } = setup({ ui: <TestCurrentChart /> });
 
       expect(
@@ -75,7 +82,9 @@ describe("useMetabot", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        store.dispatch(metabotActions.setNavigateToPath("/question#base64"));
+        store.dispatch(
+          metabotActions.setCurrentQuestionPath("/question#base64"),
+        );
       });
 
       expect(await screen.findByTestId("mock-static-question")).toBeVisible();
@@ -85,7 +94,9 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestCurrentChart /> });
 
       act(() => {
-        store.dispatch(metabotActions.setNavigateToPath("/question#base64"));
+        store.dispatch(
+          metabotActions.setCurrentQuestionPath("/question#base64"),
+        );
       });
 
       expect(await screen.findByTestId("mock-static-question")).toBeVisible();
@@ -95,7 +106,9 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestCurrentChart drills /> });
 
       act(() => {
-        store.dispatch(metabotActions.setNavigateToPath("/question#base64"));
+        store.dispatch(
+          metabotActions.setCurrentQuestionPath("/question#base64"),
+        );
       });
 
       expect(
@@ -137,7 +150,9 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <Harness /> });
 
       act(() => {
-        store.dispatch(metabotActions.setNavigateToPath("/question#base64"));
+        store.dispatch(
+          metabotActions.setCurrentQuestionPath("/question#base64"),
+        );
       });
 
       expect(await screen.findByTestId("mock-static-question")).toBeVisible();
@@ -151,18 +166,22 @@ describe("useMetabot", () => {
       expect(identityChanges).toBe(0);
     });
 
-    it("updates when a second navigate_to fires", async () => {
+    it("updates when a second adhoc_viz fires", async () => {
       const { store } = setup({ ui: <TestCurrentChart /> });
 
       act(() => {
-        store.dispatch(metabotActions.setNavigateToPath("/question#first"));
+        store.dispatch(
+          metabotActions.setCurrentQuestionPath("/question#first"),
+        );
       });
 
       const chart = await screen.findByTestId("mock-static-question");
       expect(chart).toHaveAttribute("data-query", "/question#first");
 
       act(() => {
-        store.dispatch(metabotActions.setNavigateToPath("/question#second"));
+        store.dispatch(
+          metabotActions.setCurrentQuestionPath("/question#second"),
+        );
       });
 
       await waitFor(() => {
@@ -219,7 +238,7 @@ describe("useMetabot", () => {
           // `addAgentMessage`/`addUserMessage` in reducer.ts type their payload
           // as `Omit<UnionType, ...>`. Non-distributive `Omit` collapses the
           // discriminated union to common keys only, so branch-specific fields
-          // (message, navigateTo, payload, ...) fail excess-property checks
+          // (message, payload, ...) fail excess-property checks
           // without `as any`. Switching to a DistributiveOmit would unblock
           // call sites here but surfaces more errors elsewhere (e.g. the
           // edit_suggestion payload hits the "infinite TS errors" noted in
@@ -242,7 +261,7 @@ describe("useMetabot", () => {
       });
     });
 
-    it("projects a navigate_to data_part into a chart message with questionPath", async () => {
+    it("projects an adhoc_viz data_part into a chart message with questionPath", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
@@ -250,11 +269,7 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: {
-              type: "navigate_to",
-              version: 1,
-              value: "/question#base64",
-            },
+            part: makeAdhocVizPart("/question#base64"),
           } as any),
         );
       });
@@ -272,7 +287,7 @@ describe("useMetabot", () => {
       });
     });
 
-    it("filters out internal-only variants (tool_call, edit_suggestion, todo_list)", async () => {
+    it("filters out internal-only variants (tool_call, transform_suggestion, todo_list)", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
@@ -288,17 +303,15 @@ describe("useMetabot", () => {
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
-            type: "edit_suggestion",
-            model: "transform",
-            payload: {
-              editorTransform: undefined,
-              suggestedTransform: {
+            type: "data_part",
+            part: {
+              type: "transform_suggestion",
+              version: 1,
+              value: {
                 name: "Transform A",
                 description: "Does X",
                 source: "SRC",
                 target: "TGT",
-                active: true,
-                suggestionId: "s1",
               },
             },
           } as any),
@@ -306,15 +319,19 @@ describe("useMetabot", () => {
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
-            type: "todo_list",
-            payload: [
-              {
-                id: "t1",
-                content: "work",
-                status: "pending",
-                priority: "high",
-              },
-            ],
+            type: "data_part",
+            part: {
+              type: "todo_list",
+              version: 1,
+              value: [
+                {
+                  id: "t1",
+                  content: "work",
+                  status: "pending",
+                  priority: "high",
+                },
+              ],
+            },
           } as any),
         );
         store.dispatch(
@@ -336,7 +353,7 @@ describe("useMetabot", () => {
       });
     });
 
-    it("keeps only the last navigate_to per turn, across multiple turns", async () => {
+    it("keeps only the last adhoc_viz per turn, across multiple turns", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
@@ -352,14 +369,14 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#1a" },
+            part: makeAdhocVizPart("/question#1a"),
           } as any),
         );
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#1b" },
+            part: makeAdhocVizPart("/question#1b"),
           } as any),
         );
         store.dispatch(
@@ -374,7 +391,7 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#2" },
+            part: makeAdhocVizPart("/question#2"),
           } as any),
         );
       });
@@ -477,11 +494,7 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: {
-              type: "navigate_to",
-              version: 1,
-              value: "/question#base64",
-            },
+            part: makeAdhocVizPart("/question#base64"),
           } as any),
         );
       });
@@ -497,11 +510,7 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: {
-              type: "navigate_to",
-              version: 1,
-              value: "/question#base64",
-            },
+            part: makeAdhocVizPart("/question#base64"),
           } as any),
         );
       });
@@ -540,7 +549,7 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#abc" },
+            part: makeAdhocVizPart("/question#abc"),
           } as any),
         );
       });
@@ -551,7 +560,7 @@ describe("useMetabot", () => {
       const capturedChart = firstChart;
       expect(capturedChart).not.toBeNull();
 
-      // Open a second turn so both navigate_tos survive the per-turn filter.
+      // Open a second turn so both adhoc_viz messages survive the per-turn filter.
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
@@ -565,7 +574,7 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#xyz" },
+            part: makeAdhocVizPart("/question#xyz"),
           } as any),
         );
       });

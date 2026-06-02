@@ -4,21 +4,6 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.streaming :as streaming]))
 
-(deftest navigate-to-part-test
-  (testing "creates correct navigate_to data part structure"
-    (let [url "/question#abc123"
-          part (streaming/navigate-to-part url)]
-      (is (= :data (:type part)))
-      (is (= "navigate_to" (:data-type part)))
-      (is (= url (:data part)))))
-  (testing "works with various URL formats"
-    (let [part1 (streaming/navigate-to-part "/model/123")
-          part2 (streaming/navigate-to-part "/metric/456")
-          part3 (streaming/navigate-to-part "/dashboard/789")]
-      (is (= "/model/123" (:data part1)))
-      (is (= "/metric/456" (:data part2)))
-      (is (= "/dashboard/789" (:data part3))))))
-
 (deftest query->question-url-test
   (testing "converts query to /question# URL"
     (let [query {:database 1 :type :query :query {:source-table 1}}
@@ -33,32 +18,6 @@
                          :aggregation [[:count]]}}
           url (streaming/query->question-url query)]
       (is (str/starts-with? url "/question#")))))
-
-(deftest reactions->data-parts-test
-  (testing "converts redirect reactions to navigate_to data parts"
-    (let [reactions [{:type :metabot.reaction/redirect :url "/question#xyz"}]
-          parts (streaming/reactions->data-parts reactions)]
-      (is (= 1 (count parts)))
-      (is (= :data (:type (first parts))))
-      (is (= "navigate_to" (:data-type (first parts))))
-      (is (= "/question#xyz" (:data (first parts))))))
-  (testing "handles multiple reactions"
-    (let [reactions [{:type :metabot.reaction/redirect :url "/model/1"}
-                     {:type :metabot.reaction/redirect :url "/metric/2"}]
-          parts (streaming/reactions->data-parts reactions)]
-      (is (= 2 (count parts)))
-      (is (= "/model/1" (:data (first parts))))
-      (is (= "/metric/2" (:data (second parts))))))
-  (testing "ignores non-redirect reactions"
-    (let [reactions [{:type :metabot.reaction/message :message "hello"}
-                     {:type :metabot.reaction/redirect :url "/model/1"}
-                     {:type :unknown/reaction :data "foo"}]
-          parts (streaming/reactions->data-parts reactions)]
-      (is (= 1 (count parts)))
-      (is (= "/model/1" (:data (first parts))))))
-  (testing "returns empty vector for empty reactions"
-    (is (= [] (streaming/reactions->data-parts [])))
-    (is (= [] (streaming/reactions->data-parts nil)))))
 
 (deftest state-part-test
   (testing "creates state data part"
@@ -151,7 +110,6 @@
 
 (deftest data-type-constants-test
   (testing "data type constants are defined correctly"
-    (is (= "navigate_to" streaming/navigate-to-type))
     (is (= "state" streaming/state-type))
     (is (= "todo_list" streaming/todo-list-type))
     (is (= "code_edit" streaming/code-edit-type))
@@ -163,41 +121,10 @@
   (testing "state parts are not persisted (value lives on MetabotConversation.state)"
     (is (false? (streaming/persistable-data-part? (streaming/state-part {:queries {}})))))
   (testing "other parts are persisted"
-    (is (true? (streaming/persistable-data-part? (streaming/navigate-to-part "/question/1"))))
+    (is (true? (streaming/persistable-data-part? (streaming/adhoc-viz-part {:link "/question#1"}))))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))
 
 ;;; Transducer Tests
-
-(deftest expand-reactions-xf-test
-  (testing "expands reactions from tool-output parts"
-    (let [parts [{:type :tool-output
-                  :id "t1"
-                  :result {:output "done"
-                           :reactions [{:type :metabot.reaction/redirect :url "/question#abc"}]}}]
-          result (into [] streaming/expand-reactions-xf parts)]
-      (is (= 2 (count result)))
-      (is (= :tool-output (:type (first result))))
-      (is (= :data (:type (second result))))
-      (is (= "navigate_to" (:data-type (second result))))))
-  (testing "passes through non-tool-output parts unchanged"
-    (let [parts [{:type :text :text "hello"}
-                 {:type :usage :tokens 100}]
-          result (into [] streaming/expand-reactions-xf parts)]
-      (is (= parts result))))
-  (testing "handles tool-output without reactions"
-    (let [parts [{:type :tool-output :id "t1" :result {:output "done"}}]
-          result (into [] streaming/expand-reactions-xf parts)]
-      (is (= 1 (count result)))
-      (is (= :tool-output (:type (first result))))))
-  (testing "handles multiple reactions from single tool"
-    (let [parts [{:type :tool-output
-                  :id "t1"
-                  :result {:reactions [{:type :metabot.reaction/redirect :url "/a"}
-                                       {:type :metabot.reaction/redirect :url "/b"}]}}]
-          result (into [] streaming/expand-reactions-xf parts)]
-      (is (= 3 (count result)))
-      (is (= "/a" (:data (second result))))
-      (is (= "/b" (:data (nth result 2)))))))
 
 (deftest expand-data-parts-xf-test
   (testing "expands data-parts from tool-output results"
@@ -266,27 +193,23 @@
           parts [{:type :tool-output
                   :id "t1"
                   :result {:structured-output {:query-id "q1" :query query}
-                           :reactions [{:type :metabot.reaction/redirect :url "/nav"}]
                            :data-parts [{:type :data :data-type "todo_list" :data []}]}}
                  {:type :text :text "[Link](metabase://query/q1)"}]
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
-      ;; Should have: tool-output, navigate_to data part, todo_list data part, resolved text
-      (is (= 4 (count result)))
+      ;; Should have: tool-output, todo_list data part, resolved text
+      (is (= 3 (count result)))
       (is (= :tool-output (:type (nth result 0))))
-      (is (= "navigate_to" (:data-type (nth result 1))))
-      (is (= "todo_list" (:data-type (nth result 2))))
-      (is (re-find #"\[Link\]\(/question#" (:text (nth result 3))))))
+      (is (= "todo_list" (:data-type (nth result 1))))
+      (is (re-find #"\[Link\]\(/question#" (:text (nth result 2))))))
   (testing "works with empty parts"
     (let [result (into [] (streaming/post-process-xf {} {} (atom {})) [])]
       (is (= [] result))))
-  (testing "preserves order: tool-output, reactions, data-parts, text"
+  (testing "preserves order: tool-output, data-parts, text"
     (let [parts [{:type :tool-output
                   :id "t1"
-                  :result {:reactions [{:type :metabot.reaction/redirect :url "/r"}]
-                           :data-parts [{:type :data :data-type "dp"}]}}
+                  :result {:data-parts [{:type :data :data-type "dp"}]}}
                  {:type :text :text "text"}]
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
       (is (= :tool-output (:type (nth result 0))))
-      (is (= "navigate_to" (:data-type (nth result 1))))
-      (is (= "dp" (:data-type (nth result 2))))
-      (is (= "text" (:text (nth result 3)))))))
+      (is (= "dp" (:data-type (nth result 1))))
+      (is (= "text" (:text (nth result 2)))))))

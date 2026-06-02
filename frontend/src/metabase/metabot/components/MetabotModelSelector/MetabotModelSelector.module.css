@@ -1,0 +1,49 @@
+.modelSelectRoot {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.modelSelectInput {
+  --pading: 0.25rem;
+
+  border: 0;
+  min-height: 1.25rem;
+  height: 1.25rem;
+  padding: 0 calc(var(--pading, 0rem) + 1rem) 0
+    calc(var(--pading, 0rem) + 1.25rem) !important;
+  background: transparent;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  field-sizing: content;
+  width: auto;
+}
+
+.modelSelectWrapper,
+.modelSelectSection {
+  min-height: 1.25rem;
+  height: 1.25rem;
+}
+
+.modelSelectSection {
+  top: 0;
+  pointer-events: none;
+  color: var(--mb-color-text-tertiary);
+  background-color: transparent;
+}
+
+.modelSelectDropdown {
+  min-width: 14rem;
+}
+
+.modelSelectOption {
+  min-height: 2rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+}
+
+.modelSelectOptionContent {
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-sm);
+}

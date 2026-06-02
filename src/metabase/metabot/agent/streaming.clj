@@ -1,7 +1,7 @@
 (ns metabase.metabot.agent.streaming
   "Streaming helpers for the agent loop.
-  Provides utilities for creating AI-SDK data parts, including navigation,
-  and transducers for stream processing."
+  Provides utilities for creating AI-SDK data parts and transducers for stream
+  processing."
   (:require
    [buddy.core.codecs :as codecs]
    [metabase.metabot.agent.markdown-link-buffer :as markdown-link-buffer]
@@ -13,7 +13,6 @@
 ;;
 ;; These match the Python AI Service's AISDKDataTypes enum
 
-(def navigate-to-type "AI-SDK data type for navigation links." "navigate_to")
 (def state-type "AI-SDK data type for state updates." "state")
 (def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
@@ -57,17 +56,6 @@
    (str "/question#" (query->url-hash query display))))
 
 ;;; Data Part Constructors
-
-(defn navigate-to-part
-  "Create a NAVIGATE_TO data part for streaming.
-  The URL should be a path like '/question#...' or '/model/123'.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.NAVIGATE_TO, version=1, value=path)"
-  [url]
-  {:type :data
-   :data-type navigate-to-type
-   :data url})
 
 (defn state-part
   "Create a STATE data part for streaming."
@@ -146,32 +134,7 @@
    :version 1
    :data title})
 
-;;; Reaction Conversion
-
-(defn reactions->data-parts
-  "Convert tool reactions to AI-SDK data parts for streaming.
-
-  Reactions are metadata returned by tools that trigger side effects:
-  - :metabot.reaction/redirect -> navigate_to data part
-
-  Returns a vector of data parts (may be empty if no relevant reactions)."
-  [reactions]
-  (into []
-        (keep (fn [{:keys [type url]}]
-                (case type
-                  :metabot.reaction/redirect (navigate-to-part url)
-                  nil)))
-        reactions))
-
 ;;; Stream Processing Transducers
-
-(def expand-reactions-xf
-  "Stateless transducer that expands :reactions from tool-output parts into data parts.
-  Passes through all parts unchanged, then appends any reaction data parts after tool-output parts."
-  (mapcat (fn [part]
-            (if (= (:type part) :tool-output)
-              (cons part (reactions->data-parts (get-in part [:result :reactions])))
-              [part]))))
 
 (def expand-data-parts-xf
   "Stateless transducer that expands :data-parts from tool-output results.
@@ -186,11 +149,7 @@
 
   Applies in order:
   1. expand-data-parts-xf - Extract data-parts from tool outputs
-  2. expand-reactions-xf - Extract reactions from tool outputs as data parts
-  3. resolve-links-xf - Resolve metabase:// links in text parts
-
-  Note: expand-data-parts-xf comes first so its output appears before reactions,
-  matching the original stream-parts-to-output! behavior.
+  2. resolve-links-xf - Resolve metabase:// links in text parts
 
   Parameters:
   - initial-queries: Initial map of query-id to query data
@@ -203,5 +162,4 @@
   ([initial-queries initial-charts link-registry-atom initial-data-points]
    (comp
     expand-data-parts-xf
-    expand-reactions-xf
     (markdown-link-buffer/resolve-xf initial-queries initial-charts link-registry-atom initial-data-points))))

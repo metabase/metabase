@@ -36,7 +36,7 @@ export type MetabotAgentChartMessage = {
 // - `tool_call` messages: debug-only, gated on metabot's `debugMode`.
 // - `action` user messages: produced only when replaying historical audit conversations,
 //   never via the SDK input path.
-// - `data_part` messages other than `navigate_to` (`code_edit`, `transform_suggestion`,
+// - `data_part` messages (`code_edit`, `transform_suggestion`,
 //   `todo_list`, `adhoc_viz`, `static_viz`, `state`): in-app surfaces (Transform editor,
 //   codegen profiles) the SDK does not render.
 export type MetabotAgentMessage =
@@ -87,7 +87,7 @@ export type UseMetabotResult = {
   isProcessing: boolean;
 
   /**
-   * A pre-wired component bound to the latest `navigate_to` path.
+   * A pre-wired component bound to the latest `adhoc_viz` chart.
    * `null` until the agent sends a chart — lets consumers detect presence
    * and render a placeholder or swap panel content only when set.
    *

@@ -103,10 +103,6 @@
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
-      (when title
-        (let [line (self.core/format-data-line (metabot.streaming/conversation-title-part title))]
-          (.write os (.getBytes (str line "\n") "UTF-8"))
-          (.flush os)))
       (let [parts-atom (atom [])
             canceled?  (volatile! false)
             ;; Captures throwables that escape the agent loop's own `catch Exception`
@@ -118,20 +114,24 @@
             ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
-                                                       :external-id external-id}))]
+                                                       :external-id external-id}))
+            writer-rf  (streaming-writer-rf os canceled-chan canceled?)]
         (try
-          (transduce xf
-                     (streaming-writer-rf os canceled-chan canceled?)
-                     (agent/run-agent-loop
-                      (cond-> {:messages      messages
-                               :state         state
-                               :metabot-id    metabot-id
-                               :profile-id    (keyword profile-id)
-                               :model         model
-                               :context       enriched-context
-                               :tracking-opts {:session-id conversation-id}}
-                        debug?      (assoc :debug? true)
-                        database-id (assoc :database-id database-id))))
+          (when title
+            (writer-rf nil (self.core/format-data-line (metabot.streaming/conversation-title-part title))))
+          (when-not @canceled?
+            (transduce xf
+                       writer-rf
+                       (agent/run-agent-loop
+                        (cond-> {:messages      messages
+                                 :state         state
+                                 :metabot-id    metabot-id
+                                 :profile-id    (keyword profile-id)
+                                 :model         model
+                                 :context       enriched-context
+                                 :tracking-opts {:session-id conversation-id}}
+                          debug?      (assoc :debug? true)
+                          database-id (assoc :database-id database-id)))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
             (log/debug "Client disconnected during native agent streaming"))
@@ -170,6 +170,13 @@
                             :assistant-msg-id assistant-msg-id
                             :external-id      external-id})))))))))
 
+(defn- check-model-override-enabled!
+  [model]
+  (when (some? model)
+    (api/check (metabot.settings/llm-metabot-conversation-model-selection-enabled)
+               [400 "Model selection is disabled."]))
+  model)
+
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc.
 
@@ -184,6 +191,7 @@
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
         _          (metabot.usage/check-metabase-managed-free-limit!)
+        model      (check-model-override-enabled! model)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))
@@ -483,13 +491,15 @@
                      :api-error true})))
   response)
 
-(api.macros/defendpoint :get "/settings"
+(api.macros/defendpoint :get "/list-models"
   :- metabot-settings-response-schema
-  "Return available models for a provider using its configured API key."
+  "Return available models for a provider using its configured API key.
+
+  Available to any authenticated user (no `:setting` permission required) so that
+  per-conversation model selection works for non-admins."
   [_route-params
    {:keys [provider]} :- [:map
                           [:provider {:optional true} metabot-provider-schema]]]
-  (perms/check-has-application-permission :setting)
   (settings-response (or provider (current-setting-provider))))
 
 (api.macros/defendpoint :put "/settings"

@@ -99,7 +99,6 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
         profile?: MetabotProfileId | undefined;
         preventOpenSidebar?: boolean;
         focusInput?: boolean;
-        suppressNavigateTo?: boolean;
       },
     ) => {
       setPrompt("");
@@ -121,7 +120,6 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
           agentId,
           metabot_id: metabotRequestId,
           profile: options?.profile,
-          suppressNavigateTo: options?.suppressNavigateTo,
         }),
       );
 

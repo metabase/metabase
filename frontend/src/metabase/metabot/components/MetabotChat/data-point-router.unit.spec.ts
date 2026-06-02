@@ -3,8 +3,11 @@ import type { Dataset } from "metabase-types/api";
 import type { DataPointMentionTarget } from "./data-point-mentions";
 import {
   type DataPointCard,
+  isQuestionLikeHref,
   nextDataPointCardMountOrder,
+  normalizeQuestionLink,
   registerDataPointCard,
+  resolveChartCardForLink,
   routeDataPointMention,
   setDataPointOnDemandHandler,
 } from "./data-point-router";
@@ -139,5 +142,125 @@ describe("routeDataPointMention", () => {
 
     expect(routeDataPointMention(undefined, "mention-7")).toBe(true);
     expect(resolveMentionId).toHaveBeenCalledWith("mention-7");
+  });
+});
+
+describe("normalizeQuestionLink", () => {
+  it("keys adhoc question urls by their hash", () => {
+    expect(normalizeQuestionLink("/question#abc123")).toBe("hash:abc123");
+  });
+
+  it("keys absolute adhoc question urls by their hash", () => {
+    expect(normalizeQuestionLink("http://localhost:3000/question#abc123")).toBe(
+      "hash:abc123",
+    );
+  });
+
+  it("keys saved question routes by id", () => {
+    expect(normalizeQuestionLink("/question/42")).toBe("id:42");
+    expect(normalizeQuestionLink("/question/42-revenue")).toBe("id:42");
+  });
+
+  it("keys metabase protocol question links by id", () => {
+    expect(normalizeQuestionLink("metabase://question/42")).toBe("id:42");
+  });
+
+  it("returns undefined for non-question links", () => {
+    expect(normalizeQuestionLink("/dashboard/1")).toBeUndefined();
+    expect(normalizeQuestionLink("https://example.com")).toBeUndefined();
+    expect(normalizeQuestionLink(undefined)).toBeUndefined();
+  });
+});
+
+describe("isQuestionLikeHref", () => {
+  it.each([
+    "/question",
+    "/question#hash",
+    "/question/42",
+    "http://localhost:3000/question#hash",
+    "metabase://question/42",
+  ])("is true for %s", (href) => {
+    expect(isQuestionLikeHref(href)).toBe(true);
+  });
+
+  it.each(["/dashboard/1", "https://example.com", undefined])(
+    "is false for %s",
+    (href) => {
+      expect(isQuestionLikeHref(href)).toBe(false);
+    },
+  );
+});
+
+describe("resolveChartCardForLink", () => {
+  const cleanups: Array<() => void> = [];
+
+  afterEach(() => {
+    cleanups.forEach((fn) => fn());
+    cleanups.length = 0;
+  });
+
+  const registerChart = (overrides: Partial<DataPointCard>): DataPointCard => {
+    const card: DataPointCard = {
+      id: `chart_${overrides.questionKey ?? Math.random()}`,
+      mountedAt: nextDataPointCardMountOrder(),
+      getResult: () => null,
+      highlight: jest.fn(),
+      scrollIntoView: jest.fn(),
+      flash: jest.fn(),
+      ...overrides,
+    };
+    cleanups.push(registerDataPointCard(card));
+    return card;
+  };
+
+  it("matches a card by question identity, even via an absolute url", () => {
+    const card = registerChart({
+      questionKey: "hash:abc",
+      questionName: "Revenue",
+    });
+
+    expect(
+      resolveChartCardForLink("http://localhost/question#abc", "anything"),
+    ).toBe(card);
+  });
+
+  it("falls back to matching a question link by its label", () => {
+    // The link's identity (a saved id) differs from the embed's (an adhoc
+    // hash), but the label is the chart's title.
+    const card = registerChart({
+      questionKey: "hash:xyz",
+      questionName: "Year-over-Year Revenue",
+    });
+
+    expect(
+      resolveChartCardForLink(
+        "metabase://question/99",
+        "Year-over-Year Revenue",
+      ),
+    ).toBe(card);
+  });
+
+  it("does not let the title fallback hijack a non-question link", () => {
+    registerChart({ questionKey: "hash:only", questionName: "Shared Name" });
+
+    expect(
+      resolveChartCardForLink("https://example.com/report", "Shared Name"),
+    ).toBeUndefined();
+  });
+
+  it("prefers the most recently mounted matching card", () => {
+    registerChart({ questionKey: "hash:dup", questionName: "Dup" });
+    const newer = registerChart({
+      questionKey: "hash:dup",
+      questionName: "Dup",
+    });
+
+    expect(resolveChartCardForLink("/question#dup", "Dup")).toBe(newer);
+  });
+
+  it("returns undefined when nothing matches", () => {
+    expect(
+      resolveChartCardForLink("/question#missing", "Nope"),
+    ).toBeUndefined();
   });
 });

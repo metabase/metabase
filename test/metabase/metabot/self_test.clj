@@ -410,8 +410,8 @@
   (testing "formats data with type, version, and value"
     (is (= "2:{\"type\":\"state\",\"version\":1,\"value\":{\"queries\":{}}}"
            (self.core/format-data-line {:data-type "state" :data {:queries {}}})))
-    (is (= "2:{\"type\":\"navigate_to\",\"version\":1,\"value\":{\"url\":\"/question/123\"}}"
-           (self.core/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
+    (is (= "2:{\"type\":\"adhoc_viz\",\"version\":1,\"value\":{\"link\":\"/question#abc\"}}"
+           (self.core/format-data-line {:data-type "adhoc_viz" :data {:link "/question#abc"}})))))
 
 (deftest format-error-line-test
   (testing "formats plain error message as a JSON string with 3: prefix"

@@ -4,6 +4,7 @@ export const InternalLink = ({
   onInternalLinkClick,
   href,
   children,
+  onClick,
   ...rest
 }: {
   onInternalLinkClick?: (href: string) => void;
@@ -12,14 +13,22 @@ export const InternalLink = ({
 } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
   if (onInternalLinkClick) {
     return (
-      <a {...rest} onClick={() => onInternalLinkClick(href)}>
+      <a
+        {...rest}
+        onClick={(event) => {
+          onClick?.(event);
+          if (!event.defaultPrevented) {
+            onInternalLinkClick(href);
+          }
+        }}
+      >
         {children}
       </a>
     );
   }
 
   return (
-    <Link to={href} variant="brand" {...rest}>
+    <Link to={href} variant="brand" onClick={onClick} {...rest}>
       {children}
     </Link>
   );

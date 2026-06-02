@@ -34,17 +34,27 @@
 }
 
 .messagesContainer {
+  --metabot-thinking-content-padding: 0.75rem;
+  --metabot-thinking-field-bleed: 0.75rem;
+
   padding: 1rem 0.75rem 0.5rem;
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: auto;
+  /* query container so the thinking dot-field can break out full-width */
+  container-type: inline-size;
 }
 
 .messages {
   display: flex;
   flex-direction: column;
   padding-inline: 0.5rem;
+}
+
+.messageFiller {
+  flex: 0 0 auto;
+  transition: height 260ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .messageContainer {
@@ -118,6 +128,17 @@
   padding: 0.5rem 0.75rem 0.5rem 0.75rem;
 }
 
+.navigateToQuestionTitleLink {
+  color: var(--mb-color-text-primary);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-brand);
+    text-decoration: underline;
+  }
+}
+
 .navigateToQuestionVisualization {
   height: 24rem;
   border-top: 1px solid var(--mb-color-border);
@@ -149,6 +170,12 @@
     box-shadow:
       0 0 0 0 rgba(80, 158, 227, 0),
       0 0 0 0 transparent inset;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .messageFiller {
+    transition: none;
   }
 }
 

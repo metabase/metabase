@@ -1,22 +1,19 @@
-import userEvent from "@testing-library/user-event";
-
 import { act } from "__support__/ui";
 import {
   addSuggestedTransform,
   getMetabotReactionsState,
-  setNavigateToPath,
+  resetConversation,
 } from "metabase/metabot/state";
 import { createMockTransform } from "metabase-types/api/mocks";
 
-import { resetChatButton, setup } from "./utils";
+import { setup } from "./utils";
 
 describe("metabot > reaction state", () => {
-  it("should clear navigateToPath and suggestedTransforms when resetting omnibot conversation", async () => {
+  it("should clear suggestedTransforms when resetting omnibot conversation", async () => {
     const { store } = setup();
     const getReactions = () => getMetabotReactionsState(store.getState());
 
     act(() => {
-      store.dispatch(setNavigateToPath("/some/path"));
       store.dispatch(
         addSuggestedTransform({
           ...createMockTransform(),
@@ -26,12 +23,12 @@ describe("metabot > reaction state", () => {
       );
     });
 
-    expect(getReactions().navigateToPath).toBe("/some/path");
     expect(getReactions().suggestedTransforms).toHaveLength(1);
 
-    await userEvent.click(await resetChatButton());
+    await act(async () => {
+      await store.dispatch(resetConversation({ agentId: "omnibot" }) as any);
+    });
 
-    expect(getReactions().navigateToPath).toBeNull();
     expect(getReactions().suggestedTransforms).toEqual([]);
   });
 });

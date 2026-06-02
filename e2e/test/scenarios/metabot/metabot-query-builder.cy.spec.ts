@@ -78,7 +78,7 @@ describe("Metabot Query Builder", () => {
     // should be able to send prompt
     const questionHash = H.adhocQuestionHash(allOrdersQuestion);
     H.mockMetabotResponse({
-      body: mockNavigateToResponse(`/question#${questionHash}`),
+      body: mockAdhocVizResponse(`/question#${questionHash}`),
       delay: 100,
     });
     cy.findByTestId("metabot-send-message").click();
@@ -96,9 +96,11 @@ describe("Metabot Query Builder", () => {
       expect(request.body.profile_id).to.eq("nlq");
     });
 
-    // when we receive a navigate_to, we should be taken to a question
-    cy.url().should("include", "/question#");
-    cy.findByTestId("qb-header").should("contain", "Orders");
+    // when we receive an adhoc_viz, we should stay on AI exploration and show
+    // the generated question inline.
+    cy.url().should("include", "/question/ask");
+    cy.findByTestId("metabot-generated-question").should("be.visible");
+    cy.findByTestId("visualization-root").should("be.visible");
   });
 
   it("should support clicking suggested prompts", () => {
@@ -114,14 +116,15 @@ describe("Metabot Query Builder", () => {
     // click suggested prompt
     const questionHash = H.adhocQuestionHash(allOrdersQuestion);
     H.mockMetabotResponse({
-      body: mockNavigateToResponse(`/question#${questionHash}`),
+      body: mockAdhocVizResponse(`/question#${questionHash}`),
     });
     cy.get("main").findByText("Show me all orders").click();
 
-    // should be taken to a question
+    // should show the generated question inline
     cy.wait("@metabotAgent");
-    cy.url().should("include", "/question#");
-    cy.findByTestId("qb-header").should("contain", "Orders");
+    cy.url().should("include", "/question/ask");
+    cy.findByTestId("metabot-generated-question").should("be.visible");
+    cy.findByTestId("visualization-root").should("be.visible");
   });
 
   it("should handle errors", () => {
@@ -142,12 +145,12 @@ describe("Metabot Query Builder", () => {
       .should("be.visible");
   });
 
-  it("should handle getting no navigate_to", () => {
+  it("should handle getting no adhoc_viz", () => {
     // visit AI exploration page
     cy.visit("/question/ask");
     cy.findByTestId("metabot-send-message").should("be.visible");
 
-    // mock a response without a navigate_to data part
+    // mock a response without an adhoc_viz data part
     H.mockMetabotResponse({
       body: mockTextOnlyResponse("I need more information to help you."),
     });
@@ -157,12 +160,15 @@ describe("Metabot Query Builder", () => {
     cy.findByTestId("metabot-send-message").click();
     cy.wait("@metabotAgent");
 
-    // should be taken to /question/notebook with the sidebar open
-    cy.url().should("include", "/question/notebook");
-    H.assertChatVisibility("visible");
+    // should stay on AI exploration and show the text reply inline
+    cy.url().should("include", "/question/ask");
+    cy.findByTestId("metabot-query-builder-chat-messages")
+      .should("be.visible")
+      .findByText("I need more information to help you.")
+      .should("be.visible");
   });
 
-  it("should not reuse the nlq profile after falling back to notebook chat", () => {
+  it("should keep using the nlq profile for follow-up prompts on AI exploration", () => {
     cy.intercept("POST", "/api/metabot/agent-streaming", (req) => {
       req.reply({
         statusCode: 200,
@@ -184,13 +190,13 @@ describe("Metabot Query Builder", () => {
       expect(request.body.profile_id).to.eq("nlq");
     });
 
-    cy.url().should("include", "/question/notebook");
-    H.assertChatVisibility("visible");
+    cy.url().should("include", "/question/ask");
 
-    H.sendMetabotMessage("Try again");
+    metabotPromptInput().type("Try again");
+    cy.findByTestId("metabot-send-message").click();
 
     cy.wait("@metabotAgent").then(({ request }) => {
-      expect(request.body.profile_id).to.be.undefined;
+      expect(request.body.profile_id).to.eq("nlq");
     });
   });
 
@@ -216,8 +222,8 @@ describe("Metabot Query Builder", () => {
 });
 
 // Response helpers
-const mockNavigateToResponse = (path: string) =>
-  `2:{"type":"navigate_to","version":1,"value":"${path}"}
+const mockAdhocVizResponse = (path: string) =>
+  `2:{"type":"adhoc_viz","version":1,"value":{"link":"${path}","query":{}}}
 d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
 
 const mockTextOnlyResponse = (text: string) =>

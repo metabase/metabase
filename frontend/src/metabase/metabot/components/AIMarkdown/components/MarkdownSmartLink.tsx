@@ -1,3 +1,4 @@
+import type { MouseEventHandler } from "react";
 import { match } from "ts-pattern";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
@@ -16,6 +17,7 @@ import { InternalLink } from "./InternalLink";
 
 export const MarkdownSmartLink = ({
   onInternalLinkClick,
+  onLinkClick,
   id,
   name,
   model,
@@ -23,6 +25,9 @@ export const MarkdownSmartLink = ({
   targets,
 }: {
   onInternalLinkClick?: (href: string) => void;
+  // Intercepts a click on an entity link (e.g. a question) so it can scroll to
+  // a matching chart embedded in the same reply instead of opening a new tab.
+  onLinkClick?: MouseEventHandler<HTMLAnchorElement>;
   id?: number | string;
   name: string;
   model: MetabaseProtocolEntityModel | "data-point" | "data-selection";
@@ -95,6 +100,7 @@ export const MarkdownSmartLink = ({
   return (
     <InternalLink
       onInternalLinkClick={onInternalLinkClick}
+      onClick={onLinkClick}
       href={entityUrl}
       target="_blank"
       rel="noreferrer"

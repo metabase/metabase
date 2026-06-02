@@ -1,7 +1,12 @@
 // TODO: consolidate this component w/ AIAnalysisContent
 
 import cx from "classnames";
-import { type ComponentPropsWithoutRef, memo, useMemo } from "react";
+import {
+  type ComponentPropsWithoutRef,
+  type MouseEvent,
+  memo,
+  useMemo,
+} from "react";
 
 import {
   Markdown,
@@ -14,6 +19,7 @@ import type {
   DataPointMentionTarget,
   DataSelection,
 } from "../MetabotChat/data-point-mentions";
+import { resolveChartCardForLink } from "../MetabotChat/data-point-router";
 
 import S from "./AIMarkdown.module.css";
 import { InternalLink } from "./components/InternalLink";
@@ -133,6 +139,22 @@ const getComponents = ({
     node?: any;
     [key: string]: any;
   }) => {
+    const linkText = String(node.children?.[0]?.value ?? "");
+    const linkHref = href ?? node.properties.href;
+
+    // When a link refers to a chart embedded in this same reply, clicking it
+    // should scroll to that chart instead of navigating away. Resolved lazily
+    // on click, since the embedded chart may register after this text renders.
+    const handleChartLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
+      const card = resolveChartCardForLink(linkHref, linkText);
+      if (card) {
+        event.preventDefault();
+        event.stopPropagation();
+        card.scrollIntoView();
+        card.flash?.();
+      }
+    };
+
     const parsed =
       parseDataPointLink(node.properties.href, dataPointTargets) ??
       parseDataSelectionLink(node.properties.href, dataSelections) ??
@@ -141,7 +163,8 @@ const getComponents = ({
       return (
         <MarkdownSmartLink
           onInternalLinkClick={onInternalLinkClick}
-          name={String(node.children?.[0]?.value ?? "")}
+          onLinkClick={handleChartLinkClick}
+          name={linkText}
           {...parsed}
         />
       );
@@ -149,7 +172,11 @@ const getComponents = ({
 
     if (href?.startsWith("/")) {
       return (
-        <InternalLink onInternalLinkClick={onInternalLinkClick} href={href}>
+        <InternalLink
+          onInternalLinkClick={onInternalLinkClick}
+          href={href}
+          onClick={handleChartLinkClick}
+        >
           {children}
         </InternalLink>
       );
@@ -157,7 +184,13 @@ const getComponents = ({
 
     // For external links, set target and rel explicitly
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        {...rest}
+        onClick={handleChartLinkClick}
+      >
         {children}
       </a>
     );

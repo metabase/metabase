@@ -16,6 +16,7 @@ const defaultProps: ComponentProps<typeof MetabotInlineSQLPrompt> = {
   error: undefined,
   generate: jest.fn(),
   cancelRequest: jest.fn(),
+  onModelOverrideChange: jest.fn(),
   suggestionModels: [],
   getSourceSql: jest.fn(() => "select 1"),
   value: "",

@@ -1,28 +1,20 @@
-import { skipToken } from "@reduxjs/toolkit/query";
 import cx from "classnames";
 import {
   type ComponentProps,
   forwardRef,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { parseProviderAndModel } from "metabase/admin/ai/utils";
-import { useGetMetabotSettingsQuery } from "metabase/api";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { getErrorMessage } from "metabase/api/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { useSetting } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { useMetabotContext } from "metabase/metabot";
 import { MetabotDatabaseSelect } from "metabase/metabot/components/MetabotChat/MetabotDatabaseSelect";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
+import { MetabotModelSelector } from "metabase/metabot/components/MetabotModelSelector";
 import {
   MetabotPromptInput,
   type MetabotPromptInputProps,
@@ -30,19 +22,7 @@ import {
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { entityToUrlableModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import {
-  Box,
-  Flex,
-  Icon,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  Loader,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  Select,
-  type SelectOption,
-  Stack,
-  Text,
-  UnstyledButton,
-} from "metabase/ui";
+import { Box, Flex, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import type { MetabotUserIsViewingContext } from "metabase-types/api";
 
@@ -204,41 +184,6 @@ export const MetabotChatEditor = forwardRef<
     const [attachedContexts, setAttachedContexts] =
       useState<MetabotUserIsViewingContext>([]);
     const attachedContextsKeyRef = useRef("");
-    const savedProviderValue = useSetting("llm-metabot-provider");
-    const isModelSelectionEnabled =
-      useSetting("llm-metabot-conversation-model-selection-enabled") !== false;
-    const configuredModel = parseProviderAndModel(savedProviderValue);
-    const showModelSelector =
-      isModelSelectionEnabled && configuredModel?.provider !== "metabase";
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { data, isLoading, error } = useGetMetabotSettingsQuery(
-      showModelSelector ? {} : skipToken,
-    );
-    const defaultModel = savedProviderValue ?? undefined;
-    const modelOptions = useMemo<SelectOption[]>(
-      () =>
-        (data?.models ?? []).map((model) => ({
-          value: model.value,
-          label: model.display_name,
-          icon: model.original_provider,
-        })),
-      [data?.models],
-    );
-    const selectedModel = modelOverride ?? defaultModel;
-    const selectedModelOption = modelOptions.find(
-      (option) => option.value === selectedModel,
-    );
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const isModelSelectDisabled = isResponding || isLoading;
-
-    useEffect(
-      function switchToDefaultIfOverrideIsUnavailbable() {
-        if (!selectedModelOption && !isLoading) {
-          onModelOverrideChange(undefined);
-        }
-      },
-      [isLoading, onModelOverrideChange, selectedModelOption],
-    );
 
     useEffect(
       function updateAttachedContext() {
@@ -305,44 +250,12 @@ export const MetabotChatEditor = forwardRef<
               disabled={isResponding}
             />
           </Box>
-          {/* {showModelSelector && (
-            <Select
-              data-testid="metabot-model-selector"
-              data={modelOptions}
-              value={selectedModelOption?.value}
-              onChange={(model) =>
-                onModelOverrideChange(
-                  model === defaultModel ? undefined : (model ?? undefined),
-                )
-              }
-              disabled={isModelSelectDisabled}
-              placeholder={match({ error, isLoading })
-                .with({ error: P.nonNullable }, (error) =>
-                  getErrorMessage(error, t`Error loading models`),
-                )
-                .with({ isLoading: true }, () => t`Loading...`)
-                .otherwise(() => undefined)}
-              leftSection={
-                isLoading ? (
-                  <Loader size="0.75rem" color="text-tertiary" />
-                ) : selectedModelOption?.icon ? (
-                  <Icon aria-hidden name={selectedModelOption.icon} />
-                ) : undefined
-              }
-              rightSection={<Icon size="0.5rem" name="chevrondown" />}
-              leftSectionWidth="1.25rem"
-              rightSectionWidth="1rem"
-              comboboxProps={{ position: "top" }}
-              classNames={{
-                root: S.modelSelectRoot,
-                wrapper: S.modelSelectWrapper,
-                input: S.modelSelectInput,
-                section: S.modelSelectSection,
-                dropdown: S.modelSelectDropdown,
-                option: S.modelSelectOption,
-              }}
-            />
-          )} */}
+          <MetabotModelSelector
+            disabled={isResponding}
+            dropdownPosition="top"
+            modelOverride={modelOverride}
+            onModelOverrideChange={onModelOverrideChange}
+          />
           <UnstyledButton
             className={cx(S.button, isResponding && S.buttonResponding)}
             disabled={props.value.length === 0 || isResponding}

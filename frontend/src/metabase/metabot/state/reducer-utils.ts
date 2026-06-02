@@ -90,13 +90,13 @@ export const resetReactionState = (
   agentId: MetabotAgentId,
 ) => {
   if (isChatAgentId(agentId)) {
-    state.reactions.navigateToPath = null;
+    state.reactions.currentQuestionPath = null;
     state.reactions.suggestedTransforms = [];
     return;
   }
   match(agentId)
     .with("omnibot", () => {
-      state.reactions.navigateToPath = null;
+      state.reactions.currentQuestionPath = null;
       state.reactions.suggestedTransforms = [];
     })
     .with("sql", () => {
@@ -171,7 +171,7 @@ export const getMetabotInitialState = (): MetabotState => {
       sql: createConversation("sql"),
     },
     reactions: {
-      navigateToPath: null,
+      currentQuestionPath: null,
       suggestedCodeEdits: {},
       // NOTE: suggestedTransforms should be folded into suggestedCodeEdits eventually
       suggestedTransforms: [],

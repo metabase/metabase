@@ -105,7 +105,10 @@ export type MetabotToolCall = {
 };
 
 export type MetabotReactionsState = {
-  navigateToPath: string | null;
+  // Path (`/question#...`) of the most recent ad-hoc visualization the agent
+  // produced, or one the user opened from a link in the reply. Drives the SDK
+  // `MetabotQuestion` main pane and `useMetabot().CurrentChart`.
+  currentQuestionPath: string | null;
   suggestedCodeEdits: Partial<
     Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
   >;

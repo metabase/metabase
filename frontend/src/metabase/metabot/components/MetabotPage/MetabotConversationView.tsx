@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { isRejected } from "@reduxjs/toolkit";
 import cx from "classnames";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -18,6 +18,7 @@ import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotC
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
 import { getDataPointTargetsFromState } from "metabase/metabot/components/MetabotChat/data-point-mentions";
 import { useScrollManager } from "metabase/metabot/components/MetabotChat/hooks";
+import { MetabotModelSelector } from "metabase/metabot/components/MetabotModelSelector";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import {
   useMetabotAgent,
@@ -99,6 +100,8 @@ export const MetabotConversationView = ({
     cancelRequest,
     selectedDatabaseId,
     setSelectedDatabaseId,
+    modelOverride,
+    setModelOverride,
     title: conversationTitle,
   } = useMetabotAgent(agentId);
 
@@ -120,6 +123,37 @@ export const MetabotConversationView = ({
   const isFading = isNewConversation && isDoingScience;
 
   const { scrollContainerRef, fillerRef } = useScrollManager(showConversation);
+  const conversationContainerRef = useRef<HTMLDivElement>(null);
+  const bottomInputRef = useRef<HTMLDivElement>(null);
+
+  useEffect(
+    function measureBottomInput() {
+      const conversationContainer = conversationContainerRef.current;
+      const bottomInput = bottomInputRef.current;
+
+      if (!showConversation || !conversationContainer || !bottomInput) {
+        return;
+      }
+
+      const updateInputHeight = () => {
+        conversationContainer.style.setProperty(
+          "--metabot-input-height",
+          `${bottomInput.offsetHeight}px`,
+        );
+      };
+
+      updateInputHeight();
+
+      const resizeObserver = new ResizeObserver(updateInputHeight);
+      resizeObserver.observe(bottomInput);
+
+      return () => {
+        resizeObserver.disconnect();
+        conversationContainer.style.removeProperty("--metabot-input-height");
+      };
+    },
+    [showConversation],
+  );
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
     metabot_id: metabotId,
@@ -185,7 +219,7 @@ export const MetabotConversationView = ({
           )}
         </Box>
         <Box className={S.inputActions}>
-          <Box>
+          <Box mr="auto">
             <MetabotDatabaseSelect
               value={selectedDatabaseId}
               onChange={setSelectedDatabaseId}
@@ -197,18 +231,26 @@ export const MetabotConversationView = ({
               {t`Something went wrong. Please try again.`}
             </Text>
           ) : null}
-          <ActionIcon
-            className={S.sendButton}
-            variant="filled"
-            size="2rem"
-            disabled={!canUseNlq || inputDisabled}
-            loading={isDoingScience}
-            onClick={handleEditorSubmit}
-            data-testid="metabot-send-message"
-            aria-label={t`Send`}
-          >
-            <Icon name="arrow_up" />
-          </ActionIcon>
+          <Flex align="center" gap="sm">
+            <MetabotModelSelector
+              disabled={isDoingScience}
+              dropdownPosition="top"
+              modelOverride={modelOverride}
+              onModelOverrideChange={setModelOverride}
+            />
+            <ActionIcon
+              className={S.sendButton}
+              variant="filled"
+              size="2rem"
+              disabled={!canUseNlq || inputDisabled}
+              loading={isDoingScience}
+              onClick={handleEditorSubmit}
+              data-testid="metabot-send-message"
+              aria-label={t`Send`}
+            >
+              <Icon name="arrow_up" />
+            </ActionIcon>
+          </Flex>
         </Box>
       </Paper>
     ),
@@ -219,9 +261,11 @@ export const MetabotConversationView = ({
       hasError,
       inputDisabled,
       isDoingScience,
+      modelOverride,
       openAiProviderConfigurationModal,
       prompt,
       selectedDatabaseId,
+      setModelOverride,
       setPrompt,
       setSelectedDatabaseId,
       showConversation,
@@ -279,7 +323,7 @@ export const MetabotConversationView = ({
       )}
 
       {showConversation ? (
-        <Box className={S.conversationContainer}>
+        <Box ref={conversationContainerRef} className={S.conversationContainer}>
           <Box
             ref={scrollContainerRef}
             className={S.messagesContainer}
@@ -297,7 +341,11 @@ export const MetabotConversationView = ({
               {isDoingScience && (
                 <MetabotThinking toolCalls={activeToolCalls} />
               )}
-              <div ref={fillerRef} data-testid="metabot-message-filler" />
+              <div
+                ref={fillerRef}
+                className={S.messageFiller}
+                data-testid="metabot-message-filler"
+              />
               {isLongConversation && (
                 <MetabotResetLongChatButton
                   onResetConversation={resetConversation}
@@ -305,7 +353,7 @@ export const MetabotConversationView = ({
               )}
             </Box>
           </Box>
-          <Box className={S.bottomInputContainer}>
+          <Box ref={bottomInputRef} className={S.bottomInputContainer}>
             {promptInput}
             <Text
               fz="sm"

@@ -13,7 +13,6 @@ export const dataPartSchema = Yup.object({
 });
 
 export const knownDataPartTypes = [
-  "navigate_to",
   "state",
   "todo_list",
   "code_edit",
@@ -35,7 +34,6 @@ export type StaticVizValue = {
 };
 
 export type KnownDataPart =
-  | { type: "navigate_to"; version: 1; value: string }
   | { type: "state"; version: 1; value: Record<string, any> }
   | { type: "todo_list"; version: 1; value: MetabotTodoItem[] }
   | { type: "transform_suggestion"; version: 1; value: SuggestedTransform }

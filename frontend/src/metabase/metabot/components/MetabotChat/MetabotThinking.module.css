@@ -1,37 +1,129 @@
-.toolCalls {
-  padding-left: 0.75rem;
-  border-left: 1px solid var(--mb-color-border);
-  color: var(--mb-color-text-primary);
-}
-
-.toolCallStarted {
-  --spread: 160px;
-  --base-gradient-color: var(--mb-color-background-primary);
-  --base-color: var(--mb-color-text-primary);
-  --bg: linear-gradient(
-    90deg,
-    #0000 calc(50% - var(--spread)),
-    var(--base-gradient-color),
-    #0000 calc(50% + var(--spread))
+/*
+ * The response area while Metabot is thinking: a field of barely-visible brand
+ * dots that fades out toward the bottom. The dot pitch is shared with the
+ * loader (via --mb-dot-pitch) so the logo's lit dots align to this lattice. It
+ * breaks out of the centered message column to the full scroll container.
+ */
+.field {
+  --mb-dot-pitch: 10px;
+  --mb-dot-field-bleed: var(--metabot-thinking-field-bleed, 0px);
+  --mb-dot-field-width: calc(100cqi + (var(--mb-dot-field-bleed) * 2));
+  --mb-dot-content-max-width: var(
+    --metabot-thinking-content-max-width,
+    var(--mb-dot-field-width)
+  );
+  --mb-dot-content-padding: var(--metabot-thinking-content-padding, 0px);
+  --mb-dot-tool-inset-x: calc(var(--mb-dot-pitch) * 2);
+  --mb-dot-tool-inset-y: calc(var(--mb-dot-pitch) * 2);
+  --mb-dot-content-offset: max(
+    0px,
+    calc((var(--mb-dot-field-width) - var(--mb-dot-content-max-width)) / 2)
+  );
+  --mb-dot-grid-origin-x: calc(
+    var(--mb-dot-content-offset) + var(--mb-dot-content-padding) +
+      var(--mb-dot-tool-inset-x)
   );
 
-  color: transparent;
-  background-clip: text;
-  background-size:
-    250% 100%,
-    auto;
-  background-image:
-    var(--bg), linear-gradient(var(--base-color), var(--base-color));
-  background-position: 50%;
-  animation: rotate-background 1500ms ease infinite;
+  position: relative;
+  width: var(--mb-dot-field-width);
+  min-height: 180px;
+  margin-left: calc(50% - 50cqi - var(--mb-dot-field-bleed));
+  transition: transform 260ms cubic-bezier(0.2, 0, 0, 1);
+  will-change: transform;
 }
 
-@keyframes rotate-background {
-  0% {
-    background-position: 120%;
+/*
+ * The field box is full-bleed; the background is phase-shifted to the content
+ * column so the lit "M" dots land on this faint lattice while aligning with
+ * the input box.
+ */
+.field::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle at center,
+    var(--mb-color-brand) 0 1px,
+    transparent 1.5px
+  );
+  background-size: var(--mb-dot-pitch) var(--mb-dot-pitch);
+  background-position: var(--mb-dot-grid-origin-x) var(--mb-dot-tool-inset-y);
+  opacity: 0.2;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 20%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 0 20%, transparent 92%);
+  pointer-events: none;
+}
+
+.content {
+  box-sizing: border-box;
+  position: relative;
+  width: min(100%, var(--mb-dot-content-max-width));
+  margin-inline: auto;
+  padding-top: var(--mb-dot-tool-inset-y);
+  padding-inline: var(--mb-dot-content-padding);
+}
+
+.toolCallRow {
+  gap: 0.75rem;
+  min-height: calc(var(--mb-dot-pitch) * 6);
+  padding-left: var(--mb-dot-tool-inset-x);
+}
+
+.toolCallIcon {
+  flex: 0 0 calc(var(--mb-dot-pitch) * 7);
+  width: calc(var(--mb-dot-pitch) * 7);
+  justify-content: start;
+}
+
+.toolCallText {
+  width: fit-content;
+  padding: 0.25rem 0.625rem 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  background: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-monospace-font-family, monospace);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.toolCallRowEnded .toolCallText {
+  color: var(--mb-color-text-secondary);
+}
+
+/*
+ * Typewriter caret trailing the tool label. Kept in the layout at all times
+ * (so the pill width doesn't twitch) but only painted while the label is
+ * backspacing/retyping, where it blinks to sell the "typing" feel.
+ */
+.caret {
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: currentColor;
+  opacity: 0;
+}
+
+.caretActive {
+  animation: metabot-caret-blink 900ms steps(1, end) infinite;
+}
+
+@keyframes metabot-caret-blink {
+  0%,
+  49% {
+    opacity: 0.7;
   }
 
+  50%,
   100% {
-    background-position: -20%;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field {
+    transition: none;
+    will-change: auto;
   }
 }

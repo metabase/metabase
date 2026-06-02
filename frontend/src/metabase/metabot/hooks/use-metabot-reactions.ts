@@ -1,25 +1,25 @@
 import { useCallback } from "react";
 
 import {
-  getNavigateToPath,
-  setNavigateToPath as setNavigateToPathAction,
+  getCurrentQuestionPath,
+  setCurrentQuestionPath as setCurrentQuestionPathAction,
 } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 
 export const useMetabotReactions = () => {
   const dispatch = useDispatch();
 
-  const navigateToPath = useSelector(getNavigateToPath);
+  const currentQuestionPath = useSelector(getCurrentQuestionPath);
 
-  const setNavigateToPath = useCallback(
-    async (navigateToPath: string | null) => {
-      dispatch(setNavigateToPathAction(navigateToPath));
+  const setCurrentQuestionPath = useCallback(
+    (questionPath: string | null) => {
+      dispatch(setCurrentQuestionPathAction(questionPath));
     },
     [dispatch],
   );
 
   return {
-    navigateToPath,
-    setNavigateToPath,
+    currentQuestionPath,
+    setCurrentQuestionPath,
   };
 };
