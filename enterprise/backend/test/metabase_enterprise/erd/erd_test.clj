@@ -296,13 +296,19 @@
                                      :visibility_type "technical"}
                      :model/Table _ {:db_id db-id :name "cruft_table" :schema "PUBLIC"
                                      :visibility_type "cruft"}]
-        (let [response    (mt/user-http-request :rasta :get 200 "ee/erd"
-                                                :database-id db-id
-                                                :schema "PUBLIC")
-              node-names  (set (map :name (:nodes response)))
-              field-names (set (map :name (mapcat :fields (:nodes response))))]
+        (let [response       (mt/user-http-request :rasta :get 200 "ee/erd"
+                                                   :database-id db-id
+                                                   :schema "PUBLIC")
+              node-names     (set (map :name (:nodes response)))
+              field-names    (set (map :name (mapcat :fields (:nodes response))))
+              visibility-by-name (into {} (map (juxt :name :visibility_type)) (:nodes response))]
           (is (= #{"visible" "hidden_table" "technical_table" "cruft_table"} node-names))
-          (is (= #{"visible_id" "hidden_field" "secret" "retired_field"} field-names)))))))
+          (is (= #{"visible_id" "hidden_field" "secret" "retired_field"} field-names))
+          (is (= {"visible"         nil
+                  "hidden_table"    "hidden"
+                  "technical_table" "technical"
+                  "cruft_table"     "cruft"}
+                 visibility-by-name)))))))
 
 (deftest erd-endpoint-resolves-hidden-fk-targets-test
   (mt/with-premium-features #{:schema-viewer}
