@@ -2,12 +2,6 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { updateQuestion } from "metabase/query_builder/actions";
-import {
-  getIsListViewConfigurationShown,
-  getQuestion,
-} from "metabase/query_builder/selectors";
-import { useDispatch, useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import { displayNameForColumn } from "metabase/utils/formatting";
@@ -25,6 +19,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import {
   isAvatarURL,
   isCoordinate,
@@ -34,10 +29,9 @@ import {
   isString,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, IconName, Series } from "metabase-types/api";
+import type { DatasetColumn, Series } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";
-import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
 
 import S from "./ListViz.module.css";
 
@@ -259,6 +253,8 @@ const vizDefinition: VisualizationDefinition = {
 };
 
 export const ListViz = ({
+  card,
+  metadata,
   data,
   settings,
   onVisualizationClick,
@@ -266,11 +262,13 @@ export const ListViz = ({
   isDashboard,
   onZoomRow,
 }: VisualizationProps & VisualizationPassThroughProps) => {
-  const dispatch = useDispatch();
-  const question = useSelector(getQuestion);
-  const isShowingListViewConfiguration = useSelector(
-    getIsListViewConfigurationShown,
-  );
+  const question = useMemo(() => {
+    if (!card || !metadata) {
+      return null;
+    }
+    return new Question(card, metadata);
+  }, [card, metadata]);
+
   const { sortedColumnName, sortingDirection } = useMemo(() => {
     if (!question) {
       return {};
@@ -287,15 +285,6 @@ export const ListViz = ({
     return {};
   }, [question]);
 
-  const columnsMetadata = useMemo(() => {
-    if (!question) {
-      return [];
-    }
-    const query = question.query();
-    return data.cols.map((col) => Lib.fromLegacyColumn(query, -1, col));
-  }, [data, question]);
-
-  // Get the entity type from the question's source table
   const entityType = useMemo(() => {
     if (!question) {
       return undefined;
@@ -304,8 +293,7 @@ export const ListViz = ({
     try {
       const query = question.query();
       const sourceTableId = Lib.sourceTableOrCardId(query);
-      const metadata = question.metadata();
-      const table = metadata.table(sourceTableId);
+      const table = question.metadata().table(sourceTableId);
 
       // Return the entity type if available, otherwise undefined
       // Use type assertion since entity_type exists in the database but not in TypeScript types
@@ -320,46 +308,6 @@ export const ListViz = ({
   const handleSort = (column: DatasetColumn) => {
     onVisualizationClick({ column });
   };
-  const updateListSettings = ({
-    left,
-    right,
-    entityIcon,
-    entityIconColor,
-    entityIconEnabled,
-    useImageColumn,
-  }: {
-    left?: string[];
-    right?: string[];
-    entityIcon?: IconName | null;
-    entityIconColor?: string;
-    entityIconEnabled?: boolean;
-    useImageColumn?: boolean;
-  }) => {
-    const settings = { ...(question?.settings() || {}) };
-    if (left && right) {
-      settings["list.columns"] = {
-        left,
-        right,
-      };
-    }
-    if (entityIcon !== undefined) {
-      settings["list.entity_icon"] = entityIcon;
-    }
-    if (entityIconColor !== undefined) {
-      settings["list.entity_icon_color"] = entityIconColor;
-    }
-    if (entityIconEnabled !== undefined) {
-      settings["list.entity_icon_enabled"] = entityIconEnabled;
-    }
-    if (useImageColumn !== undefined) {
-      settings["list.use_image_column"] = useImageColumn;
-    }
-
-    const nextQuestion = question?.updateSettings(settings);
-    if (nextQuestion) {
-      dispatch(updateQuestion(nextQuestion));
-    }
-  };
 
   return (
     <Box
@@ -369,27 +317,17 @@ export const ListViz = ({
         [S.listViewDashcard]: isDashboard,
       })}
     >
-      {isShowingListViewConfiguration ? (
-        <ListViewConfiguration
-          data={data}
-          settings={settings}
-          onChange={updateListSettings}
-          entityType={entityType}
-          columnsMetadata={columnsMetadata}
-        />
-      ) : (
-        <ListView
-          className={isDashboard ? S.dashboardListView : undefined}
-          data={data}
-          settings={settings}
-          sortedColumnName={sortedColumnName}
-          sortingDirection={sortingDirection}
-          onSortClick={handleSort}
-          entityType={entityType}
-          isInteractive={queryBuilderMode !== "dataset"}
-          onZoomRow={onZoomRow}
-        />
-      )}
+      <ListView
+        className={isDashboard ? S.dashboardListView : undefined}
+        data={data}
+        settings={settings}
+        sortedColumnName={sortedColumnName}
+        sortingDirection={sortingDirection}
+        onSortClick={handleSort}
+        entityType={entityType}
+        isInteractive={queryBuilderMode !== "dataset"}
+        onZoomRow={onZoomRow}
+      />
     </Box>
   );
 };
