@@ -49,6 +49,33 @@
     (is (= (vector-search-sql (semantic.settings/semantic-search-vector-strategy))
            (vector-search-sql nil)))))
 
+(defn- flattened-vector-candidates-cte
+  "Build the brute-force/hnsw hybrid query, flatten it the way `scored-search-query` does, and return the
+  hoisted `:vector_candidates` CTE binding (e.g. `[:vector_candidates <query> :materialized]`)."
+  [strategy]
+  (let [index  {:table-name "idx_tbl"}
+        ctx    {:search-string "pasta" :archived? false :vector-search-strategy strategy}
+        hybrid (#'semantic.index/hybrid-search-query index [0.1 0.2 0.3] ctx)
+        {:keys [ctes]} (#'semantic.index/flatten-ctes hybrid)]
+    (first (filter #(= :vector_candidates (first %)) ctes))))
+
+(deftest flatten-ctes-preserves-materialized-test
+  (testing "the :materialized opt survives CTE hoisting (the path every real query takes via scored-search-query)"
+    ;; A regression that dropped the opt would change only the query plan, not the results, so the
+    ;; results-based end-to-end tests can't catch it -- assert on the hoisted binding directly.
+    (is (= :materialized (last (flattened-vector-candidates-cte :brute-force)))))
+  (testing ":hnsw hoists a plain CTE binding with no opts"
+    (is (= 2 (count (flattened-vector-candidates-cte :hnsw))))))
+
+(deftest semantic-search-vector-strategy-setting-test
+  (testing "the setting rejects an unknown strategy"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid vector-search strategy"
+                          (semantic.settings/semantic-search-vector-strategy! :nonsense))))
+  (testing "valid strategies round-trip"
+    (doseq [strategy [:hnsw :brute-force]]
+      (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
+        (is (= strategy (semantic.settings/semantic-search-vector-strategy)))))))
+
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index!)]

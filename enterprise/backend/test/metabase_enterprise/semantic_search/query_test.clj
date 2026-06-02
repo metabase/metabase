@@ -26,27 +26,38 @@
                                 semantic.tu/filter-for-mock-embeddings)]
                 (is (= "Bird Watching Tips" (-> results first :name)))))))))))
 
-(deftest brute-force-strategy-test
-  (testing "Brute-force vector search returns the same closest results as HNSW for these queries"
+(deftest vector-search-strategy-test
+  (testing "Both vector-search strategies find the closest content and honor the same filters"
+    ;; The existing query tests exercise the default :hnsw path; this runs the same kind of filter
+    ;; battery under both strategies, since :brute-force applies the filters in a different SQL position
+    ;; (inside the materialized CTE) than :hnsw (post-candidate-selection).
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
         (semantic.tu/with-test-db! {:mode :mock-indexed}
           (semantic.tu/with-only-semantic-weights
-            (testing "Dog-related query finds dog content"
-              (let [results (-> (semantic.tu/query-index {:search-string "puppy"
-                                                          :vector-search-strategy :brute-force})
-                                semantic.tu/filter-for-mock-embeddings)]
-                (is (= "Dog Training Guide" (-> results first :name)))))
-            (testing "Filters are honored under brute-force search"
-              (let [active   (semantic.tu/query-index {:search-string "feline"
-                                                       :archived? false
-                                                       :vector-search-strategy :brute-force})
-                    archived (semantic.tu/query-index {:search-string "feline"
-                                                       :archived? true
-                                                       :vector-search-strategy :brute-force})]
-                (is (every? #(not (:archived %)) active))
-                (is (pos? (count (semantic.tu/filter-for-mock-embeddings archived))))
-                (is (every? :archived archived))))))))))
+            (doseq [strategy [:hnsw :brute-force]]
+              (let [q (fn [ctx] (semantic.tu/query-index (assoc ctx :vector-search-strategy strategy)))]
+                (testing (str "strategy = " strategy)
+                  (testing "finds the closest content"
+                    (is (= "Dog Training Guide"
+                           (-> (q {:search-string "puppy"}) semantic.tu/filter-for-mock-embeddings first :name))))
+                  (testing "model filter"
+                    (let [results (q {:search-string "avian" :models ["card"]})]
+                      (is (pos? (count (semantic.tu/filter-for-mock-embeddings results))))
+                      (is (every? #(= "card" (:model %)) results))))
+                  (testing "archived filter"
+                    (is (every? #(not (:archived %)) (q {:search-string "feline" :archived? false})))
+                    (let [archived (q {:search-string "feline" :archived? true})]
+                      (is (pos? (count (semantic.tu/filter-for-mock-embeddings archived))))
+                      (is (every? :archived archived))))
+                  (testing "verified filter"
+                    (let [results (q {:search-string "puppy" :verified true})]
+                      (is (pos? (count (semantic.tu/filter-for-mock-embeddings results))))
+                      (is (every? :verified results))))
+                  (testing "creator filter"
+                    (let [results (q {:search-string "aquatic" :created-by [(mt/user->id :crowberto)]})]
+                      (is (pos? (count (semantic.tu/filter-for-mock-embeddings results))))
+                      (is (every? #(= (mt/user->id :crowberto) (:creator_id %)) results)))))))))))))
 
 (defn- index-of-name
   "Return the index of the item with :name `name` in `coll`"
