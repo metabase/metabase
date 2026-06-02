@@ -128,7 +128,7 @@ describe("TransformSettingsSection", () => {
 
     it("does not show the change target button", async () => {
       await screen.findByRole("switch", {
-        name: /Only process new and changed data/,
+        name: /Only process new data/,
       });
       expect(
         screen.queryByRole("button", { name: "Change target" }),
@@ -138,7 +138,7 @@ describe("TransformSettingsSection", () => {
     it("makes Incremental transformation switch disabled", async () => {
       expect(
         await screen.findByRole("switch", {
-          name: /Only process new and changed data/,
+          name: /Only process new data/,
         }),
       ).toBeDisabled();
     });
