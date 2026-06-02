@@ -21,12 +21,8 @@ jest.mock("metabase/parameters/utils/date-formatting", () => ({
 }));
 
 describe("DefaultParametersSection", () => {
-  const setup = (parameters) => {
-    renderWithProviders(<DefaultParametersSection parameters={parameters} />);
-  };
-
   it("should render the heading and info text", () => {
-    setup([]);
+    renderWithProviders(<DefaultParametersSection parameters={[]} />);
     expect(screen.getByText("Filter values")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -46,7 +42,7 @@ describe("DefaultParametersSection", () => {
         default: "CA",
       }),
     ];
-    setup(parameters);
+    renderWithProviders(<DefaultParametersSection parameters={parameters} />);
     expect(screen.getByText("State: CA")).toBeInTheDocument();
   });
 
@@ -58,7 +54,7 @@ describe("DefaultParametersSection", () => {
         default: ["Organic", "Direct"],
       }),
     ];
-    setup(parameters);
+    renderWithProviders(<DefaultParametersSection parameters={parameters} />);
     expect(
       screen.getByText(t`Source: ${"Organic"} and ${"Direct"}`),
     ).toBeInTheDocument();
@@ -72,7 +68,7 @@ describe("DefaultParametersSection", () => {
         default: "2024-01-15",
       }),
     ];
-    setup(parameters);
+    renderWithProviders(<DefaultParametersSection parameters={parameters} />);
     expect(
       screen.getByText("Created At: January 15, 2024"),
     ).toBeInTheDocument();
@@ -86,7 +82,7 @@ describe("DefaultParametersSection", () => {
         default: "past30days",
       }),
     ];
-    setup(parameters);
+    renderWithProviders(<DefaultParametersSection parameters={parameters} />);
     expect(
       screen.getByText("Date Range: Previous 30 Days"),
     ).toBeInTheDocument();
@@ -106,7 +102,7 @@ describe("DefaultParametersSection", () => {
       }),
       createMockParameter({ name: "Category", type: "category" }), // No default
     ];
-    setup(parameters);
+    renderWithProviders(<DefaultParametersSection parameters={parameters} />);
     expect(screen.getByText("State: NY")).toBeInTheDocument();
     expect(screen.getByText("Timeframe: Previous 30 Days")).toBeInTheDocument();
     expect(screen.queryByText(/Category:/)).not.toBeInTheDocument();

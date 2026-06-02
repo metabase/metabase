@@ -2078,14 +2078,18 @@
                               [:in :id collection-set]
                               (when (some nil? collection-set) [:= :id nil])]
                              not-trash-clause
-                             (or where true)]})
+                             (or where true)]
+                            ;; stable filename de-dup suffixes across exports, see GHY-3754
+                            :order-by serdes/stable-storage-order})
       (t2/reducible-select :model/Collection
                            {:where
                             [:and
                              (when skip-archived [:not :archived])
                              [:= :personal_owner_id nil]
                              not-trash-clause
-                             (or where true)]}))))
+                             (or where true)]
+                            ;; stable filename de-dup suffixes across exports, see GHY-3754
+                            :order-by serdes/stable-storage-order}))))
 
 (defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]
