@@ -53,14 +53,57 @@
                  last))))))
 
 (deftest ^:parallel detect-pulse-chart-type-test
-  (testing "Currently unsupported chart types for static-viz return `nil`."
-    (are [tyype] (nil? (channel.render/detect-pulse-chart-type {:display tyype}
-                                                               {}
-                                                               {:cols [{:base_type :type/Number}]
-                                                                :rows [[2]]}))
-      :pin_map
-      :state
-      :country)))
+  (testing "Pin maps remain unsupported for static-viz and return `nil`."
+    ;; (Region maps — :state/:country and :map with a built-in region — are handled in
+    ;; detect-pulse-chart-type-region-map-test.)
+    (is (nil? (channel.render/detect-pulse-chart-type {:display :pin_map}
+                                                      nil
+                                                      {:cols [{:base_type :type/Number}]
+                                                       :rows [[2]]})))))
+
+(deftest ^:parallel detect-pulse-chart-type-region-map-test
+  (let [data {:cols [{:base_type :type/Text :name "state"}
+                     {:base_type :type/Number :name "count"}]
+              :rows [["CA" 2] ["NY" 4]]}
+        card (fn [settings] {:display :map :visualization_settings settings})]
+    (testing "Built-in region maps are routed to :region_map (string and keyword setting keys)"
+      (are [settings] (= :region_map (channel.render/detect-pulse-chart-type (card settings) nil data))
+        {"map.type" "region" "map.region" "us_states"}
+        {"map.type" "region" "map.region" "world_countries"}
+        ;; production stores viz-settings keys as keywords-with-dots
+        {:map.type "region" :map.region "us_states"}))
+    (testing "map.type defaulting to region (unset) still counts as a region map"
+      (is (= :region_map
+             (channel.render/detect-pulse-chart-type
+              (card {"map.region" "us_states"}) nil data))))
+    (testing "Pin/heat/grid maps and custom regions are not statically rendered as region maps"
+      (are [settings] (not= :region_map
+                            (channel.render/detect-pulse-chart-type (card settings) nil data))
+        {"map.type" "pin" "map.region" "us_states"}
+        {"map.type" "heat" "map.region" "us_states"}
+        {"map.type" "region" "map.region" "my_custom_map"}))
+    (testing "A dashcard-level region map setting takes precedence over the card"
+      (is (= :region_map
+             (channel.render/detect-pulse-chart-type
+              (card {"map.type" "pin"})
+              {:visualization_settings {"map.type" "region" "map.region" "us_states"}}
+              data))))
+    (testing "Region is inferred from a State/Country column when map.region isn't persisted"
+      (is (= :region_map
+             (channel.render/detect-pulse-chart-type
+              (card {})
+              nil
+              {:cols [{:semantic_type :type/State :name "st"} {:base_type :type/Number :name "n"}]
+               :rows [["CA" 2]]})))
+      (is (= :region_map
+             (channel.render/detect-pulse-chart-type
+              (card {})
+              nil
+              {:cols [{:semantic_type :type/Country :name "c"} {:base_type :type/Number :name "n"}]
+               :rows [["US" 2]]}))))
+    (testing "Legacy :state/:country displays are treated as region maps"
+      (is (= :region_map (channel.render/detect-pulse-chart-type {:display :state} nil data)))
+      (is (= :region_map (channel.render/detect-pulse-chart-type {:display :country} nil data))))))
 
 (deftest ^:parallel detect-pulse-chart-type-test-2
   (testing "Queries resulting in no rows return `:empty`."

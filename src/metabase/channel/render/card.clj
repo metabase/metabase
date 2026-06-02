@@ -92,9 +92,21 @@
     (keyword (get-in dashcard [:visualization_settings :visualization :display]))
     nil))
 
+(defn- region-map?
+  "True when `card` is a region (choropleth) map over a built-in region we can render statically. Mirrors
+  the frontend: a `:map` display (or legacy `:state`/`:country`) that isn't a pin/heat/grid map and whose
+  region resolves to a built-in GeoJSON. Pin maps and custom (Leaflet) regions are not rendered here."
+  [display-type card maybe-dashcard data]
+  (and (#{:map :state :country} display-type)
+       (let [viz-settings (or (:visualization_settings maybe-dashcard)
+                              (:visualization_settings card))
+             map-type     (or (get viz-settings "map.type") (get viz-settings :map.type))]
+         (not (#{"pin" "heat" "grid"} map-type)))
+       (some? (body/region-map-region-key display-type card maybe-dashcard data))))
+
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display card-name :name} maybe-dashcard {:keys [cols rows] :as data}]
+  [{display-type :display card-name :name :as card} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count  (delay (count (take 3 cols)))
         row-sample-count  (delay (count (take 2 rows)))
         display-type      (or (visualizer-display-type maybe-dashcard) display-type)]
@@ -107,6 +119,9 @@
             ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
+
+        (region-map? display-type card maybe-dashcard data)
+        (chart-type :region_map "display-type is a built-in region map")
 
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)

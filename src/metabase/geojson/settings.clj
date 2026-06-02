@@ -5,6 +5,7 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.http :as http]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -142,3 +143,18 @@
   "Returns the subset of custom-geojson that users defined, without the built-in geojson entries."
   []
   (reduce dissoc (custom-geojson) (keys (builtin-geojson))))
+
+(def ^:private read-classpath-geojson
+  ;; Built-in GeoJSON files are static, so reading + parsing them once is safe to cache forever. The stored
+  ;; `url` (e.g. "app/assets/...") is a web path served out of resources/frontend_client, so resolve it there.
+  (memoize (fn [url] (some-> (io/resource (str "frontend_client/" url)) slurp json/decode))))
+
+(defn builtin-region-geojson
+  "For a built-in region key (e.g. \"us_states\"), return the parsed GeoJSON `:data` along with its
+  `:region_key`/`:region_name`, read straight from the classpath. Returns nil for unknown or non-built-in
+  keys. Used by static (email/Slack) rendering to embed GeoJSON without an HTTP round-trip."
+  [region-key]
+  (when-let [{:keys [url region_key region_name builtin]} (get (builtin-geojson) (keyword region-key))]
+    (when (and builtin url)
+      (when-let [data (read-classpath-geojson url)]
+        {:data data :region_key region_key :region_name region_name}))))

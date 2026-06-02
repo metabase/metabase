@@ -492,6 +492,7 @@
            driver
            events
            formatter
+           geojson
            lib
            lib-be
            models
@@ -991,7 +992,8 @@
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.api
-           metabase.geojson.init}
+           metabase.geojson.init
+           metabase.geojson.settings}
    :uses #{api
            config
            permissions

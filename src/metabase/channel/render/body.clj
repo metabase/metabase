@@ -13,6 +13,7 @@
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
    [metabase.formatter.core :as formatter]
+   [metabase.geojson.settings :as geojson.settings]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
@@ -394,27 +395,76 @@
 ;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
 ;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
 ;; Trend charts were added more recently and will not have multi-series.
+(def ^:private builtin-region-map-regions
+  "Built-in region keys whose GeoJSON we can resolve and render statically."
+  #{"us_states" "world_countries"})
+
+(defn region-map-region-key
+  "Resolve the built-in region key for a region map, mirroring the frontend `map.region` default:
+  an explicit `map.region` setting, else a legacy `:state`/`:country` display, else inferred from a
+  State/Country column. Returns nil when it isn't a built-in region we can render statically."
+  [display-type card dashcard {:keys [cols]}]
+  (letfn [(any-col-type? [t] (some #(isa? (some-> (:semantic_type %) keyword) t) cols))]
+    (let [viz-settings (or (:visualization_settings dashcard) (:visualization_settings card))
+          region-key   (or (get viz-settings "map.region")
+                           (get viz-settings :map.region)
+                           (case display-type :state "us_states" :country "world_countries" nil)
+                           (cond
+                             (any-col-type? :type/State)   "us_states"
+                             (any-col-type? :type/Country) "world_countries"))]
+      (when (contains? builtin-region-map-regions region-key)
+        region-key))))
+
+(defn- javascript-visualization->rendered-part
+  "Turn the `{:type :svg/:html :content ...}` result of [[js.svg/*javascript-visualization*]] into a RenderedPartCard.
+  SVG results are rasterized to a PNG `<img>`; HTML results are embedded as-is."
+  [render-type {rendered-type :type content :content}]
+  (case rendered-type
+    :svg
+    (let [image-bundle (image-bundle/make-image-bundle
+                        render-type
+                        (js.svg/svg-string->bytes content))]
+      {:attachments
+       (when image-bundle
+         (image-bundle/image-bundle->attachment image-bundle))
+
+       :content
+       [:div
+        [:img {:style (style/style {:display :block :width :100%})
+               :src   (:image-src image-bundle)}]]})
+    :html
+    {:content [:div content] :attachments nil}))
+
 (mu/defmethod render :javascript_visualization :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard data]
   (let [cards-with-data  (series-cards-with-data dashcard card data)
         viz-settings     (or (get dashcard :visualization_settings)
-                             (get card :visualization_settings))
-        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings)]
-    (case rendered-type
-      :svg
-      (let [image-bundle (image-bundle/make-image-bundle
-                          render-type
-                          (js.svg/svg-string->bytes content))]
-        {:attachments
-         (when image-bundle
-           (image-bundle/image-bundle->attachment image-bundle))
+                             (get card :visualization_settings))]
+    (javascript-visualization->rendered-part
+     render-type
+     (js.svg/*javascript-visualization* cards-with-data viz-settings))))
 
-         :content
-         [:div
-          [:img {:style (style/style {:display :block :width :100%})
-                 :src   (:image-src image-bundle)}]]})
-      :html
-      {:content [:div content] :attachments nil})))
+(mu/defmethod render :region_map :- ::RenderedPartCard
+  [_chart-type render-type timezone-id card dashcard data]
+  (let [region-key (region-map-region-key (:display card) card dashcard data)
+        geojson    (some-> region-key geojson.settings/builtin-region-geojson)]
+    (if-not geojson
+      ;; Custom/unresolvable regions can't be rendered statically; degrade to a table of the data.
+      (render :table render-type timezone-id card dashcard data)
+      (let [cards-with-data (series-cards-with-data dashcard card data)
+            base-settings   (or (get dashcard :visualization_settings)
+                                (get card :visualization_settings))
+            ;; Embed the resolved GeoJSON, and pin map.region to the resolved key so the bundle picks
+            ;; the right projection even when the region was only an inferred default (never persisted).
+            viz-settings    (-> base-settings
+                                (dissoc :map.region "map.region")
+                                (assoc "map.region" region-key
+                                       "map._geojson" (:data geojson)
+                                       "map._geojson_details" {:region_key  (:region_key geojson)
+                                                               :region_name (:region_name geojson)}))]
+        (javascript-visualization->rendered-part
+         render-type
+         (js.svg/*javascript-visualization* cards-with-data viz-settings))))))
 
 (defn- smart-scalar-comparison-statement
   [unit value]
