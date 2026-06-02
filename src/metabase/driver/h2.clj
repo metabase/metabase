@@ -35,7 +35,8 @@
    (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
-   (org.h2.engine SessionLocal)))
+   (org.h2.engine SessionLocal)
+   (org.h2.util StringUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -277,7 +278,10 @@
    text rather than the parsed command, so it still applies when the H2 parser is unavailable."
   [sql]
   (when sql
-    (perf/not-empty (into #{} (map u/upper-case-en) (re-seq unsupported-builtin-function-regex sql)))))
+    (perf/not-empty
+     (into #{} (map u/upper-case-en)
+           (re-seq unsupported-builtin-function-regex
+                   (StringUtils/toUpperEnglish sql))))))
 
 (defn- check-no-unsupported-functions [sql]
   (when-let [fns (unsupported-functions-in-query sql)]
