@@ -170,6 +170,7 @@ export function SearchPromptModal({
           options={{
             hasSearch: true,
             hasRecents: true,
+            hasDatabases: true,
             hasConfirmButtons: false,
           }}
         />
