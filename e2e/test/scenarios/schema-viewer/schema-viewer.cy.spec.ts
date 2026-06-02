@@ -62,6 +62,56 @@ const SV_SETUP_SQL = `
   );
 `;
 
+const SV_REQUIRED_TABLES = [
+  "users",
+  "profiles",
+  "categories",
+  "products",
+  "lookup",
+  "other",
+];
+
+// `H.resyncDatabase` POSTs sync_schema once and then only *polls* for tables.
+// But sync_schema submits to a single-threaded task pool and in some cases
+// can be silently suppressed. This leaves new schemas undiscovered,
+// and the polling eventually times out with zero tables.
+// Re-triggering the sync each round until every table we need has
+// finished syncing guarantees test execution.
+function resyncWritableSchemasUntilReady(iteration = 0) {
+  const POLL_DELAY_MS = 500;
+  const MAX_ITERATIONS = 40;
+  const RESYNC_ITERATION_INDEX = 8;
+
+  if (iteration === MAX_ITERATIONS) {
+    throw new Error(
+      `Writable DB sync never surfaced all sv_test/sv_extra tables: ${SV_REQUIRED_TABLES.join(
+        ", ",
+      )}`,
+    );
+  }
+
+  // Re-trigger on the first iteration and periodically thereafter, so a sync
+  // that was queued behind a slow task or coalesced away gets kicked again.
+  if (iteration % RESYNC_ITERATION_INDEX === 0) {
+    cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
+  }
+
+  cy.request<{
+    tables?: { name: string; initial_sync_status: string }[];
+  }>("GET", `/api/database/${WRITABLE_DB_ID}/metadata`).then(({ body }) => {
+    const synced = new Set(
+      (body.tables ?? [])
+        .filter((t) => t.initial_sync_status === "complete")
+        .map((t) => t.name),
+    );
+    if (SV_REQUIRED_TABLES.every((name) => synced.has(name))) {
+      return;
+    }
+    cy.wait(POLL_DELAY_MS);
+    resyncWritableSchemasUntilReady(iteration + 1);
+  });
+}
+
 const tableNode = (tableId: TableId) => cy.get(`[data-id="table-${tableId}"]`);
 const schemaPickerTrigger = () => cy.findByTestId("schema-picker-button");
 const searchInput = () => cy.findByTestId("schema-viewer-node-search-input");
@@ -328,7 +378,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     H.activateToken("bleeding-edge");
     cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
     H.queryWritableDB(SV_SETUP_SQL, "postgres");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    resyncWritableSchemasUntilReady();
   });
 
   after(() => {
