@@ -49,11 +49,19 @@ export function getTreemapChartOption({
   tree,
   colors = getTreemapColors(tree),
   isDrilled = false,
+  labelVisibility = {},
   renderingContext,
 }: {
   tree: TreemapTree;
   colors?: Record<string, string>;
   isDrilled?: boolean;
+  /**
+   * Per-leaf label show/hide, keyed by node id, measured against the rendered
+   * tile width after layout (see `model/labels.ts`). Takes precedence over the
+   * cheap area-share heuristic below; missing ids fall back to that heuristic
+   * (used for the first paint, before any layout exists to measure).
+   */
+  labelVisibility?: Record<string, boolean>;
   renderingContext: RenderingContext;
 }): {
   series: TreemapChartSeriesOption;
@@ -130,7 +138,13 @@ export function getTreemapChartOption({
     left: 0,
     right: 0,
     bottom: bottomSpace,
-    data: toSeriesData(tree, colors, isDrilled, renderingContext),
+    data: toSeriesData(
+      tree,
+      colors,
+      isDrilled,
+      labelVisibility,
+      renderingContext,
+    ),
     leafDepth: 2,
     ...(hasChildren ? { levels } : {}),
   };
@@ -142,6 +156,7 @@ function toSeriesData(
   tree: TreemapTree,
   colors: Record<string, string>,
   isDrilled: boolean,
+  labelVisibility: Record<string, boolean>,
   renderingContext: RenderingContext,
 ): TreemapSeriesNode[] {
   const headerTintTarget = renderingContext.getColor("white");
@@ -150,6 +165,22 @@ function toSeriesData(
   const total = tree.reduce((sum, node) => sum + node.value, 0);
   const isTileTooSmall = (value: number) =>
     total > 0 && value / total < LEAF_LABEL_MIN_AREA_SHARE;
+
+  // Resolve a tile's label visibility: a measured width-based decision
+  // (`labelVisibility`) wins when present; otherwise fall back to the area-share
+  // proxy. Returns `{}` to leave the label at its default (shown).
+  const getLabelOverride = (
+    id: string,
+    value: number,
+  ): Pick<TreemapSeriesNode, "label"> | Record<string, never> => {
+    if (id in labelVisibility) {
+      return { label: { show: labelVisibility[id] } };
+    }
+    if (isTileTooSmall(value)) {
+      return { label: { show: false } };
+    }
+    return {};
+  };
 
   return tree.map((node, rootIndex) => {
     const groupColor = colors[String(node.rawName)];
@@ -180,10 +211,10 @@ function toSeriesData(
           : {}),
       },
       // Top-level nodes with children render a header chip (always shown), not
-      // their own tile label, so only hide the label for childless tiles — i.e.
-      // a 1-level treemap's tiles.
-      ...(node.children == null && isTileTooSmall(node.value)
-        ? { label: { show: false } }
+      // their own tile label, so only resolve the label for childless tiles —
+      // i.e. a 1-level treemap's tiles.
+      ...(node.children == null
+        ? getLabelOverride(getTreemapNodeId(rootIndex), node.value)
         : {}),
       ...(groupTint ? { upperLabel: { backgroundColor: groupTint } } : {}),
       ...(node.children
@@ -194,7 +225,10 @@ function toSeriesData(
               value: leaf.value,
               rawName: leaf.rawName,
               rowIndices: leaf.rowIndices,
-              ...(isTileTooSmall(leaf.value) ? { label: { show: false } } : {}),
+              ...getLabelOverride(
+                getTreemapNodeId(rootIndex, leafIndex),
+                leaf.value,
+              ),
             })),
           }
         : {}),

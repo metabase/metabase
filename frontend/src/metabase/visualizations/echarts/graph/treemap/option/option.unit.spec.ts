@@ -331,6 +331,73 @@ describe("getTreemapChartOption small-node labels", () => {
   });
 });
 
+describe("getTreemapChartOption labelVisibility override", () => {
+  const twoLevel: TreemapTree = [
+    {
+      rawName: "G",
+      displayName: "G",
+      value: 100,
+      rowIndices: [0, 1],
+      children: [
+        { rawName: "Big", displayName: "Big", value: 98, rowIndices: [0] },
+        { rawName: "Tiny", displayName: "Tiny", value: 2, rowIndices: [1] },
+      ],
+    },
+  ];
+
+  it("forces a leaf label hidden even when its area share is large", () => {
+    const { series } = getTreemapChartOption({
+      tree: twoLevel,
+      labelVisibility: { "0-0": false },
+      renderingContext,
+    });
+    const [big] = series.data[0].children ?? [];
+
+    expect(big.label).toMatchObject({ show: false });
+  });
+
+  it("forces a leaf label shown, overriding the area-share heuristic", () => {
+    const { series } = getTreemapChartOption({
+      tree: twoLevel,
+      labelVisibility: { "0-1": true },
+      renderingContext,
+    });
+    const [, tiny] = series.data[0].children ?? [];
+
+    // Without the override, "Tiny" (2% share) would be hidden by area-share.
+    expect(tiny.label).toMatchObject({ show: true });
+  });
+
+  it("falls back to the area-share heuristic for ids not in the map", () => {
+    const { series } = getTreemapChartOption({
+      tree: twoLevel,
+      labelVisibility: { "0-0": false },
+      renderingContext,
+    });
+    const [, tiny] = series.data[0].children ?? [];
+
+    // "0-1" is absent from the map, so the area-share proxy still hides it.
+    expect(tiny.label).toMatchObject({ show: false });
+  });
+
+  it("applies the override to a 1-level treemap's tiles by id", () => {
+    const oneLevel: TreemapTree = [
+      { rawName: "A", displayName: "A", value: 99, rowIndices: [0] },
+      { rawName: "B", displayName: "B", value: 1, rowIndices: [1] },
+    ];
+
+    const { series } = getTreemapChartOption({
+      tree: oneLevel,
+      labelVisibility: { "0": false, "1": true },
+      renderingContext,
+    });
+
+    expect(series.data[0].label).toMatchObject({ show: false });
+    // "B" would be area-share-hidden, but the override shows it.
+    expect(series.data[1].label).toMatchObject({ show: true });
+  });
+});
+
 describe("getTreemapChartOption layout", () => {
   it("is full-bleed with no bottom inset at the overview", () => {
     const { series } = getTreemapChartOption({
