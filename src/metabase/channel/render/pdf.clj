@@ -34,6 +34,13 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock
+                             HardLineBreak Heading IndentedCodeBlock Link MailLink OrderedList
+                             Paragraph SoftLineBreak StrongEmphasis Text ThematicBreak)
+   (com.vladsch.flexmark.ext.autolink AutolinkExtension)
+   (com.vladsch.flexmark.parser Parser)
+   (com.vladsch.flexmark.util.ast Node)
+   (com.vladsch.flexmark.util.data MutableDataSet)
    (java.awt Color)
    (java.io ByteArrayOutputStream)
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
@@ -67,6 +74,8 @@
   150.0)
 
 (def ^:private desc-color (Color. 0x6B 0x73 0x80))
+(def ^:private link-color (Color. 0x1B 0x6F 0xC2))
+(def ^:private code-color (Color. 0x3B 0x3B 0x3B))
 
 (def ^:private rectangular-displays
   "Display types whose static-viz (ECharts/visx) renderer honors an explicit width AND height,
@@ -182,6 +191,239 @@
   "Draw wrapped text top-aligned within a cell rectangle, clipping to the cell height."
   [^PDPageContentStream cs ^PDType1Font font font-pt x top-y cell-w cell-h text]
   (draw-text-block! cs font font-pt nil x top-y cell-w cell-h text))
+
+;; --------------------------------------------------------------------------------------------
+;; Markdown -> styled runs (text cards). We parse with flexmark (the same library the email
+;; pipeline uses) but walk the AST ourselves, emitting block + inline-run structure that maps to
+;; PDFBox fonts/colors -- since PDFBox has no HTML engine, the email's HTML output is no use here.
+;; --------------------------------------------------------------------------------------------
+
+(def ^:private md-parser
+  (delay (.build (Parser/builder (.set (MutableDataSet.) Parser/EXTENSIONS
+                                       [(AutolinkExtension/create)])))))
+
+(defn- node-children [^Node node]
+  (loop [c (.getFirstChild node), acc []]
+    (if c (recur (.getNext c) (conj acc c)) acc)))
+
+(defn- md-unescape
+  "Resolve CommonMark backslash escapes (`\\,` -> `,`) the way flexmark's HtmlRenderer does --
+  `.getChars` on a Text node returns the raw source, escapes included. (Parameter substitution
+  escapes interpolated values, so e.g. a multi-value filter arrives as `A\\, B\\, and C`.)"
+  [s]
+  (str/replace (str s) #"\\(\p{Punct})" "$1"))
+
+(defn- inline-runs
+  "Flatten a block node's inline children into styled runs: each is `{:text :bold? :italic?
+  :code? :href}`, plus `{:break? true}` for a hard line break."
+  ([^Node node] (inline-runs node {} nil))
+  ([^Node node style href]
+   (vec (mapcat
+         (fn [^Node c]
+           (condp instance? c
+             Text           [(assoc style :text (md-unescape (.getChars c)) :href href)]
+             StrongEmphasis (inline-runs c (assoc style :bold? true) href)
+             Emphasis       (inline-runs c (assoc style :italic? true) href)
+             Code           [(assoc style :code? true :text (str (.getText ^Code c)) :href href)]
+             Link           (inline-runs c style (str (.getUrl ^Link c)))
+             AutoLink       (let [u (str (.getText ^AutoLink c))] [(assoc style :text u :href u)])
+             MailLink       (let [u (str (.getText ^MailLink c))] [(assoc style :text u :href (str "mailto:" u))])
+             SoftLineBreak  [{:text " " :space? true}]
+             HardLineBreak  [{:break? true}]
+             (if (.getFirstChild c)
+               (inline-runs c style href)
+               [(assoc style :text (md-unescape (.getChars c)) :href href)])))
+         (node-children node)))))
+
+(declare block->blocks)
+
+(defn- list->blocks [^Node list-node depth ordered?]
+  (vec (apply concat
+              (map-indexed
+               (fn [idx ^Node item]
+                 (let [child-blocks (vec (mapcat #(block->blocks % (inc depth)) (node-children item)))]
+                   (map-indexed
+                    (fn [i b]
+                      (if (and (zero? i) (= :paragraph (:kind b)))
+                        (assoc b :kind :list-item :indent depth
+                               :marker (if ordered? (str (inc idx) ". ") "- "))
+                        b))
+                    child-blocks)))
+               (node-children list-node)))))
+
+(defn- block->blocks
+  "Convert a flexmark block node into a flat vector of layout blocks `{:kind :runs ...}`."
+  [^Node node depth]
+  (condp instance? node
+    Heading           [{:kind :heading :level (.getLevel ^Heading node) :runs (inline-runs node)}]
+    Paragraph         [{:kind :paragraph :runs (inline-runs node)}]
+    BulletList        (list->blocks node depth false)
+    OrderedList       (list->blocks node depth true)
+    FencedCodeBlock   [{:kind :code-block :text (str (.getContentChars ^FencedCodeBlock node))}]
+    IndentedCodeBlock [{:kind :code-block :text (str (.getContentChars ^IndentedCodeBlock node))}]
+    BlockQuote        (mapv #(update % :indent (fnil inc 0))
+                            (vec (mapcat #(block->blocks % depth) (node-children node))))
+    ThematicBreak     [{:kind :hr}]
+    (if (.getFirstChild node)
+      (vec (mapcat #(block->blocks % depth) (node-children node)))
+      [])))
+
+(defn- parse-markdown-blocks [text]
+  (vec (mapcat #(block->blocks % 0) (node-children (.parse ^Parser @md-parser (str text))))))
+
+(defn- run-font ^PDType1Font [{:keys [bold? italic? code?]}]
+  (PDType1Font.
+   (cond
+     code?               Standard14Fonts$FontName/COURIER
+     (and bold? italic?) Standard14Fonts$FontName/HELVETICA_BOLD_OBLIQUE
+     bold?               Standard14Fonts$FontName/HELVETICA_BOLD
+     italic?             Standard14Fonts$FontName/HELVETICA_OBLIQUE
+     :else               Standard14Fonts$FontName/HELVETICA)))
+
+(defn- heading-pt [level]
+  (case (long level) 1 15.0 2 13.5 3 12.0 11.5))
+
+(defn- runs->words
+  "Split runs into a flat seq of word tokens, each `{:text :style :space-before?}` (or
+  `{:break? true}`), so that adjacent runs with no whitespace between them don't get a space."
+  [runs]
+  (loop [runs runs, pending false, out []]
+    (if (empty? runs)
+      out
+      (let [r (first runs)]
+        (if (:break? r)
+          (recur (rest runs) false (conj out {:break? true}))
+          (let [style (dissoc r :text :space? :break? :href)
+                style (cond-> style (:href r) (assoc :link? true))
+                [out2 pend2] (reduce (fn [[acc pend] tok]
+                                       (if (str/blank? tok)
+                                         [acc true]
+                                         [(conj acc {:text tok :style style :space-before? pend}) false]))
+                                     [out pending]
+                                     (re-seq #"\S+|\s+" (str (:text r ""))))]
+            (recur (rest runs) pend2 out2)))))))
+
+(defn- words->lines
+  "Greedily wrap `words` to `max-w`, resolving each word's font/color. Returns a vector of lines;
+  each line is a vector of drawable items `{:text :font :pt :color :ww :sp :space-before?}`."
+  [words base-pt heading? max-w]
+  (loop [ws words, line [], line-w 0.0, lines []]
+    (if (empty? ws)
+      (if (seq line) (conj lines line) lines)
+      (let [w (first ws)]
+        (if (:break? w)
+          (recur (rest ws) [] 0.0 (conj lines line))
+          (let [style      (:style w)
+                font       (run-font (cond-> style heading? (assoc :bold? true)))
+                txt        (sanitize (:text w))
+                ww         (text-width font base-pt txt)
+                sp         (text-width font base-pt " ")
+                color      (cond (:link? style) link-color (:code? style) code-color :else Color/BLACK)
+                add-space? (boolean (and (seq line) (:space-before? w)))
+                advance    (+ (if add-space? sp 0.0) ww)
+                item       {:text txt :font font :pt base-pt :color color
+                            :ww ww :sp sp :space-before? add-space?}]
+            (if (and (seq line) (> (+ line-w advance) max-w))
+              (recur ws [] 0.0 (conj lines line))
+              (recur (rest ws) (conj line item) (+ line-w advance) lines))))))))
+
+(defn- block-height
+  "Vertical points a block consumes when laid out at `scale` (mirrors `draw-block!`)."
+  [block cell-w scale]
+  (case (:kind block)
+    :hr (* 10.0 scale)
+    :code-block (let [pt (* 9.0 scale)
+                      lh (* pt line-height-factor)]
+                  (+ (* (count (str/split-lines (str (:text block)))) lh) 2.0))
+    (let [heading? (= :heading (:kind block))
+          base-pt  (* (if heading? (heading-pt (:level block)) text-card-pt) scale)
+          marker   (:marker block)
+          marker-w (if marker (text-width (regular-font) base-pt marker) 0.0)
+          content-w (- cell-w (* (long (or (:indent block) 0)) 14.0) marker-w)
+          lines    (words->lines (runs->words (:runs block)) base-pt heading? content-w)]
+      (* (count lines) (* base-pt line-height-factor)))))
+
+(defn- markdown-total-height [blocks cell-w scale]
+  (reduce (fn [acc b] (+ acc (block-height b cell-w scale) (* 4.0 scale))) 0.0 blocks))
+
+(defn- fit-scale
+  "Largest font scale (<= 1.0, down to a readability floor) at which the markdown fits `cell-h`.
+  Shrinks the text only when the content would otherwise overflow (and clip) the cell."
+  [blocks cell-w cell-h]
+  (or (some (fn [s] (when (<= (markdown-total-height blocks cell-w s) cell-h) s))
+            (map #(/ (double %) 100.0) (range 100 44 -5)))
+      0.45))
+
+(defn- draw-md-line!
+  [^PDPageContentStream cs x baseline items]
+  (loop [items items, cx (double x)]
+    (when (seq items)
+      (let [it  (first items)
+            cx2 (+ cx (if (:space-before? it) (:sp it) 0.0))]
+        (.setNonStrokingColor cs ^Color (:color it))
+        (draw-line! cs (:font it) (:pt it) cx2 baseline (:text it))
+        (recur (rest items) (+ cx2 (:ww it))))))
+  (.setNonStrokingColor cs Color/BLACK))
+
+(defn- draw-code-block!
+  [^PDPageContentStream cs block x top-y cell-w bottom scale]
+  (let [font (PDType1Font. Standard14Fonts$FontName/COURIER)
+        pt   (* 9.0 scale)
+        lh   (* pt line-height-factor)]
+    (.setNonStrokingColor cs ^Color code-color)
+    (let [y (loop [ls (str/split-lines (str (:text block))), y (double top-y)]
+              (if (or (empty? ls) (< (- y lh) bottom))
+                y
+                (do (draw-line! cs font pt (+ x 4.0) (- y pt) (sanitize (first ls)))
+                    (recur (rest ls) (- y lh)))))]
+      (.setNonStrokingColor cs Color/BLACK)
+      (- y 2.0))))
+
+(defn- draw-block!
+  "Draw one markdown block within `[x, top-y]` of `cell-w`, clipping at `bottom`. Returns the y
+  below the block (top of the next)."
+  [^PDPageContentStream cs block x top-y cell-w bottom scale]
+  (case (:kind block)
+    :hr (let [y (- (double top-y) (* 5.0 scale))]
+          (.setStrokingColor cs ^Color desc-color)
+          (.moveTo cs (float x) (float y))
+          (.lineTo cs (float (+ x cell-w)) (float y))
+          (.stroke cs)
+          (.setStrokingColor cs Color/BLACK)
+          (- y (* 5.0 scale)))
+    :code-block (draw-code-block! cs block x top-y cell-w bottom scale)
+    ;; heading / paragraph / list-item
+    (let [heading?    (= :heading (:kind block))
+          base-pt     (* (if heading? (heading-pt (:level block)) text-card-pt) scale)
+          lh          (* base-pt line-height-factor)
+          indent-x    (+ (double x) (* (long (or (:indent block) 0)) 14.0))
+          ;; markers ("- ", "1. ") are ASCII; keep their trailing space (sanitize would trim it)
+          marker      (:marker block)
+          marker-font (regular-font)
+          marker-w    (if marker (text-width marker-font base-pt marker) 0.0)
+          content-x   (+ indent-x marker-w)
+          content-w   (- (+ (double x) cell-w) content-x)
+          lines       (words->lines (runs->words (:runs block)) base-pt heading? content-w)]
+      (loop [lines lines, y (double top-y), first? true]
+        (if (or (empty? lines) (< (- y lh) bottom))
+          y
+          (do
+            (when (and first? marker)
+              (draw-line! cs marker-font base-pt indent-x (- y base-pt) marker))
+            (draw-md-line! cs content-x (- y base-pt) (first lines))
+            (recur (rest lines) (- y lh) false)))))))
+
+(defn- draw-markdown-in-cell!
+  "Render markdown `text` top-down within a cell rectangle. Shrinks the font (down to a floor)
+  so the content fits the cell height instead of clipping; clips only if even the floor overflows."
+  [^PDPageContentStream cs x top-y cell-w cell-h text]
+  (let [blocks (parse-markdown-blocks text)
+        scale  (fit-scale blocks cell-w cell-h)
+        bottom (- (double top-y) cell-h)]
+    (loop [blocks blocks, y (double top-y)]
+      (when (and (seq blocks) (> y (+ bottom 2.0)))
+        (recur (rest blocks)
+               (- (draw-block! cs (first blocks) x y cell-w bottom scale) (* 4.0 scale)))))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Cell building -- turn dashcards into renderable cells, preserving grid geometry
@@ -388,7 +630,7 @@
             (case (:kind cell)
               :card    (render-card-cell! doc cs timezone (:part cell) x top-y cell-w cell-h)
               :heading (draw-text-in-cell! cs (bold-font) heading-card-pt x top-y cell-w cell-h (:text cell))
-              :text    (draw-text-in-cell! cs (regular-font) text-card-pt x top-y cell-w cell-h (:text cell))
+              :text    (draw-markdown-in-cell! cs x top-y cell-w cell-h (:text cell))
               nil)
             (catch Throwable e
               (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
@@ -400,10 +642,23 @@
 ;; Public API
 ;; --------------------------------------------------------------------------------------------
 
+(defn- resolve-parameters
+  "Resolve the parameter values a subscription would use: start from the dashboard's own
+  parameters (treating each parameter's `:default` as its `:value`), then apply any explicitly
+  provided overrides by id. These feed both text-card `{{tag}}` substitution and dashcard query
+  filtering, matching how email subscriptions interpolate parameters."
+  [dashboard provided]
+  (let [by-id (into {} (map (juxt :id identity)) provided)]
+    (vec (for [{default-value :default :as p} (:parameters dashboard)]
+           (cond-> (dissoc p :default)
+             (some? default-value) (assoc :value default-value)
+             (by-id (:id p))       (merge (by-id (:id p))))))))
+
 (defn render-dashboard-to-pdf
   "Render the dashboard with `dashboard-id` to PDF bytes, as user `user-id`, applying
-  `parameters` (a vector of dashboard parameter maps; `[]` for none). `paper-key` is `:a4`
-  (default) or `:letter`. Lays cards out following the dashboard's explicit 24-column grid."
+  `parameters` (a vector of dashboard parameter overrides; `[]` to use the dashboard's own
+  parameter defaults). `paper-key` is `:a4` (default) or `:letter`. Lays cards out following the
+  dashboard's explicit 24-column grid."
   (^bytes [dashboard-id user-id parameters]
    (render-dashboard-to-pdf dashboard-id user-id parameters :a4))
   (^bytes [dashboard-id user-id parameters paper-key]
@@ -414,9 +669,10 @@
            dcs      (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
            tabbed?  (boolean (seq tabs))
            by-tab   (group-by :dashboard_tab_id dcs)
+           resolved (resolve-parameters dash parameters)
            sections (if tabbed?
-                      (mapv (fn [t] {:tab-name (:name t) :cells (build-cells (get by-tab (:id t)) parameters)}) tabs)
-                      [{:tab-name nil :cells (build-cells dcs parameters)}])
+                      (mapv (fn [t] {:tab-name (:name t) :cells (build-cells (get by-tab (:id t)) resolved)}) tabs)
+                      [{:tab-name nil :cells (build-cells dcs resolved)}])
            timezone (some (fn [s] (some #(when (= :card (:kind %))
                                            (render.card/defaulted-timezone (-> % :part :card)))
                                         (:cells s)))
