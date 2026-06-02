@@ -64,6 +64,7 @@
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
     :model/MetabotSourceFeedback             metabase.metabot.models.metabot-source-feedback
     :model/MetabotUsedTable                  metabase.metabot.models.metabot-used-table
+    :model/SearchPromptEntity                metabase.metabot.models.search-prompt-entity
     :model/AiUsageLog                        metabase.metabot.models.ai-usage-log
     :model/DataComplexityScore               metabase-enterprise.data-complexity-score.models.data-complexity-score
     :model/MetabotGroupLimit                 metabase-enterprise.metabot.models.metabot-group-limit

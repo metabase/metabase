@@ -20,6 +20,7 @@
    [metabase.metabot.tools.navigation :as tools.navigation]
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.search :as tools.search]
+   [metabase.metabot.tools.search-prompt-entities :as tools.search-prompt-entities]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.slackbot-query :as tools.slackbot-query]
    [metabase.metabot.tools.snippets :as tools.snippets]
@@ -40,6 +41,8 @@
   sql-search-tool
   nlq-search-tool
   transform-search-tool]
+ [tools.search-prompt-entities
+  search-prompt-entities-tool]
  [tools.construct
   construct-notebook-query-tool]
  [tools.document

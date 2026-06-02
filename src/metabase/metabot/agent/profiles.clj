@@ -76,6 +76,7 @@
   :max-iterations  10
   :temperature     0.3
   :tools           [#'tools/nlq-search-tool
+                    #'tools/search-prompt-entities-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/navigate-user-tool
@@ -88,6 +89,7 @@
   :max-iterations  10
   :temperature     0.3
   :tools           [#'tools/search-tool
+                    #'tools/search-prompt-entities-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/read-resource-tool
                     #'tools/create-sql-query-tool

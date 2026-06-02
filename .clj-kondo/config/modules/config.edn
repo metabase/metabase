@@ -3149,6 +3149,7 @@
               task
               util
               enterprise/dependencies
+              enterprise/semantic-search
               enterprise/transforms-python}
    :model-imports #{:model/AiUsageLog
                     :model/Card
@@ -3350,6 +3351,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
+           metabase-enterprise.semantic-search.db.datasource
+           metabase-enterprise.semantic-search.embedding
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
