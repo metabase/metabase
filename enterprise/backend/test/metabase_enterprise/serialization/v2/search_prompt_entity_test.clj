@@ -2,10 +2,14 @@
   "Round-trip serialization tests for `:model/SearchPromptEntity`, whose `entities` column holds a
   polymorphic list of Card/Table references that must survive export and import."
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -58,3 +62,41 @@
             (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
             (is (= entities
                    (t2/select-one-fn :entities :model/SearchPromptEntity :entity_id spe-eid)))))))))
+
+(deftest disk-export-import-round-trip-test
+  (testing "SearchPromptEntity survives a real on-disk export/import"
+    ;; The in-memory test above skips two layers that have silently dropped the model before:
+    ;; `extract/model-set` (the default-export selection) and `ingest/legal-top-level-paths` (which
+    ;; dirs the importer reads). This drives both through actual YAML on disk.
+    (let [serialized (atom nil)
+          spe-eid    (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db  (ts/create! :model/Database :name "Prompt DB")
+                t1  (ts/create! :model/Table :name "ORDERS" :db_id (:id db) :schema "PUBLIC")
+                t2  (ts/create! :model/Table :name "PEOPLE" :db_id (:id db) :schema "PUBLIC")
+                spe (ts/create! :model/SearchPromptEntity
+                                :prompt "orders and people" :type :sources :verified true
+                                :entities [{:model "table" :id (:id t1)}
+                                           {:model "table" :id (:id t2)}])]
+            (reset! spe-eid (:entity_id spe))
+            (reset! serialized (into [] (serdes/with-cache (extract/extract {}))))))
+        (testing "default export selection includes it (guards extract/model-set)"
+          (is (= 1 (count (filter (fn [{[{:keys [model]}] :serdes/meta}]
+                                    (= model "SearchPromptEntity"))
+                                  @serialized)))))
+        (ts/with-random-dump-dir [dump-dir "spe-serdes-"]
+          (storage/store! (seq @serialized) (storage.files/file-writer dump-dir))
+          (testing "stored under the search_prompt_entities/ directory"
+            (is (.exists (io/file dump-dir "search_prompt_entities"))))
+          (testing "ingest reads it back (guards ingest/legal-top-level-paths)"
+            (is (contains? (set (serdes.ingest/ingest-list (serdes.ingest/ingest-yaml dump-dir)))
+                           [{:model "SearchPromptEntity" :id @spe-eid}])))
+          (testing "loads into a fresh appdb with table refs resolved"
+            (ts/with-db dest-db
+              (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
+              (let [row (t2/select-one :model/SearchPromptEntity :entity_id @spe-eid)]
+                (is (=? {:type :sources :verified true} row))
+                (is (= #{"ORDERS" "PEOPLE"}
+                       (set (t2/select-fn-vec :name :model/Table
+                                              :id [:in (map :id (:entities row))]))))))))))))
