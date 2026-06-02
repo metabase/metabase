@@ -11,6 +11,23 @@ You can create a custom chart type for Metabase that you build with React and Ty
 
 You scaffold a project with the `@metabase/custom-viz` package, write your visualization, and package it into a `.tgz` bundle. An admin uploads the plugin to Metabase (see [Custom visualizations](../questions/visualizations/custom.md)), and you're in business.
 
+## Overview of a custom visualization
+
+A custom visualization is a small React app that Metabase renders in place of a built-in chart.
+
+- **A custom viz is a single bundle.** Your code and its dependencies compile to one JavaScript file. Metabase serves only that bundle and your icon. There's no backend to write, no extra assets to host, and [no network access at runtime](#sandbox-restrictions). Everything your chart draws has to come from the data and settings Metabase hands to your chart.
+- **You export a factory, not a component.** `src/index.tsx` exports a function that returns a visualization _definition_ (via `defineConfig`). The definition describes the chart: its name, sizing, settings, and the React component that draws the chart. Metabase calls your component with the query results (`series`), the resolved `settings`, and the container size, and you render the chart with React or any charting library you bundle.
+- **Your custom viz plugs into the rest of Metabase.** Your chart shows up in the visualization picker, formats values the same way native charts do, follows light and dark mode, and can trigger the usual drill-through actions when someone clicks a data point.
+
+Building a custom viz from scaffolding to adding it to your Metabase looks something like:
+
+1. **Scaffold** a project with the `@metabase/custom-viz` CLI. The command sets up the build, the manifest, and a working starter visualization.
+2. **Develop** against a running Metabase with hot reload while you write your component and settings.
+3. **Handle the data**: read query results from `series`, wire up clicks and tooltips, and add any settings your chart needs.
+4. **Match the look** with Metabase's formatters, theme variables, and color scheme.
+5. **Build and package** the project into a `.tgz` bundle.
+6. **Add it to your Metabase**: an admin uploads the bundle, and your chart type becomes available in your Metabase.
+
 ## Prerequisites
 
 - Node.js 22 or newer.
@@ -50,7 +67,7 @@ pack.mjs                # Packages the build into a .tgz — don't edit
 tsconfig.json
 ```
 
-Only `index.tsx` has to export the factory. For a more sophisticated plugin, you'd want to split the component, settings, types, and helpers into their own modules (check out the [calendar-heatmap example](#examples-plugins), which keeps the definition in `index.tsx`, the React component in `Visualization.tsx`, and chart configuration and utilities under `src/`.
+Only `index.tsx` has to export the factory. For a more sophisticated plugin, you'd want to split the component, settings, types, and helpers into their own modules (check out the [calendar-heatmap example](#example-plugins), which keeps the definition in `index.tsx`, the React component in `Visualization.tsx`, and chart configuration and utilities under `src/`).
 
 ### The starter visualization
 
@@ -61,13 +78,10 @@ The scaffold ships a complete, working example: a chart that shows a thumbs-up e
 To develop your plugin against a live Metabase with hot reload:
 
 1. Start Metabase with the following `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable.
-
 2. Run `npm run dev` in your project. By default, the dev server listens on `http://localhost:5174`.
-
 3. In Metabase, go to **Admin** > **Settings** > **Custom visualizations** > **Development** and set the **Dev server URL** to your dev server's address.
 
 Your plugin shows up in the **Custom visualizations** section of the visualization sidebar (alongside any installed plugins) and is labeled as a dev visualization.
-
 
 If you're running Metabase in a Docker container, you'll need to set the **Dev server URL** to:
 
@@ -89,15 +103,15 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 }
 ```
 
-| Field              | Description                                                                                                                                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles. |
-| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle. See [Bundling assets](#bundling-assets).         |
-| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                                 |
+| Field              | Description                                                                                                                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles.                                                            |
+| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle. See [Bundling assets](#bundling-assets). |
+| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                              |
 
 ## Defining a visualization
 
-`src/index.tsx` exports a factory function. Metabase calls the function with a set of helpers and expects a visualization definition back. The function should return a `defineConfig`, which wraps your `VisualizationComponent`.
+`src/index.tsx` exports a factory function. Metabase calls the function with two helpers: `defineSetting` (for declaring settings) and the current `locale`. The factory function should return the result of `defineConfig`, which wraps your `VisualizationComponent`.
 
 ```tsx
 import {
@@ -151,17 +165,17 @@ export default createVisualization;
 
 ### Visualization definition properties
 
-| Property                 | Type                                | Description                                                                                                                                                                                     |
-| ------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                     | `string`                            | Identifier for the visualization definition. |
-| `getName()`              | `() => string`                      | Display name for the visualization.                                                                                                                                                             |
-| `minSize`                | `{ width, height }`                 | Minimum size on a dashboard grid.                                                                                                                                                               |
-| `defaultSize`            | `{ width, height }`                 | Default size on a dashboard grid.                                                                                                                                                               |
-| `noHeader`               | `boolean`                           | When `true`, hides the default card title and description header.                                                                                                                               |
-| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export of the live, interactive chart. Disabled by default.               |
-| `checkRenderable`        | `(series, settings) => void`        | Let people know the chart doesn't work with the current data or settings.                                       |
-| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created with `defineSetting()`.                                                                                                                                      |
-| `VisualizationComponent` | `React.ComponentType`               | The interactive React component that renders the visualization in questions and dashboards.                                                                                                     |
+| Property                 | Type                                | Description                                                                                 |
+| ------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------- |
+| `id`                     | `string`                            | Identifier for the visualization definition.                                                |
+| `getName()`              | `() => string`                      | Display name for the visualization.                                                         |
+| `minSize`                | `{ width, height }`                 | Minimum size on a dashboard grid.                                                           |
+| `defaultSize`            | `{ width, height }`                 | Default size on a dashboard grid.                                                           |
+| `noHeader`               | `boolean`                           | When `true`, hides the default card title and description header.                           |
+| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export of the live, interactive chart. Disabled by default.     |
+| `checkRenderable`        | `(series, settings) => void`        | Let people know the chart doesn't work with the current data or settings.                   |
+| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created with `defineSetting()`.                                  |
+| `VisualizationComponent` | `React.ComponentType`               | The interactive React component that renders the visualization in questions and dashboards. |
 
 ### Props passed to your component
 
@@ -187,7 +201,7 @@ const [{ data }] = series;
 const total = data.rows.reduce((sum, [value]) => sum + Number(value), 0);
 ```
 
-To classify a column without matching type strings by hand, use the column-type predicates the SDK exports: `isNumeric`, `isDate`, `isString`, `isBoolean`, `isCurrency`, `isLatitude`, `isCoordinate`, `isFK`, `isPK`, `isCategory`, `isURL`. these predicates take a `Column` and resolve type metadata from the host, so they only work inside a running Metabase. See [Formatting and theming](#formatting-and-theming).
+To classify a column without matching type strings by hand, use the column-type predicates the SDK exports: `isNumeric`, `isDate`, `isString`, `isBoolean`, `isCurrency`, `isLatitude`, `isCoordinate`, `isFK`, `isPK`, `isCategory`, `isURL`. These predicates take a `Column` and resolve type metadata from the host, so they only work inside a running Metabase. See [Formatting and theming](#formatting-and-theming).
 
 ```tsx
 import { isNumeric } from "@metabase/custom-viz";
@@ -224,7 +238,9 @@ Your component receives `onClick` and `onHover`. Call them with an object that i
 />
 ```
 
-Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. You can include `settings` (the current resolved settings) in the click object too, so dashboard click behaviors configured against your visualization have what they need.
+Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell, and a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value. You can include `settings` (the current resolved settings) in the click object too, so dashboard click behaviors configured against your visualization have what they need.
+
+The hover object accepts more than `element` and `data`. Optional fields like `index` and `seriesIndex` (to highlight a series in the legend) and `value`, `column`, `dimensions`, and `event` (for a simpler single-point tooltip) are available when you need them.
 
 ## Settings and widgets
 
@@ -245,6 +261,7 @@ settings: {
   }),
 },
 ```
+
 ### Setting definition properties
 
 | Property                       | Description                                                                                      |
@@ -267,7 +284,7 @@ settings: {
 
 ### Built-in widgets
 
-Widgets for use settings UI.
+Widgets for the settings UI.
 
 | Widget               | `getProps()` return type                                                   | Description              |
 | -------------------- | -------------------------------------------------------------------------- | ------------------------ |
@@ -293,11 +310,11 @@ formatValue(row[1], { column: cols[1] });
 formatValue(0.084, { number_style: "percent", decimals: 1 }); // "8.4%"
 ```
 
-`formatValue` and the column-type predicates (like `isNumeric` and `isDate`) read formatting and type metadata from Metabase. Called outside of Metabase, like in a unit test, and they'll throw `Metabase Viz API not initialized`.
+`formatValue` and the column-type predicates (like `isNumeric` and `isDate`) read formatting and type metadata from Metabase. If you call them outside of Metabase, like in a unit test, they'll throw `Metabase Viz API not initialized`.
 
-For layout math (like fitting labels, sizing axe), `measureText(text, { size, family, weight })` returns `{ width, height }` in pixels. There's also `measureTextWidth` and `measureTextHeight` if you only need one dimension.
+For layout math (like fitting labels or sizing axes), `measureText(text, { size, family, weight })` returns `{ width, height }` in pixels. There's also `measureTextWidth` and `measureTextHeight` if you only need one dimension.
 
-To match the Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
+To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 
 Canvas-based charting libraries (ECharts, Chart.js, and most chart libraries) can't read CSS variables, so there you branch on the `colorScheme` prop (`"light"` or `"dark"`) and pass explicit colors. See the calendar-heatmap for an example with ECharts.
 
@@ -368,9 +385,9 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 
 Custom visualizations don't render in static visualizations: dashboard subscriptions sent by [email](../dashboards/subscriptions.md), Slack, or webhook fall back to a default visualization for cards that use a custom visualization.
 
-## Examples plugins
+## Example plugins
 
-- [Calendar heatmap](https://github.com/metabase/custom-viz-calendar-heatmap). Read through `src/` for a example of `checkRenderable`, settings, and rendering against `series` data.
+- [Calendar heatmap](https://github.com/metabase/custom-viz-calendar-heatmap). Read through `src/` for an example of `checkRenderable`, settings, and rendering against `series` data.
 - [Thumbs](https://github.com/metabase/custom-viz-thumbs). Thumbs up or down depending on a threshold.
 
 ## Further reading
