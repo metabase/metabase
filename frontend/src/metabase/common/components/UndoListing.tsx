@@ -105,7 +105,7 @@ function UndoToast({
       withBorder={!noBorder}
       radius="md"
       px="md"
-      py="10px"
+      py="md"
       mt="sm"
       maw="calc(100vw - 2 * var(--mantine-spacing-md))"
       style={{
