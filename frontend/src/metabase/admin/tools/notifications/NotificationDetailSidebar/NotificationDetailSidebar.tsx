@@ -14,6 +14,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Drawer, Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
+import { trackAlertsManagementEditClicked } from "../analytics";
+
 import { SidebarBody } from "./SidebarBody";
 import { SidebarHeader } from "./SidebarHeader";
 import { SIDEBAR_WIDTH } from "./constants";
@@ -86,7 +88,10 @@ export const NotificationDetailSidebar = ({
             isQuestionLoading={isCardLoading}
             onClose={onClose}
             onDelete={onDelete}
-            onEdit={() => setIsEditModalOpen(true)}
+            onEdit={() => {
+              trackAlertsManagementEditClicked(notificationId);
+              setIsEditModalOpen(true);
+            }}
           />
           {notification ? (
             <SidebarBody

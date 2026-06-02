@@ -17,6 +17,11 @@ import {
 import * as Urls from "metabase/urls";
 import type { NotificationId } from "metabase-types/api";
 
+import {
+  trackAlertsManagementAlertOpened,
+  trackAlertsManagementLinkCopied,
+} from "../analytics";
+
 import { ChannelAvatarStack } from "./ChannelAvatarStack";
 import S from "./NotificationDetailSidebar.module.css";
 import type { SidebarHeaderProps } from "./types";
@@ -38,11 +43,13 @@ export const SidebarHeader = ({
   const handleCopyLink = async () => {
     const url = `${window.location.origin}${Urls.adminToolsNotificationDetail(notificationId)}`;
     await navigator.clipboard.writeText(url);
+    trackAlertsManagementLinkCopied(notificationId);
     dispatch(addUndo({ message: t`Link copied to clipboard` }));
   };
 
   const handleNavigate = (id: NotificationId | undefined) => {
     if (id !== undefined) {
+      trackAlertsManagementAlertOpened(id, "sidebar_navigation");
       dispatch(push(Urls.adminToolsNotificationDetail(id)));
     }
   };
