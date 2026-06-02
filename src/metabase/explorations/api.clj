@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -187,23 +188,10 @@
                            [{:metrics      metrics
                              :dimensions   dimensions
                              :timeline_ids timeline_ids}]
-                           :else                                              [])
-        dedupe-by         (fn [k coll]
-                            (->> coll
-                                 (reduce (fn [{:keys [seen out]} item]
-                                           (let [key-val (get item k)]
-                                             (if (contains? seen key-val)
-                                               {:seen seen :out out}
-                                               {:seen (conj seen key-val)
-                                                :out  (conj out item)})))
-                                         {:seen #{} :out []})
-                                 :out))]
-    {:metrics      (dedupe-by :card_id (mapcat :metrics effective-groups))
-     :dimensions   (dedupe-by :dimension_id (mapcat :dimensions effective-groups))
-     :timeline_ids (->> effective-groups
-                        (mapcat :timeline_ids)
-                        distinct
-                        vec)}))
+                           :else                                              [])]
+    {:metrics      (m/distinct-by :card_id (mapcat :metrics effective-groups))
+     :dimensions   (m/distinct-by :dimension_id (mapcat :dimensions effective-groups))
+     :timeline_ids (distinct (mapcat :timeline_ids effective-groups))}))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
 

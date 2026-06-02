@@ -276,9 +276,10 @@
                       :target ["field" {} (mt/id :venues :price)]}]
             ;; Two groups: metric block (metric + d1) and a dimension
             ;; block (the same metric appears again as a secondary,
-            ;; with d2). Expect dedup to keep one metric row + two
-            ;; dimension rows, plus the global timeline attached to
-            ;; the first group only.
+            ;; with d2). The FE attaches the full timeline list to every
+            ;; group, so the same timeline is sent on both groups here.
+            ;; Expect dedup to keep one metric row + two dimension rows +
+            ;; a single timeline row.
             body {:name   "Grouped create"
                   :prompt "via groups"
                   :groups [{:metrics      [{:card_id (:id metric)
@@ -287,11 +288,12 @@
                                             :display_name "Price"
                                             :effective_type "type/Number"}]
                             :timeline_ids [(:id tl)]}
-                           {:metrics    [{:card_id (:id metric)
-                                          :dimension_mappings mapping}]
-                            :dimensions [{:dimension_id "d2"
-                                          :display_name "Category"
-                                          :effective_type "type/Text"}]}]}
+                           {:metrics      [{:card_id (:id metric)
+                                            :dimension_mappings mapping}]
+                            :dimensions   [{:dimension_id "d2"
+                                            :display_name "Category"
+                                            :effective_type "type/Text"}]
+                            :timeline_ids [(:id tl)]}]}
             resp (create-exploration! u body)
             thread (-> resp :threads first)]
         (is (= "Grouped create" (:name resp)))
@@ -301,7 +303,7 @@
         (is (= 2 (count (:dimensions thread)))
             "d1 + d2 from across the two groups")
         (is (= 1 (count (:timelines thread)))
-            "timeline carried on the first group is persisted")))))
+            "the timeline sent on both groups is deduped to a single row")))))
 
 (deftest exploration-create-applies-default-binning-test
   (testing "POST / picks a sensible default temporal bucket / numeric binning per dim type"
