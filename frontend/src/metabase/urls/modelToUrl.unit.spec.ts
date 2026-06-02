@@ -60,7 +60,7 @@ describe("urls > modelToUrl", () => {
           id: 22,
         },
       }),
-    ).toBe("/table/33-my-cool-table");
+    ).toBe("/question#?db=22&table=33");
   });
 
   it("should return a document URL for a document", () => {
