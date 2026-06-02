@@ -197,7 +197,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
 function TransformLink({ table }: { table: Table }) {
   const { transform } = table;
 
-  if (transform == null) {
+  if (!transform) {
     return (
       <Box
         c="error"

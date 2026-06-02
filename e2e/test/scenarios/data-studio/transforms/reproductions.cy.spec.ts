@@ -174,7 +174,7 @@ describe("issue UXW-3160", () => {
   });
 });
 
-describe("issue #69904", () => {
+describe("issue 69904", () => {
   const TRANSFORM_TARGET_TABLE = "deleted_transform_table";
 
   beforeEach(() => {
