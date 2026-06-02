@@ -283,7 +283,7 @@
         (f {:mock mock :c-id c-id :ext-id ext-id :y-id y-id :y-eid y-eid})))))
 
 (deftest update-adding-external-reference-exports-dependency-test
-  (testing "an in-place update that newly references a card outside the synced collection still exports that dependency"
+  (testing "an in-place update that newly references a card outside the synced collection pulls that dependency incrementally"
     (with-cross-scope-setup!
       (fn [{:keys [mock c-id y-id y-eid]}]
         (mt/with-temp [:model/Card {x-id :id} {:name "Synced Card" :collection_id c-id
@@ -293,12 +293,15 @@
           ;; Edit X to reference the external card Y, then export the single in-place change.
           (t2/update! :model/Card x-id {:dataset_query (mt/mbql-query nil {:source-table (str "card__" y-id)})})
           (set-status! "Card" x-id "update")
-          (impl/export! (source.p/snapshot mock) (new-task!) "reference Y")
-          (is (entity-exported? mock y-eid)
-              "the newly-referenced external dependency must be exported"))))))
+          (let [task (new-task!)]
+            (impl/export! (source.p/snapshot mock) task "reference Y")
+            (is (= "apply-changes-version" (written-version task))
+                "the change stays incremental — the dependency is pulled, not a full export")
+            (is (entity-exported? mock y-eid)
+                "the newly-referenced external dependency is exported alongside the change")))))))
 
 (deftest create-with-external-reference-exports-dependency-test
-  (testing "a new card that references a card outside the synced collection exports that dependency"
+  (testing "a new card that references a card outside the synced collection pulls that dependency incrementally"
     (with-cross-scope-setup!
       (fn [{:keys [mock c-id y-id y-eid]}]
         (mt/with-temp [:model/Card {x-id :id} {:name "New Synced Card" :collection_id c-id
@@ -306,9 +309,12 @@
                                                :dataset_query (mt/mbql-query nil {:source-table (str "card__" y-id)})}]
           (seed-synced-row! "Card" x-id)
           (set-status! "Card" x-id "create")
-          (impl/export! (source.p/snapshot mock) (new-task!) "create x")
-          (is (entity-exported? mock y-eid)
-              "the external dependency referenced by the new card must be exported"))))))
+          (let [task (new-task!)]
+            (impl/export! (source.p/snapshot mock) task "create x")
+            (is (= "apply-changes-version" (written-version task))
+                "the create stays incremental — the dependency is pulled, not a full export")
+            (is (entity-exported? mock y-eid)
+                "the external dependency referenced by the new card is exported alongside it")))))))
 
 (deftest update-referencing-synced-card-stays-incremental-test
   (testing "an in-place edit of a card that references a card in another SYNCED collection stays incremental"

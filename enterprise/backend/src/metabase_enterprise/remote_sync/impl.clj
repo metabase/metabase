@@ -353,20 +353,34 @@
                     (u/traverse #{[model-type model-id]} #(serdes/descendants (first %) (second %) closure-opts))
                     (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %))))))
 
-(defn- unresolved-content-deps?
-  "True if the entity `[model-type model-id]` references remote-sync content (a Card, snippet, etc.)
-  that isn't tracked by any RemoteSyncObject row. A full export pulls such dependencies via
-  `serdes/descendants`/`required`, but an incremental write of just this entity would omit them — so
-  those changes must fall back to a full export. Non-content dependencies (e.g. databases, which are
-  resolved by reference at import) are ignored. This is what prevents an in-place edit that adds a
-  cross-collection card reference from dropping the referenced card's file."
+(defn- untracked-content-deps
+  "The `[model-type id]` entities in the change's export closure that are remote-sync content but have
+  no RemoteSyncObject row — dependencies a full export would pull (via `serdes/descendants`/`required`)
+  yet that aren't independently tracked (e.g. a card in a non-synced collection referenced by a synced
+  card, and that card's collection). These get written alongside the change so the incremental export
+  matches what a full export would emit. Excludes the entity itself and non-content deps (e.g.
+  databases, which are resolved by reference at import)."
   [model-type model-id]
-  (boolean
-   (some (fn [[mt id]]
-           (and (not (and (= mt model-type) (= id model-id)))
-                (spec/spec-for-model-type mt)
-                (not (t2/exists? :model/RemoteSyncObject :model_type mt :model_id id))))
-         (export-closure model-type model-id))))
+  (into #{}
+        (filter (fn [[mt id]]
+                  (and (not (and (= mt model-type) (= id model-id)))
+                       (spec/spec-for-model-type mt)
+                       (not (t2/exists? :model/RemoteSyncObject :model_type mt :model_id id)))))
+        (export-closure model-type model-id)))
+
+(defn- dep-upserts
+  "Serializes the untracked dependency entities `dep-ids` (a set of `[model-type id]`) into file-specs
+  to upsert, reusing the storage context `opts` so paths dedupe consistently with the changed entities.
+  Returns `[]` when there are no deps, a vector of file-specs on success, or nil if any dependency's
+  path is already occupied by a different entity (a collision that requires a full export)."
+  [snapshot opts dep-ids]
+  (if (empty? dep-ids)
+    []
+    (let [rows     (map (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)
+          entities (into [] (spec/extract-dirty-entities-for-export rows))
+          specs    (mapv (fn [e] [(source/entity->file-spec opts e) (:entity_id e)]) entities)]
+      (when (every? (fn [[spec eid]] (path-free-for? snapshot (:path spec) eid)) specs)
+        (mapv first specs)))))
 
 (defn- distinct-upsert-paths?
   "True if no two upserts in `plan` target the same path. Two same-named new entities in one batch
@@ -406,46 +420,50 @@
                         (update :removed-ids conj (:id row))))
 
                   (#{"create" "update"} status)
-                  ;; A change that references remote-sync content not yet in the repo would have it
-                  ;; pulled by a full export but omitted by an incremental write -> fall back to full.
-                  (if (unresolved-content-deps? (:model_type row) (:model_id row))
-                    (reduced nil)
-                    (if-let [entity (extract-dirty-entity row)]
-                      (let [spec     (source/entity->file-spec opts entity)
-                            new-path (:path spec)
-                            eid      (:entity_id entity)
-                            synced!  #(-> % (update :upserts conj spec)
-                                          (update :synced conj {:id (:id row) :file_path new-path}))]
-                        (cond
-                          ;; create: brand-new file, no old path to delete. Target must be free or
-                          ;; already this entity (guards against a dedup name collision).
-                          (and (= "create" status)
-                               (path-free-for? snapshot new-path eid))
-                          (synced! plan)
+                  (if-let [entity (extract-dirty-entity row)]
+                    (let [spec     (source/entity->file-spec opts entity)
+                          new-path (:path spec)
+                          eid      (:entity_id entity)
+                          ;; Pull any remote-sync content this change references that isn't already in
+                          ;; the repo (e.g. a card in a non-synced collection) so the incremental write
+                          ;; matches what a full export would emit, instead of falling back.
+                          plan     (update plan :pull into
+                                           (untracked-content-deps (:model_type row) (:model_id row)))
+                          synced!  #(-> % (update :upserts conj spec)
+                                        (update :synced conj {:id (:id row) :file_path new-path}))]
+                      (cond
+                        ;; create: brand-new file, no old path to delete. Target must be free or
+                        ;; already this entity (guards against a dedup name collision).
+                        (and (= "create" status)
+                             (path-free-for? snapshot new-path eid))
+                        (synced! plan)
 
-                          ;; in-place update: at its stored path, or (no stored path) the repo file at
-                          ;; new-path is already this entity — overwrite.
-                          (and (= "update" status)
-                               (or (= file_path new-path)
-                                   (and (str/blank? file_path)
-                                        (= eid (file-entity-id (source.p/read-file snapshot new-path))))))
-                          (synced! plan)
+                        ;; in-place update: at its stored path, or (no stored path) the repo file at
+                        ;; new-path is already this entity — overwrite.
+                        (and (= "update" status)
+                             (or (= file_path new-path)
+                                 (and (str/blank? file_path)
+                                      (= eid (file-entity-id (source.p/read-file snapshot new-path))))))
+                        (synced! plan)
 
-                          ;; rename: an update whose known stored path differs from the new path.
-                          ;; Write the new file and delete the old one. (A rename with no stored path
-                          ;; can't be resolved, so it falls through to a full export.)
-                          (and (= "update" status) (not (str/blank? file_path)) (not= file_path new-path)
-                               (path-free-for? snapshot new-path eid))
-                          (-> (synced! plan) (update :delete-paths conj file_path))
+                        ;; rename: an update whose known stored path differs from the new path.
+                        ;; Write the new file and delete the old one. (A rename with no stored path
+                        ;; can't be resolved, so it falls through to a full export.)
+                        (and (= "update" status) (not (str/blank? file_path)) (not= file_path new-path)
+                             (path-free-for? snapshot new-path eid))
+                        (-> (synced! plan) (update :delete-paths conj file_path))
 
-                          :else (reduced nil)))
-                      (reduced nil)))
+                        :else (reduced nil)))
+                    (reduced nil))
 
                   :else (reduced nil)))
-              {:upserts [] :delete-paths [] :synced [] :removed-ids []}
+              {:upserts [] :delete-paths [] :synced [] :removed-ids [] :pull #{}}
               dirty-rows)]
-    (when (and plan (distinct-upsert-paths? plan))
-      plan)))
+    (when plan
+      (when-let [deps (dep-upserts snapshot opts (:pull plan))]
+        (let [plan (-> plan (update :upserts into deps) (dissoc :pull))]
+          (when (distinct-upsert-paths? plan)
+            plan))))))
 
 (defn- record-exported-paths!
   "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
