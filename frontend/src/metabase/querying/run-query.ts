@@ -11,7 +11,13 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
-import type { Card, Dataset, DatasetQuery } from "metabase-types/api";
+import type {
+  Card,
+  CardQueryRequest,
+  DashboardCardQueryRequest,
+  Dataset,
+  DatasetQuery,
+} from "metabase-types/api";
 
 type RunQuestionQueryOptions = {
   dispatch: Dispatch;
@@ -126,7 +132,15 @@ async function runSavedCardQuery(
     ignore_cache: ignoreCache,
     collection_preview: collectionPreview,
     parameters,
-    ...(token ? { token } : {}),
+    // `token` and `cardId` identify the card in mutually exclusive ways, so we
+    // send only one (mirroring the original services.js behavior). Guest and
+    // embedded requests carry a `token`: the legacy `onBeforeRequest` middleware
+    // rewrites the request to the matching `/api/embed/...` route, discarding
+    // the `:cardId` path segment. Authenticated requests carry a `cardId`.
+    // The casts below are needed because the shared request types require
+    // `cardId`; we keep that contract strict for every other (authenticated)
+    // caller and override it only here, on the guest-embed path.
+    ...(token ? { token } : { cardId: question.id() }),
     ...queryParamsOverride,
   };
 
@@ -135,14 +149,20 @@ async function runSavedCardQuery(
       dashboardApi.endpoints.getDashboardCardQuery,
       card,
       metadata,
-      { dashboardId, dashcardId, cardId: question.id(), ...body },
+      {
+        dashboardId,
+        dashcardId,
+        ...body,
+      } as DashboardCardQueryRequest,
     );
   }
 
-  return runQuery(cardApi.endpoints.getCardQuery, card, metadata, {
-    cardId: question.id(),
-    ...body,
-  });
+  return runQuery(
+    cardApi.endpoints.getCardQuery,
+    card,
+    metadata,
+    body as CardQueryRequest,
+  );
 }
 
 export async function runQuestionQuery(
