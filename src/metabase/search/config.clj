@@ -97,7 +97,9 @@
     :official-collection 80
     :verified            80
     ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
-    :rrf                 500}
+    :rrf                 500
+    ;; Raw cosine-distance proximity from the semantic search backend (1 = identical, 0 = no vector match)
+    :semantic-distance   10}
    :command-palette
    {:prefix               5
     :model/collection     1
