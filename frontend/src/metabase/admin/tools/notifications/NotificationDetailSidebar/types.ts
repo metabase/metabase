@@ -50,6 +50,7 @@ export type NotificationRunSummaryLogProps = {
   runs: (NotificationRunSummary | NotificationTickSendEntry)[] | undefined;
   isLoading: boolean;
   cardId?: CardId;
+  onViewAllClick: () => void;
 };
 
 export type SidebarSectionProps = {
