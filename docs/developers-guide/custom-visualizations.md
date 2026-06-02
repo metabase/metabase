@@ -318,6 +318,8 @@ Canvas-based charting libraries (ECharts, Chart.js, and most chart libraries) ca
 
 The build produces a single JavaScript bundle (`dist/index.js`), and the [icon](#the-visualization-icon) is the only file Metabase serves alongside it. Metabase doesn't serve arbitrary static files, and the [sandbox](#sandbox-restrictions) blocks network access, so you can't load an external image at runtime either.
 
+Bundled images always render, including when an admin has turned on [Restrict image domains](../configuring-metabase/settings.md#restrict-image-domains). That Content Security Policy setting limits which external hosts images can load from, but inline and `data:` images ship inside your bundle, so they're never blocked.
+
 Your `npm` dependencies are bundled in too. You can pull in a charting library (the calendar-heatmap example bundles [ECharts](https://echarts.apache.org/)), but everything ships in that single `dist/index.js`, so the whole bundle (your code plus its dependencies) has to stay under the [5 MiB limit](#build-and-package-the-plugin).
 
 So anything your visualization renders has to live inside that bundle. For images, you have a few options:

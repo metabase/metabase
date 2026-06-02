@@ -17,6 +17,14 @@ This page covers how to add a custom visualization to your Metabase. To _create_
 
 ## Enabling custom visualizations
 
+### Restrict image domains first
+
+Before you can turn on custom visualizations, you need to enable [Restrict image domains](../../configuring-metabase/settings.md#restrict-image-domains).
+
+While custom visualizations are enabled, you can't turn **Restrict image domains** back off. You'll need to first disable custom visualizations.
+
+### Turn on custom visualizations
+
 To turn on custom visualizations, go to **Admin** > **Settings** > **Custom visualizations** and click **Enable custom visualizations**.
 
 You can also enable (or disable) custom visualizations with the [`MB_CUSTOM_VIZ_ENABLED`](../../configuring-metabase/environment-variables.md#mb_custom_viz_enabled) environment variable, or with the `custom-viz-enabled` key in a [configuration file](../../configuring-metabase/config-file.md).

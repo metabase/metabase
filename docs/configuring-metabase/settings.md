@@ -91,9 +91,11 @@ When on, Metabase restricts the browser's Content Security Policy so images can 
 
 By default, images from any domain are allowed.
 
+You must turn on this setting to enable [Custom visualizations](../questions/visualizations/custom.md). While custom visualizations are enabled, you can't turn it back off.
+
 ## Allowed domains for images
 
-When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, and any domains listed here. 
+When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, and any domains listed here.
 
 Leave this input empty to only allow images hosted by your Metabase instance.
 
