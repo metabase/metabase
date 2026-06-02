@@ -1,8 +1,13 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
+import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -32,7 +37,6 @@ const mockUrls = {
   overview: (id: number) => `/metric/${id}/overview`,
   query: (id: number) => `/metric/${id}/query`,
   dependencies: (id: number) => `/metric/${id}/dependencies`,
-  caching: (id: number) => `/metric/${id}/caching`,
   history: (id: number) => `/metric/${id}/history`,
 };
 
@@ -42,6 +46,7 @@ interface SetupOpts {
   isAdmin?: boolean;
   showDataStudioLink?: boolean;
   collectionType?: CollectionType | null;
+  withModal?: boolean;
 }
 
 function setup({
@@ -50,6 +55,7 @@ function setup({
   isAdmin = false,
   showDataStudioLink = false,
   collectionType = null,
+  withModal = false,
 }: SetupOpts = {}) {
   setupEnterpriseOnlyPlugin("library");
 
@@ -59,6 +65,7 @@ function setup({
   const card = createMockCard({
     can_write: canWrite,
     collection: createMockCollection({ type: collectionType }),
+    last_query_start: "2024-01-01T00:00:00Z",
     type: "metric",
   });
 
@@ -67,7 +74,10 @@ function setup({
   });
 
   const settingValues = createMockSettings({
-    "token-features": createMockTokenFeatures({ library: true }),
+    "token-features": createMockTokenFeatures({
+      library: true,
+      cache_granular_controls: true,
+    }),
   });
 
   const state = createMockState({
@@ -77,14 +87,23 @@ function setup({
 
   setupBookmarksEndpoints([]);
   setupListNotificationEndpoints({ card_id: card.id }, []);
+  if (withModal) {
+    setupPerformanceEndpoints([]);
+  }
 
-  renderWithProviders(
+  const toolbar = (
     <MetricToolbar
       card={card}
       urls={mockUrls}
       showDataStudioLink={showDataStudioLink}
-    />,
-    { storeInitialState: state },
+    />
+  );
+
+  renderWithProviders(
+    withModal ? <Route path="/" component={() => toolbar} /> : toolbar,
+    withModal
+      ? { storeInitialState: state, withRouter: true, initialRoute: "/" }
+      : { storeInitialState: state },
   );
 
   return { card };
@@ -113,6 +132,16 @@ describe("MetricToolbar", () => {
   // Note: In OSS, canManageSubscriptions always returns true via the
   // PLUGIN_APPLICATION_PERMISSIONS default, so the alert item is always visible.
 
+  beforeAll(() => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({
+        library: true,
+        cache_granular_controls: true,
+      }),
+    });
+    setupEnterprisePlugins();
+  });
+
   describe("menu items", () => {
     it("should show bookmark, move, duplicate, add-to-dashboard, alert, and trash for writable metric", async () => {
       setup({ canWrite: true });
@@ -124,7 +153,8 @@ describe("MetricToolbar", () => {
       expect(screen.getByText("Add to a dashboard")).toBeInTheDocument();
       expect(screen.getByText("Create an alert")).toBeInTheDocument();
       expect(screen.getByText("Move to trash")).toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      // Bookmark/Move/Duplicate ─ Add-to-dash/Alert ─ Caching ─ Trash
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -146,7 +176,7 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.queryByText("Duplicate")).not.toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -159,7 +189,8 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.getByText("Open in Data Studio")).toBeInTheDocument();
-      expect(getDividers()).toHaveLength(3);
+      // Bookmark/Move/Duplicate ─ Add-to-dash/Alert ─ Caching ─ DataStudio/Insights ─ Trash
+      expect(getDividers()).toHaveLength(4);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -168,7 +199,7 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -181,7 +212,7 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
     });
 
@@ -190,8 +221,46 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
+      expect(getDividers()).toHaveLength(3);
       expectNoConsecutiveOrTrailingDividers();
+    });
+
+    it("should show 'Caching' as a menu item when the metric is cacheable", async () => {
+      setup({ canWrite: true });
+      await openMenu();
+
+      expect(screen.getByText("Caching")).toBeInTheDocument();
+      expectNoConsecutiveOrTrailingDividers();
+    });
+
+    it("should hide 'Caching' when the user cannot write the metric", async () => {
+      setup({ canWrite: false });
+      await openMenu();
+
+      expect(screen.queryByText("Caching")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Caching menu interaction", () => {
+    it("opens the Caching modal when the Caching menu item is clicked", async () => {
+      setup({ withModal: true });
+      await openMenu();
+      await userEvent.click(screen.getByText("Caching"));
+
+      expect(
+        await screen.findByRole("dialog", { name: /Caching/i }),
+      ).toBeInTheDocument();
+      expect(await screen.findByTestId("cache-strategy-select")).toHaveValue(
+        "Default",
+      );
+    });
+  });
+
+  describe("Explore button", () => {
+    it("should not render an Explore button in the toolbar", () => {
+      setup({ canWrite: true });
+
+      expect(screen.queryByTestId("explore-link")).not.toBeInTheDocument();
     });
   });
 });

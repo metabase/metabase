@@ -32,13 +32,11 @@
               (delete-email-setting! [user status]
                 (testing (format "delete email setting with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :delete status "email")))
-
               (send-test-email! [user status]
                 (mt/with-temporary-setting-values [email-from-address "notifications@metabase.com"]
                   (mt/with-fake-inbox
                     (testing (format "send test email with %s user" (mt/user-descriptor user))
                       (mt/user-http-request user :post status "email/test")))))]
-
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}
             (set-email-setting! user 403)
@@ -47,7 +45,6 @@
             (set-email-setting! :crowberto 200)
             (delete-email-setting! :crowberto 204)
             (send-test-email! :crowberto 200)))
-
         (testing "if `advanced-permissions` is enabled"
           (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission"
@@ -57,7 +54,6 @@
               (set-email-setting! :crowberto 200)
               (delete-email-setting! :crowberto 204)
               (send-test-email! :crowberto 200))
-
             (testing "succeed if user's group has `setting` permission"
               (perms/grant-application-permissions! group :setting)
               (set-email-setting! user 200)
@@ -77,19 +73,16 @@
                                 slack/refresh-channels-and-usernames-when-needed! (constantly true)]
                     (mt/with-temporary-setting-values [slack-app-token nil]
                       (mt/user-http-request user :put status "slack/settings" {:slack-app-token "fake-token"})))))
-
               (get-manifest [user status]
                 (testing (format "get slack manifest %s user" (mt/user-descriptor user))
                   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
                     (mt/user-http-request user :get status "slack/manifest"))))]
-
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}
             (set-slack-settings! user 403)
             (get-manifest user 403)
             (set-slack-settings! :crowberto 200)
             (get-manifest :crowberto 200)))
-
         (testing "if `advanced-permissions` is enabled"
           (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission"
@@ -97,7 +90,6 @@
               (get-manifest user 403)
               (set-slack-settings! :crowberto 200)
               (get-manifest :crowberto 200))
-
             (testing "succeed if user's group has `setting` permission"
               (perms/grant-application-permissions! group :setting)
               (set-slack-settings! user 200)
@@ -115,18 +107,15 @@
                   (geojson-test/with-geojson-mocks
                     (mt/user-http-request user :get status "geojson"
                                           :url geojson-test/test-geojson-url))))]
-
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}
             (get-geojson user 403)
             (get-geojson :crowberto 200)))
-
         (testing "if `advanced-permissions` is enabled"
           (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission"
               (get-geojson user 403)
               (get-geojson :crowberto 200))
-
             (testing "succeed if user's group has `setting` permission"
               (perms/grant-application-permissions! group :setting)
               (get-geojson user 200)
@@ -140,18 +129,15 @@
       (letfn [(get-permission-groups [user status]
                 (testing (format "get permission groups with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :get status "permissions/group")))]
-
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}
             (get-permission-groups user 403)
             (get-permission-groups :crowberto 200)))
-
         (testing "if `advanced-permissions` is enabled"
           (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission"
               (get-permission-groups user 403)
               (get-permission-groups :crowberto 200))
-
             (testing "succeed if user's group has `setting` permission"
               (perms/grant-application-permissions! group :setting)
               (get-permission-groups user 200)
@@ -167,18 +153,15 @@
         (letfn [(get-public-dashboards [user status]
                   (testing (format "get public dashboards with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :get status "dashboard/public")))
-
                 (get-embeddable-dashboards [user status]
                   (testing (format "get embeddable dashboards with %s user" (mt/user-descriptor user))
                     (mt/with-temp [:model/Dashboard _ {:enable_embedding true}]
                       (mt/user-http-request user :get status "dashboard/embeddable"))))
-
                 (delete-public-dashboard! [user status]
                   (testing (format "delete public dashboard with %s user" (mt/user-descriptor user))
                     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid       (str (random-uuid))
                                                                         :made_public_by_id (mt/user->id :crowberto)}]
                       (mt/user-http-request user :delete status (format "dashboard/%d/public_link" dashboard-id)))))]
-
           (testing "if `advanced-permissions` is disabled, require admins,"
             (mt/with-premium-features #{}
               (get-public-dashboards user 403)
@@ -186,7 +169,6 @@
               (delete-public-dashboard! user 403)
               (get-embeddable-dashboards :crowberto 200)
               (delete-public-dashboard! :crowberto 204)))
-
           (testing "if `advanced-permissions` is enabled,"
             (mt/with-premium-features #{:advanced-permissions}
               (testing "still fail if user's group doesn't have `setting` permission"
@@ -195,7 +177,6 @@
                 (delete-public-dashboard! user 403)
                 (get-public-dashboards :crowberto 200)
                 (delete-public-dashboard! :crowberto 204))
-
               (testing "succeed if user's group has `setting` permission,"
                 (perms/grant-application-permissions! group :setting)
                 (get-public-dashboards user 200)
@@ -213,7 +194,6 @@
           (letfn [(get-public-actions [user status]
                     (testing (format "get public actions with %s user" (mt/user-descriptor user))
                       (mt/user-http-request user :get status "action/public")))
-
                   (delete-public-action! [user status]
                     (testing (format "delete public action with %s user" (mt/user-descriptor user))
                       (mt/with-actions [{:keys [action-id]} {:public_uuid       (str (random-uuid))
@@ -246,18 +226,15 @@
         (letfn [(get-public-cards [user status]
                   (testing (format "get public cards with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :get status "card/public")))
-
                 (get-embeddable-cards [user status]
                   (testing (format "get embeddable cards with %s user" (mt/user-descriptor user))
                     (mt/with-temp [:model/Card _ {:enable_embedding true}]
                       (mt/user-http-request user :get status "card/embeddable"))))
-
                 (delete-public-card! [user status]
                   (testing (format "delete public card with %s user" (mt/user-descriptor user))
                     (mt/with-temp [:model/Card {card-id :id} {:public_uuid       (str (random-uuid))
                                                               :made_public_by_id (mt/user->id :crowberto)}]
                       (mt/user-http-request user :delete status (format "card/%d/public_link" card-id)))))]
-
           (testing "if `advanced-permissions` is disabled, require admins,"
             (mt/with-premium-features #{}
               (get-public-cards user 403)
@@ -266,7 +243,6 @@
               (get-public-cards :crowberto 200)
               (get-embeddable-cards :crowberto 200)
               (delete-public-card! :crowberto 204)))
-
           (testing "if `advanced-permissions` is enabled"
             (mt/with-premium-features #{:advanced-permissions}
               (testing "still fail if user's group doesn't have `setting` permission,"
@@ -276,7 +252,6 @@
                 (get-public-cards :crowberto 200)
                 (get-embeddable-cards :crowberto 200)
                 (delete-public-card! :crowberto 204))
-
               (testing "succeed if user's group has `setting` permission,"
                 (perms/grant-application-permissions! group :setting)
                 (get-public-cards user 200)
@@ -299,45 +274,36 @@
                   (mt/user-http-request user :post status
                                         "persist/set-refresh-schedule"
                                         {"cron" "0 0 0/1 * * ? *"})))]
-
         (testing "if `advanced-permissions` is disabled, require admins,"
           (enable-persist! :crowberto 204)
           (enable-persist! user 403)
           (enable-persist! :rasta 403)
-
           (disable-persist! :crowberto 204)
           (disable-persist! user 403)
           (disable-persist! :rasta 403)
-
           (set-interval! :crowberto 204)
           (set-interval! user 403)
           (set-interval! :rasta 403))
-
         (testing "if `advanced-permissions` is enabled"
           (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission,"
               (enable-persist! :crowberto 204)
               (enable-persist! user 403)
               (enable-persist! :rasta 403)
-
               (disable-persist! :crowberto 204)
               (disable-persist! user 403)
               (disable-persist! :rasta 403)
-
               (set-interval! :crowberto 204)
               (set-interval! user 403)
               (set-interval! :rasta 403))
-
             (testing "succeed if user's group has `setting` permission,"
               (perms/grant-application-permissions! group :setting)
               (enable-persist! :crowberto 204)
               (enable-persist! user 204)
               (enable-persist! :rasta 403)
-
               (disable-persist! :crowberto 204)
               (disable-persist! user 204)
               (disable-persist! :rasta 403)
-
               (set-interval! :crowberto 204)
               (set-interval! user 204)
               (set-interval! :rasta 403))))))))

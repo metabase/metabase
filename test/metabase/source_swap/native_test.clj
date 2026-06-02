@@ -29,7 +29,6 @@
         (is (= "SELECT * FROM {{#2}}"
                (lib/raw-native-query result)))
         (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))))
-
     (testing "Multiple card tags, only matching one is replaced"
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}} JOIN {{#3}} ON 1=1")
                        (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}
@@ -63,7 +62,6 @@
         (is (= "SELECT * FROM {{#2}} [[WHERE {{created_at}}]]"
                (lib/raw-native-query result)))
         (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))))
-
     (testing "Card tag inside optional clause"
       (let [query  (-> (lib/native-query mp "SELECT * FROM foo [[JOIN {{#1}} ON 1=1]]")
                        (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
@@ -81,7 +79,6 @@
         (is (= "SELECT * FROM {{#2}}\n-- old: {{#1}}"
                (lib/raw-native-query result))
             "The tag in the comment should be left alone")))
-
     (testing "Card tag inside a block comment should NOT be replaced"
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}} /* see also {{#1}} */")
                        (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
@@ -274,7 +271,6 @@
                                                                    {:schema "PUBLIC" :table "NEW_ORDERS"})]
       (is (str/includes? result "NEW_ORDERS"))
       (is (not (str/includes? result "ORDERS ")))))
-
   (testing "Cross-schema rename: PUBLIC.ORDERS → ANALYTICS.NEW_ORDERS"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM PUBLIC.ORDERS"
@@ -283,14 +279,12 @@
       (is (str/includes? result "ANALYTICS"))
       (is (str/includes? result "NEW_ORDERS"))
       (is (not (str/includes? result "PUBLIC")))))
-
   (testing "Unqualified SQL still matches when old-table has schema"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM ORDERS"
                                                                    {:schema "PUBLIC" :table "ORDERS"}
                                                                    {:schema "PUBLIC" :table "NEW_ORDERS"})]
       (is (str/includes? result "NEW_ORDERS"))))
-
   (testing "Schema-qualified table→card clears the schema (no PUBLIC.{{#card}} in output)"
     ;; Just a plain string — replace-table-in-native-sql infers schema clearing
     ;; because old-table has a schema and new-table doesn't
@@ -302,7 +296,6 @@
       (is (not (str/includes? result "PUBLIC.{{"))
           "Schema must be cleared, not left as PUBLIC.{{#card}}")
       (is (not (str/includes? result "PUBLIC")))))
-
   (testing "Card reference must not be quoted in SQL output"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM ORDERS"
@@ -321,7 +314,6 @@
                                                                   [:table (meta/id :orders)])]
       (is (str/includes? (lib/raw-native-query result) "ORDERS"))
       (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))))
-
   (testing "table→table: template tags are preserved"
     (let [query  (lib/native-query meta/metadata-provider "SELECT * FROM PRODUCTS WHERE category = {{category}}")
           result (source-swap.native/swap-source-in-native-stages query
@@ -330,7 +322,6 @@
       (is (str/includes? (lib/raw-native-query result) "ORDERS"))
       (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))
       (is (str/includes? (lib/raw-native-query result) "{{category}}"))))
-
   (testing "table→table: only the target table is renamed in a JOIN"
     (let [query  (lib/native-query meta/metadata-provider "SELECT o.*, p.title FROM ORDERS o JOIN PRODUCTS p ON o.product_id = p.id")
           result (source-swap.native/swap-source-in-native-stages query
@@ -339,7 +330,6 @@
       (is (str/includes? (lib/raw-native-query result) "REVIEWS"))
       (is (str/includes? (lib/raw-native-query result) "PRODUCTS"))
       (is (not (str/includes? (lib/raw-native-query result) "ORDERS")))))
-
   (testing "table→table: schema-qualified SQL reference is replaced"
     (let [query  (lib/native-query meta/metadata-provider "SELECT * FROM PUBLIC.PRODUCTS")
           result (source-swap.native/swap-source-in-native-stages query
@@ -360,7 +350,6 @@
         (is (str/includes? (lib/raw-native-query result) "{{#1-card-1}}"))
         (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))
         (is (= 1 (get-in (lib/template-tags result) ["#1-card-1" :card-id])))))
-
     (testing "table→card: existing template tags are preserved"
       (let [query  (lib/native-query mp "SELECT * FROM PRODUCTS WHERE category = {{category}}")
             result (source-swap.native/swap-source-in-native-stages query
@@ -370,7 +359,6 @@
         (is (str/includes? (lib/raw-native-query result) "{{category}}"))
         (is (contains? (lib/template-tags result) "category"))
         (is (= 1 (get-in (lib/template-tags result) ["#1-card-1" :card-id])))))
-
     (testing "table→card: schema-qualified SQL gets card ref without schema prefix"
       (let [query  (lib/native-query mp "SELECT * FROM PUBLIC.PRODUCTS")
             result (source-swap.native/swap-source-in-native-stages query
@@ -392,7 +380,6 @@
       (is (str/includes? (lib/raw-native-query result) "ORDERS"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1")))
       (is (empty? (filter #(= (:card-id %) 1) (vals (lib/template-tags result)))))))
-
   (testing "card→table: other template tags are preserved"
     (let [query  (-> (lib/native-query meta/metadata-provider "SELECT * FROM {{#1-card-1}} WHERE status = {{status}}")
                      (lib/with-template-tags {"#1-card-1" {:type :card :card-id 1 :name "#1-card-1" :display-name "#1-card-1"}}))

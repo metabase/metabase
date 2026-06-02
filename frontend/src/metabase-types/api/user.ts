@@ -1,7 +1,9 @@
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
+import type { ConcreteTableId, SchemaName } from "./table";
 
 export type UserId = number;
 export type UserAttributeKey = string;
@@ -58,6 +60,8 @@ export interface UserPermissions {
   can_access_subscription?: boolean;
   can_access_data_studio?: boolean;
   can_access_transforms?: boolean;
+  can_access_workspaces?: boolean;
+  can_manage_workspaces?: boolean;
 }
 
 export interface User extends BaseUser {
@@ -104,6 +108,7 @@ export type UserInfo = Pick<
   | "last_login"
   | "is_superuser"
   | "is_qbnewb"
+  | "is_active"
 >;
 
 export type UserListQuery = {
@@ -192,6 +197,21 @@ export type UserKeyValue =
       namespace: "dependency_diagnostics";
       key: string;
       value: DependencyDiagnosticsUserParams;
+    }
+  | {
+      namespace: "schema_viewer";
+      key: "last_database";
+      value: {
+        databaseId: DatabaseId;
+        schema?: SchemaName;
+      };
+    }
+  | {
+      namespace: "schema_viewer";
+      key: `${DatabaseId}__${SchemaName}`;
+      value: {
+        table_ids: ConcreteTableId[];
+      };
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

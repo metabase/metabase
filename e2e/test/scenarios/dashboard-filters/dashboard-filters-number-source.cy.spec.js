@@ -101,7 +101,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       mapFilterToQuestion();
       H.sidebar().findByText("Search box").click();
       H.setFilterListSource({
-        values: [[10, "Ten"], [20, "Twenty"], 30],
+        values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
       H.saveDashboard();
 
@@ -265,7 +265,7 @@ const getListDashboard = (values_query_type) => {
     values_source_type: "static-list",
     values_query_type,
     values_source_config: {
-      values: [[10, "Ten"], [20, "Twenty"], 30],
+      values: [["10", "Ten"], ["20", "Twenty"], "30"],
     },
   });
 };

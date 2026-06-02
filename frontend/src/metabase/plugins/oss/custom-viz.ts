@@ -34,8 +34,10 @@ const getDefaultPluginCustomViz = () => ({
     },
   loadCustomVizPlugin: async (
     _plugin: CustomVizPluginRuntime,
-    _cacheBustSuffix?: string,
-    _onInfo?: (message: string) => void,
+    _options?: {
+      cacheBustSuffix?: string;
+      onInfo?: (message: string) => void;
+    },
   ) => null as string | null,
   getPluginAssetUrl: (_pluginId: number, _assetPath: string | null) =>
     undefined as string | undefined,

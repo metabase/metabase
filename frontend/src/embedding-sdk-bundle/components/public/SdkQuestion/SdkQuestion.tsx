@@ -60,6 +60,7 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "withDownloads"
     | "withAlerts"
     | "targetCollection"
+    | "initialCollection"
     | "onRun"
   >;
 
@@ -135,6 +136,7 @@ export const _SdkQuestion = ({
   entityTypes,
   dataPicker,
   targetCollection,
+  initialCollection,
   initialSqlParameters,
   sqlParameters,
   onSqlParametersChange,
@@ -166,6 +168,7 @@ export const _SdkQuestion = ({
     withEditorButton,
     isSaveEnabled,
     targetCollection,
+    initialCollection,
     entityTypes,
     onBeforeSave,
     onSave,
@@ -196,6 +199,7 @@ export const _SdkQuestion = ({
         entityTypes={entityTypes}
         dataPicker={dataPicker}
         targetCollection={targetCollection}
+        initialCollection={initialCollection}
         initialSqlParameters={initialSqlParameters}
         sqlParameters={sqlParameters}
         onSqlParametersChange={onSqlParametersChange}

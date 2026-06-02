@@ -13,13 +13,11 @@
   (testing "Simple table extraction"
     (is (= [[nil nil "users"]]
            (sql-parsing/referenced-tables "postgres" "SELECT * FROM users"))))
-
   (testing "Multiple tables from JOIN"
     (is (= [[nil nil "orders"] [nil nil "users"]]
            (sql-parsing/referenced-tables
             "postgres"
             "SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id"))))
-
   (testing "Schema-qualified tables are preserved"
     (is (= [[nil "other" "users"] [nil "public" "users"]]
            (sql-parsing/referenced-tables
@@ -27,7 +25,6 @@
             "SELECT public.users.id, other.users.id
              FROM public.users u1
              LEFT JOIN other.users u2 ON u1.id = u2.id"))))
-
   (testing "CTE names are excluded"
     (is (= [[nil nil "users"]]
            (sql-parsing/referenced-tables
@@ -155,7 +152,6 @@
               (format "dialect %s: should return vector, got %s" dialect (type result)))
           (is (every? vector? result)
               (format "dialect %s: each element should be [catalog schema table] tuple" dialect)))))
-
     (doseq [[dialect sql] udtf-with-table-queries]
       (testing (str "dialect: " dialect " - UDTF mixed with real table")
         (let [result (sql-parsing/referenced-tables (name dialect) sql)]
@@ -290,18 +286,14 @@
   (testing "Valid queries against schema"
     (testing "simple select with existing columns"
       (is (= "ok" (:status (sql-parsing/validate-query nil "SELECT id, title FROM products" "PUBLIC" test-schema)))))
-
     (testing "wildcard select"
       (is (= "ok" (:status (sql-parsing/validate-query nil "SELECT * FROM products" "PUBLIC" test-schema)))))
-
     (testing "table-qualified columns"
       (is (= "ok" (:status (sql-parsing/validate-query nil "SELECT products.id, products.title FROM products" "PUBLIC" test-schema)))))
-
     (testing "join with valid columns"
       (is (= "ok" (:status (sql-parsing/validate-query nil
                                                        "SELECT o.id, p.title FROM orders o JOIN products p ON o.product_id = p.id"
                                                        "PUBLIC" test-schema)))))
-
     (testing "subquery"
       (is (= "ok" (:status (sql-parsing/validate-query nil
                                                        "SELECT * FROM (SELECT id, title FROM products) AS sub"
@@ -314,7 +306,6 @@
         (is (= "error" (:status result)))
         (is (= "column_not_resolved" (:type result)))
         (is (re-find #"(?i)bad_column" (:column result)))))
-
     (testing "column from wrong table"
       (let [result (sql-parsing/validate-query nil "SELECT email FROM products" "PUBLIC" test-schema)]
         (is (= "error" (:status result)))
@@ -327,7 +318,6 @@
         (is (= "error" (:status result)))
         ;; SQLGlot reports this as unknown_table
         (is (contains? #{"unknown_table" "column_not_resolved"} (:type result)))))
-
     (testing "qualified column with non-existent alias"
       (let [result (sql-parsing/validate-query nil "SELECT p.id FROM products" "PUBLIC" test-schema)]
         (is (= "error" (:status result)))))))
@@ -354,7 +344,6 @@
     (let [result (sql-parsing/referenced-tables "postgres" "SELECT 1 LIMIT")]
       (is (= [] result)
           "No tables are referenced in 'SELECT 1 LIMIT'")))
-
   (testing "To reliably trigger SQL errors, use nonexistent tables instead"
     ;; This is the recommended pattern for tests that need to trigger SQL failures
     (let [result (sql-parsing/referenced-tables "postgres" "SELECT * FROM nonexistent_table_xyz")]
@@ -372,7 +361,6 @@
   (let [driver (first drivers)
         corpus (slurp (str query-corpus-path driver ".log"))
         queries (sort (distinct (str/split corpus sentinel)))]
-
     (frequencies
      (doall
       (for [q queries]
@@ -455,11 +443,9 @@
   (testing "Small VALUES clauses are preserved"
     (let [sql "SELECT * FROM (VALUES (1, 'a'), (2, 'b'), (3, 'c')) AS t(id, name)"]
       (is (= sql (sql-parsing/strip-large-values sql)))))
-
   (testing "No VALUES keyword returns SQL unchanged"
     (let [sql "SELECT * FROM users WHERE id = 1"]
       (is (= sql (sql-parsing/strip-large-values sql)))))
-
   (testing "Large VALUES clause is replaced with NULLs preserving column count"
     (let [tuples (clojure.string/join ", " (map #(format "(%d, '%s', %d)" % (str "name" %) (* % 10))
                                                 (range 200)))
@@ -468,7 +454,6 @@
       (is (clojure.string/includes? result "VALUES (NULL, NULL, NULL)"))
       (is (clojure.string/includes? result "AS t(id, name, score)"))
       (is (not (clojure.string/includes? result "name0")))))
-
   (testing "Multiple large VALUES clauses are all stripped"
     (let [tuples1 (clojure.string/join ", " (map #(format "(%d)" %) (range 200)))
           tuples2 (clojure.string/join ", " (map #(format "(%d, %d)" % (* % 2)) (range 200)))
@@ -478,25 +463,20 @@
           result  (sql-parsing/strip-large-values sql)]
       (is (clojure.string/includes? result "VALUES (NULL)"))
       (is (clojure.string/includes? result "VALUES (NULL, NULL)"))))
-
   (testing "VALUES keyword casing is preserved"
     (let [tuples (clojure.string/join ", " (map #(format "(%d)" %) (range 200)))
           sql    (str "select * from (values " tuples ") as t(x)")
           result (sql-parsing/strip-large-values sql)]
       (is (clojure.string/includes? result "values (NULL)"))))
-
   (testing "VALUES inside a string literal is not stripped"
     (let [sql "SELECT 'INSERT INTO foo VALUES (1,2,3)' AS example FROM bar"]
       (is (= sql (sql-parsing/strip-large-values sql)))))
-
   (testing "Column named values is not stripped"
     (let [sql "SELECT values FROM my_table WHERE values > 10"]
       (is (= sql (sql-parsing/strip-large-values sql)))))
-
   (testing "VALUES keyword not followed by paren is not stripped"
     (let [sql "SELECT * FROM t WHERE col IN (SELECT values FROM other)"]
       (is (= sql (sql-parsing/strip-large-values sql)))))
-
   (testing "INSERT INTO ... VALUES is stripped when large"
     (let [tuples (clojure.string/join ", " (map #(format "(%d, 'x')" %) (range 200)))
           sql    (str "INSERT INTO foo VALUES " tuples)
@@ -529,18 +509,15 @@
     (testing "Unqualified wildcard - single table"
       (let [result (sql-parsing/referenced-fields "postgres" "SELECT * FROM users")]
         (is (fields-match? [["users" "*"]] result))))
-
     (testing "Unqualified wildcard - multiple tables"
       (let [result (sql-parsing/referenced-fields "postgres" "SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id")]
         (is (some #(= ["orders" "*"] %) (normalize-fields result))
             "Should include orders wildcard")
         (is (some #(= ["users" "*"] %) (normalize-fields result))
             "Should include users wildcard")))
-
     (testing "Qualified wildcard"
       (let [result (sql-parsing/referenced-fields "postgres" "SELECT u.* FROM users u")]
         (is (fields-match? [["users" "*"]] result))))
-
     (testing "Mixed wildcards and specific columns"
       (let [result (sql-parsing/referenced-fields "postgres" "SELECT u.*, t.total FROM users u, transactions t WHERE u.id = t.user_id")]
         (is (some #(= ["users" "*"] %) (normalize-fields result))

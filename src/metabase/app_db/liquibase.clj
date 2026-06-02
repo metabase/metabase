@@ -368,8 +368,8 @@
     (do
       (log/info "Database has unrun migrations. Checking if migration lock is taken...")
       (with-scope-locked liquibase
-      ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
-      ;; sure something still needs to be done...
+        ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
+        ;; sure something still needs to be done...
         (let [to-run-migrations      (unrun-migrations data-source)
               unrun-migrations-count (count to-run-migrations)]
           (if (pos? unrun-migrations-count)
@@ -579,7 +579,6 @@
                          latest-applied latest-available latest-applied)
                  {:latest-available latest-available
                   :latest-applied   latest-applied})))
-
        (log/infof "Rolling back app database schema to version %d" target-version)
        (if (empty? ids-to-drop)
          (log/info "No changesets to roll back")

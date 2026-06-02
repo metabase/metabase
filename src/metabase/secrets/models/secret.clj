@@ -184,7 +184,6 @@
       (throw (ex-info
               (tru "{0} (a local file path) cannot be used in Metabase hosted environment" (:path kws))
               {:invalid-db-details-entry (select-keys details [(:path kws)])})))
-
     (when (and secret-map
                ;; If the client sent us back protected-password then it should be ignored and value loaded from Secret.
                (not= (seq (:value secret-map))
@@ -277,18 +276,19 @@
 
 (defn delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
-  simply delete any Secret whose ID appears in the details blobs (both `:details` and `:write_data_details`), since
-  every Secret instance that is currently created is exclusively associated with a single Database.
+  simply delete any Secret whose ID appears in the details blobs (`:details`, `:write_data_details`, and
+  `:admin_details`), since every Secret instance that is currently created is exclusively associated with a single
+  Database.
 
   In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
   change and become more complicated (likely by consulting a many-to-many join table)."
-  [{:keys [id details write_data_details] :as database}]
+  [{:keys [id details write_data_details admin_details] :as database}]
   (when-let [possible-secret-prop-names (seq (keys (secret-conn-props-by-name (driver.u/database->driver database))))]
     (doseq [secret-id (reduce (fn [acc prop-name]
                                 (let [id-kw (->id-kw prop-name)]
                                   (into acc
                                         (keep #(get % id-kw))
-                                        [details write_data_details])))
+                                        [details write_data_details admin_details])))
                               #{}
                               possible-secret-prop-names)]
       (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
@@ -327,7 +327,7 @@
    This is a transformation on `:model/Database` `to-json`
 
    Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property.
-   Operates on both `:details` and `:write_data_details`."
+   Operates on `:details`, `:write_data_details`, and `:admin_details`."
   [database]
   (let [driver  (driver.u/database->driver database)
         hydrate (fn [details]
@@ -335,7 +335,8 @@
     ;; Very low-level operation here, so not using driver.conn/* utils:
     (-> database
         (m/update-existing :details hydrate)
-        (m/update-existing :write_data_details hydrate))))
+        (m/update-existing :write_data_details hydrate)
+        (m/update-existing :admin_details hydrate))))
 
 (defn clean-secret-properties-from-details
   "Ensures that all possible secret property values are removed from `:details`.
@@ -350,14 +351,15 @@
      (apply dissoc db-details (vals (->possible-secret-property-names conn-prop-nm))))))
 
 (defn clean-secret-properties-from-database
-  "Ensures that all possible secret property values are removed from `:details` and `:write_data_details`.
-   This is a transformation on `:model/Database` `results-transform`."
+  "Ensures that all possible secret property values are removed from `:details`, `:write_data_details`, and
+   `:admin_details`. This is a transformation on `:model/Database` `results-transform`."
   [database]
   (let [clean #(clean-secret-properties-from-details % (driver.u/database->driver database))]
     ;; Very low-level operation here, so not using driver.conn/* utils:
     (-> database
         (m/update-existing :details clean)
-        (m/update-existing :write_data_details clean))))
+        (m/update-existing :write_data_details clean)
+        (m/update-existing :admin_details clean))))
 
 (defn- handle-secrets-for-details-key
   "Process secret-type connection properties in `details-key` of `database`, converting raw secret
@@ -392,7 +394,7 @@
     database))
 
 (defn handle-incoming-client-secrets!
-  "Converts incoming secret values in `:details` and `:write_data_details` into Secrets.
+  "Converts incoming secret values in `:details`, `:write_data_details`, and `:admin_details` into Secrets.
    This is a transformation on `:model/Database` `before-insert` and `before-update`.
 
    Only the Secret id should be stored in the details maps. All other secret props should be cleared.
@@ -412,4 +414,5 @@
   [database]
   (-> database
       (handle-secrets-for-details-key :details)
-      (handle-secrets-for-details-key :write_data_details)))
+      (handle-secrets-for-details-key :write_data_details)
+      (handle-secrets-for-details-key :admin_details)))

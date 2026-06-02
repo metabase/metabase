@@ -212,14 +212,14 @@
     (lib/absolute-datetime t target-unit)))
 
 (defmethod add-type-info String
-  [s {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
-                                 :or   {parse-datetime-strings? true}}]
-  (if (and (or unit (when info (lib.types.isa/temporal? info)))
+  [s {:keys [unit], :as col} & {:keys [parse-datetime-strings?]
+                                :or   {parse-datetime-strings? true}}]
+  (if (and (or unit (when col (lib.types.isa/temporal? col)))
            parse-datetime-strings?
            (seq s))
-    (let [effective-type ((some-fn :effective-type :base-type) info)]
+    (let [effective-type ((some-fn :effective-type :base-type) col)]
       (parse-temporal-string-literal effective-type s (or unit :default)))
-    (value info s)))
+    (value col s)))
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
@@ -276,11 +276,12 @@
 ;;;
 ;;; Tangentially-related nonsense not used by the middleware
 ;;;
+;;; TODO (Cam 2026-05-14) -- move this into Lib or somewhere else since this is just a raw MBQL transformation that
+;;; only seems to be used by driver-specific parameter compilation code
 
 (defn- type-info-no-query
   "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]
   function."
-  {:deprecated "0.57.0"}
   [clause]
   (let [expr-type (lib.schema.expression/type-of-resolved clause)]
     (merge
@@ -306,26 +307,14 @@
                    [:value {:base_type :type/Text, \"foo\"
                             :semantic_type nil,
                             :database_type \"VARCHAR\",
-                            :name \"description\"}]]]
-
-  DEPRECATED: This is for legacy compatibility and should not be used in new code."
-  {:deprecated "0.57.0"}
+                            :name \"description\"}]]]"
   [mbql :- [:cat :keyword [:* :any]]]
   (-> mbql
       lib/->mbql5
       (as-> $mbql (binding [*type-info* (fn [_query _path clause]
-                                          #_{:clj-kondo/ignore [:deprecated-var]}
                                           (type-info-no-query clause))]
                     (-> (lib.walk/walk-clauses*
                          [$mbql]
                          (fn [clause]
                            (wrap-value-literals-in-clause nil nil clause)))
                         first)))))
-
-(mu/defn wrap-value-literals-in-mbql :- [:cat :keyword [:* :any]]
-  "Wrapper around `wrap-value-literals-in-mbql5` that converts the clause back to legacy MBQL.
-  DEPRECATED: This is for legacy compatibility and should not be used in new code."
-  {:deprecated "0.57.0"}
-  [mbql :- [:cat :keyword [:* :any]]]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib/->legacy-MBQL (wrap-value-literals-in-mbql5 mbql)))

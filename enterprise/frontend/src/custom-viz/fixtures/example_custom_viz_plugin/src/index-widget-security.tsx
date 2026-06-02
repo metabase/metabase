@@ -1,7 +1,5 @@
-import {
-  type CreateCustomVisualization,
-  defineConfig,
-} from "@metabase/custom-viz";
+import { defineConfig } from "../../../src/index";
+import type { CreateCustomVisualization } from "../../../src/types/viz";
 import { Visualization } from "./Visualization";
 import { Settings } from "./types";
 

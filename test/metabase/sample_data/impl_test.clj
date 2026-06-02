@@ -55,26 +55,23 @@
 
 (deftest extract-sample-database-test
   (testing "The Sample Database is copied out of the JAR into the plugins directory before the DB details are saved."
-    (with-redefs [sync/sync-database! (constantly nil)]
+    (mt/with-dynamic-fn-redefs [sync/sync-database! (constantly nil)]
       (with-temp-sample-database-db [db]
         (let [db-path (get-in db [:details :db])]
           (is (re-matches extracted-db-path-regex db-path))))))
-
   (testing "If the plugins directory is not creatable or writable, we fall back to reading from the DB in the JAR"
     (memoize/memo-clear! @#'plugins/plugins-dir*)
-    (let [original-var u.files/create-dir-if-not-exists!]
-      (with-redefs [u.files/create-dir-if-not-exists! (fn [_] (throw (Exception.)))]
+    (let [original-var (mt/original-fn #'u.files/create-dir-if-not-exists!)]
+      (mt/with-dynamic-fn-redefs [u.files/create-dir-if-not-exists! (fn [_] (throw (Exception.)))]
         (with-temp-sample-database-db [db]
           (let [db-path (get-in db [:details :db])]
             (is (not (str/includes? db-path "plugins"))))
-
           (testing "If the plugins directory is writable on a subsequent startup, the sample DB is copied"
             (with-redefs [u.files/create-dir-if-not-exists! original-var]
               (memoize/memo-clear! @#'plugins/plugins-dir*)
               (sample-data/update-sample-database-if-needed! db)
               (let [db-path (get-in (t2/select-one :model/Database :id (:id db)) [:details :db])]
                 (is (re-matches extracted-db-path-regex db-path)))))))))
-
   (memoize/memo-clear! @#'plugins/plugins-dir*))
 
 (deftest sync-sample-database-test
@@ -98,8 +95,6 @@
                                                       :percent-email  0.0
                                                       :percent-state  0.0
                                                       :average-length 13.532
-                                                      :max-length     23.0
-                                                      :min-length     7.0
                                                       :mode-fraction  4.0E-4
                                                       :top-3-fraction 0.0012
                                                       :percent-blank  0.0}}}

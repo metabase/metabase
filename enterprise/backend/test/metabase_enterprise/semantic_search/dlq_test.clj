@@ -35,12 +35,10 @@
     (is (= :permanent (semantic.dlq/categorize-error (ex-info "Validation error" {:status 422}))))
     (is (= :transient (semantic.dlq/categorize-error (ex-info "Server error" {:status 500}))))
     (is (= :transient (semantic.dlq/categorize-error (ex-info "Gateway timeout" {:status 504})))))
-
   (testing "Exception types"
     (is (= :transient (semantic.dlq/categorize-error (SocketException. "Connection reset"))))
     (is (= :permanent (semantic.dlq/categorize-error (AssertionError. "Invalid assertion"))))
     (is (= :permanent (semantic.dlq/categorize-error (NullPointerException. "NPE")))))
-
   (testing "Default to transient"
     (is (= :transient (semantic.dlq/categorize-error (RuntimeException. "Unknown error"))))
     (is (= :transient (semantic.dlq/categorize-error (Exception. "Generic exception"))))))
@@ -76,9 +74,7 @@
                         :attempt_at        t2
                         :last_attempted_at t1
                         :error_gated_at    t1}]]
-
           (is (= 2 (semantic.dlq/add-entries! pgvector index-metadata index-id entries)))
-
           (let [table-name (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 results    (jdbc/execute! pgvector
                                           (sql/format {:select [:*] :from [table-name] :order-by [:gate_id]} :quoted true)
@@ -86,7 +82,6 @@
             (is (= 2 (count results)))
             (is (= "gate1" (:gate_id (first results))))
             (is (= 0 (:retry_count (first results)))))
-
           (let [table-name  (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 all-results (jdbc/execute! pgvector
                                            (sql/format {:select [[:gate_id :id] [:error_gated_at :gated_at]] :from [table-name]} :quoted true)
@@ -110,16 +105,13 @@
                               :attempt_at        t1
                               :last_attempted_at t2
                               :error_gated_at    t1}]]
-
           (is (= 1 (semantic.dlq/add-entries! pgvector index-metadata index-id initial-entry)))
-
           (let [updated-entry [{:gate_id           "gate1"
                                 :retry_count       2
                                 :attempt_at        t2
                                 :last_attempted_at t2
                                 :error_gated_at    t2}]]
             (is (= 1 (semantic.dlq/add-entries! pgvector index-metadata index-id updated-entry))))
-
           (let [table-name (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 results    (jdbc/execute! pgvector
                                           (sql/format {:select [:*] :from [table-name] :order-by [:gate_id]} :quoted true)
@@ -141,17 +133,14 @@
         c2             {:model "card" :id "2" :name "Test" :searchable_text "Content" :embeddable_text "Content"}
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))]
-
     (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
                 _            (semantic.tu/open-index! pgvector index)
                 index-id-ref (semantic.tu/closeable
                               (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
                               (constantly nil))
                 _            (open-dlq! pgvector index-metadata @index-id-ref)]
-
       ;; Set up test data: gate entry and DLQ entry
       (semantic.gate/gate-documents! pgvector index-metadata [(version c1 t1) (delete c2 t2)])
-
       ;; Add some DLQ entries that should be retried
       (let [dlq-entries [;; upsert
                          {:gate_id           "card_1"
@@ -172,23 +161,19 @@
                           :last_attempted_at t2
                           :error_gated_at    t1}]]
         (semantic.dlq/add-entries! pgvector index-metadata @index-id-ref dlq-entries))
-
       (testing "poll at different times finds records to be retried as-of that clock value"
         (testing "t1"
           (with-redefs [semantic.dlq/clock (reify InstantSource (instant [_] (.toInstant t1)))]
             (let [poll-results (semantic.dlq/poll pgvector index-metadata @index-id-ref 100)]
               (is (= {"card_3" 1} (frequencies (map :id poll-results)))))))
-
         (testing "t2"
           (with-redefs [semantic.dlq/clock (reify InstantSource (instant [_] (.toInstant t2)))]
             (let [poll-results (semantic.dlq/poll pgvector index-metadata @index-id-ref 100)]
               (is (= {"card_1" 1 "card_3" 1} (frequencies (map :id poll-results)))))))
-
         (testing "t3"
           (with-redefs [semantic.dlq/clock (reify InstantSource (instant [_] (.toInstant t3)))]
             (let [poll-results (semantic.dlq/poll pgvector index-metadata @index-id-ref 100)]
               (is (= {"card_1" 1 "card_2" 1 "card_3" 1} (frequencies (map :id poll-results))))))))
-
       (testing "limit parameter"
         (with-redefs [semantic.dlq/clock (reify InstantSource (instant [_] (.toInstant t3)))]
           (is (= 1 (count (semantic.dlq/poll pgvector index-metadata @index-id-ref 1))))
@@ -210,58 +195,46 @@
                                 :update-candidates
                                 (map #(semantic.dlq/initial-dlq-entry % (.instant clock)))
                                 (semantic.dlq/add-entries! pgvector index-metadata index-id)))]
-
     (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
                 _            (semantic.tu/open-index! pgvector index)
                 index-id-ref (semantic.tu/closeable
                               (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
                               (constantly nil))
                 _            (open-dlq! pgvector index-metadata @index-id-ref)]
-
       (with-redefs [semantic.dlq/clock clock]
-
         (testing "exits with no data"
           (let [result (semantic.dlq/dlq-retry-loop! pgvector index-metadata index @index-id-ref
                                                      :max-run-duration (Duration/ofSeconds 1))]
             (is (= :no-more-data (:exit-reason result)))
             (is (zero? (:success-count result)))
             (is (zero? (:failure-count result)))))
-
         (testing "processes successful retries"
           ;; Set up gate data and DLQ entries for retry
           (is (pos? (semantic.gate/gate-documents! pgvector index-metadata [(version c1 t1)])))
-
           (add-gate-to-dlq! pgvector index-metadata @index-id-ref)
-
           (testing "clock has not advanced beyond initial backoff"
             (is (= 0 (count (semantic.dlq/poll pgvector index-metadata @index-id-ref 10)))))
-
           (testing "advance clock beyond initial backoff"
             ;; move clock passed the expected back off time
             (vreset! clock-ref (.plus (.instant clock) semantic.dlq/initial-backoff))
             (is (= 1 (count (semantic.dlq/poll pgvector index-metadata @index-id-ref 10)))))
-
           (let [result (semantic.dlq/dlq-retry-loop! pgvector index-metadata index @index-id-ref
                                                      :max-run-duration (Duration/ofMinutes 5)
                                                      :max-batch-size 10)]
             (is (= :no-more-data (:exit-reason result)))
             (is (= 1 (:success-count result)))))
-
         (testing "handles failures and adjusts batch size"
           ;; ensure there are two documents in the gate
           (semantic.gate/gate-documents! pgvector index-metadata [(version c1 t1) (version c2 t1)])
           ;; add everything to dlq
           (add-gate-to-dlq! pgvector index-metadata @index-id-ref)
-
           (vreset! clock-ref (.plus (.instant clock) semantic.dlq/initial-backoff))
-
           (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Forced failure")))]
             (let [result (semantic.dlq/dlq-retry-loop! pgvector index-metadata index @index-id-ref
                                                        :max-run-duration (Duration/ofSeconds 1)
                                                        :max-batch-size 10)]
               (is (#{:no-more-data :ran-out-of-time} (:exit-reason result)))
               (is (= 2 (:failure-count result)))))
-
           (testing "batch shrinking to minimum size of 1, causing passes"
             (add-gate-to-dlq! pgvector index-metadata @index-id-ref)
             (vreset! clock-ref (.plus (.instant clock) semantic.dlq/initial-backoff))
@@ -280,7 +253,6 @@
                   (is (= 2 (:success-count result)))        ; both writes eventually succeed
                   (is (= 2 (:failure-count result)))        ; first batch
                   (is (= [2 1 1] @observed-batches))))))
-
           (testing "exits once max-run time elapses, even if dlq is full"
             (add-gate-to-dlq! pgvector index-metadata @index-id-ref)
             (vreset! clock-ref (.plus (.instant clock) semantic.dlq/initial-backoff))
@@ -319,28 +291,23 @@
                          :document       nil                ; deletion
                          :gated_at       (ts "2025-01-04T09:00:00Z")
                          :error_gated_at (ts "2025-01-04T09:00:00Z")}]]
-
     (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
                 _ (semantic.tu/open-index! pgvector index)]
-
       (testing "batch processing singles out orphans (dlq entry with no associated gate record)"
         (let [outcome (semantic.dlq/try-batch! pgvector index gate-docs)]
           (is (= {"card_1" 1 "card_2" 1} (frequencies (map :id (:successes outcome)))))
           (is (= {} (frequencies (map :gate_id (:failures outcome)))))))
-
       (testing "failures across upsert/delete are aggregated"
         (with-redefs [semantic.index/upsert-index!      (fn [& _] (throw (RuntimeException. "Upsert failed")))
                       semantic.index/delete-from-index! (fn [& _] (throw (RuntimeException. "Delete failed")))]
           (let [outcome (semantic.dlq/try-batch! pgvector index gate-docs)]
             (is (= {"card_1" 1 "card_2" 1} (frequencies (map (comp :gate_id :dlq-entry) (:failures outcome)))))
             (is (= {} (frequencies (map :id (:successes outcome))))))))
-
       (testing "partial failure is representable"
         (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Upsert failed")))]
           (let [outcome (semantic.dlq/try-batch! pgvector index gate-docs)]
             (is (= {"card_1" 1} (frequencies (map (comp :gate_id :dlq-entry) (:failures outcome)))))
             (is (= {"card_2" 1} (frequencies (map :id (:successes outcome))))))))
-
       (testing "failure increments retry count"
         (let [now (Instant/parse "2025-01-01T13:14:33Z")]
           (doseq [[ex policy] [[(RuntimeException. "Upsert failed") semantic.dlq/transient-policy]

@@ -1,7 +1,8 @@
 import { type Schema, normalize } from "normalizr";
 
-// this action is handled by entity reducers in `handleEntities` in
-// `frontend/src/metabase/entities/utils.js`
+// Handled by the per-slice reducers in `metabase/redux/entities` — see
+// `makeSliceReducer` there, which merges `payload.entities.<name>` into the
+// matching `state.entities.<name>` slice so `getMetadata` picks up the change.
 const UPDATE = "metabase/entities/UPDATE";
 
 export function updateMetadata(data: unknown, schema: Schema) {

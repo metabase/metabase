@@ -48,10 +48,10 @@
     (cron/schedule
      (cron/cron-schedule schedule)
      (cron/in-time-zone (TimeZone/getTimeZone ^String (timezone)))
-        ;; We want to fire the trigger once even if the previous triggers missed
-        ;; (potentially several times)
+     ;; We want to fire the trigger once even if the previous triggers missed
+     ;; (potentially several times)
      (cron/with-misfire-handling-instruction-fire-and-proceed)))
-    ;; higher than sync
+   ;; higher than sync
    (triggers/with-priority 6)))
 
 (defn- create-trigger!

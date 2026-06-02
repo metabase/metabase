@@ -519,7 +519,7 @@
   [home-cols cond-fields]
   (when (seq cond-fields)
     (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) cond-fields)]
-          ;; first choice: the leftmost FK or PK in the condition referring to a home column
+      ;; first choice: the leftmost FK or PK in the condition referring to a home column
       (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
           ;; otherwise the leftmost home column in the condition
           (first cond-home-cols)
@@ -1045,7 +1045,13 @@
     (case j-fields
       :all        (map #(assoc % :selected? true))
       (:none nil) (map #(assoc % :selected? false))
-      (mapcat #(lib.equality/mark-selected-columns [%] j-fields)))))
+      ;; Per-column check against `j-fields` avoids the spurious
+      ;; "N refs are selected, but we found 1 matches" warning that
+      ;; `mark-selected-columns` emits when given a single column and many refs.
+      (map (fn [col]
+             (assoc col :selected?
+                    (boolean (some #(lib.equality/find-matching-column nil -1 % [col])
+                                   j-fields))))))))
 
 (def ^:private xform-fix-source-for-joinable-columns
   (map #(assoc % :lib/source :source/joins)))
@@ -1113,8 +1119,8 @@
   (when-let [table (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
                         (first-join? query stage-number join-or-joinable)           ; first join?
                         (lib.metadata.calculation/primary-source-table query))]     ; query ultimately uses source Table?
-      ;; I think `:default` display name style is okay here, there shouldn't be a difference between `:default` and
-      ;; `:long` for a Table anyway
+    ;; I think `:default` display name style is okay here, there shouldn't be a difference between `:default` and
+    ;; `:long` for a Table anyway
     (lib.metadata.calculation/display-name query stage-number table)))
 
 (mu/defn join-lhs-display-name :- ::lib.schema.common/non-blank-string

@@ -154,6 +154,8 @@ import database_routing_component from "./database_routing.svg?component";
 import database_routing_source from "./database_routing.svg?source";
 import dependencies_component from "./dependencies.svg?component";
 import dependencies_source from "./dependencies.svg?source";
+import dependent_component from "./dependent.svg?component";
+import dependent_source from "./dependent.svg?source";
 import document_component from "./document.svg?component";
 import document_source from "./document.svg?source";
 import download_component from "./download.svg?component";
@@ -448,6 +450,8 @@ import shield_component from "./shield.svg?component";
 import shield_source from "./shield.svg?source";
 import shield_outline_component from "./shield_outline.svg?component";
 import shield_outline_source from "./shield_outline.svg?source";
+import shield_stroke_component from "./shield_stroke.svg?component";
+import shield_stroke_source from "./shield_stroke.svg?source";
 import sidebar_closed_component from "./sidebar_closed.svg?component";
 import sidebar_closed_source from "./sidebar_closed.svg?source";
 import sidebar_open_component from "./sidebar_open.svg?component";
@@ -560,6 +564,8 @@ import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
+import warning_round_component from "./warning_round.svg?component";
+import warning_round_source from "./warning_round.svg?source";
 import warning_round_filled_component from "./warning_round_filled.svg?component";
 import warning_round_filled_source from "./warning_round_filled.svg?source";
 import warning_triangle_filled_component from "./warning_triangle_filled.svg?component";
@@ -852,6 +858,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     dependencies: {
       component: dependencies_component,
       source: dependencies_source,
+    },
+    dependent: {
+      component: dependent_component,
+      source: dependent_source,
     },
     data_studio: {
       component: data_studio_component,
@@ -1489,6 +1499,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: shield_outline_component,
       source: shield_outline_source,
     },
+    shield_stroke: {
+      component: shield_stroke_component,
+      source: shield_stroke_source,
+    },
     sidebar_closed: {
       component: sidebar_closed_component,
       source: sidebar_closed_source,
@@ -1682,6 +1696,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     warning: {
       component: warning_component,
       source: warning_source,
+    },
+    warning_round: {
+      component: warning_round_component,
+      source: warning_round_source,
     },
     warning_round_filled: {
       component: warning_round_filled_component,

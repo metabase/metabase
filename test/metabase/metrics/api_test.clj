@@ -323,7 +323,6 @@
                                            {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]
                                                          :filters []}})]
         (is (= "completed" (:status response))))))
-
   (testing "POST /api/metric/dataset accepts projections parameter (returns 202 even if projections can't be applied)"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric

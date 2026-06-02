@@ -12,12 +12,10 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor.parameters.dates :as qp.params.dates]
-   [metabase.query-processor.parameters.operators :as qp.params.ops]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv get-in]]))
+   [metabase.util.performance :refer [get-in mapv]]))
 
 (driver/register! :sql-mbql5, :parent :sql, :abstract? true)
 
@@ -178,22 +176,6 @@
 
 (defmethod sql.qp/breakout-options-index :sql-mbql5 [_driver] 1)
 
-(mu/defmethod sql.params.substitution/field->clause :sql-mbql5 :- :mbql.clause/field
-  [driver field other-opts]
-  (sql.qp/mbql-clause-with-opts driver :field
-                                (merge {:base-type                     (:base-type field)
-                                        driver-api/qp.add.source-table (:table-id field)
-                                        ::sql.params.substitution/compiling-field-filter?      true}
-                                       other-opts)
-                                (:id field)))
-
-(defmethod sql.params.substitution/to-clause :sql-mbql5 [_driver param] (qp.params.ops/to-clause param))
-
-(defmethod sql.params.substitution/desugar-filter-clause :sql-mbql5 [_driver filter-clause] (lib/desugar-filter-clause filter-clause))
-
-(defmethod sql.params.substitution/wrap-value-literals-in-mbql :sql-mbql5
-  [_driver mbql]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (driver-api/wrap-value-literals-in-mbql5 mbql))
-
-(defmethod sql.params.substitution/date-string->filter :sql-mbql5 [_driver date-string field] (qp.params.dates/date-string->filter date-string field))
+(defmethod sql.params.substitution/->honeysql :sql-mbql5
+  [driver mbql-5-clause]
+  (sql.qp/->honeysql driver mbql-5-clause))

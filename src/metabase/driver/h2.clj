@@ -102,7 +102,7 @@
 
 (defmethod sql.qp/->honeysql [:h2-mbql5 :regex-match-first]
   [driver [_ _opts arg pattern]]
-  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
+  ((get-method sql.qp/->honeysql [:h2 :regex-match-first]) driver [:regex-match-first arg pattern]))
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -331,6 +331,10 @@
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
+(defmethod sql.qp/add-interval-honeysql-form :h2-mbql5
+  [driver hsql-form amount unit]
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+
 (defmethod driver/humanize-connection-error-message :h2
   [_ messages]
   (let [message (first messages)]
@@ -357,6 +361,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
+
+(defmethod sql.qp/current-datetime-honeysql-form :h2-mbql5
   [driver]
   (h2x/current-datetime-honeysql-form driver))
 
@@ -435,7 +443,7 @@
 
 (defmethod sql.qp/->honeysql [:h2-mbql5 :log]
   [driver [_ _opts field]]
-  [:log10 (sql.qp/->honeysql driver field)])
+  ((get-method sql.qp/->honeysql [:h2 :log]) driver [:log field]))
 
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
   [driver [_ value]]
@@ -450,14 +458,7 @@
 
 (defmethod sql.qp/->honeysql [:h2-mbql5 ::sql.qp/expression-literal-text-value]
   [driver [_ _opts value]]
-  ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
-  ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
-  ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
-  ;;
-  ;; https://linear.app/metabase/issue/QUE-726/
-  ;; https://github.com/h2database/h2database/issues/1383
-  (->> (sql.qp/->honeysql driver value)
-       (h2x/cast :text)))
+  ((get-method sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]) driver [::sql.qp/expression-literal-text-value value]))
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."
@@ -481,10 +482,8 @@
          [:case
           [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 
@@ -750,7 +749,10 @@
                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [password]))))))
     {:schema           schema-name
      :database_details {:db new-db}}))
 
@@ -767,23 +769,19 @@
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/grant-workspace-read-access! :h2
-  [_driver database workspace tables]
+  [_driver database workspace schemas]
   (let [username (-> workspace :database_details :db get-user-from-connection-string)
         qu       (sql.u/quote-name :h2 :field username)
-        schemas  (distinct (map :schema tables))]
-    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName
+        schemas  (distinct schemas)]
+    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
+    ;; Schema-wide grant covers existing + future tables. Per-table grants
+    ;; are not emitted: workspace input shape is per-namespace, not per-table.
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [schema schemas]
           (.addBatch ^Statement stmt
                      ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
                                      (sql.u/quote-name :h2 :schema schema) qu)))
-        ;; Also grant on individual tables for more fine-grained access
-        (doseq [table tables]
-          (.addBatch ^Statement stmt
-                     ^String (format "GRANT SELECT ON %s.%s TO %s"
-                                     (sql.u/quote-name :h2 :schema (:schema table))
-                                     (sql.u/quote-name :h2 :table (:name table)) qu)))
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]

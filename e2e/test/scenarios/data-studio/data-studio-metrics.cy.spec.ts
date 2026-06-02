@@ -74,15 +74,15 @@ describe("scenarios > data studio > library > metrics", () => {
     });
 
     H.DataStudio.Metrics.aboutPageDescriptionSidebar().within(() => {
-      cy.findByText("Last edited by Bobby Tables").should("be.visible");
+      cy.findByText(/^Last updated/).should("be.visible");
 
+      cy.findByText("Source").should("be.visible");
       cy.findByText("Sample Database").should("be.visible");
-
       cy.findByText("Orders").should("be.visible");
-      cy.findByText("Source table").should("be.visible");
 
-      cy.findByText("Dependencies").should("be.visible");
-      cy.findByText("Dependents").should("be.visible");
+      cy.findByText("Relationships").should("be.visible");
+      cy.findByText("No dependencies").should("be.visible");
+      cy.findByText("No charts use this metric").should("be.visible");
     });
 
     cy.log("Ensure chart is visible");
@@ -255,7 +255,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .should("be.visible");
   });
 
-  it("should view metric in the metrics explorer view via more menu", () => {
+  it("should view metric in the metrics explorer view via the Explore button", () => {
     cy.log("Navigate to Data Studio Library");
     cy.visit("/data-studio/library");
 
@@ -269,8 +269,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");
 
-    cy.log("Verify View link opens in new tab");
-    H.DataStudio.Metrics.moreMenu().click();
+    cy.log("Verify the Explore button points to the metrics explorer");
     H.DataStudio.Metrics.exploreLink()
       .should("have.attr", "href")
       .and("match", /\/explore\?metricId=\d+/);
@@ -281,8 +280,12 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
+    // The library page lists items as they come back from /api/ee/library;
+    // on fetch (microtask resolution) the initial render can land before
+    // the metric we created in `createLibraryWithItems` has been indexed
+    // into the library response. Allow more time than the default 4s retry.
     H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
+      .findByText("Trusted Orders Metric", { timeout: 10000 })
       .click();
 
     cy.log("Verify metric is loaded");
@@ -425,8 +428,9 @@ describe("scenarios > data studio > library > metrics", () => {
       H.DataStudio.Metrics.cachingTab().click();
 
       cy.log("Change the setting and save");
-      cy.findByRole("radio", { name: /Use default/ }).should("be.checked");
-      cy.findByRole("radio", { name: /Duration/ }).click();
+      cy.findByTestId("cache-strategy-select").should("have.value", "Default");
+      cy.findByTestId("cache-strategy-select").click();
+      cy.findByRole("option", { name: /Duration/ }).click();
       cy.findByRole("button", { name: "Save" }).click();
       cy.findByRole("button", { name: /Saved/ }).should("exist");
 
@@ -437,7 +441,7 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.log("Navigate away and come back to verify the change is persisted");
       H.DataStudio.Metrics.overviewTab().click();
       H.DataStudio.Metrics.cachingTab().click();
-      cy.findByRole("radio", { name: /Duration/ }).should("be.checked");
+      cy.findByTestId("cache-strategy-select").should("have.value", "Duration");
     });
   });
 });

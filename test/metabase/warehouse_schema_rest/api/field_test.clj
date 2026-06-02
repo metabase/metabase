@@ -216,7 +216,7 @@
   (testing "PUT /api/field/:id"
     (testing "updating coercion strategies"
       (testing "Refingerprints field when updated"
-        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
             (sync/sync-database! (t2/select-one :model/Database :id (mt/id)))
             (let [field-id      (mt/id :t :f)
@@ -291,15 +291,12 @@
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
-
     (testing "Should return nothing for a field whose `has_field_values` is not `list`"
       (is (= {:values [], :field_id (mt/id :venues :id), :has_more_values false}
              (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :id))))))
-
     (testing "Sensitive fields do not have field values and should return empty"
       (is (= {:values [], :field_id (mt/id :users :password), :has_more_values false}
              (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :users :password))))))
-
     (testing "External remapping"
       (mt/with-column-remappings [venues.category_id categories.name]
         (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:has_field_values "list"}
@@ -358,14 +355,11 @@
         (is (= {:values [], :field_id true, :has_more_values false}
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))
-
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                                      {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
-
         (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"], :has_more_values false}
                (into {} (t2/select-one [:model/FieldValues :values :human_readable_values, :has_more_values] :field_id field-id))))
-
         (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
@@ -696,7 +690,6 @@
   (testing "Checking update of the fk_target_field_id along with an FK change"
     (mt/with-temp [:model/Field {field-id-1 :id} {:name "Field Test 1"}
                    :model/Field {field-id-2 :id} {:name "Field Test 2"}]
-
       (testing "before change"
         (is (= {:name               "Field Test 2"
                 :display_name       "Field Test 2"
@@ -769,7 +762,6 @@
         (testing "after API request"
           (is (= nil
                  (dimension-for-field field-id))))))
-
     (testing "Change from supported type to supported type will leave the dimension"
       (mt/with-temp [:model/Field {field-id :id} {:name      "Field Test"
                                                   :base_type "type/Integer"}]

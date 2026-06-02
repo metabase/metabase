@@ -5,7 +5,6 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
-
    [toucan2.core :as t2]))
 
 (deftest ^:parallel table-name-resolution-test

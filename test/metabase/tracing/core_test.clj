@@ -108,7 +108,6 @@
                                 (tracing/add-span-attrs! :tasks {:foo/k 1}))))
         (finally
           (tracing/shutdown-groups!)))))
-
   (testing "duplicate against with-span attrs throws (different value)"
     (tracing.tu/with-span-exporter [_exporter]
       (try
@@ -119,7 +118,6 @@
                                 (tracing/add-span-attrs! :tasks {:foo/k 2}))))
         (finally
           (tracing/shutdown-groups!)))))
-
   (testing "duplicate across two add-span-attrs! calls throws"
     (tracing.tu/with-span-exporter [_exporter]
       (try
@@ -131,7 +129,6 @@
                                 (tracing/add-span-attrs! :tasks {:foo/k "second"}))))
         (finally
           (tracing/shutdown-groups!)))))
-
   (testing "distinct keys across with-span and add-span-attrs! are allowed"
     (tracing.tu/with-span-exporter [exporter]
       (try
@@ -166,11 +163,11 @@
         (tracing/init-enabled-groups! "tasks" "INFO")
         (tracing/with-span :tasks "test.span" {:foo/id 42 :foo/seed "yes"}
           (tracing/add-span-attrs! :tasks {:foo/incremental true})
-          (tracing/add-span-attrs! :tasks {:foo/first-incremental-run false})
+          (tracing/add-span-attrs! :tasks {:foo/full-incremental-run false})
           (tracing/add-span-attrs! :tasks {})
           (tracing/add-span-attrs! :tasks nil))
         ;; clj-otel encodes namespaced keywords with `.` separator and `-` as `_`,
-        ;; e.g. :foo/first-incremental-run -> "foo.first_incremental_run".
+        ;; e.g. :foo/full-incremental-run -> "foo.full_incremental_run".
         ;; It also auto-adds default attrs (thread.*, code.*) on every span, so we filter to our prefix
         ;; before counting to detect any spurious contributions.
         (let [finished  (tracing.tu/finished-spans exporter)
@@ -182,7 +179,7 @@
           (is (= 42 (get our-attrs "foo.id")))
           (is (= "yes" (get our-attrs "foo.seed")))
           (is (true? (get our-attrs "foo.incremental")))
-          (is (false? (get our-attrs "foo.first_incremental_run"))))
+          (is (false? (get our-attrs "foo.full_incremental_run"))))
         (finally
           (tracing/shutdown-groups!))))))
 
@@ -302,7 +299,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "outermost with-span still clears MDC when no parent values exist"
     (try
       (tracing/init-enabled-groups! "all" "INFO")
@@ -329,7 +325,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "with-span skips pyroscope for nested spans (parent MDC already set)"
     (try
       (tracing/init-enabled-groups! "all" "INFO")
@@ -342,7 +337,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "rapid root span cycles don't throw or leak pyroscope state"
     (try
       (tracing/init-enabled-groups! "all" "INFO")

@@ -300,7 +300,6 @@
             (->> (get-in ftree* (conj path :children))
                  keys (sort-by (juxt #(get-in ftree* (conj path :children % :index)) identity))
                  (map (partial conj path :children))))
-
           (ftree-prewalk*
             [ftree* path]
             (reduce ftree-prewalk*
@@ -524,9 +523,9 @@
   (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
 
-(defmethod driver/substitute-native-parameters :mongo
-  [driver inner-query]
-  (mongo.params/substitute-native-parameters driver inner-query))
+(defmethod driver/substitute-native-parameters-in-stage-method :mongo
+  [driver metadata-providerable stage]
+  (mongo.params/substitute-native-parameters driver metadata-providerable stage))
 
 (defmethod driver/db-start-of-week :mongo
   [_]
@@ -737,13 +736,13 @@
              '[monger.credentials :as mcred])
     (import javax.net.ssl.SSLSocketFactory)
 
-  ;; The following forms help experimenting with the behaviour of Mongo
-  ;; servers with different configurations. They can be used to check if
-  ;; the environment has been set up correctly (or at least according to
-  ;; the expectations), as well as the exceptions thrown in various
-  ;; constellations.
+    ;; The following forms help experimenting with the behaviour of Mongo
+    ;; servers with different configurations. They can be used to check if
+    ;; the environment has been set up correctly (or at least according to
+    ;; the expectations), as well as the exceptions thrown in various
+    ;; constellations.
 
-  ;; Test connection to Mongo with client and server SSL authentication.
+    ;; Test connection to Mongo with client and server SSL authentication.
     (let [ssl-socket-factory
           (driver.u/ssl-socket-factory
            :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
@@ -761,7 +760,7 @@
                                          credentials)]
         (mg/get-db-names connection)))
 
-  ;; Test what happens if the client only support server authentication.
+    ;; Test what happens if the client only support server authentication.
     (let [server-auth-ssl-socket-factory
           (driver.u/ssl-socket-factory
            :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
@@ -778,8 +777,8 @@
                               credentials)]
         (mg/get-db-names server-auth-connection)))
 
-  ;; Test what happens if the client support only server authentication
-  ;; with well known (default) CAs.
+    ;; Test what happens if the client support only server authentication
+    ;; with well known (default) CAs.
     (let [unauthenticated-connection-options
           (mg/mongo-options {:ssl-enabled true
                              :ssl-invalid-host-name-allowed false

@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -37,7 +38,6 @@
 (defn- call-command [^GitCommand command]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote false}]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
-
     (try
       (.call command)
       (catch Exception e
@@ -69,10 +69,11 @@
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
         credentials-provider (when token (credentials-provider remote-url token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
-
     (try
-      (-> command
-          (.setCredentialsProvider credentials-provider)
+      (-> (doto command
+            ;; bound the network operation so a stalled connection can't hang the sync forever (GHY-3727)
+            (.setTimeout (int (setting/get :remote-sync-git-timeout-seconds)))
+            (.setCredentialsProvider credentials-provider))
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
@@ -88,13 +89,15 @@
 
   Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
   of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+  Prunes local refs that no longer exist on the remote so deleted branches are reflected locally.
 
   Throws ExceptionInfo if the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
   (when (some? git)
     (log/info "Fetching repository" {:repo (str git)})
-    (u/prog1 (call-remote-command (.fetch git) git-source))
-    (log/info "Successfully fetched repository")))
+    (u/prog1 (call-remote-command (.. git fetch (setRemoveDeletedRefs true))
+                                  git-source)
+      (log/info "Successfully fetched repository"))))
 
 (defn- repo-path [{:keys [^String remote-url ^String token]}]
   (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
@@ -226,7 +229,6 @@
         push-results (->> push-response
                           (map #(into [] (.getRemoteUpdates ^PushResult %)))
                           flatten)]
-
     (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
     push-response))
@@ -272,7 +274,6 @@
   (let [repo (.getRepository git)
         branch-ref (qualify-branch branch)
         parent-id (.resolve repo version)]
-
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
             builder (.builder index)
@@ -281,7 +282,6 @@
                               (comp (map :path)
                                     (remove str/blank?))
                               files)]
-
         ;; Add new/updated files to the index
         (doseq [{:keys [path content]} files
                 :when (not (str/blank? path))]
@@ -290,7 +290,6 @@
                         (.setFileMode FileMode/REGULAR_FILE)
                         (.setObjectId blob-id))]
             (.add builder entry)))
-
         ;; Copy existing tree entries that should be preserved:
         ;; - Outside managed directories AND not being overwritten by the write set
         ;; Files in managed dirs not in write-paths are dropped (stale file cleanup)
@@ -309,9 +308,7 @@
                                   (.setFileMode (.getFileMode tree-walk 0))
                                   (.setObjectId (.getObjectId tree-walk 0)))]
                       (.add builder entry))))))))
-
         (.finish builder)
-
         ;; Create commit
         (let [tree-id (.writeTree index inserter)
               commit-builder (doto (CommitBuilder.)
@@ -321,7 +318,6 @@
                                (.setMessage message))]
           (when parent-id
             (.setParentId commit-builder parent-id))
-
           (let [commit-id (.insert inserter commit-builder)]
             (.flush inserter)
             (doto (.updateRef repo branch-ref)
@@ -444,7 +440,9 @@
   (let [version (commit-sha source (:branch source))]
     (if version
       (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
-      (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
+      (throw (ex-info (str "Invalid branch: " (:branch source))
+                      {:error-type :missing-branch
+                       :branch (:branch source)})))))
 
 (defn- snapshot
   "Creates a snapshot, recovering from stale cache errors by re-cloning."
