@@ -74,7 +74,8 @@
         (semantic.tu/with-test-db! {:mode :mock-indexed}
           (semantic.tu/with-only-semantic-weights
             (let [not-top-10? #(or (nil? %) (< 10 %))]
-              (doseq [{:keys [name desc search-string search-native-query? expected-index?]}
+              (doseq [strategy [:hnsw :brute-force]
+                      {:keys [name desc search-string search-native-query? expected-index?]}
                       [{:name "Dog Training Guide"
                         :desc "contains"
                         :search-string "AVG(tricks)"
@@ -130,9 +131,10 @@
                         :search-string "Watching"
                         :search-native-query? true
                         :expected-index? zero?}]]
-                (testing (format "\n%s %s %s %s" name desc search-string search-native-query?)
+                (testing (format "\n[%s] %s %s %s %s" strategy name desc search-string search-native-query?)
                   (is (-> (semantic.tu/query-index {:search-string search-string
-                                                    :search-native-query search-native-query?})
+                                                    :search-native-query search-native-query?
+                                                    :vector-search-strategy strategy})
                           (index-of-name name)
                           expected-index?)))))))))))
 
@@ -211,40 +213,42 @@
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
         (semantic.tu/with-test-db! {:mode :mock-indexed}
-          (testing "Non-archived cards by specific creator"
-            (let [results (semantic.tu/query-index {:search-string "equine"
-                                                    :models ["card"]
-                                                    :archived? false
-                                                    :created-by [(mt/user->id :rasta)]})
-                  filtered-results (semantic.tu/filter-for-mock-embeddings results)]
-              (is (pos? (count filtered-results)))
-              (is (every? #(and (= "card" (:model %))
-                                (not (:archived %))
-                                (= (mt/user->id :rasta) (:creator_id %))) results))))
-          (testing "Archived dashboards by multiple creators"
-            (let [results (semantic.tu/query-index {:search-string "Antarctic wildlife"
-                                                    :models ["dashboard"]
-                                                    :archived? true
-                                                    :created-by [(mt/user->id :crowberto) (mt/user->id :rasta)]})
-                  filtered-results (semantic.tu/filter-for-mock-embeddings results)]
-              (is (pos? (count filtered-results)))
-              (is (every? #(and (= "dashboard" (:model %))
-                                (:archived %)
-                                (contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %))) results))))
-          (testing "Verified items with additional filters"
-            (let [results (semantic.tu/query-index {:search-string "marine mammal"
-                                                    :models ["dashboard"]
-                                                    :verified true
-                                                    :archived? false})]
-              (is (every? #(and (= "dashboard" (:model %))
-                                (:verified %)
-                                (not (:archived %))) results)))))))))
+          (doseq [strategy [:hnsw :brute-force]]
+            (let [q (fn [ctx] (semantic.tu/query-index (assoc ctx :vector-search-strategy strategy)))]
+              (testing (str "strategy = " strategy)
+                (testing "Non-archived cards by specific creator"
+                  (let [results (q {:search-string "equine"
+                                    :models ["card"]
+                                    :archived? false
+                                    :created-by [(mt/user->id :rasta)]})
+                        filtered-results (semantic.tu/filter-for-mock-embeddings results)]
+                    (is (pos? (count filtered-results)))
+                    (is (every? #(and (= "card" (:model %))
+                                      (not (:archived %))
+                                      (= (mt/user->id :rasta) (:creator_id %))) results))))
+                (testing "Archived dashboards by multiple creators"
+                  (let [results (q {:search-string "Antarctic wildlife"
+                                    :models ["dashboard"]
+                                    :archived? true
+                                    :created-by [(mt/user->id :crowberto) (mt/user->id :rasta)]})
+                        filtered-results (semantic.tu/filter-for-mock-embeddings results)]
+                    (is (pos? (count filtered-results)))
+                    (is (every? #(and (= "dashboard" (:model %))
+                                      (:archived %)
+                                      (contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %))) results))))
+                (testing "Verified items with additional filters"
+                  (let [results (q {:search-string "marine mammal"
+                                    :models ["dashboard"]
+                                    :verified true
+                                    :archived? false})]
+                    (is (every? #(and (= "dashboard" (:model %))
+                                      (:verified %)
+                                      (not (:archived %))) results))))))))))))
 
 (deftest permissions-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db! {:mode :mock-indexed}
       (let [monsters-table (t2/select-one-pk :model/Table :name "Monsters Table")
-            q (fn [model s] (map :name (semantic.tu/query-index {:search-string s, :models [model]})))
             all-users (perms-group/all-users)
             unrestrict-table (fn [table-id]
                                (data-perms/set-table-permission! all-users table-id :perms/create-queries :query-builder)
@@ -252,26 +256,32 @@
             restrict-table (fn [table-id]
                              (data-perms/set-table-permission! all-users table-id :perms/create-queries :no)
                              (data-perms/set-table-permission! all-users table-id :perms/view-data :blocked))]
-        (perms/revoke-collection-permissions! (perms-group/all-users) (t2/select-one :model/Collection :name "Cryptozoology"))
-        (restrict-table monsters-table)
-        (testing "admin"
-          (mt/with-test-user :crowberto
-            (testing "collection permissions"
-              (is (some #{"Loch Ness Stuff"} (q "dashboard" "prehistoric monsters")))
-              (is (some #{"Bigfoot Sightings"} (q "card" "spooky video evidence"))))
-            (testing "data permissions"
-              (is (some #{"Monsters Table"} (q "table" "monster facts"))))))
-        (testing "all-users"
-          (mt/with-test-user :rasta
-            (testing "collection permissions"
-              (is (not-any? #{"Loch Ness Stuff"} (q "dashboard" "prehistoric monsters")))
-              (is (not-any? #{"Bigfoot Sightings"} (q "card" "spooky video evidence"))))
-            (testing "data permissions"
-              (is (not-any? #{"Monsters Table"} (q "table" "monster facts"))))
-            (testing "give data permissions"
-              (unrestrict-table monsters-table)
-              (data-perms/disable-perms-cache
-               (is (some #{"Monsters Table"} (q "table" "monster facts")))))))))))
+        (doseq [strategy [:hnsw :brute-force]]
+          (let [q (fn [model s] (map :name (semantic.tu/query-index {:search-string s, :models [model]
+                                                                     :vector-search-strategy strategy})))]
+            ;; Re-establish the restricted baseline each iteration: the give-data-permissions block below
+            ;; unrestricts the table, which would otherwise leak into the next strategy's iteration.
+            (perms/revoke-collection-permissions! (perms-group/all-users) (t2/select-one :model/Collection :name "Cryptozoology"))
+            (restrict-table monsters-table)
+            (testing (str "strategy = " strategy)
+              (testing "admin"
+                (mt/with-test-user :crowberto
+                  (testing "collection permissions"
+                    (is (some #{"Loch Ness Stuff"} (q "dashboard" "prehistoric monsters")))
+                    (is (some #{"Bigfoot Sightings"} (q "card" "spooky video evidence"))))
+                  (testing "data permissions"
+                    (is (some #{"Monsters Table"} (q "table" "monster facts"))))))
+              (testing "all-users"
+                (mt/with-test-user :rasta
+                  (testing "collection permissions"
+                    (is (not-any? #{"Loch Ness Stuff"} (q "dashboard" "prehistoric monsters")))
+                    (is (not-any? #{"Bigfoot Sightings"} (q "card" "spooky video evidence"))))
+                  (testing "data permissions"
+                    (is (not-any? #{"Monsters Table"} (q "table" "monster facts"))))
+                  (testing "give data permissions"
+                    (unrestrict-table monsters-table)
+                    (data-perms/disable-perms-cache
+                     (is (some #{"Monsters Table"} (q "table" "monster facts"))))))))))))))
 
 (deftest basic-batched-query-test
   (testing "Small-batch reindexing"
