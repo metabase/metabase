@@ -7,7 +7,12 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
@@ -37,6 +42,7 @@ const ROOT_COLLECTION = createMockCollection({ id: "root" });
 interface SetupOpts {
   card?: Card;
   height?: number;
+  availableHeight?: number;
   isActive: boolean;
   readOnly?: boolean;
 }
@@ -44,6 +50,7 @@ interface SetupOpts {
 const setup = async ({
   card = TEST_NATIVE_CARD,
   height = 300,
+  availableHeight = 600,
   isActive,
   readOnly = false,
 }: SetupOpts) => {
@@ -68,6 +75,7 @@ const setup = async ({
     <DatasetQueryEditor
       isActive={isActive}
       height={height}
+      availableHeight={availableHeight}
       query={query}
       question={question}
       readOnly={readOnly}
@@ -76,6 +84,9 @@ const setup = async ({
       isNativeEditorOpen
     />,
   );
+
+  // required for preventing memory leak
+  await waitForLoaderToBeRemoved();
 
   return { query, question, rerender };
 };
@@ -144,6 +155,7 @@ describe("DatasetQueryEditor", () => {
       <DatasetQueryEditor
         isActive={false}
         height={0}
+        availableHeight={600}
         query={query}
         question={question}
         readOnly={false}
@@ -152,8 +164,10 @@ describe("DatasetQueryEditor", () => {
       />,
     );
 
-    expect(
-      screen.queryByTestId("native-query-editor-action-buttons"),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("native-query-editor-action-buttons"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

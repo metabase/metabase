@@ -371,7 +371,7 @@ You should:
 
 This ensures you have full context about referenced entities before making changes and maintains consistency in how entities are referenced throughout the conversation.
 
-{% include "metabot/prompts/shared/field-references.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}
 
 {% if tool_instructions %}
 # Tool-Specific Instructions

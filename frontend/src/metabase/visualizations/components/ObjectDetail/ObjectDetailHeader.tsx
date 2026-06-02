@@ -1,13 +1,11 @@
+import cx from "classnames";
+
 import { Button } from "metabase/common/components/Button";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import CS from "metabase/css/core/index.css";
-import { Flex } from "metabase/ui/components";
+import { Box, Flex, Text } from "metabase/ui";
 
-import {
-  CloseButton,
-  ObjectDetailHeaderWrapper,
-  ObjectIdLabel,
-} from "./ObjectDetailHeader.styled";
+import S from "./ObjectDetailHeader.module.css";
 import type { ObjectId } from "./types";
 
 export interface ObjectDetailHeaderProps {
@@ -22,9 +20,9 @@ export interface ObjectDetailHeaderProps {
   canZoomPreviousRow: boolean;
   canZoomNextRow?: boolean;
   showControls?: boolean;
-  viewPreviousObjectDetail: () => void;
-  viewNextObjectDetail: () => void;
-  closeObjectDetail: () => void;
+  viewPreviousObjectDetail?: () => void;
+  viewNextObjectDetail?: () => void;
+  closeObjectDetail?: () => void;
 }
 
 export function ObjectDetailHeader({
@@ -40,11 +38,16 @@ export function ObjectDetailHeader({
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
-    <ObjectDetailHeaderWrapper className={CS.Grid}>
+    <Box className={cx(CS.Grid, S.headerWrapper)}>
       <div className={CS.GridCell}>
         <h2 className={CS.p3}>
           {objectName}
-          {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
+          {objectId !== null && (
+            <Text component="span" c="text-secondary" ml="sm">
+              {" "}
+              {objectId}
+            </Text>
+          )}
         </h2>
       </div>
 
@@ -81,7 +84,7 @@ export function ObjectDetailHeader({
             />
           )}
 
-          <CloseButton>
+          <Flex ml="md" pl="md" className={S.closeButton}>
             <Button
               data-testid="object-detail-close-button"
               onlyIcon
@@ -89,9 +92,9 @@ export function ObjectDetailHeader({
               onClick={closeObjectDetail}
               icon="close"
             />
-          </CloseButton>
+          </Flex>
         </Flex>
       )}
-    </ObjectDetailHeaderWrapper>
+    </Box>
   );
 }

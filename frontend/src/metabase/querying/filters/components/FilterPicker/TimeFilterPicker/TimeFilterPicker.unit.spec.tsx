@@ -1,7 +1,7 @@
 import _userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
@@ -94,6 +94,12 @@ async function setOperator(operator: string) {
   await userEvent.click(screen.getByLabelText("Filter operator"));
   await userEvent.click(
     await screen.findByRole("menuitem", { name: operator }),
+  );
+  // Selecting an operator closes the Mantine Popover. Wait for the menu to be
+  // gone so the close transition settles within the test instead of leaking
+  // an act warning.
+  await waitFor(() =>
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument(),
   );
 }
 

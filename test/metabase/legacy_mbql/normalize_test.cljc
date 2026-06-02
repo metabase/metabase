@@ -41,28 +41,28 @@
 (deftest ^:parallel normalize-test-3
   (testing "METRICS shouldn't get normalized in some kind of wacky way"
     (is (= {:aggregation [[:+ [:metric 10] 1]]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:aggregation ["+" ["METRIC" 10] 1]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:aggregation ["+" ["METRIC" 10] 1]})))))
 
 ;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
 (deftest ^:parallel normalize-measure-test
   (testing "MEASURES shouldn't get normalized in some kind of wacky way"
     (is (= {:aggregation [[:+ [:measure 10] 1]]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:aggregation ["+" ["MEASURE" 10] 1]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:aggregation ["+" ["MEASURE" 10] 1]})))))
 
 (deftest ^:parallel normalize-test-4
   (testing "Nor should SEGMENTS"
     (is (= {:filter [:= [:+ [:segment 10] 1] 10]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:filter ["=" ["+" ["SEGMENT" 10] 1] 10]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:filter ["=" ["+" ["SEGMENT" 10] 1] 10]})))))
 
 (deftest ^:parallel normalize-test-5
   (testing "field literals should be exempt too"
     (is (= {:order-by [[:desc [:field "SALES_TAX" {:base-type :type/Number}]]]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]})))))
 
 (deftest ^:parallel normalize-test-6
   (testing "... but they should be converted to strings if passed in as a KW for some reason"
     (is (= {:order-by [[:desc [:field "SALES/TAX" {:base-type :type/Number}]]]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]})))))
 
 (deftest ^:parallel normalize-test-7
   (testing "modern :field clauses should get normalized"

@@ -2,7 +2,7 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
 import { databaseApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { combineReducers } from "metabase/redux";
 import { createDatabase } from "metabase/redux/databases";
 import { updateMetadata } from "metabase/redux/metadata-typed";
@@ -23,7 +23,7 @@ const DELETE_DATABASE_FAILED = createAction<{
 
 export const updateDatabase = function (database: DatabaseData) {
   return async function (dispatch: Dispatch) {
-    const result = await entityCompatibleQuery(
+    const result = await runRtkEndpoint(
       database,
       dispatch,
       databaseApi.endpoints.updateDatabase,
@@ -48,7 +48,7 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
   return async function (dispatch: Dispatch) {
     try {
       dispatch(DELETE_DATABASE_STARTED({ databaseId }));
-      await entityCompatibleQuery(
+      await runRtkEndpoint(
         databaseId,
         dispatch,
         databaseApi.endpoints.deleteDatabase,

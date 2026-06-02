@@ -354,23 +354,28 @@
                  (m/mapply email/send-message! params)
                  (@inbox recipient)))))
         (testing "it does not wrap long, non-ASCII filenames"
-          (with-redefs [email/send-email! mock-send-email!]
-            (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
-                  csv-file                     (temp-csv basename csv-contents)
-                  params-with-problematic-file (-> params
-                                                   (assoc-in [:message 1 :file-name] (str basename ".csv"))
-                                                   (assoc-in [:message 1 :content] csv-file))]
-              ;; Bad string (ignore the linebreak):
-              ;; Content-Disposition: attachment; filename="=?UTF-8?Q?this-is-quite-long-and-ha?= =?UTF-8?Q?s-non-
-              ;; =C3=82\"; filename*1=\"=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
-              ;;           ^-- this is the problem
-              ;; Acceptable string (again, ignore the linebreak):
-              ;; Content-Disposition: attachment; filename= "=?UTF-8?Q?this-is-quite-long-and-ha?=
-              ;; =?UTF-8?Q?s-non-=C3=82=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
-
-              (is (re-find
-                   #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
-                   (m/mapply email/send-message! params-with-problematic-file))))))))))
+          ;; Capture the rendered message via the `send-email!` redef rather than the return value of
+          ;; `send-message!` — `send-message-or-throw!` sends each recipient batch for its side effect and does not
+          ;; return the message.
+          (let [sent (atom nil)]
+            (with-redefs [email/send-email! (fn [credentials email-details]
+                                              (reset! sent (mock-send-email! credentials email-details)))]
+              (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
+                    csv-file                     (temp-csv basename csv-contents)
+                    params-with-problematic-file (-> params
+                                                     (assoc-in [:message 1 :file-name] (str basename ".csv"))
+                                                     (assoc-in [:message 1 :content] csv-file))]
+                ;; Bad string (ignore the linebreak):
+                ;; Content-Disposition: attachment; filename="=?UTF-8?Q?this-is-quite-long-and-ha?= =?UTF-8?Q?s-non-
+                ;; =C3=82\"; filename*1=\"=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
+                ;;           ^-- this is the problem
+                ;; Acceptable string (again, ignore the linebreak):
+                ;; Content-Disposition: attachment; filename= "=?UTF-8?Q?this-is-quite-long-and-ha?=
+                ;; =?UTF-8?Q?s-non-=C3=82=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
+                (m/mapply email/send-message! params-with-problematic-file)
+                (is (re-find
+                     #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
+                     @sent))))))))))
 
 (deftest send-message!-cloud-test
   (premium-features.test-util/with-premium-features [:cloud-custom-smtp]
@@ -486,6 +491,48 @@
                               :done?       some?
                               :timeout-ms  200
                               :interval-ms 10}))))))))
+
+(deftest ^:parallel partition-recipients-test
+  (let [recipients ["1@x.com" "2@x.com" "3@x.com" "4@x.com" "5@x.com"]]
+    (testing "splits into consecutive batches of at most max-per-message, keeping the trailing short batch"
+      (is (= [["1@x.com" "2@x.com"] ["3@x.com" "4@x.com"] ["5@x.com"]]
+             (map vec (email/partition-recipients recipients 2)))))
+    (testing "fewer recipients than the cap => a single batch"
+      (is (= [recipients] (map vec (email/partition-recipients recipients 50)))))
+    (testing "nil or non-positive max-per-message => no splitting"
+      (is (= [recipients] (email/partition-recipients recipients nil)))
+      (is (= [recipients] (email/partition-recipients recipients 0)))
+      (is (= [recipients] (email/partition-recipients recipients -3))))
+    (testing "empty recipients => no batch, so no message is produced"
+      (is (= [] (email/partition-recipients [] 50)))
+      (is (= [] (email/partition-recipients nil 50))))))
+
+(deftest send-message-or-throw!-splits-large-recipient-lists-test
+  (let [sent (atom [])]
+    (with-redefs [email/send-email! (fn [_ email-details]
+                                      (swap! sent conj (or (:to email-details) (:bcc email-details))))]
+      (tu/with-temporary-setting-values [email-smtp-host                   "fake_smtp_host"
+                                         email-smtp-port                   587
+                                         email-max-recipients-per-message  2]
+        (let [recipients (mapv #(str % "@metabase.com") (range 5))]
+          (testing "a 5-recipient email is split into 3 messages of at most 2 recipients each"
+            (reset! sent [])
+            (email/send-message-or-throw! {:subject "Job failed" :recipients recipients
+                                           :message-type :text :message "uh oh" :bcc? true})
+            (is (= 3 (count @sent)) "sends one message per batch")
+            (is (every? #(<= (count %) 2) @sent) "no message exceeds the cap")
+            (is (= recipients (vec (mapcat identity @sent))) "every recipient is covered exactly once, in order")))))
+    (testing "with the cap unset, all recipients go in a single message (unchanged behavior)"
+      (with-redefs [email/send-email! (fn [_ email-details]
+                                        (swap! sent conj (or (:to email-details) (:bcc email-details))))]
+        (tu/with-temporary-setting-values [email-smtp-host                   "fake_smtp_host"
+                                           email-smtp-port                   587
+                                           email-max-recipients-per-message  nil]
+          (reset! sent [])
+          (email/send-message-or-throw! {:subject "Job failed" :recipients ["a@x.com" "b@x.com" "c@x.com"]
+                                         :message-type :text :message "uh oh" :bcc? true})
+          (is (= 1 (count @sent)))
+          (is (= 3 (count (first @sent)))))))))
 
 (def ^:private mb-to-smtp-override-settings
   {:email-smtp-host-override     :host

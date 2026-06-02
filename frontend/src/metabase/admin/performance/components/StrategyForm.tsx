@@ -12,7 +12,6 @@ import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
   FormProvider,
-  FormRadioGroup,
   FormSubmitButton,
   FormTextInput,
   useFormContext,
@@ -24,12 +23,13 @@ import {
   Box,
   Button,
   FixedSizeIcon,
+  Flex,
   Group,
   Icon,
-  Radio,
+  Loader,
+  Select,
   Stack,
   Text,
-  Title,
   Tooltip,
 } from "metabase/ui";
 import type {
@@ -47,16 +47,32 @@ import { useIsFormPending } from "../hooks/useIsFormPending";
 import { isModelWithClearableCache } from "../types";
 import { getDefaultValueForField, getLabelString } from "../utils";
 
-import Styles from "./PerformanceApp.module.css";
-import {
-  FormWrapper,
-  LoaderInButton,
-  StyledFormButtonsGroup,
-} from "./StrategyForm.styled";
+import PerformanceAppStyles from "./PerformanceApp.module.css";
+import S from "./StrategyForm.module.css";
 
 interface ButtonLabels {
   save: string;
   discard: string;
+}
+
+export type StrategyFormLayout = "default" | "sidebar" | "modal";
+
+// Module-level so initialValues stay reference-stable across renders.
+const ROOT_DEFAULT_STRATEGY: CacheStrategy = { type: "nocache" };
+const INHERIT_DEFAULT_STRATEGY: CacheStrategy = { type: "inherit" };
+
+interface StrategyFormProps {
+  targetId: number | null;
+  targetModel: CacheableModel;
+  targetName: string;
+  setIsDirty: (isDirty: boolean) => void;
+  saveStrategy: (values: CacheStrategy) => Promise<void>;
+  savedStrategy?: CacheStrategy;
+  shouldAllowInvalidation?: boolean;
+  shouldShowName?: boolean;
+  onReset?: () => void;
+  buttonLabels?: ButtonLabels;
+  layout?: StrategyFormLayout;
 }
 
 export const StrategyForm = ({
@@ -69,37 +85,19 @@ export const StrategyForm = ({
   shouldAllowInvalidation = false,
   shouldShowName = true,
   onReset,
-  isInSidebar = false,
-  classNames,
-  buttonLabels = isInSidebar
+  layout = "default",
+  buttonLabels = layout === "default"
     ? {
-        save: t`Save`,
-        discard: t`Cancel`,
-      }
-    : {
         save: t`Save changes`,
         discard: t`Discard changes`,
+      }
+    : {
+        save: t`Save`,
+        discard: t`Cancel`,
       },
-}: {
-  targetId: number | null;
-  targetModel: CacheableModel;
-  targetName: string;
-  setIsDirty: (isDirty: boolean) => void;
-  saveStrategy: (values: CacheStrategy) => Promise<void>;
-  savedStrategy?: CacheStrategy;
-  shouldAllowInvalidation?: boolean;
-  shouldShowName?: boolean;
-  onReset?: () => void;
-  buttonLabels?: ButtonLabels;
-  isInSidebar?: boolean;
-  classNames?: { formBox?: string };
-}) => {
-  const defaultStrategy: CacheStrategy = useMemo(
-    () => ({
-      type: targetId === rootId ? "nocache" : "inherit",
-    }),
-    [targetId],
-  );
+}: StrategyFormProps) => {
+  const defaultStrategy =
+    targetId === rootId ? ROOT_DEFAULT_STRATEGY : INHERIT_DEFAULT_STRATEGY;
 
   const initialValues = savedStrategy ?? defaultStrategy;
 
@@ -120,9 +118,9 @@ export const StrategyForm = ({
         shouldAllowInvalidation={shouldAllowInvalidation}
         shouldShowName={shouldShowName}
         buttonLabels={buttonLabels}
-        isInSidebar={isInSidebar}
+        layout={layout}
         strategyType={initialValues.type}
-        classNames={classNames}
+        onDiscard={onReset}
       />
     </FormProvider>
   );
@@ -131,8 +129,8 @@ export const StrategyForm = ({
 /** Don't count the addition/deletion of a default value as a reason to consider the form dirty */
 const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
   const fieldNames = [...Object.keys(values), ...Object.keys(initialValues)];
-  const defaultValues = _.object(
-    _.map(fieldNames, (fieldName) => [
+  const defaultValues = Object.fromEntries(
+    fieldNames.map((fieldName) => [
       fieldName,
       getDefaultValueForField(values.type, fieldName),
     ]),
@@ -140,17 +138,15 @@ const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
   const initialValuesWithDefaults = { ...defaultValues, ...initialValues };
   const valuesWithDefaults = { ...defaultValues, ...values };
   // If the default value is a number and the value is a string, coerce the value to a number
-  const coercedValuesWithDefaults = _.chain(valuesWithDefaults)
-    .pairs()
-    .map(([key, value]) => [
+  const coercedValuesWithDefaults = Object.fromEntries(
+    Object.entries(valuesWithDefaults).map(([key, value]) => [
       key,
       typeof getDefaultValueForField(values.type, key) === "number" &&
       typeof value === "string"
         ? Number(value)
         : value,
-    ])
-    .object()
-    .value();
+    ]),
+  );
   return !_.isEqual(initialValuesWithDefaults, coercedValuesWithDefaults);
 };
 
@@ -162,8 +158,8 @@ const StrategyFormBody = ({
   shouldAllowInvalidation,
   shouldShowName = true,
   buttonLabels,
-  isInSidebar,
-  classNames,
+  layout,
+  onDiscard,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -173,8 +169,8 @@ const StrategyFormBody = ({
   shouldAllowInvalidation: boolean;
   shouldShowName?: boolean;
   buttonLabels: ButtonLabels;
-  isInSidebar?: boolean;
-  classNames?: { formBox?: string };
+  layout: StrategyFormLayout;
+  onDiscard?: () => void;
 }) => {
   const { values, initialValues, setFieldValue } =
     useFormikContext<CacheStrategy>();
@@ -219,29 +215,32 @@ const StrategyFormBody = ({
   }, [values, setFieldValue, setStatus]);
 
   return (
-    <FormWrapper>
+    <Flex direction="column" h="100%" mih={0}>
       <Form
         display="flex"
-        style={{
-          overflow: isInSidebar ? undefined : "auto",
-          flexDirection: "column",
-          flexGrow: 1,
-        }}
+        className={cx(S.form, { [S.formFixedHeight]: layout !== "default" })}
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
+        {layout === "modal" && (
+          <Box pt="md">
+            <StrategySelectorHeading headingId={headingId} />
+          </Box>
+        )}
         <Box
-          className={cx(Styles.FormBox, classNames?.formBox, {
-            [Styles.FormBoxSidebar]: isInSidebar,
+          className={cx({
+            [PerformanceAppStyles.FormBox]: layout !== "modal",
+            [PerformanceAppStyles.FormBoxSidebar]: layout === "sidebar",
+            [S.modalBody]: layout === "modal",
           })}
         >
           {shouldShowName && (
-            <Box lh="1rem" pt="md" color="text-secondary">
+            <Box lh="1rem" pt="md" c="text-secondary">
               <Group gap="sm">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" c="inherit" />
                 )}
-                <Text fw="bold" py="1rem">
+                <Text fw="bold" py="md">
                   {targetName}
                 </Text>
               </Group>
@@ -252,55 +251,20 @@ const StrategyFormBody = ({
               targetId={targetId}
               model={targetModel}
               headingId={headingId}
+              showHeading={layout !== "modal"}
             />
-            {selectedStrategyType === "ttl" && (
-              <>
-                <Field
-                  title={t`Minimum query duration`}
-                  subtitle={
-                    <Text size="sm">
-                      {t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
-                    </Text>
-                  }
-                >
-                  <PositiveNumberInput
-                    strategyType="ttl"
-                    name="min_duration_seconds"
-                  />
-                </Field>
-                <Field
-                  title={t`Multiplier`}
-                  subtitle={<MultiplierFieldSubtitle />}
-                >
-                  <PositiveNumberInput strategyType="ttl" name="multiplier" />
-                </Field>
-              </>
-            )}
+            {selectedStrategyType === "ttl" && <TtlStrategyFormFields />}
             {selectedStrategyType === "duration" && (
-              <>
-                <Field title={t`Cache results for this many hours`}>
-                  <PositiveNumberInput
-                    strategyType="duration"
-                    name="duration"
-                  />
-                </Field>
-                <input type="hidden" name="unit" />
-                {["question", "dashboard"].includes(targetModel) && (
-                  <PLUGIN_CACHING.PreemptiveCachingSwitch
-                    handleSwitchToggle={handleSwitchToggle}
-                  />
-                )}
-              </>
+              <DurationStrategyFormFields
+                targetModel={targetModel}
+                onSwitchToggle={handleSwitchToggle}
+              />
             )}
             {selectedStrategyType === "schedule" && (
-              <>
-                <ScheduleStrategyFormFields />
-                {["question", "dashboard"].includes(targetModel) && (
-                  <PLUGIN_CACHING.PreemptiveCachingSwitch
-                    handleSwitchToggle={handleSwitchToggle}
-                  />
-                )}
-              </>
+              <ScheduleStrategyFormFields
+                targetModel={targetModel}
+                onSwitchToggle={handleSwitchToggle}
+              />
             )}
           </Stack>
         </Box>
@@ -310,25 +274,38 @@ const StrategyFormBody = ({
           targetName={targetName}
           shouldAllowInvalidation={shouldAllowInvalidation}
           buttonLabels={buttonLabels}
-          isInSidebar={isInSidebar}
+          layout={layout}
           dirty={dirty}
+          onDiscard={onDiscard}
         />
       </Form>
-    </FormWrapper>
+    </Flex>
   );
 };
 
 const FormButtonsGroup = ({
   children,
-  isInSidebar,
+  layout,
 }: {
   children: ReactNode;
-  isInSidebar?: boolean;
+  layout: StrategyFormLayout;
 }) => {
   return (
-    <StyledFormButtonsGroup isInSidebar={isInSidebar}>
+    <Group
+      py="md"
+      gap="md"
+      justify={layout === "sidebar" ? "flex-end" : undefined}
+      px={layout === "sidebar" ? "md" : "2.5rem"}
+      pb={layout === "sidebar" ? 0 : undefined}
+      bg={layout === "sidebar" ? undefined : "background-primary"}
+      style={
+        layout === "sidebar"
+          ? undefined
+          : { borderTop: "1px solid var(--mb-color-border)" }
+      }
+    >
       {children}
-    </StyledFormButtonsGroup>
+    </Group>
   );
 };
 
@@ -338,8 +315,9 @@ type FormButtonsProps = {
   shouldAllowInvalidation: boolean;
   targetName?: string;
   buttonLabels: ButtonLabels;
-  isInSidebar?: boolean;
+  layout: StrategyFormLayout;
   dirty: boolean;
+  onDiscard?: () => void;
 };
 
 const FormButtons = ({
@@ -348,38 +326,69 @@ const FormButtons = ({
   shouldAllowInvalidation,
   targetName,
   buttonLabels,
-  isInSidebar,
+  layout,
   dirty,
+  onDiscard,
 }: FormButtonsProps) => {
   if (targetId === rootId) {
     shouldAllowInvalidation = false;
   }
 
+  const canInvalidate =
+    shouldAllowInvalidation &&
+    isModelWithClearableCache(targetModel) &&
+    targetId !== null &&
+    !!targetName;
+
   const { isFormPending, wasFormRecentlyPending } = useIsFormPending();
+
+  if (layout === "modal") {
+    return (
+      <Group
+        justify={canInvalidate ? "space-between" : "flex-end"}
+        wrap="nowrap"
+        mt="xl"
+        gap="md"
+      >
+        {canInvalidate && (
+          <PLUGIN_CACHING.InvalidateNowButton
+            targetId={targetId}
+            targetModel={targetModel}
+            targetName={targetName}
+          />
+        )}
+        <Group gap="md" wrap="nowrap">
+          <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
+          <FormSubmitButton
+            h="2.5rem"
+            label={buttonLabels.save}
+            variant="filled"
+            data-testid="strategy-form-submit-button"
+          />
+        </Group>
+      </Group>
+    );
+  }
 
   const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
 
   if (isSavingPossible) {
     return (
-      <FormButtonsGroup isInSidebar={isInSidebar}>
+      <FormButtonsGroup layout={layout}>
         <SaveAndDiscardButtons
           dirty={dirty}
           isFormPending={isFormPending}
           buttonLabels={buttonLabels}
-          isInSidebar={isInSidebar}
+          layout={layout}
+          onDiscard={onDiscard}
         />
       </FormButtonsGroup>
     );
   }
 
-  if (
-    shouldAllowInvalidation &&
-    isModelWithClearableCache(targetModel) &&
-    targetId &&
-    targetName
-  ) {
+  if (canInvalidate) {
     return (
-      <FormButtonsGroup isInSidebar={isInSidebar}>
+      <FormButtonsGroup layout={layout}>
         <PLUGIN_CACHING.InvalidateNowButton
           targetId={targetId}
           targetModel={targetModel}
@@ -392,7 +401,13 @@ const FormButtons = ({
   return null;
 };
 
-const ScheduleStrategyFormFields = () => {
+const ScheduleStrategyFormFields = ({
+  targetModel,
+  onSwitchToggle,
+}: {
+  targetModel: CacheableModel;
+  onSwitchToggle: () => void;
+}) => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
   const initialSchedule = cronToScheduleSettings(scheduleInCronFormat);
@@ -405,6 +420,8 @@ const ScheduleStrategyFormFields = () => {
     },
     [setFieldValue],
   );
+
+  // A malformed cron can't drive the Schedule UI, so show only the error.
   if (!initialSchedule) {
     return (
       <LoadingAndErrorWrapper
@@ -415,14 +432,32 @@ const ScheduleStrategyFormFields = () => {
 
   return (
     <>
-      <Schedule
-        cronString={scheduleInCronFormat || defaultCronSchedule}
-        scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
-        onScheduleChange={onScheduleChange}
-        verb={c("A verb in the imperative mood").t`Invalidate`}
-        timezone={timezone}
-        aria-label={t`Describe how often the cache should be invalidated`}
-      />
+      {/* Not a StrategyFormField: its <label> would redirect title/subtitle
+          clicks to the first Select inside Schedule. */}
+      <Stack gap="sm">
+        <Stack gap="xs">
+          <Text fw="bold" fz="md" lh="1.25rem">
+            {t`Cache invalidation schedule`}
+          </Text>
+          <Text fz="md" lh="1.25rem" c="text-secondary">
+            {t`How often to invalidate cached results.`}
+          </Text>
+        </Stack>
+        <Schedule
+          cronString={scheduleInCronFormat || defaultCronSchedule}
+          scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+          onScheduleChange={onScheduleChange}
+          verb={c("A verb in the imperative mood").t`Invalidate`}
+          layout="horizontal"
+          timezone={timezone}
+          aria-label={t`Describe how often the cache should be invalidated`}
+        />
+      </Stack>
+      {["question", "dashboard"].includes(targetModel) && (
+        <PLUGIN_CACHING.PreemptiveCachingSwitch
+          handleSwitchToggle={onSwitchToggle}
+        />
+      )}
     </>
   );
 };
@@ -431,106 +466,186 @@ const SaveAndDiscardButtons = ({
   dirty,
   isFormPending,
   buttonLabels,
-  isInSidebar,
+  layout,
+  onDiscard,
 }: {
   dirty: boolean;
   isFormPending: boolean;
   buttonLabels: ButtonLabels;
-  isInSidebar?: boolean;
+  layout: StrategyFormLayout;
+  onDiscard?: () => void;
 }) => {
   return (
     <>
-      <Button disabled={!dirty || isFormPending} type="reset">
-        {buttonLabels.discard}
-      </Button>
+      {layout === "sidebar" ? (
+        // Sidebar Cancel closes the sidesheet; consumer wraps the dirty-confirm.
+        <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
+      ) : (
+        <Button disabled={!dirty || isFormPending} type="reset">
+          {buttonLabels.discard}
+        </Button>
+      )}
       <FormSubmitButton
-        miw={isInSidebar ? undefined : "10rem"}
-        h="40px"
+        miw={layout === "sidebar" ? undefined : "10rem"}
+        h="2.5rem"
         label={buttonLabels.save}
         successLabel={
           <Group gap="xs">
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<LoaderInButton size="1rem" />}
+        activeLabel={<Loader size="1rem" pos="relative" top={1} />}
         variant="filled"
         data-testid="strategy-form-submit-button"
-        className="strategy-form-submit-button"
       />
     </>
   );
 };
 
+export const StrategySelectorHeading = ({
+  headingId,
+}: {
+  headingId: string;
+}) => (
+  <Stack gap="xs">
+    <Text lh="1.25rem" fw="bold" fz="md" id={headingId}>
+      {t`Select the cache invalidation policy`}
+    </Text>
+    <Text lh="1.25rem" fw="normal" fz="md" c="text-secondary">
+      {t`This determines how long cached results will be stored.`}
+    </Text>
+  </Stack>
+);
+
 const StrategySelector = ({
   targetId,
   model,
   headingId,
+  showHeading = true,
 }: {
   targetId: number | null;
   model?: CacheableModel;
   headingId: string;
+  showHeading?: boolean;
 }) => {
   const { strategies } = PLUGIN_CACHING;
+  const { values, setFieldValue } = useFormikContext<CacheStrategy>();
 
-  const { values } = useFormikContext<CacheStrategy>();
+  const availableStrategies = useMemo(
+    () => (targetId === rootId ? _.omit(strategies, "inherit") : strategies),
+    [targetId, strategies],
+  );
 
-  const availableStrategies = useMemo(() => {
-    return targetId === rootId ? _.omit(strategies, "inherit") : strategies;
-  }, [targetId, strategies]);
+  const data = useMemo(
+    () =>
+      Object.entries(availableStrategies).map(([name, option]) => ({
+        value: name,
+        label: getLabelString(option.label, model) ?? name,
+      })),
+    [availableStrategies, model],
+  );
 
   return (
-    <section>
-      <FormRadioGroup
-        label={
-          <Stack gap="xs">
-            <Text lh="1rem" color="text-secondary" id={headingId}>
-              {t`Select the cache invalidation policy`}
-            </Text>
-            <Text lh="1rem" fw="normal" size="sm" color="text-secondary">
-              {t`This determines how long cached results will be stored.`}
-            </Text>
-          </Stack>
-        }
-        name="type"
-      >
-        <Stack mt="md" gap="md">
-          {_.map(availableStrategies, (option, name) => {
-            const labelString = getLabelString(option.label, model);
-            /** Special colon sometimes used in Asian languages */
-            const wideColon = "：";
-            const colon = labelString.includes(wideColon) ? wideColon : ":";
-            const optionLabelParts = labelString.split(colon);
-            const optionLabelFormatted = (
-              <>
-                <strong>{optionLabelParts[0]}</strong>
-                {optionLabelParts[1] ? (
-                  <>
-                    {colon} {optionLabelParts[1]}
-                  </>
-                ) : null}
-              </>
-            );
-            return (
-              <Radio
-                value={name}
-                key={name}
-                label={optionLabelFormatted}
-                autoFocus={values.type === name}
-                role="radio"
-                styles={{
-                  label: {
-                    paddingLeft: undefined,
-                    paddingInlineStart: ".5rem",
-                  },
-                }}
-              />
-            );
-          })}
-        </Stack>
-      </FormRadioGroup>
+    <section aria-labelledby={headingId}>
+      {showHeading && <StrategySelectorHeading headingId={headingId} />}
+      <Select
+        mt={showHeading ? "xl" : 0}
+        data={data}
+        value={values.type}
+        onChange={(value) => value && setFieldValue("type", value)}
+        allowDeselect={false}
+        aria-labelledby={headingId}
+        data-testid="cache-strategy-select"
+        classNames={{ option: S.option }}
+        renderOption={({ option }) => {
+          const strategy = availableStrategies[option.value];
+          if (!strategy) {
+            return option.label;
+          }
+          return (
+            <Stack gap="xs">
+              <Text fw="bold">{getLabelString(strategy.label, model)}</Text>
+              {strategy.description && (
+                <Text size="sm" c="text-secondary">
+                  {getLabelString(strategy.description, model)}
+                </Text>
+              )}
+            </Stack>
+          );
+        }}
+      />
     </section>
   );
 };
+
+const TtlStrategyFormFields = () => (
+  <>
+    <StrategyFormField
+      title={t`Minimum query duration`}
+      subtitle={
+        <Text fz="md" lh="1.25rem" c="text-secondary">
+          {t`Skip caching for queries that run faster than this.`}
+        </Text>
+      }
+      unit={c("Unit suffix shown after the minimum query duration input")
+        .t`seconds`}
+    >
+      <PositiveNumberInput strategyType="ttl" name="min_duration_seconds" />
+    </StrategyFormField>
+    <StrategyFormField
+      title={t`Multiplier`}
+      subtitle={<MultiplierFieldSubtitle />}
+      unit={c("Unit suffix shown after the cache multiplier input").t`times`}
+    >
+      <PositiveNumberInput strategyType="ttl" name="multiplier" />
+    </StrategyFormField>
+  </>
+);
+
+const MultiplierFieldSubtitle = () => (
+  <Text fz="md" lh="1.25rem" c="text-secondary">
+    {t`Cached results last this many times the query's average run time.`}{" "}
+    <Tooltip
+      multiline
+      inline={true}
+      position="bottom"
+      label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
+      maw="20rem"
+    >
+      <Text tabIndex={0} fz="md" lh="1.25rem" display="inline" c="brand">
+        {t`Example`}
+      </Text>
+    </Tooltip>
+  </Text>
+);
+
+const DurationStrategyFormFields = ({
+  targetModel,
+  onSwitchToggle,
+}: {
+  targetModel: CacheableModel;
+  onSwitchToggle: () => void;
+}) => (
+  <>
+    <StrategyFormField
+      title={t`Cache duration`}
+      subtitle={
+        <Text fz="md" lh="1.25rem" c="text-secondary">
+          {t`Cached results are refreshed after this period.`}
+        </Text>
+      }
+      unit={c("Unit suffix shown after the cache duration input").t`hours`}
+    >
+      <PositiveNumberInput strategyType="duration" name="duration" />
+    </StrategyFormField>
+    <input type="hidden" name="unit" />
+    {["question", "dashboard"].includes(targetModel) && (
+      <PLUGIN_CACHING.PreemptiveCachingSwitch
+        handleSwitchToggle={onSwitchToggle}
+      />
+    )}
+  </>
+);
 
 export const PositiveNumberInput = ({
   strategyType,
@@ -557,41 +672,38 @@ export const PositiveNumberInput = ({
   );
 };
 
-const Field = ({
+const StrategyFormField = ({
   title,
   subtitle,
+  unit,
   children,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
+  unit?: ReactNode;
   children: ReactNode;
 }) => {
+  const control = unit ? (
+    <Flex align="center" gap="sm">
+      {children}
+      <Text c="text-secondary" fz="md" lh="1.25rem">
+        {unit}
+      </Text>
+    </Flex>
+  ) : (
+    children
+  );
   return (
     <label>
-      <Stack gap="xs">
-        <div>
-          <Title order={4}>{title}</Title>
+      <Stack gap="sm">
+        <Stack gap="xs">
+          <Text fw="bold" fz="md" lh="1.25rem">
+            {title}
+          </Text>
           {subtitle}
-        </div>
-        {children}
+        </Stack>
+        {control}
       </Stack>
     </label>
   );
 };
-
-const MultiplierFieldSubtitle = () => (
-  <Text size="sm">
-    {t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}{" "}
-    <Tooltip
-      multiline
-      inline={true}
-      position="bottom"
-      label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
-      maw="20rem"
-    >
-      <Text tabIndex={0} size="sm" lh="1" display="inline" c="brand">
-        {t`Example`}
-      </Text>
-    </Tooltip>
-  </Text>
-);

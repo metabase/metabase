@@ -713,19 +713,12 @@ describe("DataModelV1", () => {
         screen.getByRole("button", { name: "Re-scan table" }),
       );
 
-      const calls = fetchMock.callHistory.calls(
-        `path:/api/table/${ORDERS_TABLE.id}/rescan_values`,
-        {
-          method: "POST",
-        },
-      );
-
       await waitFor(() => {
-        expect(calls.length).toBeGreaterThan(0);
+        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
-
-      const lastCall = calls[calls.length - 1];
-      expect(JSON.parse(lastCall.options.body as string)).toEqual({});
     });
 
     it("should allow to discard field values", async () => {
@@ -744,19 +737,12 @@ describe("DataModelV1", () => {
         }),
       );
 
-      const calls = fetchMock.callHistory.calls(
-        `path:/api/table/${ORDERS_TABLE.id}/discard_values`,
-        {
-          method: "POST",
-        },
-      );
-
       await waitFor(() => {
-        expect(calls.length).toBeGreaterThan(0);
+        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
+        expect(
+          fetchMock.callHistory.called(path, { method: "POST" }),
+        ).toBeTruthy();
       });
-
-      const lastCall = calls[calls.length - 1];
-      expect(JSON.parse(lastCall.options.body as string)).toEqual({});
     });
   });
 

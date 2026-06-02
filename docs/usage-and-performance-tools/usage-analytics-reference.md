@@ -638,7 +638,9 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - transform-delete
 - transform-inspect-discover
 - transform-inspect-lens
+- transform-run-canceled
 - transform-run-start
+- transform-run-timeout
 - update-permission-failure
 - update-transform
 - upload-append

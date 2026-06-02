@@ -363,7 +363,8 @@
    (common/disallowed-keys
     {:source-metadata "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"
      :source-query    ":source-query is not allowed in MBQL 5 queries."
-     :type            ":type is not allowed in a query stage in any version of MBQL"})])
+     :type            ":type is not allowed in a query stage in any version of MBQL"
+     :database        ":database is not allowed in a query stage, only at the top level of a query."})])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type

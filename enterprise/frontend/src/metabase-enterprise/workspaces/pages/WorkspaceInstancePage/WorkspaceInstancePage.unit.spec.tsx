@@ -6,13 +6,10 @@ import {
   setupListTableRemappingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
-import type { TableRemapping, WorkspaceInstance } from "metabase-types/api";
+import type { TableRemapping } from "metabase-types/api";
 import {
   createMockDatabase,
-  createMockSettings,
   createMockTableRemapping,
-  createMockTokenFeatures,
   createMockWorkspaceInstance,
   createMockWorkspaceInstanceDatabase,
 } from "metabase-types/api/mocks";
@@ -31,8 +28,8 @@ function setup({
         output: { schema: "ws_dev" },
       }),
     },
-  }) as WorkspaceInstance | null,
-  isDevelopmentMode = false,
+    can_write: true,
+  }),
 } = {}) {
   setupDatabasesEndpoints([POSTGRES]);
   setupGetCurrentWorkspaceEndpoint(workspace);
@@ -40,15 +37,6 @@ function setup({
 
   renderWithProviders(<Route path="*" component={WorkspaceInstancePage} />, {
     withRouter: true,
-    storeInitialState: {
-      settings: createMockSettingsState(
-        createMockSettings({
-          "token-features": createMockTokenFeatures({
-            development_mode: isDevelopmentMode,
-          }),
-        }),
-      ),
-    },
   });
 }
 
@@ -81,42 +69,6 @@ describe("WorkspaceInstancePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the empty state when no workspace is set up", async () => {
-    setup({ workspace: null });
-
-    expect(
-      await screen.findByRole("heading", {
-        name: /Isolated spaces for agents and developers/,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Set up a workspace" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows the set up button in the empty state on a developer instance", async () => {
-    setup({ workspace: null, isDevelopmentMode: true });
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Set up a workspace",
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("hides the help menu in the empty state", async () => {
-    setup({ workspace: null });
-
-    expect(
-      await screen.findByRole("heading", {
-        name: /Isolated spaces for agents and developers/,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Help/ }),
-    ).not.toBeInTheDocument();
-  });
-
   it("shows the help menu when a workspace is set up", async () => {
     setup();
 
@@ -126,21 +78,32 @@ describe("WorkspaceInstancePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not render the delete section on the main instance", async () => {
-    setup({ isDevelopmentMode: false });
-
-    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("workspace-instance-delete-section"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("renders the delete section on a developer instance", async () => {
-    setup({ isDevelopmentMode: true });
+  it("renders the delete section", async () => {
+    setup();
 
     expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
     expect(
       await screen.findByTestId("workspace-instance-delete-section"),
     ).toBeInTheDocument();
+  });
+
+  it("hides the delete section when can_write is false", async () => {
+    setup({
+      workspace: createMockWorkspaceInstance({
+        name: "Dev workspace",
+        databases: {
+          [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
+            input_schemas: ["public"],
+            output: { schema: "ws_dev" },
+          }),
+        },
+        can_write: false,
+      }),
+    });
+
+    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("workspace-instance-delete-section"),
+    ).not.toBeInTheDocument();
   });
 });

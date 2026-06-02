@@ -209,6 +209,30 @@
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
       (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly false}))))
 
+(defn cascade-card-state-from-dashboard-update!
+  "Mirror dashboard-level state changes onto the dashboard's cards. Specifically:
+   - Archiving the dashboard archives its (non-`archived_directly`) cards. Un-archiving restores them.
+   - Moving the dashboard into a new collection moves its cards into the same collection.
+
+   Shared between the REST `update-dashboard!` and the MCP `update_dashboard` tool so they
+   don't drift. Call inside the same transaction as the dashboard update itself."
+  [current-dash updates]
+  (let [id (:id current-dash)]
+    (when (api/column-will-change? :archived current-dash updates)
+      (if (:archived updates)
+        (t2/update! :model/Card
+                    :dashboard_id id
+                    :archived false
+                    {:archived true :archived_directly false})
+        (t2/update! :model/Card
+                    :dashboard_id id
+                    :archived true
+                    :archived_directly false
+                    {:archived false})))
+    (when (api/column-will-change? :collection_id current-dash updates)
+      (t2/update! :model/Card :dashboard_id id
+                  {:collection_id (:collection_id updates)}))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+

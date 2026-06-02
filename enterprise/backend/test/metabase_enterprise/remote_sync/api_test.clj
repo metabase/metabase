@@ -10,8 +10,10 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -56,6 +58,111 @@
         (when (nil? (:ended_at <>))
           (throw (ex-info "Not finished" {:task-id task-id
                                           :result <>})))))))
+
+;;; ------------------------------------------------- Test Connection Endpoint -------------------------------------------------
+
+(deftest test-connection-succeeds-with-current-settings-test
+  (testing "POST /api/ee/remote-sync/test-connection returns success when current settings can reach the repo"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                       remote-sync-token  "valid-token"
+                                       remote-sync-branch "main"
+                                       remote-sync-type   :read-only]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+                    source.git/branches          (fn [_] ["main"])]
+        (is (= {:status "success"}
+               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})))))))
+
+(deftest test-connection-forces-fresh-remote-call-test
+  (testing "POST /api/ee/remote-sync/test-connection always calls git/branches so rotated tokens are detected"
+    ;; check-git-settings! only authenticates when :read-only + branch is set, so the JGit cache
+    ;; would otherwise short-circuit subsequent tests with the same token. We need a fresh
+    ;; lsRemote on every click — this guards that.
+    (let [branches-calls (atom 0)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "valid-token"
+                                         remote-sync-branch ""
+                                         remote-sync-type   :read-write]
+        (with-redefs [settings/check-git-settings! (constantly nil)
+                      source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+                      source.git/branches          (fn [_] (swap! branches-calls inc) [])]
+          (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})
+          (is (= 1 @branches-calls)
+              "Test Connection must call git/branches even when check-git-settings! skips the remote check"))))))
+
+(deftest test-connection-surfaces-fresh-remote-auth-failure-test
+  (testing "POST /api/ee/remote-sync/test-connection returns 400 when the forced lsRemote rejects the token"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                       remote-sync-token  "rotated-token"
+                                       remote-sync-branch ""
+                                       remote-sync-type   :read-write]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+                    source.git/branches          (fn [_] (throw (ex-info "Authentication failed" {})))]
+        (is (= "Authentication failed: Please check your git credentials"
+               (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))))
+
+(deftest test-connection-uses-body-overrides-test
+  (testing "POST /api/ee/remote-sync/test-connection passes URL and token from the body through to the lsRemote call"
+    (let [captured (atom nil)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "saved-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-type   :read-only]
+        (with-redefs [settings/check-git-settings! (constantly nil)
+                      source.git/git-source        (fn [url _ token _]
+                                                     (reset! captured {:url url :token token})
+                                                     {:fake-source true})
+                      source.git/branches          (fn [_] [])]
+          (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
+                                {:remote-sync-url   "https://github.com/other/repo.git"
+                                 :remote-sync-token "new-token"})
+          (is (= {:url "https://github.com/other/repo.git" :token "new-token"} @captured)))))))
+
+(deftest test-connection-treats-obfuscated-token-as-unchanged-test
+  (testing "POST /api/ee/remote-sync/test-connection uses stored token when body sends the obfuscated value"
+    (let [captured (atom nil)
+          full-token "ghp_full_secret_token_value"]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  full-token
+                                         remote-sync-branch "main"
+                                         remote-sync-type   :read-only]
+        (with-redefs [settings/check-git-settings! (constantly nil)
+                      source.git/git-source        (fn [_ _ token _]
+                                                     (reset! captured token)
+                                                     {:fake-source true})
+                      source.git/branches          (fn [_] [])]
+          (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
+                                {:remote-sync-token (setting/obfuscate-value full-token)})
+          (is (= full-token @captured)
+              "Obfuscated tokens must be replaced with the stored token before testing"))))))
+
+(deftest test-connection-requires-superuser-test
+  (testing "POST /api/ee/remote-sync/test-connection requires superuser permissions"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "ee/remote-sync/test-connection" {}))))))
+
+(deftest test-connection-errors-when-not-configured-test
+  (testing "POST /api/ee/remote-sync/test-connection returns 400 when no url is configured or provided"
+    (mt/with-temporary-setting-values [remote-sync-url nil]
+      (is (= "Remote sync is not configured."
+             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {}))))))
+
+(deftest test-connection-returns-friendly-message-on-failure-test
+  (testing "POST /api/ee/remote-sync/test-connection wraps exceptions in a user-friendly message"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                       remote-sync-token  "bad-token"
+                                       remote-sync-branch "main"
+                                       remote-sync-type   :read-only]
+      (testing "Authentication failure maps to credentials error"
+        (with-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Authentication failed" {})))]
+          (is (= "Authentication failed: Please check your git credentials"
+                 (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))
+      (testing "Repository-not-found maps to URL error"
+        (with-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Repository not found" {})))]
+          (is (= "Repository not found: Please check the repository URL"
+                 (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {}))))))))
 
 ;;; ------------------------------------------------- Branches Endpoint -------------------------------------------------
 
@@ -984,6 +1091,80 @@
               (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
                 (is (= false (:cached response)))
                 (is (= 2 @call-count))))))))))
+
+(defn- missing-branch-source
+  "Source whose snapshot throws the typed :missing-branch ex-info — simulating a
+   configured branch that has been deleted upstream."
+  [branch]
+  (reify source.p/Source
+    (branches [_] ["main"])
+    (create-branch [_ _ _] nil)
+    (default-branch [_] "main")
+    (snapshot [_]
+      (throw (ex-info (str "Invalid branch: " branch)
+                      {:error-type :missing-branch
+                       :branch branch})))))
+
+(deftest has-remote-changes-returns-branch-missing-gracefully-test
+  (testing "GET /has-remote-changes returns branch_missing=true instead of 500 when the branch has been deleted upstream"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                       remote-sync-token "test-token"
+                                       remote-sync-branch "gone"
+                                       remote-sync-check-changes-cache-ttl-seconds 60]
+      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                              :ended_at :%now
+                                              :version "some-prior-version"}]
+        (with-redefs [source/source-from-settings (fn [& _] (missing-branch-source "gone"))]
+          (impl/invalidate-remote-changes-cache!)
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+            (is (false? (:has_changes response)))
+            (is (true? (:branch_missing response)))
+            (is (nil? (:remote_version response)))
+            (is (= "some-prior-version" (:local_version response)))
+            (is (false? (:cached response)))))))))
+
+(deftest has-remote-changes-does-not-cache-branch-missing-test
+  (testing "Branch-missing results are not cached so a subsequent call re-checks"
+    (let [snapshot-calls (atom 0)
+          ;; First call returns missing-branch; second call succeeds.
+          source-fn (fn [& _]
+                      (swap! snapshot-calls inc)
+                      (if (= 1 @snapshot-calls)
+                        (missing-branch-source "gone")
+                        (test-helpers/create-mock-source)))]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "gone"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings source-fn]
+            (impl/invalidate-remote-changes-cache!)
+            (let [first-response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (true? (:branch_missing first-response)))
+              (is (false? (:cached first-response))))
+            ;; Second call re-hits the source; cache was not populated by the first call.
+            (let [second-response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (not (:branch_missing second-response)))
+              (is (false? (:cached second-response)))
+              (is (= 2 @snapshot-calls)))))))))
+
+(deftest has-remote-changes-still-propagates-other-errors-test
+  (testing "Non-missing-branch failures still propagate (the graceful handler is :missing-branch-only)"
+    (let [failing-source (reify source.p/Source
+                           (branches [_] ["main"])
+                           (create-branch [_ _ _] nil)
+                           (default-branch [_] "main")
+                           (snapshot [_] (throw (RuntimeException. "boom"))))]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (with-redefs [source/source-from-settings (fn [& _] failing-source)]
+          (impl/invalidate-remote-changes-cache!)
+          (is (thrown-with-msg? RuntimeException #"boom"
+                                (impl/has-remote-changes?))))))))
 
 ;;; ------------------------------------------- Token Preservation Tests -------------------------------------------
 
