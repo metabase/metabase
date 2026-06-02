@@ -1678,35 +1678,31 @@
     (mt/with-premium-features #{}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema      (get-test-schema)
-                id-field-id (mt/id :transforms_products :id)]
-            (mt/with-temp [:model/TransformTag {tag-id :id} {:name "stale-checkpoint-tag"}]
-              (with-transform-cleanup! [table-name "stale_checkpoint_test"]
-                (let [created (mt/user-http-request :crowberto :post 200 "transform"
-                                                    {:name    "Stale Checkpoint Transform"
-                                                     :tag_ids [tag-id]
-                                                     :source  {:type  "query"
-                                                               :query (lib/native-query (mt/metadata-provider)
-                                                                                        "SELECT id, name, category FROM transforms_products")
-                                                               :source-incremental-strategy {:type "checkpoint"
-                                                                                             :checkpoint-filter-field-id id-field-id}}
-                                                     :target  {:type "table-incremental"
-                                                               :schema schema
-                                                               :name table-name
-                                                               :target-incremental-strategy {:type "append"}}})
-                      source  (t2/select-one-fn :source :model/Transform (:id created))]
-                  ;; Simulate the checkpoint field being deleted out from under the transform
-                  ;; (e.g. its source table was re-synced), as happened with production transform 2344.
-                  ;; A non-existent field id is equivalent to a deleted field: the validator's
-                  ;; (select-one :model/Field id) returns nil either way.
-                  (t2/update! :model/Transform (:id created)
-                              {:source (assoc-in source [:source-incremental-strategy :checkpoint-filter-field-id]
-                                                 Integer/MAX_VALUE)})
-                  (testing "removing the tag (tag_ids-only update) should not re-validate the stale checkpoint field"
-                    (let [updated (mt/user-http-request :crowberto :put 200
-                                                        (format "transform/%d" (:id created))
-                                                        {:tag_ids []})]
-                      (is (= [] (:tag_ids updated))))))))))))))
+          (let [schema (get-test-schema)]
+            (with-transform-cleanup! [table-name "stale_checkpoint_test"]
+              ;; Insert directly to simulate a legacy broken transform whose checkpoint field was
+              ;; later deleted (e.g. its source table was re-synced), as happened with production
+              ;; transform 2344. A non-existent field id is equivalent to a deleted field: the
+              ;; validator's (select-one :model/Field id) returns nil either way. Such transforms
+              ;; predate the table-tag/checkpoint validation and can no longer be created via the API.
+              (mt/with-temp [:model/TransformTag {tag-id :id} {:name "stale-checkpoint-tag"}
+                             :model/Transform {transform-id :id}
+                             {:name   "Stale Checkpoint Transform"
+                              :source {:type  "query"
+                                       :query (lib/native-query (mt/metadata-provider)
+                                                                "SELECT id, name, category FROM transforms_products")
+                                       :source-incremental-strategy {:type "checkpoint"
+                                                                     :checkpoint-filter-field-id Integer/MAX_VALUE}}
+                              :target {:type "table-incremental"
+                                       :schema schema
+                                       :name table-name
+                                       :target-incremental-strategy {:type "append"}}}]
+                (transform.model/update-transform-tags! transform-id [tag-id])
+                (testing "removing the tag (tag_ids-only update) should not re-validate the stale checkpoint field"
+                  (let [updated (mt/user-http-request :crowberto :put 200
+                                                      (format "transform/%d" transform-id)
+                                                      {:tag_ids []})]
+                    (is (= [] (:tag_ids updated)))))))))))))
 
 (deftest search-filters-transform-source-types-test
   (mt/with-premium-features #{}
