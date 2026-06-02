@@ -98,6 +98,7 @@ function setup({
       prompt: "",
       promptFocusToken: 0,
       isProcessing: false,
+      title: "Seed chat",
       messages: seedMessages,
       visible: false,
       inBar: false,
@@ -303,5 +304,40 @@ describe("MetabotPage at /chat/:conversationId", () => {
     expect(
       (store.getState() as any).routing.locationBeforeTransitions.pathname,
     ).toBe("/");
+  });
+
+  it("shows the fork action for agent messages and opens the fork in fullscreen", async () => {
+    const { history, store } = setup({
+      initialRoute: "/chat/live-id",
+      seedAgentId: "chat_live-id",
+      seedMessages: [
+        { id: "u1", role: "user", type: "text", message: "hi" },
+        {
+          id: "a1",
+          role: "agent",
+          type: "text",
+          message: "hello",
+          externalId: "e1",
+        },
+      ],
+      conversationQuery: { isLoading: true },
+    });
+
+    await userEvent.click(screen.getByTestId("metabot-chat-message-fork"));
+
+    const conversations = (store.getState() as any).metabot.conversations;
+    const forkAgentId = Object.keys(conversations).find(
+      (id) => id !== "chat_live-id",
+    );
+    expect(forkAgentId).toMatch(/^chat_[0-9a-f-]+$/);
+    expect(history?.getCurrentLocation().pathname).toBe(
+      `/chat/${forkAgentId!.replace("chat_", "")}`,
+    );
+    expect(conversations[forkAgentId!].inBar).toBe(false);
+    expect(conversations[forkAgentId!].visible).toBe(false);
+    expect(conversations[forkAgentId!].messages.map((m: any) => m.id)).toEqual([
+      "u1",
+      "a1",
+    ]);
   });
 });

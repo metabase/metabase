@@ -1,4 +1,5 @@
 import { isRejected, nanoid } from "@reduxjs/toolkit";
+import { push } from "react-router-redux";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -694,7 +695,8 @@ export const forkConversation = createAsyncThunk<
 >(
   "metabase/metabot/forkConversation",
   ({ agentId, messageId }, { dispatch, getState }) => {
-    const source = getMetabotConversation(getState(), agentId);
+    const state = getState();
+    const source = getMetabotConversation(state, agentId);
 
     // Branch the conversation: keep every message up to and including the one
     // the fork was triggered from, dropping anything after it.
@@ -741,11 +743,15 @@ export const forkConversation = createAsyncThunk<
       }),
     );
 
-    // Open the fork and keep the original chat available as a background tab.
+    // Open the fork in the full-page chat view and keep the original chat
+    // available as a background tab if it came from the bar/overlay.
     if (source.visible) {
       dispatch(setVisible({ agentId, visible: false }));
     }
-    dispatch(setVisible({ agentId: newAgentId, visible: true }));
+    if (getMetabotState(state).overlayAgentId === agentId) {
+      dispatch(setOverlayAgentId({ agentId: null }));
+    }
+    dispatch(push(`/chat/${conversationId}`));
 
     return { agentId: newAgentId };
   },

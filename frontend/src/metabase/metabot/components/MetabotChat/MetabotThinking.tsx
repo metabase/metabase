@@ -110,75 +110,11 @@ const useAnimatedPosition = () => {
   return elementRef;
 };
 
-// Longest the dot-matrix morph-in takes to play out: the 420ms intro keyframe
-// plus the largest per-dot stagger delay (see MetabotLoader.module.css). Tool
-// transitions are gated on this so a morph always finishes before the next.
-const MASK_MORPH_MS = 950;
-
-type MaskTransition = {
-  from: MetabotLoaderMask;
-  to: MetabotLoaderMask;
-  /** Bumped whenever a new morph starts, so the loader remounts and replays it. */
-  epoch: number;
-  morphing: boolean;
-};
-
-/**
- * Drives the dot-matrix morph from one tool's mask to the next. Transitions are
- * serialized: each morph runs to completion before the next begins, and each
- * starts from the previously shown mask (not the logo), so a burst of tool
- * changes flows A → B → C instead of snapping back to the start every time.
- */
-const useMaskTransition = (target: MetabotLoaderMask): MaskTransition => {
-  const [state, setState] = useState<MaskTransition>(() => ({
-    // The logo is the universal origin: a tool that's already active on first
-    // paint still morphs in from it, while the plain "thinking" logo (from ===
-    // to) skips the morph and runs its idle cycle instead.
-    from: METABOT_LOGO_MASK,
-    to: target,
-    epoch: 0,
-    morphing: target !== METABOT_LOGO_MASK,
-  }));
-  const targetRef = useRef(target);
-  targetRef.current = target;
-
-  // Begin a morph toward `target` once we're idle. While one is in flight we
-  // ignore changes here; the completion handler below chases the latest target.
-  useEffect(() => {
-    setState((prev) =>
-      prev.morphing || prev.to === target
-        ? prev
-        : { from: prev.to, to: target, epoch: prev.epoch + 1, morphing: true },
-    );
-  }, [target]);
-
-  // Let the running morph play for its full duration, then settle — or, if the
-  // target moved on while it ran, immediately morph toward the newest mask.
-  useEffect(() => {
-    if (!state.morphing) {
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      setState((prev) => {
-        const latest = targetRef.current;
-        return latest === prev.to
-          ? { ...prev, morphing: false }
-          : {
-              from: prev.to,
-              to: latest,
-              epoch: prev.epoch + 1,
-              morphing: true,
-            };
-      });
-    }, MASK_MORPH_MS);
-    return () => window.clearTimeout(timeout);
-  }, [state.epoch, state.morphing]);
-
-  return state;
-};
-
-const TYPE_DELETE_MS = 14;
-const TYPE_WRITE_MS = 26;
+// Per-character cadence: a snappy backspace, then a slightly more deliberate
+// retype. Kept brisk so even the longest tool label ("Checking available data
+// sources", 31 chars) finishes its delete+type well under a second.
+const TYPE_DELETE_MS = 8;
+const TYPE_WRITE_MS = 14;
 
 const getCommonPrefixLength = (a: string, b: string) => {
   const max = Math.min(a.length, b.length);
@@ -238,7 +174,6 @@ const ToolCallRow = ({
   dataTestId: string;
 }) => {
   const label = toolCall.message ?? t`Thinking...`;
-  const { from, to, epoch } = useMaskTransition(getToolMask(toolCall.name));
 
   return (
     <Flex
@@ -250,13 +185,10 @@ const ToolCallRow = ({
       data-tool-call-status={toolCall.status}
     >
       <MetabotLoader
-        key={epoch}
         aria-label={label}
         className={S.toolCallIcon}
         data-testid={dataTestId}
-        mask={to}
-        morphFrom={from === to ? undefined : from}
-        status="started"
+        mask={getToolMask(toolCall.name)}
       />
       <TypewriterText className={S.toolCallText} text={label} />
     </Flex>

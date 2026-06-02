@@ -1,18 +1,24 @@
 /*
- * Metabot "thinking" loader: the Metabase "M" drawn as lit dots.
+ * Metabot "thinking" loader: a Metabase-brand dot lattice that lights up into
+ * the "M" or a tool glyph.
  *
  * The grid pitch is inherited from `--mb-dot-pitch` (set by the response
  * dot-field in MetabotThinking) so the logo's dots land on the same lattice as
- * the faint background field. Each grid cell is one pitch square with a small
- * dot centered in it; only the "M" cells are painted, the rest are spacers.
+ * the faint background field.
+ *
+ * Morphs between glyphs are a per-dot opacity transition, so they interpolate
+ * from whatever each dot is currently showing and never reset — interrupting a
+ * dissolve just re-aims it. A continuous scale pulse keeps the mark alive.
+ * Opacity is owned by the morph and transform by the pulse, so the two never
+ * fight over the same property.
  */
 .logo {
   --pitch: var(--mb-dot-pitch, 12px);
   --dot: 4px;
 
   display: grid;
-  grid-template-columns: repeat(var(--cols, 5), var(--pitch));
-  grid-template-rows: repeat(var(--rows, 4), var(--pitch));
+  grid-template-columns: repeat(var(--cols, 7), var(--pitch));
+  grid-template-rows: repeat(var(--rows, 6), var(--pitch));
   place-items: center;
   width: fit-content;
 }
@@ -21,213 +27,30 @@
   width: var(--dot);
   height: var(--dot);
   border-radius: 50%;
+  background-color: var(--mb-color-brand);
   transform-origin: center;
+
+  /* unlit by default; the morph fades this to/from .lit */
+  opacity: 0;
+  transition: opacity 360ms ease;
+  transition-delay: calc(var(--i, 0) * 16ms);
+
+  /* the pulse owns transform so it doesn't collide with the opacity morph */
+  animation: metabot-dot-pulse 1700ms ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -130ms);
 }
 
 .lit {
-  background-color: var(--mb-color-brand);
+  opacity: 0.9;
 }
 
-.target,
-.source,
-.shared {
-  background-color: var(--mb-color-brand);
-}
-
-.morphing .target {
-  opacity: 0;
-  transform: scale(0.65);
-  animation:
-    metabot-tool-target-in 420ms var(--delay, 0ms) ease-out forwards,
-    metabot-tool-target-pulse 1400ms calc(var(--delay, 0ms) + 520ms) ease-in-out
-      infinite;
-}
-
-.morphing .source {
-  opacity: 0.7;
-  transform: scale(1);
-  animation: metabot-tool-source-out 360ms ease-out forwards;
-}
-
-.morphing .shared {
-  opacity: 0.85;
-  transform: scale(1);
-  animation: metabot-tool-target-pulse 1400ms var(--delay, 0ms) ease-in-out
-    infinite;
-}
-
-.settled .target,
-.settled .shared {
-  opacity: 0.75;
-  transform: scale(1);
-}
-
-.settled .source {
-  opacity: 0;
-  transform: scale(0.25);
-}
-
-/* non-"M" cells are invisible spacers that keep the lattice intact */
-.empty {
-  visibility: hidden;
-}
-
-@keyframes metabot-tool-target-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.65);
-  }
-
-  65% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-
-  100% {
-    opacity: 0.9;
-    transform: scale(1);
-  }
-}
-
-@keyframes metabot-tool-target-pulse {
+@keyframes metabot-dot-pulse {
   0%,
   100% {
-    opacity: 0.75;
-    transform: scale(0.9);
+    transform: scale(0.7);
   }
 
   50% {
-    opacity: 1;
     transform: scale(1.18);
-  }
-}
-
-@keyframes metabot-tool-source-out {
-  0% {
-    opacity: 0.7;
-    transform: scale(1);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(0.25);
-  }
-}
-
-/* ---- variant: wave — pulse sweeps diagonally across the mark (default) ---- */
-.wave .lit {
-  animation: metabot-wave 1400ms ease-in-out infinite;
-}
-
-@keyframes metabot-wave {
-  0%,
-  100% {
-    opacity: 0.3;
-    transform: scale(0.6);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.4);
-  }
-}
-
-/* ---- variant: ripple — a pulse radiates outward from the center dot ---- */
-.ripple .lit {
-  animation: metabot-ripple 1500ms ease-in-out infinite;
-}
-
-@keyframes metabot-ripple {
-  0%,
-  72%,
-  100% {
-    opacity: 0.35;
-    transform: scale(0.6);
-  }
-
-  36% {
-    opacity: 1;
-    transform: scale(1.5);
-  }
-}
-
-/* ---- variant: assemble — dots pop in one-by-one, then reset ---- */
-.assemble .lit {
-  opacity: 0;
-  transform: scale(0.2);
-  animation: metabot-assemble 2600ms ease infinite;
-}
-
-@keyframes metabot-assemble {
-  0% {
-    opacity: 0;
-    transform: scale(0.2);
-  }
-
-  16%,
-  82% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(0.2);
-  }
-}
-
-/* ---- variant: breathe — whole mark gently inhales ---- */
-.breathe .lit {
-  animation: metabot-breathe 1900ms ease-in-out infinite;
-}
-
-@keyframes metabot-breathe {
-  0%,
-  100% {
-    opacity: 0.5;
-    transform: scale(0.85);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.3);
-  }
-}
-
-/*
- * Respect reduced-motion preferences: drop the movement and settle into a
- * gentle opacity pulse so the loader still signals activity.
- */
-@media (prefers-reduced-motion: reduce) {
-  .logo .lit {
-    animation: metabot-reduced 1600ms ease-in-out infinite !important;
-    transform: scale(1.1) !important;
-  }
-
-  .morphing .target,
-  .morphing .shared,
-  .settled .target,
-  .settled .shared {
-    opacity: 0.8;
-    transform: scale(1.1) !important;
-    animation: none !important;
-  }
-
-  .morphing .source,
-  .settled .source {
-    opacity: 0;
-    transform: scale(0.25) !important;
-    animation: none !important;
-  }
-
-  @keyframes metabot-reduced {
-    0%,
-    100% {
-      opacity: 0.4;
-    }
-
-    50% {
-      opacity: 1;
-    }
   }
 }
