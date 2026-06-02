@@ -6,24 +6,22 @@ type PerformMount<P> = (container: Element, props: P) => WidgetMountHandle<P>;
 
 export function usePluginMount<P>(performMount: PerformMount<P>, props: P) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const handleRef = useRef<WidgetMountHandle<P> | null>(null);
+  const widgetMountRef = useRef<WidgetMountHandle<P> | null>(null);
 
-  // No deps: runs every render. Mount once, then push latest props across the
-  // sandbox membrane via the imperative update() handle.
   useEffect(() => {
     if (!containerRef.current) {
       return;
     }
-    if (!handleRef.current) {
-      handleRef.current = performMount(containerRef.current, props);
+    if (!widgetMountRef.current) {
+      widgetMountRef.current = performMount(containerRef.current, props);
     } else {
-      handleRef.current.update(props);
+      widgetMountRef.current.update(props);
     }
-  });
+  }, [performMount, props]);
 
   useUnmount(() => {
-    handleRef.current?.unmount();
-    handleRef.current = null;
+    widgetMountRef.current?.unmount();
+    widgetMountRef.current = null;
   });
 
   return containerRef;
