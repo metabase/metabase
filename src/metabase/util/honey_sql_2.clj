@@ -544,18 +544,18 @@
                    :unit unit})))
 
 (defmulti calculate-interval-honeysql-form
-  "Return a HoneySQL form representing the interval between two temporal
-  values — `end-form` minus `start-form`. Inverse of [[add-interval-honeysql-form]].
-  The return value is monotonic in the actual duration but its absolute units
-  differ per DB: Postgres returns an `interval`, MySQL returns microseconds,
-  H2 returns milliseconds. Suitable for ORDER BY purposes; do NOT rely on the
-  units when the value is exposed to callers.
+  "Return a HoneySQL form representing the temporal interval `end-form` minus `start-form`.
+
+  Inverse of [[add-interval-honeysql-form]]. The return value is monotonic in the actual duration but
+  its absolute units differ per DB: Postgres returns an `interval`, MySQL returns microseconds, H2
+  returns milliseconds. Suitable for ORDER BY purposes; do NOT rely on the units when the value is
+  exposed to callers.
 
     (calculate-interval-honeysql-form :my-driver hsql-end-form hsql-start-form)
       -> [:- hsql-end-form hsql-start-form]
 
-  This multimethod is intended for use in app DB queries; other drivers should
-  extend metabase.driver.sql.query-processor/datetime-diff instead."
+  This multimethod is intended for use in app DB queries; other drivers should extend
+  metabase.driver.sql.query-processor/datetime-diff instead."
   {:arglists '([db-type end-form start-form])}
   (fn [db-type _end-form _start-form]
     (keyword db-type)))
@@ -580,8 +580,7 @@
 (defmethod calculate-interval-honeysql-form :default
   [db-type end-form start-form]
   (throw (ex-info (clojure.core/format
-                   (str "metabase.util.honey-sql-2/calculate-interval-honeysql-form not implemented for db-type %s. "
-                        "You might want to be calling metabase.driver.sql.query-processor/datetime-diff instead.")
+                   "metabase.util.honey-sql-2/calculate-interval-honeysql-form not implemented for db-type %s. You might want to be calling metabase.driver.sql.query-processor/datetime-diff instead."
                    db-type)
                   {:db-type    db-type
                    :end-form   end-form

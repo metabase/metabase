@@ -136,10 +136,6 @@ function getDurationColumn(): TreeTableColumnDef<TransformRun> {
     ),
     width: 120,
     enableSorting: true,
-    // No sortDescFirst: matches codebase convention for non-timestamp columns.
-    // Every existing sortDescFirst in the FE is on a timestamp
-    // (NotificationsTable last_check/last_send, TransformListPage updated_at).
-    // Admins who want longest-first click twice — same as any other numeric.
     accessorFn: (run) => getRunDurationMs(run),
     cell: ({ getValue }) => {
       const ms = getValue<number | null>();
