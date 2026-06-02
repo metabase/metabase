@@ -359,7 +359,7 @@
                      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
 
 (deftest export-merges-if-external-changes-test
-  (testing "POST /api/ee/remote-sync/export merges (rather than hard-erroring) when remote is ahead of the last sync"
+  (testing "POST /api/ee/remote-sync/export with merge=true merges when the remote is ahead of the last sync"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}
                      :model/RemoteSyncTask _ {:sync_task_type "foo"
@@ -370,16 +370,45 @@
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
-              (testing "export starts a task and reconciles instead of returning a 400 conflict"
-                (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+              (testing "merge=true reconciles non-conflicting remote changes and succeeds"
+                (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:merge true})
                       task     (wait-for-task-completion (:task_id response))]
                   (is (remote-sync.task/successful? task)
                       "non-conflicting remote changes are merged in, so the export succeeds")))
+              (testing "without the merge flag a diverged export ends in conflict, not success"
+                (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "bar"
+                                                        :ended_at :%now
+                                                        :version "other-version"}]
+                  (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+                        task     (wait-for-task-completion (:task_id response))]
+                    (is (remote-sync.task/conflict? task)
+                        "a diverged export without force/merge surfaces a conflict for the UI to resolve"))))
               (testing "Can export when the versions match"
                 (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
                                                         :ended_at :%now
                                                         :version "mock-version"}]
                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {}))))))))))
+
+(deftest export-preflight-test
+  (testing "GET /api/ee/remote-sync/export-preflight previews a merge without writing"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
+        (let [mock-source (test-helpers/create-mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (with-redefs [source/source-from-settings (constantly mock-source)]
+              (testing "no prior sync -> not diverged"
+                (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight")]
+                  (is (false? (:has_changes resp)))))
+              (testing "remote ahead with non-conflicting changes -> clean merge available"
+                (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
+                                                        :ended_at :%now
+                                                        :version "other-version"}]
+                  (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight")]
+                    (is (true? (:has_changes resp)))
+                    (is (true? (:clean resp)))
+                    (is (= [] (:conflicts resp)))))))))))))
 
 (deftest export-force-if-external-changes-test
   (testing "POST /api/ee/remote-sync/export can force sync when remote is ahead of the last sync"

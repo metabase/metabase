@@ -25,10 +25,12 @@ import type {
 import { ChangesLists } from "../ChangesLists";
 
 import { BranchNameInput } from "./BranchNameInput";
+import { ConflictingChangesList } from "./ConflictingChangesList";
 import { OutOfSyncOptions } from "./OutOfSyncOptions";
 import { SetupConflictInfo } from "./SetupConflictInfo";
 import {
   useDiscardChangesAndImportAction,
+  useMergeChangesAction,
   usePushChangesAction,
   useStashToNewBranchAction,
 } from "./mutation-wrappers";
@@ -43,10 +45,24 @@ interface UnsyncedWarningModalProps {
   nextBranch?: string | null;
   onClose: VoidFunction;
   variant: RemoteSyncConflictVariant;
+  /** Push variant only: whether a 3-way merge would apply cleanly (offers the Merge option). */
+  canMerge?: boolean;
+  /** Push variant only: labels of entities that conflict (shown when the merge isn't clean). */
+  conflicts?: string[];
+  /** Push variant only: the commit message entered before the conflict was detected. */
+  message?: string;
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
-  const { onClose, currentBranch, nextBranch, variant } = props;
+  const {
+    onClose,
+    currentBranch,
+    nextBranch,
+    variant,
+    canMerge,
+    conflicts,
+    message,
+  } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
   const { sendErrorToast } = useMetadataToasts();
@@ -64,6 +80,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const [updateRemoteSyncSettings, { isLoading: isUpdatingSettings }] =
     useUpdateRemoteSyncSettingsMutation();
   const { pushChanges, isPushingChanges } = usePushChangesAction();
+  const { mergeChanges, isMerging } = useMergeChangesAction();
   const { stashToNewBranch, isStashing } =
     useStashToNewBranchAction(existingBranches);
   const { discardChangesAndImport, isImporting } =
@@ -103,7 +120,16 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "push" || optionValue === "force-push") {
-      await pushChanges(currentBranch, optionValue === "force-push", onClose);
+      await pushChanges(
+        currentBranch,
+        optionValue === "force-push",
+        onClose,
+        message,
+      );
+    }
+
+    if (optionValue === "merge") {
+      await mergeChanges(currentBranch, onClose, message);
     }
 
     if (optionValue === "new-branch") {
@@ -111,7 +137,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         await markLibraryAndTransformsAsSynced();
       }
 
-      await stashToNewBranch(newBranchName, onClose);
+      await stashToNewBranch(newBranchName, onClose, message);
     }
 
     if (optionValue === "discard") {
@@ -120,7 +146,11 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   };
 
   const isProcessing =
-    isImporting || isPushingChanges || isStashing || isUpdatingSettings;
+    isImporting ||
+    isPushingChanges ||
+    isMerging ||
+    isStashing ||
+    isUpdatingSettings;
   const isButtonDisabled = useMemo(() => {
     let disabled = !optionValue || isProcessing;
 
@@ -137,11 +167,17 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
       opened
       padding="xl"
       styles={{ title: { lineHeight: "2rem" } }}
-      title={getModalTitle(variant)}
+      title={getModalTitle(variant, canMerge)}
       withCloseButton={false}
     >
       <Box pt="md">
-        {variant === "setup" ? <SetupConflictInfo /> : <ChangesLists />}
+        {variant === "setup" ? (
+          <SetupConflictInfo />
+        ) : conflicts && conflicts.length > 0 ? (
+          <ConflictingChangesList conflicts={conflicts} />
+        ) : (
+          <ChangesLists />
+        )}
 
         <OutOfSyncOptions
           currentBranch={currentBranch}
@@ -149,6 +185,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           isRemoteSyncReadOnly={isRemoteSyncReadOnly}
           optionValue={optionValue}
           variant={variant}
+          canMerge={canMerge}
         />
 
         {optionValue === "new-branch" && (

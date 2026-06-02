@@ -109,10 +109,11 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch force]}] :- [:map
-                                       [:message {:optional true} ms/NonBlankString]
-                                       [:branch {:optional true} ms/NonBlankString]
-                                       [:force {:optional true} :boolean]]
+   {:keys [message branch force merge]}] :- [:map
+                                             [:message {:optional true} ms/NonBlankString]
+                                             [:branch {:optional true} ms/NonBlankString]
+                                             [:force {:optional true} :boolean]
+                                             [:merge {:optional true} :boolean]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
@@ -123,9 +124,32 @@
          branch-name
          (or force false)
          (or message "Exported from Metabase")
+         :merge?     (or merge false)
          :on-success #(publish-sync-event! :event/remote-sync-export %1 branch-name user-id))]
     {:message "Export task started"
      :task_id task-id}))
+
+(api.macros/defendpoint :get "/export-preflight" :- remote-sync.schema/ExportPreflightResponse
+  "Dry-run preview of what pushing the current state would do given the live remote branch, without
+  writing anything. Drives the UI's push decision (force / new branch / merge).
+
+  Returns:
+  - has_changes: whether the remote branch has advanced beyond the last synced version
+  - clean: whether a 3-way merge would apply with no conflicts
+  - conflicts: human-readable labels of the entities that conflict (empty when clean)
+  - summary: counts of remote changes a merge would fold in
+  - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists
+
+  Requires superuser permissions."
+  []
+  (api/check-superuser)
+  (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
+  (let [{:keys [diverged? clean? conflicts summary reason]} (impl/preview-export-merge)]
+    {:has_changes diverged?
+     :clean       clean?
+     :conflicts   conflicts
+     :summary     summary
+     :reason      (some-> reason name)}))
 
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"

@@ -55,18 +55,21 @@
     (str/join File/separator (concat dirnames [basename]))))
 
 (defn- ->file-spec
-  "Converts entity from serdes stream into file spec for source write-files!"
+  "Converts entity from serdes stream into file spec for source write-files!. Reports progress to
+  `task-id` unless it is nil (e.g. during a dry-run preview)."
   [task-id count opts idx entity]
   (when (instance? Exception entity)
     (throw entity))
   (u/prog1 {:path (remote-sync-path opts entity)
             :content (yaml/generate-string (serialization/serialization-deep-sort entity)
                                            {:dumper-options {:flow-style :block :split-lines false}})}
-    (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
+    (when task-id
+      (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3))))))
 
 (defn serialize-specs
   "Serializes a stream of entities into an eager vector of `{:path :content}` file specs — the exact specs
-  [[store!]] would write. Reports progress via `task-id` as specs are produced.
+  [[store!]] would write. Reports progress via `task-id` as specs are produced; pass nil for `task-id` to
+  serialize without progress reporting (e.g. for a dry-run merge preview).
 
   Throws Exception if any entity in the stream is an Exception instance."
   [stream task-id]
@@ -101,6 +104,28 @@
                     {:path path :content content}))))
         (source.p/list-files snapshot)))
 
+(defn- compute-merge
+  "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
+  the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]]:
+  - `base-snapshot` - the last successfully synced state (the merge base)
+  - `stream`        - the local state to serialize (ours)
+  - `snapshot`      - the current remote tip (theirs)"
+  [stream snapshot base-snapshot task-id]
+  (let [ours   (serialize-specs stream task-id)
+        base   (snapshot->specs base-snapshot)
+        theirs (snapshot->specs snapshot)]
+    (remote-sync.merge/three-way-merge base ours theirs)))
+
+(defn preview-merge
+  "Dry-run of [[merge-and-store!]]: computes the 3-way merge without writing anything. Returns
+  `{:clean? bool :conflicts [labels] :summary {:added :updated :removed}}`. Pass nil for `task-id` to
+  skip progress reporting."
+  [stream snapshot base-snapshot task-id]
+  (let [{:keys [conflicts summary]} (compute-merge stream snapshot base-snapshot task-id)]
+    {:clean?    (empty? conflicts)
+     :conflicts (mapv remote-sync.merge/conflict-label conflicts)
+     :summary   summary}))
+
 (defn merge-and-store!
   "Like [[store!]], but reconciles the freshly serialized local state against a remote branch that has
   advanced beyond the last sync. Performs an entity-identity 3-way merge of:
@@ -112,10 +137,7 @@
   `{:status :success :version <sha> :summary {:added :updated :removed}}`. When the same entity changed
   on both sides, returns `{:status :conflict :conflicts [..] :summary {..}}` without writing anything."
   [stream snapshot base-snapshot task-id message]
-  (let [ours   (serialize-specs stream task-id)
-        base   (snapshot->specs base-snapshot)
-        theirs (snapshot->specs snapshot)
-        {:keys [merged conflicts summary]} (remote-sync.merge/three-way-merge base ours theirs)]
+  (let [{:keys [merged conflicts summary]} (compute-merge stream snapshot base-snapshot task-id)]
     (if (seq conflicts)
       {:status :conflict :conflicts conflicts :summary summary}
       {:status  :success

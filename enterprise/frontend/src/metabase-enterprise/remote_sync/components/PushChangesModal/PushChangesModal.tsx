@@ -11,7 +11,11 @@ import {
   Modal,
   Stack,
 } from "metabase/ui";
-import { useExportChangesMutation } from "metabase-enterprise/api";
+import {
+  useExportChangesMutation,
+  useLazyGetExportPreflightQuery,
+} from "metabase-enterprise/api";
+import type { ExportPreflightResponse } from "metabase-types/api";
 
 import { trackPushChanges } from "../../analytics";
 import { type SyncError, parseSyncError } from "../../utils";
@@ -30,13 +34,20 @@ export const PushChangesModal = ({
   currentBranch,
 }: PushChangesModalProps) => {
   const [commitMessage, setCommitMessage] = useState("");
+  // Set once the export preflight detects the remote has advanced; switches the UI to the conflict modal
+  // so the user can choose to merge, force push, or branch.
+  const [preflight, setPreflight] = useState<ExportPreflightResponse | null>(
+    null,
+  );
 
   const [
     exportChanges,
     { isLoading: isPushing, error: exportError, isSuccess },
   ] = useExportChangesMutation();
+  const [runPreflight, { isFetching: isCheckingPreflight }] =
+    useLazyGetExportPreflightQuery();
 
-  const { errorMessage, hasConflict } = useMemo(
+  const { errorMessage } = useMemo(
     () => parseSyncError(exportError as SyncError),
     [exportError],
   );
@@ -47,13 +58,22 @@ export const PushChangesModal = ({
     }
   }, [isSuccess, onClose]);
 
-  const handlePush = useCallback(() => {
+  const handlePush = useCallback(async () => {
     if (!currentBranch) {
       throw new Error("Current branch is not set");
     }
 
+    const message = commitMessage.trim() || undefined;
+    const result = await runPreflight().unwrap();
+
+    // Remote has advanced — hand off to the conflict modal so the user picks how to reconcile.
+    if (result.has_changes) {
+      setPreflight(result);
+      return;
+    }
+
     exportChanges({
-      message: commitMessage.trim() || undefined,
+      message,
       branch: currentBranch,
     });
 
@@ -61,17 +81,22 @@ export const PushChangesModal = ({
       triggeredFrom: "app-bar",
       force: false,
     });
-  }, [commitMessage, exportChanges, currentBranch]);
+  }, [commitMessage, exportChanges, runPreflight, currentBranch]);
 
-  if (hasConflict) {
+  if (preflight?.has_changes) {
     return (
       <SyncConflictModal
         currentBranch={currentBranch}
         onClose={onClose}
         variant="push"
+        canMerge={preflight.clean}
+        conflicts={preflight.conflicts}
+        message={commitMessage.trim() || undefined}
       />
     );
   }
+
+  const isBusy = isPushing || isCheckingPreflight;
 
   return (
     <Modal
@@ -107,9 +132,9 @@ export const PushChangesModal = ({
           </Button>
           <Button
             color="brand"
-            disabled={isPushing}
+            disabled={isBusy}
             leftSection={<Icon name="upload" />}
-            loading={isPushing}
+            loading={isBusy}
             onClick={handlePush}
             variant="filled"
           >

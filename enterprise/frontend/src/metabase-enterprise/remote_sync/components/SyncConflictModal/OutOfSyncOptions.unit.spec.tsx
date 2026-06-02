@@ -6,15 +6,21 @@ import { OutOfSyncOptions } from "./OutOfSyncOptions";
 type SetupOpts = {
   isRemoteSyncReadOnly?: boolean;
   variant: RemoteSyncConflictVariant;
+  canMerge?: boolean;
 };
 
-const setup = ({ variant, isRemoteSyncReadOnly = false }: SetupOpts) => {
+const setup = ({
+  variant,
+  isRemoteSyncReadOnly = false,
+  canMerge,
+}: SetupOpts) => {
   render(
     <OutOfSyncOptions
       currentBranch="main"
       handleOptionChange={jest.fn}
       isRemoteSyncReadOnly={isRemoteSyncReadOnly}
       variant={variant}
+      canMerge={canMerge}
     />,
   );
 };
@@ -31,6 +37,14 @@ describe("OutOfSyncOptions", () => {
         screen.getByLabelText(
           /Force push to main \(this will overwrite the remote branch\)/,
         ),
+      ).toBeInTheDocument();
+    });
+
+    it("offers a merge option when the merge is clean", () => {
+      setup({ variant: "push", canMerge: true });
+      expect(screen.getAllByRole("radio")).toHaveLength(3);
+      expect(
+        screen.getByLabelText(/Merge the remote changes with yours and push/),
       ).toBeInTheDocument();
     });
   });

@@ -1622,6 +1622,7 @@ serdes/meta:
                                                           :summary {:added 2 :updated 1 :removed 0}})
                       impl/load-snapshot!              (fn [snap _ _] (reset! reconciled (source.p/version snap)))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                     :merge? true
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :success (:status result)))
@@ -1644,6 +1645,7 @@ serdes/meta:
                                                           :summary {:added 0 :updated 0 :removed 0}})
                       impl/load-snapshot!              (fn [_ _ _] (reset! reconciled? true))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                     :merge? true
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :conflict (:status result)))
@@ -1653,15 +1655,33 @@ serdes/meta:
                 "the task version is not advanced on conflict")))))))
 
 (deftest export!-conflict-when-merge-base-unreachable-test
-  (testing "when the remote advanced but the merge base is gone (force-push/rebase), export! returns :conflict"
+  (testing "when merge is requested but the merge base is gone (force-push/rebase), export! returns :conflict"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                     spec/extract-entities-for-export (constantly [{:dummy true}])]
         (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                   :merge? true
                                    :source (export-test-source)
                                    :base-snapshot nil)]
           (is (= :conflict (:status result)))
           (is (str/includes? (:message result) "rewritten")))))))
+
+(deftest export!-refuses-when-diverged-without-merge-flag-test
+  (testing "when the remote advanced and neither force? nor merge? is set, export! refuses without writing or merging"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (let [merged? (atom false)
+            stored? (atom false)]
+        (with-redefs [remote-sync.task/last-version    (constantly "base-B")
+                      spec/extract-entities-for-export (constantly [{:dummy true}])
+                      source/merge-and-store!          (fn [_ _ _ _ _] (reset! merged? true) {:status :success})
+                      source/store!                    (fn [_ _ _ _] (reset! stored? true) "v")]
+          (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                     :source (export-test-source)
+                                     :base-snapshot (export-test-snapshot "base-B"))]
+            (is (= :conflict (:status result)))
+            (is (false? @merged?) "no merge without the merge flag")
+            (is (false? @stored?) "nothing written")
+            (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
 
 (deftest export!-force-overwrites-without-merging-test
   (testing "force? overwrites the remote wholesale even when it advanced (no merge)"
@@ -1693,3 +1713,52 @@ serdes/meta:
             (is (= :success (:status result)))
             (is (false? @merged?) "no merge when not diverged")
             (is (= "plain-version" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+
+;;; ------------------------------------- export preflight tests -------------------------------------
+
+(deftest preview-export-merge-not-diverged-test
+  (testing "preview reports no changes when the remote has not advanced"
+    (with-redefs [remote-sync.task/last-version (constantly "remote-R") ; == snapshot version
+                  source/source-from-settings   (constantly (export-test-source))]
+      (is (= {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
+             (impl/preview-export-merge))))))
+
+(deftest preview-export-merge-clean-test
+  (testing "preview reports a clean merge with a summary when changes don't conflict"
+    (with-redefs [remote-sync.task/last-version    (constantly "base-B")
+                  source/source-from-settings      (constantly (export-test-source))
+                  spec/extract-entities-for-export (constantly [{:dummy true}])
+                  source/preview-merge             (fn [_ _ _ _]
+                                                     {:clean? true :conflicts []
+                                                      :summary {:added 1 :updated 0 :removed 0}})]
+      (is (= {:diverged? true :clean? true :conflicts [] :summary {:added 1 :updated 0 :removed 0}}
+             (impl/preview-export-merge))))))
+
+(deftest preview-export-merge-conflict-test
+  (testing "preview reports conflicts when the same entity changed on both sides"
+    (with-redefs [remote-sync.task/last-version    (constantly "base-B")
+                  source/source-from-settings      (constantly (export-test-source))
+                  spec/extract-entities-for-export (constantly [{:dummy true}])
+                  source/preview-merge             (fn [_ _ _ _]
+                                                     {:clean? false :conflicts ["Card A (collections/a.yaml)"]
+                                                      :summary {:added 0 :updated 0 :removed 0}})]
+      (is (= {:diverged? true :clean? false
+              :conflicts ["Card A (collections/a.yaml)"]
+              :summary {:added 0 :updated 0 :removed 0}}
+             (impl/preview-export-merge))))))
+
+(deftest preview-export-merge-history-rewritten-test
+  (testing "preview reports :history-rewritten when the merge base is gone"
+    (let [no-base-source (reify source.p/Source
+                           (branches [_] ["main"])
+                           (create-branch [_ _ _] nil)
+                           (default-branch [_] "main")
+                           (snapshot [_] (export-test-snapshot "remote-R"))
+                           (snapshot-at [_ _] nil))]
+      (with-redefs [remote-sync.task/last-version    (constantly "gone-base")
+                    source/source-from-settings      (constantly no-base-source)
+                    spec/extract-entities-for-export (constantly [{:dummy true}])]
+        (let [result (impl/preview-export-merge)]
+          (is (true? (:diverged? result)))
+          (is (false? (:clean? result)))
+          (is (= :history-rewritten (:reason result))))))))

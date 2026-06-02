@@ -230,3 +230,35 @@
         (is (= :conflict (:status result)))
         (is (= 1 (count (:conflicts result))))
         (is (nil? @written) "nothing should be written when there is a conflict")))))
+
+(deftest preview-merge-clean-test
+  (testing "preview-merge reports a clean merge and summary without writing"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (let [written     (atom nil)
+            base        [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")]
+            ours        [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")
+                         (create-test-entity "C" "c" "Card")]
+            theirs      [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")
+                         (create-test-entity "D" "d" "Card")]
+            base-snap   (entities->snapshot base task-id (atom nil))
+            remote-snap (entities->snapshot theirs task-id written)
+            result      (source/preview-merge ours remote-snap base-snap nil)]
+        (is (true? (:clean? result)))
+        (is (empty? (:conflicts result)))
+        (is (= {:added 1 :updated 0 :removed 0} (:summary result)))
+        (is (nil? @written) "preview must not write")))))
+
+(deftest preview-merge-conflict-test
+  (testing "preview-merge reports conflicts (with labels) without writing"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (let [written     (atom nil)
+            base        [(create-test-entity "A" "a" "Card")]
+            ours        [(create-test-entity* "A" "a" "Card" "ours")]
+            theirs      [(create-test-entity* "A" "a" "Card" "theirs")]
+            base-snap   (entities->snapshot base task-id (atom nil))
+            remote-snap (entities->snapshot theirs task-id written)
+            result      (source/preview-merge ours remote-snap base-snap nil)]
+        (is (false? (:clean? result)))
+        (is (= 1 (count (:conflicts result))))
+        (is (every? string? (:conflicts result)))
+        (is (nil? @written))))))

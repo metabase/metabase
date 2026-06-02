@@ -120,14 +120,17 @@ remoteSyncListenerMiddleware.startListening({
 
       if (task.status === "conflict") {
         dispatch(modalDismissed());
-        dispatch(syncConflictVariantUpdated("setup"));
+        // The first-import / setup flow surfaces conflicts as a task status; export conflicts are
+        // normally handled synchronously via the export preflight, so only the import path maps here.
+        if (task.sync_task_type !== "export") {
+          dispatch(syncConflictVariantUpdated("setup"));
+        }
         return;
       }
 
       const isTerminalState = terminalTaskStates.includes(task.status);
 
       if (isTerminalState && task.ended_at) {
-        const isImportTask = task.sync_task_type === "import";
         const isSuccessful = task.status === "successful";
 
         if (isSuccessful) {
@@ -135,9 +138,9 @@ remoteSyncListenerMiddleware.startListening({
             dispatch(modalDismissed());
           }, 500);
 
-          if (isImportTask) {
-            dispatch(EnterpriseApi.util.invalidateTags(ALL_INVALIDATION_TAGS));
-          }
+          // Both import and a merged export change local content, so refresh everything. A plain push
+          // doesn't change local data, but the extra refetch is harmless and keeps this simple.
+          dispatch(EnterpriseApi.util.invalidateTags(ALL_INVALIDATION_TAGS));
         }
 
         invalidateRemoteSyncTags(dispatch);

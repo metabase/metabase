@@ -365,6 +365,7 @@
   Takes a SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, a commit message string, and
   optional keyword arguments:
   - :force? - when true, overwrite the remote branch wholesale even if it has advanced (no merge)
+  - :merge? - when true and the remote has advanced, perform a 3-way merge (rather than refusing)
   - :source - the Source the snapshot came from, used to resolve the merge base and the merged result
   - :base-snapshot - a snapshot of the last synced version (the merge base), supplied when the remote
     branch has advanced and a 3-way merge is required
@@ -373,14 +374,19 @@
     against any path that mutates the setting between scheduling and the work running).
 
   Extracts all remote-synced collections, serializes their content, writes the files to the source, and
-  updates all RemoteSyncObject statuses to 'synced'. When the remote branch has advanced and `force?` is
-  not set, performs a 3-way merge instead of failing: non-conflicting remote changes are merged in and
-  reconciled into the local app DB, and only genuine same-entity conflicts return a `:conflict` result.
+  updates all RemoteSyncObject statuses to 'synced'.
+
+  Behavior when the remote branch has advanced beyond the last sync:
+  - `force?`           -> overwrite the remote wholesale.
+  - `merge?`           -> 3-way merge; non-conflicting remote changes are merged in and reconciled into the
+                          local app DB; genuine same-entity conflicts return a `:conflict`.
+  - neither (default)  -> refuse with `:conflict` (the caller, typically the UI via the export preflight,
+                          decides whether to force, branch, or merge).
 
   Returns a map with :status (`:success`, `:conflict`, or `:error`), :version, and optionally :message
   and :merge-summary keys. Various exceptions may be thrown during export and are caught and converted to
   error status maps."
-  [^SourceSnapshot snapshot task-id message & {:keys [force? base-snapshot pre-task-branch] src :source}]
+  [^SourceSnapshot snapshot task-id message & {:keys [force? merge? base-snapshot pre-task-branch] src :source}]
   (when (branch-changed-since-scheduling? pre-task-branch)
     (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
                pre-task-branch (settings/remote-sync-branch))
@@ -395,28 +401,36 @@
           (if-let [models (spec/extract-entities-for-export)]
             (let [base-version   (remote-sync.task/last-version)
                   remote-version (source.p/version snapshot)
-                  diverged?      (and (not force?)
-                                      (some? base-version)
+                  diverged?      (and (some? base-version)
                                       (not= base-version remote-version))]
               (remote-sync.task/update-progress! task-id 0.3)
               (cond
-                ;; Remote advanced but the merge base is gone (force-push/rebase rewrote history) — we
-                ;; cannot do a safe 3-way merge. Surface as a conflict; the user must re-import or force.
-                (and diverged? (nil? base-snapshot))
-                {:status   :conflict
-                 :version  remote-version
-                 :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
-                 :message  "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
-
-                diverged?
-                (export-merged! src snapshot base-snapshot task-id message sync-timestamp models)
-
-                :else
+                ;; No divergence, or the caller forced an overwrite — write the local state as-is.
+                (or force? (not diverged?))
                 (let [written-version (source/store! models snapshot task-id message)]
                   (remote-sync.task/set-version! task-id written-version)
                   (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
                   {:status :success
-                   :version written-version})))
+                   :version written-version})
+
+                ;; Remote advanced and the caller did not ask to merge — refuse. The UI's export preflight
+                ;; drives the choice between force, new branch, and merge.
+                (not merge?)
+                {:status    :conflict
+                 :version   remote-version
+                 :conflicts []
+                 :message   "The remote branch has changed since your last sync. Choose how to proceed."}
+
+                ;; Merge requested but the merge base is gone (force-push/rebase rewrote history) — no safe
+                ;; 3-way merge is possible.
+                (nil? base-snapshot)
+                {:status    :conflict
+                 :version   remote-version
+                 :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+                 :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
+
+                :else
+                (export-merged! src snapshot base-snapshot task-id message sync-timestamp models)))
             {:status :error
              :message "No remote-syncable content available."}))
         (catch Exception e
@@ -624,16 +638,20 @@
 (defn async-export!
   "Exports the remote-synced collections to the remote source repository asynchronously.
 
-  Takes a branch name to export to, a force? boolean, and a commit message string. Optionally accepts an
-  :on-success callback that receives [task-id result] after a successful export.
+  Takes a branch name to export to, a force? boolean, and a commit message string. Optionally accepts
+  `:merge?` (perform a 3-way merge when the remote has advanced) and an `:on-success` callback that
+  receives [task-id result] after a successful export.
 
-  When the remote branch has advanced beyond the last synced version and force? is false, the export
-  performs an entity-identity 3-way merge: non-conflicting remote changes are merged in (and reconciled
-  into the local app DB) rather than blocking. Genuine same-entity conflicts surface as a `:conflict`
-  task result. When force? is true, the remote branch is overwritten wholesale (no merge).
+  Behavior when the remote branch has advanced beyond the last synced version:
+  - `force?`          -> overwrite the remote wholesale.
+  - `:merge? true`    -> entity-identity 3-way merge; non-conflicting remote changes are merged in and
+                         reconciled into the local app DB; genuine same-entity conflicts surface as a
+                         `:conflict` task result.
+  - neither (default) -> `:conflict` task result; the caller (typically the UI, via the export preflight)
+                         decides whether to force, branch, or merge.
 
   Returns a RemoteSyncTask."
-  [branch force? message & {:keys [on-success]}]
+  [branch force? message & {:keys [on-success merge?]}]
   (guards/ensure-no-active-task!)
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
@@ -649,10 +667,35 @@
                 (fn [task-id]
                   (export! snapshot task-id message
                            :force?          force?
+                           :merge?          merge?
                            :source          source
                            :base-snapshot   base-snapshot
                            :pre-task-branch pre-task-branch))
                 :on-success on-success)))
+
+(defn preview-export-merge
+  "Dry-run preview of what exporting the current state would do given the live remote, without writing
+  anything. Drives the UI's push decision (force / new branch / merge). Returns a map:
+  - `:diverged?` - whether the remote branch has advanced beyond the last synced version
+  - `:clean?`    - whether a 3-way merge would apply with no conflicts
+  - `:conflicts` - human-readable labels of the entities that conflict (empty when clean)
+  - `:summary`   - `{:added :updated :removed}` counts of remote changes a merge would fold in
+  - `:reason`    - `:history-rewritten` when the remote was force-pushed/rebased so no merge base exists"
+  []
+  (let [no-changes {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
+        source         (source/source-from-settings)
+        snapshot       (source.p/snapshot source)
+        remote-version (source.p/version snapshot)
+        base-version   (remote-sync.task/last-version)]
+    (if (or (nil? base-version) (= base-version remote-version))
+      no-changes
+      (if-let [base-snapshot (source.p/snapshot-at source base-version)]
+        (serdes/with-cache
+          (if-let [models (spec/extract-entities-for-export)]
+            (assoc (source/preview-merge models snapshot base-snapshot nil) :diverged? true)
+            (assoc no-changes :diverged? true)))
+        {:diverged? true :clean? false :reason :history-rewritten
+         :conflicts [] :summary {:added 0 :updated 0 :removed 0}}))))
 
 (defn create-branch!
   "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`

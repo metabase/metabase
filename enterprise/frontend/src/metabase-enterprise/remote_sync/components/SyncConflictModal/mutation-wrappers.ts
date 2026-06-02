@@ -21,11 +21,17 @@ export const usePushChangesAction = () => {
 
   return {
     pushChanges: useCallback(
-      async (branch: string, force: boolean, closeModal: VoidFunction) => {
+      async (
+        branch: string,
+        force: boolean,
+        closeModal: VoidFunction,
+        message?: string,
+      ) => {
         try {
           await exportChanges({
             branch,
             force,
+            message,
           }).unwrap();
 
           trackPushChanges({
@@ -53,6 +59,45 @@ export const usePushChangesAction = () => {
   };
 };
 
+export const useMergeChangesAction = () => {
+  const [exportChanges, { isLoading: isMerging }] = useExportChangesMutation();
+  const [sendToast] = useToast();
+
+  return {
+    mergeChanges: useCallback(
+      async (branch: string, closeModal: VoidFunction, message?: string) => {
+        try {
+          await exportChanges({
+            branch,
+            merge: true,
+            message,
+          }).unwrap();
+
+          trackPushChanges({
+            triggeredFrom: "conflict-modal",
+            force: false,
+          });
+
+          sendToast({
+            message: c("{0} is the GitHub branch name")
+              .t`Merging remote changes and pushing to ${branch}...`,
+          });
+          closeModal();
+        } catch (error) {
+          const { errorMessage } = parseSyncError(error as SyncError);
+          sendToast({
+            message: errorMessage || t`Failed to merge changes`,
+            icon: "warning",
+            timeout: 8000,
+          });
+        }
+      },
+      [exportChanges, sendToast],
+    ),
+    isMerging,
+  };
+};
+
 export const useStashToNewBranchAction = (existingBranches: string[]) => {
   const [exportChanges] = useExportChangesMutation();
   const [createBranch] = useCreateBranchMutation();
@@ -61,7 +106,11 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
 
   return {
     stashToNewBranch: useCallback(
-      async (newBranchName: string, closeModal: VoidFunction) => {
+      async (
+        newBranchName: string,
+        closeModal: VoidFunction,
+        message?: string,
+      ) => {
         if (!newBranchName) {
           sendToast({
             message: t`Please enter a valid branch name`,
@@ -88,6 +137,7 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
 
           await exportChanges({
             branch: newBranchName,
+            message,
           }).unwrap();
           sendToast({
             message: c("{0} is the GitHub branch name")

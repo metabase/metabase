@@ -2,6 +2,7 @@ import type {
   CreateBranchRequest,
   ExportChangesRequest,
   ExportChangesResponse,
+  ExportPreflightResponse,
   GetBranchesResponse,
   HasRemoteChangesResponse,
   ImportFromBranchRequest,
@@ -24,19 +25,27 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ExportChangesResponse,
       ExportChangesRequest
     >({
-      query: ({ message, force, branch }) => ({
+      query: ({ message, force, branch, merge }) => ({
         url: `/api/ee/remote-sync/export`,
         method: "POST",
         body: {
           message,
           branch,
           force,
+          merge,
         },
       }),
       invalidatesTags: () => [
         tag("collection-dirty-entities"),
         tag("session-properties"),
       ],
+    }),
+    getExportPreflight: builder.query<ExportPreflightResponse, void>({
+      query: () => ({
+        url: `/api/ee/remote-sync/export-preflight`,
+        method: "GET",
+      }),
+      providesTags: () => [tag("remote-sync-has-remote-changes")],
     }),
     importChanges: builder.mutation<
       ImportFromBranchResponse,
@@ -161,6 +170,7 @@ export const {
   useGetHasRemoteChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
   useExportChangesMutation,
+  useLazyGetExportPreflightQuery,
   useGetBranchesQuery,
   useCreateBranchMutation,
   useImportChangesMutation,
