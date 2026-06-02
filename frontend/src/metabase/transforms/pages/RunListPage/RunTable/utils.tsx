@@ -32,6 +32,8 @@ import type { TransformRunSortOptions } from "../types";
 import { TagList } from "./TagList";
 import { TimezoneIndicator } from "./TimezoneIndicator";
 
+const EMPTY_CELL_PLACEHOLDER = "—";
+
 function getTransformColumn(): TreeTableColumnDef<TransformRun> {
   return {
     id: "transform-name" satisfies TransformRunSortColumn,
@@ -119,8 +121,11 @@ function getEndedAtColumn(
         : null;
     },
     cell: ({ getValue }) => {
-      const value = getValue();
-      return value != null ? <Ellipsified>{String(value)}</Ellipsified> : null;
+      const value = getValue<string | null>();
+      if (value == null) {
+        return EMPTY_CELL_PLACEHOLDER;
+      }
+      return <Ellipsified>{String(value)}</Ellipsified>;
     },
   };
 }
@@ -140,7 +145,7 @@ function getDurationColumn(): TreeTableColumnDef<TransformRun> {
     cell: ({ getValue }) => {
       const ms = getValue<number | null>();
       if (ms == null) {
-        return null;
+        return EMPTY_CELL_PLACEHOLDER;
       }
       return <Ellipsified>{formatDurationLong(ms)}</Ellipsified>;
     },

@@ -109,7 +109,7 @@ describe("RunListPage", () => {
       expect(await screen.findByText("8m 42s")).toBeInTheDocument();
     });
 
-    it("renders no value for runs still in progress (no end_time)", async () => {
+    it("renders the placeholder for runs still in progress (no end_time)", async () => {
       const transform = createMockTransform({ name: "In flight" });
       const run = createMockTransformRun({
         status: "started",
@@ -120,7 +120,7 @@ describe("RunListPage", () => {
       setup({ runs: [run] });
 
       // Resolve the Duration column's index from the headers (robust to
-      // column reordering); then scope the empty-cell assertion to that
+      // column reordering); then scope the placeholder assertion to that
       // specific gridcell in the in-progress row.
       const headers = await screen.findAllByRole("columnheader");
       const durationIndex = headers.findIndex((h) =>
@@ -130,7 +130,30 @@ describe("RunListPage", () => {
 
       const row = await screen.findByRole("row", { name: /In flight/ });
       const cells = within(row).getAllByRole("gridcell");
-      expect(cells[durationIndex]).toHaveTextContent("");
+      expect(cells[durationIndex]).toHaveTextContent("—");
+    });
+  });
+
+  describe("Ended at column null handling", () => {
+    it("renders the placeholder for runs still in progress (no end_time)", async () => {
+      const transform = createMockTransform({ name: "Mid flight" });
+      const run = createMockTransformRun({
+        status: "started",
+        transform,
+        start_time: "2026-01-01T00:00:00.000Z",
+        end_time: null,
+      });
+      setup({ runs: [run] });
+
+      const headers = await screen.findAllByRole("columnheader");
+      const endedAtIndex = headers.findIndex((h) =>
+        /ended at/i.test(h.textContent ?? ""),
+      );
+      expect(endedAtIndex).toBeGreaterThan(-1);
+
+      const row = await screen.findByRole("row", { name: /Mid flight/ });
+      const cells = within(row).getAllByRole("gridcell");
+      expect(cells[endedAtIndex]).toHaveTextContent("—");
     });
   });
 });
