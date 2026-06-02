@@ -340,15 +340,11 @@
        :transform-tags  [[(first-tag-name-subquery) sort-direction nulls-sort]]
        ;; In-progress runs (end_time = nil) sink to the bottom in BOTH
        ;; directions — null means "no measurable duration yet," not
-       ;; "longest duration." Matches the dominant Metabase convention
-       ;; (collections_rest/api.clj, bookmarks/models/bookmark.clj).
-       ;; NB: HoneySQL 2 needs the compound direction keyword to emit
-       ;; NULLS LAST — a 3-tuple `[col dir :nulls-last]` is silently dropped.
-       :duration        [[(h2x/calculate-interval-honeysql-form
+       ;; "longest duration."
+       :duration        [[[:is :end_time nil] :asc]
+                         [(h2x/calculate-interval-honeysql-form
                            (mdb/db-type) :end_time :start_time)
-                          (if (= sort-direction :asc)
-                            :asc-nulls-last
-                            :desc-nulls-last)]]
+                          sort-direction]]
        [[:start_time sort-direction]
         [:end_time   sort-direction nulls-sort]])
      [:transform_run.id sort-direction])))
