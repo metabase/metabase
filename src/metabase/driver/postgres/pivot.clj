@@ -173,14 +173,6 @@
     :qp.pivot/remapped-indexes})
 
 (defn merge-native-pivot-keys
-  "Copy native pivot keys from the outer MBQL 5 query onto `target` (MBQL 4 inner query or MBQL 5 stage)."
+  "Copy native pivot keys from the outer MBQL 5 query onto the MBQL 4 inner query."
   [mbql5-query target]
   (merge target (select-keys mbql5-query native-pivot-query-keys)))
-
-(defn merge-native-pivot-keys-into-stages
-  "Copy native pivot keys onto the last MBQL 5 stage, if any pivot keys are present on the outer query."
-  [mbql5-query stages]
-  (if (and (seq stages)
-           (seq (select-keys mbql5-query native-pivot-query-keys)))
-    (update stages (dec (count stages)) #(merge-native-pivot-keys mbql5-query %))
-    stages))

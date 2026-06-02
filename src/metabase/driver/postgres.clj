@@ -100,6 +100,10 @@
                               :native-pivot-tables      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
+(defmethod driver/database-supports? [:postgres-mbql5 :native-pivot-tables]
+  [_driver _feature _db]
+  false)
+
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
   [_driver _feat db]
   (driver.common/json-unfolding-default db))
@@ -853,6 +857,10 @@
   (let [inner-query ((get-method sql.qp/preprocess :sql) :sql mbql5-query)]
     (postgres.pivot/merge-native-pivot-keys mbql5-query inner-query)))
 
+(defmethod sql.qp/preprocess :postgres-mbql5
+  [_driver mbql5-query]
+  ((get-method sql.qp/preprocess :sql-mbql5) :sql-mbql5 mbql5-query))
+
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
@@ -873,30 +881,23 @@
                (select-keys unqualified #{:group-by}))
         qualified))))
 
-(defmethod sql.qp/preprocess :postgres-mbql5
-  [_driver mbql5-query]
-  (let [stages ((get-method sql.qp/preprocess :sql-mbql5) :sql-mbql5 mbql5-query)]
-    (postgres.pivot/merge-native-pivot-keys-into-stages mbql5-query stages)))
-
 (defmethod sql.qp/apply-top-level-clause
   [:postgres-mbql5 :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
-  (if (:qp.pivot/native-pivot? query)
-    (postgres.pivot/apply-native-pivot-breakout driver honeysql-form query)
-    (let [stored-field-ids (map last breakout-fields)
-          stored-fields    (map #(when (integer? %)
-                                   (driver-api/field (driver-api/metadata-provider) %))
-                                stored-field-ids)
-          parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
-                                    driver clause honeysql-form)
-          qualified        (parent-method query)
-          unqualified      (parent-method (update query
-                                                  :breakout
-                                                  #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
-      (if (some driver-api/json-field? stored-fields)
-        (merge qualified
-               (select-keys unqualified #{:group-by}))
-        qualified))))
+  (let [stored-field-ids (map last breakout-fields)
+        stored-fields    (map #(when (integer? %)
+                                 (driver-api/field (driver-api/metadata-provider) %))
+                              stored-field-ids)
+        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                                  driver clause honeysql-form)
+        qualified        (parent-method query)
+        unqualified      (parent-method (update query
+                                                :breakout
+                                                #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
+    (if (some driver-api/json-field? stored-fields)
+      (merge qualified
+             (select-keys unqualified #{:group-by}))
+      qualified)))
 
 (defn- order-by-is-json-field?
   [clause n]
