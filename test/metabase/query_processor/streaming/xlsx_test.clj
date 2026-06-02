@@ -183,6 +183,19 @@
         (testing "Default currency formatting is dollar sign"
           (is (= "[$$]#,##0.00" (format-string {::mb.viz/currency-in-header false} price-col))))))))
 
+(deftest format-settings->format-string-currency-without-number-style-test
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency settings without an explicit number-style still produce a currency cell format (GDGT-2398)"
+      ;; A column that has currency formatting (currency / currency-style / in-cell) but is NOT currency-semantic and
+      ;; never had number-style "currency" persisted -- e.g. an aggregation, native, or model column that dropped its
+      ;; :type/Currency semantic type. CSV emits "$" here, so XLSX must too.
+      (let [non-currency-col {:base_type :type/Float, :effective_type :type/Float}]
+        (is (= "[$$]#,##0.00"
+               (format-string {::mb.viz/currency-in-header false
+                               ::mb.viz/currency-style     "symbol"
+                               ::mb.viz/currency           "USD"}
+                              non-currency-col)))))))
+
 (deftest format-settings->format-string-test-3b
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Currency formatting"
