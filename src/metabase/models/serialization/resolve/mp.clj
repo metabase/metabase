@@ -58,9 +58,12 @@
   "Return the `:metadata/table`s matching `(schema, table-name)` in `metadata-provider`.
   `schema` may be `nil` for schemaless databases.
 
-  May return more than one table for defective `(db_id, schema, name)` duplicates (the
-  `001_update_migrations.yaml` `is_defective_duplicate` carve-out), letting [[find-table]]
-  raise `:ambiguous-table`."
+  Through the cached app-DB provider this returns 0 or 1 row: its by-name cache holds one
+  metadata per `(name, schema)`, so legacy defective `(db_id, schema, name)` duplicates (the
+  `001_update_migrations.yaml` `is_defective_duplicate` carve-out) collapse to a single
+  resolution rather than surfacing — a portable FK can't distinguish identical-key rows
+  regardless. Providers that can return several rows for one `(name, schema)` (mocks, the
+  uncached app-DB provider) still drive [[find-table]]'s `:ambiguous-table` branch."
   [metadata-provider schema table-name]
   (lib.metadata.protocols/metadatas metadata-provider
                                     {:lib/type :metadata/table

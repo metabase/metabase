@@ -138,6 +138,24 @@
         (is (= (:id raw-orders)   (resolve/import-table-fk r [(:name db) "RAW"   "ORDERS"])))
         (is (= (:id clean-orders) (resolve/import-table-fk r [(:name db) "CLEAN" "ORDERS"])))))))
 
+(deftest ^:parallel import-table-fk-ambiguous-test
+  (testing "a provider returning several tables for one (schema, name) → :ambiguous-table"
+    ;; The cached app-DB provider can't reach this branch — its by-name cache holds one row per
+    ;; (name, schema), so defective `(db_id, schema, name)` duplicates collapse there. Mock and
+    ;; uncached providers can return several, and `find-table` must surface them rather than
+    ;; silently picking one.
+    (let [mp (lib.tu/mock-metadata-provider
+              {:database {:id 1 :name "Sample"}
+               :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}
+                          {:id 11 :name "ORDERS" :schema "PUBLIC" :db-id 1}]})
+          r  (resolve.mp/import-resolver mp)]
+      (try
+        (resolve/import-table-fk r ["Sample" "PUBLIC" "ORDERS"])
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (=? {:error :ambiguous-table, :status-code 400, :agent-error? true}
+                  (ex-data e))))))))
+
 (deftest ^:parallel import-table-fk-error-test
   (testing "unknown table name → :unknown-table, agent-error?, 400, no info leak"
     (let [r (resolve.mp/import-resolver mp-simple)]
