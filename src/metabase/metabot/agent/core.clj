@@ -243,7 +243,8 @@
                    :tools     (vec tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
                                          (get-in memory [:state :charts] {})
-                                         link-registry-atom)
+                                         link-registry-atom
+                                         (get-in memory [:state :data-points] {}))
               (self/call-llm model (:content system-msg) input-parts tools tracking-opts llm-opts))))
 
 ;;; Memory management

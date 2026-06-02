@@ -1,6 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -157,6 +157,25 @@ const EmbeddedAdhocViz = ({
   );
 };
 
+// Memoized so the embedded chart only re-renders when its own inputs change
+// (question/result/selection), not when unrelated chat state churns — e.g. a
+// newly remembered data-point target or a streaming message. Re-rendering it
+// would recompute the ECharts option and wipe the active data-point highlight.
+// We compare on `result`/`question` rather than the derived `rawSeries` array,
+// which the loader re-creates on every render.
+const MemoizedQueryVisualization = memo(
+  QueryVisualization,
+  (prev, next) =>
+    prev.question === next.question &&
+    prev.result === next.result &&
+    prev.isRunning === next.isRunning &&
+    prev.clicked === next.clicked &&
+    prev.clickedViaMention === next.clickedViaMention &&
+    prev.clickedViaMentionGroup === next.clickedViaMentionGroup &&
+    prev.handleVisualizationClick === next.handleVisualizationClick &&
+    prev.onTableSelectionMention === next.onTableSelectionMention,
+);
+
 const EmbeddedQuestionCard = ({
   agentId,
   path,
@@ -170,6 +189,10 @@ const EmbeddedQuestionCard = ({
 }) => {
   const dispatch = useDispatch();
   const store = useStore();
+  // Read the latest targets from a ref so the click handlers can stay stable
+  // (depending on the prop would re-create them and re-render the chart).
+  const dataPointTargetsRef = useRef(dataPointTargets);
+  dataPointTargetsRef.current = dataPointTargets;
   // Read the prompt lazily from the store at click time instead of subscribing
   // to it. Subscribing here would re-render this card (and its embedded chart)
   // on every keystroke, which wipes and re-applies the data-point highlight,
@@ -359,21 +382,22 @@ const EmbeddedQuestionCard = ({
   }, []);
 
   const handleVisualizationClick = useCallback(
-    ({
-      question,
-      result,
-      clicked,
-    }: {
-      question: Question;
-      result: Dataset | null;
-      clicked: ClickObject | null;
-    }) => {
+    (clicked: ClickObject | null) => {
+      const question = questionRef.current;
+      const result = resultRef.current;
+      if (!question) {
+        return;
+      }
+
       const selectedData = getSelectedChartData(clicked);
       if (!selectedData) {
         return;
       }
 
-      const mention = getDataPointMention(selectedData, dataPointTargets);
+      const mention = getDataPointMention(
+        selectedData,
+        dataPointTargetsRef.current,
+      );
       const selectedDataWithMention = {
         ...selectedData,
         mention_id: mention.id,
@@ -420,27 +444,17 @@ const EmbeddedQuestionCard = ({
       );
       focusPromptInput();
     },
-    [
-      agentId,
-      dataPointTargets,
-      dispatch,
-      focusPromptInput,
-      questionName,
-      setPrompt,
-      store,
-    ],
+    [agentId, dispatch, focusPromptInput, questionName, setPrompt, store],
   );
 
   const handleTableSelectionMention = useCallback(
-    ({
-      question,
-      result,
-      selection,
-    }: {
-      question: Question;
-      result: Dataset | null;
-      selection: TableSelectionMention;
-    }) => {
+    (selection: TableSelectionMention) => {
+      const question = questionRef.current;
+      const result = resultRef.current;
+      if (!question) {
+        return;
+      }
+
       const selectedRange = getSelectedChartRange(selection);
       const mentionId = getNextDataPointRangeMentionId();
       const selectedRangeWithMention = {
@@ -521,7 +535,7 @@ const EmbeddedQuestionCard = ({
                       {error ? (
                         <NavigateToQuestionError />
                       ) : (
-                        <QueryVisualization
+                        <MemoizedQueryVisualization
                           question={question}
                           result={result}
                           rawSeries={rawSeries}
@@ -534,24 +548,8 @@ const EmbeddedQuestionCard = ({
                           clicked={selectedClicked}
                           clickedViaMention={selectedClickedViaMention}
                           clickedViaMentionGroup={selectedClickedGroup}
-                          handleVisualizationClick={(
-                            clicked: ClickObject | null,
-                          ) =>
-                            handleVisualizationClick({
-                              question,
-                              result,
-                              clicked,
-                            })
-                          }
-                          onTableSelectionMention={(
-                            selection: TableSelectionMention,
-                          ) =>
-                            handleTableSelectionMention({
-                              question,
-                              result,
-                              selection,
-                            })
-                          }
+                          handleVisualizationClick={handleVisualizationClick}
+                          onTableSelectionMention={handleTableSelectionMention}
                         />
                       )}
                     </Box>

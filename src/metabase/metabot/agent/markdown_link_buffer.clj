@@ -19,14 +19,21 @@
   {:buffer             ""
    :queries            {}
    :charts             {}
+   :data-points        {}
    :link-registry-atom (atom {})})
 
 (defn with-context
-  "Update the queries, charts, and link-registry-atom context in the state."
+  "Update the queries, charts, data-points, and link-registry-atom context in the state."
   ([state queries charts]
    (assoc state :queries queries :charts charts))
   ([state queries charts link-registry-atom]
-   (assoc state :queries queries :charts charts :link-registry-atom link-registry-atom)))
+   (assoc state :queries queries :charts charts :link-registry-atom link-registry-atom))
+  ([state queries charts data-points link-registry-atom]
+   (assoc state
+          :queries queries
+          :charts charts
+          :data-points data-points
+          :link-registry-atom link-registry-atom)))
 
 ;;; Buffering Logic
 
@@ -87,7 +94,8 @@
   [{:keys [buffer] :as state} chunk]
   (let [text        (str buffer chunk)
         ;; Resolve complete markdown links, then Slack-format links
-        resolved    (-> (links/resolve-links text (:queries state) (:charts state) (:link-registry-atom state))
+        resolved    (-> (links/resolve-links text (:queries state) (:charts state) (:link-registry-atom state)
+                                             (:data-points state))
                         (links/resolve-slack-links (:queries state) (:charts state) (:link-registry-atom state)))
         ;; Then check for incomplete link at the end
         split-point (find-potential-link-start resolved)]
@@ -123,41 +131,50 @@
    Parameters:
    - initial-queries: Initial map of query-id to query data
    - initial-charts: Initial map of chart-id to chart data
-   - link-registry-atom: Atom of {resolved-url original-metabase-uri}"
-  [initial-queries initial-charts link-registry-atom]
-  (fn [rf]
-    (let [state   (volatile! (with-context initial-state
-                               (or initial-queries {})
-                               (or initial-charts {})
-                               link-registry-atom))
-          queries (volatile! (or initial-queries {}))
-          charts  (volatile! (or initial-charts {}))]
-      (fn
-        ([] (rf))
-        ([result]
+   - link-registry-atom: Atom of {resolved-url original-metabase-uri}
+   - initial-data-points: Initial map of data-point-id to target (used to drop fabricated
+     data-point links). When omitted, data-point links are not validated."
+  ([initial-queries initial-charts link-registry-atom]
+   (resolve-xf initial-queries initial-charts link-registry-atom nil))
+  ([initial-queries initial-charts link-registry-atom initial-data-points]
+   (fn [rf]
+     (let [state       (volatile! (with-context initial-state
+                                    (or initial-queries {})
+                                    (or initial-charts {})
+                                    (or initial-data-points {})
+                                    link-registry-atom))
+           queries     (volatile! (or initial-queries {}))
+           charts      (volatile! (or initial-charts {}))
+           data-points (volatile! (or initial-data-points {}))]
+       (fn
+         ([] (rf))
+         ([result]
          ;; Flush any remaining buffered content
-         (let [flushed (flush-state @state)]
-           (if (seq flushed)
-             (rf (rf result {:type :text :text flushed}))
-             (rf result))))
-        ([result part]
+          (let [flushed (flush-state @state)]
+            (if (seq flushed)
+              (rf (rf result {:type :text :text flushed}))
+              (rf result))))
+         ([result part]
          ;; Accumulate state from tool outputs
-         (when (= (:type part) :tool-output)
-           (when-let [{:keys [query-id query chart-id]} (get-structured-output (:result part))]
-             (when (and query-id query)
-               (log/debug "Accumulating query in resolve-xf" {:query-id query-id})
-               (vswap! queries assoc query-id query))
-             (when (and chart-id query-id)
-               (log/debug "Accumulating chart in resolve-xf" {:chart-id chart-id})
-               (vswap! charts assoc chart-id (get-structured-output (:result part)))))
+          (when (= (:type part) :tool-output)
+            (when-let [structured (get-structured-output (:result part))]
+              (let [{:keys [query-id query chart-id]} structured]
+                (when (and query-id query)
+                  (log/debug "Accumulating query in resolve-xf" {:query-id query-id})
+                  (vswap! queries assoc query-id query))
+                (when (and chart-id query-id)
+                  (log/debug "Accumulating chart in resolve-xf" {:chart-id chart-id})
+                  (vswap! charts assoc chart-id structured))
+                (when-let [new-data-points (:data-points structured)]
+                  (vswap! data-points merge new-data-points))))
            ;; Update state with new context
-           (vswap! state with-context @queries @charts))
+            (vswap! state with-context @queries @charts @data-points link-registry-atom))
 
          ;; Process text parts through link buffer
-         (if (= (:type part) :text)
-           (let [[new-state processed-text] (step @state (:text part))]
-             (vreset! state new-state)
-             (if (seq processed-text)
-               (rf result (assoc part :text processed-text))
-               result))
-           (rf result part)))))))
+          (if (= (:type part) :text)
+            (let [[new-state processed-text] (step @state (:text part))]
+              (vreset! state new-state)
+              (if (seq processed-text)
+                (rf result (assoc part :text processed-text))
+                result))
+            (rf result part))))))))

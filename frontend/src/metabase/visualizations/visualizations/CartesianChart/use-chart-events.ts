@@ -28,7 +28,10 @@ import {
   isLineXBrushRange,
 } from "metabase/visualizations/echarts/types";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
-import { MENTION_HIGHLIGHT_CONTRACT_DURATION } from "metabase/visualizations/lib/mention-highlight";
+import {
+  MENTION_HIGHLIGHT_CONTRACT_DURATION,
+  MENTION_HIGHLIGHT_CONTRACT_EASING,
+} from "metabase/visualizations/lib/mention-highlight";
 import type {
   RenderingContext,
   VisualizationProps,
@@ -128,6 +131,12 @@ export const useChartEvents = (
   });
 
   const optionRef = useLatest(option);
+  // The data-point highlight effects below read the chart model/option/context
+  // from these refs so they only re-run when the *selection* changes — not on
+  // every re-render that produces new model/option references. Re-running on
+  // those would visibly clear and re-apply the highlight (a flash).
+  const chartModelRef = useLatest(chartModel);
+  const renderingContextRef = useLatest(renderingContext);
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
@@ -371,46 +380,23 @@ export const useChartEvents = (
   useEffect(
     function handleClickedStateHighlight() {
       const chart = chartRef.current;
+      const chartModel = chartModelRef.current;
+      const option = optionRef.current;
+      const renderingContext = renderingContextRef.current;
       const activeClicked = clickedViaMention ?? clicked;
       const isClickedViaMention = clickedViaMention != null;
       if (!chart || activeClicked == null) {
-        if (activeClicked != null) {
-          console.warn("[metabot data-point chart] no chart instance", {
-            clicked: activeClicked,
-          });
-        }
         return;
       }
 
-      console.warn("[metabot data-point chart] highlight effect", {
-        clicked: activeClicked,
-        isClickedViaMention,
-        seriesModels: chartModel.seriesModels.map((seriesModel) => ({
-          name: seriesModel.name,
-          dataKey: seriesModel.dataKey,
-          columnName: seriesModel.column?.name,
-          columnDisplayName: seriesModel.column?.display_name,
-          cardId: seriesModel.cardId,
-          visible: seriesModel.visible,
-        })),
-        datasetSample: chartModel.dataset.slice(0, 5),
-        transformedDatasetSample: chartModel.transformedDataset.slice(0, 5),
-      });
-
       const clickedDataPoint = getClickedDataPoint(chartModel, activeClicked);
       if (clickedDataPoint == null) {
-        console.warn("[metabot data-point chart] no matching chart datum", {
-          clicked: activeClicked,
-        });
         return;
       }
 
       const seriesDataKey =
         chartModel.seriesModels[clickedDataPoint.seriesIndex]?.dataKey;
       if (seriesDataKey == null) {
-        console.warn("[metabot data-point chart] matched missing series key", {
-          clickedDataPoint,
-        });
         return;
       }
 
@@ -419,13 +405,6 @@ export const useChartEvents = (
         seriesDataKey,
       );
       if (eChartsSeriesIndex < 0) {
-        console.warn("[metabot data-point chart] no ECharts series", {
-          clickedDataPoint,
-          seriesDataKey,
-          optionSeries: Array.isArray(option.series)
-            ? option.series.map((series) => series?.id)
-            : option.series?.id,
-        });
         return;
       }
 
@@ -433,12 +412,6 @@ export const useChartEvents = (
         chartModel.transformedDataset,
         clickedDataPoint.datumIndex,
       );
-      console.warn("[metabot data-point chart] dispatching selection", {
-        clickedDataPoint,
-        seriesDataKey,
-        eChartsSeriesIndex,
-        dataIndex,
-      });
 
       const optionSeries = Array.isArray(option.series)
         ? option.series
@@ -523,12 +496,13 @@ export const useChartEvents = (
         seriesIndex: eChartsSeriesIndex,
       });
 
-      animateMentionContractRing(chart, {
+      animateMentionContract(chart, {
         seriesIndex: eChartsSeriesIndex,
         dataIndex,
         value: Number(
           chartModel.transformedDataset[dataIndex]?.[seriesDataKey],
         ),
+        seriesType: String(selectedSeriesType),
         color: mentionHighlightColor,
       });
 
@@ -595,20 +569,21 @@ export const useChartEvents = (
       };
     },
     [
-      chartModel,
-      chartModel.seriesModels,
-      chartModel.transformedDataset,
       chartRef,
+      chartModelRef,
+      optionRef,
+      renderingContextRef,
       clicked,
       clickedViaMention,
-      option,
-      renderingContext,
     ],
   );
 
   useEffect(
     function handleMentionGroupHighlight() {
       const chart = chartRef.current;
+      const chartModel = chartModelRef.current;
+      const option = optionRef.current;
+      const renderingContext = renderingContextRef.current;
       if (!chart || !clickedViaMentionGroup?.length) {
         return;
       }
@@ -704,12 +679,13 @@ export const useChartEvents = (
           });
 
           dataIndices.forEach((dataIndex) => {
-            animateMentionContractRing(chart, {
+            animateMentionContract(chart, {
               seriesIndex: eChartsSeriesIndex,
               dataIndex,
               value: Number(
                 chartModel.transformedDataset[dataIndex]?.[seriesDataKey],
               ),
+              seriesType: String(seriesType),
               color: mentionHighlightColor,
             });
           });
@@ -756,13 +732,11 @@ export const useChartEvents = (
       };
     },
     [
-      chartModel,
-      chartModel.seriesModels,
-      chartModel.transformedDataset,
       chartRef,
+      chartModelRef,
+      optionRef,
+      renderingContextRef,
       clickedViaMentionGroup,
-      option,
-      renderingContext,
     ],
   );
 
@@ -830,20 +804,23 @@ export const useChartEvents = (
 
 let mentionRingCounter = 0;
 
-// Draws a brand-colored ring at a highlighted data point that starts larger
-// than the element and contracts onto it, then fades out — so the highlight
-// feels like it "lands" on the point. The persistent select border remains.
-function animateMentionContractRing(
+// Plays the "contract onto the element" entrance for a highlighted data point.
+// For bars the highlight border itself starts thick (extending past the bar)
+// and tightens onto the bar; for line/scatter points (which are dots) a ring
+// contracts onto the point. The persistent select border remains either way.
+function animateMentionContract(
   chart: EChartsType,
   {
     seriesIndex,
     dataIndex,
     value,
+    seriesType,
     color,
   }: {
     seriesIndex: number;
     dataIndex: number;
     value: number;
+    seriesType: string;
     color: string;
   },
 ) {
@@ -859,8 +836,65 @@ function animateMentionContractRing(
   }
 
   const [cx, cy] = pixel;
+
+  if (seriesType === "bar") {
+    animateBarBorderContract(chart, cx, cy);
+    return;
+  }
+
+  animatePointRingContract(chart, cx, cy, color);
+}
+
+// Tightens the selected bar's border from thick to its resting width, so the
+// highlight appears to contract onto the bar. Locates the bar's rendered SVG
+// path via its pixel position and animates that path's stroke directly.
+function animateBarBorderContract(
+  chart: EChartsType,
+  cx: number,
+  barTopY: number,
+) {
+  window.requestAnimationFrame(() => {
+    if (chart.isDisposed()) {
+      return;
+    }
+    const dom = chart.getDom();
+    const rect = dom.getBoundingClientRect();
+    // Sample a little below the bar's top edge so we land on the bar body.
+    const el = document.elementFromPoint(
+      rect.left + cx,
+      rect.top + barTopY + 6,
+    );
+    if (
+      el == null ||
+      !dom.contains(el) ||
+      !(el instanceof SVGElement) ||
+      typeof el.animate !== "function"
+    ) {
+      return;
+    }
+    el.animate(
+      [
+        { strokeWidth: "8px", offset: 0 },
+        { strokeWidth: "2px", offset: 1 },
+      ],
+      {
+        duration: MENTION_HIGHLIGHT_CONTRACT_DURATION,
+        easing: MENTION_HIGHLIGHT_CONTRACT_EASING,
+      },
+    );
+  });
+}
+
+// Contracts a brand ring onto a line/scatter point, then fades it out, leaving
+// the persistent select styling behind.
+function animatePointRingContract(
+  chart: EChartsType,
+  cx: number,
+  cy: number,
+  color: string,
+) {
   const id = `mention-contract-ring-${mentionRingCounter++}`;
-  const restRadius = 16;
+  const restRadius = 12;
 
   chart.setOption(
     {
@@ -889,7 +923,6 @@ function animateMentionContractRing(
     if (chart.isDisposed()) {
       return;
     }
-    // Fade/contract the ring out once it has landed, leaving the select border.
     chart.setOption(
       {
         graphic: [

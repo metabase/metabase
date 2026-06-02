@@ -41,7 +41,6 @@ describe("getMentionedTableCell", () => {
       rowIndex: 1,
       columnIndex: 1,
       columnId: "REVENUE",
-      columnRendered: true,
     });
   });
 
@@ -71,7 +70,6 @@ describe("getMentionedTableCell", () => {
       rowIndex: 1,
       columnIndex: 1,
       columnId: "REVENUE",
-      columnRendered: true,
     });
   });
 
@@ -101,7 +99,6 @@ describe("getMentionedTableCell", () => {
       rowIndex: 1,
       columnIndex: 0,
       columnId: "CREATED_AT",
-      columnRendered: false,
     });
   });
 

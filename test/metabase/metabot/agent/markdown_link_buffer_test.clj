@@ -304,6 +304,26 @@
       (is (= 1 (count @registry)))
       (is (= "metabase://query/q1" (first (vals @registry)))))))
 
+(deftest ^:parallel resolve-xf-validates-data-point-links-test
+  (testing "resolve-xf keeps known data point links and drops fabricated ones"
+    (let [registry    (atom {})
+          target      {:columns ["A"] :row [1] :value_column_index 0}
+          parts       [{:type :tool-output
+                        :id   "t1"
+                        :result {:structured-output {:data-points {"fresh-id" target}}}}
+                       {:type :text :text "[x](metabase://data-point/fresh-id/0) "}
+                       {:type :text :text "[y](metabase://data-point/bogus-99/0) "}
+                       {:type :text :text "[z](metabase://data-point/seed-id/0) "}]
+          ;; seed-id mimics a data point from a prior turn, threaded in as the initial map
+          result      (into [] (mlb/resolve-xf {} {} registry {"seed-id" target}) parts)
+          texts       (->> result (filter #(= :text (:type %))) (map :text))]
+      (testing "id created this turn (from the tool output) is kept"
+        (is (= "[x](metabase://data-point/fresh-id/0) " (nth texts 0))))
+      (testing "fabricated id is collapsed to its label"
+        (is (= "y " (nth texts 1))))
+      (testing "id from a prior turn (initial map) is kept"
+        (is (= "[z](metabase://data-point/seed-id/0) " (nth texts 2)))))))
+
 (deftest ^:parallel with-context-test
   (testing "updates state for subsequent link resolution"
     (let [registry (atom {})

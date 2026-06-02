@@ -195,9 +195,13 @@
   Parameters:
   - initial-queries: Initial map of query-id to query data
   - initial-charts: Initial map of chart-id to chart data
-  - link-registry-atom: Atom of {resolved-url original-metabase-uri}"
-  [initial-queries initial-charts link-registry-atom]
-  (comp
-   expand-data-parts-xf
-   expand-reactions-xf
-   (markdown-link-buffer/resolve-xf initial-queries initial-charts link-registry-atom)))
+  - link-registry-atom: Atom of {resolved-url original-metabase-uri}
+  - initial-data-points: Initial map of data-point-id to target, used to drop fabricated
+    data-point links"
+  ([initial-queries initial-charts link-registry-atom]
+   (post-process-xf initial-queries initial-charts link-registry-atom nil))
+  ([initial-queries initial-charts link-registry-atom initial-data-points]
+   (comp
+    expand-data-parts-xf
+    expand-reactions-xf
+    (markdown-link-buffer/resolve-xf initial-queries initial-charts link-registry-atom initial-data-points))))

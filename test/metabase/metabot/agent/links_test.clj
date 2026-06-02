@@ -61,6 +61,34 @@
     (let [uri "metabase://data-point/f10cfc50-2a0b-4c67-a064-7585d17974c7"]
       (is (= uri (links/resolve-metabase-uri uri {} {}))))))
 
+(deftest ^:parallel resolve-metabase-uri-data-point-validation-test
+  (let [target     {:columns ["A"] :row [1] :value_column_index 0}
+        known-id   "f10cfc50-2a0b-4c67-a064-7585d17974c7"
+        data-points {known-id target}]
+    (testing "keeps data point links whose id is known"
+      (let [uri (str "metabase://data-point/" known-id)]
+        (is (= uri (links/resolve-metabase-uri uri {} {} data-points))))
+      (testing "including the column-scoped form"
+        (let [uri (str "metabase://data-point/" known-id "/2")]
+          (is (= uri (links/resolve-metabase-uri uri {} {} data-points))))))
+    (testing "drops links with an unknown (fabricated) id"
+      (is (nil? (links/resolve-metabase-uri "metabase://data-point/10505-data/1" {} {} data-points))))
+    (testing "passes data point links through unchanged when no data-points map is supplied"
+      (let [uri "metabase://data-point/10505-data/1"]
+        (is (= uri (links/resolve-metabase-uri uri {} {})))
+        (is (= uri (links/resolve-metabase-uri uri {} {} nil)))))))
+
+(deftest ^:parallel resolve-links-drops-unknown-data-point-links-test
+  (testing "unknown data point links collapse to their label text instead of a dead link"
+    (let [data-points {"good-id" {:columns ["A"] :row [1] :value_column_index 0}}
+          registry    (atom {})]
+      (is (= "see 148.17"
+             (links/resolve-links "see [148.17](metabase://data-point/10505-data/1)"
+                                  {} {} registry data-points)))
+      (is (= "see [v](metabase://data-point/good-id/0)"
+             (links/resolve-links "see [v](metabase://data-point/good-id/0)"
+                                  {} {} registry data-points))))))
+
 (deftest ^:parallel resolve-metabase-uri-table-link-test
   (testing "resolves table links to ad-hoc question URLs"
     (let [result (links/resolve-metabase-uri (str "metabase://table/" (mt/id :venues)) {} {})]
