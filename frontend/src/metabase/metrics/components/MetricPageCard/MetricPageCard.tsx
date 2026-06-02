@@ -15,15 +15,11 @@ interface MetricPageCardProps {
 }
 
 /**
- * Loads a metric card for a page and centralizes the access/loading/error gates
- * every metric page shares, then renders `children` with the loaded card.
- *
- * Access is denied when the card can't be read (403), or when running the
- * metric's query is forbidden (403). The query result is the source of truth:
- * metrics stay viewable for sandboxed users (and users without collection
- * access to a source model), whose query succeeds even though they can't run
- * ad-hoc queries against the underlying data. We wait for the query before
- * rendering so an inaccessible metric never flashes the page before the 403.
+ * Loads a metric card and gates access for every metric page: renders the
+ * unauthorized screen when the card or its query is forbidden (403), otherwise
+ * renders `children` with the loaded card. Uses the query result (not a
+ * permission flag) so sandboxed/no-source-access users who can still view the
+ * metric aren't wrongly blocked.
  */
 export function MetricPageCard({
   cardId: rawCardId,
