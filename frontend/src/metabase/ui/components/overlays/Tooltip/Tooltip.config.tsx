@@ -12,7 +12,7 @@ export const tooltipOverrides: MantineThemeOverride["components"] = {
       withArrow: true,
       withinPortal: true,
       portalProps: {
-        target: document.body,
+        target: "body",
       },
       transitionProps: {
         transition: "fade",
