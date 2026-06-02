@@ -237,6 +237,12 @@ const config = {
           name: "vendor",
           priority: -10,
         },
+        metabaseLib: {
+          test: /[\\/]target[\\/]cljs_(dev|release)[\\/]/,
+          chunks: "all",
+          name: "metabase-lib",
+          priority: 20,
+        },
         sqlFormatter: {
           test: /[\\/]sql-formatter[\\/]/,
           chunks: "all",
