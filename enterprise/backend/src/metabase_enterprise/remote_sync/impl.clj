@@ -323,37 +323,98 @@
       (:entity_id (yaml/parse-string content))
       (catch Exception _ nil))))
 
-(defn- entity-id-update-row?
-  "True if a dirty RemoteSyncObject row is an in-place content UPDATE of an entity-id model —
-  the only case the incremental fast-path handles safely. Creates, renames, deletions, removals,
-  collection changes, and path-identity models (Table/Field) all return false (→ full export)."
+(defn- entity-id-model?
+  "True if `model-type` is a remote-sync model whose identity is entity-id (the only kind the
+  incremental fast-path handles). Path/hybrid models (Table/Field/Segment/Measure) return false."
+  [model-type]
+  (= :entity-id (:identity (spec/spec-for-model-type model-type))))
+
+(defn- extract-dirty-entity
+  "Extracts the single entity named by a dirty RemoteSyncObject `row`, or nil if it no longer exists."
   [row]
-  (and (= "update" (:status row))
-       (= :entity-id (:identity (spec/spec-for-model-type (:model_type row))))))
+  (first (into [] (spec/extract-dirty-entities-for-export [row]))))
 
-(defn- safe-incremental-upserts
-  "Given the current `dirty-rows`, returns a vector of `{:path :content}` upsert specs when a SAFE
-  in-place incremental export is possible, otherwise nil (caller falls back to a full export).
+(defn- path-free-for?
+  "True if `path` in the repo is absent or already holds the entity with `entity-id` — i.e. writing
+  `entity-id` there won't clobber a different entity (guards against dedup name collisions)."
+  [snapshot path entity-id]
+  (let [occupant (file-entity-id (source.p/read-file snapshot path))]
+    (or (nil? occupant) (= occupant entity-id))))
 
-  Safe means: there is dirty content; every dirty row is an in-place UPDATE of an entity-id model;
-  every changed entity still exists; and each entity's freshly-serialized path already exists in the
-  repo holding that SAME entity. That last check (one cheap read per changed file) rules out creates,
-  renames, and name-collision path shifts that would otherwise drop or clobber files — those cases
-  fall back to the full export, which reconciles the whole tree correctly."
+(defn- incremental-plan
+  "Builds a plan for a safe incremental export of the current `dirty-rows`, or nil if any row can't be
+  handled incrementally (caller falls back to the full export).
+
+  Every row must be on an entity-id model and be one of:
+  - `update` — re-serialize the entity. If its path is unchanged (or its stored `file_path` matches),
+    it's an in-place overwrite; if the stored `file_path` differs, it's a rename, so we also delete
+    the old file. Either way the target path must not be occupied by a different entity.
+  - `delete`/`removed` — delete the entity's stored `file_path`. Requires a stored `file_path`
+    (after a fresh import none is recorded yet, so we fall back to a full export, which self-heals).
+
+  Returns {:upserts [file-spec] :delete-paths [path] :synced [{:id :file_path}] :removed-ids [id]}."
   [snapshot dirty-rows]
-  (when (and (seq dirty-rows)
-             (every? entity-id-update-row? dirty-rows))
-    (let [opts     (serdes/storage-base-context)
-          entities (into [] (spec/extract-dirty-entities-for-export dirty-rows))]
-      (when (= (count entities) (count dirty-rows))
-        (let [specs (mapv (fn [e]
-                            (assoc (source/entity->file-spec opts e) ::entity-id (:entity_id e)))
-                          entities)]
-          (when (every? (fn [{:keys [path] ::keys [entity-id]}]
-                          (and entity-id
-                               (= entity-id (file-entity-id (source.p/read-file snapshot path)))))
-                        specs)
-            (mapv #(select-keys % [:path :content]) specs)))))))
+  (let [opts (serdes/storage-base-context)]
+    (reduce
+     (fn [plan {:keys [status file_path] :as row}]
+       (cond
+         (not (entity-id-model? (:model_type row)))
+         (reduced nil)
+
+         (#{"removed" "delete"} status)
+         (if (str/blank? file_path)
+           (reduced nil)
+           (-> plan
+               (update :delete-paths conj file_path)
+               (update :removed-ids conj (:id row))))
+
+         (= "update" status)
+         (if-let [entity (extract-dirty-entity row)]
+           (let [spec     (source/entity->file-spec opts entity)
+                 new-path (:path spec)
+                 eid      (:entity_id entity)]
+             (cond
+               ;; in-place: stored path matches, or (no stored path) the repo file at new-path is
+               ;; already this entity — overwrite in place.
+               (or (= file_path new-path)
+                   (and (str/blank? file_path)
+                        (= eid (file-entity-id (source.p/read-file snapshot new-path)))))
+               (-> plan
+                   (update :upserts conj spec)
+                   (update :synced conj {:id (:id row) :file_path new-path}))
+
+               ;; rename: stored path differs from the new path. Write the new file, delete the old
+               ;; one — provided the new path isn't occupied by a different entity.
+               (and (not (str/blank? file_path))
+                    (path-free-for? snapshot new-path eid))
+               (-> plan
+                   (update :upserts conj spec)
+                   (update :delete-paths conj file_path)
+                   (update :synced conj {:id (:id row) :file_path new-path}))
+
+               :else (reduced nil)))
+           (reduced nil))
+
+         ;; create or any other status -> full export
+         :else (reduced nil)))
+     {:upserts [] :delete-paths [] :synced [] :removed-ids []}
+     dirty-rows)))
+
+(defn- record-exported-paths!
+  "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
+  deletes can resolve the old path. `entries` is a seq of {:model_type :entity_id :path}; only
+  entity-id models are recorded. Correlates entity_id -> model_id per model type."
+  [entries]
+  (doseq [[model-type es] (group-by :model_type entries)
+          :let [spec (spec/spec-for-model-type model-type)]
+          :when (and spec (= :entity-id (:identity spec)))]
+    (let [eid->path (into {} (map (juxt :entity_id :path)) es)
+          id->eid   (t2/select-pk->fn :entity_id (:model-key spec) :entity_id [:in (vec (keys eid->path))])]
+      (doseq [[id eid] id->eid
+              :let [path (eid->path eid)]
+              :when path]
+        (t2/update! :model/RemoteSyncObject :model_type model-type :model_id id
+                    {:file_path path})))))
 
 (defn export!
   "Exports remote-synced collections to a remote source repository.
@@ -364,8 +425,10 @@
     from the current setting at task start, the export aborts with `:error` (defense-in-depth
     against any path that mutates the setting between scheduling and the work running).
 
-  Extracts all remote-synced collections, serializes their content, writes the files to the source, and
-  updates all RemoteSyncObject statuses to 'synced'.
+  Takes the incremental fast-path when every pending change can be applied incrementally (see
+  `incremental-plan` — in-place updates, renames, and deletes of entity-id models). Otherwise does a
+  full export: re-serializes the entire synced set, writes it, marks all RemoteSyncObject rows synced,
+  and records each entity's `file_path` so future renames/deletes can go incremental.
 
   Returns a map with :status (either :success or :error), :version, and optionally :message keys. Various
   exceptions may be thrown during export and are caught and converted to error status maps."
@@ -381,28 +444,33 @@
       (try
         (analytics/inc! :metabase-remote-sync/exports)
         (serdes/with-cache
-          (let [dirty-rows (remote-sync.object/dirty-rows)]
-            (if-let [upserts (safe-incremental-upserts snapshot dirty-rows)]
-              ;; Incremental fast-path: serialize and write only the changed entities, preserving
-              ;; every other file. Avoids re-serializing the entire synced set.
-              (do
+          (let [dirty-rows (remote-sync.object/dirty-rows)
+                plan       (when (seq dirty-rows) (incremental-plan snapshot dirty-rows))]
+            (if plan
+              ;; Incremental fast-path: write only the changed entities and delete only the removed
+              ;; ones, preserving every other file. Avoids re-serializing the entire synced set.
+              (let [{:keys [upserts delete-paths synced removed-ids]} plan]
                 (remote-sync.task/update-progress! task-id 0.3)
-                (let [written-version (source.p/apply-changes! snapshot message upserts [])]
+                (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
                   (remote-sync.task/set-version! task-id written-version))
-                (t2/update! :model/RemoteSyncObject :id [:in (mapv :id dirty-rows)]
-                            {:status "synced" :status_changed_at sync-timestamp})
-                (log/infof "Remote sync incremental export: wrote %d changed entit%s"
-                           (count upserts) (if (= 1 (count upserts)) "y" "ies"))
+                (doseq [{:keys [id file_path]} synced]
+                  (t2/update! :model/RemoteSyncObject :id id
+                              {:status "synced" :file_path file_path :status_changed_at sync-timestamp}))
+                (when (seq removed-ids)
+                  (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+                (log/infof "Remote sync incremental export: wrote %d, deleted %d"
+                           (count upserts) (count delete-paths))
                 {:status :success
                  :version (source.p/version snapshot)})
-              ;; Full export: re-serialize the entire synced set (first export, creates, renames,
-              ;; deletions, collection or path-model changes).
+              ;; Full export: re-serialize the entire synced set (first export, creates, name
+              ;; collisions, collection or path-model changes, or missing file_path).
               (if-let [models (spec/extract-entities-for-export)]
-                (do
+                (let [path-atom (atom [])]
                   (remote-sync.task/update-progress! task-id 0.3)
-                  (let [written-version (source/store! models snapshot task-id message)]
+                  (let [written-version (source/store! models snapshot task-id message path-atom)]
                     (remote-sync.task/set-version! task-id written-version))
                   (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                  (record-exported-paths! @path-atom)
                   {:status :success
                    :version (source.p/version snapshot)})
                 {:status :error
