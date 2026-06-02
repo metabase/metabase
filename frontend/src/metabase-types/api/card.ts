@@ -58,6 +58,8 @@ export interface Card<
   can_restore: boolean;
   can_delete: boolean;
   can_manage_db: boolean;
+  /** Whether the current user has data permission to run the card's query. */
+  can_run_adhoc_query?: boolean;
   initially_published_at: string | null;
 
   database_id?: DatabaseId;
