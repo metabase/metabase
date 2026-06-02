@@ -1,15 +1,14 @@
 (ns metabase-enterprise.metabot.prompt-entities
-  "pgvector mirror + similarity search for curated search prompts.
+  "pgvector mirror and similarity search for curated search prompts.
 
-   The appdb `search_prompt_entities` table (see [[metabase.metabot.models.search-prompt-entity]])
-   is authoritative; its Toucan hooks call [[upsert-prompt-entity!]] / [[delete-prompt-entity!]] here
-   to keep a companion table in the enterprise pgvector store in sync. That companion table carries
-   the embedding vector and serves [[search-prompt-entities]], which backs the `search_prompt_entities`
-   Metabot tool. These are `defenterprise` impls; the OSS shims live in [[metabase.metabot.prompt-entities]].
+  The appdb `search_prompt_entities` table is authoritative.
+  Its Toucan hooks call [[upsert-prompt-entity!]] / [[delete-prompt-entity!]] to keep a companion
+  pgvector table in sync; that table carries the embedding and serves [[search-prompt-entities]],
+  which backs the `search_prompt_entities` Metabot tool.
+  These are `defenterprise` impls; the OSS shims live in [[metabase.metabot.prompt-entities]].
 
-   Hackathon-grade: the companion table is created lazily and never migrated; the embedding is fetched
-   from the configured embedding service; scoring blends cosine similarity with flat canonical and
-   verified boosts. Reuses the semantic-search datasource and embedding API."
+  Hackathon-grade: the companion table is created lazily and never migrated, and embeddings come from
+  the configured embedding service."
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -26,7 +25,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic *table-name*
-  "Companion pgvector table name. Dynamic so tests can rebind it to an isolated table."
+  "Companion pgvector table name.
+  Dynamic so tests can rebind it to an isolated table."
   "search_prompt_entities_index")
 
 (defn- hnsw-index-name [] (str *table-name* "_embed_hnsw_idx"))
@@ -44,9 +44,9 @@
   []
   (some? semantic.db.datasource/db-url))
 
+;; Local copy of the private helper in semantic-search.index.
 (defn- format-embedding
-  "Format a float-array embedding as a pgvector SQL literal, validating numerics.
-   (Local copy of the private helper in semantic-search.index.)"
+  "Format a float-array embedding as a pgvector SQL literal, validating numerics."
   [embedding]
   (doseq [v embedding]
     (when-not (number? v)
@@ -86,8 +86,8 @@
          sql-format-quoted))))
 
 (defenterprise upsert-prompt-entity!
-  "Embed `search-prompt` and upsert the companion pgvector row keyed on `id`. `entities` is the bare
-   list of entity refs; `canonical?` comes from the appdb row's `type`."
+  "Embed `search-prompt` and upsert the companion pgvector row keyed on `id`.
+  `entities` is the bare list of entity refs; `canonical?` comes from the appdb row's `type`."
   :feature :semantic-search
   [id search-prompt entities verified canonical?]
   (when (pgvector-available?)
@@ -132,8 +132,8 @@
     {:name nm :score score :weight weight :contribution (* score weight)}))
 
 (defn- score
-  "Build a weighted-scorer breakdown for one row, shaped like regular search's scoring: a vector of
-   `{:name :score :weight :contribution}` plus the weighted-sum `:total_score`."
+  "Build a weighted-scorer breakdown for one row, shaped like regular search's scoring.
+  Returns a `:scores` vector of `{:name :score :weight :contribution}` plus the weighted-sum `:total_score`."
   [{:keys [distance canonical verified]}]
   (let [scores [(scorer :similarity (- 1.0 (double distance)) similarity-weight)
                 (scorer :canonical  (if canonical 1.0 0.0)     canonical-weight)
@@ -142,9 +142,10 @@
      :total_score (reduce + (map :contribution scores))}))
 
 (defenterprise search-prompt-entities
-  "Embed `user-search-prompt`, find the nearest saved prompts by cosine distance, and return up to
-   `limit` results ranked by blended score (similarity + canonical + verified boosts). Each result is
-   `{:saved_search_prompt :entities :score}`. Returns [] when pgvector is unconfigured."
+  "Find the nearest saved prompts to `user-search-prompt` by cosine distance, up to `limit`.
+  Results are ranked by blended score (similarity + canonical + verified boosts), each shaped
+  `{:saved_search_prompt :entities :score}`.
+  Returns [] when pgvector is unconfigured."
   :feature :semantic-search
   [user-search-prompt limit]
   (if-not (pgvector-available?)

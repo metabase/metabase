@@ -26,9 +26,9 @@
    :type     mi/transform-keyword})
 
 (defn- validate-entities!
-  "Enforce the entities invariants on a (full or partial) instance: the list is non-empty, and a
-   canonical prompt references exactly one entity. Only checks fields that are present, so partial
-   updates that omit `entities` are left alone."
+  "Enforce the entities invariants: the list is non-empty, and a canonical prompt references exactly
+  one entity.
+  Only checks fields that are present, so partial updates that omit `entities` are left alone."
   [{:keys [type entities] :as instance}]
   (when (contains? instance :entities)
     (when (empty? entities)

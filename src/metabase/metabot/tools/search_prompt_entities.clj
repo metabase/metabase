@@ -1,12 +1,10 @@
 (ns metabase.metabot.tools.search-prompt-entities
   "Metabot tool that matches a user's request against curated saved search prompts.
 
-   Complements `search` and `read_resource`: instead of searching the whole instance, it looks up a
-   small, hand-curated table of prompts that each map to either a canonical entity (a specific table
-   or card that directly answers the request) or a set of source entities to build a query from.
-
-   The similarity search runs in the enterprise pgvector store; this OSS tool resolves that code at
-   call time so OSS keeps no static dependency on enterprise."
+  Complements `search` and `read_resource`: instead of searching the whole instance, it looks up a
+  small, hand-curated table of prompts that each map to entities — a canonical entity that directly
+  answers the request, or a set of source entities to build a query from.
+  The similarity search runs in the enterprise pgvector store via [[metabase.metabot.prompt-entities]]."
   (:require
    [clojure.string :as str]
    [metabase.metabot.prompt-entities :as prompt-entities]
