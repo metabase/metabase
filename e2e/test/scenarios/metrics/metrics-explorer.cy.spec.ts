@@ -1243,10 +1243,7 @@ describe("scenarios > metrics > explorer", () => {
         "{end}{backspace}{backspace}{backspace}{backspace}",
         { waitForAnimations: true },
       );
-      addMetricMath([
-        "*",
-        { metricName: "Count of products" },
-      ]);
+      addMetricMath(["*", { metricName: "Count of products" }]);
       cy.wait("@dataset");
 
       cy.log(
