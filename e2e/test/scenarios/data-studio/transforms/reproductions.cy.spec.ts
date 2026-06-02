@@ -196,12 +196,29 @@ describe("issue GDGT-2429", () => {
   }
 
   it("should warn about unsaved changes when navigating away while the save modal is open (metabase#GDGT-2429)", () => {
+    cy.intercept("POST", "/api/transform").as("createTransform");
+
     startNewSqlTransform();
     openSaveModal();
 
     cy.log("navigating away while the save modal is open should warn");
     cy.go("back");
     H.leaveConfirmationModal().should("be.visible");
+
+    cy.log("cancelling the warning should keep us on the page");
+    H.leaveConfirmationModal().findByRole("button", { name: "Cancel" }).click();
+    H.leaveConfirmationModal().should("not.exist");
+    H.modal().findByText("Save your transform").should("be.visible");
+
+    cy.log("saving the transform should allow navigating away without warning");
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("GDGT-2429 transform");
+      cy.button("Save").click();
+    });
+    cy.wait("@createTransform");
+
+    cy.go("back");
+    H.leaveConfirmationModal().should("not.exist");
   });
 });
 
