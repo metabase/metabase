@@ -238,7 +238,7 @@ Your component receives `onClick` and `onHover`. Call them with an object that i
 />
 ```
 
-Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell, and a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value. You can include `settings` (the current resolved settings) in the click object too, so dashboard click behaviors configured against your visualization have what they need.
+Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value. You can include `settings` (the current resolved settings) in the click object too, so dashboard click behaviors configured against your visualization have what they need.
 
 The hover object accepts more than `element` and `data`. Optional fields like `index` and `seriesIndex` (to highlight a series in the legend) and `value`, `column`, `dimensions`, and `event` (for a simpler single-point tooltip) are available when you need them.
 
@@ -316,7 +316,7 @@ For layout math (like fitting labels or sizing axes), `measureText(text, { size,
 
 To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 
-Canvas-based charting libraries (ECharts, Chart.js, and most chart libraries) can't read CSS variables, so there you branch on the `colorScheme` prop (`"light"` or `"dark"`) and pass explicit colors. See the calendar-heatmap for an example with ECharts.
+Canvas-based charting libraries (ECharts, Chart.js, and most chart libraries) can't read CSS variables, so there you branch on the `colorScheme` prop (`"light"` or `"dark"`) and pass explicit colors. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
 
 ## Bundling assets
 
@@ -360,7 +360,7 @@ Run:
 npm run build
 ```
 
-This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and the whitelisted icon under `dist/assets/`, and has to come in under 5 MB (5 MiB). The packaging step also rejects an archive whose uncompressed contents exceed 25 MiB. You don't need to commit `dist/`.
+This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and the whitelisted icon under `dist/assets/`, and has to come in under 5 MiB. The packaging step also rejects an archive whose uncompressed contents exceed 25 MiB. You don't need to commit `dist/`.
 
 For uploading and managing plugins, see [Custom visualizations](../questions/visualizations/custom.md).
 
@@ -383,7 +383,7 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 
 ### Custom visualizations don't render in subscriptions
 
-Custom visualizations don't render in static visualizations: dashboard subscriptions sent by [email](../dashboards/subscriptions.md), Slack, or webhook fall back to a default visualization for cards that use a custom visualization.
+Custom visualizations only render in the live, interactive app. Static renders, like dashboard subscriptions sent by [email](../dashboards/subscriptions.md), Slack, or webhook, fall back to a default visualization for any card that uses a custom visualization.
 
 ## Example plugins
 
