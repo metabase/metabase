@@ -227,8 +227,12 @@
   "Build a `:make-run` function closure for a single card's execution. The returned make-run binds
   `qp.pipeline/*result*` so that completed queries flush their `card-end` envelope and failed
   queries emit a `card-error`. Rows stream directly into `queue` via the [[batch-ndjson]] writer —
-  workers never touch the output stream themselves."
-  [^BlockingQueue queue dashcard-id card-id]
+  workers never touch the output stream themselves.
+
+  `transform-result` is applied to the whole result map for `:failed` results BEFORE the error
+  envelope is extracted, so callers (e.g. public/embed entry points) can redact sensitive fields
+  like `:json_query` and internal error text."
+  [^BlockingQueue queue dashcard-id card-id transform-result]
   (fn [qp _export-format]
     (fn [query info]
       (let [writer (batch-ndjson/batch-card-writer queue dashcard-id card-id)
@@ -242,24 +246,30 @@
                         (catch EofException _))
 
                       (= (:status result) :failed)
-                      (batch-ndjson/emit-card-error!
-                       queue dashcard-id card-id
-                       {:error            (or (:error result)
-                                              "Unknown error running card query")
-                        :error_type       (:error_type result)
-                        :error_is_curated (:error_is_curated result)
-                        :json_query       (:json_query result)}))
+                      (let [result' (transform-result result)]
+                        (batch-ndjson/emit-card-error!
+                         queue dashcard-id card-id
+                         {:error            (or (:error result')
+                                                "Unknown error running card query")
+                          :error_type       (:error_type result')
+                          :error_is_curated (:error_is_curated result')
+                          :json_query       (:json_query result')})))
                     (qp.pipeline/default-result-handler result))]
           (qp (update query :info merge info) rff))))))
 
 (defn- run-single-card-query
   "Execute a single card query. Rows / completion / failure are streamed into `queue` via the
   rebound [[qp.pipeline/*result*]]. Returns a status keyword: `:success`, `:failed`, or `:error`
-  (the latter for exceptions escaping the QP)."
+  (the latter for exceptions escaping the QP).
+
+  `transform-result` is applied to the whole result map for failure paths (both QP-handled `:failed`
+  and escaped Throwables) so unauthenticated callers don't receive raw internal error text or
+  internal fields like `:json_query`."
   [^BlockingQueue queue
    {:keys [dashboard-id card-id dashcard-id dashboard-param-id->param parameters
-           ignore-cache context prefetched-card prefetched-dash-viz]
-    :or   {context :dashboard}}]
+           ignore-cache context prefetched-card prefetched-dash-viz transform-result]
+    :or   {context          :dashboard
+           transform-result identity}}]
   (try
     (let [resolved-params (resolve-params-for-card card-id dashcard-id dashboard-param-id->param parameters)
           options         (cond-> {:dashboard-id dashboard-id
@@ -269,7 +279,7 @@
                                    :ignore-cache (boolean ignore-cache)
                                    :constraints  (qp.constraints/default-query-constraints)
                                    :context      context
-                                   :make-run     (make-batch-make-run queue dashcard-id card-id)}
+                                   :make-run     (make-batch-make-run queue dashcard-id card-id transform-result)}
                             prefetched-card     (assoc :prefetched-card prefetched-card)
                             prefetched-dash-viz (assoc :prefetched-dash-viz prefetched-dash-viz))
           result          (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
@@ -286,11 +296,18 @@
       (let [data       (ex-data e)
             status     (or (:status-code data) 500)
             error-type (or (:type data)
-                           (when (= status 403) qp.error-type/missing-required-permissions))]
+                           (when (= status 403) qp.error-type/missing-required-permissions))
+            ;; Build a synthetic `:failed` result so `transform-result` can redact raw
+            ;; `ex-message` text for unauthenticated public/embed callers, matching the
+            ;; single-card path's sanitization.
+            synthetic  {:status     :failed
+                        :error      (ex-message e)
+                        :error_type error-type}
+            sanitized  (transform-result synthetic)]
         (log/warnf e "Batch card query failed for dashcard %d card %d" dashcard-id card-id)
         (batch-ndjson/emit-card-error! queue dashcard-id card-id
-                                       {:error      (ex-message e)
-                                        :error_type error-type})
+                                       {:error      (:error sanitized)
+                                        :error_type (:error_type sanitized)})
         :error))))
 
 ;;; ------------------------------------------- Batch Orchestrator -------------------------------------------
@@ -311,115 +328,133 @@
    NDJSON results as each card completes.
 
    Options:
-   - `:dashboard-id` — required
-   - `:parameters`   — dashboard filter parameter values
-   - `:ignore-cache` — whether to ignore cached results
-   - `:cards`        — optional sequence of `{:dashcard-id N :card-id N}` maps; if omitted, runs all cards
-   - `:context`      — query context (default `:dashboard`)"
-  [{:keys [dashboard-id parameters ignore-cache cards context]
-    :or   {context :dashboard}}]
+   - `:dashboard-id`     — required
+   - `:parameters`       — dashboard filter parameter values
+   - `:ignore-cache`     — whether to ignore cached results
+   - `:cards`            — optional sequence of `{:dashcard-id N :card-id N}` maps; if omitted, runs all cards
+   - `:context`          — query context (default `:dashboard`)
+   - `:transform-result` — optional fn applied to each card's whole result map on failure paths
+                           (both QP-handled `:failed` and escaped Throwables) before the
+                           `card-error` envelope is constructed. Public/embed callers should pass
+                           a redacting transform (e.g. `api.public/transform-qp-result`) to avoid
+                           leaking raw internal error text or fields like `:json_query` to
+                           unauthenticated clients. Defaults to `identity`."
+  [{:keys [dashboard-id parameters ignore-cache cards context transform-result]
+    :or   {context          :dashboard
+           transform-result identity}}]
   (span/with-span! {:name       "batch-dashboard-card-queries"
                     :attributes {:dashboard/id dashboard-id}}
     ;; === Shared work: done once ===
     (let [dashboard              (api/read-check (fetch-dashboard-with-resolved-params dashboard-id))
           dashboard-param-id->param (build-dashboard-param-map dashboard)
           ;; Determine which cards to run
-          cards                  (or (seq cards) (get-all-dashcards dashboard-id))
-          _                      (when (perf/empty? cards)
-                                   (api/check-404 false))
-          ;; Batch validate membership
-          valid-pairs            (batch-validate-card-membership dashboard-id cards)
-          ;; Batch fetch card data and dashcard viz settings for all cards at once
-          card-id->card          (batch-fetch-cards (map :card-id cards))
-          card-db-ids            (into {} (map (fn [[id card]] [id (:database_id card)])) card-id->card)
-          dashcard-id->viz       (batch-fetch-dashcard-viz (map :dashcard-id cards))
-          current-user-id        api/*current-user-id*
-          metadata-cache         lib-be/*metadata-provider-cache*
-          ;; Pre-warm metadata providers so worker threads don't all race to fetch database metadata.
-          _                      (doseq [db-id (distinct (vals card-db-ids))]
-                                   (lib.metadata/database (lib-be/application-database-metadata-provider db-id)))
-          ;; Request-scoped caches for cross-card deduplication of EE permission/routing/cache-strategy lookups.
-          ee-bindings            (ee-batch-cache-bindings)
-          ;; Pre-warm question-level cache configs in a single query so worker threads
-          ;; don't each hit the DB individually. Includes transitive source-card references.
-          all-card-ids           (resolve-all-transitive-card-ids card-id->card)
-          _                      (with-bindings ee-bindings
-                                   (warm-question-cache-configs! all-card-ids))]
-      ;; Fire dashboard-queried event once
-      (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id current-user-id})
-      ;; Store user parameter values once
-      (when (and current-user-id (seq parameters))
-        (let [normalized-params (some-> parameters seq (->> (lib/normalize ::dashboards.schema/parameters)))]
-          (user-parameter-value/store! current-user-id dashboard-id normalized-params)))
-      ;; === Stream results ===
-      (streaming-response/streaming-response {:content-type "application/x-ndjson"} [os canceled-chan]
-        ;; Establish every request-scoped binding workers should inherit on
-        ;; THIS thread, then use `bound-fn` in the worker so the full binding
-        ;; frame — user context (`*current-user*`, `*is-superuser?*`,
-        ;; `*user-locale*`, ...), permission caches (`*sandboxes-for-user*`,
-        ;; `*permissions-for-user*`), EE cache atoms, metadata cache, plus
-        ;; anything a future dynamic var adds — flows into each worker
-        ;; automatically. Anything we construct here (the EE atoms,
-        ;; `metadata-cache`) must be bound on this thread before `bound-fn`
-        ;; captures it; the rest is already bound by the API middleware.
-        (with-bindings (merge {#'lib-be/*metadata-provider-cache* metadata-cache}
-                              ee-bindings)
-          (let [pool          (or *thread-pool* @default-thread-pool)
-                queue         (LinkedBlockingQueue. (int queue-capacity))
-                writer-thread (start-writer-thread! queue os)
-                succeeded     (volatile! 0)
-                failed        (volatile! 0)
-                ;; Pre-classify cards into immediately-resolvable errors vs queries to run
-                {to-query true, immediate-errors false}
-                (group-by
-                 (fn [{:keys [dashcard-id card-id]}]
-                   (cond
-                     (not (contains? valid-pairs [dashcard-id card-id]))
-                     false ; not in dashboard
-
-                     (and current-user-id
-                          (= :blocked
-                             (perms/most-permissive-database-permission-for-user
-                              current-user-id :perms/view-data (get card-db-ids card-id))))
-                     false ; blocked
-
-                     :else true))
-                 cards)
-                run-card
-                (bound-fn [{:keys [dashcard-id card-id]}]
-                  (if (a/poll! canceled-chan)
-                    :canceled
-                    (run-single-card-query
-                     queue
-                     {:dashboard-id              dashboard-id
-                      :card-id                   card-id
-                      :dashcard-id               dashcard-id
-                      :dashboard-param-id->param dashboard-param-id->param
-                      :parameters                parameters
-                      :ignore-cache              ignore-cache
-                      :context                   context
-                      :prefetched-card           (get card-id->card card-id)
-                      :prefetched-dash-viz       (get dashcard-id->viz dashcard-id)})))]
+          cards                  (or (seq cards) (get-all-dashcards dashboard-id))]
+      (if (perf/empty? cards)
+        ;; No cards to run (dashboard has no non-virtual dashcards, or an explicit empty list).
+        ;; Short-circuit to a streaming response that emits only the `complete` sentinel.
+        ;; The "dashboard missing entirely" case is already handled by `api/read-check` above.
+        (streaming-response/streaming-response {:content-type "application/x-ndjson"} [os _canceled-chan]
+          (let [queue         (LinkedBlockingQueue. (int queue-capacity))
+                writer-thread (start-writer-thread! queue os)]
             (try
-              (doseq [{:keys [dashcard-id card-id]} immediate-errors]
-                (vswap! failed inc)
-                (batch-ndjson/emit-card-error!
-                 queue dashcard-id card-id
-                 (if (contains? valid-pairs [dashcard-id card-id])
-                   {:error      "You don't have permission to view this card"
-                    :error_type qp.error-type/missing-required-permissions}
-                   {:error "Card not found in dashboard"})))
-              ;; Run queries via claypoole — results flow to the queue as rows arrive.
-              (doseq [result (cp/upmap pool run-card (or to-query []))]
-                (case result
-                  :success  (vswap! succeeded inc)
-                  :failed   (vswap! failed inc)
-                  :error    (vswap! failed inc)
-                  :canceled nil
-                  nil))
-              ;; Completion sentinel + shutdown
-              (let [s @succeeded f @failed]
-                (batch-ndjson/emit-complete! queue {:total (+ s f) :succeeded s :failed f}))
+              (batch-ndjson/emit-complete! queue {:total 0 :succeeded 0 :failed 0})
               (finally
                 (.put queue *done-sentinel*)
-                (.join writer-thread)))))))))
+                (.join writer-thread)))))
+        (let [;; Batch validate membership
+              valid-pairs            (batch-validate-card-membership dashboard-id cards)
+              ;; Batch fetch card data and dashcard viz settings for all cards at once
+              card-id->card          (batch-fetch-cards (map :card-id cards))
+              card-db-ids            (into {} (map (fn [[id card]] [id (:database_id card)])) card-id->card)
+              dashcard-id->viz       (batch-fetch-dashcard-viz (map :dashcard-id cards))
+              current-user-id        api/*current-user-id*
+              metadata-cache         lib-be/*metadata-provider-cache*
+              ;; Pre-warm metadata providers so worker threads don't all race to fetch database metadata.
+              _                      (doseq [db-id (distinct (vals card-db-ids))]
+                                       (lib.metadata/database (lib-be/application-database-metadata-provider db-id)))
+              ;; Request-scoped caches for cross-card deduplication of EE permission/routing/cache-strategy lookups.
+              ee-bindings            (ee-batch-cache-bindings)
+              ;; Pre-warm question-level cache configs in a single query so worker threads
+              ;; don't each hit the DB individually. Includes transitive source-card references.
+              all-card-ids           (resolve-all-transitive-card-ids card-id->card)
+              _                      (with-bindings ee-bindings
+                                       (warm-question-cache-configs! all-card-ids))]
+          ;; Fire dashboard-queried event once
+          (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id current-user-id})
+          ;; Store user parameter values once
+          (when (and current-user-id (seq parameters))
+            (let [normalized-params (some-> parameters seq (->> (lib/normalize ::dashboards.schema/parameters)))]
+              (user-parameter-value/store! current-user-id dashboard-id normalized-params)))
+          ;; === Stream results ===
+          (streaming-response/streaming-response {:content-type "application/x-ndjson"} [os canceled-chan]
+            ;; Establish every request-scoped binding workers should inherit on
+            ;; THIS thread, then use `bound-fn` in the worker so the full binding
+            ;; frame — user context (`*current-user*`, `*is-superuser?*`,
+            ;; `*user-locale*`, ...), permission caches (`*sandboxes-for-user*`,
+            ;; `*permissions-for-user*`), EE cache atoms, metadata cache, plus
+            ;; anything a future dynamic var adds — flows into each worker
+            ;; automatically. Anything we construct here (the EE atoms,
+            ;; `metadata-cache`) must be bound on this thread before `bound-fn`
+            ;; captures it; the rest is already bound by the API middleware.
+            (with-bindings (merge {#'lib-be/*metadata-provider-cache* metadata-cache}
+                                  ee-bindings)
+              (let [pool          (or *thread-pool* @default-thread-pool)
+                    queue         (LinkedBlockingQueue. (int queue-capacity))
+                    writer-thread (start-writer-thread! queue os)
+                    succeeded     (volatile! 0)
+                    failed        (volatile! 0)
+                    ;; Pre-classify cards into immediately-resolvable errors vs queries to run
+                    {to-query true, immediate-errors false}
+                    (group-by
+                     (fn [{:keys [dashcard-id card-id]}]
+                       (cond
+                         (not (contains? valid-pairs [dashcard-id card-id]))
+                         false ; not in dashboard
+
+                         (and current-user-id
+                              (= :blocked
+                                 (perms/most-permissive-database-permission-for-user
+                                  current-user-id :perms/view-data (get card-db-ids card-id))))
+                         false ; blocked
+
+                         :else true))
+                     cards)
+                    run-card
+                    (bound-fn [{:keys [dashcard-id card-id]}]
+                      (if (a/poll! canceled-chan)
+                        :canceled
+                        (run-single-card-query
+                         queue
+                         {:dashboard-id              dashboard-id
+                          :card-id                   card-id
+                          :dashcard-id               dashcard-id
+                          :dashboard-param-id->param dashboard-param-id->param
+                          :parameters                parameters
+                          :ignore-cache              ignore-cache
+                          :context                   context
+                          :prefetched-card           (get card-id->card card-id)
+                          :prefetched-dash-viz       (get dashcard-id->viz dashcard-id)
+                          :transform-result          transform-result})))]
+                (try
+                  (doseq [{:keys [dashcard-id card-id]} immediate-errors]
+                    (vswap! failed inc)
+                    (batch-ndjson/emit-card-error!
+                     queue dashcard-id card-id
+                     (if (contains? valid-pairs [dashcard-id card-id])
+                       {:error      "You don't have permission to view this card"
+                        :error_type qp.error-type/missing-required-permissions}
+                       {:error "Card not found in dashboard"})))
+                  ;; Run queries via claypoole — results flow to the queue as rows arrive.
+                  (doseq [result (cp/upmap pool run-card (or to-query []))]
+                    (case result
+                      :success  (vswap! succeeded inc)
+                      :failed   (vswap! failed inc)
+                      :error    (vswap! failed inc)
+                      :canceled nil
+                      nil))
+                  ;; Completion sentinel + shutdown
+                  (let [s @succeeded f @failed]
+                    (batch-ndjson/emit-complete! queue {:total (+ s f) :succeeded s :failed f}))
+                  (finally
+                    (.put queue *done-sentinel*)
+                    (.join writer-thread)))))))))))

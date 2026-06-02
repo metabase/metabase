@@ -1409,9 +1409,17 @@
    (newline-delimited JSON) as each card query completes.
 
    Each line in the response is one of:
-   - `{\"type\":\"card-result\",\"dashcard_id\":N,\"card_id\":N,\"result\":{...}}` — successful card query result
-   - `{\"type\":\"card-error\",\"dashcard_id\":N,\"card_id\":N,\"error\":{...}}` — per-card error
-   - `{\"type\":\"complete\",\"total\":N,\"succeeded\":N,\"failed\":N}` — final summary"
+   - `{\"type\":\"card-begin\",\"dashcard_id\":N,\"card_id\":N,\"data\":{...}}` — opens a card; `data` carries
+     the partial Dataset metadata known up-front (cols, native_form, ...), without rows
+   - `{\"type\":\"card-rows\",\"dashcard_id\":N,\"card_id\":N,\"rows\":[[...], ...]}` — a chunk of rows
+     for that card (multiple of these may stream between `card-begin` and `card-end`)
+   - `{\"type\":\"card-end\",\"dashcard_id\":N,\"card_id\":N,\"status\":\"...\",\"row_count\":N,\"running_time\":N,\"data\":{...}, ...}`
+     — successful card terminator; the Dataset envelope is spread at the top level (rows stripped from `data`,
+     since they arrived via `card-rows`) so the client can merge begin + rows + end into a complete Dataset
+   - `{\"type\":\"card-error\",\"dashcard_id\":N,\"card_id\":N,\"status\":\"failed\",\"error\":\"...\",\"data\":{\"cols\":[],\"rows\":[]}, ...}`
+     — per-card error; the failed-Dataset envelope is spread at the top level alongside the routing fields,
+     symmetric to `card-end`. Optional fields: `error_type`, `error_is_curated`, `json_query`
+   - `{\"type\":\"complete\",\"total\":N,\"succeeded\":N,\"failed\":N}` — final summary sentinel"
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]
    _query-params

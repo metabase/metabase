@@ -662,18 +662,35 @@ export function interceptDashboardCardRequests({
   cy.intercept("POST", pattern).as(alias);
 }
 
+// The server emits one `card-end` per successful card; its Dataset fields
+// (status, row_count, running_time, data, ...) live at the top level alongside
+// the routing fields (`type`, `dashcard_id`, `card_id`). Mirrors
+// `frontend/src/metabase/dashboard/actions/batch-card-query.ts`.
 interface BatchCardResult {
-  type: "card-result";
+  type: "card-end";
   dashcard_id: number;
   card_id: number;
-  result: Record<string, unknown>;
+  status: string;
+  row_count?: number;
+  running_time?: number;
+  data: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
+// `card-error` carries the failed-Dataset envelope spread at the top level
+// (`status: "failed"`, `error`, `data: {cols, rows}`, optional `error_type` /
+// `error_is_curated` / `json_query`).
 interface BatchCardError {
   type: "card-error";
   dashcard_id: number;
   card_id: number;
-  error: Record<string, unknown>;
+  status: "failed";
+  error: string;
+  data: { cols: unknown[]; rows: unknown[] };
+  error_type?: string;
+  error_is_curated?: boolean;
+  json_query?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 interface BatchComplete {
@@ -703,7 +720,7 @@ interface WaitBatchOptions {
  *   interceptDashboardCardRequests();
  *   // ... trigger dashboard load or filter change ...
  *   waitForDashboardCardRequests({ expectedCards: 2 }).then(({ results }) => {
- *     expect(results[0].result.data.rows).to.have.length.greaterThan(0);
+ *     expect(results[0].data.rows).to.have.length.greaterThan(0);
  *   });
  */
 export function waitForDashboardCardRequests({
@@ -728,7 +745,7 @@ export function waitForDashboardCardRequests({
       .filter(Boolean);
 
     const results = parsed.filter(
-      (l: Record<string, unknown>) => l.type === "card-result",
+      (l: Record<string, unknown>) => l.type === "card-end",
     ) as BatchCardResult[];
     const errors = parsed.filter(
       (l: Record<string, unknown>) => l.type === "card-error",

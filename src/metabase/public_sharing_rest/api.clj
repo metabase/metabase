@@ -102,8 +102,11 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-(defmulti ^:private transform-qp-result
-  "Transform results to be suitable for a public endpoint"
+(defmulti transform-qp-result
+  "Transform results to be suitable for a public endpoint. Used by the per-card public path's
+  `:make-run` and by the batch path's `:transform-result` to keep the same redaction policy on
+  both paths (e.g. dropping `:json_query`, redacting raw error text for non-show-in-embeds
+  error types)."
   {:arglists '([results])}
   :status)
 
@@ -325,12 +328,15 @@
     (request/as-admin
       (binding [api/*current-user-id* nil]
         (qp.core/process-batch-queries
-         {:dashboard-id dashboard-id
-          :parameters   params
-          :context      :public-dashboard
-          :cards        (some->> cards-parsed
-                                 (mapv (fn [{:keys [dashcard_id card_id]}]
-                                         {:dashcard-id dashcard_id :card-id card_id})))})))))
+         {:dashboard-id     dashboard-id
+          :parameters       params
+          :context          :public-dashboard
+          :cards            (some->> cards-parsed
+                                     (mapv (fn [{:keys [dashcard_id card_id]}]
+                                             {:dashcard-id dashcard_id :card-id card_id})))
+          ;; Sanitize per-card failure envelopes the same way the single-card public path does
+          ;; (drops `:json_query`, redacts raw error text unless `qp.error-type/show-in-embeds?`).
+          :transform-result transform-qp-result})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

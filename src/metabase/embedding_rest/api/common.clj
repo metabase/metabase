@@ -433,10 +433,13 @@
     (request/as-admin
       (binding [api/*current-user-id* nil]
         (qp.core/process-batch-queries
-         {:dashboard-id dashboard-id
-          :parameters   parameters
-          :context      :embedded-dashboard
-          :cards        cards})))))
+         {:dashboard-id     dashboard-id
+          :parameters       parameters
+          :context          :embedded-dashboard
+          :cards            cards
+          ;; Sanitize per-card failure envelopes the same way the single-card embed path does
+          ;; (drops `:json_query`, redacts raw error text unless `qp.error-type/show-in-embeds?`).
+          :transform-result api.public/transform-qp-result})))))
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param

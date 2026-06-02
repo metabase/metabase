@@ -130,12 +130,12 @@
    {:status-pred    #(>= % 400)
     :error?         true
     :color          'red
-    :log-fn         #(log/info %)
+    :log-fn         #(log/debug %)
     :include-stats? false}
    {:status-pred    (constantly true)
     :error?         false
     :color          'green
-    :log-fn         #(log/info %)
+    :log-fn         #(log/debug %)
     :include-stats? true}])
 
 (defn- log-info

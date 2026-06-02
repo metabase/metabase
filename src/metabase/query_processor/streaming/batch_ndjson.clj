@@ -94,7 +94,7 @@
   per-card 4xx HTTP path puts on the wire, so the frontend can cache and render it without further
   translation. Optional fields are included only when present."
   [{:keys [error error_type error_is_curated json_query]
-    :or   {error "Error"}}]
+    :or   {error "An error occurred."}}]
   (cond-> {:status "failed"
            :error  error
            :data   {:cols [] :rows []}}

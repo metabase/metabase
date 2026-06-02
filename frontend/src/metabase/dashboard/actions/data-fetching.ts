@@ -746,7 +746,18 @@ export const fetchDashboardCardData =
       }));
 
       const abortController = new AbortController();
-      batchFetchAbortController = abortController;
+      batchFetchAbortControllers.push(abortController);
+      while (batchFetchAbortControllers.length > MAX_OVERLAPPING_BATCHES) {
+        const oldest = batchFetchAbortControllers.shift();
+        oldest?.abort();
+      }
+
+      const removeAbortController = () => {
+        const idx = batchFetchAbortControllers.indexOf(abortController);
+        if (idx !== -1) {
+          batchFetchAbortControllers.splice(idx, 1);
+        }
+      };
 
       let completedCount = 0;
       const totalCount = batchCardsToFetch.length;
@@ -793,6 +804,7 @@ export const fetchDashboardCardData =
       if (!requestConfig) {
         // Shouldn't happen given canUseBatchEndpoint check, but satisfy TS
         clearBatchDeferreds();
+        removeAbortController();
         return;
       }
 
@@ -827,13 +839,14 @@ export const fetchDashboardCardData =
           dispatchBatchCardResult(dashcardId, cardId, dataset as Dataset),
         onComplete: () => {
           clearBatchDeferreds();
-          batchFetchAbortController = null;
+          removeAbortController();
           dispatch(loadingComplete());
         },
       }).catch((err) => {
         if (err?.name === "AbortError") {
           clearBatchDeferreds();
-          batchFetchAbortController = null;
+          removeAbortController();
+          dispatch(loadingComplete());
           return;
         }
         console.error("Batch card query failed:", err);
@@ -841,7 +854,7 @@ export const fetchDashboardCardData =
         // without JWT value). Mark every card we asked for as errored so the
         // dashcard renders an error state instead of an infinite spinner.
         const message =
-          err instanceof Error ? err.message : "Batch card query failed";
+          err instanceof Error ? err.message : t`Batch card query failed`;
         const errorDataset = {
           status: "failed",
           error: message,
@@ -851,7 +864,7 @@ export const fetchDashboardCardData =
           dispatchBatchCardResult(dashcard.id, card.id, errorDataset);
         }
         clearBatchDeferreds();
-        batchFetchAbortController = null;
+        removeAbortController();
         dispatch(loadingComplete());
       });
     }
@@ -930,7 +943,13 @@ type InFlightEntry = {
   queryParams: ReturnType<typeof getDatasetQueryParams>;
 };
 
-let batchFetchAbortController: AbortController | null = null;
+// Bounded queue of live batch AbortControllers. When a new batch starts and the
+// queue is at capacity, the oldest controller is aborted before the new one is
+// pushed. This preserves the #70534 single-overlap intent (the first overlap
+// stays alive so slow in-flight work isn't restarted) while preventing
+// unbounded overlap under rapid retriggers (e.g. slider drag).
+const MAX_OVERLAPPING_BATCHES = 2;
+const batchFetchAbortControllers: AbortController[] = [];
 
 const cardDataCancelDeferreds: Record<
   `${DashCardId},${DashboardCard["card_id"]}`,
@@ -968,9 +987,9 @@ export const cancelFetchCardData = createAction(
  * this directly.
  */
 export function abortBatchCardQuery() {
-  if (batchFetchAbortController) {
-    batchFetchAbortController.abort();
-    batchFetchAbortController = null;
+  while (batchFetchAbortControllers.length > 0) {
+    const controller = batchFetchAbortControllers.shift();
+    controller?.abort();
   }
 }
 
