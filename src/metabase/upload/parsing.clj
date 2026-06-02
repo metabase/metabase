@@ -157,6 +157,11 @@
   [s]
   (str/replace s currency-regex ""))
 
+;; These NumberFormat instances are *prototypes*: NumberFormat is not thread-safe (it keeps mutable
+;; parse state inside itself), so we never parse with them directly - concurrent uploads would
+;; corrupt each other. Each call clones the one it needs, giving every thread its own throwaway copy.
+;; Cloning is much cheaper than NumberFormat/getInstance per value because it skips the locale lookup.
+;; See https://linear.app/metabase/issue/GDGT-304
 (let [us (NumberFormat/getInstance (Locale. "en" "US"))
       de (NumberFormat/getInstance (Locale. "de" "DE"))
       fr (NumberFormat/getInstance (Locale. "fr" "FR"))
@@ -166,10 +171,10 @@
           deparenthesized-s (str/replace s #"[()]" "")
           parse-pos         (ParsePosition. 0)
           parsed-number     (case number-separators
-                              ("." ".,") (. us parse deparenthesized-s parse-pos)
-                              ",."       (. de parse deparenthesized-s parse-pos)
-                              ", "       (. fr parse (str/replace deparenthesized-s \space \u00A0) parse-pos) ; \u00A0 is a non-breaking space
-                              ".’"       (. ch parse deparenthesized-s parse-pos))]
+                              ("." ".,") (. ^NumberFormat (.clone us) parse deparenthesized-s parse-pos)
+                              ",."       (. ^NumberFormat (.clone de) parse deparenthesized-s parse-pos)
+                              ", "       (. ^NumberFormat (.clone fr) parse (str/replace deparenthesized-s \space \u00A0) parse-pos) ; \u00A0 is a non-breaking space
+                              ".’"       (. ^NumberFormat (.clone ch) parse deparenthesized-s parse-pos))]
       (let [parsed-idx (.getIndex parse-pos)]
         (when-not (= parsed-idx (count deparenthesized-s))
           (throw (ex-info "Unexpected trailing characters - this is probably not a number"
