@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -188,6 +189,24 @@
               (is (= 3 (:rows-affected append-result))
                   "the INSERT...SELECT path reports the flat, true insert count"))))))))
 
+(defn- venues-source-query
+  "Lib query projecting [name, price] from venues — the source shape both characterization tests
+  use. Non-identity columns only, so SQL Server's `SELECT INTO` doesn't carry an `IDENTITY`
+  property into the target."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/with-fields [(lib.metadata/field mp (mt/id :venues :name))
+                          (lib.metadata/field mp (mt/id :venues :price))]))))
+
+(defn- venues-row-count
+  "Run a Lib `count(*)` over venues through the QP and return the scalar."
+  []
+  (let [mp (mt/metadata-provider)]
+    (->> (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+             (lib/aggregate (lib/count)))
+         qp/process-query mt/rows ffirst)))
+
 (deftest run-transform!-ctas-rows-affected-reflects-rows-written-test
   ;; Characterizes the CTAS row count per driver. BigQuery and Redshift are excluded — they
   ;; declare `:transforms/accurate-rows-affected false` and the transforms layer falls back to
@@ -197,10 +216,9 @@
                          :bigquery-cloud-sdk :redshift)
     (mt/with-premium-features #{:transforms-basic}
       (let [schema  (t2/select-one-fn :schema :model/Table (mt/id :venues))
-            written (->> (mt/mbql-query venues {:aggregation [[:count]]})
-                         qp/process-query mt/rows ffirst)]
+            written (venues-row-count)]
         (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema :name "ctas_rows_affected_probe" :database (mt/id)}]
-          (let [transform {:source {:type "query" :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}
+          (let [transform {:source {:type "query" :query (venues-source-query)}
                            :target target}
                 details   {:db-id          (mt/id)
                            :database       (mt/db)
@@ -220,10 +238,9 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms-basic}
       (let [schema  (t2/select-one-fn :schema :model/Table (mt/id :venues))
-            written (->> (mt/mbql-query venues {:aggregation [[:count]]})
-                         qp/process-query mt/rows ffirst)]
+            written (venues-row-count)]
         (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema :name "insert_rows_affected_probe" :database (mt/id)}]
-          (let [transform {:source {:type "query" :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}
+          (let [transform {:source {:type "query" :query (venues-source-query)}
                            :target target}
                 details   {:db-id          (mt/id)
                            :database       (mt/db)
