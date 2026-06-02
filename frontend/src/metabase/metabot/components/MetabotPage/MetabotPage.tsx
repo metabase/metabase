@@ -31,13 +31,10 @@ import {
   createAgent,
   getActiveMetabotAgentIds,
   hydrateChatConversation,
-  setExpanded,
-  setVisible,
 } from "metabase/metabot/state";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
-import { removeTab, tabsSelectors } from "metabase/tabs/tabs.slice";
 import {
   ActionIcon,
   Box,
@@ -159,7 +156,6 @@ const MetabotConversation = ({
   const { canUseNlq } = useUserMetabotPermissions();
   const landingPageIllustration = useSelector(getLandingPageIllustration);
   const showIllustrations = useSetting("metabot-show-illustrations");
-  const tabs = useSelector(tabsSelectors.selectAll);
 
   const {
     metabotId,
@@ -180,20 +176,8 @@ const MetabotConversation = ({
   } = useMetabotAgent(agentId);
 
   const handleCollapse = () => {
-    dispatch(setExpanded({ agentId, expanded: false }));
-    dispatch(setVisible({ agentId, visible: true }));
-
-    const urlId = agentId.replace(/^chat_/, "");
-    const currentTab = tabs.find((tab) => tab.path === `/chat/${urlId}`);
-
-    if (currentTab && tabs.length > 1) {
-      const index = tabs.findIndex((tab) => tab.id === currentTab.id);
-      const neighbor = index > 0 ? tabs[index - 1] : tabs[index + 1];
-      dispatch(removeTab(currentTab.id));
-      dispatch(push(neighbor?.path ?? "/"));
-    } else {
-      dispatch(push("/"));
-    }
+    // TODO: re-implement collapsing a full-page conversation back to a pop-up
+    console.warn("TODO: collapse conversation", agentId);
   };
 
   const promptInputRef = useRef<MetabotPromptInputRef>(null);

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 
 import { MetabotBar } from "../MetabotBar/MetabotBar";
-import { TabBar } from "../TabBar/TabBar";
 
 import S from "./AppContentShell.module.css";
 
@@ -24,7 +23,6 @@ export function AppContentShell({
 
   return (
     <div className={cx(S.shell, { [S.shellBare]: !showChrome })}>
-      {showChrome && <TabBar />}
       <main
         className={cx(S.content, { [S.contentBare]: !showChrome })}
         ref={setViewportElement}
