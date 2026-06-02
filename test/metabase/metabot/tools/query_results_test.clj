@@ -32,6 +32,12 @@
                (-> result :structured-output :data-points vals first :columns)))
         (is (= ["Ada"]
                (-> result :structured-output :data-points vals first :row)))
+        ;; each data point is tagged with its source query so the chat can
+        ;; re-render it on demand when its chart isn't on screen
+        (let [source (-> result :structured-output :data-points vals first :source)]
+          (is (= "query" (:type source)))
+          (is (= "q1" (:id source)))
+          (is (str/starts-with? (:question_url source) "/question#")))
         (is (< (str/index-of output "<query_execution")
                (str/index-of output "</result>"))))))
 
@@ -46,6 +52,25 @@
                      :structured-output {:chart-id "chart-1"}}
                     {:state {:charts {"chart-1" {:queries [{:database 1 :type :query}]}}}})]
         (is (str/includes? (:output result) "<query_execution status=\"completed\""))))))
+
+(deftest format-untruncated-execution-result-source-test
+  (testing "silent execution tags data points with a renderable source from the query"
+    (let [summary {:status         :completed
+                   :result_columns [{:name "name" :display_name "Name" :type :type/Text}]
+                   :rows           [["Ada"]]}
+          target  (-> (query-results/format-untruncated-execution-result
+                       summary {:database 1 :type :query})
+                      :structured-output :data-points vals first)]
+      (is (str/starts-with? (-> target :source :question_url) "/question#"))
+      ;; silent queries have no chart/query reference, only a renderable url
+      (is (nil? (-> target :source :type))))
+    (testing "without a query there is no source"
+      (let [summary {:status         :completed
+                     :result_columns [{:name "name" :display_name "Name" :type :type/Text}]
+                     :rows           [["Ada"]]}
+            target  (-> (query-results/format-untruncated-execution-result summary)
+                        :structured-output :data-points vals first)]
+        (is (nil? (:source target)))))))
 
 (deftest representative-indices-test
   (testing "returns every index when at or below the target"

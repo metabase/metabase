@@ -34,6 +34,7 @@ import {
   isChatAgentId,
 } from "../../state";
 
+import { DataPointOnDemandHost } from "./MetabotAgentDataPartMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
@@ -237,6 +238,13 @@ export const MetabotChat = ({
                 metabot.requestState,
               )}
               dataSelections={getDataSelectionsFromState(metabot.requestState)}
+            />
+            {/* data points whose source chart isn't on screen, rendered on demand */}
+            <DataPointOnDemandHost
+              agentId={agentId}
+              dataPointTargets={getDataPointTargetsFromState(
+                metabot.requestState,
+              )}
             />
             {/* loading */}
             {metabot.isDoingScience && (
