@@ -5,6 +5,7 @@ import type { RenderingContext } from "metabase/visualizations/types";
 
 import { TREEMAP_CHART_STYLE } from "../constants";
 import { getTreemapColors } from "../model/colors";
+import type { TreemapLabelLayout } from "../model/labels";
 import { getTreemapNodeId } from "../model/tooltip";
 import type { TreemapNode, TreemapTree } from "../model/types";
 
@@ -35,7 +36,7 @@ export interface TreemapSeriesNode {
   rawName: TreemapNode["rawName"];
   rowIndices: number[];
   itemStyle?: { color?: string; borderColor?: string };
-  label?: { show?: boolean };
+  label?: { show?: boolean; width?: number };
   upperLabel?: { backgroundColor?: string };
   children?: TreemapSeriesNode[];
 }
@@ -49,19 +50,19 @@ export function getTreemapChartOption({
   tree,
   colors = getTreemapColors(tree),
   isDrilled = false,
-  labelVisibility = {},
+  labelLayout = {},
   renderingContext,
 }: {
   tree: TreemapTree;
   colors?: Record<string, string>;
   isDrilled?: boolean;
   /**
-   * Per-leaf label show/hide, keyed by node id, measured against the rendered
-   * tile width after layout (see `model/labels.ts`). Takes precedence over the
-   * cheap area-share heuristic below; missing ids fall back to that heuristic
-   * (used for the first paint, before any layout exists to measure).
+   * Per-leaf label layout (show + wrap width), keyed by node id, measured from
+   * the rendered tile after layout (see `model/labels.ts`). Takes precedence
+   * over the cheap area-share heuristic below; missing ids fall back to that
+   * heuristic (used for the first paint, before any layout exists to measure).
    */
-  labelVisibility?: Record<string, boolean>;
+  labelLayout?: Record<string, TreemapLabelLayout>;
   renderingContext: RenderingContext;
 }): {
   series: TreemapChartSeriesOption;
@@ -124,6 +125,11 @@ export function getTreemapChartOption({
     breadcrumb: { show: false },
     label: {
       ...TREEMAP_CHART_STYLE.nodeLabels,
+      // Wrap the label to the per-tile `label.width` set in `toSeriesData`
+      // (breaking at word boundaries), and drop any lines that don't fit the
+      // tile height rather than overflowing it.
+      overflow: "break",
+      lineOverflow: "truncate",
     },
     // Base for the synthetic root: no upper-label height, or it insets the whole
     // treemap from the top. Group headers come from `levels[1]` instead.
@@ -138,13 +144,7 @@ export function getTreemapChartOption({
     left: 0,
     right: 0,
     bottom: bottomSpace,
-    data: toSeriesData(
-      tree,
-      colors,
-      isDrilled,
-      labelVisibility,
-      renderingContext,
-    ),
+    data: toSeriesData(tree, colors, isDrilled, labelLayout, renderingContext),
     leafDepth: 2,
     ...(hasChildren ? { levels } : {}),
   };
@@ -156,7 +156,7 @@ function toSeriesData(
   tree: TreemapTree,
   colors: Record<string, string>,
   isDrilled: boolean,
-  labelVisibility: Record<string, boolean>,
+  labelLayout: Record<string, TreemapLabelLayout>,
   renderingContext: RenderingContext,
 ): TreemapSeriesNode[] {
   const headerTintTarget = renderingContext.getColor("white");
@@ -166,15 +166,18 @@ function toSeriesData(
   const isTileTooSmall = (value: number) =>
     total > 0 && value / total < LEAF_LABEL_MIN_AREA_SHARE;
 
-  // Resolve a tile's label visibility: a measured width-based decision
-  // (`labelVisibility`) wins when present; otherwise fall back to the area-share
-  // proxy. Returns `{}` to leave the label at its default (shown).
+  // Resolve a tile's label: a measured layout (`labelLayout`) wins when present,
+  // carrying both the show/hide decision (tiles under the min width hide) and
+  // the wrap width. Otherwise fall back to the area-share proxy used for the
+  // first paint, before any layout exists to measure. Returns `{}` to leave the
+  // label at its default (shown, unwrapped).
   const getLabelOverride = (
     id: string,
     value: number,
   ): Pick<TreemapSeriesNode, "label"> | Record<string, never> => {
-    if (id in labelVisibility) {
-      return { label: { show: labelVisibility[id] } };
+    const layout = labelLayout[id];
+    if (layout != null) {
+      return { label: { show: layout.show, width: layout.width } };
     }
     if (isTileTooSmall(value)) {
       return { label: { show: false } };

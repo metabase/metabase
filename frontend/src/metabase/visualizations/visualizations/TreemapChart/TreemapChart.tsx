@@ -14,8 +14,10 @@ import {
   getTreemapData,
 } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
+import type { TreemapLabelLayout } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import {
-  getTreemapLabelVisibility,
+  MIN_LABEL_TILE_WIDTH,
+  getTreemapLabelLayouts,
   getTreemapLayoutNodes,
 } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import {
@@ -35,16 +37,8 @@ import S from "./TreemapChart.module.css";
 import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
 import { dispatchTreemapViewRoot, useChartEvents } from "./events";
 
-// Font metrics for measuring whether a tile label fits its rendered width.
-// Derived from the same constants the option's `label` style uses, so the
-// measurement matches what ECharts draws (`label.position`'s first component is
-// the inset on every side).
-const LABEL_FONT_STYLE = {
-  size: TREEMAP_CHART_STYLE.nodeLabels.size,
-  family: TREEMAP_CHART_STYLE.nodeLabels.fontFamily,
-  weight: TREEMAP_CHART_STYLE.nodeLabels.fontWeight,
-};
-const LABEL_FONT_SIZE = TREEMAP_CHART_STYLE.nodeLabels.size;
+// Inset from each tile edge, matching the option's `label.position` — the wrap
+// width is the rendered tile width minus this on both sides.
 const LABEL_PADDING = TREEMAP_CHART_STYLE.nodeLabels.position[0];
 
 export const TreemapChart = ({
@@ -66,12 +60,12 @@ export const TreemapChart = ({
   // `handleViewRootChange` keeps both in sync.
   const [viewRootId, setViewRootId] = useState<string | null>(null);
   const viewRootIdRef = useRef<string | null>(null);
-  // Per-leaf label show/hide, measured against rendered tile widths after each
-  // layout (the second pass — see `handleLabelMeasure`). Empty until the first
-  // `finished`; the option builder falls back to its area-share heuristic for
-  // any id not yet measured, so the first paint is sensible.
-  const [labelVisibility, setLabelVisibility] = useState<
-    Record<string, boolean>
+  // Per-leaf label layout (show + wrap width), derived from the rendered tile
+  // sizes after each layout (the second pass — see `handleLabelMeasure`). Empty
+  // until the first `finished`; the option builder falls back to its area-share
+  // heuristic for any id not yet measured, so the first paint is sensible.
+  const [labelLayout, setLabelLayout] = useState<
+    Record<string, TreemapLabelLayout>
   >({});
   const handleViewRootChange = useCallback((id: string | null) => {
     viewRootIdRef.current = id;
@@ -100,7 +94,7 @@ export const TreemapChart = ({
       tree,
       colors,
       isDrilled: viewRootId != null,
-      labelVisibility,
+      labelLayout,
       renderingContext,
     });
     const formatters = getTreemapFormatters(treemapColumns, settings);
@@ -116,7 +110,7 @@ export const TreemapChart = ({
         treemapColumns.grouping.column.display_name,
       ),
     };
-  }, [chartData, settings, viewRootId, labelVisibility, renderingContext]);
+  }, [chartData, settings, viewRootId, labelLayout, renderingContext]);
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
@@ -127,27 +121,24 @@ export const TreemapChart = ({
   );
   const { eventHandlers } = useChartEvents(hasChildren, handleViewRootChange);
 
-  // Second pass of the label-fit decision: after ECharts finishes laying out (or
-  // re-laying out on drill/resize), measure each tile's rendered width and hide
-  // the labels that don't fit. Hiding a label never changes tile geometry, so
-  // the next `finished` measures identically — the deep-equal guard returns the
-  // same state reference, React bails, and the loop converges in one extra pass.
+  // Second pass of the label layout: after ECharts finishes laying out (or
+  // re-laying out on drill/resize), read each tile's rendered size and recompute
+  // which labels show and how wide they wrap. Changing only `label.show`/`width`
+  // never changes tile geometry, so the next `finished` reads identically — the
+  // deep-equal guard returns the same state reference, React bails, and the loop
+  // converges in one extra pass.
   const handleLabelMeasure = useCallback(() => {
     const chart = chartRef.current;
     if (!chart) {
       return;
     }
     const nodes = getTreemapLayoutNodes(chart);
-    const nextVisibility = getTreemapLabelVisibility(nodes, {
-      measureText: renderingContext.measureText,
-      fontStyle: LABEL_FONT_STYLE,
-      fontSize: LABEL_FONT_SIZE,
+    const nextLayout = getTreemapLabelLayouts(nodes, {
+      minTileWidth: MIN_LABEL_TILE_WIDTH,
       padding: LABEL_PADDING,
     });
-    setLabelVisibility((prev) =>
-      _.isEqual(prev, nextVisibility) ? prev : nextVisibility,
-    );
-  }, [renderingContext]);
+    setLabelLayout((prev) => (_.isEqual(prev, nextLayout) ? prev : nextLayout));
+  }, []);
 
   const allEventHandlers = useMemo(
     () => [
@@ -162,7 +153,7 @@ export const TreemapChart = ({
   // belong to the previous tree).
   useEffect(() => {
     handleViewRootChange(null);
-    setLabelVisibility({});
+    setLabelLayout({});
   }, [chartData, handleViewRootChange]);
 
   // `setOption` (run by the renderer when `option` changes) always renders at

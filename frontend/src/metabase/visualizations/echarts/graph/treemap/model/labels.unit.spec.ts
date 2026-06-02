@@ -1,123 +1,81 @@
-import type { FontStyle, TextWidthMeasurer } from "metabase/utils/measure-text";
-
 import type { TreemapLayoutNode } from "./labels";
-import { getTreemapLabelVisibility, shouldShowTreemapLabel } from "./labels";
+import {
+  getTreemapLabelLayout,
+  getTreemapLabelLayouts,
+} from "./labels";
 
-describe("shouldShowTreemapLabel", () => {
-  const fontSize = 12;
-  // The label is inset from the tile's top-left by `padding` (matches the
-  // option's `label.position`); we require the same breathing room on the
-  // right and bottom.
+describe("getTreemapLabelLayout", () => {
+  // Inset from each tile edge (matches the option's `label.position`).
   const padding = 12;
+  const minTileWidth = 100;
+  const config = { minTileWidth, padding };
 
-  it("shows the label when the text fits within the tile width and height", () => {
-    expect(
-      shouldShowTreemapLabel({
-        rect: { width: 200, height: 80 },
-        textWidth: 100,
-        fontSize,
-        padding,
-      }),
-    ).toBe(true);
+  it("shows the label and wraps to the inset width when the tile is wide enough", () => {
+    expect(getTreemapLabelLayout({ width: 200, height: 80 }, config)).toEqual({
+      show: true,
+      width: 200 - 2 * 12, // 176
+    });
   });
 
-  it("hides the label when the text is wider than the available width", () => {
-    // available width = 200 - 2*12 = 176; text is 180 → doesn't fit.
-    expect(
-      shouldShowTreemapLabel({
-        rect: { width: 200, height: 80 },
-        textWidth: 180,
-        fontSize,
-        padding,
-      }),
-    ).toBe(false);
+  it("hides the label when the tile is narrower than the minimum width", () => {
+    expect(getTreemapLabelLayout({ width: 80, height: 300 }, config)).toEqual({
+      show: false,
+      width: 80 - 2 * 12, // 56
+    });
   });
 
-  it("hides the label in a tall, thin sliver even when it has plenty of area", () => {
-    // A sliver: large area (40 * 300 = 12000) but only 40px wide — no room for
-    // a horizontal label. This is the case the area-share proxy gets wrong.
-    expect(
-      shouldShowTreemapLabel({
-        rect: { width: 40, height: 300 },
-        textWidth: 100,
-        fontSize,
-        padding,
-      }),
-    ).toBe(false);
+  it("shows the label when the tile is exactly the minimum width", () => {
+    expect(getTreemapLabelLayout({ width: 100, height: 80 }, config)).toEqual({
+      show: true,
+      width: 100 - 2 * 12, // 76
+    });
   });
 
-  it("hides the label when the tile is too short to fit a line of text", () => {
-    // available height = padding + fontSize = 24; height 20 is too short.
-    expect(
-      shouldShowTreemapLabel({
-        rect: { width: 200, height: 20 },
-        textWidth: 50,
-        fontSize,
-        padding,
-      }),
-    ).toBe(false);
+  it("hides the label in a tall, thin sliver regardless of its area", () => {
+    // Large area (40 * 600) but only 40px wide → below the width threshold.
+    expect(getTreemapLabelLayout({ width: 40, height: 600 }, config)).toEqual({
+      show: false,
+      width: 40 - 2 * 12, // 16
+    });
   });
 
-  it("shows the label when the text exactly fills the available width", () => {
-    // available width = 200 - 2*12 = 176.
-    expect(
-      shouldShowTreemapLabel({
-        rect: { width: 200, height: 80 },
-        textWidth: 176,
-        fontSize,
-        padding,
-      }),
-    ).toBe(true);
-  });
-
-  it("hides the label for a zero-area tile", () => {
-    expect(
-      shouldShowTreemapLabel({
-        rect: { width: 0, height: 0 },
-        textWidth: 10,
-        fontSize,
-        padding,
-      }),
-    ).toBe(false);
+  it("clamps the wrap width to zero for a degenerate tile", () => {
+    expect(getTreemapLabelLayout({ width: 0, height: 0 }, config)).toEqual({
+      show: false,
+      width: 0,
+    });
   });
 });
 
-describe("getTreemapLabelVisibility", () => {
-  const fontStyle: FontStyle = { size: 12, family: "Lato", weight: 700 };
-  // Fake measurer: each character is 10px wide. Keeps the test independent of
-  // canvas/DOM text metrics.
-  const measureText: TextWidthMeasurer = (text) => text.length * 10;
-  const config = { measureText, fontStyle, fontSize: 12, padding: 12 };
+describe("getTreemapLabelLayouts", () => {
+  const config = { minTileWidth: 100, padding: 12 };
 
-  function leaf(
-    id: string,
-    name: string,
-    width: number,
-    height: number,
-  ): TreemapLayoutNode {
-    return { id, name, rect: { width, height }, isLeaf: true };
+  function leaf(id: string, width: number, height: number): TreemapLayoutNode {
+    return { id, rect: { width, height }, isLeaf: true };
   }
 
-  it("returns one entry per leaf, keyed by node id", () => {
+  it("returns one layout per leaf, keyed by node id", () => {
     const nodes = [
-      leaf("0-0", "ab", 200, 80), // text 20px, fits
-      leaf("0-1", "abcdefghij", 40, 300), // text 100px in a 40px-wide sliver
+      leaf("0-0", 200, 80), // wide enough
+      leaf("0-1", 40, 300), // sliver
     ];
-    expect(getTreemapLabelVisibility(nodes, config)).toEqual({
-      "0-0": true,
-      "0-1": false,
+    expect(getTreemapLabelLayouts(nodes, config)).toEqual({
+      "0-0": { show: true, width: 176 },
+      "0-1": { show: false, width: 16 },
     });
   });
 
   it("ignores group nodes (which render a header chip, not a tile label)", () => {
     const nodes: TreemapLayoutNode[] = [
-      { id: "0", name: "group", rect: { width: 300, height: 300 }, isLeaf: false },
-      leaf("0-0", "ab", 200, 80),
+      { id: "0", rect: { width: 300, height: 300 }, isLeaf: false },
+      leaf("0-0", 200, 80),
     ];
-    expect(getTreemapLabelVisibility(nodes, config)).toEqual({ "0-0": true });
+    expect(getTreemapLabelLayouts(nodes, config)).toEqual({
+      "0-0": { show: true, width: 176 },
+    });
   });
 
   it("returns an empty map when there are no nodes", () => {
-    expect(getTreemapLabelVisibility([], config)).toEqual({});
+    expect(getTreemapLabelLayouts([], config)).toEqual({});
   });
 });

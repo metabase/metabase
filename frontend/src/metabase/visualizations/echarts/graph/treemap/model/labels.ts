@@ -1,92 +1,81 @@
 import type { EChartsType } from "echarts/core";
 
-import type { FontStyle, TextWidthMeasurer } from "metabase/utils/measure-text";
-
-export interface TreemapLabelFitInput {
-  /** The tile's rendered rectangle, in pixels. */
-  rect: { width: number; height: number };
-  /** Pre-measured width of the (single-line) label text, in pixels. */
-  textWidth: number;
-  /** Label font size, in pixels. */
-  fontSize: number;
-  /** Inset from the tile edge on every side (matches `label.position`). */
-  padding: number;
-}
-
 /**
- * Decide whether a treemap tile's label fits inside the rendered tile.
- *
- * The area-share heuristic in `option.ts` is only a proxy for box size: a tile
- * can hold a large share of the area yet render as a tall, thin sliver with no
- * horizontal room for a label. This measures the actual rendered rectangle
- * against the measured text width (and a single line's height) so slivers hide
- * their labels instead of letting ECharts clip them mid-glyph.
+ * Tiles narrower than this (in rendered px) hide their label entirely. Wrapping
+ * a label into a too-narrow column produces a tall stack of 1–2 character lines
+ * that reads worse than no label, so below this width we drop it.
  */
-export function shouldShowTreemapLabel({
-  rect,
-  textWidth,
-  fontSize,
-  padding,
-}: TreemapLabelFitInput): boolean {
-  const availableWidth = rect.width - padding * 2;
-  const fitsHorizontally = availableWidth > 0 && textWidth <= availableWidth;
-  const fitsVertically = rect.height >= padding + fontSize;
-  return fitsHorizontally && fitsVertically;
+export const MIN_LABEL_TILE_WIDTH = 100;
+
+export interface TreemapLabelLayout {
+  /** Whether to render the tile's label at all. */
+  show: boolean;
+  /**
+   * Wrapping width (px) for the label text — the tile's rendered width minus the
+   * edge inset. With `label.overflow: "break"` the label wraps to this width
+   * instead of overflowing/clipping.
+   */
+  width: number;
 }
 
 /** A treemap tile after ECharts has laid it out. */
 export interface TreemapLayoutNode {
   /** Path-encoded node id, matching the ids set in `option.ts` ("0", "0-1"). */
   id: string;
-  /** Rendered label text (the node's display name). */
-  name: string;
   /** The tile's rendered rectangle, in pixels. */
   rect: { width: number; height: number };
   /**
    * Leaves render their own `label`; group nodes render an `upperLabel` header
-   * chip instead, so only leaf labels are subject to width-based hiding.
+   * chip instead, so only leaf labels are subject to wrapping/hiding.
    */
   isLeaf: boolean;
 }
 
-export interface TreemapLabelVisibilityConfig {
-  measureText: TextWidthMeasurer;
-  fontStyle: FontStyle;
-  fontSize: number;
+export interface TreemapLabelLayoutConfig {
+  /** Minimum rendered tile width (px) to show a label at all. */
+  minTileWidth: number;
   /** Inset from the tile edge on every side (matches `label.position`). */
   padding: number;
 }
 
 /**
- * Decide, per leaf tile, whether its label fits the rendered rectangle. Returns
- * a map keyed by node id (only leaves get an entry); the option builder uses it
- * to override the cheap area-share heuristic with a true width-based decision.
+ * Resolve a single tile's label layout from its rendered rectangle: show the
+ * label only when the tile is at least `minTileWidth` wide, and wrap its text to
+ * the inset tile width.
  */
-export function getTreemapLabelVisibility(
+export function getTreemapLabelLayout(
+  rect: { width: number; height: number },
+  { minTileWidth, padding }: TreemapLabelLayoutConfig,
+): TreemapLabelLayout {
+  return {
+    show: rect.width >= minTileWidth,
+    width: Math.max(0, rect.width - padding * 2),
+  };
+}
+
+/**
+ * Per-leaf label layout (show + wrap width), keyed by node id. The option
+ * builder applies it on top of its cheap area-share heuristic, which only covers
+ * the first paint before any layout exists to measure.
+ */
+export function getTreemapLabelLayouts(
   nodes: TreemapLayoutNode[],
-  { measureText, fontStyle, fontSize, padding }: TreemapLabelVisibilityConfig,
-): Record<string, boolean> {
-  const visibility: Record<string, boolean> = {};
+  config: TreemapLabelLayoutConfig,
+): Record<string, TreemapLabelLayout> {
+  const layouts: Record<string, TreemapLabelLayout> = {};
   for (const node of nodes) {
     if (!node.isLeaf) {
       continue;
     }
-    const textWidth = measureText(node.name, fontStyle);
-    visibility[node.id] = shouldShowTreemapLabel({
-      rect: node.rect,
-      textWidth,
-      fontSize,
-      padding,
-    });
+    layouts[node.id] = getTreemapLabelLayout(node.rect, config);
   }
-  return visibility;
+  return layouts;
 }
 
 // Minimal shape of ECharts' internal treemap tree node. ECharts' public types
 // don't surface the laid-out tree, so we narrow to the fields we read.
 interface EChartsTreeNode {
   getId(): string;
-  name: string;
   children?: EChartsTreeNode[];
   getLayout(): { width?: number; height?: number } | undefined;
   eachNode(cb: (node: EChartsTreeNode) => void): void;
@@ -98,9 +87,7 @@ interface EChartsTreeNode {
  * which ECharts' public types don't expose — hence the narrow cast. Off-screen
  * or zero-area nodes (no usable layout) are skipped.
  */
-export function getTreemapLayoutNodes(
-  chart: EChartsType,
-): TreemapLayoutNode[] {
+export function getTreemapLayoutNodes(chart: EChartsType): TreemapLayoutNode[] {
   const root = (
     chart as unknown as {
       getModel(): {
@@ -126,7 +113,6 @@ export function getTreemapLayoutNodes(
     }
     nodes.push({
       id: node.getId(),
-      name: node.name,
       rect: { width: layout.width, height: layout.height },
       isLeaf: node.children == null || node.children.length === 0,
     });

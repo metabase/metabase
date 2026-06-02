@@ -331,7 +331,21 @@ describe("getTreemapChartOption small-node labels", () => {
   });
 });
 
-describe("getTreemapChartOption labelVisibility override", () => {
+describe("getTreemapChartOption wrapping", () => {
+  it("enables word-wrapping with vertical truncation on the series label", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
+
+    expect(series.label).toMatchObject({
+      overflow: "break",
+      lineOverflow: "truncate",
+    });
+  });
+});
+
+describe("getTreemapChartOption labelLayout override", () => {
   const twoLevel: TreemapTree = [
     {
       rawName: "G",
@@ -345,33 +359,33 @@ describe("getTreemapChartOption labelVisibility override", () => {
     },
   ];
 
-  it("forces a leaf label hidden even when its area share is large", () => {
+  it("hides a leaf label and sets its wrap width from the measured layout", () => {
     const { series } = getTreemapChartOption({
       tree: twoLevel,
-      labelVisibility: { "0-0": false },
+      labelLayout: { "0-0": { show: false, width: 50 } },
       renderingContext,
     });
     const [big] = series.data[0].children ?? [];
 
-    expect(big.label).toMatchObject({ show: false });
+    expect(big.label).toEqual({ show: false, width: 50 });
   });
 
-  it("forces a leaf label shown, overriding the area-share heuristic", () => {
+  it("shows a leaf label and wraps it, overriding the area-share heuristic", () => {
     const { series } = getTreemapChartOption({
       tree: twoLevel,
-      labelVisibility: { "0-1": true },
+      labelLayout: { "0-1": { show: true, width: 120 } },
       renderingContext,
     });
     const [, tiny] = series.data[0].children ?? [];
 
     // Without the override, "Tiny" (2% share) would be hidden by area-share.
-    expect(tiny.label).toMatchObject({ show: true });
+    expect(tiny.label).toEqual({ show: true, width: 120 });
   });
 
   it("falls back to the area-share heuristic for ids not in the map", () => {
     const { series } = getTreemapChartOption({
       tree: twoLevel,
-      labelVisibility: { "0-0": false },
+      labelLayout: { "0-0": { show: false, width: 50 } },
       renderingContext,
     });
     const [, tiny] = series.data[0].children ?? [];
@@ -380,7 +394,7 @@ describe("getTreemapChartOption labelVisibility override", () => {
     expect(tiny.label).toMatchObject({ show: false });
   });
 
-  it("applies the override to a 1-level treemap's tiles by id", () => {
+  it("applies the layout to a 1-level treemap's tiles by id", () => {
     const oneLevel: TreemapTree = [
       { rawName: "A", displayName: "A", value: 99, rowIndices: [0] },
       { rawName: "B", displayName: "B", value: 1, rowIndices: [1] },
@@ -388,13 +402,16 @@ describe("getTreemapChartOption labelVisibility override", () => {
 
     const { series } = getTreemapChartOption({
       tree: oneLevel,
-      labelVisibility: { "0": false, "1": true },
+      labelLayout: {
+        "0": { show: false, width: 200 },
+        "1": { show: true, width: 30 },
+      },
       renderingContext,
     });
 
-    expect(series.data[0].label).toMatchObject({ show: false });
-    // "B" would be area-share-hidden, but the override shows it.
-    expect(series.data[1].label).toMatchObject({ show: true });
+    expect(series.data[0].label).toEqual({ show: false, width: 200 });
+    // "B" would be area-share-hidden, but the layout shows it.
+    expect(series.data[1].label).toEqual({ show: true, width: 30 });
   });
 });
 
