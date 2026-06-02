@@ -314,28 +314,17 @@ describe("scenarios > metrics > metric page", () => {
     H.main().findByText("This metric is in the trash.");
   });
 
-  it("should restrict editing controls and definition tab for read-only users", () => {
+  it("should show the permission screen when the user lacks data permission", () => {
     cy.signInAsAdmin();
     H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
       cy.signIn("readonly");
-      H.visitMetric(metric.id);
+      cy.visit(`/metric/${metric.id}`);
 
-      cy.log("about page hides editing controls");
-      H.MetricPage.aboutPage().should("be.visible");
-      cy.findByDisplayValue("Orders count").should("not.exist");
-      H.MetricPage.moreMenu().click();
-      H.popover().within(() => {
-        cy.findByText("Bookmark").should("be.visible");
-        cy.findByText("Add to a dashboard").should("be.visible");
-        cy.findByText("Move").should("not.exist");
-        cy.findByText("Duplicate").should("not.exist");
-        cy.findByText("Move to trash").should("not.exist");
-      });
-
-      cy.log("overview and definition tabs are hidden for read-only users");
-      cy.realPress("Escape");
-      H.MetricPage.overviewTab().should("not.exist");
-      H.MetricPage.definitionTab().should("not.exist");
+      H.main()
+        .findByText(/permission to see that/i)
+        .should("be.visible");
+      H.MetricPage.aboutPage().should("not.exist");
+      H.MetricPage.header().should("not.exist");
     });
   });
 
