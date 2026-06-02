@@ -467,6 +467,7 @@
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
   metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
+  metabase.metabot.api-test/with-test-prompt                                            clojure.core/let
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.notification.test-util/with-card-notification                                clojure.core/let

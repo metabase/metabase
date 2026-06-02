@@ -98,4 +98,3 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                     unique: true
-
