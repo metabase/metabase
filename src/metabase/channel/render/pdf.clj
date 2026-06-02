@@ -120,6 +120,18 @@
       (.drawImage cs img (float margin) (float y) (float draw-w) (float draw-h))
       (swap! state update :y - (+ draw-h 12.0)))))
 
+(defn- card-part->png
+  "Rasterize a `:card` part to a single PNG that includes the card title, description, and
+  chart/table -- the same elements the subscription email shows for a card. Uses the `:inline`
+  render type so the chart embeds as a data URI that CSSBox can rasterize (the `:attachment`
+  type emits `cid:` refs CSSBox can't resolve), and passes the dashcard so per-dashcard
+  title/description overrides are respected."
+  ^bytes [timezone {:keys [card dashcard result]}]
+  (-> (render.card/render-pulse-card :inline timezone card dashcard result
+                                     {:channel.render/include-title?       true
+                                      :channel.render/include-description? true})
+      (render.card/png-from-render-info render-width)))
+
 (defn render-dashboard-to-pdf
   "Render the dashboard with `dashboard-id` to PDF bytes, as user `user-id`, applying
   `parameters` (a vector of dashboard parameter maps; `[]` for none)."
@@ -136,9 +148,8 @@
       (doseq [part parts]
         (try
           (case (:type part)
-            ;; Whole-card PNG already includes the card title/description.
-            :card (draw-image! state (render.card/render-pulse-card-to-png
-                                      timezone (:card part) (:result part) render-width))
+            ;; Whole-card PNG includes the card title, description, and chart/table.
+            :card (draw-image! state (card-part->png timezone part))
             (:heading :tab-title) (draw-text! state (bold-font) 16.0 (:text part))
             :text (draw-text! state (regular-font) 11.0 (:text part))
             nil)
