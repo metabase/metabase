@@ -27,12 +27,13 @@
 
 (defn normalize-text-expr
   "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
-  lower-case, strip commas, collapse whitespace runs to one space, trim.
+  lower-case, replace commas with spaces, collapse whitespace runs to one space, trim.
+  Replacing commas with spaces (rather than deleting them) keeps `a,b` from collapsing into `ab`.
   `db-type` picks the regexp_replace dialect -- Postgres needs the 'g' flag; H2 replaces all by default and
   rejects 'g'."
   ([expr] (normalize-text-expr (mdb/db-type) expr))
   ([db-type expr]
-   (let [stripped [:replace [:lower expr] [:inline ","] [:inline ""]]
+   (let [stripped [:replace [:lower expr] [:inline ","] [:inline " "]]
          collapsed (case db-type
                      :postgres [:regexp_replace stripped [:inline "\\s+"] [:inline " "] [:inline "g"]]
                      :h2       [:regexp_replace stripped [:inline "\\s+"] [:inline " "]])]
@@ -42,7 +43,7 @@
   "Clojure analogue of `normalize-text-expr`, for callers that must normalize a search string in code (the
   :prefix scorer builds a LIKE pattern). Keep in lock-step with the SQL version."
   [s]
-  (-> (u/lower-case-en s) (str/replace "," "") (str/replace #"\s+" " ") str/trim))
+  (-> (u/lower-case-en s) (str/replace "," " ") (str/replace #"\s+" " ") str/trim))
 
 (defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
