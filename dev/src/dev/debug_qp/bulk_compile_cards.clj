@@ -1,0 +1,58 @@
+(ns dev.debug-qp.bulk-compile-cards
+  (:require
+   [clojure.java.io :as io]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Executors Callable)))
+
+(defn- save-card-compilation-results
+  [card-ids output-file]
+  (let [pool    (Executors/newFixedThreadPool 8)
+        futures (mapv (fn [card-id]
+                        (.submit pool ^Callable
+                                 (fn []
+                                   (try
+                                     (let [card (t2/select-one :model/Card :id card-id)
+                                           {:keys [query params error]} (try
+                                                                          (-> card
+                                                                              :dataset_query
+                                                                              qp.compile/compile)
+                                                                          (catch Throwable e
+                                                                            {:error (ex-message e)}))]
+                                       (cond-> {:db_id   (:database_id card)
+                                                :card_id card-id
+                                                :query  query
+                                                :params params}
+                                         error (assoc :error error)))
+                                     (catch Throwable e
+                                       {:card-id card-id
+                                        :error (ex-message e)})))))
+                      card-ids)]
+    (try
+      (with-open [w (io/writer output-file :append true)]
+        (doseq [f futures]
+          (.write w (json/encode (.get f)))
+          (.write w "\n")))
+      (finally
+        (.shutdown pool)))))
+
+(defn- get-card-rows [card-id]
+  (let [{:keys [dataset_query]} (t2/select-one :model/Card card-id)]
+    (mt/rows (qp/process-query dataset_query))))
+
+(comment
+
+  (def postgres-card-ids (map :id
+                              (t2/query {:select [:rc.id]
+                                         :from   [[:report_card :rc]]
+                                         :join   [[:metabase_database :md] [:= :rc.database_id :md.id]]
+                                         :where  [:= :md.engine "postgres"]
+                                         :order-by [[:md.id :asc] [:rc.id :asc]]
+                                         :limit  200})))
+
+  (time
+   (save-card-compilation-results postgres-card-ids "postgres_mbql5_results.jsonl")))

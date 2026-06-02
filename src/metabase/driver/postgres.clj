@@ -616,8 +616,8 @@
       :type/PostgresEnum (if (quoted? database-type)
                            (h2x/cast database-type raw-value)
                            (h2x/quoted-cast database-type raw-value))
-      ((get-method sql.qp/->honeysql [:sql-jdbc :value])
-       driver [:value raw-value {:base_type base-type :database_type database-type}]))))
+      ((get-method sql.qp/->honeysql [:sql-mbql5 :value])
+       driver (sql.qp/mbql-clause-with-opts driver {:base_type base-type :database_type database-type} :value raw-value)))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ _opts arg]]
@@ -807,7 +807,7 @@
         stored-fields    (map #(when (integer? %)
                                  (driver-api/field (driver-api/metadata-provider) %))
                               stored-field-ids)
-        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :breakout])
                                   driver clause honeysql-form)
         qualified        (parent-method query)
         unqualified      (parent-method (update query
@@ -834,7 +834,7 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
-    ((get-method sql.qp/->honeysql [:sql :desc]) driver [:desc ordered-clause opts])))
+    ((get-method sql.qp/->honeysql [:sql-mbql5 :desc]) driver (sql.qp/mbql-clause-with-opts driver opts :desc ordered-clause))))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
@@ -842,7 +842,7 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
-    ((get-method sql.qp/->honeysql [:sql :asc]) driver [:asc ordered-clause opts])))
+    ((get-method sql.qp/->honeysql [:sql-mbql5 :asc]) driver (sql.qp/mbql-clause-with-opts driver opts :asc ordered-clause))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
