@@ -37,6 +37,19 @@ env:
   HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
   PR_NUMBER: ${{ github.event.pull_request.number || '' }}
   JOB_NAME: ${{ inputs.name }}
+  # ci-conductor failed-tests reporting (DEV-1999). Secret holds the webhooks
+  # base URL (".../webhooks"); the reporter appends the endpoint. Callers pass
+  # `secrets: inherit`; reporting no-ops when it's unset.
+  CI_CONDUCTOR_WEBHOOK_URL: ${{ secrets.CI_CONDUCTOR_WEBHOOK_URL }}
+  # Shared secret sent as the `x-internal-secret` header to authenticate.
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  REPO_ID: ${{ github.event.repository.id }}
+  # Commit + PR target branch under test, so conductor can tie failures to the
+  # right code. On PRs the ambient GITHUB_SHA is the synthetic merge commit and
+  # GITHUB_BASE_REF the target, so we pass the PR head sha / base ref explicitly
+  # (falling back to push-event values). The reporter reads these. DEV-1999.
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 
 jobs:
   e2e-tests:
@@ -111,6 +124,15 @@ jobs:
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
+
+      # Export this job's numeric GitHub job id as $JOB_ID for the Cypress runs
+      # below (ci-conductor failed-tests reporting reads it in after:spec).
+      # Snapshot generation is itself a Cypress run that fires after:spec, so
+      # this must precede it. Placed late, not after checkout: the Actions jobs
+      # API is eventually consistent, so the longer the job has been alive the
+      # more reliably the lookup resolves. JOB_ID exported here persists to the
+      # steps below. DEV-1999.
+      - uses: ./.github/actions/resolve-job-id
 
       - name: Generate database snapshots
         env:
