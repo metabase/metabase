@@ -68,7 +68,7 @@ export function DimensionPillBar({ items }: DimensionPillBarProps) {
       align="center"
       justify="center"
       wrap="wrap"
-      data-testid="metrics-viewer-dimension-pill-container"
+      data-testid="metrics-viewer-dimension-pill-bar"
     >
       {items.map((item) => (
         <DimensionLabel

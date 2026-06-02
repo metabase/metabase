@@ -2,8 +2,8 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
+import type { ExpressionDefinitionEntry } from "metabase/metrics-viewer/types";
 
-import type { ExpressionDefinitionEntry } from "../../../types/viewer-state";
 import type { MetricNameMap } from "../utils";
 
 import { MetricExpressionPill } from "./MetricExpressionPill";
@@ -71,7 +71,7 @@ describe("MetricExpressionPill expression rendering", () => {
 
     setup({ expressionEntry });
 
-    const pill = screen.getByTestId("metric-expression-pill");
+    const pill = screen.getByTestId("metrics-viewer-expression-pill");
     // The raw expression text is shown — custom-name fallback is not used.
     expect(pill).toHaveTextContent(/A\s*\+\s*A/);
     // The first "A" is unique so far (no badge), but the second and third
@@ -117,7 +117,7 @@ describe("MetricExpressionPill action menu", () => {
   it("should open a menu with a Rename item when the pill is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByTestId("metric-expression-pill"));
+    await userEvent.click(screen.getByTestId("metrics-viewer-expression-pill"));
 
     expect(await screen.findByText("Edit")).toBeInTheDocument();
     expect(await screen.findByText("Rename")).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe("MetricExpressionPill action menu", () => {
   it("should start the inline rename flow when Rename is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByTestId("metric-expression-pill"));
+    await userEvent.click(screen.getByTestId("metrics-viewer-expression-pill"));
     await userEvent.click(await screen.findByText("Rename"));
 
     expect(
@@ -139,7 +139,7 @@ describe("MetricExpressionPill action menu", () => {
   it('should call onEdit if "Edit" menu item is clicked', async () => {
     const { onEdit } = setup();
 
-    await userEvent.click(screen.getByTestId("metric-expression-pill"));
+    await userEvent.click(screen.getByTestId("metrics-viewer-expression-pill"));
     await userEvent.click(await screen.findByText("Edit"));
 
     expect(onEdit).toHaveBeenCalledTimes(1);

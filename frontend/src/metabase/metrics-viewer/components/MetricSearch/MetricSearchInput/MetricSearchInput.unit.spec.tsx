@@ -193,7 +193,7 @@ describe("collapsed view (definitions present, not focused)", () => {
   it("renders a single metric definition as a MetricPill", () => {
     setup({ entries: [revenueEntry] });
 
-    expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
+    expect(screen.getByTestId("metrics-viewer-pill")).toBeInTheDocument();
     expect(screen.getByText("Revenue")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
@@ -208,7 +208,7 @@ describe("collapsed view (definitions present, not focused)", () => {
       entries: [revenueEntry, costsEntry, expr],
     });
 
-    const pill = screen.getByTestId("metric-expression-pill");
+    const pill = screen.getByTestId("metrics-viewer-expression-pill");
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveTextContent("Revenue + Costs");
   });
@@ -216,7 +216,7 @@ describe("collapsed view (definitions present, not focused)", () => {
   it("renders two separate metric entries as two pills", () => {
     setup({ entries: [revenueEntry, costsEntry] });
 
-    const pills = screen.getAllByTestId("metric-pill");
+    const pills = screen.getAllByTestId("metrics-viewer-pill");
     expect(pills).toHaveLength(2);
     expect(pills[0]).toHaveTextContent("Revenue");
     expect(pills[1]).toHaveTextContent("Costs");
@@ -317,7 +317,7 @@ describe("blur behavior", () => {
     expect(
       screen.queryByTestId("metrics-viewer-search-input"),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
+    expect(screen.getByTestId("metrics-viewer-pill")).toBeInTheDocument();
   });
 
   it("shows the Run button when formula is dirty", async () => {
@@ -485,7 +485,7 @@ describe("removing pills", () => {
       onFormulaEntitiesChange,
     });
 
-    const exprPill = screen.getByTestId("metric-expression-pill");
+    const exprPill = screen.getByTestId("metrics-viewer-expression-pill");
     await user.click(within(exprPill).getByLabelText("Remove expression"));
 
     // Both Revenue and Costs are only referenced in the expression (the metric entries remain)

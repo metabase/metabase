@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
+import type { ExpressionDefinitionEntry } from "metabase/metrics-viewer/types";
 import { Badge, Flex, Icon, Menu, Pill } from "metabase/ui";
 
-import type { ExpressionDefinitionEntry } from "../../../types/viewer-state";
 import {
   type MetricNameMap,
   buildExpressionForPill,
@@ -107,7 +107,7 @@ export function MetricExpressionPill({
             ml: 0,
             "aria-label": t`Remove expression`,
           }}
-          data-testid="metric-expression-pill"
+          data-testid="metrics-viewer-expression-pill"
         >
           <Flex align="center" gap="xs">
             <SourceColorIndicator colors={colors} />

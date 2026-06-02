@@ -3,16 +3,15 @@ import userEvent from "@testing-library/user-event";
 
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-
 import type {
   MetricsViewerDefinitionEntry,
   SelectedMetric,
-} from "../../../types/viewer-state";
+} from "metabase/metrics-viewer/types";
 import {
   REVENUE_METRIC,
   createMetricMetadata,
   setupDefinition,
-} from "../../../utils/__tests__/test-helpers";
+} from "metabase/metrics-viewer/utils/__tests__/test-helpers";
 
 import { MetricPill } from "./MetricPill";
 
@@ -43,7 +42,7 @@ function setup({
 }
 
 async function openPillMenu() {
-  const pill = screen.getByTestId("metric-pill");
+  const pill = screen.getByTestId("metrics-viewer-pill");
   await userEvent.click(pill);
 }
 
