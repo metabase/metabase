@@ -205,8 +205,8 @@ describe("issue GDGT-2429", () => {
     cy.go("back");
     H.leaveConfirmationModal().should("be.visible");
 
-    cy.log("cancelling the warning should keep us on the page");
-    H.leaveConfirmationModal().findByRole("button", { name: "Cancel" }).click();
+    cy.log("pressing Esc should close the warning, not the saving modal");
+    cy.realPress("Escape");
     H.leaveConfirmationModal().should("not.exist");
     H.modal().findByText("Save your transform").should("be.visible");
 
