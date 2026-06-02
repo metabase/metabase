@@ -16,7 +16,7 @@ import { document } from "./documents";
 import { indexedEntity } from "./indexed-entities";
 import { metric } from "./metrics";
 import { model } from "./models";
-import { tableRowsQuery } from "./questions";
+import { tableRowsQuery, table as tableUrl } from "./questions";
 import { timeline } from "./timelines";
 import { transform } from "./transforms";
 
@@ -58,7 +58,7 @@ export function modelToUrl(item: UrlableModel): string {
       return dashboard(item);
     case "table":
       if (databaseId != null) {
-        return tableRowsQuery(databaseId, item.id);
+        return tableUrl({ id: item.id, name: item.name });
       }
       return NOT_FOUND_URL;
     case "collection":

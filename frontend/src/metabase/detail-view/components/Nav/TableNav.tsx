@@ -43,7 +43,7 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
 
       <Separator />
 
-      <Breadcrumb href={Urls.tableRowsQuery(table.db_id, table.id)}>
+      <Breadcrumb href={Urls.table({ id: table.id, name: table.display_name })}>
         {table.display_name}
       </Breadcrumb>
 

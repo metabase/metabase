@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Box, Icon, Text } from "metabase/ui";
-import { browseDatabase, browseSchema, tableRowsQuery } from "metabase/urls";
+import { browseDatabase, browseSchema, table as tableUrl } from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { SearchResult } from "metabase-types/api";
 
@@ -51,7 +51,7 @@ export const InfoTextTableLink = ({
     return <LoadingText />;
   }
 
-  const link = tableRowsQuery(result.database_id, result.table_id);
+  const link = tableUrl({ id: result.table_id, name: table?.display_name });
   const label = table?.display_name ?? null;
 
   return (

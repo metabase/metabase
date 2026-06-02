@@ -9,5 +9,5 @@ export const metricUrls: MetricUrls = {
   dependencies: Urls.metricDependencies,
   history: Urls.metricHistory,
   database: (id) => Urls.browseDatabase({ id }),
-  table: (databaseId, tableId) => Urls.tableRowsQuery(databaseId, tableId),
+  table: (_databaseId, tableId) => Urls.table({ id: tableId }),
 };
