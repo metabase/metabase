@@ -27,7 +27,7 @@ type NotificationCardPayload = {
 type NotificationCardData = {
   payload_type: "notification/card";
   // payload can be null when it's deleted from the database
-  payload: NotificationCardPayload | null;
+  payload?: NotificationCardPayload | null;
   payload_id?: number;
 };
 
