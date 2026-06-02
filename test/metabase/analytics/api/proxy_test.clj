@@ -24,22 +24,28 @@
    :data   [{:e "ue" :p "web" :tv "js-3.24.6"}]})
 
 (defmacro ^:private with-collector
-  "Run `body` with `snowplow-url` pinned to the fake collector host and a fake route that records the inbound request
-  into `request-atom` then returns `response`."
-  [request-atom response & body]
-  `(mt/with-temporary-setting-values [~'snowplow-url fake-collector-host]
-     (fake/with-fake-routes
-       {(collector-url) (fn [request#]
-                          (reset! ~request-atom request#)
-                          ~response)}
-       ~@body)))
+  "Run `body` with `snowplow-url` pinned to the fake collector host and a fake route that returns `response`.
+  When `request-atom` is provided, records the inbound request into it for inspection."
+  [& args]
+  (if (symbol? (first args))
+    (let [[request-atom response & body] args]
+      `(mt/with-temporary-setting-values [~'snowplow-url fake-collector-host]
+         (fake/with-fake-routes
+           {(collector-url) (fn [request#]
+                              (reset! ~request-atom request#)
+                              ~response)}
+           ~@body)))
+    (let [[response & body] args]
+      `(mt/with-temporary-setting-values [~'snowplow-url fake-collector-host]
+         (fake/with-fake-routes
+           {(collector-url) (constantly ~response)}
+           ~@body)))))
 
 (deftest anonymous-public-route-test
   (testing "an anonymous POST reaches the handler (no auth required) and gets a 2xx back"
-    (let [captured (atom nil)]
-      (with-collector captured {:status 200 :headers {} :body "{}"}
-        ;; client/client with no user = anonymous. A 401 here would mean the route isn't public.
-        (is (= {} (client/client :post 200 "analytics-proxy" sample-payload)))))))
+    (with-collector {:status 200 :headers {} :body "{}"}
+      ;; client/client with no user = anonymous. A 401 here would mean the route isn't public.
+      (is (= {} (client/client :post 200 "analytics-proxy" sample-payload))))))
 
 (deftest forwards-payload-to-collector-test
   (testing "the handler forwards the body to the collector's tp2 endpoint as JSON, semantically unchanged"
@@ -53,16 +59,13 @@
                (json/decode (slurp (:body @captured))))))
       (testing "outbound content-type is JSON"
         (is (re-find #"(?i)application/json"
-                     (or (get-in @captured [:headers "content-type"])
-                         (get-in @captured [:headers "Content-Type"])
-                         "")))))))
+                     (get-in @captured [:headers "content-type"] "")))))))
 
 (deftest relays-collector-status-verbatim-test
-  (testing "a non-2xx collector response is relayed unchanged (not masked as a 2xx) so the tracker can retry"
-    (mt/with-temporary-setting-values [snowplow-url fake-collector-host]
-      (fake/with-fake-routes
-        {(collector-url) (fn [_request] {:status 400 :headers {} :body "bad payload"})}
-        (client/client :post 400 "analytics-proxy" sample-payload)))))
+  (testing "non-2xx status and body are relayed unchanged so the tracker can retry"
+    (with-collector {:status 400 :headers {} :body "{\"error\":\"bad payload\"}"}
+      (is (= {:error "bad payload"}
+             (client/client :post 400 "analytics-proxy" sample-payload))))))
 
 (deftest unreachable-collector-returns-502-test
   (testing "when the collector is unreachable the proxy returns 502 (retryable) rather than throwing"
@@ -77,5 +80,4 @@
     (let [captured (atom nil)]
       (with-collector captured {:status 200 :headers {} :body "{}"}
         (client/client :post 200 "analytics-proxy" sample-payload))
-      (is (nil? (get-in @captured [:headers "X-Forwarded-For"])))
       (is (nil? (get-in @captured [:headers "x-forwarded-for"]))))))

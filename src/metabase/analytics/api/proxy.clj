@@ -42,4 +42,4 @@
       (catch Exception e
         ;; 502 is retryable by the tracker; a fake 2xx would silently drop the event.
         (log/errorf e "analytics-proxy failed forwarding to %s" collector-url)
-        {:status 502}))))
+        {:status 502 :body nil}))))
