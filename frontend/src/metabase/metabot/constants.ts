@@ -2,6 +2,10 @@ import { t } from "ttag";
 
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 
+/** Placeholder title a conversation gets on creation, before the agent
+ * generates a real one. Evaluated at call time so it honors the active locale. */
+export const getDefaultConversationTitle = () => t`New chat`;
+
 // NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
 export const FIXED_METABOT_IDS = {
   DEFAULT: 1 as const,

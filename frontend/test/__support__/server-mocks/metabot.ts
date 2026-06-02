@@ -4,6 +4,7 @@ import fetchMock, {
 } from "fetch-mock";
 
 import type {
+  MetabotChatConversationSummary,
   MetabotGroupLimit,
   MetabotGroupPermission,
   MetabotId,
@@ -342,5 +343,23 @@ export function setupUserMetabotPermissionsEndpoint(
     "path:/api/metabot/permissions/user-permissions",
     response ?? createMockUserMetabotPermissions(),
     { name: USER_METABOT_PERMISSIONS_ROUTE_NAME },
+  );
+}
+
+const LIST_METABOT_CONVERSATIONS_ROUTE_NAME = "metabot-conversations-list";
+
+export function setupListMetabotChatConversationsEndpoint(
+  conversations: MetabotChatConversationSummary[] = [],
+) {
+  fetchMock.removeRoute(LIST_METABOT_CONVERSATIONS_ROUTE_NAME);
+  fetchMock.get(
+    "path:/api/metabot/conversations/",
+    {
+      data: conversations,
+      total: conversations.length,
+      limit: conversations.length,
+      offset: 0,
+    },
+    { name: LIST_METABOT_CONVERSATIONS_ROUTE_NAME },
   );
 }

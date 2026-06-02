@@ -30,6 +30,7 @@ import {
 } from "../../hooks";
 import {
   type MetabotAgentId,
+  discardConversationIfEmpty,
   expandConversation,
   isChatAgentId,
 } from "../../state";
@@ -109,6 +110,8 @@ export const MetabotChat = ({
   const handleClose = () => {
     metabot.setPrompt("");
     metabot.setVisible(false);
+    // Drop the chat from history if it was opened but never used.
+    dispatch(discardConversationIfEmpty({ agentId }));
   };
 
   const canExpand = isChatAgentId(agentId);

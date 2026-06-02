@@ -67,6 +67,14 @@
   background-color: transparent;
 }
 
+.bottomBar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 6px;
+}
+
 @media print {
   .content {
     overflow: visible !important;

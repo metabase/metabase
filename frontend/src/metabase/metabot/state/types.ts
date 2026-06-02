@@ -121,6 +121,7 @@ export interface MetabotConverstationState {
   prompt: string;
   promptFocusToken: number;
   isProcessing: boolean;
+  hasUnreadResponse: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;
   inBar: boolean;

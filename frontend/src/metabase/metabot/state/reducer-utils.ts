@@ -2,9 +2,11 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
-import { t } from "ttag";
 
-import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
+import {
+  METABOT_PROFILE_OVERRIDES,
+  getDefaultConversationTitle,
+} from "metabase/metabot/constants";
 import { uuid } from "metabase/utils/uuid";
 
 import {
@@ -61,10 +63,11 @@ export const createConversation = (
   const overrides = merge(agentOverrides, conversationOverrides);
 
   return {
-    title: t`New chat`,
+    title: getDefaultConversationTitle(),
     prompt: "",
     promptFocusToken: 0,
     isProcessing: false,
+    hasUnreadResponse: false,
     messages: [],
     visible: false,
     inBar: false,

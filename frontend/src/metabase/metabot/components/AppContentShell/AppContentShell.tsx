@@ -14,7 +14,7 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { Transition } from "metabase/ui";
 
-import { MetabotBar } from "../MetabotBar/MetabotBar";
+import { MetabotLauncher } from "../MetabotBar/MetabotLauncher";
 
 import S from "./AppContentShell.module.css";
 
@@ -123,7 +123,11 @@ export function AppContentShell({
           }
         </Transition>
       </div>
-      {showChrome && <MetabotBar />}
+      {showChrome && (
+        <div className={S.bottomBar}>
+          <MetabotLauncher />
+        </div>
+      )}
     </div>
   );
 }

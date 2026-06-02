@@ -242,9 +242,17 @@ export const metabot = createSlice({
         state.isProcessing = action.payload.processing;
       },
     ),
+    setHasUnreadResponse: convoReducer(
+      (state, action: ConvoPayloadAction<{ hasUnreadResponse: boolean }>) => {
+        state.hasUnreadResponse = action.payload.hasUnreadResponse;
+      },
+    ),
     setVisible: convoReducer(
       (state, action: ConvoPayloadAction<{ visible: boolean }>) => {
         state.visible = action.payload.visible;
+        if (action.payload.visible) {
+          state.hasUnreadResponse = false;
+        }
       },
     ),
     setInBar: convoReducer(

@@ -9,12 +9,14 @@ import {
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { metabotApi } from "metabase/api/metabot";
+import { listTag } from "metabase/api/tags";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
+import { getLocation } from "metabase/selectors/routing";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { clone } from "metabase/utils/clone";
@@ -82,7 +84,29 @@ export const {
   removeSuggestedCodeEdit,
   setInBar,
   setOverlayAgentId,
+  setHasUnreadResponse,
 } = metabot.actions;
+
+function markUnreadIfUnfocused(
+  state: State,
+  dispatch: Dispatch,
+  agentId: MetabotAgentId,
+) {
+  const convo = getMetabotState(state).conversations[agentId];
+  if (!convo) {
+    return;
+  }
+
+  const pathname = getLocation(state).pathname ?? "";
+  const isFocused =
+    convo.visible ||
+    getMetabotState(state).overlayAgentId === agentId ||
+    pathname === `/chat/${convo.conversationId}`;
+
+  if (!isFocused) {
+    dispatch(setHasUnreadResponse({ agentId, hasUnreadResponse: true }));
+  }
+}
 
 type HandledResponseError = {
   error: MetabotAgentTurnError;
@@ -329,6 +353,7 @@ export const submitInput = createAsyncThunk<
       });
 
       const result = await sendMessageRequestPromise;
+      markUnreadIfUnfocused(getState(), dispatch, agentId);
 
       if (isRejected(result)) {
         return {
@@ -527,6 +552,12 @@ export const sendAgentRequest = createAsyncThunk<
         });
       }
 
+      // Refresh the conversation list that backs the sidebar threads so newly
+      // created chats and freshly generated titles show up without a reload.
+      dispatch(
+        metabotApi.util.invalidateTags([listTag("metabot-conversation")]),
+      );
+
       return fulfillWithValue({
         conversation_id: request.conversation_id,
         history: [...getHistory(getState(), agentId), ...response.history],
@@ -719,6 +750,18 @@ export const resetConversation = createAsyncThunk(
   (payload: { agentId: MetabotAgentId }, { dispatch }) => {
     dispatch(cancelInflightAgentRequests(payload.agentId));
     dispatch(metabot.actions.resetConversation(payload));
+  },
+);
+
+/** Discards a conversation that was opened but never used (no messages sent),
+ * so abandoned "New chat" drafts don't linger in the sidebar history. */
+export const discardConversationIfEmpty = createAsyncThunk(
+  "metabase/metabot/discardConversationIfEmpty",
+  ({ agentId }: { agentId: MetabotAgentId }, { dispatch, getState }) => {
+    const convo = getMetabotState(getState()).conversations[agentId];
+    if (convo && convo.messages.length === 0 && !convo.isProcessing) {
+      dispatch(destroyAgent({ agentId }));
+    }
   },
 );
 

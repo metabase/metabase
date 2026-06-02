@@ -9,6 +9,7 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupListMetabotChatConversationsEndpoint,
   setupSearchEndpoints,
   setupSettingEndpoint,
   setupUserMetabotPermissionsEndpoint,
@@ -165,6 +166,7 @@ export async function setup({
   });
 
   setupUserMetabotPermissionsEndpoint();
+  setupListMetabotChatConversationsEndpoint();
 
   // The whitelabel LogoIcon fetches the configured logo SVG. Stub the default.
   fetchMock.get("end:app/assets/img/logo.svg", "<svg></svg>");
