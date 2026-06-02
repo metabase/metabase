@@ -81,6 +81,13 @@ function getSegmentInfo(displayName: string): SegmentDisplayInfo {
   return { displayName } as SegmentDisplayInfo;
 }
 
+function getGroupedSegmentInfo(
+  displayName: string,
+  group: { id: string; type: "main" | "connection"; displayName: string },
+): SegmentDisplayInfo {
+  return { displayName, group } as SegmentDisplayInfo;
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -341,6 +348,72 @@ describe("getMetricGroups", () => {
     expect(group.sections.slice(1).every((s) => s.isSourceTable !== true)).toBe(
       true,
     );
+  });
+
+  it("places each segment into the section matching its own dimension group", () => {
+    const source = makeDefinitionSource(0);
+    const mainDimMeta = {
+      __dim: "createdAt",
+    } as unknown as LibMetric.DimensionMetadata;
+    const connDimMeta = {
+      __dim: "productCategory",
+    } as unknown as LibMetric.DimensionMetadata;
+    const sourceSegMeta = {
+      __seg: "big-orders",
+    } as unknown as LibMetric.SegmentMetadata;
+    const joinedSegMeta = {
+      __seg: "active-users",
+    } as unknown as LibMetric.SegmentMetadata;
+
+    mockLibMetric.filterableDimensions.mockReturnValue([
+      mainDimMeta,
+      connDimMeta,
+    ]);
+    mockLibMetric.availableSegments.mockReturnValue([
+      sourceSegMeta,
+      joinedSegMeta,
+    ]);
+    mockLibMetric.displayInfo.mockImplementation(
+      (_def: unknown, target: unknown) => {
+        if (target === mainDimMeta) {
+          return getSourceTableDimensionInfo("Created At", "main");
+        }
+        if (target === connDimMeta) {
+          return getJoinedTabledDimensionInfo("Category", "conn");
+        }
+        if (target === sourceSegMeta) {
+          return getGroupedSegmentInfo("Big Orders", {
+            id: "main",
+            type: "main",
+            displayName: "Orders",
+          });
+        }
+        if (target === joinedSegMeta) {
+          return getGroupedSegmentInfo("Active Users", {
+            id: "conn",
+            type: "connection",
+            displayName: "Products",
+          });
+        }
+        throw new Error("unexpected displayInfo target");
+      },
+    );
+
+    const [group] = getMetricGroups([source], {});
+    expect(group.sections).toHaveLength(2);
+
+    const mainSection = group.sections.find((s) => s.isSourceTable);
+    const connSection = group.sections.find((s) => !s.isSourceTable);
+
+    expect(mainSection?.items).toEqual([
+      expect.objectContaining({ name: "Big Orders", segment: sourceSegMeta }),
+      expect.objectContaining({ name: "Created At" }),
+    ]);
+    // Joined segment lands in the joined section, not leaked into source.
+    expect(connSection?.items).toEqual([
+      expect.objectContaining({ name: "Active Users", segment: joinedSegMeta }),
+      expect.objectContaining({ name: "Category" }),
+    ]);
   });
 
   it("scopes segments per definition source index", () => {
