@@ -19,8 +19,9 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...columnSettings({ getHidden: () => true }),
   ...dimensionSetting("treemap.grouping", {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Grouping`,
+    get title() {
+      return t`Grouping`;
+    },
     showColumnSetting: true,
     persistDefault: true,
     dashboard: false,
@@ -34,8 +35,9 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   }),
   ...dimensionSetting("treemap.sub_grouping", {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Sub-grouping`,
+    get title() {
+      return t`Sub-grouping`;
+    },
     showColumnSetting: true,
     dashboard: false,
     autoOpenWhenUnset: false,
@@ -61,8 +63,9 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   }),
   ...metricSetting("treemap.value", {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Value`,
+    get title() {
+      return t`Value`;
+    },
     showColumnSetting: true,
     persistDefault: true,
     dashboard: false,
@@ -82,8 +85,9 @@ export const TREEMAP_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Treemap`,
   identifier: "treemap",
   iconName: "treemap",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`treemap chart`,
+  get noun() {
+    return t`treemap chart`;
+  },
   minSize: { width: 4, height: 4 },
   defaultSize: { width: 6, height: 6 },
   disableVisualizer: true,
