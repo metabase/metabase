@@ -37,7 +37,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import Navbar from "./Navbar";
+import { Navbar } from "./Navbar";
 
 type SetupOpts = {
   isOpen?: boolean;
