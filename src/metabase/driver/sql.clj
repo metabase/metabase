@@ -56,6 +56,13 @@
                  :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
+;; True when the driver's `run-transform!` `:rows-affected` reflects rows actually written.
+;; Drivers whose CTAS count is unreliable override to false; the transforms layer then falls back
+;; to a native `COUNT(*)` on the target.
+(defmethod driver/database-supports? [:sql :transforms/accurate-rows-affected]
+  [_driver _feature _db]
+  true)
+
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
   [driver _feat db]
   (and

@@ -502,21 +502,23 @@
 
 (defn- run-cancelable-with-mocks!
   "Drive `run-cancelable-transform!` with stubbed lifecycle (schema, checkpoint, watermark, canceling) and wrap `driver-result` in the production `{:status :succeeded :result …}` envelope."
-  [transform source-range-params driver-result]
-  (with-redefs [driver/schema-exists?                            (constantly true)
-                driver/create-schema-if-needed!                  (constantly nil)
-                transforms-base.u/get-source-range-params        (constantly source-range-params)
-                transforms-base.u/save-run-checkpoint-range!     (constantly nil)
-                transforms-base.u/save-watermark!                (constantly nil)
-                transforms.canceling/chan-start-timeout-vthread! (constantly nil)
-                transforms.canceling/chan-start-run!             (constantly nil)
-                transforms.canceling/chan-end-run!               (constantly nil)
-                transform-run/succeed-started-run!               (constantly nil)]
-    (mt/with-premium-features #{:transforms-basic}
-      (transforms.u/run-cancelable-transform!
-       1 transform :h2 {:db-id 1 :conn-spec nil :output-schema "x"}
-       (fn [_cancel-chan _range-params]
-         {:status :succeeded :result driver-result})))))
+  ([transform source-range-params driver-result]
+   (run-cancelable-with-mocks! transform source-range-params driver-result :h2))
+  ([transform source-range-params driver-result driver]
+   (with-redefs [driver/schema-exists?                            (constantly true)
+                 driver/create-schema-if-needed!                  (constantly nil)
+                 transforms-base.u/get-source-range-params        (constantly source-range-params)
+                 transforms-base.u/save-run-checkpoint-range!     (constantly nil)
+                 transforms-base.u/save-watermark!                (constantly nil)
+                 transforms.canceling/chan-start-timeout-vthread! (constantly nil)
+                 transforms.canceling/chan-start-run!             (constantly nil)
+                 transforms.canceling/chan-end-run!               (constantly nil)
+                 transform-run/succeed-started-run!               (constantly nil)]
+     (mt/with-premium-features #{:transforms-basic}
+       (transforms.u/run-cancelable-transform!
+        1 transform driver {:db-id 1 :conn-spec nil :output-schema "x"}
+        (fn [_cancel-chan _range-params]
+          {:status :succeeded :result driver-result}))))))
 
 (deftest run-cancelable-transform!-emits-incremental-rows-test
   (mt/with-prometheus-system! [_ system]
@@ -596,10 +598,41 @@
                                          {:type "available" :full-incremental-run "false"}))))
       (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
                                          {:type "processed" :full-incremental-run "false"})))))
+    (testing "Unreliable driver (`:transforms/accurate-rows-affected` false) on the CTAS path recovers rows-processed by counting the target table"
+      ;; `with-redefs-fn` (not `with-dynamic-fn-redefs`) — the latter chokes on `#'`-prefixed
+      ;; bindings, which we need to access the private `count-target-rows`.
+      (defmethod driver/database-supports? [:h2 :transforms/accurate-rows-affected] [_ _ _] false)
+      (try
+        (analytics/clear! :metabase-transforms/incremental-rows)
+        (with-redefs-fn {#'transforms.u/count-target-rows (constantly 999)}
+          #(run-cancelable-with-mocks!
+            {:id 1 :target {:type "table-incremental" :schema "x" :name "tgt"} :last_checkpoint_value nil}
+            {:checkpoint-filter-field-id 42 :rows-available 1000}
+            {:rows-affected 0}))
+        (is (== 999 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                           {:type "processed" :full-incremental-run "true"})))
+            "CTAS fallback recorded count-target-rows (999), not the driver's misleading 0")
+        (finally
+          (remove-method driver/database-supports? [:h2 :transforms/accurate-rows-affected]))))
+    (testing "Unreliable driver on the INSERT path trusts the driver count (COUNT(*) would overcount cumulatively)"
+      (defmethod driver/database-supports? [:h2 :transforms/accurate-rows-affected] [_ _ _] false)
+      (try
+        (analytics/clear! :metabase-transforms/incremental-rows)
+        (with-redefs-fn {#'transforms.u/count-target-rows
+                         (fn [& _] (throw (ex-info "count-target-rows should not be invoked on the INSERT path" {})))}
+          #(run-cancelable-with-mocks!
+            {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+            {:checkpoint-filter-field-id 42 :rows-available 500}
+            {:rows-affected 120}))
+        (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                           {:type "processed" :full-incremental-run "false"})))
+            "INSERT path recorded the driver's count (120); fallback is skipped because COUNT(*) on a cumulative target would overcount")
+        (finally
+          (remove-method driver/database-supports? [:h2 :transforms/accurate-rows-affected]))))
     (testing "A throw from the emission helper must NOT escape into the outer try/catch — the run already succeeded"
       (analytics/clear! :metabase-transforms/incremental-rows)
-      (with-redefs [transforms.instrumentation/record-incremental-rows!
-                    (fn [& _] (throw (ex-info "Synthetic emission failure" {})))]
+      (mt/with-dynamic-fn-redefs [transforms.instrumentation/record-incremental-rows!
+                                  (fn [& _] (throw (ex-info "Synthetic emission failure" {})))]
         (is (= {:status :succeeded :result {:rows-affected 1000}}
                (run-cancelable-with-mocks!
                 {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}

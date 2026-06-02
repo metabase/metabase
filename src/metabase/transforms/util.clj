@@ -12,8 +12,10 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -108,6 +110,15 @@
                         e))
         (throw e)))))
 
+(defn- count-target-rows
+  "Rows-processed fallback for the CTAS path on drivers where
+  `:transforms/accurate-rows-affected` is false. Costs one aggregate query per full-rebuild run."
+  [driver db-id {:keys [schema name]}]
+  (let [[sql] (sql.qp/format-honeysql driver {:select [:%count.*]
+                                              :from   [(keyword schema name)]})]
+    (-> (qp/process-query {:database db-id :type :native :native {:query sql}})
+        :data :rows ffirst long)))
+
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling.
 
@@ -148,14 +159,20 @@
         ;; fail-started-run! after succeed-started-run! has already fired.
         (when-some [rows-available (:rows-available source-range-params)]
           (try
-            ;; `run-transform!` returns a single `{:rows-affected N}` map (SQL) or an HTTP
-            ;; response map carrying `:rows-affected` (Python); extract it directly.
-            (when-some [rows-processed (:rows-affected (:result ret))]
-              (tracing/add-span-attrs! :tasks {:transform/rows-processed rows-processed})
-              (transforms.instrumentation/record-incremental-rows!
-               rows-available
-               rows-processed
-               (transforms-base.u/full-incremental-run? transform)))
+            (let [full-incremental? (transforms-base.u/full-incremental-run? transform)
+                  ;; Fallback is CTAS-only: on the INSERT path the target is cumulative, so a
+                  ;; `COUNT(*)` would overcount the delta.
+                  rows-processed    (if (or (driver.u/supports? driver :transforms/accurate-rows-affected
+                                                                {:lib/type :metadata/database :id db-id})
+                                            (not full-incremental?))
+                                      (:rows-affected (:result ret))
+                                      (count-target-rows driver db-id (:target transform)))]
+              (when-some [rp rows-processed]
+                (tracing/add-span-attrs! :tasks {:transform/rows-processed rp})
+                (transforms.instrumentation/record-incremental-rows!
+                 rows-available
+                 rp
+                 full-incremental?)))
             (catch Throwable t
               (log/warnf t "Failed to emit incremental-rows metric for transform %s" (:id transform)))))
         ret))

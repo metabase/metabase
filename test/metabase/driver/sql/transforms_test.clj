@@ -4,8 +4,12 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.transforms.test-util :as transforms.tu]))
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.test-util :as transforms.tu]
+   [toucan2.core :as t2]))
 
 (deftest compile-transform-contract-test
   (testing "compile-transform should return [sql params] format"
@@ -183,3 +187,53 @@
                   "rows-affected must be a bare int, not a nested map")
               (is (= 3 (:rows-affected append-result))
                   "the INSERT...SELECT path reports the flat, true insert count"))))))))
+
+(deftest run-transform!-ctas-rows-affected-reflects-rows-written-test
+  ;; Characterizes the CTAS row count per driver. BigQuery and Redshift are excluded — they
+  ;; declare `:transforms/accurate-rows-affected false` and the transforms layer falls back to
+  ;; `COUNT(*)`. New failing driver → add the feature override + add it to this exclusion.
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
+                         :bigquery-cloud-sdk :redshift)
+    (mt/with-premium-features #{:transforms-basic}
+      (let [schema  (t2/select-one-fn :schema :model/Table (mt/id :venues))
+            written (->> (mt/mbql-query venues {:aggregation [[:count]]})
+                         qp/process-query mt/rows ffirst)]
+        (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema :name "ctas_rows_affected_probe" :database (mt/id)}]
+          (let [transform {:source {:type "query" :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}
+                           :target target}
+                details   {:db-id          (mt/id)
+                           :database       (mt/db)
+                           :transform-type :table
+                           :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                           :query          (transforms-base.u/compile-source transform nil)
+                           :output-schema  (:schema target)
+                           :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}
+                result    (driver/run-transform! driver/*driver* details {})]
+            (is (== written (:rows-affected result))
+                (format "%s: CTAS :rows-affected (%s) should equal %s — new failing driver → declare `:transforms/accurate-rows-affected false` and exclude"
+                        driver/*driver* (pr-str (:rows-affected result)) written))))))))
+
+(deftest run-transform!-insert-rows-affected-reflects-rows-written-test
+  ;; Characterizes the INSERT row count per driver. First run creates the table (CTAS), second
+  ;; goes through `compile-insert`. No exclusions — a failing driver also undercounts INSERTs.
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms-basic}
+      (let [schema  (t2/select-one-fn :schema :model/Table (mt/id :venues))
+            written (->> (mt/mbql-query venues {:aggregation [[:count]]})
+                         qp/process-query mt/rows ffirst)]
+        (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema :name "insert_rows_affected_probe" :database (mt/id)}]
+          (let [transform {:source {:type "query" :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}
+                           :target target}
+                details   {:db-id          (mt/id)
+                           :database       (mt/db)
+                           :transform-type :table-incremental
+                           :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                           :query          (transforms-base.u/compile-source transform nil)
+                           :output-schema  (:schema target)
+                           :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}]
+            (driver/run-transform! driver/*driver* details {})      ; first run = CTAS (creates the table)
+            (let [insert-result (driver/run-transform! driver/*driver* details {})]   ; second run = INSERT
+              (is (== written (:rows-affected insert-result))
+                  (format "%s: INSERT :rows-affected (%s) should equal %s — failure means the driver also undercounts DML"
+                          driver/*driver* (pr-str (:rows-affected insert-result)) written)))))))))
