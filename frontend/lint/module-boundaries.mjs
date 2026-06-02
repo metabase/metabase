@@ -150,12 +150,17 @@ const elements = [
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
     "frontend/src/metabase/reducers-main.ts",
+    "frontend/src/metabase/reducers-common.ts",
+    "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.jsx",
     "frontend/src/metabase/routes-embed.tsx",
     "frontend/src/metabase/route-guards.tsx",
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
+    // Entry point for the static-viz bundle (server-side chart rendering in
+    // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
+    "frontend/src/metabase/static-viz/index.tsx",
   ].map((path) =>
     createElement({
       type: "app",
