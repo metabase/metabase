@@ -98,6 +98,7 @@ const elements = [
   createElement({ type: "shared", name: "metrics-viewer" }),
   createElement({ type: "shared", name: "models" }),
   createElement({ type: "shared", name: "new" }),
+  createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
   createElement({ type: "shared", name: "pulse" }),

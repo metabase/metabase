@@ -21,11 +21,6 @@ import {
   getHasConfiguredAnyChannel,
   getHasConfiguredEmailOrSlackChannel,
 } from "metabase/pulse";
-import { updateUrl } from "metabase/query_builder/actions/url";
-import {
-  getQuestion,
-  getVisualizationSettings,
-} from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -45,7 +40,6 @@ import {
   rem,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   AdminNotification,
@@ -57,6 +51,7 @@ import type {
   ScheduleType,
   UpdateAlertNotificationRequest,
   UserId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { ChannelSetupModal } from "../ChannelSetupModal";
@@ -99,9 +94,16 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "cron",
 ];
 
-type CreateOrEditQuestionAlertModalWithQuestionProps = {
+type CreateOrEditQuestionAlertModalProps = {
   onClose: () => void;
-  skipUrlUpdate?: boolean;
+  question: Question;
+  /**
+   * The question's effective visualization settings, when the host has them
+   * (e.g. the query builder, where they may include unsaved changes). When
+   * omitted, goal-based trigger detection falls back to the question's saved
+   * settings (see getAlertType).
+   */
+  visualizationSettings?: VisualizationSettings;
 } & (
   | {
       editingNotification?: undefined;
@@ -115,52 +117,15 @@ type CreateOrEditQuestionAlertModalWithQuestionProps = {
     }
 );
 
-type CreateOrEditQuestionAlertModalProps =
-  CreateOrEditQuestionAlertModalWithQuestionProps & {
-    question: Question;
-  };
-
-export const CreateOrEditQuestionAlertModalWithQuestion = ({
-  editingNotification,
-  onAlertCreated,
-  onAlertUpdated,
-  onClose,
-  skipUrlUpdate,
-}: CreateOrEditQuestionAlertModalWithQuestionProps) => {
-  const question = checkNotNull(useSelector(getQuestion));
-
-  if (editingNotification) {
-    return (
-      <CreateOrEditQuestionAlertModal
-        question={question}
-        editingNotification={editingNotification}
-        onAlertUpdated={onAlertUpdated}
-        onClose={onClose}
-        skipUrlUpdate={skipUrlUpdate}
-      />
-    );
-  } else {
-    return (
-      <CreateOrEditQuestionAlertModal
-        question={question}
-        onAlertCreated={onAlertCreated}
-        onClose={onClose}
-        skipUrlUpdate={skipUrlUpdate}
-      />
-    );
-  }
-};
-
 export const CreateOrEditQuestionAlertModal = ({
   editingNotification,
   onAlertCreated,
   onAlertUpdated,
   onClose,
   question,
-  skipUrlUpdate,
+  visualizationSettings,
 }: CreateOrEditQuestionAlertModalProps) => {
   const dispatch = useDispatch();
-  const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const isAdmin = useSelector(getUserIsAdmin);
@@ -270,10 +235,6 @@ export const CreateOrEditQuestionAlertModal = ({
         onAlertUpdated();
       } else {
         onAlertCreated();
-      }
-
-      if (!skipUrlUpdate) {
-        await dispatch(updateUrl(question, { dirty: false }));
       }
     }
   };
