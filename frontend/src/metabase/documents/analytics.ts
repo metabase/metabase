@@ -1,17 +1,26 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { Document } from "metabase-types/api";
+import type { DocumentHost } from "metabase/redux/store/documents";
+import type { Document, DocumentId } from "metabase-types/api";
 
-export const trackDocumentCreated = (document: Document) => {
+export const trackDocumentCreated = (
+  documentId: DocumentId,
+  triggeredFrom: DocumentHost,
+) => {
   trackSimpleEvent({
     event: "document_created",
-    target_id: document.id,
+    target_id: documentId,
+    triggered_from: triggeredFrom,
   });
 };
 
-export const trackDocumentUpdated = (document: Document) => {
+export const trackDocumentUpdated = (
+  documentId: DocumentId,
+  triggeredFrom: DocumentHost,
+) => {
   trackSimpleEvent({
     event: "document_saved",
-    target_id: document.id,
+    target_id: documentId,
+    triggered_from: triggeredFrom,
   });
 };
 

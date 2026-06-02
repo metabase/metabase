@@ -44,6 +44,7 @@ import {
   updateSelectedEmbedIndex,
 } from "../documents.slice";
 import {
+  getDocumentHost,
   getDraftCards,
   getHasUnsavedChanges,
   getSelectedEmbedIndex,
@@ -101,6 +102,7 @@ export function useDocumentEditor({
   const draftCards = useSelector(getDraftCards);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
+  const documentHost = useSelector(getDocumentHost);
 
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
@@ -298,8 +300,7 @@ export function useDocumentEditor({
           ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
               (response) => {
                 if (response.data) {
-                  const _document = response.data;
-                  trackDocumentUpdated(_document);
+                  trackDocumentUpdated(response.data.id, documentHost);
                 }
                 return response;
               },
@@ -310,7 +311,7 @@ export function useDocumentEditor({
             }).then((response) => {
               if (response.data) {
                 const _document = response.data;
-                trackDocumentCreated(_document);
+                trackDocumentCreated(_document.id, documentHost);
                 scheduleNavigation(() => {
                   dispatch(replace(Urls.document(_document)));
                 });
@@ -345,6 +346,7 @@ export function useDocumentEditor({
       documentTitle,
       draftCards,
       documentData?.id,
+      documentHost,
       updateDocument,
       createDocument,
       scheduleNavigation,
