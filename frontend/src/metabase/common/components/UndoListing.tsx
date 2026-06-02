@@ -104,8 +104,7 @@ function UndoToast({
       c={dark ? "text-secondary-inverse" : "text-primary"}
       withBorder={!noBorder}
       radius="md"
-      px="md"
-      py="md"
+      p="md"
       mt="sm"
       maw="calc(100vw - 2 * var(--mantine-spacing-md))"
       style={{
