@@ -53,13 +53,12 @@
 
 (deftest maybe-set-site-url-forwarded-proto-test
   (testing "scheme-less `*-host` headers get the scheme from `X-Forwarded-Proto` (BOT-1617)"
-    (doseq [[host-header request] [["X-Forwarded-Host" (-> (mock-request "/" nil "mb.example.com" nil)
-                                                           (ring.mock/header "X-Forwarded-Proto" "https"))]
-                                   ["Host"             (-> (mock-request "/" nil nil "mb.example.com")
-                                                           (ring.mock/header "X-Forwarded-Proto" "https"))]]]
+    (doseq [host-header ["X-Forwarded-Host" "Host"]]
       (testing host-header
         (mt/with-temporary-setting-values [site-url nil]
-          (maybe-set-site-url request)
+          (maybe-set-site-url (-> (m/dissoc-in (ring.mock/request :get "/") [:headers "host"])
+                                  (ring.mock/header host-header "mb.example.com")
+                                  (ring.mock/header "X-Forwarded-Proto" "https")))
           (is (= "https://mb.example.com" (system/site-url)))))))
   (testing "`X-Forwarded-Proto` is matched case-insensitively (RFC 3986)"
     (mt/with-temporary-setting-values [site-url nil]
@@ -74,7 +73,12 @@
   (testing "without `X-Forwarded-Proto`, a scheme-less host falls back to http:// (unchanged behavior)"
     (mt/with-temporary-setting-values [site-url nil]
       (maybe-set-site-url (mock-request "/" nil "mb.example.com" nil))
-      (is (= "http://mb.example.com" (system/site-url))))))
+      (is (= "http://mb.example.com" (system/site-url)))))
+  (testing "a scheme-bearing host header is left untouched, even alongside `X-Forwarded-Proto` (no double scheme)"
+    (mt/with-temporary-setting-values [site-url nil]
+      (maybe-set-site-url (-> (mock-request "/" nil "https://mb.example.com" nil)
+                              (ring.mock/header "X-Forwarded-Proto" "https")))
+      (is (= "https://mb.example.com" (system/site-url))))))
 
 (deftest add-version-header-test
   (testing "x-metabase-version is only added on API calls"

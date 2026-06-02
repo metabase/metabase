@@ -60,11 +60,10 @@
 ;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting
 ;; the (initial) value of `site-url`
 (defn- forwarded-scheme
-  "The scheme a TLS-terminating proxy used to reach us, from `X-Forwarded-Proto`.
-  Takes the first hop when the header carries a comma-separated chain (`https, http`)."
+  "The scheme a TLS-terminating proxy used to reach us, from `X-Forwarded-Proto`."
   [x-forwarded-proto]
-  ;; lower-case because URL schemes are case-insensitive (RFC 3986) but normalize-site-url's "http" prefix
-  ;; check is not -- an upper-case `HTTPS` would otherwise be treated as scheme-less and mangled.
+  ;; first hop of a comma-separated chain (`https, http`), lower-cased: URL schemes are case-insensitive
+  ;; (RFC 3986) but normalize-site-url's "http" prefix check is not, so `HTTPS` would be mangled as scheme-less.
   (some-> x-forwarded-proto (str/split #",") first str/trim not-empty u/lower-case-en))
 
 (defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host x-forwarded-proto host user-agent]} :headers, uri :uri}]
@@ -72,12 +71,14 @@
              (not (system/site-url))
              (not (#{"/api/health" "/livez" "/readyz"} uri))
              (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
-    ;; `origin` already carries a scheme; the `*-host` headers don't, so prepend the scheme the proxy terminated
-    ;; TLS with -- otherwise `normalize-site-url` defaults to `http://` and a TLS-terminating proxy ends up
-    ;; advertising `http://` auth/discovery URLs over an `https` origin, breaking MCP OAuth (BOT-1617).
+    ;; `origin` already carries a scheme; the `*-host` headers normally don't, so prepend the scheme the proxy
+    ;; terminated TLS with -- otherwise `normalize-site-url` defaults to `http://` and a TLS-terminating proxy ends
+    ;; up advertising `http://` auth/discovery URLs over an `https` origin, breaking MCP OAuth (BOT-1617). Only
+    ;; prepend when the host is scheme-less; a scheme-bearing host passes through untouched.
     (when-let [site-url (or origin
                             (when-let [host (or x-forwarded-host host)]
-                              (if-let [scheme (forwarded-scheme x-forwarded-proto)]
+                              (if-let [scheme (and (not (str/includes? host "://"))
+                                                   (forwarded-scheme x-forwarded-proto))]
                                 (str scheme "://" host)
                                 host)))]
       (log/infof "Setting Metabase site URL to %s" site-url)
