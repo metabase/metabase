@@ -83,10 +83,10 @@ export function maybeUsePivotEndpoint<Arg>(
 
 /**
  * Dispatches an RTK Query endpoint and wires `signal` to RTK Query's `.abort()`.
- * Translates aborts into the legacy `{ isCancelled: true }` shape so existing
- * error handling (e.g. queryErrored) keeps working. `forceRefetch` makes each
- * call hit the network rather than resolving from a stale cache entry, matching
- * the legacy fetch-and-discard behavior.
+ * Aborts surface as the standard `DOMException` AbortError (matching both
+ * transports and `runRtkEndpoint`), so callers can `isAbortError`-check them.
+ * `forceRefetch` makes each call hit the network rather than resolving from a
+ * stale cache entry, matching the legacy fetch-and-discard behavior.
  */
 export function dispatchQueryEndpoint<Arg>(
   dispatch: Dispatch,
@@ -104,11 +104,7 @@ export function dispatchQueryEndpoint<Arg>(
     unwrap: () => Promise<Dataset>;
   };
 
-  let isCancelled = false;
-  const onAbort = () => {
-    isCancelled = true;
-    action.abort?.();
-  };
+  const onAbort = () => action.abort?.();
   // The signal may already be aborted by the time we get here (e.g. the
   // user cancelled while we were awaiting a dynamic import in the caller).
   // In that case the "abort" event already fired and a listener won't run.
@@ -118,22 +114,13 @@ export function dispatchQueryEndpoint<Arg>(
     signal?.addEventListener("abort", onAbort, { once: true });
   }
 
-  return action
-    .unwrap()
-    .catch((error) => {
-      if (isCancelled) {
-        throw { isCancelled: true };
-      }
-      throw error;
-    })
-    .finally(() => action.unsubscribe?.());
+  return action.unwrap().finally(() => action.unsubscribe?.());
 }
 
 /**
  * Builds a runner that selects the pivot or non-pivot variant of a query
  * endpoint for `card` and dispatches it. `signal` is wired to RTK Query's
- * abort, and aborts surface as the legacy `{ isCancelled: true }` shape so
- * existing error handling keeps working.
+ * abort, and aborts surface as the standard `DOMException` AbortError.
  */
 export function makePivotAwareQueryRunner(
   dispatch: Dispatch,

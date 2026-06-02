@@ -300,10 +300,11 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       await expect(runPromise).rejects.toMatchObject({ name: "AbortError" });
     });
 
-    it("rejects with { isCancelled: true } when the signal aborts (saved question)", async () => {
+    it("rejects with AbortError when the signal aborts (saved question)", async () => {
       // The saved-card path dispatches an RTK Query endpoint; aborting the
       // signal must abort the underlying `/api/card/:id/query` request and
-      // reject with the legacy `{ isCancelled: true }` shape.
+      // reject with the standard `DOMException` AbortError that `queryErrored`
+      // and other callers identify via `isAbortError`.
       const question = createMockSavedQuestion();
       fetchMock.post(
         getQueryEndpointPath(question),
@@ -318,7 +319,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
 
       controller.abort();
 
-      await expect(runPromise).rejects.toEqual({ isCancelled: true });
+      await expect(runPromise).rejects.toMatchObject({ name: "AbortError" });
     });
 
     it("normalizes plain-text 4xx error bodies into a structured error result (EMB-1659)", async () => {
