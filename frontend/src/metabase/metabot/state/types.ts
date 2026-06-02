@@ -120,7 +120,7 @@ export interface MetabotConverstationState {
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;
-  expanded: boolean;
+  inBar: boolean;
   history: MetabotHistory;
   state: any;
   activeToolCalls: MetabotToolCall[];

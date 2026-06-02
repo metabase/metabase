@@ -8,9 +8,10 @@ import { createConversation, getMetabotInitialState } from "./reducer-utils";
 
 import {
   type MetabotChatMessage,
-  getNonExpandedChatAgentIds,
+  getBarChatAgentIds,
   getOverlayAgentId,
   getUserPromptForMessageId,
+  getVisibleAgentId,
 } from "./index";
 
 function setup(messages: MetabotChatMessage[]): State {
@@ -71,15 +72,17 @@ describe("metabot selectors", () => {
     });
   });
 
-  describe("overlay selectors", () => {
+  describe("bar membership selectors", () => {
     const setupChats = (overlayAgentId: string | null): State => {
       const base = getMetabotInitialState();
       const withChats = {
         ...base,
         conversations: {
           ...base.conversations,
-          chat_a: createConversation("chat_a"),
-          chat_b: createConversation("chat_b"),
+          chat_a: createConversation("chat_a", { inBar: true }),
+          chat_b: createConversation("chat_b", { inBar: true }),
+          // a full-page conversation that is not docked in the bar
+          chat_page: createConversation("chat_page", { inBar: false }),
         },
         overlayAgentId,
       } as typeof base;
@@ -91,14 +94,29 @@ describe("metabot selectors", () => {
       expect(getOverlayAgentId(setupChats(null))).toBeNull();
     });
 
-    it("getNonExpandedChatAgentIds excludes the overlaid agent", () => {
-      expect(getNonExpandedChatAgentIds(setupChats(null))).toEqual([
+    it("getBarChatAgentIds returns only inBar agents and excludes the overlaid one", () => {
+      expect(getBarChatAgentIds(setupChats(null))).toEqual([
         "chat_a",
         "chat_b",
       ]);
-      expect(getNonExpandedChatAgentIds(setupChats("chat_a"))).toEqual([
-        "chat_b",
-      ]);
+      expect(getBarChatAgentIds(setupChats("chat_a"))).toEqual(["chat_b"]);
+    });
+
+    it("getVisibleAgentId ignores a visible conversation that is not in the bar", () => {
+      const base = getMetabotInitialState();
+      const state = createMockState({
+        metabot: {
+          ...base,
+          conversations: {
+            ...base.conversations,
+            chat_page: createConversation("chat_page", {
+              inBar: false,
+              visible: true,
+            }),
+          },
+        } as typeof base,
+      });
+      expect(getVisibleAgentId(state)).toBeNull();
     });
   });
 });

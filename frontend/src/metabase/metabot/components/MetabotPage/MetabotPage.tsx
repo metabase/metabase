@@ -8,6 +8,7 @@ import {
   createAgent,
   getActiveMetabotAgentIds,
   hydrateChatConversation,
+  minimizeConversation,
 } from "metabase/metabot/state";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -57,7 +58,6 @@ export const MetabotPage = ({ params }: Props) => {
         messages: normalizeFetchedChatMessages(chat_messages ?? []),
         history,
         state,
-        expanded: true,
       }),
     );
   }, [
@@ -82,16 +82,21 @@ export const MetabotPage = ({ params }: Props) => {
     return <Box className={S.page} />;
   }
 
-  const handleCollapse = () => {
-    // TODO: re-implement collapsing a full-page conversation back to a pop-up
-    console.warn("TODO: collapse conversation", agentId);
+  const handleMinimize = () => {
+    dispatch(minimizeConversation({ agentId }));
+    dispatch(push("/"));
   };
 
   return (
     <MetabotConversationView
       agentId={agentId}
       isNewConversation={isNewConversation}
-      onCollapse={handleCollapse}
+      headerAction={{
+        icon: "chevrondown",
+        label: t`Minimize`,
+        testId: "metabot-minimize-chat",
+        onClick: handleMinimize,
+      }}
       onAfterSubmit={
         isNewConversation
           ? () => dispatch(push(`/chat/${conversationId}`))

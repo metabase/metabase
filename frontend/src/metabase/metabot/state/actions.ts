@@ -78,7 +78,7 @@ export const {
   hydrateChatConversation,
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
-  setExpanded,
+  setInBar,
   setOverlayAgentId,
 } = metabot.actions;
 
@@ -162,6 +162,14 @@ export const collapseConversation =
   ({ agentId }: { agentId: MetabotAgentId }) =>
   (dispatch: Dispatch) => {
     dispatch(metabot.actions.setOverlayAgentId({ agentId: null }));
+    dispatch(metabot.actions.setVisible({ agentId, visible: true }));
+  };
+
+export const minimizeConversation =
+  ({ agentId }: { agentId: MetabotAgentId }) =>
+  (dispatch: Dispatch) => {
+    dispatch(metabot.actions.setOverlayAgentId({ agentId: null }));
+    dispatch(metabot.actions.setInBar({ agentId, inBar: true }));
     dispatch(metabot.actions.setVisible({ agentId, visible: true }));
   };
 
@@ -683,6 +691,7 @@ export const resumeChatConversation = createAsyncThunk<
         }),
       );
     }
+    dispatch(setInBar({ agentId, inBar: true }));
     dispatch(setVisible({ agentId, visible: true }));
     return { agentId };
   },

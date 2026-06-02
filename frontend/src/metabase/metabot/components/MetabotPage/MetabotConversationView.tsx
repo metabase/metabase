@@ -36,6 +36,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./MetabotPage.module.css";
 
@@ -55,10 +56,17 @@ const getTitleText = () =>
     t`What are you looking to learn?`,
   ]);
 
+type HeaderAction = {
+  icon: IconName;
+  label: string;
+  testId: string;
+  onClick: () => void;
+};
+
 type MetabotConversationViewProps = {
   agentId: MetabotAgentId;
   isNewConversation: boolean;
-  onCollapse: () => void;
+  headerAction?: HeaderAction;
   onAfterSubmit?: () => void;
   alwaysShowConversation?: boolean;
 };
@@ -66,7 +74,7 @@ type MetabotConversationViewProps = {
 export const MetabotConversationView = ({
   agentId,
   isNewConversation,
-  onCollapse,
+  headerAction,
   onAfterSubmit,
   alwaysShowConversation = false,
 }: MetabotConversationViewProps) => {
@@ -231,14 +239,16 @@ export const MetabotConversationView = ({
           >
             {conversationTitle}
           </Text>
-          <Tooltip label={t`Collapse`} position="bottom">
-            <ActionIcon
-              onClick={onCollapse}
-              data-testid="metabot-collapse-chat"
-            >
-              <Icon c="text-primary" name="contract" />
-            </ActionIcon>
-          </Tooltip>
+          {headerAction && (
+            <Tooltip label={headerAction.label} position="bottom">
+              <ActionIcon
+                onClick={headerAction.onClick}
+                data-testid={headerAction.testId}
+              >
+                <Icon c="text-primary" name={headerAction.icon} />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Flex>
       )}
 

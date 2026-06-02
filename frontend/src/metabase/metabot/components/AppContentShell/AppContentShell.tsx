@@ -2,6 +2,7 @@ import { useReducedMotion } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
@@ -104,11 +105,15 @@ export function AppContentShell({
                     agentId={renderedAgentId}
                     isNewConversation={false}
                     alwaysShowConversation
-                    onCollapse={() =>
-                      dispatch(
-                        collapseConversation({ agentId: renderedAgentId }),
-                      )
-                    }
+                    headerAction={{
+                      icon: "contract",
+                      label: t`Collapse`,
+                      testId: "metabot-collapse-chat",
+                      onClick: () =>
+                        dispatch(
+                          collapseConversation({ agentId: renderedAgentId }),
+                        ),
+                    }}
                   />
                 </ErrorBoundary>
               </div>

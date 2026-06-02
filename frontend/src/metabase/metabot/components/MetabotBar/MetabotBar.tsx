@@ -7,7 +7,7 @@ import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useMetabotAgentsManager } from "metabase/metabot/hooks/use-metabot-agents-manager";
 import {
   type MetabotAgentId,
-  getNonExpandedChatAgentIds,
+  getBarChatAgentIds,
   getVisibleAgentId,
   setVisible,
 } from "metabase/metabot/state";
@@ -25,7 +25,7 @@ export function MetabotBar() {
   const { hasMetabotAccess } = useUserMetabotPermissions();
   const { createAgent, destroyAgent } = useMetabotAgentsManager([]);
   const visibleAgentId = useSelector(getVisibleAgentId);
-  const chatAgentIds = useSelector(getNonExpandedChatAgentIds);
+  const chatAgentIds = useSelector(getBarChatAgentIds);
   const [askButtonEl, setAskButtonEl] = useState<HTMLButtonElement | null>(
     null,
   );
@@ -42,7 +42,7 @@ export function MetabotBar() {
       setAgentVisible(visibleAgentId, false);
     }
     const newId: MetabotAgentId = `chat_${uuid()}`;
-    createAgent({ agentId: newId, visible: true });
+    createAgent({ agentId: newId, visible: true, inBar: true });
     trackMetabotChatOpened("header");
   }, [createAgent, setAgentVisible, visibleAgentId]);
 
