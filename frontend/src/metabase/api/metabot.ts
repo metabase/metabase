@@ -1,5 +1,8 @@
 import type {
+  CreateSearchPromptRequest,
   DeleteSuggestedMetabotPromptRequest,
+  ListSearchPromptsRequest,
+  ListSearchPromptsResponse,
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
@@ -10,9 +13,11 @@ import type {
   MetabotSlackSettings,
   MetabotSourceFeedback,
   RegenerateSuggestedMetabotPromptsResponse,
+  SearchPromptEntity,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
+  UpdateSearchPromptRequest,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
@@ -156,6 +161,58 @@ export const metabotApi = Api.injectEndpoints({
       }),
       providesTags: () => [listTag("metabot-permissions")],
     }),
+    listSearchPrompts: builder.query<
+      ListSearchPromptsResponse,
+      ListSearchPromptsRequest | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/metabot/search-prompt/",
+        params: params ?? undefined,
+      }),
+      providesTags: (result) => [
+        listTag("search-prompt"),
+        ...(result?.data ?? []).map(({ id }) => idTag("search-prompt", id)),
+      ],
+    }),
+    createSearchPrompt: builder.mutation<
+      SearchPromptEntity,
+      CreateSearchPromptRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/metabot/search-prompt/",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("search-prompt")]),
+    }),
+    updateSearchPrompt: builder.mutation<
+      SearchPromptEntity,
+      UpdateSearchPromptRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/metabot/search-prompt/${id}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("search-prompt"),
+          idTag("search-prompt", id),
+        ]),
+    }),
+    deleteSearchPrompt: builder.mutation<void, number>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/metabot/search-prompt/${id}`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          listTag("search-prompt"),
+          idTag("search-prompt", id),
+        ]),
+    }),
   }),
 });
 
@@ -172,4 +229,8 @@ export const {
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
   useGetUserMetabotPermissionsQuery,
+  useListSearchPromptsQuery,
+  useCreateSearchPromptMutation,
+  useUpdateSearchPromptMutation,
+  useDeleteSearchPromptMutation,
 } = metabotApi;

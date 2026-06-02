@@ -27,6 +27,12 @@ export function MetabotNavPane() {
           label={t`MCP`}
           path="/admin/metabot/mcp"
         />
+        <AdminNavItem
+          disabled={!areAiFeaturesEnabled}
+          icon="list"
+          label={t`Search prompts`}
+          path="/admin/metabot/search-prompts"
+        />
         {AiControlsNavItems}
         {AiAnalyticsNavItems}
       </AdminNavWrapper>

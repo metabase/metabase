@@ -529,13 +529,21 @@
 
 (api.macros/defendpoint :put "/search-prompt/:id"
   :- [:maybe :map]
-  "Update the prompt of a search prompt entity by ID."
+  "Update a search prompt entity by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [prompt]} :- [:map [:prompt [:string {:min 1 :max 2048}]]]]
+   {:keys [prompt entities verified]} :- [:map
+                                          [:prompt   {:optional true} [:string {:min 1 :max 2048}]]
+                                          [:entities {:optional true} :any]
+                                          [:verified {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/SearchPromptEntity :id id))
-  (t2/update! :model/SearchPromptEntity id {:prompt prompt})
+  (let [changes (cond-> {}
+                  (some? prompt)   (assoc :prompt prompt)
+                  (some? entities) (assoc :entities entities)
+                  (some? verified) (assoc :verified (boolean verified)))]
+    (when (seq changes)
+      (t2/update! :model/SearchPromptEntity id changes)))
   (t2/select-one :model/SearchPromptEntity :id id))
 
 (api.macros/defendpoint :delete "/search-prompt/:id"

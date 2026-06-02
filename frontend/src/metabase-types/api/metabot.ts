@@ -5,6 +5,7 @@ import type {
   DashboardId,
   DatasetQuery,
   DraftTransform,
+  PaginationRequest,
   PaginationResponse,
   RowValue,
   SuggestedTransform,
@@ -415,4 +416,38 @@ export type MetabotGroupLimit = { group_id: number; max_usage: number };
 export type MetabotTenantLimit = {
   tenant_id: number;
   max_usage: number | null;
+};
+
+/* Metabot - Search prompt entities */
+
+export type SearchPromptEntityRef = {
+  model: string;
+  id: number | string;
+  name: string;
+};
+
+export type SearchPromptEntity = {
+  id: number;
+  prompt: string;
+  entities: SearchPromptEntityRef[];
+  verified: boolean;
+};
+
+export type ListSearchPromptsRequest = PaginationRequest;
+
+export type ListSearchPromptsResponse = {
+  data: SearchPromptEntity[];
+} & PaginationResponse;
+
+export type CreateSearchPromptRequest = {
+  prompt: string;
+  entities: SearchPromptEntityRef[];
+  verified?: boolean;
+};
+
+export type UpdateSearchPromptRequest = {
+  id: number;
+  prompt: string;
+  entities: SearchPromptEntityRef[];
+  verified: boolean;
 };
