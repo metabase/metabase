@@ -1,13 +1,18 @@
+import type { Location } from "history";
+
 import { mockSettings } from "__support__/settings";
 
 import { getParentPath } from "./ModalRoute";
 
-const setup = (routePath, locationPath, siteURL = undefined) => {
+const setup = (routePath: string, locationPath: string, siteURL?: string) => {
   if (siteURL) {
     mockSettings({ "site-url": siteURL });
   }
 
-  return getParentPath({ path: routePath }, { pathname: locationPath });
+  // getParentPath only reads location.pathname.
+  return getParentPath({ path: routePath }, {
+    pathname: locationPath,
+  } as Location);
 };
 
 describe("getParentPath", () => {
