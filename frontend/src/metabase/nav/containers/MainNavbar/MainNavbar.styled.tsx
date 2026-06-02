@@ -97,5 +97,19 @@ export const LoadingAndErrorContent = styled.div`
 `;
 
 export const PaddedSidebarLink = styled(SidebarLink)`
+  position: relative;
   padding-inline-start: 12px;
+
+  > a,
+  > button {
+    padding-inline-end: 20px;
+  }
+
+  ${SidebarLink.RightElement} {
+    position: absolute;
+    inset-inline-end: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
 `;

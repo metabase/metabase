@@ -243,6 +243,30 @@ describe("MetabotPage at /chat/:conversationId", () => {
     expect(screen.getByTestId("metabot-send-message")).toBeInTheDocument();
   });
 
+  it("does not hydrate when the fetched data belongs to a different conversation (stale query data)", () => {
+    setup({
+      initialRoute: "/chat/fresh-id",
+      conversationQuery: {
+        data: {
+          // Stale data from a previously-viewed conversation; must be ignored.
+          conversation_id: "stale-id",
+          created_at: "2026-05-23T00:00:00Z",
+          summary: null,
+          title: "Stale chat",
+          user_id: 1,
+          state: {},
+          chat_messages: [],
+          history: [],
+        },
+      },
+    });
+    expect(screen.queryByText("Stale chat")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-page-title")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-send-message"),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders the chat surface and skips the fetch when the conversation is already in Redux", () => {
     setup({
       initialRoute: "/chat/live-id",

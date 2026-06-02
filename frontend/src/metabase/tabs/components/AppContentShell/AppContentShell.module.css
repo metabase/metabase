@@ -6,13 +6,11 @@
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  padding: 0 10px 4px 0;
-  gap: 4px;
+  padding: 8px 8px 8px 0;
 }
 
 .shellBare {
   padding: 0;
-  gap: 0;
 }
 
 .content {
@@ -30,6 +28,14 @@
   border: none;
   border-radius: 0;
   background-color: transparent;
+}
+
+.bottomBar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 6px;
 }
 
 @media print {

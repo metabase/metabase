@@ -50,6 +50,7 @@ import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
+import { MetabotThreadsSection } from "./MetabotThreadsSection";
 
 type Props = {
   isOpen: boolean;
@@ -167,6 +168,8 @@ export function MainNavbarView({
       <SidebarContentRoot>
         <NavbarTopRow onItemSelect={onItemSelect} />
         <div>
+          <MetabotThreadsSection onItemSelect={onItemSelect} />
+
           {shouldDisplayGettingStarted && (
             <SidebarSection>
               <ErrorBoundary>

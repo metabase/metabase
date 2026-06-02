@@ -48,6 +48,37 @@ export const getNonExpandedChatAgentIds = createSelector(
       .map(([id]) => id),
 );
 
+export type ActiveChatConversation = {
+  conversationId: string;
+  title: string | null;
+  isProcessing: boolean;
+  hasUnreadResponse: boolean;
+  isVisible: boolean;
+  isExpanded: boolean;
+};
+
+/** Lightweight projection of the in-memory chat conversations, used by the
+ * sidebar threads list to surface a conversation (with a loader) as soon as it
+ * starts streaming, before it has been persisted/refetched from the API. */
+export const getActiveChatConversations = createSelector(
+  getMetabotState,
+  (state): ActiveChatConversation[] =>
+    (
+      Object.entries(state.conversations) as Array<
+        [MetabotAgentId, (typeof state.conversations)[MetabotAgentId]]
+      >
+    )
+      .filter(([id]) => id.startsWith("chat_"))
+      .map(([id, convo]) => ({
+        conversationId: id.slice("chat_".length),
+        title: convo?.title ?? null,
+        isProcessing: convo?.isProcessing ?? false,
+        hasUnreadResponse: convo?.hasUnreadResponse ?? false,
+        isVisible: convo?.visible ?? false,
+        isExpanded: convo?.expanded ?? false,
+      })),
+);
+
 export const getVisibleAgentId = createSelector(
   getMetabotState,
   (state): MetabotAgentId | null => {

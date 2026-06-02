@@ -43,6 +43,7 @@ export const metabot = createSlice({
         visible?: boolean;
         conversationId?: string;
         selectedDatabaseId?: number;
+        expanded?: boolean;
       }>,
     ) => {
       const { agentId, ...options } = action.payload;
@@ -239,14 +240,25 @@ export const metabot = createSlice({
         state.isProcessing = action.payload.processing;
       },
     ),
+    setHasUnreadResponse: convoReducer(
+      (state, action: ConvoPayloadAction<{ hasUnreadResponse: boolean }>) => {
+        state.hasUnreadResponse = action.payload.hasUnreadResponse;
+      },
+    ),
     setVisible: convoReducer(
       (state, action: ConvoPayloadAction<{ visible: boolean }>) => {
         state.visible = action.payload.visible;
+        if (action.payload.visible) {
+          state.hasUnreadResponse = false;
+        }
       },
     ),
     setExpanded: convoReducer(
       (state, action: ConvoPayloadAction<{ expanded: boolean }>) => {
         state.expanded = action.payload.expanded;
+        if (action.payload.expanded) {
+          state.hasUnreadResponse = false;
+        }
       },
     ),
     setPrompt: convoReducer(
@@ -424,6 +436,7 @@ export const metabot = createSlice({
           convo.history = action.payload?.history?.slice() ?? [];
           convo.activeToolCalls = [];
           convo.isProcessing = false;
+          convo.hasUnreadResponse = !convo.visible && !convo.expanded;
           convo.experimental.developerMessage = "";
           convo.pendingMessageExternalId = undefined;
         }
@@ -467,6 +480,7 @@ export const metabot = createSlice({
           convo.pendingMessageExternalId = undefined;
           convo.activeToolCalls = [];
           convo.isProcessing = false;
+          convo.hasUnreadResponse = !convo.visible && !convo.expanded;
         }
       });
   },
