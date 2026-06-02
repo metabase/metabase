@@ -165,17 +165,17 @@ export default createVisualization;
 
 ### Visualization definition properties
 
-| Property                 | Type                                | Description                                                                                 |
-| ------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------- |
-| `id`                     | `string`                            | Identifier for the visualization definition.                                                |
-| `getName()`              | `() => string`                      | Display name for the visualization.                                                         |
-| `minSize`                | `{ width, height }`                 | Minimum size on a dashboard grid.                                                           |
-| `defaultSize`            | `{ width, height }`                 | Default size on a dashboard grid.                                                           |
-| `noHeader`               | `boolean`                           | When `true`, hides the default card title and description header.                           |
-| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export of the live, interactive chart. Disabled by default.     |
-| `checkRenderable`        | `(series, settings) => void`        | Let people know the chart doesn't work with the current data or settings.                   |
-| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created with `defineSetting()`.                                  |
-| `VisualizationComponent` | `React.ComponentType`               | The interactive React component that renders the visualization in questions and dashboards. |
+| Property                 | Type                                | Description                                                                                    |
+| ------------------------ | ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `id`                     | `string`                            | Identifier for the visualization definition.                                                   |
+| `getName()`              | `() => string`                      | Display name for the visualization.                                                            |
+| `minSize`                | `{ width, height }`                 | Minimum size on a dashboard grid.                                                              |
+| `defaultSize`            | `{ width, height }`                 | Default size on a dashboard grid.                                                              |
+| `noHeader`               | `boolean`                           | When `true`, hides the default card title and description header.                              |
+| `canSavePng`             | `boolean`                           | PNG export of the live, interactive chart is enabled by default. Set to `false` to disable it. |
+| `checkRenderable`        | `(series, settings) => void`        | Let people know the chart doesn't work with the current data or settings.                      |
+| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created with `defineSetting()`.                                     |
+| `VisualizationComponent` | `React.ComponentType`               | The interactive React component that renders the visualization in questions and dashboards.    |
 
 ### Props passed to your component
 
