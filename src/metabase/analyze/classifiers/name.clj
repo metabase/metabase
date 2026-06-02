@@ -189,7 +189,4 @@
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
-                                  (case (some-> (:db_id table) driver.u/database->driver)
-                                    :druid :entity/EventTable
-                                    nil)
                                   :entity/GenericTable))))
