@@ -3,7 +3,8 @@
    [environ.core :as env]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")

@@ -8,6 +8,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -273,12 +274,12 @@
             (throw (ex-info (ex-message e) (assoc (ex-data e) :filename filename)))))
         uploaded? (fn [complete-response] (seq (get-in complete-response [:files 0 :filetype])))
         _ (when-not (or (uploaded? complete-response)
-                        (u/poll {:thunk complete!
-                                 :done? uploaded?
-                                 ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
-                                 ;; If it takes more than 20 seconds, something else is wrong and we should abort.
-                                 :timeout-ms 20000
-                                 :interval-ms 500}))
+                        (util-be/poll {:thunk complete!
+                                       :done? uploaded?
+                                       ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
+                                       ;; If it takes more than 20 seconds, something else is wrong and we should abort.
+                                       :timeout-ms 20000
+                                       :interval-ms 500}))
             (throw (ex-info "Timed out waiting to confirm the file was uploaded to Slack."
                             {:filename filename})))]
     (get-in complete-response [:files 0 :url_private])))

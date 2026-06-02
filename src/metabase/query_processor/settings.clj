@@ -1,7 +1,7 @@
 (ns metabase.query-processor.settings
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting enable-pivoted-exports
   (deferred-tru "Enable pivoted exports and pivoted subscriptions")

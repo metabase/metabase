@@ -17,6 +17,7 @@
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -261,15 +262,15 @@
             :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
                                                      u/format-nanoseconds)
                                              "NONE")]]
-      (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
-                         (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-        (try
-          (load-data-for-table-definition! driver conn dbdef tabledef)
-          (catch Throwable e
-            (throw (ex-info (format "Error loading data: %s" (ex-message e))
-                            {:driver driver, :tabledef (update tabledef :rows (fn [rows]
-                                                                                (concat (take 10 rows) ['...])))}
-                            e))))))))
+      (util-be/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
+                               (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
+                       (try
+                         (load-data-for-table-definition! driver conn dbdef tabledef)
+                         (catch Throwable e
+                           (throw (ex-info (format "Error loading data: %s" (ex-message e))
+                                           {:driver driver, :tabledef (update tabledef :rows (fn [rows]
+                                                                                               (concat (take 10 rows) ['...])))}
+                                           e))))))))
 
 (defn create-db!
   "Default implementation of [[tx/create-db!]] for SQL drivers. Loads test data into a data

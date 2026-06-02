@@ -4,7 +4,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (def ^:private valid-embedding-providers
   "The set of valid embedding provider names."

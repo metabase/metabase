@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting config-from-file-sync-databases
   "Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true,

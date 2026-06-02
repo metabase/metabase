@@ -5,7 +5,7 @@
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -38,7 +38,7 @@
   [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
    thunk]
   (binding [*current-user-id*              metabase-user-id
-            i18n/*user-locale*             user-locale
+            i18n-be/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *is-data-analyst?*             (boolean is-data-analyst?)
@@ -78,7 +78,7 @@
     (with-current-user-fetch-user-for-id *current-user-id*)
     {:is-superuser? true
      :permissions-set #{"/"}
-     :user-locale i18n/*user-locale*})
+     :user-locale i18n-be/*user-locale*})
    thunk))
 
 (defmacro as-admin

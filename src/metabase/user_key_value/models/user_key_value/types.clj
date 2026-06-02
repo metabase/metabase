@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.config.core :as config]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -140,7 +140,7 @@
                      (fn [acc ^Path file]
                        (let [schema (try
                                       (-> file
-                                          (Files/newInputStream (u/varargs OpenOption))
+                                          (Files/newInputStream (util-be/varargs OpenOption))
                                           slurp
                                           edn/read-string)
                                       (catch Throwable e

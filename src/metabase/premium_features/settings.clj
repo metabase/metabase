@@ -5,7 +5,7 @@
    [metabase.config.core :as config]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting site-uuid-for-premium-features-token-checks
   "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*

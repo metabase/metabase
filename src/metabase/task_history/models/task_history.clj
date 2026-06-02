@@ -10,6 +10,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -245,7 +246,7 @@
                                 (on-fail-info {:task_details {:status        :failed
                                                               :exception     (class e)
                                                               :message       (.getMessage e)
-                                                              :stacktrace    (u/filtered-stacktrace e)
+                                                              :stacktrace    (util-be/filtered-stacktrace e)
                                                               :ex-data       (ex-data e)
                                                               :original-info (:task_details info)}
                                                :logs         (log-capture-entries @logs-atom)

@@ -17,7 +17,7 @@
    [metabase.users.models.user-test :as user-test]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
@@ -1485,10 +1485,10 @@
                                       "to `nil` (use system default)" nil}]
               (testing message
                 (testing "response"
-                  (is (= (i18n/normalized-locale-string locale)
+                  (is (= (i18n-be/normalized-locale-string locale)
                          (:locale (set-locale! 200 locale)))))
                 (testing "value in DB should be updated to new locale"
-                  (is (= (i18n/normalized-locale-string locale)
+                  (is (= (i18n-be/normalized-locale-string locale)
                          (locale-from-db)))))))
           (testing "admins should be able to update someone else's locale"
             (testing "response"

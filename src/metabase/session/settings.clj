@@ -2,7 +2,7 @@
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sso.core :as sso]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.password :as u.password]))
 
 (defsetting enable-password-login

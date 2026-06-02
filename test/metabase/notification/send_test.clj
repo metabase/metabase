@@ -16,7 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.log :as log]
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt]
@@ -464,10 +464,10 @@
 (deftest notification-dedup-dispatcher-test
   (testing "notification dedup dispatcher"
     (let [sent-notifications  (atom [])
-          wait-for-processing #(u/poll {:thunk       (fn [] (count @sent-notifications))
-                                        :done?       (fn [cnt] (= cnt %))
-                                        :interval-ms 10
-                                        :timeout-ms  1000})]
+          wait-for-processing #(util-be/poll {:thunk       (fn [] (count @sent-notifications))
+                                              :done?       (fn [cnt] (= cnt %))
+                                              :interval-ms 10
+                                              :timeout-ms  1000})]
       ;; dispatcher spawns its own worker threads that don't inherit *local-redefs* —
       ;; use with-redefs to swap the root so worker threads see the replacement.
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
@@ -497,12 +497,12 @@
             (test-dispatcher {:id 41 :test-value "D"})
             (test-dispatcher {:id 42 :test-value "D"})
             (test-dispatcher {:id 42 :test-value "E"})
-            (u/poll {:thunk       (fn [] (->> @sent-notifications
-                                              (filter #(= 42 (:id %)))
-                                              first :test-value))
-                     :done?       (fn [value] (= "E" value))
-                     :interval-ms 10
-                     :timeout-ms  1000}))
+            (util-be/poll {:thunk       (fn [] (->> @sent-notifications
+                                                    (filter #(= 42 (:id %)))
+                                                    first :test-value))
+                           :done?       (fn [value] (= "E" value))
+                           :interval-ms 10
+                           :timeout-ms  1000}))
           (testing "error handling - worker errors don't crash the dispatcher"
             (reset! sent-notifications [])
             (let [error-thrown (atom false)]
@@ -670,10 +670,10 @@
           [notification {}]
           (doseq [_ (range (+ 2 queue-size))]
             (notification.send/send-notification! notification :notification/sync? false)))
-        (u/poll {:thunk       (fn [] @noti-count)
-                 :done?       (fn [cnt] (= cnt (+ 2 queue-size)))
-                 :interval-ms 10
-                 :timeout-ms  1000})))))
+        (util-be/poll {:thunk       (fn [] @noti-count)
+                       :done?       (fn [cnt] (= cnt (+ 2 queue-size)))
+                       :interval-ms 10
+                       :timeout-ms  1000})))))
 
 (deftest blocking-queue-test
   (let [queue (#'notification.send/->BlockingQueue (java.util.concurrent.ArrayBlockingQueue. 10))]

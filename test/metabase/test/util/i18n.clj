@@ -2,15 +2,15 @@
   (:require
    [clojure.test :as t]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.i18n.impl :as i18n.impl]))
 
 ;;; TODO -- this could be made thread-safe pretty easily if we made [[i18n.impl/translations]] dynamic
 (defn do-with-mock-i18n-bundles! [bundles thunk]
   (t/testing (format "\nwith mock i18n bundles %s\n" (pr-str bundles))
     (let [locale->bundle (into {} (for [[locale-name bundle] bundles]
-                                    [(i18n/locale locale-name) bundle]))]
-      (dynamic-redefs/with-dynamic-fn-redefs [i18n.impl/translations (comp locale->bundle i18n/locale)]
+                                    [(i18n-be/locale locale-name) bundle]))]
+      (dynamic-redefs/with-dynamic-fn-redefs [i18n.impl/translations (comp locale->bundle i18n-be/locale)]
         (thunk)))))
 
 (defmacro with-mock-i18n-bundles!
@@ -29,5 +29,5 @@
   [user-locale & body]
   `(let [locale# ~user-locale]
      (t/testing (format "\nwith user locale %s" (pr-str locale#))
-       (binding [i18n/*user-locale* locale#]
+       (binding [i18n-be/*user-locale* locale#]
          ~@body))))

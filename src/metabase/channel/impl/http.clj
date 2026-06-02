@@ -7,7 +7,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.urls :as urls]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -39,7 +39,7 @@
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (when-not (u/valid-host? (channel.settings/http-channel-host-strategy) url)
+  (when-not (util-be/valid-host? (channel.settings/http-channel-host-strategy) url)
     (throw (ex-info (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")
                     {:status-code 400})))
   (let [req (merge

@@ -23,7 +23,8 @@
   Once SQLGlot is stable, this env var will be removed and Macaw deprecated."
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (def ^:private available-parser-backends
   #{:macaw :sqlglot})

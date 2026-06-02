@@ -9,7 +9,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.models :as ct]
    [metabase.embedding.jwt :as embedding.jwt]
-   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :as i18n-be :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -98,7 +99,7 @@
   ;; this will error if bad
   (embedding.jwt/unsign token)
   (if locale
-    {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))}
+    {:data (ct/get-translations (i18n-be/normalized-locale-string (str/trim locale)))}
     (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
 
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
@@ -106,7 +107,7 @@
   [_route-params
    {:keys [locale]} :- [:map [:locale :string]]]
   (api/check api/*current-user-id* 401 "Unauthenticated")
-  {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))})
+  {:data (ct/get-translations (i18n-be/normalized-locale-string (str/trim locale)))})
 
 (defn- +require-content-translation [handler]
   (ee.api/+require-premium-feature :content-translation (deferred-tru "Content translation") handler))

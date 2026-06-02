@@ -9,7 +9,7 @@
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -65,7 +65,7 @@
                                           (fn [login-history]
                                             (when-let [futur (original-maybe-send login-history)]
                                               ;; block in tests
-                                              (u/deref-with-timeout futur 10000)))]
+                                              (util-be/deref-with-timeout futur 10000)))]
                 (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
                                                       :device_id (str (random-uuid))}
                                :model/LoginHistory _ {:user_id   user-id
@@ -129,7 +129,7 @@
                                                           (fn [login-history]
                                                             (when-let [futur (original-maybe-send login-history)]
                                                               ;; block in tests
-                                                              (u/deref-with-timeout futur 10000)))]
+                                                              (util-be/deref-with-timeout futur 10000)))]
                                 (let [device (str (random-uuid))]
                                   (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
                                                                         :device_id (str (random-uuid))}

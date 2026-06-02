@@ -14,6 +14,7 @@
    [metabase.permissions.core :as perms]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -192,14 +193,14 @@
 (mu/defn key-with-unique-prefix :- ::api-keys.schema/key.secret
   "Generate an unique API key with a unique prefix."
   []
-  (u/auto-retry 5
-    (let [api-key (generate-key)
-          prefix (prefix (u.secret/expose api-key))]
-      ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
-      ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
-      (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
-        api-key
-        (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
+  (util-be/auto-retry 5
+                      (let [api-key (generate-key)
+                            prefix (prefix (u.secret/expose api-key))]
+                        ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
+                        ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
+                        (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
+                          api-key
+                          (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
 
 (mu/defn create-api-key-with-new-user!
   "Create a new API key and a new user for that key at the same time."

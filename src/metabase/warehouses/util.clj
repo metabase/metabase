@@ -3,8 +3,9 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util-be.core :as util-be]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -44,11 +45,11 @@
         (driver.u/can-connect-with-details? engine details :throw-exceptions)
         nil
 
-        (and host port (u/host-port-up? host port))
+        (and host port (util-be/host-port-up? host port))
         {:message (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
                        host port)}
 
-        (and host (u/host-up? host))
+        (and host (util-be/host-up? host))
         {:message (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
                        host port)
          :errors  {:port (deferred-tru "check your port settings")}}

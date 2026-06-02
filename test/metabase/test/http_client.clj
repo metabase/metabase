@@ -18,6 +18,7 @@
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -487,7 +488,7 @@
   [& args]
   (let [parsed (parse-http-client-args args)]
     (log/trace parsed)
-    (u/with-timeout response-timeout-ms
+    (util-be/with-timeout response-timeout-ms
       (-client parsed))))
 
 (defn client

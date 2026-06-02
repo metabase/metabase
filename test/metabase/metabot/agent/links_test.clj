@@ -7,7 +7,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]))
 
 (defn- decode-question-url
@@ -15,7 +15,7 @@
   [url]
   (-> url
       (subs (count "/question#"))
-      u/decode-base64
+      util-be/decode-base64
       (json/decode+kw)))
 
 ;;; resolve-metabase-uri tests

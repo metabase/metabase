@@ -6,7 +6,7 @@
    [metabase.events.core :as events]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
 

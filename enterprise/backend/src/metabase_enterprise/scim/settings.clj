@@ -2,7 +2,7 @@
   (:require
    [metabase.settings.core :refer [defsetting]]
    [metabase.system.core :as system]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting scim-enabled
   (deferred-tru "Is SCIM currently enabled?")

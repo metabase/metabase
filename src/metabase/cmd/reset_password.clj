@@ -3,7 +3,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n-be.core :refer [deferred-trs]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

@@ -2,7 +2,7 @@
   (:require
    [metabase.config.core :as config]
    [metabase.settings.core :as setting]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (setting/defsetting python-runner-url
   (deferred-tru "URL for the Python execution server that runs transform functions.")

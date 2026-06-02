@@ -5,7 +5,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.string :as u.str]
    [toucan2.core :as t2]))
 
@@ -85,7 +85,7 @@
   []
   (if-let [custom-language (search.settings/search-language)]
     custom-language
-    (if-let [lang ((keyword (i18n/site-locale-string)) available-tsv-languages)]
+    (if-let [lang ((keyword (i18n-be/site-locale-string)) available-tsv-languages)]
       (name lang)
       "simple")))
 

@@ -13,7 +13,7 @@
    [metabase.session.api :as api.session]
    [metabase.session.core :as session]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:support-access-grants}
@@ -314,7 +314,7 @@
   (testing "POST /api/session/forgot_password - Support user with no active grant gets no email"
     (with-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User user {:first_name "support"
                                        :last_name "user"
                                        :email "support@example.com"}
@@ -332,7 +332,7 @@
   (testing "POST /api/session/forgot_password - Support user with active grant gets a refreshed token"
     (with-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User {creator-id :id} {}]
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
           (with-redefs [sag.settings/support-access-grant-email (constantly "support-forgot@example.com")
@@ -370,7 +370,7 @@
   (testing "Consuming a refreshed support-access token via reset_password keeps the support-access-grant provider"
     (with-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User {creator-id :id} {}]
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
           (with-redefs [sag.settings/support-access-grant-email (constantly "support-reset@example.com")

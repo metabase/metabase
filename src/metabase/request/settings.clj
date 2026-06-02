@@ -2,7 +2,8 @@
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
 (defsetting source-address-header

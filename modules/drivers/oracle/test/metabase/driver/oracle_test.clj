@@ -37,6 +37,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -108,7 +109,7 @@
            (try (sql-jdbc.conn/connection-details->spec :oracle {:host "localhost"
                                                                  :port 1521})
                 (catch Throwable e
-                  (driver/humanize-connection-error-message :oracle (u/all-ex-messages e))))))))
+                  (driver/humanize-connection-error-message :oracle (util-be/all-ex-messages e))))))))
 
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"

@@ -28,7 +28,7 @@
    [metabase.server.instance :as server.instance]
    [metabase.server.streaming-response :as sr]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -192,10 +192,10 @@
                                                         :state           {}})]
                         (.read ^java.io.InputStream body) ;; start the handler
                         (.close ^java.io.Closeable body)
-                        (u/poll {:thunk       #(deref stored-parts)
-                                 :done?       some?
-                                 :interval-ms 10
-                                 :timeout-ms  3000})
+                        (util-be/poll {:thunk       #(deref stored-parts)
+                                       :done?       some?
+                                       :interval-ms 10
+                                       :timeout-ms  3000})
                         (is (some? @stored-parts)
                             "finalize-assistant-turn! was called even though the client disconnected")
                         (is (false? (:finished? @stored-kwargs))
@@ -235,10 +235,10 @@
                                      :conversation_id (str (random-uuid))
                                      :history         []
                                      :state           {}})
-              (u/poll {:thunk       #(deref stored-kwargs)
-                       :done?       some?
-                       :interval-ms 10
-                       :timeout-ms  3000})
+              (util-be/poll {:thunk       #(deref stored-kwargs)
+                             :done?       some?
+                             :interval-ms 10
+                             :timeout-ms  3000})
               (is (some? @stored-kwargs)
                   "finalize-assistant-turn! is called from the finally even when setup threw")
               (is (true? (:finished? @stored-kwargs))

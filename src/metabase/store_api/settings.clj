@@ -2,7 +2,7 @@
   (:require
    [metabase.config.core :as config]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defn- default-to-staging?
   "It's against the rules to use setting values on namespace load, since they need the app DB to be loaded, and it isn't

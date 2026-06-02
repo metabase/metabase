@@ -12,7 +12,7 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]))
 
@@ -225,9 +225,9 @@
               (testing "sanity check that we have the correct number of triggers and no channel has been sent yet"
                 (is (= pc-count (->> pulse-ids (map pulse-channel-test/send-pulse-triggers) (apply set/union) count))))
               (testing "make sure that all channels will be sent even though number of jobs exceed the thread pool"
-                (u/poll {:thunk      (fn [] @sent-channel-ids)
-                         :done?      #(= pc-count (count %))
-                         :timeout-ms 3000})
+                (util-be/poll {:thunk      (fn [] @sent-channel-ids)
+                               :done?      #(= pc-count (count %))
+                               :timeout-ms 3000})
                 (is (= (set pc-ids) @sent-channel-ids))))))))))
 
 (deftest send-pulse-skip-alert-test
@@ -260,9 +260,9 @@
                   (testing "trigger exists after creation"
                     (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
                   (testing "waiting for cron job to fire"
-                    (is (u/poll {:thunk      #(pos? @send-pulse-called)
-                                 :done?      identity
-                                 :timeout-ms 5000})
+                    (is (util-be/poll {:thunk      #(pos? @send-pulse-called)
+                                       :done?      identity
+                                       :timeout-ms 5000})
                         "send-pulse!* was never called - cron job may not be firing"))
                   (testing "alert was not sent (no call to pulse.send/send-pulse!)"
                     (is (empty? @sent-pulse-ids))))))))))))

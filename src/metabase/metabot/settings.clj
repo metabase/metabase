@@ -4,7 +4,8 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
 (defsetting metabot-id

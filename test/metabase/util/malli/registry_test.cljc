@@ -1,7 +1,7 @@
 (ns metabase.util.malli.registry-test
   (:require
    #?@(:clj
-       ([metabase.util.i18n :as i18n]))
+       ([metabase.util.i18n-be.core :as i18n-be]))
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
@@ -72,12 +72,12 @@
 #?(:clj
    (deftest ^:parallel resolve-should-not-realize-i18n-strings-test
      (testing "resolving a schema should not cause deferred i18n strings to get realized."
-       (let [schema [:int {:min 0, :description (i18n/deferred-tru "value must be an integer greater than zero.")}]]
+       (let [schema [:int {:min 0, :description (i18n-be/deferred-tru "value must be an integer greater than zero.")}]]
          (letfn [(description [schema]
                    (-> schema mc/properties :description))]
-           (is (i18n/localized-string?
+           (is (i18n-be/localized-string?
                 (description schema)))
-           (is (i18n/localized-string?
+           (is (i18n-be/localized-string?
                 (description (mr/resolve-schema schema)))))))))
 
 (deftest ^:parallel preserve-schemas-with-properties-test

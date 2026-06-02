@@ -156,7 +156,8 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru trun]]
+   [metabase.util.i18n :refer [tru trun]]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -361,7 +362,7 @@
   [x context available-metrics bindings]
   (-> (walk/postwalk
        (fn [form]
-         (if (i18n/localized-string? form)
+         (if (i18n-be/localized-string? form)
            (let [s     (str form)
                  new-s (fill-templates :string context bindings s)]
              (if (not= new-s s)

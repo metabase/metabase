@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [every? empty? not-empty #?(:clj doseq) get-in #?(:clj for)])
   (:require
    [medley.core :as m]
-   [metabase.lib.metadata.cache :as lib.metadata.cache]
+   [metabase.lib.metadata.cache.macros :refer [with-cached-value]]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.metadata.transforming-provider :as lib.metadata.transforming-provider]
    [metabase.lib.metadata.util :as lib.metadata.util]
@@ -158,7 +158,7 @@
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
-  (lib.metadata.cache/with-cached-value metadata-providerable [:metadata/card card-id :metadata]
+  (with-cached-value metadata-providerable [:metadata/card card-id :metadata]
     (some-> (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)
             (m/update-existing :dataset-query normalize-query metadata-providerable))))
 

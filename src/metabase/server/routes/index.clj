@@ -13,7 +13,8 @@
    [metabase.system.core :as system]
    [metabase.users.settings :as users-settings]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
@@ -52,7 +53,7 @@
      (when-not (= locale-string "en")
        (try
          (slurp (or (io/resource (localization-json-file-name locale-string))
-                    (when-let [fallback-locale (i18n/fallback-locale locale-string)]
+                    (when-let [fallback-locale (i18n-be/fallback-locale locale-string)]
                       (io/resource (localization-json-file-name (str fallback-locale))))
                     ;; don't try to i18n the Exception message below, we have no locale to translate it to!
                     (throw (FileNotFoundException. (format "Locale '%s' not found." locale-string)))))
@@ -64,7 +65,7 @@
   (defn- load-localization
     "Load a JSON-encoded map of localized strings for the current user's Locale."
     [locale-override]
-    (load-fn (or locale-override (i18n/user-locale-string)))))
+    (load-fn (or locale-override (i18n-be/user-locale-string)))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
@@ -90,7 +91,7 @@
      :userLocalizationJSON   (escape-script (load-localization (when should-load-locale-params? (:locale params))))
      :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))
      :nonceJSON              (escape-script (json/encode nonce))
-     :language               (hiccup.util/escape-html (or (i18n/user-locale-string) (system/site-locale)))
+     :language               (hiccup.util/escape-html (or (i18n-be/user-locale-string) (system/site-locale)))
      :userColorScheme        (escape-script (json/encode (users-settings/color-scheme)))
      :favicon                (hiccup.util/escape-html (let [custom-favicon (appearance/application-favicon-url)]
                                                         (if (and config/is-dev?

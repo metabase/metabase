@@ -12,7 +12,7 @@
    [metabase.server.handler :as server.handler]
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [ring.adapter.jetty :as jetty]
    [ring.middleware.params :refer [wrap-params]]
    [toucan2.core :as t2])

@@ -68,6 +68,7 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.convert.macros :refer [with-aggregation-list]]
    [metabase.lib.core :as lib.core]
    [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
@@ -1582,7 +1583,7 @@
   > **Code health:** Legacy. New calls strongly discouraged; refs are a bad leak in the abstraction and we should aim
   to refactor the existing ones."
   [a-query stage-number column]
-  (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
+  (with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (-> column
         lib.core/ref
         ref->legacy-ref
@@ -1612,7 +1613,7 @@
   [a-query stage-number legacy-columns legacy-refs]
   ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->mbql5]] to convert legacy
   ;; `[:aggregation 0]` refs into MBQL 5 `[:aggregation uuid]` refs.
-  (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
+  (with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (let [haystack      (mapv ->column-or-ref legacy-columns)
           needles       (map legacy-ref->mbql5 legacy-refs)
           column-refs   (into {} (keep-indexed (fn [i col]
@@ -2239,7 +2240,7 @@
   > **Code health:** Legacy. Avoid new calls. We should refactor the existing callers so they receive Lib columns in
   the first place, and don't need to convert via to Lib via this function."
   [a-query stage-number ^js js-column]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+  (with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (.-field_ref js-column)]
                        (legacy-ref->mbql5 a-ref))]
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
@@ -2328,7 +2329,7 @@
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
   [a-query stage-number card-id column value row dimensions]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+  (with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
                        (legacy-ref->mbql5 a-ref))]
       (->> (merge {:column     (when column

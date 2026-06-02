@@ -67,7 +67,7 @@
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.warehouse-schema-rest.api]
    [metabase.warehouses-rest.api]
    [metabase.xrays.api]))

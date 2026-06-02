@@ -2,7 +2,7 @@
   "Util for building strings"
   (:require
    [clojure.string :as str]
-   [metabase.util.i18n :refer [deferred-tru]])
+   [metabase.util.i18n-be.core :refer [deferred-tru]])
   (:import [com.google.common.base Utf8]))
 
 (set! *warn-on-reflection* true)

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [inflections.core :as inflections]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.common.macros :refer [defop]]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -371,31 +372,31 @@
   [_query _stage-number [_tag opts n unit] _style]
   (lib.temporal-bucket/describe-temporal-interval n unit opts))
 
-(lib.common/defop and [x y & more])
-(lib.common/defop or [x y & more])
-(lib.common/defop not [x])
-(lib.common/defop = [x y & more])
-(lib.common/defop != [x y & more])
-(lib.common/defop in [x y & more])
-(lib.common/defop not-in [x y & more])
-(lib.common/defop < [x y])
-(lib.common/defop <= [x y])
-(lib.common/defop > [x y])
-(lib.common/defop >= [x y])
-(lib.common/defop between [x lower upper])
-(lib.common/defop inside [lat lon lat-max lon-min lat-min lon-max])
-(lib.common/defop is-null [x])
-(lib.common/defop not-null [x])
-(lib.common/defop is-empty [x])
-(lib.common/defop not-empty [x])
-(lib.common/defop starts-with [whole & parts])
-(lib.common/defop ends-with [whole & parts])
-(lib.common/defop contains [whole & parts])
-(lib.common/defop does-not-contain [whole & parts])
-(lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
-(lib.common/defop time-interval [x amount unit])
-(lib.common/defop during [t v unit])
-(lib.common/defop segment [segment-id])
+(defop and [x y & more])
+(defop or [x y & more])
+(defop not [x])
+(defop = [x y & more])
+(defop != [x y & more])
+(defop in [x y & more])
+(defop not-in [x y & more])
+(defop < [x y])
+(defop <= [x y])
+(defop > [x y])
+(defop >= [x y])
+(defop between [x lower upper])
+(defop inside [lat lon lat-max lon-min lat-min lon-max])
+(defop is-null [x])
+(defop not-null [x])
+(defop is-empty [x])
+(defop not-empty [x])
+(defop starts-with [whole & parts])
+(defop ends-with [whole & parts])
+(defop contains [whole & parts])
+(defop does-not-contain [whole & parts])
+(defop relative-time-interval [x value bucket offset-value offset-bucket])
+(defop time-interval [x amount unit])
+(defop during [t v unit])
+(defop segment [segment-id])
 
 (mu/defn add-filter-to-stage
   "Add a new filter clause to a `stage`, ignoring it if it is a duplicate clause (ignoring :lib/uuid)."

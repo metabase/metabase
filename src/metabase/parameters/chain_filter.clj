@@ -84,6 +84,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -398,7 +399,7 @@
                                                      (-> rhs-field
                                                          (lib/with-join-alias (joined-table-alias rhs-table-id))))]))]
        (log/tracef "Adding join against %s\n%s"
-                   (name-for-logging :model/Table rhs-table-id) (u/cprint-to-str join))
+                   (name-for-logging :model/Table rhs-table-id) (util-be/cprint-to-str join))
        (lib/join query join)))
    query
    joins))
@@ -417,7 +418,7 @@
   [field-id                          :- ::lib.schema.id/field
    constraints                       :- [:maybe ::constraints]
    {:keys [original-field-id limit]} :- [:maybe ::options]]
-  (log/tracef "Chain filter %s with constraints %s" (name-for-logging :model/Field field-id) (u/cprint-to-str constraints))
+  (log/tracef "Chain filter %s with constraints %s" (name-for-logging :model/Field field-id) (util-be/cprint-to-str constraints))
   (let [database-id       (field/field-id->database-id field-id)
         mp                (lib-be/application-database-metadata-provider database-id)
         field-table-id    (field/field-id->table-id field-id)
@@ -448,7 +449,7 @@
                   (name-for-logging :model/Field original-field-id)))
     (when (seq joins)
       (log/tracef "Generating joins and filters for source %s with joins info\n%s"
-                  (name-for-logging :model/Table source-table-id) (u/cprint-to-str joins)))
+                  (name-for-logging :model/Table source-table-id) (util-be/cprint-to-str joins)))
     (-> (lib/query mp (lib.metadata/table mp source-table-id))
         ;; return the lesser of limit (if set) or max results
         (lib/limit ((fnil min Integer/MAX_VALUE) limit max-results))
@@ -483,7 +484,7 @@
    constraints :- [:maybe ::constraints]
    options     :- [:maybe ::options]]
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
-    (log/debugf "Chain filter MBQL query:\n%s" (u/cprint-to-str mbql-query))
+    (log/debugf "Chain filter MBQL query:\n%s" (util-be/cprint-to-str mbql-query))
     (try
       (let [query-limit (lib/current-limit mbql-query)
             ;; FIXME: this can OOM for text column if each value are too large. See #46411

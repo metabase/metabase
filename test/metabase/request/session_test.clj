@@ -7,7 +7,7 @@
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.test :as mt]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n-be.core :as i18n-be]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,7 +19,7 @@
       (is (= (mt/user->id :rasta) *current-user-id*))
       (is (= "rasta@metabase.com" (:email @*current-user*)))
       (is (false? api/*is-superuser?*))
-      (is (= nil i18n/*user-locale*))
+      (is (= nil i18n-be/*user-locale*))
       (is (false? api/*is-group-manager?*))
       (is (= (perms/user-permissions-set (mt/user->id :rasta)) @api/*current-user-permissions-set*))
       (is (=? {:test-user-local-only-setting "XYZ"} (setting/user-local-values))))))
@@ -35,8 +35,8 @@
         (is (= #{"/"} @api/*current-user-permissions-set*)))))
   (testing "as-admin preserves any locale settings"
     (let [original "fr"]
-      (binding [i18n/*user-locale* original]
+      (binding [i18n-be/*user-locale* original]
         (request/as-admin
-          (is (= original i18n/*user-locale*))
+          (is (= original i18n-be/*user-locale*))
           (is (= "French"
-                 (.getDisplayLanguage (i18n/user-locale)))))))))
+                 (.getDisplayLanguage (i18n-be/user-locale)))))))))

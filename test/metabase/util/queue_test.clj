@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.queue :as queue])
   (:import (java.util.concurrent LinkedBlockingQueue)))
 
@@ -37,7 +38,7 @@
       (try
         (while true
           ;; Stop the consumer once we are sure that there are no more events coming.
-          (u/with-timeout timeout-ms
+          (util-be/with-timeout timeout-ms
             (vswap! processed conj (:payload (queue/blocking-take! queue timeout-ms)))
             ;; Sleep to provide some backpressure
             (Thread/sleep 1)))

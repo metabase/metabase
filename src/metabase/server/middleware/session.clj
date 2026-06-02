@@ -32,7 +32,7 @@
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -259,7 +259,7 @@
      (when auth-method {:embedding/auth-method auth-method})
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
-       {:user-locale (i18n/normalized-locale-string x-metabase-locale)}))))
+       {:user-locale (i18n-be/normalized-locale-string x-metabase-locale)}))))
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.files :as u.files])
   (:import
    (java.io FileOutputStream)
@@ -33,7 +33,7 @@
     (.closeEntry zos)))
 
 (defn- read-hello [^FileSystem fs]
-  (Files/readString (.getPath fs "/hello.txt" (u/varargs String))))
+  (Files/readString (.getPath fs "/hello.txt" (util-be/varargs String))))
 
 (deftest nio-fs-bypasses-uri-cache-test
   (testing "nio-fs returns independent filesystems for the same zip — closing one cannot kill another"

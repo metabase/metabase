@@ -4,7 +4,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.search.util :as search.util]
    [metabase.test.util :as tu]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n-be.core :as i18n-be]))
 
 (def ^:private impossible? search.util/impossible-condition?)
 
@@ -78,13 +78,13 @@
 
 (deftest tsv-language-test
   (when (= :postgres (mdb/db-type))
-    (binding [i18n/*site-locale-override* "en"]
+    (binding [i18n-be/*site-locale-override* "en"]
       (is (= "english" (#'search.util/tsv-language))))
-    (binding [i18n/*site-locale-override* "de"]
+    (binding [i18n-be/*site-locale-override* "de"]
       (is (= "german" (#'search.util/tsv-language))))
-    (binding [i18n/*site-locale-override* "pt_BR"]
+    (binding [i18n-be/*site-locale-override* "pt_BR"]
       (is (= "portuguese" (#'search.util/tsv-language))))
-    (binding [i18n/*site-locale-override* "ko"]
+    (binding [i18n-be/*site-locale-override* "ko"]
       (is (= "simple" (#'search.util/tsv-language))))
     (tu/with-temporary-setting-values [search-language "custom-value"]
       (is (= "custom-value" (#'search.util/tsv-language))))))

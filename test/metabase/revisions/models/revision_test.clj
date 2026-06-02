@@ -7,8 +7,8 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.models.revision.diff :as revision.diff]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util-be.core :as util-be]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -74,13 +74,13 @@
   (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "
                 "changed")
     (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
-           (u/build-sentence
+           (util-be/build-sentence
             ((get-method revision/diff-strings :default)
              :model/Card
              {:name "Tips by State", :private false}
              {:name "Spots by State", :private false}))))
     (is (= "made this Card private."
-           (u/build-sentence
+           (util-be/build-sentence
             ((get-method revision/diff-strings :default)
              :model/Card
              {:name "Spots by State", :private false}
@@ -89,14 +89,14 @@
 (deftest ^:parallel multiple-changes-test
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
-           (u/build-sentence
+           (util-be/build-sentence
             ((get-method revision/diff-strings :default)
              :model/Card
              {:name "Tips by State", :private false}
              {:name "Spots by State", :private true})))))
   (testing "Check that several changes are handled nicely"
     (is (= "turned this to a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\"."
-           (u/build-sentence
+           (util-be/build-sentence
             ((get-method revision/diff-strings :default)
              :model/Card
              {:name "Tips by State", :private false, :type "question"}
@@ -109,7 +109,7 @@
     ;; for :collection_unknown_field and it'll return nil. in that case the identifier should not be changed to "made it
     ;; card public"
     (is (= "made this Card public."
-           (u/build-sentence
+           (util-be/build-sentence
             ((get-method revision/diff-strings :default)
              :model/Card
              {:private true :collection_unknown_field nil}

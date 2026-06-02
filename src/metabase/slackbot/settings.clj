@@ -2,7 +2,7 @@
   (:require
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defn metabot-slack-signing-secret
   "Signing secret for verifying requests from the Metabot Slack app.

@@ -8,7 +8,8 @@
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.revisions.models.revision :as revision]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru deferred-trun]]
+   [metabase.util-be.core :as util-be]
+   [metabase.util.i18n-be.core :refer [deferred-tru deferred-trun]]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -139,7 +140,7 @@
 
                                     :else
                                     (deferred-tru "modified the series on card {0}" (get-in prev-dashboard [:cards idx :card_id]))))))]
-    (-> [(when-let [default-description (u/build-sentence ((get-method revision/diff-strings :default) :model/Dashboard prev-dashboard dashboard))]
+    (-> [(when-let [default-description (util-be/build-sentence ((get-method revision/diff-strings :default) :model/Dashboard prev-dashboard dashboard))]
            (cond-> default-description
              (str/ends-with? default-description ".") (subs 0 (dec (count default-description)))))
          (when (:cache_ttl changes)

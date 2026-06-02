@@ -1,8 +1,12 @@
 (ns metabase.util.namespaces
-  "Potemkin is Java-only, so here's a basic function-importing macro that works for both CLJS and CLJ."
+  "Potemkin is Java-only, so here's a basic function-importing macro that works for both CLJS and CLJ.
+
+  Potemkin is required *lazily* inside [[import-fn]] / [[import-fns]]'s `:clj`
+  branch so that shadow-cljs's macro pass does not pull the `potemkin` /
+  `riddley` chain (~167 ms) into the CLJS build. CLJ callers and REPL sessions
+  still get the full potemkin-flavoured `import-fn` / `import-vars` semantics."
   (:require
-   [net.cgrand.macrovich :as macros]
-   [potemkin :as p]))
+   [net.cgrand.macrovich :as macros]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,7 +24,10 @@
    `(import-fn ~target nil))
   ([target sym]
    (macros/case
-     :clj `(p/import-fn ~target ~sym)
+     :clj  (do
+             ;; Lazy require — see the namespace docstring for why.
+             (require 'potemkin)
+             `(potemkin/import-fn ~target ~sym))
      :cljs (redef target sym))))
 
 (defmacro import-fns
@@ -38,4 +45,7 @@
                            new-sym    (if (vector? f) (second f) f)
                            target     (symbol (name target-ns) (name target-sym))]]
                  (redef target new-sym)))
-    :clj  `(p/import-vars ~@spaces)))
+    :clj  (do
+            ;; Lazy require — see the namespace docstring for why.
+            (require 'potemkin)
+            `(potemkin/import-vars ~@spaces))))

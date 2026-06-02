@@ -8,12 +8,6 @@
              [me.flowthing.pp :as pp]
              [metabase.config.core :as config]
              [clojure.pprint :as pprint]
-             ^{:clj-kondo/ignore [:discouraged-namespace]}
-             [metabase.util.jvm :as u.jvm]
-             [metabase.util.http :as u.http]
-             [metabase.util.string :as u.str]
-             [potemkin :as p]
-             [puget.printer]
              [ring.util.codec :as codec])
        :cljs-dev ([clojure.pprint :as pprint]))
    [camel-snake-kebab.internals.macros :as csk.macros]
@@ -25,7 +19,6 @@
    [medley.core :as m]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
@@ -33,7 +26,6 @@
    [metabase.util.performance :as perf :refer [#?(:clj for)]]
    [metabase.util.polyfills]
    [net.cgrand.macrovich :as macros]
-   [taoensso.encore :as encore]
    [weavejester.dependency :as dep])
   #?(:clj (:import
            (clojure.core.protocols CollReduce)
@@ -59,33 +51,6 @@
   format-plural
   qualified-key
   qualified-name])
-
-#?(:clj (p/import-vars [u.jvm
-                        all-ex-data
-                        all-ex-messages
-                        auto-retry
-                        string-to-bytes
-                        bytes-to-string
-                        decode-base64
-                        decode-base64-to-bytes
-                        deref-with-timeout
-                        encode-base64
-                        encode-base64-bytes
-                        filtered-stacktrace
-                        full-exception-chain
-                        host-port-up?
-                        parse-currency
-                        poll
-                        host-up?
-                        ip-address?
-                        sorted-take
-                        varargs
-                        with-timeout
-                        with-us-locale]
-                       [u.str
-                        build-sentence]
-                       [u.http
-                        valid-host?]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -380,11 +345,6 @@
                         m))]
     (perf/update-keys base (comp keyword ->kebab-case-en))))
 
-;; Log the maximum memory available to the JVM at launch time as well since it is very handy for debugging things
-#?(:clj
-   (when-not *compile-files*
-     (log/infof "Maximum memory available to JVM: %s" (u.format/format-bytes (.maxMemory (Runtime/getRuntime))))))
-
 ;; Set the default width for pprinting to 120 instead of 72. The default width is too narrow and wastes a lot of space
 #?(:clj      (alter-var-root #'pprint/*print-right-margin* (constantly 120))
    :cljs-dev (set! pprint/*print-right-margin* (constantly 120)))
@@ -424,7 +384,7 @@
                 ;; UrlValidator is very expensive when non-URLs are passed to it, so we verify if the string looks
                 ;; urlish before passing to UrlValidator.
                 (str/includes? s "://")
-                (let [validator (UrlValidator. (u.jvm/varargs String ["http" "https"])
+                (let [validator (UrlValidator. ^"[Ljava.lang.String;" (into-array String ["http" "https"])
                                                (RegexValidator. url-regex-pattern)
                                                UrlValidator/ALLOW_LOCAL_URLS)]
                   ;; (swap! -args conj s)
@@ -785,65 +745,6 @@
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
-
-(def ^{:arglists '([x])} cprint-to-str
-  "Like [[pprint-to-str]], but prints to color if color printing is enabled."
-  #?(:clj (if u.format/colorize?
-            puget.printer/cprint-str
-            pprint-to-str)
-     :cljs pprint-to-str))
-
-(def ^:dynamic *profile-level*
-  "Impl for `profile` macro -- don't use this directly. Nesting-level for the `profile` macro e.g. 0 for a top-level
-  `profile` form or 1 for a form inside that."
-  0)
-
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defn -profile-print-time
-  "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
-  [[profile]]d form."
-  [message-thunk start-time]
-  ;; indent the message according to [[*profile-level*]] and add a little down-left arrow so it (hopefully) points to
-  ;; the parent form
-  (log/info (u.format/format-color
-             (case (int (mod *profile-level* 4))
-               0 :green
-               1 :cyan
-               2 :magenta
-               3 :yellow) "%s%s took %s"
-             (if (pos? *profile-level*)
-               (str "┌" (str/join (repeat (dec *profile-level*) "─")) "─> ")
-               "")
-             (message-thunk)
-             (u.format/format-nanoseconds (- #?(:cljs (* 1000000 (js/performance.now))
-                                                :clj  (System/nanoTime))
-                                             start-time)))))
-
-(defmacro profile
-  "Like [[clojure.core/time]], but lets you specify a `message` that gets printed with the total time, formats the
-  time nicely using `u/format-nanoseconds`, and indents nested calls to `profile`.
-
-    (profile \"top-level\"
-      (Thread/sleep 500)
-      (profile \"nested\"
-        (Thread/sleep 100)))
-    ;; ->
-     ↙ nested took 100.1 ms
-    top-level took 602.8 ms"
-  {:style/indent 1}
-  ([form]
-   `(profile ~(str form) ~form))
-  ([message & body]
-   ;; message is wrapped in a thunk so we don't incur the overhead of calculating it if the log level does not include
-   ;; INFO
-   `(let [message#    (fn [] ~message)
-          start-time# ~(if (:ns &env)
-                         `(* 1000000 (js/performance.now)) ;; CLJS
-                         `(System/nanoTime))               ;; CLJ
-          result#     (binding [*profile-level* (inc *profile-level*)]
-                        ~@body)]
-      (-profile-print-time message# start-time#)
-      result#)))
 
 (defn seconds->ms
   "Convert `seconds` to milliseconds. More readable than doing this math inline."
@@ -1308,21 +1209,46 @@
     (reduce (fn [_ item] (vswap! cnt inc) (proc item)) nil reducible)
     @cnt))
 
+(def ^:private ^String nano-alphabet
+  "URL-safe 64-character NanoID alphabet. The alphabet is exactly 64 chars long
+  so `(bit-and byte 63)` is a perfectly uniform projection (256/64 = 4, no
+  remainder), which means we don't need rejection sampling."
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
+
+(def ^:private nano-id-default-size 21)
+
+(defn nano-id-from-bytes
+  "Build a NanoID string by mapping each random byte through the URL-safe 64-char
+  alphabet. The exposed name is for tests; production callers use [[generate-nano-id]]
+  which supplies its own RNG-backed byte source."
+  [size byte-fn]
+  #?(:clj  (let [^chars arr (char-array size)]
+             (dotimes [i size]
+               (aset arr i (.charAt nano-alphabet (bit-and (long (byte-fn i)) 63))))
+             (String. arr))
+     :cljs (let [arr (object-array size)]
+             (dotimes [i size]
+               (aset arr i (.charAt nano-alphabet (bit-and (long (byte-fn i)) 63))))
+             (apply str arr))))
+
 (defn generate-nano-id
   "Generates a random NanoID string. Usually these are used for the entity_id field of various models.
 
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
   ([]
-   (encore/nanoid false 21))
+   #?(:clj  (let [^java.security.SecureRandom rng (java.security.SecureRandom.)
+                  buf                             (byte-array nano-id-default-size)]
+              (.nextBytes rng buf)
+              (nano-id-from-bytes nano-id-default-size (fn [i] (aget buf i))))
+      :cljs (let [buf (js/Uint8Array. nano-id-default-size)]
+              (.getRandomValues js/crypto buf)
+              (nano-id-from-bytes nano-id-default-size (fn [i] (aget buf i))))))
   ([seed-str]
-   #?(:clj  (let [seed (Long/parseLong seed-str 16)
-                  rnd  (Random. seed)
-                  gen  (encore/rand-id-fn {:rand-bytes-fn (fn [len]
-                                                            (let [ba (byte-array len)]
-                                                              (.nextBytes rnd ba)
-                                                              ba))})]
-              (gen))
+   #?(:clj  (let [rng (Random. (Long/parseLong seed-str 16))
+                  buf (byte-array nano-id-default-size)]
+              (.nextBytes rng buf)
+              (nano-id-from-bytes nano-id-default-size (fn [i] (aget buf i))))
       :cljs (throw (ex-info "Seeded NanoIDs are not supported in CLJS" {:seed-str seed-str})))))
 
 (defn update-some

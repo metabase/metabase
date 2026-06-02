@@ -11,7 +11,8 @@
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -26,7 +27,7 @@
     [:fn
      {:error/message "setup token"}
      (every-pred string? #'setup/token-match?)]]
-   (i18n/deferred-tru "Token does not match the setup token.")))
+   (i18n-be/deferred-tru "Token does not match the setup token.")))
 
 (def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
   "We must not allow users to setup multiple super users after the first user is created. But tests still need to be able

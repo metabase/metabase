@@ -6,7 +6,7 @@
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -30,7 +30,7 @@
                    (replacement.protocols/advance! progress)))
                progress)
               ;; wait for virtual thread
-              (is (= :run/success (u/deref-with-timeout done? 500)))
+              (is (= :run/success (util-be/deref-with-timeout done? 500)))
               ;; Writes at items 50, 100, 120 (final) → progress 50/120, 100/120, 120/120
               (is (= [(double (/ 50 120)) (double (/ 100 120)) 1.0]
                      @writes))
@@ -57,7 +57,7 @@
                  (replacement.protocols/advance! progress 30)
                  (replacement.protocols/advance! progress 10))
                progress)
-              (is (= :run/success (u/deref-with-timeout done? 500)))
+              (is (= :run/success (util-be/deref-with-timeout done? 500)))
               ;; advance(30): 0→30, crosses 0/50→0/50 boundary? quot(0,50)=0, quot(30,50)=0 → no
               ;; advance(30): 30→60, crosses? quot(30,50)=0, quot(60,50)=1 → yes, writes 0.6
               ;; advance(30): 60→90, crosses? quot(60,50)=1, quot(90,50)=1 → no
@@ -91,7 +91,7 @@
               (replacement-run/cancel-run! (:id record))
               (deliver pause :continue)
               ;; Poll until run is no longer active (cancel-run! flips is_active)
-              (is (= :run/cancelled (u/deref-with-timeout done? 500)))
+              (is (= :run/cancelled (util-be/deref-with-timeout done? 500)))
               ;; First boundary write at 50/100 succeeds, canceled? is false.
               ;; cancel-run! sets is_active=nil. Next boundary at 100 writes progress,
               ;; then checks canceled? → true → throws. Both writes happen.
@@ -112,7 +112,7 @@
              (throw (ex-info "1 of 5 entities failed\n  [:card 42]: boom"
                              {:failures [{:entity [:card 42] :error "boom"}]})))
            progress)
-          (is (= :run/fail (u/deref-with-timeout done? 500)))
+          (is (= :run/fail (util-be/deref-with-timeout done? 500)))
           (let [run (t2/select-one :model/ReplacementRun :id (:id record))]
             (is (= :failed (:status run)))
             (is (str/starts-with? (:message run) "1 of 5 entities failed"))))))))

@@ -3,7 +3,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))

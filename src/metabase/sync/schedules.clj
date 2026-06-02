@@ -4,7 +4,7 @@
   `metabase_database` table."
   (:require
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 

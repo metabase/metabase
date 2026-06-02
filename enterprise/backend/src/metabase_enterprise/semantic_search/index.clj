@@ -18,6 +18,7 @@
    [metabase.search.core :as search]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -220,12 +221,12 @@
   [connectable table-name records->sql documents]
   (when (seq documents)
     (u/prog1 (->> documents (map :model) frequencies)
-      (u/profile (str "Semantic index database update of " (count documents) " documents " <>)
-        (let [owner-ids (batch-resolve-personal-owner-ids (map :collection_id documents))]
-          (doseq [batch (->> (map #(doc->db-record owner-ids %) documents)
-                             (partition-all *batch-size*))]
-            (jdbc/execute! connectable (records->sql batch))))
-        (analytics-set-index-size! connectable table-name)))))
+      (util-be/profile (str "Semantic index database update of " (count documents) " documents " <>)
+                       (let [owner-ids (batch-resolve-personal-owner-ids (map :collection_id documents))]
+                         (doseq [batch (->> (map #(doc->db-record owner-ids %) documents)
+                                            (partition-all *batch-size*))]
+                           (jdbc/execute! connectable (records->sql batch))))
+                       (analytics-set-index-size! connectable table-name)))))
 
 (defn- execute-with-counts [connectable model ids sql]
   (jdbc/execute! connectable sql)
@@ -341,20 +342,20 @@
           embeddable-texts  (keys text->docs)
           upsert-embedding! (upsert-embedding!-fn connectable index text->docs)
           [new-texts stats]
-          (u/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count embeddable-texts)})
-            (let [[new-texts existing-embeddings] (partition-existing-embeddings connectable index embeddable-texts)]
-              (if-not (seq existing-embeddings)
-                [embeddable-texts nil]
-                (u/profile (str "Semantic search cached embedding db update for " {:texts (count existing-embeddings)})
-                  [new-texts (upsert-embedding! existing-embeddings)]))))]
+          (util-be/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count embeddable-texts)})
+                           (let [[new-texts existing-embeddings] (partition-existing-embeddings connectable index embeddable-texts)]
+                             (if-not (seq existing-embeddings)
+                               [embeddable-texts nil]
+                               (util-be/profile (str "Semantic search cached embedding db update for " {:texts (count existing-embeddings)})
+                                                [new-texts (upsert-embedding! existing-embeddings)]))))]
       (->>
        (when (seq new-texts)
-         (u/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :texts (count new-texts)})
-           (embedding/process-embeddings-streaming
-            (:embedding-model index)
-            new-texts
-            upsert-embedding!
-            opts)))
+         (util-be/profile (str "Semantic search embedding generation and db update for " {:docs (count documents) :texts (count new-texts)})
+                          (embedding/process-embeddings-streaming
+                           (:embedding-model index)
+                           new-texts
+                           upsert-embedding!
+                           opts)))
        (merge-with + stats)))))
 
 (def ^:private ^:dynamic *retrying* false)

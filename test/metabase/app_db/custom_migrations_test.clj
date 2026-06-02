@@ -38,6 +38,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
@@ -1824,8 +1825,8 @@
               ;; simulate starting MB after migrate up, which will trigger this function
               (task/init! ::task.send-pulses/SendPulses)
               ;; wait a bit for the InitSendPulseTriggers to run
-              (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
-                       :done? #(= 1 %)})
+              (util-be/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
+                             :done? #(= 1 %)})
               (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
                 (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
                        (pulse-channel-test/send-pulse-triggers pulse-id)))

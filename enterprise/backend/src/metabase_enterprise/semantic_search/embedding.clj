@@ -10,6 +10,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -75,7 +76,7 @@
   [data]
   (vec
    (for [{:keys [embedding]} data]
-     (let [bytes  (u/decode-base64-to-bytes ^String embedding)
+     (let [bytes  (util-be/decode-base64-to-bytes ^String embedding)
            buffer (doto (java.nio.ByteBuffer/wrap bytes)
                     (.order java.nio.ByteOrder/LITTLE_ENDIAN))
            length (/ (alength bytes) 4)
@@ -390,24 +391,24 @@
         {:search.semantic/provider   provider
          :search.semantic/model-name model-name
          :search.semantic/text-count (count texts)}
-        (u/profile (str "Generating embeddings " {:model model-name
-                                                  :dimensions vector-dimensions
-                                                  :texts (calc-token-metrics texts)})
-          (if (= "openai" provider)
-            (let [max-tokens-per-batch (semantic-settings/openai-max-tokens-per-batch)
-                  batches (create-batches max-tokens-per-batch count-tokens texts)
+        (util-be/profile (str "Generating embeddings " {:model model-name
+                                                        :dimensions vector-dimensions
+                                                        :texts (calc-token-metrics texts)})
+                         (if (= "openai" provider)
+                           (let [max-tokens-per-batch (semantic-settings/openai-max-tokens-per-batch)
+                                 batches (create-batches max-tokens-per-batch count-tokens texts)
 
-                  process-batch
-                  (fn [batch-idx batch-texts]
-                    (let [embeddings (u/profile (format "Embedding batch %d/%d %s"
-                                                        (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
-                                       (get-embeddings-batch embedding-model batch-texts opts))
-                          text-embedding-map (zipmap batch-texts embeddings)]
-                      (process-fn text-embedding-map)))]
-              (transduce (map-indexed process-batch) (partial merge-with +) batches))
-            (let [embeddings (get-embeddings-batch embedding-model texts opts)
-                  text-embedding-map (zipmap texts embeddings)]
-              (process-fn text-embedding-map))))))))
+                                 process-batch
+                                 (fn [batch-idx batch-texts]
+                                   (let [embeddings (util-be/profile (format "Embedding batch %d/%d %s"
+                                                                             (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
+                                                                     (get-embeddings-batch embedding-model batch-texts opts))
+                                         text-embedding-map (zipmap batch-texts embeddings)]
+                                     (process-fn text-embedding-map)))]
+                             (transduce (map-indexed process-batch) (partial merge-with +) batches))
+                           (let [embeddings (get-embeddings-batch embedding-model texts opts)
+                                 text-embedding-map (zipmap texts embeddings)]
+                             (process-fn text-embedding-map))))))))
 
 (comment
   ;; Configuration:

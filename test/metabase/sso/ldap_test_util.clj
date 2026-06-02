@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [metabase.test.util :as tu]
-   [metabase.util :as u])
+   [metabase.util-be.core :as util-be])
   (:import
    (com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig)
    (com.unboundid.ldap.sdk.schema Schema)
@@ -17,10 +17,10 @@
 
 (defn- get-server-config
   ^InMemoryDirectoryServerConfig [schema]
-  (doto (InMemoryDirectoryServerConfig. (u/varargs String ["dc=metabase,dc=com"]))
+  (doto (InMemoryDirectoryServerConfig. (util-be/varargs String ["dc=metabase,dc=com"]))
     (.addAdditionalBindCredentials "cn=Directory Manager" "password")
     (.setSchema schema)
-    (.setListenerConfigs (u/varargs InMemoryListenerConfig [(InMemoryListenerConfig/createLDAPConfig "LDAP" 0)]))))
+    (.setListenerConfigs (util-be/varargs InMemoryListenerConfig [(InMemoryListenerConfig/createLDAPConfig "LDAP" 0)]))))
 
 (defn- start-ldap-server!
   ^InMemoryDirectoryServer [{:keys [ldif-resource schema]}]
@@ -50,8 +50,8 @@
   "Get the default schema for the directory server."
   []
   (Schema/mergeSchemas
-   (u/varargs Schema [(Schema/getDefaultStandardSchema)
-                      (Schema/getSchema (u/varargs File [(io/file "test_resources/posixGroup.schema.ldif")]))])))
+   (util-be/varargs Schema [(Schema/getDefaultStandardSchema)
+                            (Schema/getSchema (util-be/varargs File [(io/file "test_resources/posixGroup.schema.ldif")]))])))
 
 (defn do-with-ldap-server!
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `f`."

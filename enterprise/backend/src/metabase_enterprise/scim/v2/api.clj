@@ -11,7 +11,7 @@
    [metabase.permissions.core :as perms]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -183,7 +183,7 @@
       :is_active  is-active?
       :type       :personal
       :sso_source "scim"}
-     (when (and locale (i18n/available-locale? locale))
+     (when (and locale (i18n-be/available-locale? locale))
        {:locale locale}))))
 
 (mu/defn ^:private get-user-by-entity-id

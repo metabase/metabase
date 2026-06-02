@@ -9,6 +9,7 @@
    [metabase.embedding.util :as embed.util]
    [metabase.request.current :as request.current]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -110,7 +111,7 @@
 (def ^:private IPAddress->Info
   [:map-of
    [:and {:error/message "valid IP address string"}
-    ms/NonBlankString [:fn u/ip-address?]]
+    ms/NonBlankString [:fn util-be/ip-address?]]
    [:map {:closed true}
     [:description ms/NonBlankString]
     [:timezone    [:maybe (ms/InstanceOfClass ZoneId)]]]])
@@ -121,7 +122,7 @@
   "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
   `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."
   [ip-addresses :- [:maybe [:sequential :string]]]
-  (let [ip-addresses (set (filter u/ip-address? ip-addresses))]
+  (let [ip-addresses (set (filter util-be/ip-address? ip-addresses))]
     (when (seq ip-addresses)
       (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
         (try

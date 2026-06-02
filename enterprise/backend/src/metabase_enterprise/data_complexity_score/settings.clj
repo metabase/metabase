@@ -3,7 +3,7 @@
   (:require
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting ^:deprecated data-complexity-scoring-enabled
   (deferred-tru

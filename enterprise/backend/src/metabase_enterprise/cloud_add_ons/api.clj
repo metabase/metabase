@@ -9,7 +9,8 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.store-api.core :as store-api]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
 (def ^:private requires-terms-of-service?

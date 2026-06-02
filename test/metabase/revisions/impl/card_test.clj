@@ -9,14 +9,14 @@
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [toucan2.core :as t2]))
 
 (comment metabase.revisions.init/keep-me)
 
 (deftest ^:parallel diff-cards-str-test
   (are [x y expected] (= expected
-                         (u/build-sentence (revision/diff-strings :model/Card x y)))
+                         (util-be/build-sentence (revision/diff-strings :model/Card x y)))
     {:name        "Diff Test"
      :description nil}
     {:name        "Diff Test Changed"
@@ -43,7 +43,7 @@
   (testing "When a collection referenced in a revision has been deleted, the description should not show 'null'"
     (let [deleted-coll-id 99999]
       (are [x y expected] (= expected
-                             (u/build-sentence (revision/diff-strings :model/Card x y)))
+                             (util-be/build-sentence (revision/diff-strings :model/Card x y)))
         ;; moved from nil (root) to a now-deleted collection
         {:name "Apple"}
         {:name          "Apple"
@@ -61,7 +61,7 @@
     [:model/Collection {coll-id-1 :id} {:name "Old collection"}
      :model/Collection {coll-id-2 :id} {:name "New collection"}]
     (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Card x y)))
+                           (util-be/build-sentence (revision/diff-strings :model/Card x y)))
 
       {:name "Apple"}
       {:name          "Apple"
@@ -167,7 +167,7 @@
                                     before
                                     changes)]
                   (is (seq diff-strings))
-                  (is (u/build-sentence diff-strings)))))))))))
+                  (is (util-be/build-sentence diff-strings)))))))))))
 
 (deftest record-revision-and-description-completeness-test-2
   ;; test tracking result_metadata for models
@@ -182,7 +182,7 @@
         (testing "we should track when :result_metadata changes on model"
           (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
         (testing "we should have a revision description for :result_metadata on model"
-          (is (some? (u/build-sentence
+          (is (some? (util-be/build-sentence
                       (revision/diff-strings
                        :model/Dashboard
                        before

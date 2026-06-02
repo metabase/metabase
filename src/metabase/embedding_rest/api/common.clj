@@ -18,6 +18,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -461,7 +462,7 @@
                           :token-params        slug-token-params}
                          e)]
           (log/errorf e "embedded card-param-values error\n%s"
-                      (u/pprint-to-str (u/all-ex-data e)))
+                      (u/pprint-to-str (util-be/all-ex-data e)))
           (throw e))))))
 
 (defn card-param-remapped-value
@@ -506,7 +507,7 @@
                           :token-params        slug-token-params}
                          e)]
           (log/errorf e "embedded card-param-values error\n%s"
-                      (u/pprint-to-str (u/all-ex-data e)))
+                      (u/pprint-to-str (util-be/all-ex-data e)))
           (throw e))))))
 
 (defn unsigned-token->dashboard-id
@@ -568,7 +569,7 @@
                           :param-slug          searched-param-slug
                           :token-params        slug-token-params}
                          e)]
-          (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
+          (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (util-be/all-ex-data e)))
           (throw e))))))
 
 (defn dashboard-param-remapped-value

@@ -3,7 +3,7 @@
   (:require
    [metabase.api.open-api :as open-api]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n-be.core :as i18n-be]))
 
 (defn +require-premium-feature
   "Wraps Ring `handler`. Check that we have a premium token with `feature` (a keyword; see
@@ -16,7 +16,7 @@
   Use [[when-premium-feature]] instead if you want the handler to apply if we have the premium feature but pass-thru
   if we do not."
   [feature feature-name handler]
-  (assert (i18n/localized-string? feature-name), "`feature-name` must be i18ned")
+  (assert (i18n-be/localized-string? feature-name), "`feature-name` must be i18ned")
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (premium-features/assert-has-feature feature feature-name)

@@ -6,7 +6,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.response :as api.response]
    [metabase.api.settings :as api.settings]
-   [metabase.util.i18n :refer [deferred-trs deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-trs deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 

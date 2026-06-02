@@ -19,6 +19,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -641,7 +642,7 @@
                     (do
                       (is (instance? Exception response) "Did not get an error with wrong password")
                       (is (some (partial instance? org.apache.sshd.common.SshException)
-                                (u/full-exception-chain response))
+                                (util-be/full-exception-chain response))
                           "None of the errors are from ssh")))))
               (testing "Can perform custom actions on ssh-enabled database"
                 (let [query (update (mt/native-query
@@ -674,7 +675,7 @@
                                             (catch Exception e e))]
                           (is (instance? Exception response) "Did not get an error with wrong password")
                           (is (some (partial instance? org.apache.sshd.common.SshException)
-                                    (u/full-exception-chain response))
+                                    (util-be/full-exception-chain response))
                               "None of the errors are from ssh"))))))))))))))
 
 (defmacro with-uuids-test-data-and-actions-permissively-enabled!

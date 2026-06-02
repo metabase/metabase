@@ -8,7 +8,7 @@
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
    [metabase.query-processor.schema :as query-processor.schema]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -21,7 +21,7 @@
 (mr/def ::ResultsMetadata
   (mu/with-api-error-message
    [:maybe [:sequential ResultColumnMetadata]]
-   (i18n/deferred-tru "value must be an array of valid results column metadata maps.")))
+   (i18n-be/deferred-tru "value must be an array of valid results column metadata maps.")))
 
 (def ResultsMetadata
   "Schema for valid values of the `result_metadata` column."

@@ -3,7 +3,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.log :as log])
   (:import
    (java.io BufferedReader InputStreamReader PrintWriter)
@@ -218,7 +218,7 @@
                                                    :port                          port}]
           (.connect socket (InetSocketAddress. "127.0.0.1" ^Integer (:tunnel-entrance-port details-with-tunnel)) 3000)
           ;; cause our future to run to completion
-          (u/deref-with-timeout server-thread 12000)
+          (util-be/deref-with-timeout server-thread 12000)
           (with-open [in-client (BufferedReader. (InputStreamReader. (.getInputStream socket)))]
             (is (= "hello from the ssh tunnel" (.readLine in-client)))))))))
 

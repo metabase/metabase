@@ -1,7 +1,7 @@
 (ns metabase.revisions.models.revision.diff
   (:require
    [clojure.data :as data]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
 

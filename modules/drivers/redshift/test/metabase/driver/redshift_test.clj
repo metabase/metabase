@@ -27,6 +27,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -356,13 +357,13 @@
              qual-tbl-nm
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (u/auto-retry 3
-                (let [table-names (set (map :name (:tables (driver/describe-database :redshift database))))]
-                  (when-not (contains? table-names mview-nm)
-                    (Thread/sleep 1000)
-                    (throw (ex-info "Materialized view not yet visible in describe-database results"
-                                    {:expected mview-nm :actual table-names})))
-                  (is (contains? table-names mview-nm)))))))))))
+              (util-be/auto-retry 3
+                                  (let [table-names (set (map :name (:tables (driver/describe-database :redshift database))))]
+                                    (when-not (contains? table-names mview-nm)
+                                      (Thread/sleep 1000)
+                                      (throw (ex-info "Materialized view not yet visible in describe-database results"
+                                                      {:expected mview-nm :actual table-names})))
+                                    (is (contains? table-names mview-nm)))))))))))
 
 (mt/defdataset unix-timestamps
   [["timestamps"

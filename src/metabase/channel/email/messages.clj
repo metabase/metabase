@@ -25,6 +25,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -175,7 +176,7 @@
   (let [user-info    (or (t2/select-one [:model/User :last_name :first_name :email :locale] :id user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
                                          {:user-id user-id, :status-code 404})))
-        user-locale  (or (:locale user-info) (i18n/site-locale))
+        user-locale  (or (:locale user-info) (i18n-be/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
         username     (or (:first_name user-info) (:last_name user-info) (:email user-info))
         context      (merge (common-context)

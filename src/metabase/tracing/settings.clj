@@ -3,7 +3,7 @@
    All settings are configured exclusively via environment variables (`:setter :none`)."
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)

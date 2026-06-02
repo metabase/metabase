@@ -2,7 +2,7 @@
   (:require
    [metabase.mcp.core :as mcp]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting oauth-server-access-token-ttl
   (deferred-tru "Access token time-to-live in seconds for the embedded OAuth server.")

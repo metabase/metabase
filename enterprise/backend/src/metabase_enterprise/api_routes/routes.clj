@@ -47,7 +47,7 @@
    [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me)
 

@@ -8,7 +8,7 @@
    [java-time.core :as t.core]
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse :as u.date.parse]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin.types :as p.types])
@@ -94,7 +94,13 @@
      (recur formatter (t/zoned-date-time t (t/zone-id "UTC")) locale)
 
      locale
-     (recur (.withLocale (t/formatter formatter) (i18n/locale locale)) t nil)
+     ;; Resolve `metabase.util.i18n-be.core/locale` lazily — eager require
+     ;; would pull `i18n.impl`+`instaparse`+`cheshire` into shadow-cljs's
+     ;; macro load path (this file is reached via util.time → util.time.impl
+     ;; from `metabase.lib.convert`).
+     (recur (.withLocale (t/formatter formatter)
+                         ((requiring-resolve 'metabase.util.i18n-be.core/locale) locale))
+            t nil)
 
      :else
      (t/format formatter t))))
@@ -157,7 +163,7 @@
     (format-human-readable #t \"2021-04-02T14:42:09.524392-07:00[US/Pacific]\" \"es-MX\")
     ;; -> \"2 de abril de 2021 02:42:09 PM PDT\""
   ([t]
-   (format-human-readable t (i18n/user-locale)))
+   (format-human-readable t ((requiring-resolve 'metabase.util.i18n-be.core/user-locale))))
 
   ([t locale]
    (when t

@@ -22,6 +22,7 @@
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -270,7 +271,7 @@
   (try
     (log/info (u/format-color :cyan "Health check [%s]: checking %s {:id %d}"
                               connection-type (:name database) (:id database)))
-    (u/with-timeout (driver.settings/db-connection-timeout-ms)
+    (util-be/with-timeout (driver.settings/db-connection-timeout-ms)
       (or (driver/can-connect? driver details-map)
           (throw (Exception. (format "Failed to connect to Database (%s)" connection-type)))))
     (log/info (u/format-color :green "Health check [%s]: success %s {:id %d}"
@@ -278,7 +279,7 @@
     (analytics/inc! :metabase-database/status {:driver engine :healthy true :connection-type connection-type})
     true
     (catch Throwable e
-      (let [humanized-message (some->> (u/all-ex-messages e)
+      (let [humanized-message (some->> (util-be/all-ex-messages e)
                                        (driver/humanize-connection-error-message driver))
             reason            (if (keyword? humanized-message) "user-input" "exception")]
         (log/error e (u/format-color :red "Health check [%s]: failure with error %s {:id %d :reason %s :message %s}"

@@ -4,7 +4,7 @@
    [metabase.driver.druid.client :as druid.client]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]))
+   [metabase.util-be.core :as util-be]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,7 +22,7 @@
   (Integer/parseUnsignedInt (tx/db-test-env-var-or-throw :druid :port "8082")))
 
 (defn- broker-port-up? []
-  (u/host-port-up? (str/replace (host) #"^https?://" "") (broker-port)))
+  (util-be/host-port-up? (str/replace (host) #"^https?://" "") (broker-port)))
 
 (defmethod tx/dbdef->connection-details :druid
   [& _]

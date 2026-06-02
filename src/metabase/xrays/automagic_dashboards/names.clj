@@ -9,7 +9,8 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :as i18n-be :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.time :as u.time]
    [metabase.xrays.automagic-dashboards.schema :as ads]
@@ -61,7 +62,7 @@
   "Return the (display) name of the source of a given root object."
   (comp (some-fn :display_name :name) :source))
 
-(mu/defn metric->description :- [:or :string [:fn {:error/message "localized string"} i18n/localized-string?]]
+(mu/defn metric->description :- [:or :string [:fn {:error/message "localized string"} i18n-be/localized-string?]]
   "Return a description for the metric."
   [root               :- ::ads/root
    aggregation-clause :- [:or

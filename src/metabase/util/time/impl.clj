@@ -2,7 +2,6 @@
   (:require
    [java-time.api :as t]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n]
    [metabase.util.time.impl-common :as common])
   (:import
    (java.time.format DateTimeFormatter)
@@ -353,7 +352,7 @@
   (when-let [^DateTimeFormatter formatter (some-> unit
                                                   unit-formats
                                                   t/formatter
-                                                  (cond-> #_formatter locale (.withLocale (i18n/locale locale))))]
+                                                  (cond-> #_formatter locale (.withLocale ((requiring-resolve 'metabase.util.i18n-be.core/locale) locale))))]
     (.format formatter t)))
 
 (defn format-unit
@@ -411,7 +410,7 @@
            unit-formats
            t/formatter
            (cond-> #_formatter
-            locale (.withLocale (i18n/locale locale)))
+            locale (.withLocale ((requiring-resolve 'metabase.util.i18n-be.core/locale) locale)))
            (.parse str))))
 
 (defn format-diff

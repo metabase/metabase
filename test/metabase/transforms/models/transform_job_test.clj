@@ -4,26 +4,26 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-job :as transform-job]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [toucan2.core :as t2]))
 
 (comment transform-job/keep-me)
 
 (def ^:private values {"hourly"
-                       {:name (i18n/deferred-trs "Hourly job")
-                        :description (i18n/deferred-trs "Executes transforms tagged with ''hourly'' every hour")}
+                       {:name (i18n-be/deferred-trs "Hourly job")
+                        :description (i18n-be/deferred-trs "Executes transforms tagged with ''hourly'' every hour")}
 
                        "daily"
-                       {:name (i18n/deferred-trs "Daily job")
-                        :description (i18n/deferred-trs "Executes transforms tagged with ''daily'' once per day")}
+                       {:name (i18n-be/deferred-trs "Daily job")
+                        :description (i18n-be/deferred-trs "Executes transforms tagged with ''daily'' once per day")}
 
                        "weekly"
-                       {:name (i18n/deferred-trs "Weekly job")
-                        :description (i18n/deferred-trs "Executes transforms tagged with ''weekly'' once per week")}
+                       {:name (i18n-be/deferred-trs "Weekly job")
+                        :description (i18n-be/deferred-trs "Executes transforms tagged with ''weekly'' once per week")}
 
                        "monthly"
-                       {:name (i18n/deferred-trs "Monthly job")
-                        :description (i18n/deferred-trs "Executes transforms tagged with ''monthly'' once per month")}})
+                       {:name (i18n-be/deferred-trs "Monthly job")
+                        :description (i18n-be/deferred-trs "Executes transforms tagged with ''monthly'' once per month")}})
 
 (deftest initial-jobs-translated-on-select
   (doseq [[type translations] values]

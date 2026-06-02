@@ -11,7 +11,7 @@
    [metabase.store-api.core :as store-api]
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -67,7 +67,7 @@
   []
   (let [token    (premium-features/premium-embedding-token)
         email    (t2/select-one-fn :email :model/User :id api/*current-user-id*)
-        language (i18n/user-locale-string)]
+        language (i18n-be/user-locale-string)]
     (if (and token (str/starts-with? token "airgap_"))
       (billing-status)
       (fetch-billing-status* token email language))))

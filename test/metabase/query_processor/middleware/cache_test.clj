@@ -34,6 +34,7 @@
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.log :as log]
    [pretty.core :as pretty]
    [toucan2.core :as t2])
@@ -438,7 +439,7 @@
             (t2/delete! :model/Query :query_hash q-hash)
             (is (not (:cached (qp/process-query (qp/userland-query query)))))
             (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
-            (u/deref-with-timeout called-promise 500)
+            (util-be/deref-with-timeout called-promise 500)
             (is (= 1 @save-execution-metadata-count))
             (is (= 1 @update-avg-execution-count))
             (let [avg-execution-time (query/average-execution-time-ms q-hash)]

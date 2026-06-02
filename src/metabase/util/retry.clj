@@ -5,7 +5,7 @@
    [malli.util :as mut]
    [metabase.config.core :as config]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)

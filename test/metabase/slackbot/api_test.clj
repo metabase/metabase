@@ -16,7 +16,7 @@
    [metabase.sso.settings :as sso-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -161,9 +161,9 @@
                                       (tu/slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                       :done? true?
-                       :timeout-ms 5000})
+              (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                             :done? true?
+                             :timeout-ms 5000})
               (testing "stream was started"
                 (is (= 1 (count @stream-calls)))
                 (is (= "C123" (:channel (first @stream-calls)))))
@@ -190,11 +190,11 @@
               (is (= "ok" response))
               ;; Poll on the slack_msg_id backfill rather than the post call. The backfill runs after
               ;; post-thread-reply returns, so waiting on post-calls alone races the DB update in CI.
-              (u/poll {:thunk      #(t2/select-one :model/MetabotMessage
-                                                   :channel_id channel-id :role "assistant"
-                                                   :slack_msg_id [:not= nil])
-                       :done?      some?
-                       :timeout-ms 5000})
+              (util-be/poll {:thunk      #(t2/select-one :model/MetabotMessage
+                                                         :channel_id channel-id :role "assistant"
+                                                         :slack_msg_id [:not= nil])
+                             :done?      some?
+                             :timeout-ms 5000})
               (testing "a single threaded reply is posted with the answer"
                 (is (= 1 (count @post-calls)))
                 (is (str/includes? (:text (first @post-calls)) mock-ai-text))
@@ -219,10 +219,10 @@
                                         (tu/slack-request-options event-body)
                                         event-body)]
                 (is (= "ok" response))
-                (u/poll {:thunk #(some (fn [m] (= "I wasn't able to generate a response. Please try again." (:text m)))
-                                       @post-calls)
-                         :done? true?
-                         :timeout-ms 5000})
+                (util-be/poll {:thunk #(some (fn [m] (= "I wasn't able to generate a response. Please try again." (:text m)))
+                                             @post-calls)
+                               :done? true?
+                               :timeout-ms 5000})
                 (testing "fallback message is sent"
                   (is (some #(= "I wasn't able to generate a response. Please try again." (:text %))
                             @post-calls)))
@@ -249,9 +249,9 @@
                                         (tu/slack-request-options event-body)
                                         event-body)]
                 (is (= "ok" response))
-                (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                         :done? true?
-                         :timeout-ms 5000})
+                (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                               :done? true?
+                               :timeout-ms 5000})
                 (testing "stream was started before the error"
                   (is (= 1 (count @stream-calls))))
                 (testing "error message was appended to the stream"
@@ -273,10 +273,10 @@
               (mt/client :post 200 "metabot/slack/events"
                          (tu/slack-request-options event-body)
                          event-body)
-              (u/poll {:thunk      #(or (>= (count @stop-stream-calls) 1)
-                                        (>= (count @update-calls) 1))
-                       :done?      true?
-                       :timeout-ms 5000})
+              (util-be/poll {:thunk      #(or (>= (count @stop-stream-calls) 1)
+                                              (>= (count @update-calls) 1))
+                             :done?      true?
+                             :timeout-ms 5000})
               (is (= 1 (count @ai-request-calls)))
               (let [opts (first @ai-request-calls)]
                 (is (= :slackbot (:profile-id opts)))
@@ -307,9 +307,9 @@
               (let [event (assoc-in tu/base-dm-event [:event :ts] event-ts)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event) event)
-                (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                         :done? true?
-                         :timeout-ms 5000})
+                (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                               :done? true?
+                               :timeout-ms 5000})
                 (let [user-msg (t2/select-one :model/MetabotMessage :slack_msg_id event-ts :channel_id "C123")
                       bot-msg  (t2/select-one :model/MetabotMessage :slack_msg_id "stream123" :channel_id "C123")]
                   (testing "user message has event ts and channel_id"
@@ -344,10 +344,10 @@
                                       (tu/slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1)
-                                    (>= (count @image-calls) 2))
-                       :done? true?
-                       :timeout-ms 5000})
+              (util-be/poll {:thunk #(and (>= (count @stop-stream-calls) 1)
+                                          (>= (count @image-calls) 2))
+                             :done? true?
+                             :timeout-ms 5000})
               (testing "streaming message flow works"
                 (is (= 1 (count @stream-calls)))
                 (is (= "C456" (:channel (first @stream-calls))))
@@ -380,9 +380,9 @@
                                       (tu/slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk #(= 1 (count @post-calls))
-                       :done? true?
-                       :timeout-ms 5000})
+              (util-be/poll {:thunk #(= 1 (count @post-calls))
+                             :done? true?
+                             :timeout-ms 5000})
               (testing "auth message posted as regular message, threaded using message ts"
                 (is (=? [{:channel "C123"
                           :thread_ts "1234567890.000001"
@@ -407,9 +407,9 @@
               (fn [{:keys [post-calls ephemeral-calls]}]
                 (is (= "ok" (mt/client :post 200 "metabot/slack/events"
                                        (tu/slack-request-options event-body) event-body)))
-                (u/poll {:thunk #(= 1 (count @ephemeral-calls))
-                         :done? true?
-                         :timeout-ms 5000})
+                (util-be/poll {:thunk #(= 1 (count @ephemeral-calls))
+                               :done? true?
+                               :timeout-ms 5000})
                 (is (= 0 (count @post-calls)))
                 (is (=? (cond-> {:channel "C123"
                                  :user    "U-UNKNOWN"
@@ -620,9 +620,9 @@
                                         (tu/slack-request-options event-body)
                                         event-body)]
                 (is (= "ok" response))
-                (u/poll {:thunk      #(>= (count @update-calls) 1)
-                         :done?      true?
-                         :timeout-ms 5000})
+                (util-be/poll {:thunk      #(>= (count @update-calls) 1)
+                               :done?      true?
+                               :timeout-ms 5000})
                 (testing "Slack message is updated with a removed notice"
                   (is (= 1 (count @update-calls)))
                   (is (= channel-id (:channel (first @update-calls))))
@@ -1086,8 +1086,8 @@
           {:ai-text mock-ai-text :data-parts mock-data-parts}
           (fn [{:keys [stop-stream-calls image-calls generate-adhoc-output-calls fake-png-bytes]}]
             (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event-body) event-body)
-            (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @image-calls) 1))
-                     :done? true? :timeout-ms 5000})
+            (util-be/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @image-calls) 1))
+                           :done? true? :timeout-ms 5000})
             (testing "generate-adhoc-output called with correct query and display"
               (is (= 1 (count @generate-adhoc-output-calls)))
               (is (= mock-query (:query (first @generate-adhoc-output-calls))))
@@ -1112,8 +1112,8 @@
           {:ai-text "Here's your table" :data-parts mock-data-parts}
           (fn [{:keys [generate-adhoc-output-calls stop-stream-calls]}]
             (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event-body) event-body)
-            (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @generate-adhoc-output-calls) 1))
-                     :done? true? :timeout-ms 5000})
+            (util-be/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @generate-adhoc-output-calls) 1))
+                           :done? true? :timeout-ms 5000})
             (testing "display defaults to :table"
               (is (= :table (:display (first @generate-adhoc-output-calls)))))))))))
 
@@ -1132,7 +1132,7 @@
           {:ai-text "Here's everything" :data-parts mock-data-parts}
           (fn [{:keys [image-calls stop-stream-calls generate-card-output-calls generate-adhoc-output-calls]}]
             (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event-body) event-body)
-            (u/poll {:thunk #(>= (count @image-calls) 3) :done? true? :timeout-ms 5000})
+            (util-be/poll {:thunk #(>= (count @image-calls) 3) :done? true? :timeout-ms 5000})
             (testing "static_viz cards rendered"
               (is (= #{101 202} (set (map :card-id @generate-card-output-calls)))))
             (testing "adhoc_viz query rendered"
@@ -1160,9 +1160,9 @@
                                                      (throw (ex-info "Unexpected render error" {})))]
               (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event-body) event-body)
               (let [error-msg "Query execution failed, please try again."]
-                (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1)
-                                      (some (fn [m] (= error-msg (:text m))) @post-calls))
-                         :done? true? :timeout-ms 5000})
+                (util-be/poll {:thunk #(and (>= (count @stop-stream-calls) 1)
+                                            (some (fn [m] (= error-msg (:text m))) @post-calls))
+                               :done? true? :timeout-ms 5000})
                 (is (some #(= error-msg (:text %)) @post-calls))))))))))
 
 (deftest viz-error-does-not-block-other-vizs-test
@@ -1184,8 +1184,8 @@
                                                        (throw (ex-info "Unexpected render error" {}))
                                                        {:type :image :content fake-png :card-name (str "Card " card-id)}))]
               (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event-body) event-body)
-              (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @image-calls) 1))
-                       :done? true? :timeout-ms 5000})
+              (util-be/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @image-calls) 1))
+                             :done? true? :timeout-ms 5000})
               (testing "error message posted for failing viz"
                 (is (some #(= "Query execution failed, please try again." (:text %)) @post-calls)))
               (testing "second card still uploads"
@@ -1203,8 +1203,8 @@
           {:ai-text "Here's your chart" :data-parts mock-data-parts}
           (fn [{:keys [image-calls stop-stream-calls]}]
             (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event-body) event-body)
-            (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @image-calls) 1))
-                     :done? true? :timeout-ms 5000})
+            (util-be/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @image-calls) 1))
+                           :done? true? :timeout-ms 5000})
             (let [img    (first @image-calls)
                   blocks (:blocks (first @stop-stream-calls))]
               (testing "filename uses slugified card name"
@@ -1229,8 +1229,8 @@
           {:ai-text "Here's your table" :data-parts mock-data-parts}
           (fn [{:keys [stop-stream-calls generate-adhoc-output-calls]}]
             (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event-body) event-body)
-            (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @generate-adhoc-output-calls) 1))
-                     :done? true? :timeout-ms 5000})
+            (util-be/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @generate-adhoc-output-calls) 1))
+                           :done? true? :timeout-ms 5000})
             (let [viz-blocks (:blocks (first @stop-stream-calls))]
               (testing "table viz is finalized in stop-stream blocks"
                 (is (seq viz-blocks)))
@@ -1255,7 +1255,7 @@
             (let [response (mt/client :post 200 "metabot/slack/events"
                                       (tu/slack-request-options tu/base-dm-event) tu/base-dm-event)]
               (is (= "ok" response))
-              (u/poll {:thunk #(>= (count @stop-stream-calls) 1) :done? true? :timeout-ms 5000})
+              (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1) :done? true? :timeout-ms 5000})
               (testing "responses-generated counter is incremented for dm/success"
                 (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
                                                                 {:source "dm" :result "success"}))))
@@ -1272,8 +1272,8 @@
             (let [response (mt/client :post 200 "metabot/slack/events"
                                       (tu/slack-request-options tu/base-mention-event) tu/base-mention-event)]
               (is (= "ok" response))
-              (u/poll {:thunk #(and (>= (count @update-calls) 1) (>= (count @remove-reaction-calls) 1))
-                       :done? true? :timeout-ms 5000})
+              (util-be/poll {:thunk #(and (>= (count @update-calls) 1) (>= (count @remove-reaction-calls) 1))
+                             :done? true? :timeout-ms 5000})
               (testing "responses-generated counter is incremented for channel/success"
                 (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
                                                                 {:source "channel" :result "success"})))))))))))
@@ -1289,9 +1289,9 @@
               (let [response (mt/client :post 200 "metabot/slack/events"
                                         (tu/slack-request-options tu/base-dm-event) tu/base-dm-event)]
                 (is (= "ok" response))
-                (u/poll {:thunk #(prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
-                                                                             {:source "dm" :result "error"}))
-                         :done? true? :timeout-ms 5000})
+                (util-be/poll {:thunk #(prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
+                                                                                   {:source "dm" :result "error"}))
+                               :done? true? :timeout-ms 5000})
                 (testing "responses-generated error counter is incremented"
                   (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
                                                                   {:source "dm" :result "error"}))))

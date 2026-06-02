@@ -19,6 +19,7 @@
    [metabase.app-db.liquibase :as liquibase]
    [metabase.config.core :as config]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
    [metabase.util.i18n :refer [trs]]
@@ -258,15 +259,15 @@
    data-source            :- (ms/InstanceOfClass javax.sql.DataSource)
    auto-migrate?          :- :boolean
    create-sample-content? :- :boolean]
-  (u/profile (trs "Database setup")
-    (u/with-us-locale
-      (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                config/*disable-setting-cache*            true
-                custom-migrations/*create-sample-content* create-sample-content?]
-        (verify-db-connection db-type data-source)
-        (error-if-downgrade-required! data-source)
-        (run-schema-migrations! data-source auto-migrate?)
-        (check-encryption))))
+  (util-be/profile (trs "Database setup")
+                   (util-be/with-us-locale
+                     (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                               config/*disable-setting-cache*            true
+                               custom-migrations/*create-sample-content* create-sample-content?]
+                       (verify-db-connection db-type data-source)
+                       (error-if-downgrade-required! data-source)
+                       (run-schema-migrations! data-source auto-migrate?)
+                       (check-encryption))))
   :done)
 
 (defn release-migration-locks!

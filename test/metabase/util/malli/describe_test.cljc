@@ -3,7 +3,7 @@
   (:require
    #?@(:clj
        ([metabase.lib.schema]
-        [metabase.util :as u]))
+        [metabase.util-be.core :as util-be]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]))
@@ -64,4 +64,4 @@
   (is (= "map where {:k -> <keyword>, :parent (optional) -> <recursive :metabase.util.malli.describe-test/map>}"
          (umd/describe ::map)))
   #?(:clj
-     (is (string? (u/with-timeout 500 (umd/describe :metabase.lib.schema/query))))))
+     (is (string? (util-be/with-timeout 500 (umd/describe :metabase.lib.schema/query))))))

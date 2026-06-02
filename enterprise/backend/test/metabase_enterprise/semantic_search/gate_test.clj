@@ -10,7 +10,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
@@ -46,7 +46,7 @@
               :document      (doto (PGobject.)
                                (.setType "jsonb")
                                (.setValue (json/encode search-doc)))
-              :document_hash (u/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc))))
+              :document_hash (util-be/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc))))
               :updated_at    (:updated_at search-doc)}
              (sut search-doc t2)))
       (testing "uses default updated_at when search doc has none"
@@ -80,7 +80,7 @@
   (walk/postwalk
    (fn [x]
      (cond
-       (bytes? x) (u/encode-base64-bytes x)
+       (bytes? x) (util-be/encode-base64-bytes x)
        (inst? x) (inst-ms x)
        (instance? PGobject x) (json/decode (.getValue ^PGobject x))
        :else x))

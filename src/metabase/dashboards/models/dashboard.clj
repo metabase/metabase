@@ -26,7 +26,8 @@
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -336,7 +337,7 @@
   (t2/with-transaction [_conn]
     (let [{dashcards      :dashcards
            tabs           :tabs
-           :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
+           :keys          [description] :as dashboard} (i18n-be/localized-strings->strings dashboard)
           dashboard  (first (t2/insert-returning-instances!
                              :model/Dashboard
                              (-> dashboard

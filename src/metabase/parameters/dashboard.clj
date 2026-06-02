@@ -9,7 +9,7 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -117,7 +117,7 @@
                                  [])
             :has_more_values has_more_values})
          (catch clojure.lang.ExceptionInfo e
-           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+           (if (= (:type (util-be/all-ex-data e)) qp.error-type/missing-required-permissions)
              (api/throw-403 e)
              (throw e))))))))
 

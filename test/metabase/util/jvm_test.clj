@@ -4,23 +4,23 @@
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
-   [metabase.util :as u]))
+   [metabase.util-be.core :as util-be]))
 
 (deftest ^:parallel host-up?-test
   (testing "host-up?"
     #_{:clj-kondo/ignore [:equals-true]}
     (are [s expected] (= expected
-                         (u/host-up? s))
+                         (util-be/host-up? s))
       "localhost"  true
       "nosuchhost" false))
   (testing "host-port-up?"
     (is (= false
-           (u/host-port-up? "nosuchhost" 8005)))))
+           (util-be/host-port-up? "nosuchhost" 8005)))))
 
 (deftest ^:parallel ip-address?-test
   #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
-                       (u/ip-address? x))
+                       (util-be/ip-address? x))
     "8.8.8.8"              true
     "185.233.100.23"       true
     "500.1.1.1"            false
@@ -38,7 +38,7 @@
 (deftest ^:parallel sorted-take-test
   (testing "It ensures there are never more than `size` items in the priority queue"
     (let [limit 5
-          rf    (u/sorted-take limit compare)]
+          rf    (util-be/sorted-take limit compare)]
       (reduce (fn [q x]
                 (let [_q' (rf q x)]
                   ;; a bit internal but this is really what we're after: bounded size while we look for the biggest
@@ -53,7 +53,7 @@
                  size (gen/fmap inc gen/nat)]
     (= (vec (take-last size (sort coll)))
        (transduce (map identity)
-                  (u/sorted-take size compare)
+                  (util-be/sorted-take size compare)
                   coll))))
 
 (defspec sorted-take-test-comparator
@@ -64,31 +64,31 @@
                     (compare score-1 score-2))]
       (= (vec (take-last size (sort-by identity kompare coll)))
          (transduce (map identity)
-                    (u/sorted-take size kompare)
+                    (util-be/sorted-take size kompare)
                     coll)))))
 
 (deftest ^:parallel full-exception-chain-test
   (testing "Not an Exception"
     (is (= nil
-           (u/full-exception-chain nil)))
+           (util-be/full-exception-chain nil)))
     (is (= nil
-           (u/full-exception-chain 100))))
+           (util-be/full-exception-chain 100))))
   (testing "No causes"
     (let [e (ex-info "A" {:a 1})]
       (is (= ["A"]
-             (map ex-message (u/full-exception-chain e))))
+             (map ex-message (util-be/full-exception-chain e))))
       (is (= [{:a 1}]
-             (map ex-data (u/full-exception-chain e))))))
+             (map ex-data (util-be/full-exception-chain e))))))
   (testing "w/ causes"
     (let [e (ex-info "A" {:a 1} (ex-info "B" {:b 2} (ex-info "C" {:c 3})))]
       (is (= ["A" "B" "C"]
-             (map ex-message (u/full-exception-chain e))))
+             (map ex-message (util-be/full-exception-chain e))))
       (is (= [{:a 1} {:b 2} {:c 3}]
-             (map ex-data (u/full-exception-chain e)))))))
+             (map ex-data (util-be/full-exception-chain e)))))))
 
 (deftest ^:parallel parse-currency-test
   (are [s expected] (= expected
-                       (u/parse-currency s))
+                       (util-be/parse-currency s))
     nil             nil
     ""              nil
     "   "           nil
@@ -109,16 +109,16 @@
 
 (deftest ^:parallel all-ex-messages-test
   (testing "nil exception"
-    (is (nil? (u/all-ex-messages nil))))
+    (is (nil? (util-be/all-ex-messages nil))))
   (testing "one level exception"
-    (is (= ["test string"] (u/all-ex-messages (RuntimeException. "test string"))))
-    (is (nil? (u/all-ex-messages (Exception. nil nil)))))
+    (is (= ["test string"] (util-be/all-ex-messages (RuntimeException. "test string"))))
+    (is (nil? (util-be/all-ex-messages (Exception. nil nil)))))
   (testing "chained exceptions"
     (is (= ["test string 1" "test string 2"]
-           (u/all-ex-messages (RuntimeException. "test string 1" (RuntimeException. "test string 2")))))
+           (util-be/all-ex-messages (RuntimeException. "test string 1" (RuntimeException. "test string 2")))))
     (is (= ["test string 1" "test string 2"]
-           (u/all-ex-messages (RuntimeException. "test string 1" (RuntimeException. nil (RuntimeException. "test string 2"))))))
+           (util-be/all-ex-messages (RuntimeException. "test string 1" (RuntimeException. nil (RuntimeException. "test string 2"))))))
     (is (= ["test string 2"]
-           (u/all-ex-messages (RuntimeException. nil (RuntimeException. "test string 2")))))
+           (util-be/all-ex-messages (RuntimeException. nil (RuntimeException. "test string 2")))))
     (is (nil?
-         (u/all-ex-messages (RuntimeException. nil (RuntimeException. nil nil)))))))
+         (util-be/all-ex-messages (RuntimeException. nil (RuntimeException. nil nil)))))))

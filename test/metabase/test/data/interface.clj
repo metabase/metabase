@@ -29,6 +29,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -188,24 +189,24 @@
   (when-not (contains? @has-loaded-extensions driver)
     (locking has-loaded-extensions
       (when-not (contains? @has-loaded-extensions driver)
-        (u/profile (format "Load %s test extensions" driver)
-          (require-driver-test-extensions-ns driver)
-          ;; if it doesn't have test extensions yet, it may be because it's relying on a parent driver to add them (e.g.
-          ;; Redshift uses Postgres' test extensions). Load parents as appropriate and try again
-          (when-not (has-test-extensions? driver)
-            (doseq [parent (parents driver/hierarchy driver)
-                    ;; skip parents like `:metabase.driver/driver` and `:metabase.driver/concrete`
-                    :when  (not= (namespace parent) "metabase.driver")]
-              (u/ignore-exceptions
-                (load-test-extensions-namespace-if-needed parent)))
-            ;; ok, hopefully it has test extensions now. If not, try again, but reload the entire driver namespace
-            (when-not (has-test-extensions? driver)
-              (require-driver-test-extensions-ns driver :reload)
-              ;; if it *still* does not test extensions, throw an Exception
-              (when-not (has-test-extensions? driver)
-                (throw (Exception. (str "No test extensions found for " driver))))))
-          ;; do before-run if needed as well
-          (do-before-run-if-needed driver))
+        (util-be/profile (format "Load %s test extensions" driver)
+                         (require-driver-test-extensions-ns driver)
+                         ;; if it doesn't have test extensions yet, it may be because it's relying on a parent driver to add them (e.g.
+                         ;; Redshift uses Postgres' test extensions). Load parents as appropriate and try again
+                         (when-not (has-test-extensions? driver)
+                           (doseq [parent (parents driver/hierarchy driver)
+                                   ;; skip parents like `:metabase.driver/driver` and `:metabase.driver/concrete`
+                                   :when  (not= (namespace parent) "metabase.driver")]
+                             (u/ignore-exceptions
+                               (load-test-extensions-namespace-if-needed parent)))
+                           ;; ok, hopefully it has test extensions now. If not, try again, but reload the entire driver namespace
+                           (when-not (has-test-extensions? driver)
+                             (require-driver-test-extensions-ns driver :reload)
+                             ;; if it *still* does not test extensions, throw an Exception
+                             (when-not (has-test-extensions? driver)
+                               (throw (Exception. (str "No test extensions found for " driver))))))
+                         ;; do before-run if needed as well
+                         (do-before-run-if-needed driver))
         (swap! has-loaded-extensions conj driver)))))
 
 (defn the-driver-with-test-extensions

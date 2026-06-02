@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting store-use-staging
   (deferred-tru "If staging store should be used instead of prod. True on dev.")

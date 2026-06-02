@@ -2,7 +2,7 @@
   (:require
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting agent-api-enabled?
   (deferred-tru "Whether the Agent API is enabled.")

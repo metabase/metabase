@@ -2,7 +2,7 @@
   (:require
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.experiment :as experiment]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 #_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting experiments-enabled

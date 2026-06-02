@@ -27,7 +27,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [every? some]])

@@ -24,6 +24,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
@@ -445,21 +446,21 @@
           secret-id (get-in db [:details :keystore-id])
           expected {:keystore-id secret-id}]
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
-      (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
+      (is (=? {:value (util-be/string-to-bytes "secret") :source :uploaded :version 1}
               (secret/latest-for-id secret-id)))
       (t2/update! :model/Database db-id {:details {:keystore-path "secret-path"}})
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
-      (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
+      (is (=? {:value (util-be/string-to-bytes "secret-path") :source :file-path :version 2}
               (secret/latest-for-id secret-id)))
       (t2/update! :model/Database db-id {:details {:keystore-path "ignore-path" :keystore-value "prefer-value"}})
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
-      (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
+      (is (=? {:value (util-be/string-to-bytes "prefer-value") :source :uploaded :version 3}
               (secret/latest-for-id secret-id)))
       (t2/update! :model/Database db-id {:details {:keystore-options "local"
                                                    :keystore-path "prefer-path"
                                                    :keystore-value "ignore-value"}})
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
-      (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
+      (is (=? {:value (util-be/string-to-bytes "prefer-path") :source :file-path :version 4}
               (secret/latest-for-id secret-id)))
       (t2/update! :model/Database db-id {:details {:keystore-value nil}})
       (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
@@ -477,7 +478,7 @@
           expected-path-response (conj host-and-keystore-id
                                        [:keystore-path [:enum "local.key"]]
                                        [:keystore-options [:enum "local"]])
-          secret-key (u/encode-base64 "secret")]
+          secret-key (util-be/encode-base64 "secret")]
       (mt/with-temp [db-table {db-id :id} {:engine (name :secret-test-driver)
                                            :name "Secret Test"
                                            :created_at (t/instant)
@@ -631,7 +632,7 @@
           (is (not (contains? raw-write-details :keystore-value))))
         (testing "Secret record created with correct value"
           (when-let [secret-id (:keystore-id raw-write-details)]
-            (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
+            (is (=? {:value (util-be/string-to-bytes "write-secret") :source :uploaded :version 1}
                     (secret/latest-for-id secret-id)))))))))
 
 (deftest write-data-details-secrets-on-update-test
@@ -649,7 +650,7 @@
             (is (not (contains? raw-write-details :keystore-value))))
           (testing "Secret record created with correct value"
             (when-let [secret-id (:keystore-id raw-write-details)]
-              (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
+              (is (=? {:value (util-be/string-to-bytes "write-secret") :source :uploaded :version 1}
                       (secret/latest-for-id secret-id))))))))))
 
 (deftest delete-orphaned-secrets-includes-write-data-details-test

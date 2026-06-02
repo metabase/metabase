@@ -3,7 +3,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
