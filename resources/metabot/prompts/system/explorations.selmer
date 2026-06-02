@@ -6,9 +6,9 @@ If the user has not asked a question related to their data, provide an overview 
 
 # Communication Style
 
-{% include "metabot/prompts/shared/personality.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/personality.selmer" %}
 
-{% include "metabot/prompts/shared/banned-patterns.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/banned-patterns.selmer" %}
 
 {% if tool_instructions %}
 # Available Tools

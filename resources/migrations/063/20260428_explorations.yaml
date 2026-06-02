@@ -1507,3 +1507,22 @@ databaseChangeLog:
                   remarks: Set when the user stops a running thread via the cancel endpoint. Set together with `completed_at` so existing terminal-state predicates keep working; `canceled_at IS NOT NULL` is the cause marker that distinguishes a cancel from a natural completion.
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v63.9867d98rfs
+      author: nvoxland
+      comment: Drop exploration_thread.ai_summary_transcript
+      changes:
+        - dropColumn:
+            tableName: exploration_thread
+            columnName: ai_summary_transcript
+      rollback:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: ai_summary_transcript
+                  type: ${text.type}
+                  remarks: EDN-encoded transcript of the LLM exchange (prompt + responses + validation errors + final document) used to generate this thread's AI Summary doc. Debug-only — not surfaced to the user.
+                  constraints:
+                    nullable: true
