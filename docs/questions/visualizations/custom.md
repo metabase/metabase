@@ -30,7 +30,7 @@ Once you've [built the custom visualization](../../developers-guide/custom-visua
 3. Click **Add visualization**.
 
 - Bundles must be smaller than 5 MiB.
-- Each plugin lists the Metabase versions it supports (for example, "Requires Metabase >=1.62"). Metabase accepts the upload regardless of version, but the plugin only becomes available if your Metabase version is compatible.
+- Each plugin lists the Metabase versions it supports (for example, "Requires Metabase >=1.62"). If your Metabase version isn't in that range, Metabase rejects the upload and tells you which version the plugin needs.
 - The **Manage visualizations** page shows each plugin's icon, name, the first eight characters of the bundle's hash, and its required Metabase version range, so you can tell which version is installed.
 
 ## Using a custom visualization
@@ -55,11 +55,11 @@ _Admin > Settings > Custom visualizations > Manage visualizations_
 - **Replace a bundle.** Upload a new `.tgz` to ship an updated version of a plugin. The new bundle's manifest `name` _must_ match the existing plugin's identifier, so questions that already use the visualization keep working.
 - **Remove a visualization.** Cards that used the custom viz fall back to the default visualization.
 
-## Exports and limitations
+## Exports
 
-- **PDF exports** of dashboards and questions include custom visualizations.
-- **PNG exports** include a custom visualization only if its developer turned on PNG export for that plugin. PNG export is off by default.
-- **Static visualizations don't.** Dashboard subscriptions sent by [email](../../dashboards/subscriptions.md) and Slack render static images, and they fall back to a default visualization for cards that use a custom visualization.
+- **Dashboard subscriptions and alerts don't use custom visualizations**. Cards that use custom visualizations will fall back to a default visualization for the card's data shape.
+- **PDF exports of dashboards include custom visualizations**.
+- **Custom visualizations can support PNG export**, but only if its developer turned on PNG export for that plugin. PNG export is off by default.
 
 ## Only add plugins you trust
 
