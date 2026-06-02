@@ -257,8 +257,11 @@ export class LegacyApi extends EventEmitter<EventMap> {
 
         // FormData must NOT carry our default `application/json` Content-Type —
         // the browser sets the right value (with the multipart boundary). XHR's
-        // `xhr.send(formData)` honors this too.
-        if (body instanceof FormData || (options.formData && options.fetch)) {
+        // `xhr.send(formData)` honors this too. `rawResponse` (and `isTest`)
+        // route through fetch as well, so gate on the same condition the
+        // dispatcher uses rather than `options.fetch` alone.
+        const usesFetch = isTest || options.fetch || options.rawResponse;
+        if (body instanceof FormData || (options.formData && usesFetch)) {
           delete headers["Content-Type"];
         }
 
