@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 5
     if: |
       contains(github.event.label.name, '.Team/') &&
+       github.event.label.name != '.Team/Querying' &&
        ( contains(github.event.issue.labels.*.name, 'Type:Bug') ||
          contains(github.event.issue.labels.*.name, 'flaky-test-fix') )
     steps:
