@@ -1330,26 +1330,32 @@
       (testing "cached snapshot + confirmed publish → fingerprint advances, no recompute"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
                                            data-complexity-scoring-last-fingerprint "stale"]
-          (data-complexity-score/record-score! "republish-fp" "appdb" (stub-result false))
-          (let [recompute? (atom false)
-                handed     (atom nil)]
-            (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (reset! recompute? true) (stub-result true))
-                                        complexity/republish-score!  (fn [s]
-                                                                       (reset! handed s)
-                                                                       (with-meta s {::complexity/snowplow-published? true}))]
-              (#'task.complexity-score/republish-cached-score! "republish-fp")
-              (is (false? @recompute?) "must re-publish the cached score, never recompute")
-              (is (some? @handed) "cached snapshot handed to republish-score!")
-              (is (= "republish-fp" (settings/data-complexity-scoring-last-fingerprint))
-                  "fingerprint advances on a confirmed re-publish")))))
+          (try
+            (data-complexity-score/record-score! "republish-fp" "appdb" (stub-result false))
+            (let [recompute? (atom false)
+                  handed     (atom nil)]
+              (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (reset! recompute? true) (stub-result true))
+                                          complexity/republish-score!  (fn [s]
+                                                                         (reset! handed s)
+                                                                         (with-meta s {::complexity/snowplow-published? true}))]
+                (#'task.complexity-score/republish-cached-score! "republish-fp")
+                (is (false? @recompute?) "must re-publish the cached score, never recompute")
+                (is (some? @handed) "cached snapshot handed to republish-score!")
+                (is (= "republish-fp" (settings/data-complexity-scoring-last-fingerprint))
+                    "fingerprint advances on a confirmed re-publish")))
+            (finally
+              (t2/delete! :model/DataComplexityScore :fingerprint "republish-fp")))))
       (testing "failed re-publish leaves the fingerprint stale for the next retry"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
                                            data-complexity-scoring-last-fingerprint "stale"]
-          (data-complexity-score/record-score! "republish-fail-fp" "appdb" (stub-result false))
-          (mt/with-dynamic-fn-redefs [complexity/republish-score! (fn [s] (with-meta s {::complexity/snowplow-published? false}))]
-            (#'task.complexity-score/republish-cached-score! "republish-fail-fp")
-            (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
-                "fingerprint preserved when the re-publish fails"))))
+          (try
+            (data-complexity-score/record-score! "republish-fail-fp" "appdb" (stub-result false))
+            (mt/with-dynamic-fn-redefs [complexity/republish-score! (fn [s] (with-meta s {::complexity/snowplow-published? false}))]
+              (#'task.complexity-score/republish-cached-score! "republish-fail-fp")
+              (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
+                  "fingerprint preserved when the re-publish fails"))
+            (finally
+              (t2/delete! :model/DataComplexityScore :fingerprint "republish-fail-fp")))))
       (testing "cooldown saw a row that's since gone → falls back to a full recompute"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
                                            data-complexity-scoring-last-fingerprint "stale"]
@@ -1389,17 +1395,22 @@
                                              ;; publish lagged — last-fp never advanced to the scored fingerprint
                                              data-complexity-scoring-last-fingerprint "stale"
                                              data-complexity-scoring-claim            ""]
-            (data-complexity-score/record-score! current "appdb" (stub-result false))
-            (mt/with-dynamic-fn-redefs [data-complexity-score/scored-within-cooldown? (constantly true)
-                                        complexity/complexity-scores (fn [& _] (reset! recompute? true) (stub-result true))
-                                        complexity/republish-score!  (fn [s]
-                                                                       (reset! republished? true)
-                                                                       (with-meta s {::complexity/snowplow-published? true}))]
-              (#'task.complexity-score/with-scoring-claim! {:cooldown-hours 12} #'task.complexity-score/run-claim!)
-              (is (true? @republished?) "re-published the cached snapshot")
-              (is (false? @recompute?) "did not recompute")
-              (is (= current (settings/data-complexity-scoring-last-fingerprint))
-                  "fingerprint advanced after the re-publish — telemetry no longer stalled for a week"))))))))
+            (try
+              (data-complexity-score/record-score! current "appdb" (stub-result false))
+              (mt/with-dynamic-fn-redefs [data-complexity-score/scored-within-cooldown? (constantly true)
+                                          complexity/complexity-scores (fn [& _] (reset! recompute? true) (stub-result true))
+                                          complexity/republish-score!  (fn [s]
+                                                                         (reset! republished? true)
+                                                                         (with-meta s {::complexity/snowplow-published? true}))]
+                (#'task.complexity-score/with-scoring-claim! {:cooldown-hours 12} #'task.complexity-score/run-claim!)
+                (is (true? @republished?) "re-published the cached snapshot")
+                (is (false? @recompute?) "did not recompute")
+                (is (= current (settings/data-complexity-scoring-last-fingerprint))
+                    "fingerprint advanced after the re-publish — telemetry no longer stalled for a week"))
+              ;; The row is written under the *real* current-fingerprint with created_at=now — delete it
+              ;; so a later :sequential test exercising the real cooldown path doesn't see a spurious row.
+              (finally
+                (t2/delete! :model/DataComplexityScore :fingerprint current :source "appdb")))))))))
 
 (deftest ^:sequential publish-tagging-test
   (testing "::snowplow-published? metadata records publish success/failure for schedule/boot callers"
@@ -1437,3 +1448,36 @@
             (let [result (complexity/republish-score! score)]
               (is (false? (::complexity/snowplow-published? (meta result))))
               (is (= score result) "the score value is returned untouched"))))))))
+
+(deftest ^:sequential republish-from-cached-snapshot-round-trip-test
+  (testing "the real round-trip — record-score! → latest-score (JSON round-tripped) → republish-score! →
+           emit-snowplow! — actually emits events for a cached snapshot"
+    (mt/initialize-if-needed! :db)
+    (let [fingerprint "republish-round-trip-test/fp"
+          ;; :meta carries keyword values (:text-variant and nested :embedding-model) that JSON storage
+          ;; round-trips back as strings — the fragile bit emit-snowplow! must keep tolerating, and the
+          ;; whole point of the republish-from-cache path this commit adds.
+          score       {:library  {:score 1 :components {}}
+                       :universe {:score 2 :components {}}
+                       :metabot  {:score 3 :components {}}
+                       :meta     {:formula-version   1
+                                  :synonym-threshold 0.8
+                                  :weights           {}
+                                  :text-variant      :names-split
+                                  :embedding-model   {:provider :ai-service :model-name "minilm" :model-dimensions 384}}}]
+      (try
+        (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
+        (data-complexity-score/record-score! fingerprint "appdb" score)
+        (snowplow-test/with-fake-snowplow-collector
+          (snowplow-test/pop-event-data-and-user-id!)   ; drain startup/setting events
+          (let [cached (data-complexity-score/latest-score fingerprint "appdb")
+                result (complexity/republish-score! cached)
+                events (complexity-events!)]
+            (is (true? (::complexity/snowplow-published? (meta result)))
+                "publish reported success")
+            (is (= 3 (count events))
+                "library, universe, and metabot totals re-emitted from the cached snapshot")
+            (is (= "names_split" (get-in (first events) ["parameters" "text_variant"]))
+                "keyword :meta values survive the JSON round-trip into the emitted parameters")))
+        (finally
+          (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
