@@ -21,6 +21,7 @@ import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
   getCurrentQueryParams,
   getPathNameFromQueryBuilderMode,
+  getTableUrlForPristineQuestion,
   getURLForCardState,
 } from "../utils";
 
@@ -90,7 +91,14 @@ export const updateUrl = createThunkAction(
 
       const { currentState } = getState().qb;
       const queryParams = preserveParameters ? getCurrentQueryParams() : {};
-      const url = getURLForCardState(newState, dirty, queryParams, objectId);
+      // While the question is the pristine default view of a table, keep the
+      // canonical /table/:slug URL; any edit falls through to /question#hash.
+      const tableUrl =
+        objectId == null && queryBuilderMode === "view"
+          ? getTableUrlForPristineQuestion(question)
+          : null;
+      const url =
+        tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);
 
       const urlParsed = parseUrl(url);
       const locationDescriptor: LocationDescriptor = {
