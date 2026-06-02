@@ -25,8 +25,11 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private table-name "search_prompt_entities_index")
-(def ^:private hnsw-index-name "search_prompt_entities_index_embed_hnsw_idx")
+(def ^:dynamic *table-name*
+  "Companion pgvector table name. Dynamic so tests can rebind it to an isolated table."
+  "search_prompt_entities_index")
+
+(defn- hnsw-index-name [] (str *table-name* "_embed_hnsw_idx"))
 
 ;; Cosine distance is in [0, 2]; similarity = 1 - distance. Canonical prompts point at a single
 ;; entity that directly answers the request, so they get a flat boost over source-entity sets;
@@ -65,7 +68,7 @@
     (jdbc/execute! ds (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
     (jdbc/execute!
      ds
-     (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
+     (-> (sql.helpers/create-table (keyword *table-name*) :if-not-exists)
          (sql.helpers/with-columns
            [[:prompt_id :bigint [:primary-key]]
             [:search_prompt :text :not-null]
@@ -75,13 +78,13 @@
             [:embedding [:raw (format "vector(%d)" dims)] :not-null]])
          sql-format-quoted))
     ;; Backfill the column on tables created before `verified` existed (hackathon table, no migrations).
-    (jdbc/execute! ds [(str "ALTER TABLE " table-name
+    (jdbc/execute! ds [(str "ALTER TABLE " *table-name*
                             " ADD COLUMN IF NOT EXISTS verified boolean NOT NULL DEFAULT false")])
     (jdbc/execute!
      ds
      (-> (sql.helpers/create-index
-          [(keyword hnsw-index-name) :if-not-exists]
-          [(keyword table-name) :using-hnsw [[:raw "embedding vector_cosine_ops"]]])
+          [(keyword (hnsw-index-name)) :if-not-exists]
+          [(keyword *table-name*) :using-hnsw [[:raw "embedding vector_cosine_ops"]]])
          sql-format-quoted))))
 
 (defenterprise upsert-prompt-entity!
@@ -101,7 +104,7 @@
       (ensure-table! ds)
       (jdbc/execute!
        ds
-       (-> (sql.helpers/insert-into (keyword table-name))
+       (-> (sql.helpers/insert-into (keyword *table-name*))
            (sql.helpers/values [record])
            (sql.helpers/on-conflict :prompt_id)
            (sql.helpers/do-update-set :search_prompt :entities :canonical :verified :embedding)
@@ -115,7 +118,7 @@
     (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
       (jdbc/execute!
        ds
-       (-> (sql.helpers/delete-from (keyword table-name))
+       (-> (sql.helpers/delete-from (keyword *table-name*))
            (sql.helpers/where [:= :prompt_id id])
            sql-format-quoted)))))
 
@@ -154,7 +157,7 @@
                      ds
                      (-> (sql.helpers/select :search_prompt :entities :canonical :verified
                                              [[:raw (str "embedding <=> " lit)] :distance])
-                         (sql.helpers/from (keyword table-name))
+                         (sql.helpers/from (keyword *table-name*))
                          (sql.helpers/order-by [[:raw (str "embedding <=> " lit)] :asc])
                          (sql.helpers/limit limit)
                          sql-format-quoted)
