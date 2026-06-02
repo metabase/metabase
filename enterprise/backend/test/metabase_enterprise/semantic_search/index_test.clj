@@ -589,6 +589,11 @@
     ;; silently gaining incorrect read semantics.
     (let [specs                (search/specifications)
           registered-t2-models (perms/collection-id-only-read-models)]
+      ;; Guard against a vacuous pass: if the registry is empty the `:when` filter below matches nothing
+      ;; and the only assertion never runs. A future refactor that breaks registry population should fail
+      ;; here rather than silently no-op.
+      (is (seq registered-t2-models)
+          "registry must be populated by search/specifications")
       (doseq [[search-model spec] specs
               :let [t2-model (:model spec)]
               :when (contains? registered-t2-models t2-model)]
