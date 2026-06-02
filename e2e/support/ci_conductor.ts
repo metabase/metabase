@@ -102,7 +102,7 @@ function toNumber(value: string | undefined): number | null {
  * are reported. On a re-run (GITHUB_RUN_ATTEMPT > 1) we additionally include
  * tests that passed, so conductor can see a previously-failing test recover.
  * Pending/skipped tests are never reported. Each row carries a derived `status`
- * ("failure" | "flake" | "success"); see `classifyStatus`.
+ * ("failure" | "flake" | "passed"); see `classifyStatus`.
  *
  * Cypress only populates `displayError` for the *final* state, so flaky tests
  * arrive with `message: null` — we know *that* they flaked from `attempts`,
