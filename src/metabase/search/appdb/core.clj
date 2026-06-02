@@ -242,8 +242,10 @@
           {:type :missing-from-index :details {:active-table active}}
 
           (not (contains? (set (:models search-ctx)) model))
+          ;; `:models` matches the key the `:models` filter clause (and the semantic engine) would emit, so the
+          ;; `:excluded-by` vocabulary stays consistent; `:applicable-models` shows what was actually searched.
           {:type    :filtered
-           :details {:excluded-by :model-not-applicable :applicable-models (set (:models search-ctx))}}
+           :details {:excluded-by :models :applicable-models (set (:models search-ctx))}}
 
           :else
           (if-let [layer (first-excluding-layer search-ctx model id)]

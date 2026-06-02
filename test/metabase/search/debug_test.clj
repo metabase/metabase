@@ -74,7 +74,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:name "Quarterly Revenue"}]
           (search/reindex! {:async? false :in-place? true})
           (mt/with-test-user :crowberto
-            (is (=? {:type :filtered :details {:excluded-by :model-not-applicable}}
+            (is (=? {:type :filtered :details {:excluded-by :models}}
                     (diagnose {:search-string "quarterly" :models #{"dashboard"}} "card" card-id)))))))
     (testing "Excluded by collection permissions for a non-superuser"
       (search.tu/with-temp-index-table

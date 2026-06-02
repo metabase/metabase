@@ -34,7 +34,12 @@
   (`:missing-from-index`, `:filtered`, or `:not-matching`), or `{:type :candidate, :details ...}` if it passes
   every engine-owned stage.
   Engine-independent stages (`:not-searchable`, terminal `:matched`/`:ranked-out`) are handled by the caller in
-  [[metabase.search.debug]]."
+  [[metabase.search.debug]].
+
+  The `:filtered` `:details` `:excluded-by` value names the structural filter that dropped the row; shared filter
+  keys (e.g. `:models`, `:created-by`, `:archived?`) are consistent across engines, but permission-related keys are
+  engine-specific by nature (appdb distinguishes `:collection-permissions`/`:table-permissions`; the semantic
+  engine reports a single `:permissions`/`:personal-collection`)."
   {:arglists '([search-context expected-model expected-id])}
   (fn [{engine :search-engine} _ _] engine))
 
