@@ -1762,3 +1762,77 @@ serdes/meta:
           (is (true? (:diverged? result)))
           (is (false? (:clean? result)))
           (is (= :history-rewritten (:reason result))))))))
+
+;;; ------------------------------------- local-only pull merge tests -------------------------------------
+
+(deftest import!-merge-keeps-local-changes-test
+  (testing "a local-only merge loads remote changes, preserves un-pushed local changes as dirty, and sets version to remote"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}
+                   ;; a pending local change (un-pushed) and an already-synced object
+                   :model/RemoteSyncObject _ {:model_type "Card" :model_id 9991 :status "update"
+                                              :model_name "Local Card" :status_changed_at :%now}
+                   :model/RemoteSyncObject _ {:model_type "Card" :model_id 9992 :status "synced"
+                                              :model_name "Remote Card" :status_changed_at :%now}]
+      (with-redefs [source/compute-merge (fn [_ _ _ _]
+                                           {:merged   [{:path "collections/x.yaml" :content "y"}]
+                                            :conflicts []
+                                            :summary  {:added 1 :updated 0 :removed 0}})
+                    ;; simulate the load marking everything synced (what sync-objects! does)
+                    impl/load-snapshot!  (fn [_ _ _]
+                                           (t2/update! :model/RemoteSyncObject
+                                                       :model_id [:in [9991 9992]]
+                                                       {:status "synced"}))]
+        (let [result (impl/import! (export-test-snapshot "remote-R") task-id
+                                   :merge? true
+                                   :base-snapshot (export-test-snapshot "base-B"))]
+          (is (= :success (:status result)))
+          (is (= {:added 1 :updated 0 :removed 0} (:merge-summary result)))
+          (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
+              "version advances to the remote tip; local changes remain to be pushed")
+          (testing "the un-pushed local change is restored to dirty after the merge"
+            (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 9991))))
+          (testing "remote-originated content stays synced"
+            (is (= "synced" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 9992)))))))))
+
+(deftest import!-merge-restores-pending-deletion-test
+  (testing "a pending local deletion (no app-db row) is re-inserted as dirty after a merge"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}
+                   :model/RemoteSyncObject _ {:model_type "Card" :model_id 8881 :status "delete"
+                                              :model_name "Deleted Card" :status_changed_at :%now}]
+      (with-redefs [source/compute-merge (fn [_ _ _ _]
+                                           {:merged [] :conflicts [] :summary {:added 0 :updated 0 :removed 0}})
+                    ;; simulate the load wiping and not re-inserting the deleted entity's row
+                    impl/load-snapshot!  (fn [_ _ _]
+                                           (t2/delete! :model/RemoteSyncObject :model_id 8881))]
+        (let [result (impl/import! (export-test-snapshot "remote-R") task-id
+                                   :merge? true
+                                   :base-snapshot (export-test-snapshot "base-B"))]
+          (is (= :success (:status result)))
+          (is (= "delete" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 8881))
+              "the pending deletion is preserved so it can be pushed later"))))))
+
+(deftest import!-merge-conflict-test
+  (testing "a local-only merge with a genuine conflict returns :conflict and does not load"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
+      (with-redefs [source/compute-merge (fn [_ _ _ _]
+                                           {:merged []
+                                            :conflicts [{:key [["Card" "A"]]
+                                                         :ours {:path "collections/a.yaml" :content "x"}
+                                                         :theirs {:path "collections/a.yaml" :content "z"}}]
+                                            :summary {:added 0 :updated 0 :removed 0}})
+                    impl/load-snapshot!  (fn [_ _ _] (throw (ex-info "should not load on conflict" {})))]
+        (let [result (impl/import! (export-test-snapshot "remote-R") task-id
+                                   :merge? true
+                                   :base-snapshot (export-test-snapshot "base-B"))]
+          (is (= :conflict (:status result)))
+          (is (= ["Card A (collections/a.yaml)"] (:conflicts result)))
+          (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id)))))))))
+
+(deftest import!-merge-history-rewritten-test
+  (testing "a local-only merge with no reachable base returns :conflict"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
+      (let [result (impl/import! (export-test-snapshot "remote-R") task-id
+                                 :merge? true
+                                 :base-snapshot nil)]
+        (is (= :conflict (:status result)))
+        (is (str/includes? (:message result) "rewritten"))))))

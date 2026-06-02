@@ -31,6 +31,7 @@ import { SetupConflictInfo } from "./SetupConflictInfo";
 import {
   useDiscardChangesAndImportAction,
   useMergeChangesAction,
+  useMergeImportAction,
   usePushChangesAction,
   useStashToNewBranchAction,
 } from "./mutation-wrappers";
@@ -81,6 +82,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     useUpdateRemoteSyncSettingsMutation();
   const { pushChanges, isPushingChanges } = usePushChangesAction();
   const { mergeChanges, isMerging } = useMergeChangesAction();
+  const { mergeImport, isMergingImport } = useMergeImportAction();
   const { stashToNewBranch, isStashing } =
     useStashToNewBranchAction(existingBranches);
   const { discardChangesAndImport, isImporting } =
@@ -129,7 +131,12 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "merge") {
-      await mergeChanges(currentBranch, onClose, message);
+      // Pull merges into local only; push merges and pushes the result.
+      if (variant === "pull") {
+        await mergeImport(currentBranch, onClose);
+      } else {
+        await mergeChanges(currentBranch, onClose, message);
+      }
     }
 
     if (optionValue === "new-branch") {
@@ -149,6 +156,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     isImporting ||
     isPushingChanges ||
     isMerging ||
+    isMergingImport ||
     isStashing ||
     isUpdatingSettings;
   const isButtonDisabled = useMemo(() => {

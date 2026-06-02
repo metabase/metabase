@@ -46,9 +46,13 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
       label: c("{0} is the current GitHub branch name")
         .t`Force push to ${currentBranch} (this will overwrite the remote branch)`,
     };
+    // Push merges and pushes the result; pull merges into local only (the push happens later).
     const mergeOption: OutOfSyncOption = {
       value: "merge",
-      label: t`Merge the remote changes with yours and push`,
+      label:
+        variant === "pull"
+          ? t`Merge the remote changes into your local content`
+          : t`Merge the remote changes with yours and push`,
     };
     const discardOption: OutOfSyncOption = {
       value: "discard",
@@ -67,8 +71,11 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
           ? [discardOption]
           : [newBranchOption, discardOption];
       default: // pull
-        return isRemoteSyncReadOnly
-          ? [discardOption]
+        if (isRemoteSyncReadOnly) {
+          return [discardOption];
+        }
+        return canMerge
+          ? [mergeOption, forcePushOption, newBranchOption, discardOption]
           : [forcePushOption, newBranchOption, discardOption];
     }
   }, [currentBranch, isRemoteSyncReadOnly, variant, canMerge]);

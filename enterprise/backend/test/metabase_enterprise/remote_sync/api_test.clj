@@ -274,6 +274,28 @@
               (is (=? {:status "success" :task_id int?} resp))
               (is (remote-sync.task/successful? completed-task)))))))))
 
+(deftest import-merge-keeps-local-changes-test
+  (testing "POST /api/ee/remote-sync/import with merge=true does a local-only merge instead of erroring on dirty"
+    (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}
+                   :model/RemoteSyncTask _ {:sync_task_type "foo"
+                                            :ended_at :%now
+                                            :version "other-version"}]
+      (let [mock-main (test-helpers/create-mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "main"]
+          (t2/insert! :model/RemoteSyncObject {:model_type "Card"
+                                               :model_id 1
+                                               :model_name "Test Card"
+                                               :model_collection_id 1
+                                               :status "update"
+                                               :status_changed_at (java.time.OffsetDateTime/now)})
+          (with-redefs [source/source-from-settings (constantly mock-main)]
+            (testing "merge=true succeeds even with unsaved local changes"
+              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true})
+                    completed-task (wait-for-task-completion task_id)]
+                (is (remote-sync.task/successful? completed-task))))))))))
+
 ;;; ------------------------------------------------- Export Endpoint -------------------------------------------------
 
 (deftest export-errors-in-read-only-mode-test

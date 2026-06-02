@@ -9,9 +9,11 @@ import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
 import {
   useGetHasRemoteChangesQuery,
   useImportChangesMutation,
+  useLazyGetExportPreflightQuery,
 } from "metabase-enterprise/api";
 import { getSyncConflictVariant } from "metabase-enterprise/remote_sync/selectors";
 import { syncConflictVariantUpdated } from "metabase-enterprise/remote_sync/sync-task-slice";
+import type { ExportPreflightResponse } from "metabase-types/api";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
@@ -34,9 +36,13 @@ export const GitSyncControls = () => {
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
+  const [runExportPreflight] = useLazyGetExportPreflightQuery();
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
   const [nextBranch, setNextBranch] = useState<string | null>(null);
+  // Set when a dirty pull needs the conflict modal; carries whether a clean merge is available.
+  const [pullPreflight, setPullPreflight] =
+    useState<ExportPreflightResponse | null>(null);
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
   const [sendToast] = useToast();
   const [dropdownView, setDropdownView] = useState<DropdownView>("options");
@@ -117,6 +123,21 @@ export const GitSyncControls = () => {
       return;
     }
 
+    combobox.closeDropdown();
+
+    // With un-pushed local changes, a straight pull would clobber them. Check whether a clean local
+    // merge is possible and let the user choose (merge / force / new branch / discard).
+    if (isDirty) {
+      try {
+        const preflight = await runExportPreflight().unwrap();
+        setPullPreflight(preflight);
+      } catch {
+        setPullPreflight(null);
+      }
+      dispatch(syncConflictVariantUpdated("pull"));
+      return;
+    }
+
     try {
       await importChanges({ branch: currentBranch }).unwrap();
 
@@ -128,6 +149,7 @@ export const GitSyncControls = () => {
       const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
 
       if (hasConflict) {
+        setPullPreflight(null);
         dispatch(syncConflictVariantUpdated("pull"));
         return;
       }
@@ -137,13 +159,20 @@ export const GitSyncControls = () => {
         icon: "warning",
       });
     }
-
-    combobox.closeDropdown();
-  }, [combobox, currentBranch, dispatch, importChanges, sendToast]);
+  }, [
+    combobox,
+    currentBranch,
+    dispatch,
+    importChanges,
+    isDirty,
+    runExportPreflight,
+    sendToast,
+  ]);
 
   const handleCloseSyncConflictModal = useCallback(() => {
     dispatch(syncConflictVariantUpdated(null));
     setNextBranch(null);
+    setPullPreflight(null);
   }, [dispatch]);
 
   const handleSwitchBranchClick = useCallback(() => {
@@ -233,6 +262,8 @@ export const GitSyncControls = () => {
           nextBranch={nextBranch}
           onClose={handleCloseSyncConflictModal}
           variant={conflictVariant}
+          canMerge={pullPreflight?.clean}
+          conflicts={pullPreflight?.conflicts}
         />
       )}
     </>

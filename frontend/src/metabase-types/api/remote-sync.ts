@@ -89,6 +89,8 @@ export type ExportPreflightResponse = {
 export type ImportFromBranchRequest = {
   branch: string;
   force?: boolean;
+  /** Perform a local-only 3-way merge, keeping un-pushed local changes instead of overwriting them. */
+  merge?: boolean;
 };
 
 export type ImportFromBranchResponse = {

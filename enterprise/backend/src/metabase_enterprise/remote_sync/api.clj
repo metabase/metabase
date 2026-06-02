@@ -45,8 +45,9 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch force]} :- [:map [:branch {:optional true} ms/NonBlankString]
-                              [:force {:optional true} :boolean]]]
+   {:keys [branch force merge]} :- [:map [:branch {:optional true} ms/NonBlankString]
+                                    [:force {:optional true} :boolean]
+                                    [:merge {:optional true} :boolean]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [branch-name (or branch (settings/remote-sync-branch))
@@ -54,6 +55,7 @@
         {task-id :id}
         (impl/async-import!
          branch-name force {}
+         :merge?     (or merge false)
          :on-success #(publish-sync-event! :event/remote-sync-import %1 branch-name user-id))]
     {:status :success
      :task_id task-id

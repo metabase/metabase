@@ -263,11 +263,67 @@
     (remote-sync.task/update-progress! task-id 0.95)
     imported-data))
 
+(defn- capture-dirty-objects
+  "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
+  Captured before a local-only merge so they can be restored afterwards (see [[import-merged!]])."
+  []
+  (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
+
+(defn- restore-dirty-objects!
+  "Re-applies captured dirty statuses after a merge load (which marks everything 'synced'). For each
+  captured row, updates the matching freshly-synced row's status, or re-inserts it when no row exists
+  (e.g. a pending local deletion, whose entity is absent from the merged set)."
+  [dirty-objects timestamp]
+  (doseq [{:keys [model_type model_id status] :as row} dirty-objects]
+    (if-let [existing (t2/select-one :model/RemoteSyncObject :model_type model_type :model_id model_id)]
+      (t2/update! :model/RemoteSyncObject (:id existing)
+                  {:status status :status_changed_at timestamp})
+      (t2/insert! :model/RemoteSyncObject
+                  (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
+
+(defn- import-merged!
+  "Local-only merge for the pull path. Performs an entity-identity 3-way merge of local state against the
+  remote tip and, on a clean merge, applies the merged result to the LOCAL app DB only — it does not push.
+  Remote-originated changes end up 'synced'; the un-pushed local changes are preserved as dirty so they
+  can be pushed later. Sets the last version to the remote tip (so the branch is no longer 'behind').
+
+  On a genuine same-entity conflict, returns `:conflict` without touching local state."
+  [snapshot base-snapshot task-id sync-timestamp]
+  (if (nil? base-snapshot)
+    {:status    :conflict
+     :version   (source.p/version snapshot)
+     :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+     :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
+    (let [models (spec/extract-entities-for-export)
+          {:keys [merged conflicts summary]}
+          (source/compute-merge models snapshot base-snapshot task-id)]
+      (if (seq conflicts)
+        (u/prog1 {:status    :conflict
+                  :version   (source.p/version snapshot)
+                  :conflicts (mapv remote-sync.merge/conflict-label conflicts)
+                  :message   "Import blocked: the same content was changed both locally and on the remote branch."}
+          (log/infof "Pull merge conflict on %d entit(ies): %s"
+                     (count conflicts) (str/join ", " (:conflicts <>))))
+        ;; Capture the local (un-pushed) changes before loading; the clean merge guarantees they are
+        ;; disjoint from the remote changes, so restoring them reproduces exactly the local diff vs remote.
+        (let [dirty-objects (capture-dirty-objects)]
+          (load-snapshot! (source/specs->snapshot merged) task-id sync-timestamp)
+          (restore-dirty-objects! dirty-objects sync-timestamp)
+          (remote-sync.task/set-version! task-id (source.p/version snapshot))
+          (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
+                     (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
+                     (count dirty-objects))
+          {:status :success
+           :version (source.p/version snapshot)
+           :merge-summary summary})))))
+
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
 
   Takes a SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, and optional keyword arguments:
   - :force? - forces import even when the snapshot version matches the last imported version
+  - :merge? - perform a local-only 3-way merge (keep un-pushed local changes) instead of overwriting local
+  - :base-snapshot - the merge base (last synced version), required when :merge? is set
   - :pre-task-branch - the value of `remote-sync-branch` at scheduling time; if it differs
     from the current setting at task start, the import aborts with `:error` to protect data
     integrity (the load mutates the app DB, so we refuse to proceed when state has drifted)
@@ -277,7 +333,7 @@
 
   Returns a map with :status (either :success or :error), :version, and :message keys. Various exceptions may be
   thrown during import and are caught and converted to error status maps."
-  [^SourceSnapshot snapshot task-id & {:keys [force? pre-task-branch]}]
+  [^SourceSnapshot snapshot task-id & {:keys [force? merge? base-snapshot pre-task-branch]}]
   (when (branch-changed-since-scheduling? pre-task-branch)
     (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
                pre-task-branch (settings/remote-sync-branch))
@@ -289,37 +345,39 @@
   (let [sync-timestamp (t/instant)]
     (if snapshot
       (try
-        (let [snapshot-version (source.p/version snapshot)
-              last-imported-version (remote-sync.task/last-version)
-              first-import? (nil? last-imported-version)
-              path-filters (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
-              base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
-              {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)]
-          (cond
-            (and first-import? (not force?) (seq conflicts))
-            (u/prog1 {:status :conflict
-                      :version (source.p/version snapshot)
-                      :conflicts summary  ; Keep backward compatibility: return set of category names
-                      :conflict-details conflicts  ; New: detailed conflict info
-                      :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
-              (log/infof (:message <>)))
+        (if merge?
+          (import-merged! snapshot base-snapshot task-id sync-timestamp)
+          (let [snapshot-version (source.p/version snapshot)
+                last-imported-version (remote-sync.task/last-version)
+                first-import? (nil? last-imported-version)
+                path-filters (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+                base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+                {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)]
+            (cond
+              (and first-import? (not force?) (seq conflicts))
+              (u/prog1 {:status :conflict
+                        :version (source.p/version snapshot)
+                        :conflicts summary  ; Keep backward compatibility: return set of category names
+                        :conflict-details conflicts  ; New: detailed conflict info
+                        :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
+                (log/infof (:message <>)))
 
-            (and (not force?) (= last-imported-version snapshot-version))
-            (u/prog1 {:status :success
-                      :version (source.p/version snapshot)
-                      :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
-              (log/infof (:message <>)))
+              (and (not force?) (= last-imported-version snapshot-version))
+              (u/prog1 {:status :success
+                        :version (source.p/version snapshot)
+                        :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
+                (log/infof (:message <>)))
 
-            :else
-            (do
-              (load-snapshot! snapshot task-id sync-timestamp)
-              (remote-sync.task/set-version!
-               task-id
-               (source.p/version snapshot))
-              (log/info "Successfully reloaded entities from git repository")
-              {:status :success
-               :version (source.p/version snapshot)
-               :message "Successfully reloaded from git repository"})))
+              :else
+              (do
+                (load-snapshot! snapshot task-id sync-timestamp)
+                (remote-sync.task/set-version!
+                 task-id
+                 (source.p/version snapshot))
+                (log/info "Successfully reloaded entities from git repository")
+                {:status :success
+                 :version (source.p/version snapshot)
+                 :message "Successfully reloaded from git repository"}))))
         (catch Exception e
           (handle-import-exception e snapshot))
         (finally
@@ -616,22 +674,35 @@
   callback that receives [task-id result] after a successful import. Checks for dirty changes and throws an
   exception if force? is false and changes exist.
 
+  When `:merge?` is set, a local-only 3-way merge keeps un-pushed local changes instead of overwriting
+  them, so the dirty-changes guard is skipped.
+
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
-  are unsaved changes and force? is false."
-  [branch force? import-args & {:keys [on-success]}]
+  are unsaved changes and neither force? nor merge? is set."
+  [branch force? import-args & {:keys [on-success merge?]}]
   (guards/ensure-no-active-task!)
-  (let [pre-task-branch (settings/remote-sync-branch)
-        source          (source/source-from-settings branch)
-        has-dirty?      (remote-sync.object/dirty?)]
-    (when (and has-dirty? (not force?))
+  (let [pre-task-branch        (settings/remote-sync-branch)
+        source                 (source/source-from-settings branch)
+        has-dirty?             (remote-sync.object/dirty?)
+        snapshot               (source.p/snapshot source)
+        ;; the merge base, resolved only for a merge when the remote has advanced; nil means no safe
+        ;; 3-way merge is possible (no prior sync, or the base commit was orphaned by force-push/rebase)
+        last-task-version      (remote-sync.task/last-version)
+        base-snapshot          (when (and merge?
+                                          (some? last-task-version)
+                                          (not= last-task-version (source.p/version snapshot)))
+                                 (source.p/snapshot-at source last-task-version))]
+    (when (and has-dirty? (not force?) (not merge?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400
                        :conflicts true})))
     (run-async! "import" branch
                 (fn [task-id]
-                  (import! (source.p/snapshot source) task-id
+                  (import! snapshot task-id
                            (assoc import-args
                                   :force?           force?
+                                  :merge?           merge?
+                                  :base-snapshot    base-snapshot
                                   :pre-task-branch  pre-task-branch)))
                 :on-success on-success)))
 

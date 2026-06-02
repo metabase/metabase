@@ -98,6 +98,36 @@ export const useMergeChangesAction = () => {
   };
 };
 
+export const useMergeImportAction = () => {
+  const [importChanges, { isLoading: isMergingImport }] =
+    useImportChangesMutation();
+  const [sendToast] = useToast();
+
+  return {
+    mergeImport: useCallback(
+      async (branch: string, closeModal: VoidFunction) => {
+        try {
+          await importChanges({ branch, merge: true }).unwrap();
+
+          sendToast({
+            message: t`Merging the latest remote changes into your local content...`,
+          });
+          closeModal();
+        } catch (error) {
+          const { errorMessage } = parseSyncError(error as SyncError);
+          sendToast({
+            message: errorMessage || t`Failed to merge changes`,
+            icon: "warning",
+            timeout: 8000,
+          });
+        }
+      },
+      [importChanges, sendToast],
+    ),
+    isMergingImport,
+  };
+};
+
 export const useStashToNewBranchAction = (existingBranches: string[]) => {
   const [exportChanges] = useExportChangesMutation();
   const [createBranch] = useCreateBranchMutation();

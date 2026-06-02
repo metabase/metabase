@@ -104,17 +104,31 @@
                     {:path path :content content}))))
         (source.p/list-files snapshot)))
 
-(defn- compute-merge
+(defn compute-merge
   "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
   the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]]:
   - `base-snapshot` - the last successfully synced state (the merge base)
   - `stream`        - the local state to serialize (ours)
-  - `snapshot`      - the current remote tip (theirs)"
+  - `snapshot`      - the current remote tip (theirs)
+
+  `:merged` is the full reconciled set of `{:path :content}` specs. The export path writes it to the
+  remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]."
   [stream snapshot base-snapshot task-id]
   (let [ours   (serialize-specs stream task-id)
         base   (snapshot->specs base-snapshot)
         theirs (snapshot->specs snapshot)]
     (remote-sync.merge/three-way-merge base ours theirs)))
+
+(defn specs->snapshot
+  "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged
+  content can be loaded into the app DB without writing it to git. `write-files!` is unsupported."
+  [specs]
+  (let [by-path (into {} (map (juxt :path :content)) specs)]
+    (reify source.p/SourceSnapshot
+      (list-files [_] (vec (keys by-path)))
+      (read-file [_ path] (get by-path path))
+      (write-files! [_ _ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
+      (version [_] nil))))
 
 (defn preview-merge
   "Dry-run of [[merge-and-store!]]: computes the 3-way merge without writing anything. Returns
