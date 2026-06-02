@@ -272,23 +272,12 @@
 (def ^:private unsupported-builtin-function-regex
   (re-pattern (str "(?i)\\b(?:" (str/join "|" unsupported-builtin-functions) ")\\b")))
 
-(defn- strip-sql-noise
-  "Remove block/line comments and single-quoted string literals from `sql`. Comments and string
-   literals can never appear inside an identifier token, so a function name always survives this
-   scrub as a contiguous token; stripping them only avoids matching a name that appears purely as
-   comment or string content."
-  [^String sql]
-  (-> sql
-      (str/replace #"/\*.*?\*/" " ")
-      (str/replace #"--[^\n]*" " ")
-      (str/replace #"'(?:[^']|'')*'" " ")))
-
 (defn- unsupported-functions-in-query
   "The set of `unsupported-builtin-functions` referenced by `sql`, or nil if none. Scans the SQL
    text rather than the parsed command, so it still applies when the H2 parser is unavailable."
   [sql]
   (when sql
-    (perf/not-empty (into #{} (map u/upper-case-en) (re-seq unsupported-builtin-function-regex (strip-sql-noise sql))))))
+    (perf/not-empty (into #{} (map u/upper-case-en) (re-seq unsupported-builtin-function-regex sql)))))
 
 (defn- check-no-unsupported-functions [sql]
   (when-let [fns (unsupported-functions-in-query sql)]

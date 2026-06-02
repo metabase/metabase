@@ -357,12 +357,13 @@
         #{"LINK_SCHEMA"} "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')"
         #{"MEMORY_USED"} "select memory_used()"
         ;; a comment between the function name and its arg list is still detected
-        #{"FILE_READ"}   "SELECT FiLe_ReAd/* c */ ('x')"))
+        #{"FILE_READ"}   "SELECT FiLe_ReAd/* c */ ('x')"
+        #{"FILE_READ"}   "SELECT 1 AS \"a'\", FILE_READ('/cat_pics.gif','UTF-8')"
+        #{"FILE_READ"}   "SELECT 'FILE_READ' AS col" ;; the name only appears inside a string literal but we disallow it anyway
+        ))
     (testing "ordinary queries are not flagged"
       (are [query] (nil? (hits query))
         "SELECT * FROM orders"
-        ;; the name only appears inside a string literal
-        "SELECT 'FILE_READ' AS col"
         ;; identifier merely containing an unsupported name as a substring
         "SELECT my_file_read_col FROM t"
         nil))))
