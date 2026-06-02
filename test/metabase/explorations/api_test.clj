@@ -346,29 +346,27 @@
     (mt/with-temp [:model/User u {:email "strip@example.com"}
                    :model/Card metric {:type          :metric
                                        :creator_id    (:id u)
-                                       :dataset_query {:database 1
-                                                       :type     :query
-                                                       :query    {:source-table 1
-                                                                  :aggregation  [[:count]]
-                                                                  :breakout     [[:field 2 {:temporal-unit :month}]]}}}]
-      (let [body {:name       "no time pls"
-                  :metrics    [{:card_id            (:id metric)
-                                :dimension_mappings [{:dimension_id "d1"
-                                                      :table_id     1
-                                                      :target       ["field" {} 1]}]}]
-                  :dimensions [{:dimension_id "d1" :display_name "Region"}]}
+                                       :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)) (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month)))))}]
+      (let [dim-fid  (mt/id :products :category)
+            temp-fid (mt/id :products :created_at)
+            body     {:name       "no time pls"
+                      :metrics    [{:card_id            (:id metric)
+                                    :dimension_mappings [{:dimension_id "d1"
+                                                          :table_id     (mt/id :products)
+                                                          :target       ["field" {} dim-fid]}]}]
+                      :dimensions [{:dimension_id "d1" :display_name "Region"}]}
             resp (create-exploration! u body)
-            q    (-> resp :threads first :queries first)
-            mp   (lib-be/application-database-metadata-provider 1)
+            q    (->> resp :threads first :queries (filter #(= "default" (:query_type %))) first)
+            mp   (lib-be/application-database-metadata-provider (mt/id))
             qry  (lib/query mp (:dataset_query q))
             bos  (lib/breakouts qry)
             ids  (set (filter int? (tree-seq coll? seq (first bos))))]
         (is (= 1 (count bos))
             "metric's default temporal breakout is stripped before the chosen one is added")
-        (is (contains? ids 1)
-            "the surviving breakout points at the chosen dim's target (field 1)")
-        (is (not (contains? ids 2))
-            "the metric's original temporal breakout (field 2) is gone")))))
+        (is (contains? ids dim-fid)
+            "the surviving breakout points at the chosen dim's target")
+        (is (not (contains? ids temp-fid))
+            "the metric's original temporal breakout (created_at) is gone")))))
 
 (deftest exploration-create-materializes-metric-x-dimension-matrix-test
   (testing "POST / creates one ExplorationQuery per (metric, dimension) pair"
