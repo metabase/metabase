@@ -45,6 +45,7 @@ import {
   rem,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
+import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   AdminNotification,
@@ -116,7 +117,7 @@ type CreateOrEditQuestionAlertModalWithQuestionProps = {
 
 type CreateOrEditQuestionAlertModalProps =
   CreateOrEditQuestionAlertModalWithQuestionProps & {
-    question?: Question;
+    question: Question;
   };
 
 export const CreateOrEditQuestionAlertModalWithQuestion = ({
@@ -126,7 +127,7 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
   onClose,
   skipUrlUpdate,
 }: CreateOrEditQuestionAlertModalWithQuestionProps) => {
-  const question = useSelector(getQuestion);
+  const question = checkNotNull(useSelector(getQuestion));
 
   if (editingNotification) {
     return (
@@ -168,7 +169,7 @@ export const CreateOrEditQuestionAlertModal = ({
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
   >(null);
 
-  const questionId = question?.id();
+  const questionId = question.id();
   const isEditMode = !!editingNotification;
   const subscription = notification?.subscriptions[0];
 
@@ -374,17 +375,19 @@ export const CreateOrEditQuestionAlertModal = ({
               <Select
                 data-testid="alert-goal-select"
                 data={triggerOptions}
-                value={notification.payload.send_condition}
+                value={notification.payload?.send_condition ?? undefined}
                 w={276}
-                onChange={(value) =>
+                onChange={(value) => {
                   setNotification({
                     ...notification,
                     payload: {
                       ...notification.payload,
+                      card_id: notification.payload?.card_id ?? questionId,
                       send_condition: value,
+                      send_once: false,
                     },
-                  })
-                }
+                  });
+                }}
               />
             )}
           </Flex>
@@ -443,16 +446,20 @@ export const CreateOrEditQuestionAlertModal = ({
             }}
             labelPosition="right"
             size="sm"
-            checked={notification.payload.send_once}
-            onChange={(e) =>
+            checked={notification.payload?.send_once ?? undefined}
+            onChange={(event) => {
               setNotification({
                 ...notification,
                 payload: {
                   ...notification.payload,
-                  send_once: e.target.checked,
+                  card_id: notification.payload?.card_id ?? questionId,
+                  send_condition:
+                    notification.payload?.send_condition ??
+                    triggerOptions[0].value,
+                  send_once: event.target.checked,
                 },
-              })
-            }
+              });
+            }}
           />
         </AlertModalSettingsBlock>
       </Stack>
