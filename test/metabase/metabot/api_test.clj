@@ -1154,6 +1154,82 @@
                       (is (nil? (:user_agent           convo)))
                       (is (nil? (:sanitized_user_agent convo))))))))))))))
 
+;;;; search prompt entity tests
+
+(defmacro ^:private with-test-prompt
+  "Create a SearchPromptEntity for testing and bind it to `sym`, deleting it on exit."
+  [[sym attrs] & body]
+  `(let [~sym (t2/insert-returning-instance! :model/SearchPromptEntity
+                                             (merge {:prompt   "find orders"
+                                                     :entities [{:type "table" :id 1}]
+                                                     :verified false}
+                                                    ~attrs))]
+     (try
+       ~@body
+       (finally
+         (t2/delete! :model/SearchPromptEntity :id (:id ~sym))))))
+
+(deftest search-prompt-list-test
+  (with-test-prompt [entity {}]
+    (testing "superuser can list search prompt entities"
+      (let [response (mt/user-http-request :crowberto :get 200 "metabot/search-prompt/")]
+        (is (contains? response :data))
+        (is (contains? response :total))
+        (is (some #(= (:id entity) (:id %)) (:data response)))))
+    (testing "non-superuser gets 403"
+      (mt/user-http-request :rasta :get 403 "metabot/search-prompt/"))))
+
+(deftest search-prompt-get-test
+  (with-test-prompt [entity {:prompt "find customers" :verified true}]
+    (testing "superuser can fetch a search prompt entity by id"
+      (is (=? {:id       (:id entity)
+               :prompt   "find customers"
+               :entities [{:type "table" :id 1}]
+               :verified true}
+              (mt/user-http-request :crowberto :get 200 (str "metabot/search-prompt/" (:id entity))))))
+    (testing "returns 404 for unknown id"
+      (mt/user-http-request :crowberto :get 404 "metabot/search-prompt/0"))
+    (testing "non-superuser gets 403"
+      (mt/user-http-request :rasta :get 403 (str "metabot/search-prompt/" (:id entity))))))
+
+(deftest search-prompt-create-test
+  (testing "superuser can create a search prompt entity"
+    (let [response (mt/user-http-request :crowberto :post 200 "metabot/search-prompt/"
+                                         {:prompt   "find revenue"
+                                          :entities [{:type "card" :id 42}]})]
+      (try
+        (is (=? {:prompt   "find revenue"
+                 :entities [{:type "card" :id 42}]
+                 :verified false}
+                response))
+        (finally
+          (t2/delete! :model/SearchPromptEntity :id (:id response))))))
+  (testing "verified defaults to false when omitted"
+    (let [response (mt/user-http-request :crowberto :post 200 "metabot/search-prompt/"
+                                         {:prompt   "find users"
+                                          :entities []})]
+      (try
+        (is (false? (:verified response)))
+        (finally
+          (t2/delete! :model/SearchPromptEntity :id (:id response))))))
+  (testing "non-superuser gets 403"
+    (mt/user-http-request :rasta :post 403 "metabot/search-prompt/"
+                          {:prompt "find orders" :entities []})))
+
+(deftest search-prompt-update-test
+  (with-test-prompt [entity {}]
+    (testing "superuser can update the prompt"
+      (let [updated (mt/user-http-request :crowberto :put 200
+                                          (str "metabot/search-prompt/" (:id entity))
+                                          {:prompt "updated prompt"})]
+        (is (= "updated prompt" (:prompt updated)))))
+    (testing "returns 404 for unknown id"
+      (mt/user-http-request :crowberto :put 404 "metabot/search-prompt/0" {:prompt "x"}))
+    (testing "non-superuser gets 403"
+      (mt/user-http-request :rasta :put 403
+                            (str "metabot/search-prompt/" (:id entity))
+                            {:prompt "x"}))))
+
 (deftest agent-streaming-returns-free-trial-limit-error-when-managed-provider-is-locked-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                      "metabase/anthropic/claude-sonnet-4-6"]

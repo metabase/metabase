@@ -484,28 +484,46 @@
       (setting/set! :llm-metabot-provider (str provider "/" model)))
     (assoc response :value (metabot.settings/llm-metabot-provider))))
 
-;;;; searh prompt entites
+;;;; search prompt entities
+
+(def ^:private SearchPromptActualEntity
+  [:map
+   [:model :string]
+   [:id    :int]
+   [:name  {:optional true} :string]])
+
+(def ^:private SearchPromptEntity
+  [:map
+   [:id       ms/PositiveInt]
+   [:prompt   :string]
+   [:entities [:sequential SearchPromptActualEntity]]
+   [:verified :boolean]])
+
+(def ^:private default-limit 50)
+(def ^:private default-offset 0)
 
 (api.macros/defendpoint :get "/search-prompt/"
   :- [:map
-      [:data :any]
-      [:total :any]
-      [:limit :any]
-      [:offset :any]]
+      [:data   [:sequential SearchPromptEntity]]
+      [:total  :int]
+      [:limit  :int]
+      [:offset :int]]
   "Get all search prompt entities, paginated."
   [_route-params
    _query-params]
   (api/check-superuser)
-  {:data   (t2/select :model/SearchPromptEntity
-                      {:order-by [[:id :asc]]
-                       :limit    (request/limit)
-                       :offset   (request/offset)})
-   :total  (t2/count :model/SearchPromptEntity)
-   :limit  (request/limit)
-   :offset (request/offset)})
+  (let [limit  (or (request/limit) default-limit)
+        offset (or (request/offset) default-offset)]
+    {:data   (t2/select :model/SearchPromptEntity
+                        {:order-by [[:id :asc]]
+                         :limit    limit
+                         :offset   offset})
+     :total  (t2/count :model/SearchPromptEntity)
+     :limit  limit
+     :offset offset}))
 
 (api.macros/defendpoint :get "/search-prompt/:id"
-  :- [:maybe :map]
+  :- SearchPromptEntity
   "Get a search prompt entity by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
@@ -513,13 +531,13 @@
   (api/check-404 (t2/select-one :model/SearchPromptEntity :id id)))
 
 (api.macros/defendpoint :post "/search-prompt/"
-  :- [:maybe :map]
+  :- SearchPromptEntity
   "Create a new search prompt entity."
   [_route-params
    _query-params
    {:keys [prompt entities verified]} :- [:map
                                           [:prompt   [:string {:min 1 :max 2048}]]
-                                          [:entities :any]
+                                          [:entities [:sequential :any]]
                                           [:verified {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (t2/insert-returning-instance! :model/SearchPromptEntity
@@ -528,8 +546,8 @@
                                   :verified (boolean verified)}))
 
 (api.macros/defendpoint :put "/search-prompt/:id"
-  :- [:maybe :map]
-  "Update a search prompt entity by ID."
+  :- SearchPromptEntity
+  "Update the prompt of a search prompt entity by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [prompt entities verified]} :- [:map
@@ -547,7 +565,7 @@
   (t2/select-one :model/SearchPromptEntity :id id))
 
 (api.macros/defendpoint :delete "/search-prompt/:id"
-  :- :any
+  :- :nil
   "Delete a search prompt entity by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
