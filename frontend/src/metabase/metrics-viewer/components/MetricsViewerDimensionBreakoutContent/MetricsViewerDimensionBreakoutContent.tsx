@@ -3,97 +3,62 @@ import { useCallback, useMemo } from "react";
 import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
 import { MetricControls } from "metabase/metrics-viewer/components/MetricControls";
 import { MetricsViewerVisualization } from "metabase/metrics-viewer/components/MetricsViewerVisualization";
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerDimensionBreakoutProjectionConfig,
-  MetricsViewerDimensionBreakoutState,
-  MetricsViewerDisplayType,
-  MetricsViewerFormulaEntity,
-  SourceColorMap,
-} from "metabase/metrics-viewer/types/viewer-state";
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import {
-  type AvailableDimensionsResult,
-  type DimensionFilterValue,
   buildDimensionItemsFromDefinitions,
   getDimensionBreakoutConfig,
   getProjectionInfo,
   shouldShowStackSeries,
 } from "metabase/metrics-viewer/utils";
-import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Box, Flex, Stack } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type {
-  CardId,
-  SingleSeries,
-  TemporalUnit,
-  VisualizationSettings,
-} from "metabase-types/api";
 
-type MetricsViewerDimensionBreakoutContentProps = {
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  formulaEntities: MetricsViewerFormulaEntity[];
-  dimensionBreakout: MetricsViewerDimensionBreakoutState;
-  queriesAreLoading: boolean;
-  queriesError: string | null;
-  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
-  metricSlots: MetricSlot[];
-  series: SingleSeries[];
-  cardIdToEntityIndex: Record<CardId, number>;
-  sourceColors: SourceColorMap;
-  availableDimensions: AvailableDimensionsResult;
-  sourceOrder: MetricSourceId[];
-  onDimensionBreakoutUpdate: (
-    updates: Partial<MetricsViewerDimensionBreakoutState>,
-  ) => void;
-};
-
-export function MetricsViewerDimensionBreakoutContent({
-  definitions,
-  formulaEntities,
-  dimensionBreakout,
-  queriesAreLoading,
-  queriesError,
-  modifiedDefinitionsBySlotIndex,
-  metricSlots,
-  series: rawSeries,
-  cardIdToEntityIndex,
-  sourceColors,
-  availableDimensions,
-  sourceOrder,
-  onDimensionBreakoutUpdate,
-}: MetricsViewerDimensionBreakoutContentProps) {
-  const dimensionFilter = getDimensionBreakoutConfig(
-    dimensionBreakout.type,
-  ).dimensionPredicate;
+export function MetricsViewerDimensionBreakoutContent() {
+  const {
+    definitions,
+    formulaEntities,
+    activeDimensionBreakout: dimensionBreakout,
+    queriesAreLoading,
+    queriesError,
+    modifiedDefinitionsBySlotIndex,
+    metricSlots,
+    series: rawSeries,
+    cardIdToEntityIndex,
+    sourceColors,
+    updateActiveDimensionBreakout: onDimensionBreakoutUpdate,
+  } = useMetricsViewerContext();
 
   const dimensionItems = useMemo(
     () =>
-      buildDimensionItemsFromDefinitions(
-        definitions,
-        dimensionBreakout.dimensionMapping,
-        modifiedDefinitionsBySlotIndex,
-        sourceColors,
-        metricSlots,
-        formulaEntities,
-        dimensionBreakout.projectionConfig,
-        dimensionFilter,
-      ),
+      dimensionBreakout
+        ? buildDimensionItemsFromDefinitions(
+            definitions,
+            dimensionBreakout.dimensionMapping,
+            modifiedDefinitionsBySlotIndex,
+            sourceColors,
+            metricSlots,
+            formulaEntities,
+            dimensionBreakout.projectionConfig,
+            getDimensionBreakoutConfig(dimensionBreakout.type)
+              .dimensionPredicate,
+          )
+        : [],
     [
       definitions,
-      dimensionBreakout.dimensionMapping,
+      dimensionBreakout,
       modifiedDefinitionsBySlotIndex,
       sourceColors,
       metricSlots,
       formulaEntities,
-      dimensionBreakout.projectionConfig,
-      dimensionFilter,
     ],
   );
 
   const definitionForControls = useMemo((): MetricDefinition | null => {
+    if (!dimensionBreakout) {
+      return null;
+    }
     if (dimensionBreakout.type === "scalar") {
       return modifiedDefinitionsBySlotIndex.values().next().value ?? null;
     }
@@ -110,14 +75,13 @@ export function MetricsViewerDimensionBreakoutContent({
       }
     }
     return null;
-  }, [
-    dimensionBreakout.dimensionMapping,
-    dimensionBreakout.type,
-    modifiedDefinitionsBySlotIndex,
-  ]);
+  }, [dimensionBreakout, modifiedDefinitionsBySlotIndex]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
+    if (!dimensionBreakout) {
+      return filterDimensions;
+    }
     for (const key of getObjectKeys(dimensionBreakout.dimensionMapping)) {
       const slotIndex = Number(key);
       const modDef = modifiedDefinitionsBySlotIndex.get(slotIndex);
@@ -130,77 +94,28 @@ export function MetricsViewerDimensionBreakoutContent({
       }
     }
     return filterDimensions;
-  }, [dimensionBreakout.dimensionMapping, modifiedDefinitionsBySlotIndex]);
-
-  const updateProjectionConfig = useCallback(
-    (updates: Partial<MetricsViewerDimensionBreakoutProjectionConfig>) => {
-      onDimensionBreakoutUpdate({
-        projectionConfig: { ...dimensionBreakout.projectionConfig, ...updates },
-      });
-    },
-    [onDimensionBreakoutUpdate, dimensionBreakout.projectionConfig],
-  );
-
-  const handleDimensionFilterChange = useCallback(
-    (value: DimensionFilterValue | undefined) => {
-      updateProjectionConfig({ dimensionFilter: value });
-    },
-    [updateProjectionConfig],
-  );
-
-  const handleTemporalUnitChange = useCallback(
-    (unit: TemporalUnit | undefined) => {
-      updateProjectionConfig({ temporalUnit: unit });
-    },
-    [updateProjectionConfig],
-  );
-
-  const handleBinningChange = useCallback(
-    (binningStrategy: string | undefined) => {
-      updateProjectionConfig({ binningStrategy });
-    },
-    [updateProjectionConfig],
-  );
-
-  const handleDisplayTypeChange = useCallback(
-    (display: MetricsViewerDisplayType) => {
-      onDimensionBreakoutUpdate({ display });
-    },
-    [onDimensionBreakoutUpdate],
-  );
-
-  const handleVisualizationSettingsChange = useCallback(
-    (updates: Partial<VisualizationSettings>) => {
-      onDimensionBreakoutUpdate({
-        visualizationSettings: {
-          ...dimensionBreakout.visualizationSettings,
-          ...updates,
-        },
-      });
-    },
-    [onDimensionBreakoutUpdate, dimensionBreakout.visualizationSettings],
-  );
-
-  const handleShowColumnLabelsChange = useCallback(
-    (showColumnLabels: boolean) => {
-      onDimensionBreakoutUpdate({ showColumnLabels });
-    },
-    [onDimensionBreakoutUpdate],
-  );
+  }, [dimensionBreakout, modifiedDefinitionsBySlotIndex]);
 
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
-      updateProjectionConfig({
-        dimensionFilter: {
-          type: "specific-date",
-          operator: "between",
-          values: [new Date(start), new Date(end)],
-          hasTime: true,
+      onDimensionBreakoutUpdate({
+        projectionConfig: {
+          ...dimensionBreakout?.projectionConfig,
+          dimensionFilter: {
+            type: "specific-date",
+            operator: "between",
+            values: [new Date(start), new Date(end)],
+            hasTime: true,
+          },
         },
       });
     },
-    [updateProjectionConfig],
+    [onDimensionBreakoutUpdate, dimensionBreakout?.projectionConfig],
   );
+
+  if (!dimensionBreakout) {
+    return null;
+  }
 
   const showStackSeries = shouldShowStackSeries(
     dimensionBreakout.display,
@@ -246,23 +161,9 @@ export function MetricsViewerDimensionBreakoutContent({
         <Flex mt="md" justify="center" align="center">
           <MetricControls
             definition={definitionForControls}
-            displayType={dimensionBreakout.display}
-            dimensionBreakoutType={dimensionBreakout.type}
-            dimensionBreakoutLabel={dimensionBreakout.label}
-            dimensionFilter={dimensionBreakout.projectionConfig.dimensionFilter}
             allFilterDimensions={allFilterDimensions}
-            availableDimensions={availableDimensions}
-            sourceOrder={sourceOrder}
-            onDisplayTypeChange={handleDisplayTypeChange}
-            onDimensionFilterChange={handleDimensionFilterChange}
-            onTemporalUnitChange={handleTemporalUnitChange}
-            onBinningChange={handleBinningChange}
             showStackSeries={showStackSeries}
             canToggleColumnLabels={!hideDimensionPill}
-            showColumnLabels={showColumnLabels}
-            onShowColumnLabelsChange={handleShowColumnLabelsChange}
-            visualizationSettings={dimensionBreakout.visualizationSettings}
-            onVisualizationSettingsChange={handleVisualizationSettingsChange}
           />
         </Flex>
       )}

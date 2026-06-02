@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { MetricsViewerProvider } from "metabase/metrics-viewer/context";
+import { createMockMetricsViewerResult } from "metabase/metrics-viewer/test-utils";
 import type {
   MetricSourceId,
   MetricsViewerDimensionBreakoutState,
@@ -98,19 +100,23 @@ function setup({
   const onSelectDimensionBreakout = jest.fn();
   const onUpdateActiveDimensionBreakout = jest.fn();
 
+  const metricsViewerResult = createMockMetricsViewerResult({
+    activeDimensionBreakout: dimensionBreakout,
+    sidebarAvailableDimensions: dimensions,
+    metricSlots: slots,
+    sourceColors: { 0: ["#509ee3"], 1: ["#f9d45c"] },
+    sourceOrder,
+    sourceDataById: sources,
+    selectDimensionBreakout: onSelectDimensionBreakout,
+    updateActiveDimensionBreakout: onUpdateActiveDimensionBreakout,
+  });
+
   renderWithProviders(
-    <DimensionPickerSidebarProvider>
-      <DimensionPickerSidebar
-        activeDimensionBreakout={dimensionBreakout}
-        availableDimensions={dimensions}
-        metricSlots={slots}
-        sourceColors={{ 0: ["#509ee3"], 1: ["#f9d45c"] }}
-        metricSourceOrder={sourceOrder}
-        metricSourceDataById={sources}
-        onSelectDimensionBreakout={onSelectDimensionBreakout}
-        onUpdateActiveDimensionBreakout={onUpdateActiveDimensionBreakout}
-      />
-    </DimensionPickerSidebarProvider>,
+    <MetricsViewerProvider value={metricsViewerResult}>
+      <DimensionPickerSidebarProvider>
+        <DimensionPickerSidebar />
+      </DimensionPickerSidebarProvider>
+    </MetricsViewerProvider>,
   );
 
   return { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout };

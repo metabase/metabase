@@ -3,24 +3,16 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { trackMetricsViewerDimensionSelected } from "metabase/metrics-viewer/analytics";
-import type {
-  MetricSourceId,
-  MetricsViewerDimensionBreakoutState,
-  SourceColorMap,
-} from "metabase/metrics-viewer/types";
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import {
-  type AvailableDimensionsResult,
-  type DimensionBreakoutInfo,
   type DimensionPickerItem,
   type DimensionPickerSidebarCategory,
-  type SourceDisplayInfo,
   buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
   getComparableDimensionMapping,
   getDimensionBreakoutConfig,
   getScalarDimensionBreakoutLabel,
 } from "metabase/metrics-viewer/utils";
-import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import {
   ActionIcon,
   Box,
@@ -49,35 +41,19 @@ import {
   isMatchingActiveDimensionBreakout,
 } from "./utils";
 
-type DimensionPickerSidebarProps = {
-  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
-  availableDimensions: AvailableDimensionsResult;
-  allFieldsAvailableDimensions?: AvailableDimensionsResult;
-  metricSlots: MetricSlot[];
-  sourceColors: SourceColorMap;
-  metricSourceOrder: MetricSourceId[];
-  metricSourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  onSelectDimensionBreakout: (
-    dimensionBreakoutInfo: DimensionBreakoutInfo,
-  ) => void;
-  onUpdateActiveDimensionBreakout: (
-    updates: Partial<MetricsViewerDimensionBreakoutState>,
-  ) => void;
-};
-
 type SidebarMode = "default" | "all";
 
-export function DimensionPickerSidebar({
-  activeDimensionBreakout,
-  availableDimensions,
-  allFieldsAvailableDimensions = availableDimensions,
-  metricSlots,
-  sourceColors,
-  metricSourceOrder,
-  metricSourceDataById,
-  onSelectDimensionBreakout,
-  onUpdateActiveDimensionBreakout,
-}: DimensionPickerSidebarProps) {
+export function DimensionPickerSidebar() {
+  const {
+    activeDimensionBreakout,
+    sidebarAvailableDimensions: availableDimensions,
+    metricSlots,
+    sourceColors,
+    sourceOrder,
+    sourceDataById,
+    selectDimensionBreakout: onSelectDimensionBreakout,
+    updateActiveDimensionBreakout: onUpdateActiveDimensionBreakout,
+  } = useMetricsViewerContext();
   const { close } = useDimensionPickerSidebar();
   const [searchText, setSearchText] = useState("");
   const [mode, setMode] = useState<SidebarMode>("default");
@@ -89,21 +65,21 @@ export function DimensionPickerSidebar({
     () =>
       buildDimensionPickerSidebarCategories({
         availableDimensions,
-        sourceOrder: metricSourceOrder,
-        sourceDataById: metricSourceDataById,
+        sourceOrder,
+        sourceDataById,
         metricSlots,
       }),
-    [availableDimensions, metricSourceOrder, metricSourceDataById, metricSlots],
+    [availableDimensions, sourceOrder, sourceDataById, metricSlots],
   );
 
   const sections = useMemo(
     () =>
       buildDimensionPickerSections({
-        availableDimensions: allFieldsAvailableDimensions,
-        sourceOrder: metricSourceOrder,
-        sourceDataById: metricSourceDataById,
+        availableDimensions,
+        sourceOrder,
+        sourceDataById,
       }),
-    [allFieldsAvailableDimensions, metricSourceOrder, metricSourceDataById],
+    [availableDimensions, sourceOrder, sourceDataById],
   );
 
   const filteredSections = useMemo(
@@ -111,10 +87,9 @@ export function DimensionPickerSidebar({
     [sections, searchText],
   );
 
-  const selectedDimensionBreakoutCategoryKey = getSelectedCategoryKey(
-    categories,
-    activeDimensionBreakout,
-  );
+  const selectedDimensionBreakoutCategoryKey = activeDimensionBreakout
+    ? getSelectedCategoryKey(categories, activeDimensionBreakout)
+    : undefined;
   const showAllFields = mode === "all" || searchText.trim() !== "";
   const hasAllFields = sections.length > 0;
   const showSeeAll = !showAllFields && hasAllFields;
@@ -128,6 +103,9 @@ export function DimensionPickerSidebar({
 
   const handleSelect = useCallback(
     (item: DimensionPickerItem) => {
+      if (!activeDimensionBreakout) {
+        return;
+      }
       if (hasSameDimensions(item, activeDimensionBreakout)) {
         return;
       }
@@ -159,6 +137,9 @@ export function DimensionPickerSidebar({
 
   const handleAllFieldsSelect = useCallback(
     (item: DimensionPickerItem) => {
+      if (!activeDimensionBreakout) {
+        return;
+      }
       if (isMatchingActiveDimensionBreakout(item, activeDimensionBreakout)) {
         return;
       }
@@ -203,6 +184,9 @@ export function DimensionPickerSidebar({
 
   const handleCategorySelect = useCallback(
     (category: DimensionPickerSidebarCategory) => {
+      if (!activeDimensionBreakout) {
+        return;
+      }
       if (expandedCategoryKey !== category.key) {
         setExpandedCategoryKey(null);
       }
@@ -231,6 +215,9 @@ export function DimensionPickerSidebar({
       slotIndex: number,
       dimensionId: string,
     ) => {
+      if (!activeDimensionBreakout) {
+        return;
+      }
       const isActiveCategory = isCategorySelected(
         category,
         activeDimensionBreakout,
@@ -272,7 +259,7 @@ export function DimensionPickerSidebar({
   };
 
   const handleNoBreakout = () => {
-    if (activeDimensionBreakout.type === "scalar") {
+    if (!activeDimensionBreakout || activeDimensionBreakout.type === "scalar") {
       return;
     }
 
@@ -283,6 +270,10 @@ export function DimensionPickerSidebar({
     });
     trackMetricsViewerDimensionSelected();
   };
+
+  if (!activeDimensionBreakout) {
+    return null;
+  }
 
   const showFieldsByCategory = !showAllFields && categories.length > 0;
   const showDefaultView = !showAllFields;
@@ -332,7 +323,7 @@ export function DimensionPickerSidebar({
           <AllFieldsList
             activeDimensionBreakout={activeDimensionBreakout}
             sections={filteredSections}
-            metricSourceDataById={metricSourceDataById}
+            metricSourceDataById={sourceDataById}
             sourceColors={sourceColors}
             metricSlots={metricSlots}
             onSelect={handleAllFieldsSelect}
@@ -363,7 +354,7 @@ export function DimensionPickerSidebar({
                       category={category}
                       activeDimensionBreakout={activeDimensionBreakout}
                       metricSlots={metricSlots}
-                      sourceDataById={metricSourceDataById}
+                      sourceDataById={sourceDataById}
                       sourceColors={sourceColors}
                       isSelected={isSelected}
                       isExpanded={isExpanded}
