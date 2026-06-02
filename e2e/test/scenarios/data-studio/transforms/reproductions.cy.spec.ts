@@ -233,7 +233,7 @@ describe("issue GDGT-2365", { tags: ["@external", "@python"] }, () => {
     H.setPythonRunnerSettings();
   });
 
-  it("should not render the editor search panel over the table picker modal (GDGT-2365)", () => {
+  it("should not render the editor search panel over the table picker modal (metabase#73290)", () => {
     visitTransformListPage();
     cy.button("Create a transform").click();
     H.popover().findByText("Python script").click();
@@ -251,21 +251,8 @@ describe("issue GDGT-2365", { tags: ["@external", "@python"] }, () => {
     getPythonDataPicker().findByText("Select a table…").click();
     H.entityPickerModal().should("be.visible");
 
-    cy.log("the search panel must paint below the modal, not over it");
-    H.entityPickerModal()
-      .findByRole("dialog")
-      .invoke("css", "z-index")
-      .then((modalZIndex) => {
-        cy.findByTestId("python-editor")
-          .find(".cm-panels")
-          .invoke("css", "z-index")
-          .then((panelZIndex) => {
-            expect(
-              Number(panelZIndex),
-              "search panel z-index stacks below the modal",
-            ).to.be.lessThan(Number(modalZIndex));
-          });
-      });
+    cy.log("the search panel must not paint over the modal");
+    cy.findByTestId("python-editor").find(".cm-panels").should("not.be.visible");
   });
 });
 
