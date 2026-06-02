@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.lib-be.metadata.jvm-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [malli.error :as me]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -17,6 +18,22 @@
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
+
+(deftest ^:parallel metadata-spec->honey-sql-schema-filter-test
+  (let [where      (fn [spec] (:where (#'lib.metadata.jvm/metadata-spec->honey-sql 1 spec)))
+        clause?    (fn [w clause] (boolean (some #(= % clause) (tree-seq sequential? seq w))))
+        schema-cl? (fn [w] (some #(and (sequential? %) (= (take 2 %) [:= :schema]))
+                                 (tree-seq sequential? seq w)))]
+    (testing "string :schema adds an equality clause"
+      (is (clause? (where {:lib/type :metadata/table :name #{"ORDERS"} :schema "RAW"})
+                   [:= :schema "RAW"])))
+    (testing "nil :schema compiles to `schema IS NULL` (schemaless databases)"
+      (let [w (where {:lib/type :metadata/table :schema nil})]
+        (is (clause? w [:= :schema nil]))
+        (is (re-find #"(?i)schema is null"
+                     (first (sql/format {:select [:*], :from [:t], :where w}))))))
+    (testing "absent :schema key adds no schema clause"
+      (is (not (schema-cl? (where {:lib/type :metadata/table :name #{"ORDERS"}})))))))
 
 (deftest ^:parallel fetch-field-test
   (let [field (t2/select-one :metadata/column (mt/id :categories :id))]

@@ -37,7 +37,6 @@
         index, an in-memory test fixture, or a snapshot) can be supplied to make import usable
         without an application database."
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.serialization :as serdes]
@@ -55,44 +54,18 @@
 (defn- db-name [metadata-provider]
   (:name (lib.metadata/database metadata-provider)))
 
-(defn- matching-tables-via-provider
-  "Return all tables matching `table-name` in `metadata-provider`, post-filtered by `schema`
-  (`schema` may be `nil` for schemaless databases).
+(defn- matching-tables
+  "Return the `:metadata/table`s matching `(schema, table-name)` in `metadata-provider`.
+  `schema` may be `nil` for schemaless databases.
 
-  Used as a fallback for mock and checker providers. NOT safe for production: the
-  application's cached metadata provider keys its by-name cache on `[type :name k]` with
-  `:schema` dropped, so two warehouse tables sharing a `name` across schemas collapse to
-  whichever one wrote the cache entry last. The schema post-filter here then yields 0
-  candidates for the loser's schema. App-DB-backed callers must use
-  [[matching-tables-via-app-db]]."
+  May return more than one table for defective `(db_id, schema, name)` duplicates (the
+  `001_update_migrations.yaml` `is_defective_duplicate` carve-out), letting [[find-table]]
+  raise `:ambiguous-table`."
   [metadata-provider schema table-name]
-  (->> (lib.metadata.protocols/metadatas metadata-provider
-                                         {:lib/type :metadata/table
-                                          :name     #{table-name}})
-       (filter #(= (:schema %) schema))))
-
-(defn- matching-tables-via-app-db
-  "Return all tables matching the `(db-id, schema, table-name)` triple by direct application-DB
-  query — same shape `resolve.db/import-table-fk` has always used. Bypasses the metadata
-  provider entirely.
-
-  Defective `(db_id, schema, name)` duplicates (allowed by the
-  `001_update_migrations.yaml` `is_defective_duplicate` carve-out for pre-constraint rows)
-  return more than one candidate so [[find-table]] can raise `:ambiguous-table`."
-  [db-id schema table-name]
-  (t2/select :metadata/table :db_id db-id :schema schema :name table-name))
-
-(defn- app-db-backed-provider?
-  "True when `metadata-provider` is part of the production app-DB-backed wrapper chain
-  (`InvocationTracker → CachedProxyMetadataProvider → UncachedApplicationDatabaseMetadataProvider`).
-
-  Mocks built via `lib.tu/mock-metadata-provider` don't extend `CachedMetadataProvider` and
-  correctly return `false` here. The rare test that wraps a mock in `cached-metadata-provider`
-  will return `true` — callers must treat the app-DB result as authoritative only when it's
-  non-empty and otherwise fall back to the provider so that wrapped-mock case still resolves."
-  [metadata-provider]
-  (and (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
-       (mdb/db-is-set-up?)))
+  (lib.metadata.protocols/metadatas metadata-provider
+                                    {:lib/type :metadata/table
+                                     :name     #{table-name}
+                                     :schema   schema}))
 
 (defn- unknown-table-ex-info
   "Build an agent-facing `:unknown-table` error for a miss on portable FK
@@ -115,23 +88,6 @@
             :agent-error? true
             :path         path}))
 
-(defn- table-candidates
-  "Resolve `(schema, table-name)` against `metadata-provider`. Tries
-  [[matching-tables-via-app-db]] first for app-DB-backed providers and falls back to
-  [[matching-tables-via-provider]] on empty.
-
-  The fallback covers three cases: vanilla mocks (no `CachedMetadataProvider`, skip the
-  app-DB attempt entirely), wrapped mocks with synthetic db ids that don't exist as
-  `metabase_database` rows, and the rare production case where the app DB and the metadata
-  provider's cache disagree about whether a table exists (e.g. provider holds a cached row
-  for a table that was just deleted, or vice versa). In that last case the provider's view
-  becomes authoritative, since the alternative is a confusing `:unknown-table` raised for a
-  table the caller can plainly see via `entity_details`."
-  [metadata-provider db-id schema table-name]
-  (or (when (and db-id (app-db-backed-provider? metadata-provider))
-        (seq (matching-tables-via-app-db db-id schema table-name)))
-      (matching-tables-via-provider metadata-provider schema table-name)))
-
 (defn- find-table
   "Resolve `[db-name, schema, table-name]` to a `:metadata/table` or throw with context.
 
@@ -140,7 +96,7 @@
   re-hallucinating the same bad path. All error branches are marked
   `:agent-error? true` so the outer tool wrapper relays the message verbatim."
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
-  (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)]
+  (let [current-db (:name (lib.metadata/database metadata-provider))]
     (when-not (= path-db-name current-db)
       (throw (ex-info (tru "Portable table FK references database {0}, but metadata provider is for {1}."
                            (pr-str path-db-name)
@@ -150,7 +106,7 @@
                        :agent-error? true
                        :path         path
                        :expected-db  current-db})))
-    (let [candidates (table-candidates metadata-provider current-db-id path-schema path-table-name)]
+    (let [candidates (matching-tables metadata-provider path-schema path-table-name)]
       (case (count candidates)
         0 (throw (unknown-table-ex-info metadata-provider path))
         1 (first candidates)

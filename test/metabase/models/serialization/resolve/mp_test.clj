@@ -117,22 +117,19 @@
       (is (= 31 (resolve/import-table-fk r ["DW" "CLEAN" "ORDERS"]))))))
 
 (deftest import-table-fk-cache-collision-test
-  (testing "two real tables sharing a name across schemas: app-DB-backed resolver must not drop either"
-    ;; Reproduces a production failure where `query` / `construct_query` returned
-    ;; `:unknown-table` for a portable FK that `entity_details` had just emitted, then
-    ;; verifies the fix.
+  (testing "two real tables sharing a name across schemas resolve to their own ids, not a collision"
+    ;; Regression guard against a schema-blind table lookup.
     ;;
-    ;; Production wraps every `application-database-metadata-provider` with
-    ;; `cached-metadata-provider`. The cached provider's by-name cache key drops `:schema`
-    ;; and stores at most one metadata per requested name, so when two warehouse tables
-    ;; share a `name` across schemas, `(p/metadatas mp {:name #{n}})` returns at most one
-    ;; row -- the schema post-filter in `find-table` then yields 0 candidates for the
-    ;; schema that didn't win the cache write.
+    ;; `application-database-metadata-provider` wraps its provider in `cached-metadata-provider`,
+    ;; whose by-name cache key folds in the fetch spec. Because `find-table` puts `:schema` in
+    ;; that spec, two tables sharing a `name` across schemas get distinct cache entries. Drop
+    ;; `:schema` from the lookup and they collapse onto one cache key (last write wins), so the
+    ;; resolver raises `:unknown-table` for whichever schema lost the write.
     ;;
-    ;; The fix in [[resolve.mp/find-table]] bypasses the metadata provider for app-DB-backed
-    ;; lookups and queries `metabase_table` directly with schema in the WHERE clause, the
-    ;; same shape `metabase.models.serialization.resolve.db/import-table-fk` has always
-    ;; used.
+    ;; That failure shipped once: the agent's `query` / `construct_query` raised `:unknown-table`
+    ;; for a portable FK that `entity_details` had just emitted. This test runs against the real
+    ;; cached app-DB provider (not a mock), so it reproduces the collision the instant `:schema`
+    ;; stops reaching the provider — keep it as long as resolution goes through this provider.
     (mt/with-temp [:model/Database db {:name (str "DW " (random-uuid)) :engine :h2}
                    :model/Table    raw-orders   {:name "ORDERS" :schema "RAW"   :db_id (:id db)}
                    :model/Table    clean-orders {:name "ORDERS" :schema "CLEAN" :db_id (:id db)}]

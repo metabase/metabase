@@ -513,15 +513,19 @@
                                        {:closed true}
                                        [:where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id                                                                                                            :- ::lib.schema.id/database
-   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  [database-id                                                                                                                  :- ::lib.schema.id/database
+   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id schema include-sensitive?], :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
         metric?         (= metadata-type :metadata/metric)
+        ;; Presence, not truthiness: a `:schema` of `nil` compiles to `schema IS NULL` (the
+        ;; schemaless-DB match); an absent `:schema` key means "don't filter by schema".
+        filter-schema?  (contains? metadata-spec :schema)
         where-clauses   (cond-> []
                           database-id-key        (conj [:= database-id-key database-id])
                           id-set                 (conj [:in (id-key metadata-type) id-set])
                           name-set               (conj [:in (name-key metadata-type) name-set])
+                          filter-schema?         (conj [:= :schema schema])
                           table-id               (conj [:= (table-id-key metadata-type) table-id])
                           card-id                (conj [:= (card-id-key metadata-type) card-id])
                           active-only?           (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))

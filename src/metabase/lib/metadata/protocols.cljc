@@ -30,6 +30,10 @@
     [:name               {:optional true} [:set {:min 1} :string]]
     [:table-id           {:optional true} ::lib.schema.id/table]
     [:card-id            {:optional true} ::lib.schema.id/card]
+    ;; `:schema` may be nil: schemaless databases (e.g. Mongo) store tables with a null schema, so
+    ;; a `:schema` of `nil` is a meaningful filter ("tables with no schema"), distinct from an
+    ;; absent `:schema` key ("don't filter by schema"). Honor it on presence, not truthiness.
+    [:schema             {:optional true} [:maybe :string]]
     [:include-sensitive? {:optional true} :boolean]]
    [:fn
     {:error/message ":id and :name cannot be used at the same time."}
@@ -39,6 +43,11 @@
     (fn [spec]
       (or (not (:table-id spec))
           (#{:metadata/column :metadata/measure :metadata/metric :metadata/segment} (:lib/type spec))))]
+   [:fn
+    {:error/message ":schema is currently only supported for Tables."}
+    (fn [spec]
+      (or (not (contains? spec :schema))
+          (= (:lib/type spec) :metadata/table)))]
    [:fn
     {:error/message ":card-id is currently only supported for Metrics."}
     (fn [spec]
@@ -69,38 +78,43 @@
 
   This should match [[metabase.lib-be.metadata.jvm/metadata-spec->honey-sql]] as closely as
   possible."
-  [{metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id include-sensitive?], :as _metadata-spec} :- ::metadata-spec]
-  (let [active-only? (not (or id-set name-set))
-        metric?      (= metadata-type :metadata/metric)
-        preds        [(when id-set
-                        #(contains? id-set (:id %)))
-                      (when name-set
-                        #(contains? name-set (:name %)))
-                      (when table-id
-                        #(= (:table-id %) table-id))
-                      (when (and table-id metric?)
-                        #(nil? (:source-card-id %)))
-                      (when card-id
-                        (if metric?
-                          #(= (:source-card-id %) card-id)
-                          #(= (:card-id %) card-id)))
-                      (when active-only?
-                        (case metadata-type
-                          :metadata/table
-                          #(and
-                            (not (false? (:active %)))
-                            (not (#{:hidden :technical :cruft} (:visibility-type %))))
+  [{metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id schema include-sensitive?], :as metadata-spec} :- ::metadata-spec]
+  (let [active-only?   (not (or id-set name-set))
+        metric?        (= metadata-type :metadata/metric)
+        ;; Presence, not truthiness: a `:schema` of `nil` matches null-schema tables (schemaless
+        ;; DBs); an absent `:schema` key means "don't filter by schema".
+        filter-schema? (contains? metadata-spec :schema)
+        preds          [(when id-set
+                          #(contains? id-set (:id %)))
+                        (when name-set
+                          #(contains? name-set (:name %)))
+                        (when filter-schema?
+                          #(= (:schema %) schema))
+                        (when table-id
+                          #(= (:table-id %) table-id))
+                        (when (and table-id metric?)
+                          #(nil? (:source-card-id %)))
+                        (when card-id
+                          (if metric?
+                            #(= (:source-card-id %) card-id)
+                            #(= (:card-id %) card-id)))
+                        (when active-only?
+                          (case metadata-type
+                            :metadata/table
+                            #(and
+                              (not (false? (:active %)))
+                              (not (#{:hidden :technical :cruft} (:visibility-type %))))
 
-                          :metadata/column
-                          (active-column-pred {:include-sensitive? include-sensitive?})
+                            :metadata/column
+                            (active-column-pred {:include-sensitive? include-sensitive?})
 
-                          (:metadata/card :metadata/measure :metadata/metric :metadata/segment)
-                          #(not (:archived %))
+                            (:metadata/card :metadata/measure :metadata/metric :metadata/segment)
+                            #(not (:archived %))
 
-                          #_else
-                          nil))
-                      (when metric?
-                        #(= (:type %) :metric))]]
+                            #_else
+                            nil))
+                        (when metric?
+                          #(= (:type %) :metric))]]
     (transduce
      (comp (filter some?)
            (map filter))
