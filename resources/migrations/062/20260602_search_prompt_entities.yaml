@@ -1,0 +1,44 @@
+## Create search_prompt_entities table for storing search prompts and their associated entities.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-06-02T00:00:00
+      author: lbrdnk
+      comment: Create search_prompt_entities table
+      changes:
+        - createTable:
+            tableName: search_prompt_entities
+            remarks: Stores search prompts paired with their associated entities
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: prompt
+                  type: ${text.type}
+                  remarks: The search prompt text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entities
+                  type: ${text.type}
+                  remarks: JSON array of associated entities
+                  constraints:
+                    nullable: false
+              - column:
+                  name: verified
+                  type: boolean
+                  remarks: Whether this prompt-entity mapping has been verified
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: search_prompt_entities

@@ -21,6 +21,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.models.search-prompt-entity]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
@@ -482,6 +483,70 @@
     (when model
       (setting/set! :llm-metabot-provider (str provider "/" model)))
     (assoc response :value (metabot.settings/llm-metabot-provider))))
+
+;;;; searh prompt entites
+
+(api.macros/defendpoint :get "/search-prompt/"
+  :- [:map
+      [:data :any]
+      [:total :any]
+      [:limit :any]
+      [:offset :any]]
+  "Get all search prompt entities, paginated."
+  [_route-params
+   _query-params]
+  (api/check-superuser)
+  {:data   (t2/select :model/SearchPromptEntity
+                      {:order-by [[:id :asc]]
+                       :limit    (request/limit)
+                       :offset   (request/offset)})
+   :total  (t2/count :model/SearchPromptEntity)
+   :limit  (request/limit)
+   :offset (request/offset)})
+
+(api.macros/defendpoint :get "/search-prompt/:id"
+  :- [:maybe :map]
+  "Get a search prompt entity by ID."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/SearchPromptEntity :id id)))
+
+(api.macros/defendpoint :post "/search-prompt/"
+  :- [:maybe :map]
+  "Create a new search prompt entity."
+  [_route-params
+   _query-params
+   {:keys [prompt entities verified]} :- [:map
+                                          [:prompt   [:string {:min 1 :max 2048}]]
+                                          [:entities :any]
+                                          [:verified {:optional true} [:maybe :boolean]]]]
+  (api/check-superuser)
+  (t2/insert-returning-instance! :model/SearchPromptEntity
+                                 {:prompt   prompt
+                                  :entities entities
+                                  :verified (boolean verified)}))
+
+(api.macros/defendpoint :put "/search-prompt/:id"
+  :- [:maybe :map]
+  "Update the prompt of a search prompt entity by ID."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [prompt]} :- [:map [:prompt [:string {:min 1 :max 2048}]]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/SearchPromptEntity :id id))
+  (t2/update! :model/SearchPromptEntity id {:prompt prompt})
+  (t2/select-one :model/SearchPromptEntity :id id))
+
+(api.macros/defendpoint :delete "/search-prompt/:id"
+  :- :any
+  "Delete a search prompt entity by ID."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/SearchPromptEntity :id id))
+  (t2/delete! :model/SearchPromptEntity :id id)
+  api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."
