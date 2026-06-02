@@ -1,8 +1,10 @@
 .infoPanel {
+  --max-content-height: calc(100vh - 2rem - var(--minimap-height));
+
   position: absolute;
   top: 1rem;
-  bottom: 1rem;
-  max-height: calc(100% - var(--minimap-height));
+  height: auto;
+  max-height: var(--max-content-height);
   z-index: var(--canvas-element-z-index);
 
   .card {
@@ -10,7 +12,8 @@
     flex-direction: column;
     padding: 0;
     width: 32rem;
-    max-height: 100%;
+    min-height: 0;
+    max-height: var(--max-content-height);
     pointer-events: all;
   }
 
@@ -20,22 +23,14 @@
 
   .fkLink {
     overflow: hidden;
-    line-height: 1;
 
     &:hover span {
       text-decoration: underline;
     }
   }
 
-  .fieldName,
-  .targetName {
-    flex: 0 1 auto;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .fieldName {
-    max-width: 50%;
+    flex: 0 1 auto;
+    display: inline-block;
   }
 }

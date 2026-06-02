@@ -2,11 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen, waitFor } from "__support__/ui";
 import { FormProvider } from "metabase/forms";
+import type { GroupId, GroupInfo } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
-const defaultGroups = [
+const defaultGroups: GroupInfo[] = [
   createMockGroup({
     id: 1,
     name: "Administrators",
@@ -14,7 +15,19 @@ const defaultGroups = [
     magic_group_type: "admin",
   }),
 ];
-const defaultMappings = { "group=Administrators": [1] };
+const defaultMappings: Record<string, GroupId[]> = {
+  "group=Administrators": [1],
+};
+
+type SetupOptions = {
+  mappings?: Record<string, GroupId[]>;
+  mappingSetting?: string;
+  clearGroupMember?: jest.Mock;
+  deleteGroup?: jest.Mock;
+  updateSetting?: jest.Mock;
+  setting?: { key: string; value: boolean };
+  groups?: GroupInfo[];
+};
 
 const setup = ({
   mappings = defaultMappings,
@@ -22,16 +35,17 @@ const setup = ({
   clearGroupMember = jest.fn(),
   deleteGroup = jest.fn(),
   updateSetting = jest.fn(),
-  onSuccess = jest.fn(),
   setting = { key: "key", value: true },
   groups = defaultGroups,
-} = {}) => {
+}: SetupOptions = {}) => {
   render(
     <FormProvider
       initialValues={{ [setting.key]: setting.value }}
       onSubmit={() => {}}
     >
       <GroupMappingsWidgetView
+        groupHeading=""
+        groupPlaceholder=""
         allGroups={groups}
         mappings={mappings}
         mappingSetting={mappingSetting}
@@ -39,7 +53,6 @@ const setup = ({
         clearGroupMember={clearGroupMember}
         deleteGroup={deleteGroup}
         updateSetting={updateSetting}
-        onSuccess={onSuccess}
       />
     </FormProvider>,
   );
@@ -134,13 +147,34 @@ describe("GroupMappingsWidgetView", () => {
   });
 
   describe("when a mapping is set for more than one group", () => {
-    const mappings = { "cn=People": [3, 4] };
+    const mappings: Record<string, GroupId[]> = { "cn=People": [3, 4] };
 
+    // magic_group_type: null so these aren't filtered out by isDefaultGroup.
     const groups = [
-      { id: 1, name: "All Users", member_count: 5 },
-      { id: 2, name: "Administrators", member_count: 1 },
-      { id: 3, name: "Group 1", member_count: 2 },
-      { id: 4, name: "Group 2", member_count: 2 },
+      createMockGroup({
+        id: 1,
+        name: "All Users",
+        member_count: 5,
+        magic_group_type: null,
+      }),
+      createMockGroup({
+        id: 2,
+        name: "Administrators",
+        member_count: 1,
+        magic_group_type: null,
+      }),
+      createMockGroup({
+        id: 3,
+        name: "Group 1",
+        member_count: 2,
+        magic_group_type: null,
+      }),
+      createMockGroup({
+        id: 4,
+        name: "Group 2",
+        member_count: 2,
+        magic_group_type: null,
+      }),
     ];
 
     it("handles clearing mapped groups after deleting mapping", async () => {

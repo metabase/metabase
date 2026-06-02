@@ -456,10 +456,12 @@
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
   like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->mbql5]]."
   [database-id inner-query]
-  (merge {:database database-id, :type :query}
+  (merge {:database database-id}
          (if (:native inner-query)
-           {:native (set/rename-keys inner-query {:native :query})}
-           {:query inner-query})))
+           {:native (set/rename-keys inner-query {:native :query})
+            :type   :native}
+           {:query inner-query
+            :type  :query})))
 
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
