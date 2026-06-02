@@ -58,12 +58,25 @@
 ;;
 ;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting
 ;; the (initial) value of `site-url`
-(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent]} :headers, uri :uri}]
+(defn- forwarded-scheme
+  "The scheme a TLS-terminating proxy used to reach us, from `X-Forwarded-Proto`. Takes the first hop when the
+  header carries a comma-separated chain (`https, http`)."
+  [x-forwarded-proto]
+  (some-> x-forwarded-proto (str/split #",") first str/trim not-empty))
+
+(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host x-forwarded-proto host user-agent]} :headers, uri :uri}]
   (when (and (mdb/db-is-set-up?)
              (not (system/site-url))
              (not (#{"/api/health" "/livez" "/readyz"} uri))
              (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
-    (when-let [site-url (or origin x-forwarded-host host)]
+    ;; `origin` already carries a scheme; the `*-host` headers don't, so prepend the scheme the proxy terminated
+    ;; TLS with -- otherwise `normalize-site-url` defaults to `http://` and a TLS-terminating proxy ends up
+    ;; advertising `http://` auth/discovery URLs over an `https` origin, breaking MCP OAuth (BOT-1617).
+    (when-let [site-url (or origin
+                            (when-let [host (or x-forwarded-host host)]
+                              (if-let [scheme (forwarded-scheme x-forwarded-proto)]
+                                (str scheme "://" host)
+                                host)))]
       (log/infof "Setting Metabase site URL to %s" site-url)
       (try
         (system/site-url! site-url)

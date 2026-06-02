@@ -51,6 +51,26 @@
           (maybe-set-site-url request)
           (is (= "https://mb1.example.com" (system/site-url))))))))
 
+(deftest maybe-set-site-url-forwarded-proto-test
+  (testing "scheme-less `*-host` headers get the scheme from `X-Forwarded-Proto` (BOT-1617)"
+    (doseq [[host-header request] [["X-Forwarded-Host" (-> (mock-request "/" nil "mb.example.com" nil)
+                                                           (ring.mock/header "X-Forwarded-Proto" "https"))]
+                                   ["Host"             (-> (mock-request "/" nil nil "mb.example.com")
+                                                           (ring.mock/header "X-Forwarded-Proto" "https"))]]]
+      (testing host-header
+        (mt/with-temporary-setting-values [site-url nil]
+          (maybe-set-site-url request)
+          (is (= "https://mb.example.com" (system/site-url)))))))
+  (testing "the first hop wins when `X-Forwarded-Proto` is a comma-separated chain"
+    (mt/with-temporary-setting-values [site-url nil]
+      (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
+                              (ring.mock/header "X-Forwarded-Proto" "https, http")))
+      (is (= "https://mb.example.com" (system/site-url)))))
+  (testing "without `X-Forwarded-Proto`, a scheme-less host falls back to http:// (unchanged behavior)"
+    (mt/with-temporary-setting-values [site-url nil]
+      (maybe-set-site-url (mock-request "/" nil "mb.example.com" nil))
+      (is (= "http://mb.example.com" (system/site-url))))))
+
 (deftest add-version-header-test
   (testing "x-metabase-version is only added on API calls"
     (with-redefs [config/mb-version-info {:tag "v42"}]
