@@ -6,7 +6,7 @@
    [toucan2.core :as t2]))
 
 (deftest api-test
-  (binding [hi/*delay* 0]
+  (binding [hi/*delay-ms* 0]
     (t2/delete! :health_inspector_runs)
     (hi/save-report)
     (hi/save-report)

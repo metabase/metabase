@@ -8,7 +8,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: health_inspector_runs
-            remarks: Stores registered custom visualization plugins uploaded as zip bundles
+            remarks: Records status of health inspector runs over time
             columns:
               - column:
                   name: id

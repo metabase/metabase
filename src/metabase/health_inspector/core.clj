@@ -13,23 +13,26 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *delay*
+(def ^:dynamic *delay-ms*
   "Per-query delay to prevent overloading the system."
   5)
 
-(defn- validate-query [{:keys [dataset_query]}]
-  (Thread/sleep ^Long *delay*)
+(defn- validate-query [{:keys [total valid]} {:keys [dataset_query]}]
+  (Thread/sleep ^Long *delay-ms*)
   (let [query (lib-be/normalize-query (json/decode dataset_query keyword))]
-    (mr/validate ::schema/query query)))
+    {:total (inc total)
+     :valid (if (mr/validate ::schema/query query)
+              (inc valid)
+              valid)}))
 
 (defn- percent [n] (* 100 (int n)))
 
 (defn- validate-queries []
   (let [queries (t2/reducible-select :report_card {:where [:= :archived false]})
-        results (into [] (r/map validate-query queries))
-        ratio (if (empty? results)
+        {:keys [total valid]} (r/reduce validate-query {:total 0 :valid 0} queries)
+        ratio (if (zero? total)
                 1
-                (/ (count (filter identity results)) (count results)))]
+                (/ valid total))]
     {:health (percent ratio)
      :message (if (= 1 ratio)
                 "All queries valid."
@@ -59,8 +62,8 @@
 
 (defn list-runs
   "Return the most recent health inspector runs from the DB."
-  []
-  (t2/select :health_inspector_runs {:limit 32 :order-by [:run_at]}))
+  [limit]
+  (t2/select :health_inspector_runs {:limit limit :order-by [[:run_at :desc]]}))
 
 (task/defjob ^:private SaveReport [_]
   (save-report))
