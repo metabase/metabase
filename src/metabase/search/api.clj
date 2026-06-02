@@ -219,6 +219,7 @@
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
        [:search_engine                       {:optional true} [:maybe string?]]
+       ;; keep in sync with `valid-vector-search-strategies` in metabase-enterprise.semantic-search.settings
        [:vector_search_strategy              {:optional true} [:maybe [:enum "hnsw" "brute-force"]]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]

@@ -644,19 +644,20 @@
 (defn- brute-force-search-query
   "Build the semantic vector subquery as an exact, filter-first search over the rows matching `filters`."
   [index embedding-literal filters]
-  ;; Apply the filters first, inside a MATERIALIZED CTE. Materializing fences the planner off the HNSW
-  ;; index, so cosine distance is computed for every surviving row, then ordered and limited -- exact, at
-  ;; the cost of a sequential scan over the rows that pass the filters.
-  (let [filtered-query {:select (into common-search-columns
-                                      [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
-                        :from   [(keyword (:table-name index))]
-                        :where  (if filters filters [:= 1 1])}]
+  ;; Apply the filters and the distance cutoff first, inside a MATERIALIZED CTE. Materializing fences the
+  ;; planner off the HNSW index, so cosine distance is computed for every surviving row -- exact, at the
+  ;; cost of a sequential scan over the rows that pass the filters. Filtering by the cutoff here (rather
+  ;; than in the outer query) keeps the materialized set down to rows that can actually be returned.
+  (let [distance-cutoff [:<= [:raw (str "embedding <=> " embedding-literal)] max-cosine-distance]
+        filtered-query  {:select (into common-search-columns
+                                       [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
+                         :from   [(keyword (:table-name index))]
+                         :where  (if filters [:and filters distance-cutoff] distance-cutoff)}]
     {:with     [[:vector_candidates filtered-query :materialized]]
      :select   (into common-search-columns
                      [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
                       [:distance :semantic_score]])
      :from     [:vector_candidates]
-     :where    [:<= :distance max-cosine-distance]
      :order-by [[:semantic_rank :asc]]
      :limit    (semantic-settings/semantic-search-results-limit)}))
 

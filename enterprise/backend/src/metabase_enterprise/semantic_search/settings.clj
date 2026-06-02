@@ -99,7 +99,10 @@
   :doc false)
 
 (def ^:private valid-vector-search-strategies
-  "Valid semantic-search vector-search strategies."
+  "Valid semantic-search vector-search strategies.
+  Keep in sync with the `vector_search_strategy` enum in [[metabase.search.api]] (the OSS API layer can't
+  reference this EE set across the module boundary) and the dispatch in
+  [[metabase-enterprise.semantic-search.index/semantic-search-query]]."
   #{:hnsw :brute-force})
 
 (defsetting semantic-search-vector-strategy

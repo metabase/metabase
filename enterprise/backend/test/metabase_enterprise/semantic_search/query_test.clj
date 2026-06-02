@@ -46,7 +46,9 @@
                       (is (pos? (count (semantic.tu/filter-for-mock-embeddings results))))
                       (is (every? #(= "card" (:model %)) results))))
                   (testing "archived filter"
-                    (is (every? #(not (:archived %)) (q {:search-string "feline" :archived? false})))
+                    (let [active (q {:search-string "feline" :archived? false})]
+                      (is (pos? (count (semantic.tu/filter-for-mock-embeddings active))))
+                      (is (every? #(not (:archived %)) active)))
                     (let [archived (q {:search-string "feline" :archived? true})]
                       (is (pos? (count (semantic.tu/filter-for-mock-embeddings archived))))
                       (is (every? :archived archived))))
