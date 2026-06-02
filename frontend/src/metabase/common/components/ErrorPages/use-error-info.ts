@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { datasetApi } from "metabase/api";
 import { useLazyGetBugReportDetailsQuery } from "metabase/api/bug-report";
 import { useLazyListLogsQuery } from "metabase/api/logger";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
@@ -82,7 +82,7 @@ export const useErrorInfo = (
     const queryResults =
       hasQueryData(entity) &&
       entityInfo?.dataset_query &&
-      (await entityCompatibleQuery(
+      (await runRtkEndpoint(
         entityInfo.dataset_query,
         dispatch,
         datasetApi.endpoints.getAdhocQuery,

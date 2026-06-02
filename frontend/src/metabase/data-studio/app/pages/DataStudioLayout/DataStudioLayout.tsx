@@ -101,6 +101,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
+  const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
   const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
 
@@ -145,11 +146,12 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           )}
           <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
+            label={t`Schema viewer`}
+            icon="network"
+            to={Urls.dataStudioSchemaViewer()}
+            isSelected={currentTab === "schema-viewer"}
             showLabel={isNavbarOpened}
+            isGated={!hasSchemaViewerFeature}
           />
           <DataStudioTab
             label={t`Dependency graph`}
@@ -183,6 +185,13 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               }
             />
           )}
+          <DataStudioTab
+            label={t`Glossary`}
+            icon="glossary"
+            to={Urls.dataStudioGlossary()}
+            isSelected={currentTab === "glossary"}
+            showLabel={isNavbarOpened}
+          />
         </Stack>
         <Stack gap="0.75rem">
           {hasRemoteSyncFeature ? (

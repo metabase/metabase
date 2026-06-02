@@ -24,7 +24,12 @@ export const UserHasSeen = ({
   const indicatorContext = useContext(UserHasSeenAllContext);
   const { upsertBadge, removeBadge } = indicatorContext ?? {};
 
-  const [hasSeen, { ack, isLoading }] = useUserAcknowledgement(id, true);
+  const [acked, { ack, isLoading }] = useUserAcknowledgement(id, false);
+  // While the acknowledgement is still loading, treat the upsell as already
+  // seen so a previously-dismissed banner doesn't flash before we know its real
+  // state. Once loaded, an unset key (resolved to `null` by the API) reads as
+  // not-yet-seen so the upsell shows.
+  const hasSeen = isLoading || acked;
 
   useEffect(() => {
     const hasContext = upsertBadge && removeBadge;

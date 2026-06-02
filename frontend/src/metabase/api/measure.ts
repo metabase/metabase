@@ -21,7 +21,7 @@ import {
   provideMeasureTags,
   tag,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 export const measureApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -31,7 +31,7 @@ export const measureApi = Api.injectEndpoints({
         url: "/api/measure",
       }),
       providesTags: (measures = []) => provideMeasureListTags(measures),
-      onQueryStarted: hydrateLegacyEntities([MeasureSchema]),
+      onQueryStarted: hydrateMetadataStore([MeasureSchema]),
     }),
     getMeasure: builder.query<Measure, MeasureId>({
       query: (id) => ({
@@ -39,7 +39,7 @@ export const measureApi = Api.injectEndpoints({
         url: `/api/measure/${id}`,
       }),
       providesTags: (measure) => (measure ? provideMeasureTags(measure) : []),
-      onQueryStarted: hydrateLegacyEntities(MeasureSchema),
+      onQueryStarted: hydrateMetadataStore(MeasureSchema),
     }),
     getMeasureDimensionValues: builder.query<
       GetMeasureDimensionValuesResponse,

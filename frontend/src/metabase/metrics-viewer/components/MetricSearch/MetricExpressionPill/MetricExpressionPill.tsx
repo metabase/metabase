@@ -110,7 +110,7 @@ export function MetricExpressionPill({
             ml: 0,
             "aria-label": t`Remove expression`,
           }}
-          data-testid="metric-expression-pill"
+          data-testid="metrics-viewer-expression-pill"
         >
           <Flex align="center" gap="xs">
             <SourceColorIndicator

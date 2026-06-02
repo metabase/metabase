@@ -107,6 +107,8 @@
     [:map
      [:type         [:= :snippet]]
      [:snippet-name ::common/non-blank-string]
+     ;; TODO (Cam 2026-05-28) why isn't this required? Parameter substitution fails if it's not
+     ;; present (see [[metabase.query-processor.parameters.values-test/snippet-validation-test]]
      [:snippet-id {:optional true} ::id/snippet]
      ;; database to which this Snippet belongs. Doesn't always seem to be specified.
      [:database {:optional true} ::id/database]]]

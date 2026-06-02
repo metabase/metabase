@@ -2,6 +2,7 @@
 import EventEmitter from "events";
 import querystring from "querystring";
 
+import { substituteUrlTags } from "metabase/api/utils/substitute-url-tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
@@ -25,19 +26,17 @@ type RequestOptions = {
   json: boolean;
   hasBody: boolean;
   noEvent: boolean;
-  transformResponse: (opts: {
-    body: object;
-    data?: Record<string, unknown>;
-    response?: Response;
-  }) => Response | undefined;
-  raw: Record<string, boolean>;
+  /**
+   * When `true`, resolve with the raw `Response` instead of the parsed body —
+   * for callers that read it themselves (binary downloads, map tiles as a
+   * blob). Implies the fetch path (XHR has no `Response` object).
+   */
+  rawResponse?: boolean;
   headers: Record<string, string>;
   retry: boolean;
   retryCount: number;
   retryDelayIntervals: number[];
-  formData?: boolean;
   fetch?: boolean;
-  bodyParamName?: string | null;
   signal?: AbortSignal;
 };
 
@@ -45,8 +44,6 @@ const DEFAULT_OPTIONS: RequestOptions = {
   json: true,
   hasBody: false,
   noEvent: false,
-  transformResponse: ({ body }) => body as Response,
-  raw: {},
   headers: {},
   retry: false,
   retryCount: MAX_RETRIES,
@@ -71,20 +68,8 @@ type ApiMethod = (
 
 type MethodCreator = (
   urlTemplate: string,
-  methodOptions?:
-    | Partial<RequestOptions>
-    | ((opts: {
-        body: object;
-        data?: Record<string, unknown>;
-        response?: Response;
-      }) => Response | undefined),
+  methodOptions?: Partial<RequestOptions>,
 ) => ApiMethod;
-
-type ResponseErrorInfo = {
-  body: unknown;
-  status: number;
-  metabaseVersion: string | null;
-};
 
 /**
  * Thrown when the transport itself fails before a response is received —
@@ -99,11 +84,46 @@ export class NetworkError extends Error {
   }
 }
 
-export class LegacyApi extends EventEmitter {
+/**
+ * The standard web-platform shape for a cancelled request: an `Error` whose
+ * `name` is `"AbortError"`. `fetch()` rejects with a `DOMException` of this
+ * shape on abort, and we throw the same from the XHR path so both transports
+ * line up. Use `isAbortError` to narrow.
+ */
+export type AbortError = Error & { name: "AbortError" };
+
+/**
+ * Type guard for the standard `AbortError` that `fetch()` (and
+ * `XMLHttpRequest.abort()`-driven rejections) surface when the request is
+ * cancelled. Replaces the legacy `error.isCancelled` flag.
+ */
+export function isAbortError(error: unknown): error is AbortError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "AbortError"
+  );
+}
+
+type ResponseErrorInfo = {
+  body: unknown;
+  status: number;
+  metabaseVersion: string | null;
+};
+
+type EventMap = {
+  // Per-status events. Listeners receive the request URL (with basename
+  // stripped so subscribers see the relative path).
+  [status: number]: [string];
+  // Fired for any non-2xx response. Payload includes the response body so
+  // callers can inspect the failure beyond just its status.
+  responseError: [ResponseErrorInfo];
+};
+
+export class LegacyApi extends EventEmitter<EventMap> {
   basename = "";
   apiKey = "";
   sessionToken: string | undefined;
-  onResponseError: ((info: ResponseErrorInfo) => void) | undefined;
   requestClient: RequestClientInfo | undefined;
 
   beforeRequestHandlers: OnBeforeRequestHandler[] = [];
@@ -173,10 +193,6 @@ export class LegacyApi extends EventEmitter {
     creatorOptions: Partial<RequestOptions> = {},
   ): MethodCreator {
     return (urlTemplate, methodOptions = {}) => {
-      if (typeof methodOptions === "function") {
-        methodOptions = { transformResponse: methodOptions };
-      }
-
       const defaultOptions: RequestOptions = {
         ...DEFAULT_OPTIONS,
         ...creatorOptions,
@@ -203,19 +219,7 @@ export class LegacyApi extends EventEmitter {
           ...middlewareResult.options,
         } as RequestOptions;
         const { data } = middlewareResult;
-        for (const tag of url.match(/:\w+/g) || []) {
-          const paramName = tag.slice(1);
-          let value = data[paramName];
-          delete data[paramName];
-          if (value === undefined) {
-            console.warn("Warning: calling", method, "without", tag);
-            value = "";
-          }
-          if (!options.raw || !options.raw[paramName]) {
-            value = encodeURIComponent(value as string);
-          }
-          url = url.replace(tag, value as string);
-        }
+        url = substituteUrlTags(url, data, method);
         // remove undefined
         for (const name in data) {
           if (data[name] === undefined) {
@@ -223,15 +227,20 @@ export class LegacyApi extends EventEmitter {
           }
         }
 
-        let body: string | FormData | undefined;
+        let body: string | FormData | URLSearchParams | undefined;
         if (options.hasBody) {
-          body = options.formData
-            ? (rawData["formData"] as FormData)
-            : JSON.stringify(
-                options.bodyParamName != null
-                  ? data[options.bodyParamName!]
-                  : data,
-              );
+          if (
+            rawData instanceof FormData ||
+            rawData instanceof URLSearchParams
+          ) {
+            // Pass `FormData` / `URLSearchParams` bodies straight through so
+            // the browser sets the right Content-Type itself (multipart with
+            // boundary, or `application/x-www-form-urlencoded`). Replaces the
+            // legacy `body: { formData }, formData: true` wrapper shape.
+            body = rawData;
+          } else {
+            body = JSON.stringify(data);
+          }
         } else {
           const qs = querystring.stringify(data as Record<string, string>);
           if (qs) {
@@ -247,7 +256,11 @@ export class LegacyApi extends EventEmitter {
           ...options.headers,
         };
 
-        if (options.formData && options.fetch) {
+        // A `FormData` / `URLSearchParams` body must NOT carry our default
+        // `application/json` Content-Type — the browser (or XHR's
+        // `send(body)`) sets the correct value, with the multipart boundary
+        // for `FormData`. Both transports honor this.
+        if (body instanceof FormData || body instanceof URLSearchParams) {
           delete headers["Content-Type"];
         }
 
@@ -271,7 +284,7 @@ export class LegacyApi extends EventEmitter {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -301,7 +314,7 @@ export class LegacyApi extends EventEmitter {
         ) {
           await delay(retryDelays.pop() ?? 0, options.signal);
           if (options.signal?.aborted) {
-            throw { isCancelled: true };
+            throw new DOMException("Aborted", "AbortError");
           }
         } else {
           throw e;
@@ -314,13 +327,14 @@ export class LegacyApi extends EventEmitter {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
     // this is temporary to not deal with failed cypress tests
     // we should switch to using fetch in all cases (metabase#28489)
-    if (isTest || options.fetch) {
+    // `rawResponse` also forces fetch — XHR has no `Response` object.
+    if (isTest || options.fetch || options.rawResponse) {
       return this._makeRequestWithFetch(
         method,
         url,
@@ -345,7 +359,7 @@ export class LegacyApi extends EventEmitter {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -368,9 +382,13 @@ export class LegacyApi extends EventEmitter {
             ANTI_CSRF_TOKEN = antiCsrfToken;
           }
 
-          let responseBody: Response | string | undefined = xhr.responseText;
+          // An empty body (e.g. 204 No Content) surfaces as `null`, not `""`,
+          // so callers don't have to handle "the response was empty" via
+          // per-endpoint `transformResponse` workarounds.
+          let responseBody: Response | string | null | undefined =
+            xhr.status === 204 ? null : xhr.responseText;
 
-          if (options.json) {
+          if (options.json && xhr.responseText !== "") {
             try {
               responseBody = JSON.parse(xhr.responseText);
             } catch (e) {}
@@ -387,31 +405,31 @@ export class LegacyApi extends EventEmitter {
             status = responseBody._status as number;
           }
 
+          if (isCancelled) {
+            // Surface aborts as the standard `DOMException` AbortError so
+            // callers can `isAbortError`-check the same shape both transports
+            // (and `fetch` itself) emit. Skip the responseError/status events
+            // since the request was cancelled — there's no real response.
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+          }
+
           if (status >= 200 && status <= 299) {
-            if (options.transformResponse) {
-              responseBody = options.transformResponse({
-                body: responseBody as Response,
-                data,
-              });
-            }
             resolve(responseBody);
           } else {
-            if (this.onResponseError) {
-              this.onResponseError({
-                body: responseBody,
-                status,
-                metabaseVersion,
-              });
-            }
+            this.emit("responseError", {
+              body: responseBody,
+              status,
+              metabaseVersion,
+            });
 
             reject({
               status: status,
               data: responseBody,
-              isCancelled: isCancelled,
             });
           }
           if (!options.noEvent) {
-            this.emit(String(status), url);
+            this.emit(status, url);
           }
         }
       };
@@ -435,7 +453,7 @@ export class LegacyApi extends EventEmitter {
     method: string,
     url: string,
     headers: Record<string, string>,
-    requestBody: string | FormData | undefined,
+    requestBody: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -466,9 +484,13 @@ export class LegacyApi extends EventEmitter {
       .then((response) => {
         const unreadResponse = response.clone();
         return response.text().then((bodyText) => {
-          let body: string | Response | undefined = bodyText;
+          // An empty body (e.g. 204 No Content) surfaces as `null`, not `""`,
+          // so callers don't have to handle "the response was empty" via
+          // per-endpoint `transformResponse` workarounds.
+          let body: string | Response | null | undefined =
+            response.status === 204 ? null : bodyText;
 
-          if (options.json) {
+          if (options.json && bodyText !== "") {
             try {
               body = JSON.parse(bodyText);
             } catch (e) {}
@@ -494,30 +516,27 @@ export class LegacyApi extends EventEmitter {
           }
 
           if (!options.noEvent) {
-            this.emit(String(status), url);
+            this.emit(status, url);
           }
 
           if (status >= 200 && status <= 299) {
-            if (options.transformResponse) {
-              body = options.transformResponse({
-                body: body as Response,
-                data,
-                response: unreadResponse,
-              });
-            }
-            return body;
+            // `rawResponse` callers (binary downloads, map tiles) want the
+            // `Response` object itself rather than the parsed body — return
+            // the unread clone so they can `.blob()`/`.arrayBuffer()` it.
+            return options.rawResponse ? unreadResponse : body;
           } else {
-            if (this.onResponseError) {
-              this.onResponseError({ body, status, metabaseVersion });
-            }
+            this.emit("responseError", { body, status, metabaseVersion });
 
             throw { status: status, data: body };
           }
         });
       })
       .catch((error: unknown) => {
+        // When the request is aborted, `fetch` rejects with the standard
+        // `DOMException` AbortError. Let it propagate untouched so callers
+        // can `isAbortError`-check the standard web shape.
         if (options.signal?.aborted) {
-          throw { isCancelled: true };
+          throw error;
         }
         // A raw `fetch` rejection (e.g. the server dropped the connection)
         // surfaces as a plain Error here, indistinguishable from JS

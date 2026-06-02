@@ -269,7 +269,6 @@
     (metabase.util.match/match-many)
     (metabase.util.match/replace-in)
     (metabase.util.match/replace)
-    (metabase.driver-api.core/match)
     (metabase.driver-api.core/match-one)
     (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
@@ -930,10 +929,7 @@
 
     :deprecated-namespace
     {:exclude
-     [metabase.driver.common.parameters.dates
-      metabase.driver.common.parameters.operators
-      metabase.driver.common.parameters.values
-      metabase.legacy-mbql.normalize
+     [metabase.legacy-mbql.normalize
       metabase.legacy-mbql.schema
       metabase.legacy-mbql.schema.helpers
       metabase.legacy-mbql.schema.macros

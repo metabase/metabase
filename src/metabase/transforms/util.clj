@@ -117,7 +117,8 @@
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (try
-    (when-not (driver/schema-exists? driver db-id output-schema)
+    (when (and (not (str/blank? output-schema))
+               (not (driver/schema-exists? driver db-id output-schema)))
       (driver/create-schema-if-needed! driver conn-spec output-schema))
     (let [source-range-params  (transforms-base.u/get-source-range-params transform)
           transform-timeout    (transforms.settings/transform-timeout)

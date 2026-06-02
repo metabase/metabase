@@ -188,7 +188,6 @@ describe("BaseSMTPConnectionForm", () => {
               "email-smtp-port": "Wrong host or port",
             },
           },
-          isCancelled: false,
         }),
       });
 

@@ -101,9 +101,9 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 }
 
 // Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot)
-// and wires the `signal` to RTK Query's `.abort()`. Translates aborts
-// into the `{ isCancelled: true }` shape that the legacy fetch helper threw,
-// so existing error-handling code (e.g. queryErrored) keeps working.
+// and wires the `signal` to RTK Query's `.abort()`. On abort it surfaces the
+// standard `DOMException` AbortError so existing error-handling code keeps
+// working via `isAbortError(error)`.
 let adhocDatasetQueryCounter = 0;
 export async function runAdhocDatasetQuery(
   dispatch,
@@ -155,7 +155,7 @@ export async function runAdhocDatasetQuery(
     .unwrap()
     .catch((error) => {
       if (isCancelled) {
-        throw { isCancelled: true };
+        throw signal?.reason ?? new DOMException("Aborted", "AbortError");
       }
       throw error;
     })
@@ -288,10 +288,8 @@ export const EmbedApi = {
 };
 
 export const AutoApi = {
-  dashboard: GET("/api/automagic-dashboards/:subPath", {
-    // this prevents the `subPath` parameter from being URL encoded
-    raw: { subPath: true },
-  }),
+  // `:subPath*` keeps slashes in subPath unencoded (multi-segment path).
+  dashboard: GET("/api/automagic-dashboards/:subPath*"),
 };
 
 export const ParameterApi = {

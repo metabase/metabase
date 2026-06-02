@@ -1,3 +1,5 @@
+import type { SortDirection } from "metabase-types/api/sorting";
+
 import type { Card, CardId } from "./card";
 import type { Channel, SlackChannelId } from "./notification-channels";
 import type { PaginationRequest } from "./pagination";
@@ -11,7 +13,6 @@ export type NotificationCardSendCondition =
   | "goal_below"
   | "has_result";
 
-//#region Payload union type
 type NotificationCardPayload = {
   payload_type: "notification/card";
   payload: {
@@ -29,9 +30,6 @@ type NotificationCardPayload = {
 
 type NotificationPayload = NotificationCardPayload; // will be populated with more variants later on
 
-//#endregion
-
-//#region Handler union type
 export type NotificationRecipientUser = {
   type: "notification-recipient/user";
   user_id: number;
@@ -111,9 +109,6 @@ export type NotificationHandler =
   | NotificationHandlerSlack
   | NotificationHandlerHttp;
 
-//#endregion
-
-//#region Subscription type
 export type NotificationCronSubscription = {
   type: "notification-subscription/cron";
   event_name: null;
@@ -126,8 +121,6 @@ export type NotificationCronSubscription = {
   created_at?: string;
   updated_at?: string;
 };
-
-//#endregion
 
 export interface ListNotificationsRequest extends PaginationRequest {
   include_inactive?: boolean;
@@ -150,6 +143,7 @@ export type UpdateAlertNotificationRequest = NotificationCardPayload & {
   active: boolean;
   handlers: NotificationHandler[];
   subscriptions: NotificationCronSubscription[];
+  creator_id?: UserId;
 };
 
 export type UpdateNotificationRequest = UpdateAlertNotificationRequest; // will be populated with more variants later on
@@ -166,4 +160,78 @@ export type Notification = NotificationPayload & {
 
   updated_at?: string;
   created_at?: string;
+};
+
+export type NotificationRunStatus = "failing" | "successful";
+
+export type NotificationRunSummary = {
+  at: string;
+  error: string | null;
+  status: NotificationRunStatus;
+};
+
+export type NotificationChannelSendEntry = {
+  channel_type: NotificationChannelType;
+  status: NotificationRunStatus;
+  error: string | null;
+};
+
+export type NotificationTickSendEntry = {
+  at: string;
+  status: NotificationRunStatus;
+  error: string | null;
+  channels: NotificationChannelSendEntry[];
+};
+
+export type AdminNotificationSortColumn =
+  | "id"
+  | "last_send"
+  | "last_check"
+  | "card_name"
+  | "creator_name"
+  | "updated_at";
+
+// Admin notifications carry a nullable creator: the row may have no creator, or
+// a deactivated one (the "Ownerless" tab). The UI labels the creator as "Owner".
+export type AdminNotification = Omit<Notification, "creator_id" | "creator"> & {
+  creator_id: UserId | null;
+  creator: UserInfo | null;
+  last_check: NotificationRunSummary | null;
+  last_send: NotificationRunSummary | null;
+};
+
+export type AdminNotificationDetail = AdminNotification & {
+  check_history: NotificationRunSummary[];
+  send_history: NotificationTickSendEntry[];
+};
+
+export type AdminNotificationListParams = {
+  limit?: number;
+  offset?: number;
+  active?: boolean;
+  creator_id?: UserId;
+  creator_active?: boolean;
+  creatorless?: boolean;
+  card_id?: CardId;
+  recipient_email?: string;
+  channel?: NotificationChannelType | NotificationChannelType[];
+  last_send_status?: NotificationRunStatus;
+  query?: string;
+  sort_column?: AdminNotificationSortColumn;
+  sort_direction?: SortDirection;
+};
+
+export type AdminNotificationListResponse = {
+  data: AdminNotification[];
+  total: number;
+  limit: number | null;
+  offset: number | null;
+};
+
+export type BulkNotificationAction = "archive" | "change-creator";
+
+export type BulkNotificationPayload = {
+  notification_ids: NotificationId[];
+  action: BulkNotificationAction;
+  creator_id?: UserId;
 };
