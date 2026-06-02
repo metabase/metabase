@@ -1,5 +1,5 @@
 (ns metabase.analytics.api.proxy-test
-  "Integration tests for the public Snowplow telemetry proxy (`POST /api/analytics-proxy`, EMB-1758).
+  "Integration tests for the public Snowplow telemetry proxy (`POST /api/analytics-proxy`).
 
   Mirrors `metabase.geojson.api-test`: a public endpoint that forwards an outbound HTTP call, exercised with
   `clj-http.fake/with-fake-routes` to mock the collector and `metabase.test.http-client/client` for anonymous
@@ -59,9 +59,9 @@
 
 (deftest relays-collector-status-verbatim-test
   (testing "a non-2xx collector response is relayed unchanged (not masked as a 2xx) so the tracker can retry"
-    (let [captured (atom nil)]
-      (with-collector captured {:status 400 :headers {} :body "bad payload"}
-        ;; client/client asserts the expected status — passing 400 proves the proxy relayed 400, not 200/500.
+    (mt/with-temporary-setting-values [snowplow-url fake-collector-host]
+      (fake/with-fake-routes
+        {(collector-url) (fn [_request] {:status 400 :headers {} :body "bad payload"})}
         (client/client :post 400 "analytics-proxy" sample-payload)))))
 
 (deftest unreachable-collector-returns-502-test
