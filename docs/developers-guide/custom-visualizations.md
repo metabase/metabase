@@ -65,11 +65,8 @@ To develop your plugin against a live Metabase with hot reload:
 
 Your plugin shows up in the **Custom visualizations** section of the visualization sidebar (alongside any installed plugins) and is labeled as a dev visualization.
 
-### If Metabase runs in Docker
 
-Metabase's backend fetches from the dev server: it pulls `metabase-plugin.json`, the JS bundle, and the hot-reload stream from the **Dev server URL**. The URL therefore has to resolve from wherever Metabase runs.
-
-When Metabase runs in a container, `http://localhost:5174` points at the container itself, and the **Development** page reports "Could not fetch metabase-plugin.json from the dev server." Point the URL at the host instead:
+If you're running Metabase in a Docker container, you'll need to set the **Dev server URL** to:
 
 ```
 http://host.docker.internal:5174
@@ -92,12 +89,12 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 | Field              | Description                                                                                                                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles. It doesn't have to match the `id` your visualization returns. |
-| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically. It's the only file Metabase serves alongside your bundle — see [Bundling assets](#bundling-assets).         |
+| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle.see [Bundling assets](#bundling-assets).         |
 | `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                                 |
 
 ## Defining a visualization
 
-`src/index.tsx` exports a factory function. Metabase calls it with a set of helpers and expects a visualization definition back. Wrap the definition in `defineConfig` — it turns the React `VisualizationComponent` you write into the renderer Metabase mounts, and keeps the definition's types in check:
+`src/index.tsx` exports a factory function. Metabase calls the function with a set of helpers and expects a visualization definition back. Wrap the definition in `defineConfig` it turns the React `VisualizationComponent` you write into the renderer Metabase mounts, and keeps the definition's types in check:
 
 ```tsx
 import {
@@ -336,7 +333,7 @@ The icon shows up in the chart type picker and elsewhere in the Metabase UI.
 
 ## Build and package the plugin
 
-When your visualization is ready, run:
+Run:
 
 ```
 npm run build
@@ -344,13 +341,13 @@ npm run build
 
 This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and the whitelisted icon under `dist/assets/`, and has to come in under 5 MB (5 MiB). The packaging step also rejects an archive whose uncompressed contents exceed 25 MiB. You don't need to commit `dist/`.
 
-Upload the `.tgz` file in **Admin** > **Settings** > **Custom visualizations** > **Manage visualizations** > **Add**. See [Custom visualizations](../questions/visualizations/custom.md) for more on uploading and managing plugins.
+For uploading and managing plugins, see [Custom visualizations](../questions/visualizations/custom.md).
 
 ## Versioning and compatibility
 
 The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`. Write the range against the full version number (`">=1.62.0"`), not a bare major version (`">=62"`), which won't match.
 
-If you upload a bundle to a Metabase outside the plugin's declared range, Metabase rejects the upload. If a running instance later falls outside the range — after a downgrade, say — the plugin stops loading, and cards that used it fall back to a default visualization until the instance is back in range.
+If you upload a bundle to a Metabase outside the plugin's declared range, Metabase rejects the upload.
 
 ## Sandbox restrictions
 
@@ -363,11 +360,14 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 - **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
 - **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
-Plugins also don't render in static visualizations: dashboard subscriptions sent by [email](../dashboards/subscriptions.md) and Slack fall back to a default visualization for cards that use a custom visualization. This static, server-side path is separate from the user-triggered PNG export enabled by [`canSavePng`](#visualization-definition-properties), which captures the live interactive chart and does work.
+### Custom visualizations don't render in subscriptions
 
-## Examples
+Custom visualizations don't render in static visualizations: dashboard subscriptions sent by [email](../dashboards/subscriptions.md), Slack, or webhook fall back to a default visualization for cards that use a custom visualization.
 
-- [Calendar heatmap](https://github.com/metabase/custom-viz-calendar-heatmap) — a complete custom visualization plugin. Clone it, run `npm install && npm run build`, and upload the resulting `.tgz` to a Metabase to see it in action — or read through `src/` for a worked example of `checkRenderable`, settings, and rendering against `series` data.
+## Examples plugins
+
+- [Calendar heatmap](https://github.com/metabase/custom-viz-calendar-heatmap). Read through `src/` for a example of `checkRenderable`, settings, and rendering against `series` data.
+- [Thumbs](https://github.com/metabase/custom-viz-thumbs). Thumbs up or down depending on a threshold.
 
 ## Further reading
 
