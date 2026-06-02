@@ -928,6 +928,55 @@
         {:results final-results
          :raw-count (count raw-results)}))))
 
+(defn- row-present?
+  "Whether a single `(model, id)` row survives `where` against the index `table`."
+  [db table model id where]
+  (some? (jdbc/execute-one! db (sql-format-quoted
+                                {:select [[[:inline 1] :one]]
+                                 :from   [table]
+                                 :where  (into [:and [:= :model model] [:= :model_id (str id)]]
+                                               (when where [where]))})
+                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
+(defn diagnose-row
+  "Engine-owned diagnostic stages for the semantic index: returns `{:type ..., :details ...}` for the first of
+  `:missing-from-index` / `:filtered` / `:not-matching` that drops `(model, id)`, or `:candidate` if it survives
+  every engine-owned stage. The caller ([[metabase.search.debug]]) handles the engine-independent stages."
+  [db index search-context model id]
+  (let [table (keyword (:table-name index))
+        row   (jdbc/execute-one! db (sql-format-quoted
+                                     {:select [:model :model_id :legacy_input]
+                                      :from   [table]
+                                      :where  [:and [:= :model model] [:= :model_id (str id)]]})
+                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (cond
+      (nil? row)
+      {:type :missing-from-index :details {:table (:table-name index)}}
+
+      (not (row-present? db table model id (search-filters search-context)))
+      {:type :filtered :details {:excluded-by :filters}}
+
+      (empty? (filter-read-permitted [(:legacy_input (decode-legacy-input row))]))
+      {:type :filtered :details {:excluded-by :permissions}}
+
+      :else
+      (let [search-string (:search-string search-context)]
+        (if (str/blank? search-string)
+          {:type :candidate :details {}}
+          (let [embedding (embedding/get-embedding (:embedding-model index) search-string
+                                                   {:type :query :record-tokens? true})
+                distance  (-> (jdbc/execute-one! db (sql-format-quoted
+                                                     {:select [[[:raw (str "embedding <=> " (format-embedding embedding))] :distance]]
+                                                      :from   [table]
+                                                      :where  [:and [:= :model model] [:= :model_id (str id)]]})
+                                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                              :distance)]
+            ;; A row beyond the cosine cutoff is dropped by the vector arm; the keyword arm may still surface it via
+            ;; RRF, so treat it as a candidate when within the cutoff and only call it not-matching past the cutoff.
+            (if (and distance (> distance max-cosine-distance))
+              {:type :not-matching :details {:max-cosine-distance max-cosine-distance :distance distance}}
+              {:type :candidate :details {:distance distance}})))))))
+
 (comment
   (def embedding-model (embedding/get-configured-model))
   (def index (default-index embedding-model))
