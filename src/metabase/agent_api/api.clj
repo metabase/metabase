@@ -1087,6 +1087,41 @@
      :location      (:location coll)
      :description   (:description coll)}))
 
+;;; -------------------------------------------------- List Glossary -------------------------------------------------
+
+(mr/def ::glossary-entry
+  "One glossary entry: the term, its definition, and the row id."
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
+   [:id         ms/PositiveInt]
+   [:term       :string]
+   [:definition :string]])
+
+(mr/def ::list-glossary-response
+  "All glossary entries (optionally filtered), ordered by term."
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
+   [:data        [:sequential ::glossary-entry]]
+   [:total_count :int]])
+
+(api.macros/defendpoint :get "/v1/glossary" :- ::list-glossary-response
+  "List glossary entries, optionally filtered by a case-insensitive substring `search` that
+  matches against either the term or its definition. Entries are ordered by term."
+  {:scope metabot/agent-glossary-read
+   :tool  {:name "list_glossary"
+           :description (str "List the Metabase glossary — business terms and their definitions. "
+                             "Use this to ground answers in the organization's own terminology. "
+                             "Pass an optional `search` substring to filter terms or definitions.")}}
+  [_route-params
+   {:keys [search]} :- [:map [:search {:optional true} [:maybe ms/NonBlankString]]]]
+  (let [where   (when search
+                  [:or
+                   [:like [:lower :term] [:lower (str "%" search "%")]]
+                   [:like [:lower :definition] [:lower (str "%" search "%")]]])
+        entries (t2/select [:model/Glossary :id :term :definition]
+                           (cond-> {:order-by [[:term :asc]]}
+                             where (assoc :where where)))]
+    {:data        entries
+     :total_count (count entries)}))
+
 ;;; ------------------------------------------------- Update Glossary ------------------------------------------------
 
 (mr/def ::update-glossary-request

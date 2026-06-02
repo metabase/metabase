@@ -1098,3 +1098,47 @@
     (mt/user-http-request :crowberto :post 400 "agent/v1/glossary"
                           {"Blank" "   "})
     (is (nil? (glossary-def "Blank")))))
+
+;;; --------------------------------------------------- List Glossary Tests ---------------------------------------
+
+(deftest list-glossary-test
+  (testing "Lists all glossary entries ordered by term"
+    (mt/with-temp [:model/Glossary _ {:term       "Zeta Metric"
+                                      :definition "last alphabetically"
+                                      :creator_id (mt/user->id :crowberto)}
+                   :model/Glossary _ {:term       "Alpha Metric"
+                                      :definition "first alphabetically"
+                                      :creator_id (mt/user->id :crowberto)}]
+      (let [resp  (mt/user-http-request :crowberto :get 200 "agent/v1/glossary")
+            terms (map :term (:data resp))]
+        (is (= (:total_count resp) (count (:data resp))))
+        (is (=? {:id pos? :term "Alpha Metric" :definition "first alphabetically"}
+                (first (filter (comp #{"Alpha Metric"} :term) (:data resp)))))
+        ;; The two seeded terms appear in alphabetical order relative to each other.
+        (is (< (.indexOf ^java.util.List (vec terms) "Alpha Metric")
+               (.indexOf ^java.util.List (vec terms) "Zeta Metric")))))))
+
+(deftest list-glossary-search-test
+  (testing "Filters by case-insensitive substring across term and definition"
+    (mt/with-temp [:model/Glossary _ {:term       "Gross Margin"
+                                      :definition "revenue minus cogs"
+                                      :creator_id (mt/user->id :crowberto)}
+                   :model/Glossary _ {:term       "Net Promoter Score"
+                                      :definition "loyalty metric"
+                                      :creator_id (mt/user->id :crowberto)}]
+      (testing "matches on term"
+        (let [resp (mt/user-http-request :crowberto :get 200 "agent/v1/glossary" :search "margin")]
+          (is (= ["Gross Margin"] (map :term (:data resp))))))
+      (testing "matches on definition"
+        (let [resp (mt/user-http-request :crowberto :get 200 "agent/v1/glossary" :search "loyalty")]
+          (is (= ["Net Promoter Score"] (map :term (:data resp)))))))))
+
+(deftest list-glossary-allowed-for-non-admins-test
+  (testing "Reading the glossary does not require admin (unlike updating it)"
+    (mt/with-temp [:model/Glossary _ {:term       "Readable Term"
+                                      :definition "visible to everyone"
+                                      :creator_id (mt/user->id :crowberto)}]
+      (let [resp (mt/user-http-request :rasta :get 200 "agent/v1/glossary" :search "Readable Term")]
+        (is (=? {:data        [{:term "Readable Term" :definition "visible to everyone"}]
+                 :total_count 1}
+                resp))))))

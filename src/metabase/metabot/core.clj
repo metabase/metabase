@@ -15,6 +15,7 @@
   agent-collection-create
   agent-dashboard-create
   agent-dashboard-update
+  agent-glossary-read
   agent-glossary-write
   agent-query
   agent-query-construct
