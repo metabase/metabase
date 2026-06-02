@@ -296,8 +296,7 @@
   ;; local testing shows that identifying old datasets works correctly, but
   ;; sometimes randomly in CI it seems to decide that datasets are old and
   ;; deletes them even tho they are not old.
-  ;; TODO: we want to drop them only if they have random names
-  ;; (drop-old-datasets!)
+  (drop-old-datasets!)
   (drop-orphan-isolation-schemas!)
   (drop-orphan-isolation-users!)
   (drop-orphan-isolation-roles!))
@@ -640,19 +639,13 @@
   ;; normal tables literally cannot have primary keys enforced! must be hybrid.
   (with-write-stmt! (fn [^java.sql.Statement stmt]
                       (.executeQuery stmt "CREATE HYBRID TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.locks
-                                          (dataset TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT current_timestamp())"))))
+                                          (dataset TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT current_timestamp())")))
+  ;; unfortuantely with-redefs in the test suite can mean that we end up trying
+  ;; to create locks as other users which will need access to the locks table
+  (with-write-stmt! (fn [^java.sql.Statement stmt]
+                      (.executeQuery stmt "GRANT ALL ON metabase_test_tracking.PUBLIC.locks TO SYSADMIN"))))
 
 (alter-var-root #'setup-locks! memoize)
-
-;; sometimes snowflake randomly throws an exception claiming
-;; "SQL compilation error: Object 'METABASE_TEST_TRACKING.PUBLIC.LOCKS' does not exist or not authorized."
-;; despite the fact that the table definitely exists. the cause is unknown,
-;; but the error goes away upon a retry. tacky as hell, but what else can we do?
-(defn- missing-table-ex? [^SnowflakeSQLException ex]
-  ;; snowflake documentation does not bother to define these so it's possible
-  ;; these codes are broader than what we are looking for.
-  (and (= "42S02" (.getSQLState ex))
-       (re-find #"does not exist or not authorized." (.getMessage ex))))
 
 (defn- try-lock! [^java.sql.Statement stmt dataset-name]
   (try
@@ -660,8 +653,7 @@
                                 dataset-name))
     true
     (catch SnowflakeSQLException e
-      (when-not (or (= "A primary key already exists." (.getMessage e))
-                    (missing-table-ex? e))
+      (when-not (= "A primary key already exists." (.getMessage e))
         (throw e))
       (with-write-stmt! (fn [^java.sql.Statement stmt]
                           (.executeQuery stmt "DELETE FROM metabase_test_tracking.PUBLIC.locks
@@ -683,16 +675,8 @@
 (defn- unlock! [dataset-name ^java.sql.Statement stmt]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "[Snowflake] unlocking" dataset-name)
-  (try
-    (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
-                                dataset-name))
-    (catch SnowflakeSQLException e
-      ;; sometimes snowflake throws a missing table exception for no reason.
-      ;; when this happens, retrying immediately does not work; it just
-      ;; happens again.  so instead we can delay so that the lock will be
-      ;; considered stale when it's checked next.
-      (when (missing-table-ex? e)
-        (Thread/sleep 30000)))))
+  (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
+                              dataset-name)))
 
 (defmethod test.data.impl.get-or-create/dataset-lock :snowflake
   [_driver dataset-name]
