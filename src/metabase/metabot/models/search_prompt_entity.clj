@@ -2,6 +2,8 @@
   (:require
    [metabase.metabot.prompt-entities :as prompt-entities]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -19,6 +21,7 @@
 
 (doto :model/SearchPromptEntity
   (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/SearchPromptEntity
@@ -85,3 +88,53 @@
   [row]
   (mirror! #(prompt-entities/delete-prompt-entity! (:id row)))
   row)
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+;;; `entities` is a polymorphic list of references — each `{:model "table"|"card"|"model" :id <local-id>}`. On
+;;; export we swap each local id for a portable reference (a Card's entity_id, or a Table's `[db schema table]`
+;;; path) and reverse it on import, mirroring `serdes/export-viz-link-card`.
+
+(def ^:private entity-model->toucan
+  "Toucan model for each `entities` ref `:model` string. Tables get the table-fk treatment instead."
+  {"card"  :model/Card
+   "model" :model/Card})
+
+(defn- export-entity-ref [{:keys [model id] :as entity}]
+  (assoc entity :id (if (= model "table")
+                      (serdes/*export-table-fk* id)
+                      (serdes/*export-fk* id (entity-model->toucan model)))))
+
+(defn- import-entity-ref [{:keys [model id] :as entity}]
+  (assoc entity :id (if (= model "table")
+                      (serdes/*import-table-fk* id)
+                      (serdes/*import-fk* id (entity-model->toucan model)))))
+
+(defmethod serdes/make-spec "SearchPromptEntity" [_model-name _opts]
+  {:copy      [:entity_id :prompt :verified]
+   :transform {:created_at (serdes/date)
+               :updated_at (serdes/date)
+               :type       (serdes/kw)
+               :entities   {:export #(mapv export-entity-ref %)
+                            :import #(mapv import-entity-ref %)}}
+   :defaults  {:verified false}})
+
+(defmethod serdes/hash-fields :model/SearchPromptEntity
+  [_model]
+  [:prompt :type])
+
+(defmethod serdes/generate-path "SearchPromptEntity" [_ entity]
+  (serdes/maybe-labeled "SearchPromptEntity" entity :prompt))
+
+(defmethod serdes/storage-path "SearchPromptEntity" [entity _ctx]
+  [{:label "search-prompt-entities"}
+   {:label (u/slugify (:prompt entity) {:unicode? true}) :key (:entity_id entity)}])
+
+(defmethod serdes/dependencies "SearchPromptEntity"
+  [{:keys [entities]}]
+  ;; A referenced Table is synthesized on import if missing, so (like link cards) we depend on its Database,
+  ;; not the Table itself. Card refs depend on the Card directly.
+  (into #{} (for [{:keys [model id]} entities]
+              (if (= model "table")
+                [{:model "Database" :id (first id)}]
+                [{:model "Card" :id id}]))))

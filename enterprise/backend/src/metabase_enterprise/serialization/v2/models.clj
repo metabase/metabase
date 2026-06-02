@@ -38,6 +38,7 @@
            "FieldValues"
            "Metabot"
            "PythonLibrary"
+           "SearchPromptEntity"
            "Setting"
            "Transform"
            "TransformJob"

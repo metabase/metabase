@@ -83,3 +83,19 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v62.2026-06-02T00:00:03
+      author: christruter
+      comment: Add entity_id to search_prompt_entities for serialization
+      changes:
+        - addColumn:
+            tableName: search_prompt_entities
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity (serialization)
+                  constraints:
+                    nullable: true
+                    unique: true
+
