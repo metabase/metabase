@@ -104,6 +104,16 @@
                 ["card" 2 "stop words"]]
                (search-results :exact "the any most of stop words very")))))))
 
+(deftest exact-normalization-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-index-contents!
+      [{:model "card" :id 1 :name "Sales,  Revenue"}
+       {:model "card" :id 2 :name "Sales Revenue Report"}]
+      (testing "Exact matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales,  Revenue"]
+                ["card" 2 "Sales Revenue Report"]]
+               (search-results :exact "sales revenue")))))))
+
 (deftest prefix-test
   (mt/with-premium-features #{:semantic-search}
     (with-index-contents!
@@ -113,6 +123,16 @@
         (is (= [["card" 1 "this is a prefix of something longer"]
                 ["card" 2 "a prefix this is not, unfortunately"]]
                (search-results :prefix "this is a prefix")))))))
+
+(deftest prefix-normalization-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-index-contents!
+      [{:model "card" :id 1 :name "Sales, Revenue Quarterly"}
+       {:model "card" :id 2 :name "Revenue and Sales"}]
+      (testing "Prefix matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales, Revenue Quarterly"]
+                ["card" 2 "Revenue and Sales"]]
+               (search-results :prefix "sales revenue")))))))
 
 (deftest pinned-test
   (mt/with-premium-features #{:semantic-search}
