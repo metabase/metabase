@@ -59,8 +59,8 @@
 ;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting
 ;; the (initial) value of `site-url`
 (defn- forwarded-scheme
-  "The scheme a TLS-terminating proxy used to reach us, from `X-Forwarded-Proto`. Takes the first hop when the
-  header carries a comma-separated chain (`https, http`)."
+  "The scheme a TLS-terminating proxy used to reach us, from `X-Forwarded-Proto`.
+  Takes the first hop when the header carries a comma-separated chain (`https, http`)."
   [x-forwarded-proto]
   (some-> x-forwarded-proto (str/split #",") first str/trim not-empty))
 

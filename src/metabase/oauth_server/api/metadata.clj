@@ -68,6 +68,6 @@
 ;; the request doesn't fall through to the SPA's HTML catch-all and trip a `JSON.parse` error (BOT-1617).
 (api.macros/defendpoint :get "/oauth-protected-resource"
   :- protected-resource-schema
-  "Returns OAuth Protected Resource Metadata (RFC 9728); alias of the MCP resource-specific path."
+  "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
   []
   (protected-resource-response))
