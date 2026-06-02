@@ -1,37 +1,28 @@
-(ns metabase.driver.common.parameters.values
+(ns metabase.query-processor.parameters.values
   "These functions build a map of information about the types and values of the params used in a query. (These functions
   don't parse the query itself, but instead look at the values of `:template-tags` and `:parameters` passed along with
   the query.)
 
-    (query->params-map some-inner-query)
+    (stage->params-map metadata-providerable query-stage)
     ;; -> {\"checkin_date\" {:field {:name \"date\", :parent_id nil, :table_id 1375}
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
-                                     :value  \"2015-01-01~2016-09-01\"}}}
-
-
-  DEPRECATED: `driver.common.parameters.*` namespaces deal with legacy MBQL queries. Migrate to MBQL-5-friendly
-  replacement namespaces. The replacement for this namespace is [[metabase.query-processor.parameters.values]].
-
-  TODO (Cam 10/3/25) -- that namespace was introduced in #61158, but then I removed it in a subsequent PR to prune
-  unused namespaces. We can't migrate to it if it's gone... please restore it when we start migrating usages of it
-  over."
-  {:deprecated "0.57.0"}
+                                     :value  \"2015-01-01~2016-09-01\"}}}"
   (:refer-clojure :exclude [every? some mapv not-empty get-in])
   (:require
    [clojure.string :as str]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.parameters.parse.types :as params.types]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -46,14 +37,13 @@
 (set! *warn-on-reflection* true)
 
 (defmulti ^:private parse-tag
-  "Parse a tag by its `:type`, returning an appropriate record type such as
-  `metabase.driver.common.parameters.FieldFilter`."
-  {:arglists '([tag params])}
-  (fn [{tag-type :type} _]
+  "Parse a tag by its `:type`, returning one of the parsed types in [[metabase.lib.parameters.parse.types]]."
+  {:arglists '([metadata-providerable tag params])}
+  (fn [_metadata-providerable {tag-type :type, :as _tag} _params]
     (keyword tag-type)))
 
 (defmethod parse-tag :default
-  [{tag-type :type, :as tag} _]
+  [_metadata-providerable {tag-type :type, :as tag} _params]
   (throw (ex-info (tru "Don''t know how to parse parameter of type {0}" (pr-str tag-type))
                   {:tag tag})))
 
@@ -69,8 +59,8 @@
 (mr/def ::single-value
   "Schema for a valid *single* value for a param."
   [:or
-   :metabase.lib.parameters.parse.types/field-filter
-   :metabase.lib.parameters.parse.types/date
+   ::params.types/field-filter
+   ::params.types/date
    number?
    :string
    :boolean])
@@ -80,7 +70,7 @@
   [:maybe
    [:or
     {:error/message "Valid param value(s)"}
-    [:= lib/parsed-param-no-value-placeholder]
+    ::params.types/no-value
     ::single-value
     [:sequential ::single-value]
     :map]])
@@ -97,7 +87,7 @@
 
   Targeting template tags by ID is preferable (as of version 44) but targeting by name is supported for backwards
   compatibility."
-  [tag :- ::mbql.s/TemplateTag]
+  [tag :- ::lib.schema.template-tag/template-tag]
   (let [target-type (case (:type tag)
                       (:dimension :temporal-unit) :dimension
                       :variable)]
@@ -121,7 +111,7 @@
 
 (mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
-  [tag    :- ::mbql.s/TemplateTag
+  [tag    :- ::lib.schema.template-tag/template-tag
    params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [tag-target? (tag-target-pred tag)]
     (seq (for [param params
@@ -144,14 +134,14 @@
                 param-display-name)
            {:type qp.error-type/multiple-conflicting-default-values}))
 
-(mu/defn- dimension->field-id :- ::lib.schema.id/field
-  [dimension]
-  (second dimension))
+(mu/defn- field-ref->field-id :- ::lib.schema.id/field
+  [field-ref :- :mbql.clause/field]
+  (last field-ref))
 
 (mu/defn- field-filter-value
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
-  [tag    :- ::mbql.s/TemplateTag
+  [tag    :- ::lib.schema.template-tag/template-tag
    params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [matching-params  (tag-params tag params)
         tag-opts         (:options tag)
@@ -215,22 +205,25 @@
       :else
       lib/parsed-param-no-value-placeholder)))
 
-(mu/defmethod parse-tag :dimension :- [:maybe :metabase.lib.parameters.parse.types/field-filter]
-  [{:keys [dimension alias], :as tag} :- ::mbql.s/TemplateTag
+(mu/defmethod parse-tag :dimension :- ::params.types/field-filter
+  [metadata-providerable              :- ::lib.schema.metadata/metadata-providerable
+   {:keys [dimension alias], :as tag} :- ::lib.schema.template-tag/template-tag
    params                             :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
-  (let [field-id (dimension->field-id dimension)
-        field    (or (lib.metadata/field (qp.store/metadata-provider) field-id)
+  (let [field-id (field-ref->field-id dimension)
+        field    (or (lib.metadata/field metadata-providerable field-id)
                      (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                      {:field-id field-id, :type qp.error-type/invalid-parameter})))
         value    (field-filter-value tag params)]
     (lib/parsed-field-filter-param field value alias)))
 
-(mu/defmethod parse-tag :card :- :metabase.lib.parameters.parse.types/referenced-card-query
-  [{:keys [card-id], :as tag} :- ::mbql.s/TemplateTag _params]
+(mu/defmethod parse-tag :card :- ::params.types/referenced-card-query
+  [metadata-providerable      :- ::lib.schema.metadata/metadata-providerable
+   {:keys [card-id], :as tag} :- ::lib.schema.template-tag/template-tag
+   _params]
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
-  (let [card           (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
+  (let [card           (lib.metadata/card metadata-providerable card-id)
         persisted-info (when (= (:type card) :model)
                          (:lib/persisted-info card))
         query          (or (:dataset-query card)
@@ -241,7 +234,7 @@
       (let [query                  (assoc query :info {:card-id card-id})
             {:keys [query params]} (or (when (qp.persistence/can-substitute? card persisted-info)
                                          {:query (qp.persistence/persisted-info-native-query
-                                                  (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+                                                  (u/the-id (lib.metadata/database metadata-providerable))
                                                   persisted-info)})
                                        (qp.compile/compile (qp/disable-max-results query)))]
         (lib/parsed-referenced-card-query-param card-id query params))
@@ -255,8 +248,10 @@
                  :type              qp.error-type/invalid-parameter}
                 e))))))
 
-(mu/defmethod parse-tag :table :- :metabase.lib.parameters.parse.types/referenced-table-query
-  [{:keys [table-id source-filters emit-alias name]} :- ::mbql.s/TemplateTag _params]
+(mu/defmethod parse-tag :table :- ::params.types/referenced-table-query
+  [_metadata-providerable                            :- ::lib.schema.metadata/metadata-providerable
+   {:keys [table-id source-filters emit-alias name]} :- ::lib.schema.template-tag/template-tag
+   _params]
   (when (seq source-filters)
     (when-let [op (some #(when-not (lib.schema.template-tag/allowed-source-filter-ops (:op %)) %) source-filters)]
       (throw (ex-info (tru "Invalid source-filter operator: {0}. Allowed operators: {1}"
@@ -267,13 +262,14 @@
    (not-empty source-filters)
    (when emit-alias name)))
 
-(mu/defmethod parse-tag :snippet :- :metabase.lib.parameters.parse.types/referenced-query-snippet
-  [{:keys [snippet-name snippet-id], :as tag} :- ::mbql.s/TemplateTag
+(mu/defmethod parse-tag :snippet :- ::params.types/referenced-query-snippet
+  [metadata-providerable                      :- ::lib.schema.metadata/metadata-providerable
+   {:keys [snippet-name snippet-id], :as tag} :- ::lib.schema.template-tag/template-tag
    _params]
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
-        snippet    (or (lib.metadata/native-query-snippet (qp.store/metadata-provider) snippet-id)
+        snippet    (or (lib.metadata/native-query-snippet metadata-providerable snippet-id)
                        (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                                        {:snippet-id   snippet-id
                                         :snippet-name snippet-name
@@ -281,8 +277,10 @@
                                         :type         qp.error-type/invalid-parameter})))]
     (lib/parsed-referenced-query-snippet-param (:id snippet) (:content snippet))))
 
-(defmethod parse-tag :temporal-unit
-  [{:keys [required dimension alias] :as tag} params]
+(mu/defmethod parse-tag :temporal-unit :- ::params.types/temporal-unit
+  [metadata-providerable                      :- ::lib.schema.metadata/metadata-providerable
+   {:keys [required dimension alias] :as tag} :- ::lib.schema.template-tag/template-tag
+   params                                     :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [matching-param       (when-let [matching-params (not-empty (tag-params tag params))]
                                (when (> (count matching-params) 1)
                                  (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
@@ -301,8 +299,8 @@
       (throw (ex-info (tru "Error: invalid value specified for temporal-unit parameter.")
                       {:value param-value
                        :expected valid-temporal-units})))
-    (let [field (let [field-id (dimension->field-id dimension)]
-                  (or (lib.metadata/field (qp.store/metadata-provider) field-id)
+    (let [field (let [field-id (field-ref->field-id dimension)]
+                  (or (lib.metadata/field metadata-providerable field-id)
                       (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                       {:field-id field-id, :type qp.error-type/invalid-parameter}))))
           value (or (:value matching-param)
@@ -318,7 +316,7 @@
 
 (mu/defn- param-value-for-raw-value-tag
   "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
-  [tag    :- ::mbql.s/TemplateTag
+  [tag    :- ::lib.schema.template-tag/template-tag
    params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [matching-params (tag-params tag params)
         real-values     (into #{} (keep :value)   matching-params)
@@ -346,21 +344,10 @@
       ;; Fall back to no value.
       :else                       lib/parsed-param-no-value-placeholder)))
 
-(defmethod parse-tag :number
-  [tag params]
-  (param-value-for-raw-value-tag tag params))
-
-(defmethod parse-tag :text
-  [tag params]
-  (param-value-for-raw-value-tag tag params))
-
-(defmethod parse-tag :date
-  [tag params]
-  (param-value-for-raw-value-tag tag params))
-
-(defmethod parse-tag :boolean
-  [tag params]
-  (param-value-for-raw-value-tag tag params))
+(doseq [tag-type [:number :text :date :boolean]]
+  (defmethod parse-tag tag-type
+    [_metadata-providerable tag params]
+    (param-value-for-raw-value-tag tag params)))
 
 ;;; Parsing Values
 
@@ -411,7 +398,7 @@
 (mu/defn- update-filter-for-field-type :- ::parsed-param-value
   "Update a Field Filter with a textual, or sequence of textual, values. The base type and semantic type of the field
   are used to determine what 'semantic' type interpretation is required (e.g. for UUID fields)."
-  [{field :field, {value :value} :value, :as field-filter} :- :metabase.lib.parameters.parse.types/field-filter]
+  [{field :field, {value :value} :value, :as field-filter} :- ::params.types/field-filter]
   (let [effective-type ((some-fn :effective-type :base-type) field)
         new-value (cond
                     (string? value)
@@ -462,10 +449,11 @@
 (mu/defn- value-for-tag :- ::parsed-param-value
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
-  [tag    :- ::mbql.s/TemplateTag
-   params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   tag                   :- ::lib.schema.template-tag/template-tag
+   params                :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (try
-    (parse-value-for-type (:type tag) (parse-tag tag params))
+    (parse-value-for-type (:type tag) (parse-tag metadata-providerable tag params))
     (catch Throwable e
       (throw (ex-info (tru "Error determining value for parameter {0}: {1}"
                            (pr-str (:name tag))
@@ -475,21 +463,22 @@
                        :params params}
                       e)))))
 
-(mu/defn query->params-map :- [:map-of ::lib.schema.common/non-blank-string ::parsed-param-value]
+(mu/defn stage->params-map :- [:map-of ::lib.schema.common/non-blank-string ::parsed-param-value]
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
-    (query->params-map some-inner-query)
+    (stage->params-map metadata-provider stage)
     ->
-    {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
-  [{tags :template-tags, params :parameters, :as _inner-query} :- [:and
-                                                                   [:map]
-                                                                   [:fn
-                                                                    {:error/message "should be a legacy inner query"}
-                                                                    (complement :lib/type)]]]
+    {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}
+
+  Note that this takes a `metadata-providerable` plus `stage` rather than the more typical `query` plus `stage-number`
+  because it ultimately called for all stages of a query (even ones inside joins) by
+  [[metabase.query-processor.middleware.parameters/expand-stage]]. "
+  [metadata-providerable                                 :- ::lib.schema.metadata/metadata-providerable
+   {tags :template-tags, params :parameters, :as _stage} :- ::lib.schema/stage]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags
-                   :let    [v (value-for-tag tag params)]]
+                   :let    [v (value-for-tag metadata-providerable tag params)]]
                (do
                  (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
                  [(or (lib/match-and-normalize-tag-name k) k) v])))

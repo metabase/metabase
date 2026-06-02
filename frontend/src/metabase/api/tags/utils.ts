@@ -117,6 +117,7 @@ export function provideActivityItemListTags(
   return [
     ...ACTIVITY_MODELS.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideActivityItemTags),
+    listTag("activity"),
   ];
 }
 

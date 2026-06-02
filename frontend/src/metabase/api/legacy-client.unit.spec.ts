@@ -300,9 +300,8 @@ describe("api", () => {
         headers: { "X-Custom": "header" },
         retry: true,
         retryCount: 5,
-        formData: true,
         noEvent: false,
-        transformResponse: jest.fn(),
+        rawResponse: true,
       };
 
       const inputData = {
@@ -327,9 +326,7 @@ describe("api", () => {
 
       expect(result.url).toBe("/api/modified-url");
       expect(result.options).toEqual(complexOptions);
-      expect(result.options.transformResponse).toBe(
-        complexOptions.transformResponse,
-      );
+      expect(result.options.rawResponse).toBe(true);
     });
   });
 
@@ -378,6 +375,40 @@ describe("api", () => {
       const result = await apiInstance.GET("/api/data")({});
 
       expect(result).toEqual({ hello: "world" });
+    });
+  });
+
+  describe("form-encoded requests", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    // Regression: a `URLSearchParams` body (e.g. a dataset download) must be
+    // passed through verbatim — not JSON-stringified — and must drop our
+    // default `application/json` Content-Type so the browser can set
+    // `application/x-www-form-urlencoded`. Keeping the JSON header made the
+    // backend reject the request with a 400.
+    //
+    // The Content-Type strip is gated on `body instanceof URLSearchParams`, so
+    // this assertion doubles as proof the body reached `fetch` as a real
+    // `URLSearchParams` rather than a JSON string.
+    it("drops the application/json Content-Type for a URLSearchParams body", async () => {
+      fetchMock.post("path:/api/download", { status: 200, body: "" });
+
+      const body = new URLSearchParams();
+      body.append("query", JSON.stringify({ foo: "bar" }));
+
+      await apiInstance.POST("/api/download")(body, { rawResponse: true });
+
+      const call = fetchMock.callHistory.lastCall("path:/api/download");
+      const headers = new Headers(call?.options?.headers);
+      expect(headers.get("Content-Type")).not.toContain("application/json");
     });
   });
 });

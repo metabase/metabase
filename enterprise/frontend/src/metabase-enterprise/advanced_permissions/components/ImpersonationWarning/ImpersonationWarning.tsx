@@ -1,13 +1,12 @@
 import { jt, t } from "ttag";
 
+import { Alert } from "metabase/common/components/Alert";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Code } from "metabase/ui";
+import { Box, Code } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isEmpty } from "metabase/utils/validate";
 import type Database from "metabase-lib/v1/metadata/Database";
-
-import { ImpersonationAlert } from "./ImpersonationWarning.styled";
 
 interface ImpersonationWarningProps {
   database: Database;
@@ -59,12 +58,14 @@ export const ImpersonationWarning = ({
   const warningText = isRedshift ? redshiftWarning : regularWarning;
 
   return (
-    <ImpersonationAlert icon="warning" variant="warning">
-      {isEmpty(databaseUser) ? emptyText : warningText}{" "}
-      <Link
-        className={CS.link}
-        to={Urls.editDatabase(database.id) + (databaseUser ? "#user" : "")}
-      >{t`Edit settings`}</Link>
-    </ImpersonationAlert>
+    <Box mb="md">
+      <Alert icon="warning" variant="warning">
+        {isEmpty(databaseUser) ? emptyText : warningText}{" "}
+        <Link
+          className={CS.link}
+          to={Urls.editDatabase(database.id) + (databaseUser ? "#user" : "")}
+        >{t`Edit settings`}</Link>
+      </Alert>
+    </Box>
   );
 };

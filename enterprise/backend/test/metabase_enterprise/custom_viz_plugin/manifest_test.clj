@@ -73,29 +73,22 @@
 ;;; ------------------------------------------------ Asset Paths ------------------------------------------------
 
 (deftest asset-paths-test
-  (testing "filters to allowed extensions"
-    (is (= ["icon.svg" "thumb.png"]
-           (manifest/asset-paths {:assets ["icon.svg" "thumb.png" "malware.exe"]}))))
-  (testing "includes icon from manifest"
-    (is (some #{"icon.svg"} (manifest/asset-paths {:icon "icon.svg"}))))
-  (testing "allows JSON assets (for locale translations)"
-    (is (some #{"en.json"} (manifest/asset-paths {:assets ["en.json"]}))))
-  (testing "rejects non-image non-JSON assets"
-    (is (not (some #{"script.js"} (manifest/asset-paths {:assets ["script.js"]}))))
-    (is (not (some #{"data.csv"} (manifest/asset-paths {:assets ["data.csv"]})))))
-  (testing "rejects assets with path traversal"
-    (is (empty? (manifest/asset-paths {:assets ["../../../etc/passwd"]}))))
-  (testing "rejects absolute asset paths"
-    (is (empty? (manifest/asset-paths {:assets ["/etc/passwd"]}))))
-  (testing "rejects icon with traversal"
-    (is (not (some #{"../secret.svg"} (manifest/asset-paths {:icon "../secret.svg"})))))
-  (testing "deduplicates"
+  (testing "returns the icon when it's a safe image"
+    (is (= ["icon.svg"] (manifest/asset-paths {:icon "icon.svg"})))
+    (is (= ["icon.png"] (manifest/asset-paths {:icon "icon.png"}))))
+  (testing "returns nil when there is no icon"
+    (is (nil? (manifest/asset-paths {})))
+    (is (nil? (manifest/asset-paths {:icon nil}))))
+  (testing "rejects a non-image icon"
+    (is (nil? (manifest/asset-paths {:icon "icon.js"}))))
+  (testing "rejects an icon with path traversal"
+    (is (nil? (manifest/asset-paths {:icon "../secret.svg"})))
+    (is (nil? (manifest/asset-paths {:icon "/etc/passwd.svg"}))))
+  (testing "ignores a stray assets array — only the icon is ever served"
     (is (= ["icon.svg"]
-           (manifest/asset-paths {:icon "icon.svg" :assets ["icon.svg"]}))))
-  (testing "icon is auto-included without being listed in assets"
-    (is (= #{"icon.svg" "thumbs-up.png" "thumbs-down.png"}
-           (set (manifest/asset-paths {:icon   "icon.svg"
-                                       :assets ["thumbs-up.png" "thumbs-down.png"]}))))))
+           (manifest/asset-paths {:icon   "icon.svg"
+                                  :assets ["thumbs-up.png" "thumbs-down.png" "en.json"]})))
+    (is (nil? (manifest/asset-paths {:assets ["thumbs-up.png"]})))))
 
 ;;; ------------------------------------------------ Content Type ------------------------------------------------
 
@@ -104,12 +97,10 @@
     (is (= "image/svg+xml" (manifest/asset-content-type "icon.svg")))
     (is (= "image/png" (manifest/asset-content-type "thumb.png")))
     (is (= "image/jpeg" (manifest/asset-content-type "photo.jpg"))))
-  (testing "recognizes JSON"
-    (is (= "application/json" (manifest/asset-content-type "en.json"))))
-  (testing "returns nil for disallowed types"
+  (testing "returns nil for non-image types — assets (incl. JSON) are no longer served"
+    (is (nil? (manifest/asset-content-type "en.json")))
     (is (nil? (manifest/asset-content-type "script.js")))
     (is (nil? (manifest/asset-content-type "style.css")))
-    (is (nil? (manifest/asset-content-type "data.csv"))))
-  (testing "returns nil for non-image MIME types"
+    (is (nil? (manifest/asset-content-type "data.csv")))
     ;; .html has MIME text/html — should be rejected
     (is (nil? (manifest/asset-content-type "page.html")))))
