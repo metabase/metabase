@@ -176,3 +176,30 @@ export type DataSegregationStrategy =
   | "row-column-level-security"
   | "connection-impersonation"
   | "database-routing";
+
+// Identifiers for entities in the permissions editor. Shared between the
+// admin permissions editor, the plugin system, and enterprise permission
+// features.
+
+export type DatabaseEntityId = {
+  databaseId: number;
+};
+
+export type SchemaEntityId = DatabaseEntityId & {
+  schemaName: string | undefined;
+};
+
+export type TableEntityId = SchemaEntityId & {
+  tableId: number;
+};
+
+/** Named PermissionEntityId (rather than plain EntityId) to avoid colliding
+ * with the comments EntityId in the metabase-types/api barrel. */
+export type PermissionEntityId = DatabaseEntityId &
+  Partial<Omit<TableEntityId, "databaseId">>;
+
+export type EntityWithGroupId = PermissionEntityId & { groupId: number };
+
+export type PermissionSubject = "schemas" | "tables" | "fields";
+
+export type SpecialGroupType = "admin" | "analyst" | "external" | null;

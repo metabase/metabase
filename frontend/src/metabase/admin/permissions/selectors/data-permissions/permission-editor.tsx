@@ -26,16 +26,16 @@ import type {
   DatabaseId,
   Group,
   GroupsPermissions,
+  PermissionEntityId,
+  PermissionSubject,
+  SpecialGroupType,
 } from "metabase-types/api";
 
 import type {
   DataRouteParams,
-  EntityId,
   PermissionEditorType,
   PermissionSectionConfig,
-  PermissionSubject,
   RawGroupRouteParams,
-  SpecialGroupType,
 } from "../../types";
 import { DataPermission, DataPermissionValue } from "../../types";
 import {
@@ -183,7 +183,7 @@ const hasViewDataOptions = (entities: any[]) => {
 type EntityWithPermissions = {
   id: string | number;
   name: string;
-  entityId: EntityId;
+  entityId: PermissionEntityId;
   canSelect?: boolean;
   permissions: PermissionSectionConfig[];
   callout?: string;
