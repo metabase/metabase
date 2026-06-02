@@ -822,6 +822,41 @@
             (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
                                                                :parameters             "abc"})))))
 
+(defn- malformed-native-dataset-query
+  "Payload from #74615: legacy-envelope native query whose template-tag :dimension uses an
+  MBQL 5 field reference shape ([:field {opts} id] instead of legacy [:field id opts])."
+  []
+  {:type     :native
+   :database (mt/id)
+   :native   {:query         "SELECT COUNT(*) FROM ORDERS WHERE {{df}}"
+              :template-tags {"df" {:id           (str (random-uuid))
+                                    :name         "df"
+                                    :display-name "DF"
+                                    :type         :dimension
+                                    :widget-type  :date/range
+                                    :dimension    [:field
+                                                   {:base-type :type/DateTime}
+                                                   (mt/id :orders :created_at)]}}}})
+
+(deftest ^:parallel post-card-with-malformed-dataset-query-returns-400-test
+  (testing "POST /api/card with structurally malformed :dataset_query returns 400, not 500 (#74615)"
+    (is (=? {:cause #"(?si).*(normaliz|mbql).*"}
+            (mt/user-http-request
+             :crowberto :post 400 "card"
+             (assoc (card-with-name-and-query)
+                    :dataset_query (malformed-native-dataset-query)))))))
+
+(deftest ^:parallel put-card-with-malformed-dataset-query-returns-400-test
+  (testing "PUT /api/card/:id with structurally malformed :dataset_query returns 400, not 200 with silent data loss (#74615)"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mbql-count-query)}]
+      (is (=? {:cause #"(?si).*(normaliz|mbql).*"}
+              (mt/user-http-request
+               :crowberto :put 400 (str "card/" card-id)
+               {:dataset_query (malformed-native-dataset-query)})))
+      (testing "the existing dataset_query is preserved (not silently coerced to {})"
+        (is (= :mbql/query
+               (:lib/type (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))
+
 (deftest create-card-validation-test-2
   (testing "POST /api/card"
     (with-temp-native-card-with-params [db card]

@@ -1662,3 +1662,17 @@
                                     ["case"
                                      [[["<" ["aggregation" 0 {"base-type" "type/Float"}] 0.591] "60%"]]]
                                     {"name" "A", "display-name" "B"}]))))
+
+(deftest ^:parallel legacy-query-from-inner-query-test
+  (is (=? {:database 1
+           :native   {:query         "SELECT * FROM table WHERE {{checkin_date}};"
+                      :template-tags {}}
+           :type     :native}
+          (lib.convert/legacy-query-from-inner-query
+           1
+           {:native        "SELECT * FROM table WHERE {{checkin_date}};"
+            :template-tags {"checkin_date" {:name         "checkin_date"
+                                            :display-name "Checkin Date"
+                                            :type         :dimension
+                                            :widget-type  :date/all-options
+                                            :dimension    [:field 2 nil]}}}))))

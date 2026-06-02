@@ -208,9 +208,9 @@ settings: {
 A custom visualization is a single JS bundle — it cannot load separate image files
 from the Metabase instance. To use an image, **inline it into your bundle**:
 
-- Embed a raster image as a base64 `data:` URL (this is what the generated
-  `src/index.tsx` does), or
-- Draw it as inline `<svg>` (best for icons and simple graphics):
+- Draw it as inline `<svg>` (best for icons and simple graphics — this is what the
+  generated `src/index.tsx` does), or
+- Embed a raster image as a base64 `data:` URL:
 
 ```tsx
 const myImage = "data:image/png;base64,iVBORw0KGgo...";

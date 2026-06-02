@@ -168,7 +168,9 @@
                                                                    (when-let [collection-ids (not-empty (remove nil? collection-set))]
                                                                      [:in :collection_id collection-ids])
                                                                    (when (some nil? collection-set)
-                                                                     [:= :collection_id nil])]]}
+                                                                     [:= :collection_id nil])]]
+                                                          ;; stable filename de-dup suffixes across exports, see GHY-3754
+                                                          :order-by serdes/stable-storage-order}
                                                    where (sql.helpers/where :or where))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
