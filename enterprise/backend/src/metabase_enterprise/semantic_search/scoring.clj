@@ -69,6 +69,14 @@
      [:* [:cast keyword-weight :float]
       [:coalesce [:/ 1.0 [:+ k :keyword_rank]] 0]]]))
 
+(defn- semantic-distance-score-expr
+  "Score a cosine `distance` expression (0 = identical) into [0, 1] where a distance of zero scores 1.
+  The single place to reshape the distance->score curve."
+  [distance]
+  ;; TODO (Chris 2026-06-02) -- apply a non-linear curve here (e.g. exponential decay) to sharpen the falloff near
+  ;; the cutoff; linear is fine until we have relevance data to tune against.
+  [:- [:inline 1] distance])
+
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [index-table {:keys [search-string] :as search-ctx}]
@@ -77,6 +85,8 @@
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf        rrf-rank-exp
+     ;; Keyword-only hits have no vector distance, so treat them as maximally distant (score 0).
+     :semantic-distance (semantic-distance-score-expr [:coalesce :semantic_score [:inline 1]])
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
      :recency    (search.scoring/inverse-duration

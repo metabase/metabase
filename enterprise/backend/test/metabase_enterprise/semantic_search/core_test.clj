@@ -160,6 +160,27 @@
                     (is (= 1 (:metabase-search/semantic-fallback-triggered @metrics)))
                     (is (= 1 (:metabase-search/semantic-results-before-fallback @metrics)))))))))))))
 
+(deftest fallback-results-zero-semantic-distance-test
+  (testing "fallback results record :semantic-distance as 0 in their score breakdown, leaving other scores intact"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
+        (let [semantic-result  (assoc (make-card-result 1 "semantic-card" :score 0.9)
+                                      :all-scores [{:name :semantic-distance :score 0.95 :weight 10 :contribution 9.5}])
+              fallback-results [(assoc (make-card-result 2 "fallback-card" :score 0.5)
+                                       :all-scores [{:name :text :score 1 :weight 5 :contribution 5}])]
+              search-ctx       (assoc search-context :weights {:semantic-distance 10})]
+          (with-search-engine-mocks! [semantic-result] fallback-results
+            (fn []
+              (let [results     (vec (semantic.core/results search-ctx))
+                    result-by-id (fn [id] (some #(when (= id (:id %)) %) results))]
+                (testing "fallback result gains a zero semantic-distance entry, keeping its existing scores"
+                  (is (=? [{:name :text :score 1}
+                           {:name :semantic-distance :score 0 :weight 10 :contribution 0}]
+                          (:all-scores (result-by-id 2)))))
+                (testing "genuine semantic result keeps its computed distance"
+                  (is (=? [{:name :semantic-distance :score 0.95}]
+                          (:all-scores (result-by-id 1)))))))))))))
+
 (deftest test-semantic-search-fallback-failure-resilient
   (testing "semantic search is resilient to fallback engine failure"
     (mt/with-premium-features #{:semantic-search}
