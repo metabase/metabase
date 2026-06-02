@@ -377,7 +377,7 @@
   [driver header name->field]
   (let [positional (mapv name (derive-column-names driver header))
         normalized (mapv #(normalize-column-name driver %) header)
-        collisions (into #{} (keep (fn [[col-name freq]] (when (< 1 freq) col-name))) (frequencies normalized))]
+        collisions (into #{} (keep (fn [[col-name freq]] (when (> freq 1) col-name))) (frequencies normalized))]
     (if (empty? collisions)
       positional
       ;; Map each colliding field's display name (scoped to its normalized name) back to its positional
