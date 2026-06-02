@@ -2,6 +2,7 @@
   (:require
    [metabase.llm.settings :as llm-settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -99,11 +100,9 @@
   :doc false)
 
 (def ^:private valid-vector-search-strategies
-  "Valid semantic-search vector-search strategies.
-  Keep in sync with the `vector_search_strategy` enum in [[metabase.search.api]] (the OSS API layer can't
-  reference this EE set across the module boundary) and the dispatch in
-  [[metabase-enterprise.semantic-search.index/semantic-search-query]]."
-  #{:hnsw :brute-force})
+  "Valid semantic-search vector-search strategies, mastered in
+  [[metabase.search.config/vector-search-strategies]]."
+  (set search.config/vector-search-strategies))
 
 (defsetting semantic-search-vector-strategy
   (deferred-tru
