@@ -7,6 +7,7 @@ import type {
   NotificationsTab,
   NotificationsUrlState,
 } from "../NotificationsAdminPage/types";
+import { trackAlertsManagementTabClicked } from "../analytics";
 
 import S from "./NotificationsTabs.module.css";
 
@@ -64,6 +65,7 @@ export const NotificationsTabs = ({
   const handleTabChange = (value: string | null) => {
     const next = tabs.find((config) => config.value === value);
     if (next !== undefined) {
+      trackAlertsManagementTabClicked(next.value);
       onChange(next.patch);
     }
   };
