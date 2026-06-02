@@ -131,6 +131,7 @@
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.poi/poi-ooxml-full             {:mvn/version "5.5.1"}
+  org.apache.pdfbox/pdfbox                  {:mvn/version "3.0.5"}              ; PDF generation (backend dashboard PDF prototype)
   org.apache.sshd/sshd-core                 {:mvn/version "3.0.0-M2"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
