@@ -1704,6 +1704,105 @@
                                                       {:tag_ids []})]
                     (is (= [] (:tag_ids updated)))))))))))))
 
+(defn- native-query-with-table-tag
+  "Build a native query map with a `source_table` table template tag referring to `table-id`."
+  [sql table-id]
+  {:database (mt/id)
+   :type     :native
+   :native   {:query         sql
+              :template-tags {"source_table" {:id           "source_table"
+                                              :name         "source_table"
+                                              :display-name "Source Table"
+                                              :type         "table"
+                                              :table-id     table-id
+                                              :required     true}}}})
+
+(deftest incremental-table-tag-validated-on-create-test
+  (mt/with-premium-features #{}
+    (testing "POST /api/transform rejects a table-incremental native query with no table template tag (GDGT-2524)"
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema      (get-test-schema)
+                id-field-id (mt/id :transforms_products :id)]
+            (testing "with a checkpoint field selected"
+              (let [response (mt/user-http-request :crowberto :post 400 "transform"
+                                                   {:name   "No Table Tag"
+                                                    :source {:type  "query"
+                                                             :query (lib/native-query (mt/metadata-provider)
+                                                                                      "SELECT id, name FROM transforms_products")
+                                                             :source-incremental-strategy {:type "checkpoint"
+                                                                                           :checkpoint-filter-field-id id-field-id}}
+                                                    :target {:type "table-incremental"
+                                                             :schema schema
+                                                             :name "no_table_tag"
+                                                             :target-incremental-strategy {:type "append"}}})]
+                (is (string? response))
+                (is (re-find #"requires a table variable" response))))
+            (testing "even without a checkpoint field selected"
+              (let [response (mt/user-http-request :crowberto :post 400 "transform"
+                                                   {:name   "No Table Tag No Checkpoint"
+                                                    :source {:type  "query"
+                                                             :query (lib/native-query (mt/metadata-provider)
+                                                                                      "SELECT id, name FROM transforms_products")}
+                                                    :target {:type "table-incremental"
+                                                             :schema schema
+                                                             :name "no_table_tag_no_checkpoint"
+                                                             :target-incremental-strategy {:type "append"}}})]
+                (is (string? response))
+                (is (re-find #"requires a table variable" response))))))))))
+
+(deftest incremental-table-tag-validated-on-update-test
+  (mt/with-premium-features #{}
+    (testing "PUT /api/transform rejects removing the table tag from an incremental transform (GDGT-2524)"
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema      (get-test-schema)
+                id-field-id (mt/id :transforms_products :id)]
+            (testing "removing the table tag from the source query of an existing incremental transform"
+              (with-transform-cleanup! [table-name "remove_table_tag_test"]
+                (mt/with-temp [:model/Transform {transform-id :id}
+                               {:name   "Has Table Tag"
+                                :source {:type  "query"
+                                         :query (native-query-with-table-tag
+                                                 "SELECT id, name FROM {{source_table}}"
+                                                 (mt/id :transforms_products))
+                                         :source-incremental-strategy {:type "checkpoint"
+                                                                       :checkpoint-filter-field-id id-field-id}}
+                                :target {:type "table-incremental"
+                                         :schema schema
+                                         :name table-name
+                                         :target-incremental-strategy {:type "append"}}}]
+                  (let [response (mt/user-http-request :crowberto :put 400
+                                                       (format "transform/%d" transform-id)
+                                                       {:source {:type  "query"
+                                                                 :query (lib/native-query (mt/metadata-provider)
+                                                                                          "SELECT id, name FROM transforms_products")
+                                                                 :source-incremental-strategy {:type "checkpoint"
+                                                                                               :checkpoint-filter-field-id id-field-id}}})]
+                    (is (string? response))
+                    (is (re-find #"requires a table variable" response))))))
+            (testing "switching a non-incremental transform to incremental without a table tag"
+              (with-transform-cleanup! [table-name "switch_no_tag_test"]
+                (mt/with-temp [:model/Transform {transform-id :id}
+                               {:name   "Plain Transform"
+                                :source {:type  "query"
+                                         :query (lib/native-query (mt/metadata-provider)
+                                                                  "SELECT id, name FROM transforms_products")}
+                                :target {:type "table" :schema schema :name table-name}}]
+                  (let [response (mt/user-http-request :crowberto :put 400
+                                                       (format "transform/%d" transform-id)
+                                                       {:source {:type  "query"
+                                                                 :query (lib/native-query (mt/metadata-provider)
+                                                                                          "SELECT id, name FROM transforms_products")
+                                                                 :source-incremental-strategy {:type "checkpoint"
+                                                                                               :checkpoint-filter-field-id id-field-id}}
+                                                        :target {:type "table-incremental"
+                                                                 :schema schema
+                                                                 :name table-name
+                                                                 :target-incremental-strategy {:type "append"}}})]
+                    (is (string? response))
+                    (is (re-find #"requires a table variable" response))))))))))))
+
 (deftest search-filters-transform-source-types-test
   (mt/with-premium-features #{}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
