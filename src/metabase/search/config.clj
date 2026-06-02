@@ -253,8 +253,8 @@
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
-   ;; Vector-search strategy for the semantic engine: :hnsw (approximate, index-backed) or :brute-force
-   ;; (exact, filter-first). When absent, the engine falls back to its configured default setting.
+   ;; Semantic-engine vector-search strategy (:hnsw or :brute-force). When absent, the engine uses its
+   ;; configured default setting.
    [:vector-search-strategy {:optional true} [:maybe keyword?]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]

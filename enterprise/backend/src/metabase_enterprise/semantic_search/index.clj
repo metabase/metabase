@@ -618,13 +618,12 @@
 (def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
 
 (defn- hnsw-search-query
-  "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage.
-
-  The inner `vector_candidates` CTE does a pure vector search so the planner uses the HNSW index; the
-  non-vector filters are applied afterwards in the outer query. This is fast but approximate: when the
-  globally-closest rows are dominated by a cluster that the filters reject, the slightly-further-away rows
-  that would have survived the filters never make it into the candidate set."
+  "Build the semantic vector subquery using the HNSW index, applying `filters` after candidate selection."
   [index embedding-literal filters]
+  ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner
+  ;; uses the HNSW index. The filters only run in the outer query, so this is approximate: when the
+  ;; globally-closest rows are dominated by a cluster the filters reject, slightly-further survivors that
+  ;; would have passed the filters never enter the candidate set. `brute-force-search-query` is exact.
   ;; TODO: only pull in necessary extra columns from configured filters
   (let [hnsw-query {:select (into common-search-columns
                                   [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
@@ -643,13 +642,11 @@
       base-query)))
 
 (defn- brute-force-search-query
-  "Build a semantic search query that computes exact cosine distance over the filtered rows.
-
-  The non-vector filters are applied first, inside a MATERIALIZED CTE. Materializing fences the planner off
-  the HNSW index, so distance is computed for every surviving row, then ordered and limited. This is exact
-  (it always returns the closest results among the filtered set) at the cost of a sequential scan over the
-  rows that pass the filters."
+  "Build the semantic vector subquery as an exact, filter-first search over the rows matching `filters`."
   [index embedding-literal filters]
+  ;; Apply the filters first, inside a MATERIALIZED CTE. Materializing fences the planner off the HNSW
+  ;; index, so cosine distance is computed for every surviving row, then ordered and limited -- exact, at
+  ;; the cost of a sequential scan over the rows that pass the filters.
   (let [filtered-query {:select (into common-search-columns
                                       [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                         :from   [(keyword (:table-name index))]
@@ -670,10 +667,8 @@
       (semantic-settings/semantic-search-vector-strategy)))
 
 (defn- semantic-search-query
-  "Build a semantic search query using vector similarity.
-
-  Dispatches on the resolved [[vector-search-strategy]]: `:brute-force` for exact filter-first search,
-  `:hnsw` (the default) for approximate index-backed search."
+  "Build the semantic vector subquery, dispatching on the resolved [[vector-search-strategy]].
+  `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed."
   [index embedding search-context]
   (let [filters           (search-filters search-context)
         embedding-literal (format-embedding embedding)]
