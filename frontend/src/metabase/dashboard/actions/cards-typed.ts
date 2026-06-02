@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -173,7 +173,7 @@ export type AddCardToDashboardOpts = NewDashCardOpts & {
 export const addCardToDashboard =
   ({ dashId, tabId, cardId }: AddCardToDashboardOpts) =>
   async (dispatch: Dispatch) => {
-    const card = await entityCompatibleQuery(
+    const card = await runRtkEndpoint(
       { id: cardId },
       dispatch,
       cardApi.endpoints.getCard,
@@ -253,7 +253,7 @@ export const replaceCard =
   async (dispatch: Dispatch, getState: GetState) => {
     const dashboardId = getDashboardId(getState());
 
-    const card = await entityCompatibleQuery(
+    const card = await runRtkEndpoint(
       { id: nextCardId },
       dispatch,
       cardApi.endpoints.getCard,
@@ -298,7 +298,7 @@ export const addCardWithVisualization =
     const cards: Card[] = [];
 
     for (const cardId of cardIds) {
-      const card: Card = await entityCompatibleQuery(
+      const card: Card = await runRtkEndpoint(
         { id: cardId },
         dispatch,
         cardApi.endpoints.getCard,
@@ -348,7 +348,7 @@ export const replaceCardWithVisualization =
     const cards: Card[] = [];
 
     for (const cardId of cardIds) {
-      const card: Card = await entityCompatibleQuery(
+      const card: Card = await runRtkEndpoint(
         { id: cardId },
         dispatch,
         cardApi.endpoints.getCard,

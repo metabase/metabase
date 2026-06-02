@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { datasetApi, skipToken, useListActionsQuery } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { useDispatch } from "metabase/redux";
 import { ActionsApi } from "metabase/services";
 import { Modal } from "metabase/ui";
@@ -202,11 +202,7 @@ export function ObjectDetailPanel({
         ? Lib.toJsQuery(filterByPk(query, pkField, zoomedRowID))
         : undefined;
 
-      entityCompatibleQuery(
-        datasetQuery,
-        dispatch,
-        datasetApi.endpoints.getAdhocQuery,
-      )
+      runRtkEndpoint(datasetQuery, dispatch, datasetApi.endpoints.getAdhocQuery)
         .then((result) => {
           if (result?.data?.rows?.length > 0) {
             const newRow = result.data.rows[0];

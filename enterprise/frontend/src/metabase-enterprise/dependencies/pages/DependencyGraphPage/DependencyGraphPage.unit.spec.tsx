@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 
 import {
-  setupDependecyGraphEndpoint,
+  setupDependencyGraphEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -12,7 +12,7 @@ import { DependencyGraphPage } from "./DependencyGraphPage";
 
 describe("DependencyGraphPage", () => {
   beforeEach(() => {
-    setupDependecyGraphEndpoint(createMockDependencyGraph());
+    setupDependencyGraphEndpoint(createMockDependencyGraph());
     setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   });
   it("should show an app switcher if there is no context", async () => {

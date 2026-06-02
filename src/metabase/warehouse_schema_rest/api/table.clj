@@ -428,8 +428,12 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   field-order :- [:sequential ms/PositiveInt]]
-  (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order))
+   ;; Accept either a bare sequential (legacy) or a wrapped {:field_order [...]} body.
+   body :- [:or
+            [:sequential ms/PositiveInt]
+            [:map [:field_order [:sequential ms/PositiveInt]]]]]
+  (let [field-order (if (map? body) (:field_order body) body)]
+    (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order)))
   {:success true})
 
 (mu/defn- update-csv!
@@ -440,10 +444,8 @@
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
   (try
-    (let [_result (upload/update-csv! options)]
-      {:status 200
-       ;; There is scope to return something more interesting.
-       :body   nil})
+    (upload/update-csv! options)
+    api/generic-204-no-content
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)

@@ -358,17 +358,17 @@
                                               failures)}))))
 
 (defn- notify-job-failure
-  "Notify admins of a catastrophic job failure (not individual transform failures)."
+  "Notify admins of a catastrophic job failure (not individual transform failures).
+
+  Publishes a single event; the seeded `system-event/transform-job-failed` notification
+  fans out to all admins in one bcc email (see [[metabase.notification.seed/seed-notification!]])."
   [job-id message]
-  (let [job (t2/select-one :model/TransformJob job-id)
-        admin-emails (keep :email (active-admins))]
-    (doseq [email admin-emails]
-      (events/publish-event! :event/transform-failed
-                             {:email email
-                              :job_name (:name job)
-                              :job_href (urls/transform-job-url job-id)
-                              :failure_count 1
-                              :failures [{:message (structure-message message)}]}))))
+  (let [job (t2/select-one :model/TransformJob job-id)]
+    (events/publish-event! :event/transform-job-failed
+                           {:job_name (:name job)
+                            :job_href (urls/transform-job-url job-id)
+                            :failure_count 1
+                            :failures [{:message (structure-message message)}]})))
 
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
@@ -416,6 +416,8 @@
   []
   (let [timed-out (transforms.job-run/timeout-old-runs!
                    (transforms.settings/transform-timeout) :minute)]
+    (when (seq timed-out)
+      (log/infof "Timed out %d transform job run(s)." (count timed-out)))
     (doseq [{:keys [job_id run_method message]} timed-out
             :when (= run_method :cron)]
       (try
@@ -426,7 +428,8 @@
 (task/defjob  ^{:doc "Times out transform jobs when necessary."
                 org.quartz.DisallowConcurrentExecution true}
   TimeoutOldRuns [_ctx]
-  (timeout-and-notify-old-runs!))
+  (tracing/with-span :tasks "task.transform.timeout-check" {:transform.timeout/type "job"}
+    (timeout-and-notify-old-runs!)))
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))

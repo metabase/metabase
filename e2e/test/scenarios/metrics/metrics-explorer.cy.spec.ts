@@ -143,7 +143,11 @@ const addMetricMath = (
 ) => {
   H.MetricsViewer.searchInput().then(($input) => {
     const text = $input.text().trim();
-    if (text.length > 0 && !/[,+*/(-]$/.test(text)) {
+    if (
+      text.length > 0 &&
+      !/[,+*/(-]$/.test(text) &&
+      (typeof expression[0] !== "string" || !/[,+*/(-]$/.test(expression[0]))
+    ) {
       cy.wrap($input).type("{end}, ", {
         waitForAnimations: true,
       });
@@ -1236,11 +1240,13 @@ describe("scenarios > metrics > explorer", () => {
       // ("Count of orders") is untouched and its MetricIdentity (with
       // customName) survives.
       H.MetricsViewer.searchInput().type(
-        "{end}{backspace}{backspace}{backspace}{backspace} * Count of products",
+        "{end}{backspace}{backspace}{backspace}{backspace}",
         { waitForAnimations: true },
       );
-      selectMetricSearchResult("Count of products");
-      runFormula();
+      addMetricMath([
+        "*",
+        { metricName: "Count of products" },
+      ]);
       cy.wait("@dataset");
 
       cy.log(
