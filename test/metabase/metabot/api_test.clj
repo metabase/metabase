@@ -1249,6 +1249,11 @@
                                           (str "metabot/search-prompt/" (:id entity))
                                           {:prompt "updated prompt"})]
         (is (= "updated prompt" (:prompt updated)))))
+    (testing "entities cannot be updated to empty"
+      (is (= "A search prompt must reference at least one entity."
+             (mt/user-http-request :crowberto :put 400
+                                   (str "metabot/search-prompt/" (:id entity))
+                                   {:entities []}))))
     (testing "returns 404 for unknown id"
       (mt/user-http-request :crowberto :put 404 "metabot/search-prompt/0" {:prompt "x"}))
     (testing "non-superuser gets 403"
