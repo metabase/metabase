@@ -322,6 +322,36 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       await expect(runPromise).rejects.toMatchObject({ name: "AbortError" });
     });
 
+    it("isolates concurrent identical saved-card queries so cancelling one doesn't abort the other", async () => {
+      // Two callers running the same saved card must not co-subscribe to a
+      // single RTK Query request: otherwise one caller aborting (e.g. the SDK
+      // cancelling the previous run on every re-run) would abort the other's
+      // query too, hanging/blanking the result. A unique `_refetchDeps` per
+      // call keeps the cache keys — and therefore the requests — distinct.
+      const question = createMockSavedQuestion();
+      const path = getQueryEndpointPath(question);
+      fetchMock.post(path, createMockDataset(), { delay: 50 });
+      const { dispatch } = getRtkStore();
+
+      const abortController = new AbortController();
+      const cancelledRun = runQuestionQuery(question, {
+        dispatch,
+        signal: abortController.signal,
+      }).catch((error) => error);
+      const liveRun = runQuestionQuery(question, {
+        dispatch,
+        signal: new AbortController().signal,
+      });
+
+      abortController.abort();
+
+      await expect(liveRun).resolves.toHaveLength(1);
+      await cancelledRun;
+
+      // Independent cache keys ⇒ two real requests, not one shared (deduped) one.
+      expect(fetchMock.callHistory.calls(path)).toHaveLength(2);
+    });
+
     it("normalizes plain-text 4xx error bodies into a structured error result (EMB-1659)", async () => {
       // Embed API checks (e.g. `/api/embed/card/:token/query`) reject with a
       // plain-text body when a locked param is missing from the JWT. Without

@@ -111,6 +111,7 @@ export function runAdhocDatasetQuery(
 // route (and their pivot variants). Guest embeds rely on the legacy-client
 // `onBeforeRequest` middleware (which RTK requests still pass through) rewriting
 // the card route to `/api/embed/card/:token/query` when `token` is in the body.
+let savedCardQueryCounter = 0;
 function runSavedCardQuery(
   dispatch: Dispatch,
   question: Question,
@@ -132,6 +133,12 @@ function runSavedCardQuery(
     ignore_cache: ignoreCache,
     collection_preview: collectionPreview,
     parameters,
+    // Disambiguate the RTK cache key so two callers running the same saved card
+    // don't co-subscribe to one in-flight request — otherwise one caller
+    // aborting its query (e.g. the SDK cancelling the previous run on every
+    // re-run) aborts every co-subscriber's query too. Stripped from the body
+    // before it hits the server. Mirrors `runAdhocDatasetQuery`.
+    _refetchDeps: ++savedCardQueryCounter,
     // `token` and `cardId` identify the card in mutually exclusive ways, so we
     // send only one (mirroring the original services.js behavior). Guest and
     // embedded requests carry a `token`: the legacy `onBeforeRequest` middleware
