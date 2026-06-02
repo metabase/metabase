@@ -14,7 +14,7 @@
    [metabase.util.performance :as perf]
    [redux.core :as redux])
   (:import
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.time ZoneOffset)
    (java.time.chrono ChronoLocalDateTime ChronoZonedDateTime)
    (java.time.temporal Temporal)
    (org.apache.commons.codec.digest MurmurHash2)
@@ -263,8 +263,11 @@
   (invoke [this x]
     (set! total (inc total))
     (when-not (nil? x)
-      (cond (contains? counts x)                        (set! counts (update counts x inc))
-            (< (count counts) mode-stats-max-distinct)  (set! counts (assoc counts x 1))))
+      ;; Key the frequency map on (hash x), not x itself: mode-fraction / top-3-fraction need only
+      ;; value frequencies, never the values, and retaining raw values is high memory cost.
+      (let [k (hash x)]
+        (cond (contains? counts k)                        (set! counts (update counts k inc))
+              (< (count counts) mode-stats-max-distinct)  (set! counts (assoc counts k 1)))))
     this))
 
 (defn- mode-stats
@@ -276,27 +279,12 @@
   ([tracker] (tracker))
   ([tracker x] (tracker x)))
 
-(defn- ->millis-from-epoch
-  "Coerce a `java.time.temporal.Temporal` (as produced by `->temporal`) to long epoch millis.
-  Returns nil for unsupported types; callers typically wrap with `(keep ->millis-from-epoch)`
-   to strip non-coerceable values."
-  [t]
-  (cond (instance? Instant t)        (.toEpochMilli ^Instant t)
-        (instance? OffsetDateTime t) (.toEpochMilli (.toInstant ^OffsetDateTime t))
-        (instance? ZonedDateTime t)  (.toEpochMilli (.toInstant ^ZonedDateTime t))
-        (instance? LocalDate t)      (recur (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
-        (instance? LocalDateTime t)  (recur (t/offset-date-time t (t/zone-offset 0)))
-        (instance? LocalTime t)      (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
-        (instance? OffsetTime t)     (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t)))
-        :else                        nil))
-
 (deffingerprinter :type/DateTime
   ((map ->temporal)
    (redux/post-complete
     (robust-fuse {:earliest   earliest
                   :latest     latest
-                  :skewness   ((keep ->millis-from-epoch) stats/skewness)
-                  :mode-stats ((keep ->millis-from-epoch) mode-stats)})
+                  :mode-stats ((filter some?) mode-stats)})
     (fn [{:keys [mode-stats] :as fused}]
       (-> fused
           (dissoc :mode-stats)

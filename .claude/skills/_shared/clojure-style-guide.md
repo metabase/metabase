@@ -84,18 +84,16 @@ Use `ex-cause`/`ex-message`/`ex-data`/`ex-info` rather than `.getCause`/`.getMes
 
 Only `(:import java.time.X)` when interop with a Java method genuinely needs the class.
 
-**Realize a lazy seq once when traversing it more than once:**
-
-`map`, `filter`, `keep`, etc. return lazy seqs. If you `count`/`seq` it *and* iterate it, the seq runs twice — re-running every side-effecting or expensive item construction. Wrap in `vec` (or use a transducer into a vector) when the seq will be touched more than once.
+**Check non-emptiness with `seq`, not `count`:**
 
 ```clojure
-;; bad — `count` realizes once, `insert!` realizes again — build-prompt runs 2×
+;; bad — `count` realizes the whole seq into memory just to test emptiness
 (let [prompts (map build-prompt items)]
   (when (pos? (count prompts))
     (t2/insert! :model/Prompt prompts)))
 
-;; good
-(let [prompts (vec (map build-prompt items))]
+;; good — `seq` realizes one cell; `insert!` streams the rest
+(let [prompts (map build-prompt items)]
   (when (seq prompts)
     (t2/insert! :model/Prompt prompts)))
 ```
@@ -184,6 +182,22 @@ The OSS namespace defines the fallback body and names the EE namespace; the EE n
 ```
 
 `defenterprise-schema` is the malli-schema variant. Required from `[metabase.premium-features.core :refer [defenterprise defenterprise-schema]]`. The OSS body is what runs when the feature flag is off — never write `(when (premium/has-feature? ...) ...)` in user code; let `defenterprise` route.
+
+**Security gates fail *open* under `:feature` — use `:feature :none` and check manually.** The router (`dynamic-ee-oss-fn`) calls the EE body only when both the EE namespace is loaded *and* the token currently grants the feature; otherwise it falls back to the OSS body. For a permissive default (`collection-editable?` → `true`) that's fine. But for a *restriction* — sandboxing, impersonation, row-level filtering — the OSS fallback is the unrestricted answer, so a temporarily lost/expired token silently downgrades a sandboxed user to full access. **Fail open.** When the EE override is what *decides whether to restrict*, gate it with `:feature :none` (which always routes to the EE body once EE code is loaded) and check the feature explicitly inside, so token loss fails *closed*:
+
+```clojure
+;; enterprise/.../sandbox/api/util.clj — the gate that detects whether a user is sandboxed
+(defenterprise enforced-sandboxes-for-user
+  "..."
+  ;; :none so we can decide whether sandboxing is *configured* even when the feature
+  ;; isn't currently available — letting us BLOCK requests that would otherwise be
+  ;; sandboxed, instead of returning the permissive OSS fallback. Fail closed.
+  :feature :none
+  [user-id]
+  ...)
+```
+
+Reach for this only for the detection/enforcement decision point. Downstream functions that merely *act* on an already-made decision can keep their normal `:feature :sandboxes` gate.
 
 ## REST API Endpoints
 
@@ -463,7 +477,7 @@ Other useful map ops:
 - **Snake-case keys on a massaged in-memory map** — appdb-row only. Convert at the parse boundary (e.g., when a json response becomes an internal record).
 - **`(double (:k m 0.0))` on a hydrated DB column** — present-but-nil NPEs. Use `(double (or (:k m) 0.0))`.
 - **`defmulti` with every impl on one page** — extension story is a fiction. Use a private lookup map + a private fn.
-- **`(when (pos? (count xs)) …) … (use xs again)` where `xs` is lazy** — double-realizes, re-runs side-effecting item construction. `vec` it once.
+- **`(pos? (count xs))` to test a lazy `xs` for non-emptiness** — `count` forces the whole seq into memory. Use `(seq xs)`. (Rebuilding the seq — `(map f xs)` twice — is the only thing that recomputes; a bound seq caches.)
 - **Plain `with-redefs` on a `defn` var in a test** — not parallel-safe; the kondo hook will warn. Use `mt/with-dynamic-fn-redefs`.
 - **`(Thread/sleep N)` in an async test** — flake source #1. `(deref p timeout-ms ::timeout)` and assert `not= ::timeout`.
 - **Hand-rolled `(str/split host #":")` for origin/host comparison** — mis-handles IPv6. Use `mw.security/parse-url` (or `try-parse-url` for client-controlled input).
