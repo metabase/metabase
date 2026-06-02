@@ -7,6 +7,7 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
+   [metabase.geojson.settings :as geojson.settings]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -88,6 +89,20 @@
               (card {"map.type" "pin"})
               {:visualization_settings {"map.type" "region" "map.region" "us_states"}}
               data))))
+    (testing "Card-level map.region is honored even when a dashcard has empty (non-nil) viz-settings"
+      ;; Dashboard subscriptions pass a dashcard whose :visualization_settings is {} — it must not
+      ;; shadow the card's map.region (data here has no State/Country column to fall back on).
+      (is (= :region_map
+             (channel.render/detect-pulse-chart-type
+              (card {"map.type" "region" "map.region" "us_states"})
+              {:visualization_settings {}}
+              data))))
+    (testing "A dashcard that overrides map.type to a non-region type wins over the card"
+      (is (not= :region_map
+                (channel.render/detect-pulse-chart-type
+                 (card {"map.type" "region" "map.region" "us_states"})
+                 {:visualization_settings {"map.type" "pin"}}
+                 data))))
     (testing "Region is inferred from a State/Country column when map.region isn't persisted"
       (is (= :region_map
              (channel.render/detect-pulse-chart-type
@@ -104,6 +119,30 @@
     (testing "Legacy :state/:country displays are treated as region maps"
       (is (= :region_map (channel.render/detect-pulse-chart-type {:display :state} nil data)))
       (is (= :region_map (channel.render/detect-pulse-chart-type {:display :country} nil data))))))
+
+;; Not ^:parallel: with-redefs mutates the custom-geojson var globally, which would race other tests.
+(deftest detect-pulse-chart-type-custom-region-test
+  (let [data {:cols [{:base_type :type/Text :name "zone"}
+                     {:base_type :type/Number :name "count"}]
+              :rows [["a" 2] ["b" 4]]}
+        card (fn [settings] {:display :map :visualization_settings settings})]
+    (with-redefs [geojson.settings/custom-geojson (constantly
+                                                   {:sales_zones {:name "Zones" :url "https://example.com/z.json"
+                                                                  :region_key "ZONE" :region_name "NAME"}})]
+      (testing "A user-defined custom region map is detected when its key is in custom-geojson"
+        (is (= :region_map
+               (channel.render/detect-pulse-chart-type
+                (card {"map.region" "sales_zones"}) nil data))))
+      (testing "...including in a dashboard subscription where the dashcard has empty viz-settings"
+        ;; This is the case that was rendering as a table: a custom region has no State/Country column
+        ;; to infer from, so an empty dashcard blob shadowing the card's map.region broke it.
+        (is (= :region_map
+               (channel.render/detect-pulse-chart-type
+                (card {"map.region" "sales_zones"}) {:visualization_settings {}} data))))
+      (testing "but not when the key is absent from custom-geojson"
+        (is (not= :region_map
+                  (channel.render/detect-pulse-chart-type
+                   (card {"map.region" "unconfigured_region"}) nil data)))))))
 
 (deftest ^:parallel detect-pulse-chart-type-test-2
   (testing "Queries resulting in no rows return `:empty`."

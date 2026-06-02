@@ -27,6 +27,10 @@ const HEAT_MAP_ZERO_COLOR = "#CCC";
 // if the average formatted length is greater than this, we switch to compact formatting
 const AVERAGE_LENGTH_CUTOFF = 5;
 
+// Target map width in projected px; height follows from the projection fit. The SVG is rasterized at a
+// fixed output width downstream, so this only sets the internal coordinate resolution / aspect ratio.
+const MAP_WIDTH = 1000;
+
 // Batik (the SVG -> PNG rasterizer) doesn't understand hsl() colors, so normalize every color we emit to
 // rgb(). map.colors values in particular can arrive as hsl() (getColorplethColorScale builds them via the
 // color lib's HSL operations).
@@ -111,18 +115,12 @@ export const StaticChoropleth = ({
   const dimensionIndex = cols.findIndex((col) => col.name === dimensionName);
   const metricIndex = cols.findIndex((col) => col.name === metricName);
 
-  // Built-in regions only — these are the two maps we can render server-side (see detect-pulse-chart-type).
-  const projection = region === "us_states" ? geoAlbersUsa() : geoMercator();
-  const projectionFrame: [[number, number], [number, number]] =
-    region === "us_states"
-      ? [
-          [-135.0, 46.6],
-          [-69.1, 21.7],
-        ]
-      : [
-          [-170, 78],
-          [180, -60],
-        ];
+  // Albers for the US (its composite Alaska/Hawaii insets are tuned for it), Mercator for everything else.
+  // fitWidth auto-scales and centers the projection to the GeoJSON's own bounds, so this works for any
+  // region — built-in (us_states/world_countries) or a user-defined custom map — without hardcoded frames.
+  const projection = (
+    region === "us_states" ? geoAlbersUsa() : geoMercator()
+  ).fitWidth(MAP_WIDTH, geoJson);
 
   const keyProperty = geoJsonDetails.region_key;
 
@@ -170,10 +168,7 @@ export const StaticChoropleth = ({
   const legendTitles = hasData ? getLegendTitles(groups, columnSettings) : [];
 
   const geo = geoPath(projection);
-  const [[minX, minY], [maxX, maxY]] = projectionFrame.map((coord) => {
-    const projected = projection(coord);
-    return projected ?? [0, 0];
-  }) as [[number, number], [number, number]];
+  const [[minX, minY], [maxX, maxY]] = geo.bounds(geoJson);
   const mapWidth = maxX - minX;
   const mapHeight = maxY - minY;
 

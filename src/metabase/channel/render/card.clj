@@ -98,8 +98,8 @@
   region resolves to a built-in GeoJSON. Pin maps and custom (Leaflet) regions are not rendered here."
   [display-type card maybe-dashcard data]
   (and (#{:map :state :country} display-type)
-       (let [viz-settings (or (:visualization_settings maybe-dashcard)
-                              (:visualization_settings card))
+       (let [viz-settings (merge (:visualization_settings card)
+                                 (:visualization_settings maybe-dashcard))
              map-type     (or (get viz-settings "map.type") (get viz-settings :map.type))]
          (not (#{"pin" "heat" "grid"} map-type)))
        (some? (body/region-map-region-key display-type card maybe-dashcard data))))

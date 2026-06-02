@@ -133,6 +133,18 @@ describe("StaticChoropleth", () => {
     expect(svg).toMatch(/25|100/);
   });
 
+  it("renders a custom (non-us_states) region via Mercator + fitWidth", () => {
+    // Any region other than us_states uses geoMercator().fitWidth, which fits arbitrary GeoJSON bounds —
+    // this is what makes user-defined custom maps work without hardcoded projection frames.
+    const svg = toSvgString({
+      "map.region": "my_custom_region",
+      "map.dimension": "state",
+      "map.metric": "count",
+    });
+    expect(svg.startsWith("<svg")).toBe(true);
+    expect(svg.match(/<path/g) ?? []).toHaveLength(2);
+  });
+
   it("defaults map.dimension/map.metric from column types when they aren't persisted", () => {
     // Only map.region is set (the backend pins it); dimension/metric must be inferred from columns.
     const svg = toSvgString({ "map.region": "us_states" });
