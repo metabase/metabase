@@ -16,14 +16,16 @@
 (def ^:private weekly-export-trigger-key
   (triggers/key "metabase.task.starrez.weekly-export.trigger"))
 
-(task/defjob ^{:doc "Weekly StarRez export and activation."
+(task/defjob ^{:doc "Weekly StarRez export and cumulative report merge."
                org.quartz.DisallowConcurrentExecution true}
   StarRezWeeklyExport
   [_]
   (log/info "Starting scheduled StarRez weekly export")
-  (let [result (starrez.export/run-export {:activate? true})]
-    (if (:error result)
-      (log/errorf "Scheduled StarRez weekly export failed: %s" (:error result))
+  (let [result        (starrez.export/run-export)
+        export-errors (seq (filter (comp not :success) (:results result)))
+        merge-errors  (seq (filter :error (get-in result [:merge :reports])))]
+    (if (or (:error result) export-errors merge-errors)
+      (log/errorf "Scheduled StarRez weekly export completed with errors: %s" (pr-str result))
       (log/infof "Scheduled StarRez weekly export finished: %s" (pr-str result)))))
 
 (defmethod task/init! ::StarRezWeeklyExport [_]

@@ -62,8 +62,25 @@ export interface StarRezExportItemResult {
   error?: string;
 }
 
+export interface StarRezReportMergeResult {
+  report_id: string;
+  destination_table: string;
+  inserted?: number;
+  updated?: number;
+  added_columns?: string[];
+  error?: string;
+}
+
+export interface StarRezCumulativeMergeResult {
+  destination_table?: string;
+  reports: StarRezReportMergeResult[];
+  metadata_sync?: StarRezMetadataSyncResult;
+}
+
 export interface StarRezExportResult {
   results?: StarRezExportItemResult[];
+  snapshots?: number[];
+  merge?: StarRezCumulativeMergeResult;
   error?: string;
 }
 
@@ -86,7 +103,7 @@ const starRezApi = Api.injectEndpoints({
         method: "POST",
         url: "/api/starrez/export",
       }),
-      invalidatesTags: ["starrez-exports"],
+      invalidatesTags: ["starrez-exports", "starrez-weeks"],
     }),
 
     listStarRezExports: builder.query<

@@ -6,8 +6,9 @@
 
   - schema bootstrap (`starrez_data`, `starrez_meta`, `starrez_meta.weeks`)
   - per-export bookkeeping (`record-export-week!`)
-  - week activation (`activate-week!`) — drops & recreates `starrez_data.*`
-    tables from the CSV snapshots stored in blob.
+  - cumulative report merging by `booking_id`
+  - week activation (`activate-week!`) — loads report previews into
+    `starrez_data.active_report` and recreates non-report snapshot tables.
   - listing (`list-weeks`)
 
   All connections force `sslmode=require` since Azure Postgres rejects
@@ -32,6 +33,7 @@
 (def ^:private data-schema "starrez_data")
 (def ^:private meta-schema "starrez_meta")
 (def ^:private active-report-table "active_report")
+(def ^:private report-merge-key "booking_id")
 (def ^:private postgres-max-columns 1600)
 
 (defn- configured? []
@@ -176,6 +178,31 @@
           (log/errorf e "Failed to list StarRez weeks")
           {:weeks [] :error (ex-message e)})))))
 
+(defn- report-snapshot-entry? [[_ blob-name]]
+  (some-> blob-name (str/starts-with? "starrez_report_")))
+
+(defn- distinct-in-order [xs]
+  (second
+   (reduce (fn [[seen ordered] x]
+             (if (contains? seen x)
+               [seen ordered]
+               [(conj seen x) (conj ordered x)]))
+           [#{} []]
+           xs)))
+
+(defn report-ids-for-export
+  "Return report IDs in first-seen order, followed by newly configured IDs.
+  Successfully recorded historical reports keep getting refreshed even after
+  they are removed from the current setting."
+  [configured-report-ids]
+  (distinct-in-order
+   (concat
+    (for [week       (reverse (list-weeks))
+          [report-id _blob-name :as entry] (:blob_files week)
+          :when      (report-snapshot-entry? entry)]
+      (name report-id))
+    configured-report-ids)))
+
 (defn- safe-ident-name
   "Produce a stable lower-snake identifier. Prefix leading digits because
   StarRez exports can include numeric CSV headers."
@@ -267,6 +294,198 @@
     (with-open [reader (StringReader. (str writer))]
       (.copyIn (CopyManager. (.unwrap conn BaseConnection)) copy-sql reader))))
 
+(defn- query-count [conn sql-params]
+  (:count
+   (jdbc/execute-one! conn sql-params
+                      {:builder-fn rs/as-unqualified-lower-maps})))
+
+(defn- table-exists? [conn table-name]
+  (:exists
+   (jdbc/execute-one!
+    conn
+    ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ?) AS exists"
+     data-schema
+     table-name]
+    {:builder-fn rs/as-unqualified-lower-maps})))
+
+(defn- table-columns [conn table-name]
+  (mapv :column_name
+        (jdbc/execute!
+         conn
+         ["SELECT column_name FROM information_schema.columns WHERE table_schema = ? AND table_name = ? ORDER BY ordinal_position"
+          data-schema
+          table-name]
+         {:builder-fn rs/as-unqualified-lower-maps})))
+
+(defn- prepare-report-csv
+  "Validate and normalize a report CSV for cumulative merging."
+  [csv-rows]
+  (let [headers      (first csv-rows)
+        _            (when-not (seq headers)
+                       (throw (ex-info "CSV has no header row" {})))
+        columns      (unique-column-names headers)
+        _            (when (> (count columns) postgres-max-columns)
+                       (throw (ex-info (format "CSV has %d columns after parsing, which exceeds Postgres limit %d"
+                                               (count columns)
+                                               postgres-max-columns)
+                                       {:columns     (count columns)
+                                        :max-columns postgres-max-columns})))
+        booking-idx  (.indexOf ^java.util.List columns report-merge-key)
+        _            (when (neg? booking-idx)
+                       (throw (ex-info "CSV is missing required booking_id column" {})))
+        rows         (mapv (fn [row]
+                             (let [row (vec (take (count columns) (concat row (repeat ""))))]
+                               (assoc row booking-idx (str/trim (str (get row booking-idx))))))
+                           (rest csv-rows))
+        booking-ids  (mapv #(get % booking-idx) rows)
+        blank-count  (count (filter str/blank? booking-ids))
+        duplicates   (->> booking-ids frequencies (keep (fn [[booking-id n]] (when (> n 1) booking-id))) vec)]
+    (when (pos? blank-count)
+      (throw (ex-info "CSV contains blank booking_id values" {:blank_booking_ids blank-count})))
+    (when (seq duplicates)
+      (throw (ex-info "CSV contains duplicate booking_id values" {:duplicate_booking_ids duplicates})))
+    {:columns columns
+     :rows    rows}))
+
+(defn- create-table! [conn table-name columns]
+  (let [tbl     (qualified-table-name data-schema table-name)
+        col-ddl (str/join ", " (map #(str (quote-ident %) " TEXT") columns))]
+    (jdbc/execute! conn [(str "CREATE TABLE " tbl " (" col-ddl ")")])))
+
+(defn- add-missing-columns! [conn table-name source-columns]
+  (let [tbl           (qualified-table-name data-schema table-name)
+        existing-cols (set (table-columns conn table-name))
+        added-cols    (filterv #(not (contains? existing-cols %)) source-columns)]
+    (doseq [column added-cols]
+      (jdbc/execute! conn [(str "ALTER TABLE " tbl " ADD COLUMN " (quote-ident column) " TEXT")]))
+    added-cols))
+
+(defn- assert-valid-destination-booking-ids! [conn table-name]
+  (let [tbl         (qualified-table-name data-schema table-name)
+        booking-col (quote-ident report-merge-key)
+        blank-count (query-count conn [(str "SELECT COUNT(*) AS count FROM " tbl
+                                            " WHERE NULLIF(BTRIM(" booking-col "), '') IS NULL")])
+        duplicates  (query-count conn [(str "SELECT COUNT(*) AS count FROM (SELECT " booking-col
+                                            " FROM " tbl
+                                            " GROUP BY " booking-col
+                                            " HAVING COUNT(*) > 1) duplicate_booking_ids")])]
+    (when (pos? blank-count)
+      (throw (ex-info "Cumulative destination contains blank booking_id values"
+                      {:blank_booking_ids blank-count})))
+    (when (pos? duplicates)
+      (throw (ex-info "Cumulative destination contains duplicate booking_id values"
+                      {:duplicate_booking_ids duplicates})))))
+
+(defn- normalize-destination-booking-ids! [conn table-name]
+  (let [tbl         (qualified-table-name data-schema table-name)
+        booking-col (quote-ident report-merge-key)]
+    (jdbc/execute! conn [(str "UPDATE " tbl
+                              " SET " booking-col " = BTRIM(" booking-col ")"
+                              " WHERE " booking-col " IS NOT NULL"
+                              " AND " booking-col " <> BTRIM(" booking-col ")")])))
+
+(defn- ensure-booking-id-index! [conn table-name]
+  (let [index-name  (str table-name "_" report-merge-key "_uniq")
+        tbl         (qualified-table-name data-schema table-name)
+        booking-col (quote-ident report-merge-key)]
+    (jdbc/execute! conn [(str "CREATE UNIQUE INDEX IF NOT EXISTS "
+                              (qualified-table-name data-schema index-name)
+                              " ON " tbl " (" booking-col ")")])))
+
+(defn- ensure-cumulative-table! [conn table-name columns]
+  (if (table-exists? conn table-name)
+    (add-missing-columns! conn table-name columns)
+    (do
+      (create-table! conn table-name columns)
+      columns)))
+
+(defn- create-staging-table! [conn columns]
+  (let [table-name (str "starrez_report_merge_" (str/replace (str (random-uuid)) "-" ""))
+        tbl        (quote-ident table-name)
+        col-ddl    (str/join ", " (map #(str (quote-ident %) " TEXT") columns))]
+    (jdbc/execute! conn [(str "CREATE TEMP TABLE " tbl " (" col-ddl ") ON COMMIT DROP")])
+    tbl))
+
+(declare read-csv set-activation-timeouts!)
+
+(defn- merge-staging-table! [conn destination-table staging-table columns]
+  (let [destination   (qualified-table-name data-schema destination-table)
+        booking-col   (quote-ident report-merge-key)
+        quoted-cols   (mapv quote-ident columns)
+        update-cols   (remove #{booking-col} quoted-cols)
+        update-result (if (seq update-cols)
+                        (query-count
+                         conn
+                         [(str "WITH updated AS (UPDATE " destination " destination"
+                               " SET " (str/join ", " (map #(str % " = staging." %) update-cols))
+                               " FROM " staging-table " staging"
+                               " WHERE destination." booking-col " = staging." booking-col
+                               " RETURNING 1) SELECT COUNT(*) AS count FROM updated")])
+                        0)
+        insert-result (query-count
+                       conn
+                       [(str "WITH inserted AS (INSERT INTO " destination
+                             " (" (str/join ", " quoted-cols) ")"
+                             " SELECT " (str/join ", " (map #(str "staging." %) quoted-cols))
+                             " FROM " staging-table " staging"
+                             " WHERE NOT EXISTS (SELECT 1 FROM " destination " destination"
+                             " WHERE destination." booking-col " = staging." booking-col ")"
+                             " RETURNING 1) SELECT COUNT(*) AS count FROM inserted")])]
+    {:inserted insert-result
+     :updated  update-result}))
+
+(defn- merge-report-csv!
+  [destination-table report-id csv-body]
+  (try
+    (let [{:keys [columns rows]} (prepare-report-csv (read-csv csv-body))]
+      (with-open [conn (get-connection)]
+        (.setAutoCommit conn false)
+        (try
+          (set-activation-timeouts! conn)
+          (let [added-columns (ensure-cumulative-table! conn destination-table columns)
+                _             (normalize-destination-booking-ids! conn destination-table)
+                _             (assert-valid-destination-booking-ids! conn destination-table)
+                _             (ensure-booking-id-index! conn destination-table)
+                staging-table (create-staging-table! conn columns)
+                _             (when (seq rows)
+                                (copy-rows! conn staging-table columns rows))
+                result        (merge-staging-table! conn destination-table staging-table columns)]
+            (.commit conn)
+            (merge {:report_id         report-id
+                    :destination_table (str data-schema "." destination-table)
+                    :added_columns     added-columns}
+                   result))
+          (catch Exception e
+            (.rollback conn)
+            (throw e)))))
+    (catch Exception e
+      (log/errorf e "Failed to merge StarRez report %s into cumulative table %s" report-id destination-table)
+      {:report_id         report-id
+       :destination_table (str data-schema "." destination-table)
+       :error             (ex-message e)})))
+
+(defn merge-report-exports!
+  "Merge successful report CSVs into the earliest report-ID table.
+  Reports are applied in first-seen order so newer reports win conflicts."
+  [ordered-report-ids report-results]
+  (let [destination-table (some-> ordered-report-ids first safe-table-name)
+        results-by-id     (into {} (map (juxt :name identity)) report-results)
+        merges            (when destination-table
+                            (mapv (fn [report-id]
+                                    (if-let [result (get results-by-id report-id)]
+                                      (if (and (:success result) (seq (:csv_body result)))
+                                        (merge-report-csv! destination-table report-id (:csv_body result))
+                                        {:report_id         report-id
+                                         :destination_table (str data-schema "." destination-table)
+                                         :error             (or (:error result) "Report export failed")})
+                                      {:report_id         report-id
+                                       :destination_table (str data-schema "." destination-table)
+                                       :error             "Report export result missing"}))
+                                  ordered-report-ids))]
+    {:destination_table (when destination-table (str data-schema "." destination-table))
+     :reports           (or merges [])
+     :metadata_sync     (when destination-table (sync-metabase-schema!))}))
+
 (defn- read-csv [^String csv-str]
   (with-open [r (StringReader. csv-str)]
     (doall (csv/read-csv r))))
@@ -327,18 +546,22 @@
 (defn- report-csv? [{:keys [blob-name]}]
   (str/includes? blob-name "starrez_report_"))
 
-(defn- single-report-csv [csvs]
-  (let [report-csvs (filterv report-csv? csvs)]
-    (when (and (= 1 (count report-csvs))
-               (= 1 (count csvs)))
-      (first report-csvs))))
-
-(defn- create-active-report-table!
-  "For a selected report snapshot, also refresh one stable table that Metabase
-  questions can point at while admins switch which report snapshot is active."
+(defn- load-snapshot-tables!
+  "Load a report snapshot into the preview table. Non-report snapshots continue
+  to recreate their named tables. Refuse legacy snapshots that contain multiple
+  reports so preview activation cannot overwrite a cumulative report table."
   [conn csvs]
-  (when-let [{:keys [csv-rows]} (single-report-csv csvs)]
-    [(create-and-load-table! conn active-report-table csv-rows)]))
+  (let [report-csvs (filterv report-csv? csvs)
+        table-csvs  (filterv (complement report-csv?) csvs)]
+    (when (> (count report-csvs) 1)
+      (throw (ex-info "Snapshot contains multiple reports. Activate a snapshot for one report ID."
+                      {:reports (mapv :table-name report-csvs)})))
+    (into (mapv (fn [{:keys [table-name csv-rows]}]
+                  (create-and-load-table! conn table-name csv-rows))
+                table-csvs)
+          (mapv (fn [{:keys [csv-rows]}]
+                  (create-and-load-table! conn active-report-table csv-rows))
+                report-csvs))))
 
 (defn- set-activation-timeouts! [conn]
   (jdbc/execute! conn ["SET LOCAL lock_timeout = '10s'"])
@@ -346,10 +569,10 @@
 
 (defn activate-week!
   "Make `week-id` the active week:
-  - drop existing `starrez_data.*` tables in this week's blob_files
   - download each blob CSV via `download-csv` (a fn `blob-name -> CSV string`)
-  - recreate tables from CSV headers
-  - for single-report snapshots, also recreate `starrez_data.active_report`
+  - load a report CSV into `starrez_data.active_report`
+  - for non-report snapshots, recreate named `starrez_data.*` tables
+  - refuse legacy snapshots containing multiple report CSVs
   - flip the `is_active` flag
   Returns {:results [...] :error nil} on success."
   [week-id download-csv]
@@ -367,11 +590,7 @@
               (.setAutoCommit conn false)
               (try
                 (set-activation-timeouts! conn)
-                (let [results (mapv (fn [{:keys [table-name csv-rows]}]
-                                      (log/infof "Loading StarRez table for week %s: %s" week-id table-name)
-                                      (create-and-load-table! conn table-name csv-rows))
-                                    csvs)
-                      results (into results (create-active-report-table! conn csvs))]
+                (let [results (load-snapshot-tables! conn csvs)]
                   (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = FALSE WHERE is_active = TRUE")])
                   (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = TRUE WHERE id = ?") week-id])
                   (.commit conn)

@@ -29,16 +29,43 @@
               {"62751" "starrez_report_62751_2026-05-28_12-08-38.csv"}]
              @recorded)))))
 
-(deftest activate-single-snapshot-does-not-combine-multiple-snapshots
-  (let [activated (atom [])]
-    (with-redefs [starrez.db/activate-week!
-                  (fn [snapshot-id _download-csv]
-                    (swap! activated conj snapshot-id)
-                    {:snapshot snapshot-id})]
-      (is (= {:snapshot 42}
-             (#'starrez.export/activate-single-snapshot [42])))
-      (is (= [42] @activated))
-
-      (is (= {:error "Multiple snapshots were exported; activate the required snapshot manually."}
-             (#'starrez.export/activate-single-snapshot [42 43])))
-      (is (= [42] @activated)))))
+(deftest run-export-refreshes-historical-reports-and-merges-public-results
+  (let [requested-report-ids (atom [])
+        merged              (atom nil)]
+    (with-redefs [metabase.starrez.settings/starrez-export-tables
+                  (constantly "")
+                  metabase.starrez.settings/starrez-export-reports
+                  (constantly "62751")
+                  starrez.db/report-ids-for-export
+                  (fn [configured-report-ids]
+                    (is (= ["62751"] configured-report-ids))
+                    ["59906" "62751"])
+                  starrez.export/export-report
+                  (fn [report-id]
+                    (swap! requested-report-ids conj report-id)
+                    {:kind      :report
+                     :name      report-id
+                     :blob_name (str "starrez_report_" report-id "_2026-05-28_12-07-38.csv")
+                     :csv_body  "Booking ID,Room\n123,A\n"
+                     :success   true})
+                  starrez.db/record-export-week!
+                  (constantly 42)
+                  starrez.db/merge-report-exports!
+                  (fn [report-ids results]
+                    (reset! merged {:report-ids report-ids :results results})
+                    {:destination_table "starrez_data.table_59906"})]
+      (is (= {:results
+              [{:kind      :report
+                :name      "59906"
+                :blob_name "starrez_report_59906_2026-05-28_12-07-38.csv"
+                :success   true}
+               {:kind      :report
+                :name      "62751"
+                :blob_name "starrez_report_62751_2026-05-28_12-07-38.csv"
+                :success   true}]
+              :snapshots [42 42]
+              :merge     {:destination_table "starrez_data.table_59906"}}
+             (starrez.export/run-export)))
+      (is (= ["59906" "62751"] @requested-report-ids))
+      (is (= ["59906" "62751"] (:report-ids @merged)))
+      (is (every? :csv_body (:results @merged))))))

@@ -37,15 +37,13 @@
   (starrez.client/test-connection))
 
 (api.macros/defendpoint :post "/export"
-  "Trigger a StarRez data export. Fetches all configured tables and reports and
-  uploads CSV files to Azure Blob Storage. Old versions are pruned automatically.
+  "Trigger a StarRez data export. Fetches all configured tables and all reports
+  that have previously been exported, uploads CSV files to Azure Blob Storage,
+  and cumulatively merges report rows. Old versions are pruned automatically.
   Rejects with {:error ...} if another export is already running."
   []
   (perms/check-has-application-permission :setting)
-  (let [out (starrez.export/run-export)]
-    (if (and (map? out) (:error out))
-      out
-      {:results out})))
+  (starrez.export/run-export))
 
 (api.macros/defendpoint :get "/exports"
   "List past StarRez export files in Azure Blob Storage."
@@ -85,8 +83,8 @@
   (starrez.db/refresh-snapshots!))
 
 (api.macros/defendpoint :post "/weeks/:week-id/activate"
-  "Make `week-id` the active snapshot — drop+reload `starrez_data.*` tables from
-  the CSV snapshots stored in blob for that week."
+  "Make `week-id` the active snapshot. Load a report snapshot into
+  `starrez_data.active_report`, or drop and reload named tables for a table snapshot."
   [{:keys [week-id]} :- [:map [:week-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (let [sas-url    (starrez.settings/starrez-blob-sas-url)

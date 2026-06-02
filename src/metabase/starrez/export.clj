@@ -79,10 +79,11 @@
     (when success?
       (let [keep-n (starrez.settings/starrez-keep-versions)]
         (starrez.storage/cleanup-old-exports sas-url prefix keep-n)))
-    (cond-> {:kind      :report
-             :name      report-id
-             :blob_name blob-name
-             :success   success?}
+    (cond-> {:kind       :report
+             :name       report-id
+             :blob_name  blob-name
+             :success    success?
+             :csv_body   csv-str}
       (and (not success?) error) (assoc :error error))))
 
 (defn- split-csv-setting [s]
@@ -128,40 +129,29 @@
                    (map starrez.db/record-export-week!)
                    report-files))))
 
-(defn- activate-single-snapshot
-  "Activate the exported snapshot only when the run produced exactly one snapshot.
-  Separate report snapshots need manual activation so reports are not recombined."
-  [snapshot-ids]
-  (case (count snapshot-ids)
-    0 nil
-    1 (starrez.db/activate-week!
-       (first snapshot-ids)
-       #(starrez.storage/download-export
-         (starrez.settings/starrez-blob-sas-url)
-         %))
-    {:error "Multiple snapshots were exported; activate the required snapshot manually."}))
+(defn- public-export-result [result]
+  (dissoc result :csv_body))
 
 (defn run-export
   "Export all configured StarRez tables and reports to blob storage,
-  then record the week's snapshot in `starrez_meta.weeks` (if Postgres is configured).
-  When called with `{:activate? true}`, activate the recorded snapshot week after upload.
-  Returns a vector of per-item result maps, or {:error ...} if another export is in progress.
+  then record snapshots and cumulatively merge report rows by `booking_id`.
+  Previously successful report IDs keep getting refreshed even if removed from
+  the current setting. Returns {:results [...] :snapshots [...] :merge ...},
+  or {:error ...} if another export is in progress.
   Only one export may run at a time."
-  [& [opts]]
+  []
   (if-not (compare-and-set! export-running? false true)
     {:error "An export is already in progress. Wait for it to finish."}
     (try
-      (let [tables   (split-csv-setting (starrez.settings/starrez-export-tables))
-            reports  (split-csv-setting (starrez.settings/starrez-export-reports))
-            results  (into (mapv export-table tables)
-                           (mapv export-report reports))]
-        (if (:activate? opts)
-          (let [snapshot-ids (record-export-snapshots! results)]
-            {:results    results
-             :snapshots   snapshot-ids
-             :activation (activate-single-snapshot snapshot-ids)})
-          (do
-            (record-export-snapshots! results)
-            results)))
+      (let [tables       (split-csv-setting (starrez.settings/starrez-export-tables))
+            reports      (starrez.db/report-ids-for-export
+                          (split-csv-setting (starrez.settings/starrez-export-reports)))
+            results      (into (mapv export-table tables)
+                               (mapv export-report reports))
+            snapshot-ids (record-export-snapshots! results)]
+        {:results   (mapv public-export-result results)
+         :snapshots snapshot-ids
+         :merge     (when (seq reports)
+                      (starrez.db/merge-report-exports! reports results))})
       (finally
         (reset! export-running? false)))))
