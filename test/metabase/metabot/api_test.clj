@@ -1224,14 +1224,23 @@
   (testing "verified defaults to false when omitted"
     (let [response (mt/user-http-request :crowberto :post 200 "metabot/search-prompt/"
                                          {:prompt   "find users"
-                                          :entities []})]
+                                          :entities [{:model "table" :id 1}]})]
       (try
         (is (false? (:verified response)))
         (finally
           (t2/delete! :model/SearchPromptEntity :id (:id response))))))
+  (testing "entities must be non-empty"
+    (is (= "A search prompt must reference at least one entity."
+           (mt/user-http-request :crowberto :post 400 "metabot/search-prompt/"
+                                 {:prompt "find users" :entities []}))))
+  (testing "a canonical prompt must reference exactly one entity"
+    (is (= "A canonical search prompt must reference exactly one entity."
+           (mt/user-http-request :crowberto :post 400 "metabot/search-prompt/"
+                                 {:prompt "find users" :type "canonical"
+                                  :entities [{:model "table" :id 1} {:model "card" :id 2}]}))))
   (testing "non-superuser gets 403"
     (mt/user-http-request :rasta :post 403 "metabot/search-prompt/"
-                          {:prompt "find orders" :entities []})))
+                          {:prompt "find orders" :entities [{:model "table" :id 1}]})))
 
 (deftest search-prompt-update-test
   (with-test-prompt [entity {}]

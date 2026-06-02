@@ -1,4 +1,11 @@
 ## Create search_prompt_entities table for storing search prompts and their associated entities.
+##
+## NOTE: physically in 063/ (the target release) but logicalFilePath + changeset IDs stay v62 on
+## purpose — Liquibase identity is (id, author, logicalFilePath), so keeping them means the preview
+## env that already applied these changesets in 062 does not re-run them.
+## TODO (Chris 2026-06-03) -- before merging to master, drop this logicalFilePath override (let it
+## default to migrations/063_update_migrations.yaml) and rename the IDs to v63.* so it lives cleanly
+## in 063. Safe at that point: prod never ran the v62 version, and the preview env is moot post-merge.
 
 databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
@@ -34,7 +41,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: verified
-                  type: boolean
+                  type: ${boolean.type}
                   remarks: Whether this prompt-entity mapping has been verified
                   defaultValueBoolean: false
                   constraints:

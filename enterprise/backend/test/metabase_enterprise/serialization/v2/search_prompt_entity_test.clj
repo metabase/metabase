@@ -82,7 +82,8 @@
                                 :entities [{:model "table" :id (:id t1)}
                                            {:model "table" :id (:id t2)}])]
             (reset! spe-eid (:entity_id spe))
-            (reset! serialized (into [] (serdes/with-cache (extract/extract {}))))))
+            ;; realize inside with-cache so the cached resolvers are actually used during extraction
+            (reset! serialized (serdes/with-cache (into [] (extract/extract {}))))))
         (testing "default export selection includes it (guards extract/model-set)"
           (is (= 1 (count (filter (fn [{[{:keys [model]}] :serdes/meta}]
                                     (= model "SearchPromptEntity"))

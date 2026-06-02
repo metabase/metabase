@@ -2,18 +2,22 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.search-prompt-entities :as search-prompt-entities]))
+   [metabase.metabot.tools.search-prompt-entities :as search-prompt-entities]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
 (deftest tool-shape-oss-fallback-test
   (testing "without the semantic-search feature the tool returns the standard empty result shape"
-    (is (=? {:output            #(str/includes? % "No matching saved prompts")
-             :structured-output {:result-type :search_prompt_entities
-                                 :data        []
-                                 :total_count 0}}
-            (search-prompt-entities/search-prompt-entities-tool
-             {:user_search_prompt "revenue per region"})))))
+    ;; Pin the feature off so the defenterprise call takes its OSS fallback regardless of any ambient
+    ;; premium token (e.g. an all-features dev token) or rows left in a local pgvector store.
+    (mt/with-premium-features #{}
+      (is (=? {:output            #(str/includes? % "No matching saved prompts")
+               :structured-output {:result-type :search_prompt_entities
+                                   :data        []
+                                   :total_count 0}}
+              (search-prompt-entities/search-prompt-entities-tool
+               {:user_search_prompt "revenue per region"}))))))
 
 (deftest format-output-test
   (let [format-output (var-get #'search-prompt-entities/format-output)
