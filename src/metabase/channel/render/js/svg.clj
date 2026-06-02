@@ -169,6 +169,14 @@
   "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
 
+(def ^:dynamic *chart-size*
+  "When bound to a map `{:width <px> :height <px>}`, isomorphic (ECharts) charts rendered via
+  [[*javascript-visualization*]] use these as their intrinsic SVG dimensions, and PNG
+  rasterization targets the same dimensions (stretching to fit). Used to make a backend chart
+  fill an explicit pixel box -- e.g. a dashboard grid cell -- the way the frontend does. When
+  nil, keeps the legacy behavior (fixed width, aspect-preserving height)."
+  nil)
+
 (def ^:dynamic ^:private *svg-background-color*
   "Background color for rendered PNG images. Set to nil for transparent background.
   Defaults to white to ensure charts are readable in dark mode email clients."
@@ -181,10 +189,12 @@
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
-          transcoder                   (PNGTranscoder.)]
-      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH *svg-render-width*)
-      (when *svg-render-height*
-        (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT *svg-render-height*))
+          transcoder                   (PNGTranscoder.)
+          render-width                 (float (or (:width *chart-size*) *svg-render-width*))
+          render-height                (some-> (or (:height *chart-size*) *svg-render-height*) float)]
+      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH render-width)
+      (when render-height
+        (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT render-height))
       (when *svg-background-color*
         (.addTranscodingHint transcoder PNGTranscoder/KEY_BACKGROUND_COLOR *svg-background-color*))
       (.transcode transcoder in out))
@@ -217,10 +227,13 @@
                    (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                          (json/encode cards-with-data)
                                                          (json/encode dashcard-viz-settings)
-                                                         (json/encode {:applicationColors (appearance/application-colors)
-                                                                       :startOfWeek (lib-be/start-of-week)
-                                                                       :customFormatting (appearance/custom-formatting)
-                                                                       :tokenFeatures (premium-features/token-features)}))))]
+                                                         (json/encode (cond-> {:applicationColors (appearance/application-colors)
+                                                                               :startOfWeek (lib-be/start-of-week)
+                                                                               :customFormatting (appearance/custom-formatting)
+                                                                               :tokenFeatures (premium-features/token-features)}
+                                                                        *chart-size*
+                                                                        (assoc :width (:width *chart-size*)
+                                                                               :height (:height *chart-size*)))))))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
