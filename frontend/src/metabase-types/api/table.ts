@@ -21,9 +21,7 @@ export function isConcreteTableId(
 
 export type TableVisibilityType =
   | null
-  | "details-only"
   | "hidden"
-  | "normal"
   | "retired"
   | "sensitive"
   | "technical"
