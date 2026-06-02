@@ -55,6 +55,12 @@
   (:id (mt/user-http-request :crowberto :post 200 "metabot/search-prompt/"
                              {:prompt prompt :entities entities :verified verified})))
 
+;; TODO (Chris 2026-06-02) -- this drives the real CRUD API, which currently types `entities` as
+;; `[:sequential ...]` (lbrdnk's commit) while we settled on the discriminated map
+;; `{:type "canonical"|"sources" ...}`. Until that schema is reconciled to the map (note the inner
+;; `:type` key in lbrdnk's tests means *model type*, which collides with our canonical/sources
+;; discriminator — needs a conversation, not a blind revert), the POSTs below 400 and this test fails
+;; *locally* when pgvector is configured. It stays green in CI because it's gated on MB_PGVECTOR_DB_URL.
 (deftest ^:sequential crud-api-to-tool-end-to-end-test
   (testing "CRUD API write -> mirror hook -> pgvector -> search_prompt_entities tool, end to end"
     ;; Self-gated on MB_PGVECTOR_DB_URL — CI without semantic-search infra skips this; locally with the
