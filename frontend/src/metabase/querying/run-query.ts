@@ -81,7 +81,7 @@ async function handleQueryApiError(
 
 // Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot).
 let adhocDatasetQueryCounter = 0;
-export async function runAdhocDatasetQuery(
+export function runAdhocDatasetQuery(
   dispatch: Dispatch,
   card: Card,
   metadata: Metadata,
@@ -111,7 +111,7 @@ export async function runAdhocDatasetQuery(
 // route (and their pivot variants). Guest embeds rely on the legacy-client
 // `onBeforeRequest` middleware (which RTK requests still pass through) rewriting
 // the card route to `/api/embed/card/:token/query` when `token` is in the body.
-async function runSavedCardQuery(
+function runSavedCardQuery(
   dispatch: Dispatch,
   question: Question,
   {
