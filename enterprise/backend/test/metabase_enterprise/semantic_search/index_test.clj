@@ -37,6 +37,8 @@
       (is (str/includes? sql "AS MATERIALIZED"))
       ;; filter lives inside the CTE, before distance is computed/ordered
       (is (re-find #"AS MATERIALIZED \(SELECT.*\"archived\" = FALSE.*\)" sql))
+      ;; the (dominant) distance expression is computed exactly once -- the cutoff filters the alias
+      (is (= 1 (count (re-seq #"embedding <=>" sql))))
       ;; no pure-vector ORDER BY ... LIMIT that would trigger the HNSW index
       (is (not (re-find #"ORDER BY embedding <=>[^)]*LIMIT" sql)))))
   (testing ":hnsw does a pure vector search in the inner CTE then post-filters (approximate)"

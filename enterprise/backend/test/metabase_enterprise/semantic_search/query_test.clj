@@ -239,11 +239,14 @@
                                       (:archived %)
                                       (contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %))) results))))
                 (testing "Verified items with additional filters"
-                  (let [results (q {:search-string "marine mammal"
-                                    :models ["dashboard"]
+                  ;; The fixture's only verified entity is a card ("Dog Training Guide"), so filter on
+                  ;; cards here -- a verified-dashboard query would return nothing and assert vacuously.
+                  (let [results (q {:search-string "puppy"
+                                    :models ["card"]
                                     :verified true
                                     :archived? false})]
-                    (is (every? #(and (= "dashboard" (:model %))
+                    (is (pos? (count (semantic.tu/filter-for-mock-embeddings results))))
+                    (is (every? #(and (= "card" (:model %))
                                       (:verified %)
                                       (not (:archived %))) results))))))))))))
 

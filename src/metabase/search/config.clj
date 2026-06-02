@@ -234,7 +234,9 @@
 
 (def vector-search-strategies
   "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
-  so the OSS search API param and the EE semantic-search setting/dispatch share one definition."
+  so the OSS search API param and the EE semantic-search setting validation share one definition.
+  Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
+  separate `case` (with an `:hnsw` default) and must be updated by hand when adding a strategy."
   [:hnsw :brute-force])
 
 (def SearchContext
