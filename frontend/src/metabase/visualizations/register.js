@@ -1,4 +1,3 @@
-import { ListViz } from "metabase/list-view/components/ListViz";
 import {
   registerVisualization,
   setDefaultVisualization,
@@ -11,6 +10,7 @@ import { ComboChart } from "./visualizations/ComboChart";
 import { Funnel } from "./visualizations/Funnel";
 import { Gauge } from "./visualizations/Gauge";
 import { LineChart } from "./visualizations/LineChart";
+import { ListViz } from "./visualizations/List/components/ListViz";
 import { Map } from "./visualizations/Map";
 import { ObjectDetail } from "./visualizations/ObjectDetail";
 import { PieChart } from "./visualizations/PieChart";

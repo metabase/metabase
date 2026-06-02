@@ -18,6 +18,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- maybe-qualify-schema
@@ -474,7 +475,17 @@
     (testing "Can connect returns true for catalog that is present on the instance"
       (is (true? (driver/can-connect? :databricks (:details (mt/db))))))
     (testing "Can connect returns false for catalog that is NOT present on the instance (#49444)"
-      (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))))
+      (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))
+    (testing "Disallows unsafe connection parameters"
+      (let [details (assoc (:details (mt/db)) :additional-options "VolumeOperationAllowedLocalPaths=/etc/hosts")]
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/can-connect? :databricks details)))
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/can-connect? :databricks (update details
+                                                                       :additional-options
+                                                                       u/lower-case-en))))
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/validate-db-details! :databricks details)))))))
 
 (deftest can-connect-using-m2m-test
   (mt/test-driver

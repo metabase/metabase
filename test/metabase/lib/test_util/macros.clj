@@ -35,6 +35,7 @@
 
   ([table-name inner-query]
    {:pre [(map? inner-query)]}
+   (assert (not (:type inner-query)) "Should be an inner-query, not an outer query")
    (do-with-bindings
     #(as-> inner-query <>
        (mbql-query-impl/parse-tokens table-name <>)

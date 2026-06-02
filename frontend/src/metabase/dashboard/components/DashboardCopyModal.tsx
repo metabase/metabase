@@ -6,8 +6,8 @@ import { t } from "ttag";
 
 import { useCopyDashboardMutation } from "metabase/api";
 import { useInitialCollectionId } from "metabase/collections/hooks";
-import type { CopyDashboardFormProperties } from "metabase/dashboard/containers/CopyDashboardForm";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
@@ -59,7 +59,7 @@ const DashboardCopyModal = ({
   };
 
   return (
-    <EntityCopyModal
+    <CopyModal
       entityType="dashboards"
       entityObject={{
         ...dashboard,

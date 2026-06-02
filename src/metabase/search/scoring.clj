@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.search.config :as search.config]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -83,6 +84,29 @@
                 [:= :search_index.model [:inline "dataset"]] [:inline "card"]
                 [:= :search_index.model [:inline "metric"]] [:inline "card"]
                 :else :search_index.model]]]}))
+
+(defn library-score-expr
+  "Score expression: 1 when `:root_collection_type` is one of the library collection types, else 0."
+  []
+  ;; `:root-collection-type` is set at ingestion via `collection/root-collection-type` (walks the
+  ;; materialized path), so deeply nested items in a library tree still match.
+  [:case
+   (into [:or]
+         (for [t (sort collection/library-collection-types)]
+           [:= :root_collection_type [:inline t]]))
+   [:inline 1]
+   :else [:inline 0]])
+
+(defn data-layer-score-expr
+  "Score expression: per-tier weight when `:data_layer` is `final`/`internal`/`hidden`, else 0.
+  Per-tier weights are read from `:data-layer/*` keys via [[search.config/scorer-param]]."
+  [search-ctx]
+  (let [tier-weight #(or (search.config/scorer-param search-ctx :data-layer %) 0)]
+    [:case
+     [:= :data_layer [:inline "final"]]    [:inline (tier-weight :final)]
+     [:= :data_layer [:inline "internal"]] [:inline (tier-weight :internal)]
+     [:= :data_layer [:inline "hidden"]]   [:inline (tier-weight :hidden)]
+     :else                                 [:inline 0]]))
 
 (defn model-rank-expr
   "Score an item based on its :model type."

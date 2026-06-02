@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import type { Location } from "history";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -118,6 +119,7 @@ function NewTransformPageBody({
   const metadata = useSelector(getMetadata);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
+  const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
   const dispatch = useDispatch();
   const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
   useRegisterMetabotTransformContext(undefined, source, dryRunError);
@@ -128,13 +130,21 @@ function NewTransformPageBody({
       : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
   }, [source, metadata]);
 
+  const isSavedRef = useRef(false);
+
   const handleCreate = (transform: Transform) => {
+    isSavedRef.current = true;
     dispatch(push(Urls.transform(transform.id)));
   };
 
   const handleCancel = () => {
     dispatch(push(Urls.transformList()));
   };
+
+  const isLocationAllowed = useCallback(
+    (location?: Location) => !location || isSavedRef.current,
+    [],
+  );
 
   return (
     <>
@@ -211,14 +221,17 @@ function NewTransformPageBody({
         <CreateTransformModal
           source={source}
           defaultValues={getDefaultValues(name, suggestedTransform)}
+          closeOnEscape={!isLeaveWarningOpen}
           onCreate={handleCreate}
           onClose={closeModal}
         />
       )}
       <LeaveRouteConfirmModal
         route={route}
-        isEnabled={isDirty && !isModalOpened}
+        isEnabled={isDirty}
+        isLocationAllowed={isLocationAllowed}
         onConfirm={rejectProposed}
+        onOpenChange={setIsLeaveWarningOpen}
       />
     </>
   );
