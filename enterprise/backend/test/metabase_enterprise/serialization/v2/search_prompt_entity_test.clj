@@ -16,6 +16,8 @@
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; The references point at the H2 test-data Table, so keep the H2 guard off and re-enable H2 in extract.
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
@@ -43,7 +45,7 @@
       (mt/with-temp [:model/SearchPromptEntity {spe-id :id spe-eid :entity_id}
                      {:prompt "best venues" :type :sources :verified true :entities entities}]
         (let [extracted (ts/extract-one "SearchPromptEntity" spe-id)
-              [card-ref table-ref] (:entities extracted)]
+              [_card-ref table-ref] (:entities extracted)]
           (testing "entity refs are exported as portable references"
             (is (=? {:entity_id spe-eid
                      :prompt    "best venues"
