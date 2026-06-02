@@ -27,8 +27,8 @@
           (testing "a query whose embedding is beyond the cosine cutoff is not-matching"
             (is (=? {:type :not-matching :details {:max-cosine-distance 0.7 :distance number?}}
                     (diagnose-row! (assoc all :search-string "zzzznomatchzzz") "card" card-id))))
-          (testing "excluded by a structural filter (model restriction)"
-            (is (=? {:type :filtered :details {:excluded-by :filters}}
+          (testing "excluded by a structural filter, attributed to the specific filter"
+            (is (=? {:type :filtered :details {:excluded-by :models}}
                     (diagnose-row! {:models ["dashboard"] :search-string "puppy"} "card" card-id))))
           (testing "absent from the index is missing-from-index"
             (is (=? {:type :missing-from-index}

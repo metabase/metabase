@@ -43,7 +43,11 @@
   (testing "A model with no search spec"
     (mt/with-test-user :crowberto
       (is (=? {:type :not-searchable :details {:reason :no-spec :search-model "user"}}
-              (diagnose {} "user" 1))))))
+              (diagnose {} "user" 1)))))
+  (testing "A searchable model whose row does not exist is reported as such, not excluded-by-where"
+    (mt/with-test-user :crowberto
+      (is (=? {:type :not-searchable :details {:reason :does-not-exist :search-model "card"}}
+              (diagnose {:search-string "x"} "card" Integer/MAX_VALUE))))))
 
 (deftest ^:synchronized missing-from-index-test
   (when (search/supports-index?)

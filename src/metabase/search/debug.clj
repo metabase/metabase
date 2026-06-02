@@ -17,8 +17,9 @@
   "Engine-independent first stage: does the spec say this row should be indexed at all? `nil` means it should."
   [expected-model expected-id]
   (case (search.ingestion/indexable-row? expected-model expected-id)
-    :no-spec  {:type :not-searchable :details {:reason :no-spec :search-model expected-model}}
-    :excluded {:type :not-searchable :details {:reason :excluded-by-where :search-model expected-model}}
+    :no-spec   {:type :not-searchable :details {:reason :no-spec :search-model expected-model}}
+    :not-found {:type :not-searchable :details {:reason :does-not-exist :search-model expected-model}}
+    :excluded  {:type :not-searchable :details {:reason :excluded-by-where :search-model expected-model}}
     :indexable nil))
 
 (defn- in-results?

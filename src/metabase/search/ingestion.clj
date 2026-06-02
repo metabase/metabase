@@ -205,17 +205,25 @@
 
 (defn indexable-row?
   "Whether the row identified by `search-model` + `id` would be indexed, i.e. it satisfies the spec's `:where`.
-  `id` is the toucan PK of the underlying model (not the compound `indexed-entity` id).
-  Returns `:no-spec` when the model is not searchable, `:excluded` when the spec's `:where` filters the row out,
-  or `:indexable` when ingestion would index it."
+  `id` is the toucan PK of the underlying model (not the compound `indexed-entity` id). Returns:
+
+  - `:no-spec`   the model is not searchable
+  - `:not-found` no such row exists in the underlying table
+  - `:excluded`  the row exists but the spec's `:where` filters it out
+  - `:indexable` ingestion would index it"
   [search-model id]
   (if-not (contains? (set search.spec/search-models) search-model)
     :no-spec
-    (-> (spec-index-query-where search-model [:= :this.id id])
-        (assoc :select [[[:inline 1] :one]] :limit 1)
-        t2/query
-        seq
-        (if :indexable :excluded))))
+    (let [spec      (search.spec/spec search-model)
+          indexed?  (-> (spec-index-query-where search-model [:= :this.id id])
+                        (assoc :select [[[:inline 1] :one]] :limit 1)
+                        t2/query
+                        seq
+                        boolean)]
+      (cond
+        indexed?                              :indexable
+        (t2/exists? (:model spec) :id id)     :excluded
+        :else                                 :not-found))))
 
 (def ^:private max-document-error-logs 10)
 
