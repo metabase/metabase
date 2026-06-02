@@ -9,6 +9,6 @@
       "Sales, Revenue"     "sales revenue"
       "Sales,  Revenue"    "sales revenue"
       "  Sales   Revenue " "sales revenue"
-      "Sales,Revenue"      "salesrevenue"
+      "Sales,Revenue"      "sales revenue"
       "SALES"              "sales"
       ""                   "")))
