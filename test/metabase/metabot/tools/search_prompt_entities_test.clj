@@ -19,17 +19,15 @@
   (let [format-output (var-get #'search-prompt-entities/format-output)
         results       [{:saved_search_prompt "monthly revenue by region"
                         :entities {:type "canonical" :entity {:model "table" :id 42}}
-                        :score    {:total 0.95 :canonical true}}
+                        :score    {:total_score 0.95}}
                        {:saved_search_prompt "orders joined to customers"
                         :entities {:type "sources" :entities [{:model "table" :id 1} {:model "card" :id 9}]}
-                        :score    {:total 0.80 :canonical false}}]
+                        :score    {:total_score 0.80}}]
         out           (format-output results)]
-    (testing "canonical hits render the score, the canonical flag, and the prompt"
+    (testing "canonical hits render the total score and the prompt"
       (is (str/includes? out "score=\"0.950\""))
-      (is (str/includes? out "canonical=\"true\""))
       (is (str/includes? out "monthly revenue by region")))
-    (testing "source-entity hits report the source count and are not flagged canonical"
-      (is (str/includes? out "canonical=\"false\""))
+    (testing "source-entity hits report the source count"
       (is (str/includes? out "2 source entities")))))
 
 (deftest entity-summary-test

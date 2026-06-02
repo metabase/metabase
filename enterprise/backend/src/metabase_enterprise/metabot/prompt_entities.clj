@@ -31,11 +31,12 @@
 
 (defn- hnsw-index-name [] (str *table-name* "_embed_hnsw_idx"))
 
-;; Cosine distance is in [0, 2]; similarity = 1 - distance. Canonical prompts point at a single
-;; entity that directly answers the request, so they get a flat boost over source-entity sets;
-;; curator-verified prompts get a (smaller) flat boost too.
-(def ^:private canonical-boost 0.15)
-(def ^:private verified-boost 0.1)
+;; Weighted scorers, mirroring the regular search scoring shape (see metabase.search.scoring):
+;; each factor contributes weight * score, and :total_score is their sum. Similarity (1 - cosine
+;; distance) is the primary signal; canonical and verified are flat 0/1 indicator boosts.
+(def ^:private similarity-weight 1.0)
+(def ^:private canonical-weight 0.15)
+(def ^:private verified-weight 0.1)
 (def ^:private default-limit 10)
 
 (defn- pgvector-available?
@@ -128,17 +129,19 @@
     (string? v)            (json/decode v true)
     :else                  v))
 
-(defn- score [{:keys [distance canonical verified]}]
-  (let [similarity (- 1.0 (double distance))
-        c-boost    (if canonical canonical-boost 0.0)
-        v-boost    (if verified verified-boost 0.0)]
-    {:cosine_distance (double distance)
-     :similarity      similarity
-     :canonical       (boolean canonical)
-     :canonical_boost c-boost
-     :verified        (boolean verified)
-     :verified_boost  v-boost
-     :total           (+ similarity c-boost v-boost)}))
+(defn- scorer [nm score weight]
+  (let [score (double score) weight (double weight)]
+    {:name nm :score score :weight weight :contribution (* score weight)}))
+
+(defn- score
+  "Build a weighted-scorer breakdown for one row, shaped like regular search's scoring: a vector of
+   `{:name :score :weight :contribution}` plus the weighted-sum `:total_score`."
+  [{:keys [distance canonical verified]}]
+  (let [scores [(scorer :similarity (- 1.0 (double distance)) similarity-weight)
+                (scorer :canonical  (if canonical 1.0 0.0)     canonical-weight)
+                (scorer :verified   (if verified 1.0 0.0)      verified-weight)]]
+    {:scores      scores
+     :total_score (reduce + (map :contribution scores))}))
 
 (defenterprise search-prompt-entities
   "Embed `user-search-prompt`, find the nearest saved prompts by cosine distance, and return up to
@@ -167,5 +170,5 @@
                   {:saved_search_prompt (:search_prompt row)
                    :entities            (decode-entities (:entities row))
                    :score               (score row)}))
-           (sort-by (comp :total :score) >)
+           (sort-by (comp :total_score :score) >)
            vec))))

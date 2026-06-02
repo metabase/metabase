@@ -14,22 +14,24 @@
 
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
-(deftest score-blends-similarity-canonical-and-verified-boosts-test
+(deftest score-shape-matches-regular-search-test
   (let [score (var-get #'prompt-entities/score)]
-    (testing "similarity = 1 - cosine distance; canonical and verified each add a flat boost"
-      (is (=? {:cosine_distance 0.2 :similarity (approx 0.8)
-               :canonical true  :canonical_boost 0.15 :verified false :verified_boost 0.0 :total (approx 0.95)}
-              (score {:distance 0.2 :canonical true :verified false})))
-      (is (=? {:canonical false :canonical_boost 0.0 :verified true :verified_boost 0.1 :total (approx 0.9)}
-              (score {:distance 0.2 :canonical false :verified true})))
-      (is (=? {:canonical true :verified true :total (approx 1.05)}
-              (score {:distance 0.2 :canonical true :verified true})))
-      (is (=? {:canonical false :canonical_boost 0.0 :verified false :verified_boost 0.0 :total (approx 0.8)}
-              (score {:distance 0.2 :canonical false :verified false}))))
-    (testing "boosts strictly increase the total"
-      (is (> (:total (score {:distance 0.2 :canonical true :verified true}))
-             (:total (score {:distance 0.2 :canonical true :verified false}))
-             (:total (score {:distance 0.2 :canonical false :verified false})))))))
+    (testing "weighted-scorer breakdown: per-factor {name score weight contribution} + total_score"
+      (is (=? {:scores [{:name :similarity :score (approx 0.8) :weight 1.0  :contribution (approx 0.8)}
+                        {:name :canonical  :score 1.0          :weight 0.15 :contribution (approx 0.15)}
+                        {:name :verified   :score 0.0          :weight 0.1  :contribution 0.0}]
+               :total_score (approx 0.95)}
+              (score {:distance 0.2 :canonical true :verified false}))))
+    (testing "verified-only and canonical+verified totals apply the right weights"
+      (is (=? {:total_score (approx 0.9)}  (score {:distance 0.2 :canonical false :verified true})))
+      (is (=? {:total_score (approx 1.05)} (score {:distance 0.2 :canonical true  :verified true})))
+      (is (=? {:total_score (approx 0.8)}  (score {:distance 0.2 :canonical false :verified false}))))
+    (testing "total_score = sum of contributions, and boosts strictly increase it"
+      (let [s (score {:distance 0.2 :canonical true :verified true})]
+        (is (=? (approx (reduce + (map :contribution (:scores s)))) (:total_score s))))
+      (is (> (:total_score (score {:distance 0.2 :canonical true :verified true}))
+             (:total_score (score {:distance 0.2 :canonical true :verified false}))
+             (:total_score (score {:distance 0.2 :canonical false :verified false})))))))
 
 (deftest canonical-entities?-test
   (let [canonical? (var-get #'prompt-entities/canonical-entities?)]
@@ -84,10 +86,10 @@
                                          [:structured-output :data])]
                     (testing "all three rows mirrored and returned, ranked by boost"
                       (is (= [p-canon p-verif p-plain] (mapv :saved_search_prompt results))))
-                    (testing "entities round-trip and score factors are populated"
-                      (is (=? [{:entities canonical  :score {:canonical true  :verified false :canonical_boost 0.15}}
-                               {:entities sources-a  :score {:canonical false :verified true  :verified_boost 0.1}}
-                               {:entities sources-b  :score {:canonical false :verified false}}]
+                    (testing "entities round-trip; total_score reflects the weighted boosts (vectors tie, so similarity=1.0)"
+                      (is (=? [{:entities canonical  :score {:total_score (approx 1.15)}}
+                               {:entities sources-a  :score {:total_score (approx 1.1)}}
+                               {:entities sources-b  :score {:total_score (approx 1.0)}}]
                               results)))
                     (testing "deleting via the CRUD API removes the row from search results"
                       (mt/user-http-request :crowberto :delete 204 (str "metabot/search-prompt/" id-canon))

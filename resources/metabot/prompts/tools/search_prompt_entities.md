@@ -18,7 +18,7 @@ Then fall back to the general tools:
 Each result is `{saved_search_prompt, entities, score}`, sorted best-first.
 
 - `saved_search_prompt` — the curated prompt that matched. Skim it to confirm the match is really about the same thing the user asked; a high score on a subtly different prompt is still the wrong data.
-- `score` — a map combining `similarity` (1 − cosine distance, higher is closer) with a `canonical_boost`; `total` is what the list is sorted by. Treat it as relative ranking, not an absolute threshold.
+- `score` — a `{scores, total_score}` breakdown like regular search: `scores` is a list of weighted factors (`similarity` = 1 − cosine distance; `canonical` and `verified` indicators), each with its `score`, `weight`, and `contribution` (= score × weight). `total_score` is the sum of contributions and is what the list is sorted by. Treat it as relative ranking, not an absolute threshold.
 - `entities` — what to actually use. There are two shapes:
 
 ## `entities.type = "canonical"`

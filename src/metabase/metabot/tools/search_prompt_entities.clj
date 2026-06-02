@@ -45,9 +45,8 @@
     (str "<search_prompt_entities>\n"
          (str/join "\n"
                    (for [{:keys [saved_search_prompt entities score]} results]
-                     (format "<match score=\"%.3f\" canonical=\"%s\">%s — %s</match>"
-                             (double (:total score))
-                             (boolean (:canonical score))
+                     (format "<match score=\"%.3f\">%s — %s</match>"
+                             (double (:total_score score))
                              saved_search_prompt
                              (entity-summary entities))))
          "\n</search_prompt_entities>")))
