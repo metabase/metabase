@@ -116,6 +116,31 @@
       (is (= 30 (resolve/import-table-fk r ["DW" "RAW"   "ORDERS"])))
       (is (= 31 (resolve/import-table-fk r ["DW" "CLEAN" "ORDERS"]))))))
 
+(deftest import-table-fk-cache-collision-test
+  (testing "two real tables sharing a name across schemas: app-DB-backed resolver must not drop either"
+    ;; Reproduces a production failure where `query` / `construct_query` returned
+    ;; `:unknown-table` for a portable FK that `entity_details` had just emitted, then
+    ;; verifies the fix.
+    ;;
+    ;; Production wraps every `application-database-metadata-provider` with
+    ;; `cached-metadata-provider`. The cached provider's by-name cache key drops `:schema`
+    ;; and stores at most one metadata per requested name, so when two warehouse tables
+    ;; share a `name` across schemas, `(p/metadatas mp {:name #{n}})` returns at most one
+    ;; row -- the schema post-filter in `find-table` then yields 0 candidates for the
+    ;; schema that didn't win the cache write.
+    ;;
+    ;; The fix in [[resolve.mp/find-table]] bypasses the metadata provider for app-DB-backed
+    ;; lookups and queries `metabase_table` directly with schema in the WHERE clause, the
+    ;; same shape `metabase.models.serialization.resolve.db/import-table-fk` has always
+    ;; used.
+    (mt/with-temp [:model/Database db {:name (str "DW " (random-uuid)) :engine :h2}
+                   :model/Table    raw-orders   {:name "ORDERS" :schema "RAW"   :db_id (:id db)}
+                   :model/Table    clean-orders {:name "ORDERS" :schema "CLEAN" :db_id (:id db)}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)]
+        (is (= (:id raw-orders)   (resolve/import-table-fk r [(:name db) "RAW"   "ORDERS"])))
+        (is (= (:id clean-orders) (resolve/import-table-fk r [(:name db) "CLEAN" "ORDERS"])))))))
+
 (deftest ^:parallel import-table-fk-error-test
   (testing "unknown table name → :unknown-table, agent-error?, 400, no info leak"
     (let [r (resolve.mp/import-resolver mp-simple)]

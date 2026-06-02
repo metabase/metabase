@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { automagicDashboardsApi, cardApi, dashboardApi } from "metabase/api";
+import { isAbortError } from "metabase/api/legacy-client";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
@@ -858,7 +859,7 @@ export const fetchDashboard = createAsyncThunk(
         preserveParameters,
       };
     } catch (error) {
-      if (!(error as { isCancelled: boolean }).isCancelled) {
+      if (!isAbortError(error)) {
         console.error(error);
       }
       return rejectWithValue(error);

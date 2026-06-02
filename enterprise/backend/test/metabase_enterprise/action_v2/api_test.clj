@@ -11,10 +11,13 @@
    [metabase-enterprise.action-v2.test-util :as action-v2.tu]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor.test :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
@@ -675,3 +678,103 @@
               (is (= {table-id [nil
                                 {:price "Must be an integer"}
                                 {:name  "This field is required"}]} (:errors result))))))))))
+
+(deftest partial-revokes-editing-end-to-end-test
+  (testing "a writable MySQL table can be edited end-to-end even when partial_revokes is enabled (metabase#73276)"
+    (mt/with-premium-features #{actions-feature-flag}
+      (mt/test-driver :mysql
+        (when-not (mysql/mariadb? (mt/db))
+          (tx/drop-if-exists-and-create-db! driver/*driver* "partial_revokes_edit_test")
+          (let [details (tx/dbdef->connection-details :mysql :db {:database-name "partial_revokes_edit_test"})
+                spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+            (try
+              ;; Two fully-granted tables on a server with partial_revokes ON. Previously, partial_revokes being ON
+              ;; disabled the writable check for the *entire* database, so every table -- even genuinely-editable
+              ;; ones -- showed up as uneditable. We also revoke INSERT on one table to show that a revoke elsewhere
+              ;; in the database no longer drags the others down: writable_table stays editable end-to-end.
+              (doseq [stmt ["CREATE TABLE `writable_table` (id INTEGER PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255));"
+                            "CREATE TABLE `revoked_table` (id INTEGER PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255));"
+                            "CREATE USER 'partial_revokes_edit_user' IDENTIFIED BY 'password';"
+                            "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_edit_test.writable_table TO 'partial_revokes_edit_user'"
+                            "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_edit_test.revoked_table TO 'partial_revokes_edit_user'"]]
+                (jdbc/execute! spec stmt))
+              (jdbc/execute! spec "SET GLOBAL partial_revokes = ON;")
+              (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_edit_test.revoked_table FROM 'partial_revokes_edit_user';")
+              (let [user-details (assoc details
+                                        :user "partial_revokes_edit_user"
+                                        :password "password"
+                                        :ssl true
+                                        :additional-options "trustServerCertificate=true")]
+                (mt/with-temp [:model/Database database {:engine       "mysql"
+                                                         :details      user-details
+                                                         :dbms_version {:flavor "MySQL"}
+                                                         :settings     {:database-enable-table-editing true
+                                                                        :database-enable-actions       true}}]
+                  (sync/sync-database! database)
+                  (let [writable-id (t2/select-one-fn :id :model/Table :db_id (:id database) :name "writable_table")]
+                    (testing "the writable table syncs as editable despite the REVOKE on the other table"
+                      (is (true? (t2/select-one-fn :is_writable :model/Table :id writable-id))))
+                    (testing "rows can actually be inserted through the editing API"
+                      (is (=? [{:id 1, :name "Pichu"}]
+                              (map :row (:outputs (action-v2.tu/create-rows! writable-id [{:name "Pichu"}])))))
+                      (is (= [[1 "Pichu"]]
+                             (mt/rows
+                              (qp/process-query {:database (:id database)
+                                                 :type     :query
+                                                 :query    {:source-table writable-id}}))))))))
+              (finally
+                (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
+                (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_edit_user';")))))))))
+
+(deftest partial-revokes-optimistic-edit-fails-at-runtime-test
+  (testing "a table that only *looks* editable under a schema-level partial revoke fails at runtime when edited (metabase#73276)"
+    (mt/with-premium-features #{actions-feature-flag}
+      (mt/test-driver :mysql
+        (when-not (mysql/mariadb? (mt/db))
+          (tx/drop-if-exists-and-create-db! driver/*driver* "partial_revokes_runtime_test")
+          (let [details (tx/dbdef->connection-details :mysql :db {:database-name "partial_revokes_runtime_test"})
+                spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+            (try
+              ;; Grant DML globally, then partially revoke INSERT at the *schema* level -- the real partial_revokes
+              ;; mechanism. SHOW GRANTS then emits a `REVOKE INSERT ON db.* FROM user` line, which we deliberately
+              ;; ignore, so the table optimistically syncs as writable even though the user genuinely cannot insert.
+              ;; This is the trade-off the fix makes: rather than marking everything uneditable, we let it look
+              ;; editable and fail at runtime -- which is exactly what this test pins down.
+              (doseq [stmt ["CREATE TABLE `optimistic_table` (id INTEGER PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255));"
+                            "CREATE USER 'partial_revokes_runtime_user' IDENTIFIED BY 'password';"
+                            "GRANT SELECT, INSERT, UPDATE, DELETE ON *.* TO 'partial_revokes_runtime_user'"]]
+                (jdbc/execute! spec stmt))
+              (jdbc/execute! spec "SET GLOBAL partial_revokes = ON;")
+              (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_runtime_test.* FROM 'partial_revokes_runtime_user';")
+              (let [user-details (assoc details
+                                        :user "partial_revokes_runtime_user"
+                                        :password "password"
+                                        :ssl true
+                                        :additional-options "trustServerCertificate=true")]
+                (mt/with-temp [:model/Database database {:engine       "mysql"
+                                                         :details      user-details
+                                                         :dbms_version {:flavor "MySQL"}
+                                                         :settings     {:database-enable-table-editing true
+                                                                        :database-enable-actions       true}}]
+                  (sync/sync-database! database)
+                  (let [table-id (t2/select-one-fn :id :model/Table :db_id (:id database) :name "optimistic_table")]
+                    (testing "the table optimistically syncs as writable (the schema-level REVOKE line is ignored)"
+                      (is (true? (t2/select-one-fn :is_writable :model/Table :id table-id))))
+                    (testing "but editing it through the API fails at runtime -- no row is actually inserted"
+                      ;; We don't assert a specific status code; the point is simply that the edit does not succeed.
+                      (let [resp (mt/user-http-request :crowberto :post action-v2.tu/execute-bulk-url
+                                                       {:action :data-grid.row/create
+                                                        :scope  {:table-id table-id}
+                                                        :inputs [{:name "Pichu"}]})]
+                        (is (empty? (filter :row (:outputs resp)))
+                            "the create must not report a successfully written row")
+                        (is (empty? (mt/rows (qp/process-query {:database (:id database)
+                                                                :type     :query
+                                                                :query    {:source-table table-id}})))
+                            "no row may be inserted into a table the user cannot actually write to"))))))
+              (finally
+                ;; Drop the user *before* disabling partial_revokes: MySQL refuses to turn partial_revokes off while
+                ;; any partial-revoke restriction still exists (error 3896), and dropping the user removes its
+                ;; restriction. Doing it in the other order leaves the shared server poisoned for later tests.
+                (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_runtime_user';")
+                (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")))))))))

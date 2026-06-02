@@ -16,11 +16,11 @@ import type {
   SdkQuestionState,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
+import { isAbortError } from "metabase/api/legacy-client";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import { isObject } from "metabase-types/guards";
 
 type LoadQuestionResult = Promise<
   SdkQuestionState & { originalQuestion?: Question }
@@ -153,7 +153,7 @@ export function useLoadQuestion({
       // controlled `sqlParameters` push cancels the in-flight load query via the
       // shared `controllerRef`). React simulates unmounting on strict mode,
       // therefore "Question not found" will be shown without this.
-      if (isCancelledRequestError(err)) {
+      if (isAbortError(err)) {
         setIsQuestionLoading(false);
         return {};
       }
@@ -352,6 +352,3 @@ export const getParameterDependencyKey = (
     .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
     .map(([key, value]) => `${key}=${value}`)
     .join(":");
-
-const isCancelledRequestError = (error: unknown) =>
-  isObject(error) && "isCancelled" in error && error.isCancelled === true;
