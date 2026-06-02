@@ -287,7 +287,6 @@
     "@types/tether": "^1.4.6",
     "@types/underscore": "^1.13.0",
     "@types/use-sync-external-store": "^1.5.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260421.2",
     "ajv": "^8.5.0",
     "babel-loader": "^9.1.2",
     "babel-plugin-ttag": "^1.8.16",
