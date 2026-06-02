@@ -1019,6 +1019,7 @@
    :uses #{api
            lib
            lib-be
+           settings
            task
            util}}
 

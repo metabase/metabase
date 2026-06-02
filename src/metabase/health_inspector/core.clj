@@ -6,7 +6,9 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as schema]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.task.core :as task]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -65,8 +67,23 @@
   [limit]
   (t2/select :health_inspector_runs {:limit limit :order-by [[:run_at :desc]]}))
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
+(defsetting health-inspector-enabled
+  (deferred-tru "Enable or disable all health inspector checks.")
+  :type       :boolean
+  :default    false
+  :doc        false
+  :visibility :admin
+  :export?    false
+  :audit      :getter)
+
 (task/defjob ^:private SaveReport [_]
-  (save-report))
+  (when (health-inspector-enabled)
+    ;; background job should always be the lowest priority
+    (.setPriority (Thread/currentThread) 1)
+    ;; quartz doesn't have support for jitter, so we fake it with a sleep
+    (Thread/sleep ^Long (rand-int 60000))
+    (save-report)))
 
 (defmethod task/init! ::SaveReport [_]
   (let [job-key (jobs/key "metabase.health-inspector.job")

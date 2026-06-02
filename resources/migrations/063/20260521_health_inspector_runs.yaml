@@ -2,7 +2,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v62.2026-05-21T10:47:00
+      id: v63.2026-05-21T10:47:00
       author: technomancy
       comment: Create health_inspector_runs table.
       changes:
