@@ -26,16 +26,16 @@ type RequestOptions = {
   json: boolean;
   hasBody: boolean;
   noEvent: boolean;
-  transformResponse: (opts: {
-    body: object;
-    data?: Record<string, unknown>;
-    response?: Response;
-  }) => Response | undefined;
+  /**
+   * When `true`, resolve with the raw `Response` instead of the parsed body —
+   * for callers that read it themselves (binary downloads, map tiles as a
+   * blob). Implies the fetch path (XHR has no `Response` object).
+   */
+  rawResponse?: boolean;
   headers: Record<string, string>;
   retry: boolean;
   retryCount: number;
   retryDelayIntervals: number[];
-  formData?: boolean;
   fetch?: boolean;
   signal?: AbortSignal;
 };
@@ -44,7 +44,6 @@ const DEFAULT_OPTIONS: RequestOptions = {
   json: true,
   hasBody: false,
   noEvent: false,
-  transformResponse: ({ body }) => body as Response,
   headers: {},
   retry: false,
   retryCount: MAX_RETRIES,
@@ -69,13 +68,7 @@ type ApiMethod = (
 
 type MethodCreator = (
   urlTemplate: string,
-  methodOptions?:
-    | Partial<RequestOptions>
-    | ((opts: {
-        body: object;
-        data?: Record<string, unknown>;
-        response?: Response;
-      }) => Response | undefined),
+  methodOptions?: Partial<RequestOptions>,
 ) => ApiMethod;
 
 /**
@@ -200,10 +193,6 @@ export class LegacyApi extends EventEmitter<EventMap> {
     creatorOptions: Partial<RequestOptions> = {},
   ): MethodCreator {
     return (urlTemplate, methodOptions = {}) => {
-      if (typeof methodOptions === "function") {
-        methodOptions = { transformResponse: methodOptions };
-      }
-
       const defaultOptions: RequestOptions = {
         ...DEFAULT_OPTIONS,
         ...creatorOptions,
@@ -238,15 +227,17 @@ export class LegacyApi extends EventEmitter<EventMap> {
           }
         }
 
-        let body: string | FormData | undefined;
+        let body: string | FormData | URLSearchParams | undefined;
         if (options.hasBody) {
-          if (rawData instanceof FormData) {
-            // Pass `FormData` through unwrapped so the browser sets the right
-            // multipart Content-Type (with boundary). Drops the legacy
-            // `body: { formData }, formData: true` wrapper shape.
+          if (
+            rawData instanceof FormData ||
+            rawData instanceof URLSearchParams
+          ) {
+            // Pass `FormData` / `URLSearchParams` bodies straight through so
+            // the browser sets the right Content-Type itself (multipart with
+            // boundary, or `application/x-www-form-urlencoded`). Replaces the
+            // legacy `body: { formData }, formData: true` wrapper shape.
             body = rawData;
-          } else if (options.formData) {
-            body = rawData["formData"] as FormData;
           } else {
             body = JSON.stringify(data);
           }
@@ -265,10 +256,11 @@ export class LegacyApi extends EventEmitter<EventMap> {
           ...options.headers,
         };
 
-        // FormData must NOT carry our default `application/json` Content-Type —
-        // the browser sets the right value (with the multipart boundary). XHR's
-        // `xhr.send(formData)` honors this too.
-        if (body instanceof FormData || (options.formData && options.fetch)) {
+        // A `FormData` / `URLSearchParams` body must NOT carry our default
+        // `application/json` Content-Type — the browser (or XHR's
+        // `send(body)`) sets the correct value, with the multipart boundary
+        // for `FormData`. Both transports honor this.
+        if (body instanceof FormData || body instanceof URLSearchParams) {
           delete headers["Content-Type"];
         }
 
@@ -292,7 +284,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -335,13 +327,14 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
     // this is temporary to not deal with failed cypress tests
     // we should switch to using fetch in all cases (metabase#28489)
-    if (isTest || options.fetch) {
+    // `rawResponse` also forces fetch — XHR has no `Response` object.
+    if (isTest || options.fetch || options.rawResponse) {
       return this._makeRequestWithFetch(
         method,
         url,
@@ -366,7 +359,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    body: string | FormData | undefined,
+    body: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -422,12 +415,6 @@ export class LegacyApi extends EventEmitter<EventMap> {
           }
 
           if (status >= 200 && status <= 299) {
-            if (options.transformResponse) {
-              responseBody = options.transformResponse({
-                body: responseBody as Response,
-                data,
-              });
-            }
             resolve(responseBody);
           } else {
             this.emit("responseError", {
@@ -466,7 +453,7 @@ export class LegacyApi extends EventEmitter<EventMap> {
     method: string,
     url: string,
     headers: Record<string, string>,
-    requestBody: string | FormData | undefined,
+    requestBody: string | FormData | URLSearchParams | undefined,
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
@@ -533,14 +520,10 @@ export class LegacyApi extends EventEmitter<EventMap> {
           }
 
           if (status >= 200 && status <= 299) {
-            if (options.transformResponse) {
-              body = options.transformResponse({
-                body: body as Response,
-                data,
-                response: unreadResponse,
-              });
-            }
-            return body;
+            // `rawResponse` callers (binary downloads, map tiles) want the
+            // `Response` object itself rather than the parsed body — return
+            // the unread clone so they can `.blob()`/`.arrayBuffer()` it.
+            return options.rawResponse ? unreadResponse : body;
           } else {
             this.emit("responseError", { body, status, metabaseVersion });
 
