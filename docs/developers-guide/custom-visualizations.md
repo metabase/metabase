@@ -44,6 +44,7 @@ metabase-plugin.json    # Plugin manifest (name, icon, version)
 public/
   assets/
     icon.svg            # Visualization icon (shown in the chart type picker)
+package.json
 vite.config.ts          # Build configuration — don't edit
 pack.mjs                # Packages the build into a .tgz — don't edit
 tsconfig.json
@@ -88,13 +89,13 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 
 | Field              | Description                                                                                                                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles. It doesn't have to match the `id` your visualization returns. |
-| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle.see [Bundling assets](#bundling-assets).         |
+| `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles. |
+| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves the icon automatically. It's the only file Metabase serves alongside your bundle. See [Bundling assets](#bundling-assets).         |
 | `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                                 |
 
 ## Defining a visualization
 
-`src/index.tsx` exports a factory function. Metabase calls the function with a set of helpers and expects a visualization definition back. Wrap the definition in `defineConfig` it turns the React `VisualizationComponent` you write into the renderer Metabase mounts, and keeps the definition's types in check:
+`src/index.tsx` exports a factory function. Metabase calls the function with a set of helpers and expects a visualization definition back. The function should return a `defineConfig`, which wraps your `VisualizationComponent`.
 
 ```tsx
 import {
