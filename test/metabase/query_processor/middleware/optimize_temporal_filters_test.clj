@@ -655,7 +655,7 @@
   (instance? java.time.temporal.Temporal x))
 
 (deftest ^:parallel optimize-temporal-between-clauses-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :test/date-type)
+  (mt/test-drivers (mt/normal-driver-select {:+features [:test/date-type :test/timestamptz-type]})
     (mt/dataset attempted-murders-no-time
       (are [start-date end-date expect-expressions expect-rows]
            (let [mp (mt/metadata-provider)
