@@ -7,6 +7,7 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -62,7 +63,9 @@
   "The scheme a TLS-terminating proxy used to reach us, from `X-Forwarded-Proto`.
   Takes the first hop when the header carries a comma-separated chain (`https, http`)."
   [x-forwarded-proto]
-  (some-> x-forwarded-proto (str/split #",") first str/trim not-empty))
+  ;; lower-case because URL schemes are case-insensitive (RFC 3986) but normalize-site-url's "http" prefix
+  ;; check is not -- an upper-case `HTTPS` would otherwise be treated as scheme-less and mangled.
+  (some-> x-forwarded-proto (str/split #",") first str/trim not-empty u/lower-case-en))
 
 (defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host x-forwarded-proto host user-agent]} :headers, uri :uri}]
   (when (and (mdb/db-is-set-up?)

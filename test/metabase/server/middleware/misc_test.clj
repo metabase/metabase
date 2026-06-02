@@ -61,6 +61,11 @@
         (mt/with-temporary-setting-values [site-url nil]
           (maybe-set-site-url request)
           (is (= "https://mb.example.com" (system/site-url)))))))
+  (testing "`X-Forwarded-Proto` is matched case-insensitively (RFC 3986)"
+    (mt/with-temporary-setting-values [site-url nil]
+      (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
+                              (ring.mock/header "X-Forwarded-Proto" "HTTPS")))
+      (is (= "https://mb.example.com" (system/site-url)))))
   (testing "the first hop wins when `X-Forwarded-Proto` is a comma-separated chain"
     (mt/with-temporary-setting-values [site-url nil]
       (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
