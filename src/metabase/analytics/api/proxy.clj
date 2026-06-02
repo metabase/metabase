@@ -3,8 +3,7 @@
 
   The SDK runs inside the customer's page, where the customer's `connect-src` CSP blocks a direct browser POST to
   the Snowplow collector (`sp.metabase.com`). The SDK instead POSTs the tracker's `tp2` payload here — the same
-  instance host its data calls already go to, so it is already CSP-allowlisted — and we forward it to the configured
-  collector server-side, where no browser CSP applies.
+  instance host its data calls already go to, so it is already CSP-allowlisted — and we forward it to `sp.metabase.com` server-side, where no browser CSP applies.
 
   Body handling: `wrap-json-body` parses the body before this handler runs, so `body` arrives as a map and we
   re-encode it — not a byte-exact relay. Safe for `tp2` because it has no checksum, all field values are JSON strings
@@ -23,7 +22,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Forward a Snowplow `tp2` payload to the configured collector server-side, bypassing the customer page's
+  "Forward a Snowplow `tp2` payload to `sp.metabase.com` server-side, bypassing the customer page's
   `connect-src` CSP."
   [_route-params
    _query-params

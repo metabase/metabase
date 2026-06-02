@@ -52,7 +52,7 @@
     (let [captured (atom nil)]
       (with-collector captured {:status 200 :headers {} :body "{}"}
         (client/client :post 200 "analytics-proxy" sample-payload))
-      (testing "outbound URL is the configured collector + tp2 path"
+      (testing "outbound URL is sp.metabase.com + tp2 path"
         (is (= (collector-url) (str (name (:scheme @captured)) "://" (:server-name @captured) (:uri @captured)))))
       (testing "outbound body round-trips to the same JSON the SDK sent (re-encode is semantically lossless)"
         (is (= (json/decode (json/encode sample-payload))
