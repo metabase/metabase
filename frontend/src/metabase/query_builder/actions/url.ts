@@ -91,10 +91,13 @@ export const updateUrl = createThunkAction(
 
       const { currentState } = getState().qb;
       const queryParams = preserveParameters ? getCurrentQueryParams() : {};
-      // While the question is the pristine default view of a table, keep the
-      // canonical /table/:slug URL; any edit falls through to /question#hash.
+      // While we're on the /table/:slug route and the question is still the
+      // pristine default view of that table, keep the canonical /table URL.
+      // Any edit falls through to /question#hash and stays there — we don't
+      // convert a /question entry point into /table.
+      const isOnTableRoute = window.location.pathname.startsWith("/table/");
       const tableUrl =
-        objectId == null && queryBuilderMode === "view"
+        isOnTableRoute && objectId == null && queryBuilderMode === "view"
           ? getTableUrlForPristineQuestion(question)
           : null;
       const url =
