@@ -21,7 +21,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]))
+   [ring.util.response :as response]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -189,8 +190,9 @@
 
 (def ^:private search-debug-request-schema
   (conj search-request-schema
-        [:expected_result_type search/SearchableModel]
-        [:expected_result_id   ms/PositiveInt]))
+        [:expected_result_type                   search/SearchableModel]
+        [:expected_result_id                     ms/PositiveInt]
+        [:for_user_id          {:optional true} [:maybe ms/PositiveInt]]))
 
 (defn- params->search-context
   "Build a search context from the raw `GET /api/search` query params. Shared by the search and debug endpoints."
@@ -296,17 +298,28 @@
   "Superuser-only. Explain why `expected_result_id` / `expected_result_type` does not appear in the results of
   the given search query. Accepts every `GET /api/search` parameter plus the two expected-result parameters, and
   returns `{:type ..., :details ...}` for the first stage that drops the item: `not-searchable`,
-  `missing-from-index`, `filtered`, `not-matching`, or the terminal `matched` / `ranked-out`. Not supported for
-  `indexed-entity` (its id is compound)."
+  `missing-from-index`, `not-permitted`, `filtered`, `not-matching`, or the terminal `matched` / `ranked-out`.
+
+  - `for_user_id`: diagnose from another user's perspective (defaults to you). Permission and visibility checks run
+    as that user, so a `not-permitted` result means *they* can't see the item.
+
+  Not supported for `indexed-entity` (its id is compound)."
   [_route-params
    {expected-result-type :expected_result_type
     expected-result-id   :expected_result_id
+    for-user-id          :for_user_id
     :as                  query-params} :- search-debug-request-schema]
   (api/check-superuser)
   (api/check-valid-page-params (request/limit) (request/offset))
   (when (= "indexed-entity" expected-result-type)
     (throw (ex-info (tru "Search debug is not supported for the indexed-entity model.") {:status-code 400})))
-  (search/diagnose (params->search-context query-params) expected-result-type expected-result-id))
+  (letfn [(diagnose [] (search/diagnose (params->search-context query-params)
+                                        expected-result-type expected-result-id))]
+    (if (and for-user-id (not= for-user-id api/*current-user-id*))
+      ;; Build the context and run every permission/visibility check from the target user's perspective.
+      (do (api/check-404 (t2/exists? :model/User :id for-user-id))
+          (request/with-current-user for-user-id (diagnose)))
+      (diagnose))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/search` routes."

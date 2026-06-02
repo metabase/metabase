@@ -36,10 +36,11 @@
   Engine-independent stages (`:not-searchable`, terminal `:matched`/`:ranked-out`) are handled by the caller in
   [[metabase.search.debug]].
 
-  The `:filtered` `:details` `:excluded-by` value names the structural filter that dropped the row; shared filter
-  keys (e.g. `:models`, `:created-by`, `:archived?`) are consistent across engines, but permission-related keys are
-  engine-specific by nature (appdb distinguishes `:collection-permissions`/`:table-permissions`; the semantic
-  engine reports a single `:permissions`/`:personal-collection`)."
+  The `:filtered` `:details` `:excluded-by` value names the filter that dropped the row; shared keys (e.g. `:models`,
+  `:created-by`, `:archived?`) are consistent across engines. Access-control exclusions are also reported under
+  `:filtered` here — `:collection-permissions`/`:table-permissions`/`:permissions` (appdb) or `:permissions`
+  (semantic) — and [[metabase.search.debug]] promotes those to `:not-permitted`; engines should check them before
+  structural filters so access denial wins."
   {:arglists '([search-context expected-model expected-id])}
   (fn [{engine :search-engine} _ _] engine))
 

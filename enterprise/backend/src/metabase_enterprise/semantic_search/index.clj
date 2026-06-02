@@ -953,11 +953,13 @@
       {:type :missing-from-index :details {:table (:table-name index)}}
 
       :else
-      (if-let [excluded-by (some (fn [[k clause]] (when-not (row-present? db table model id clause) k))
-                                 (filter-conditions search-context))]
-        {:type :filtered :details {:excluded-by excluded-by}}
-        (if (empty? (filter-read-permitted [(:legacy_input (decode-legacy-input row))]))
-          {:type :filtered :details {:excluded-by :permissions}}
+      ;; Check access control before structural filters so a not-permitted row is reported as such even when a
+      ;; query filter would also drop it (matches the appdb engine, where the permission layers come first).
+      (if (empty? (filter-read-permitted [(:legacy_input (decode-legacy-input row))]))
+        {:type :filtered :details {:excluded-by :permissions}}
+        (if-let [excluded-by (some (fn [[k clause]] (when-not (row-present? db table model id clause) k))
+                                   (filter-conditions search-context))]
+          {:type :filtered :details {:excluded-by excluded-by}}
           (let [search-string (:search-string search-context)]
             (if (str/blank? search-string)
               {:type :candidate :details {}}

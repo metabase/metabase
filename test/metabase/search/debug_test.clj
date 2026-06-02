@@ -75,15 +75,18 @@
           (search/reindex! {:async? false :in-place? true})
           (mt/with-test-user :crowberto
             (is (=? {:type :filtered :details {:excluded-by :models}}
-                    (diagnose {:search-string "quarterly" :models #{"dashboard"}} "card" card-id)))))))
-    (testing "Excluded by collection permissions for a non-superuser"
+                    (diagnose {:search-string "quarterly" :models #{"dashboard"}} "card" card-id)))))))))
+
+(deftest ^:synchronized not-permitted-test
+  (when (search/supports-index?)
+    (testing "A row the user cannot read is :not-permitted, not :filtered"
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Collection coll {:name "Locked"}
                        :model/Card {card-id :id} {:name "Quarterly Revenue" :collection_id (:id coll)}]
           (search/reindex! {:async? false :in-place? true})
           (mt/with-non-admin-groups-no-collection-perms coll
             (mt/with-test-user :rasta
-              (is (=? {:type :filtered :details {:excluded-by :collection-permissions}}
+              (is (=? {:type :not-permitted :details {:excluded-by :collection-permissions}}
                       (diagnose {:search-string "quarterly"} "card" card-id))))))))))
 
 (deftest ^:synchronized not-matching-test
@@ -119,4 +122,26 @@
                                 :q "quarterly" :expected_result_type "card" :expected_result_id card-id))
         (testing "indexed-entity is rejected"
           (mt/user-http-request :crowberto :get 400 "search/debug"
-                                :q "x" :expected_result_type "indexed-entity" :expected_result_id 1))))))
+                                :q "x" :expected_result_type "indexed-entity" :expected_result_id 1))
+        (testing "for_user_id with an unknown user is a 404"
+          (mt/user-http-request :crowberto :get 404 "search/debug"
+                                :q "quarterly" :expected_result_type "card" :expected_result_id card-id
+                                :for_user_id Integer/MAX_VALUE))))))
+
+(deftest ^:synchronized for-user-id-test
+  (when (search/supports-index?)
+    (testing "An admin can diagnose from another user's perspective via for_user_id"
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection coll {:name "Locked"}
+                       :model/Card {card-id :id} {:name "Quarterly Revenue" :collection_id (:id coll)}]
+          (search/reindex! {:async? false :in-place? true})
+          (mt/with-non-admin-groups-no-collection-perms coll
+            (testing "as the admin (default), the card is visible"
+              (is (=? {:type "matched"}
+                      (mt/user-http-request :crowberto :get 200 "search/debug"
+                                            :q "quarterly" :expected_result_type "card" :expected_result_id card-id))))
+            (testing "as a user who can't read the collection, it is not-permitted"
+              (is (=? {:type "not-permitted" :details {:excluded-by "collection-permissions"}}
+                      (mt/user-http-request :crowberto :get 200 "search/debug"
+                                            :q "quarterly" :expected_result_type "card" :expected_result_id card-id
+                                            :for_user_id (mt/user->id :rasta)))))))))))

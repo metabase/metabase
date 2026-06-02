@@ -22,6 +22,20 @@
     :excluded  {:type :not-searchable :details {:reason :excluded-by-where :search-model expected-model}}
     :indexable nil))
 
+(def ^:private permission-exclusions
+  "`:excluded-by` keys that mean an *access-control* denial rather than a query filter the user chose. Engines emit
+  these under `:filtered`; we promote them to `:not-permitted` so the debug consumer can tell 'you can't see it'
+  apart from 'your query excluded it'."
+  #{:collection-permissions :table-permissions :permissions})
+
+(defn- split-not-permitted
+  "Promote a permission-denial `:filtered` result to `:not-permitted` (see [[permission-exclusions]])."
+  [result]
+  (cond-> result
+    (and (= :filtered (:type result))
+         (contains? permission-exclusions (-> result :details :excluded-by)))
+    (assoc :type :not-permitted)))
+
 (defn- in-results?
   "Run the actual ranked search and check whether `(expected-model, expected-id)` is in the returned page."
   [search-ctx expected-model expected-id]
@@ -44,23 +58,26 @@
 
   - `:not-searchable`     the spec says this row should not be indexed (no spec, or its `:where` excludes it).
   - `:missing-from-index` the spec would index it, but it is absent from the resolved engine's active index.
-  - `:filtered`           present in the index but excluded by a structural filter or a permission check
-                          (everything except the fulltext/semantic match).
+  - `:not-permitted`      present in the index but excluded by an access-control check (the user can't see it).
+  - `:filtered`           present in the index but excluded by a structural filter the query chose
+                          (archived, collection scope, created-by, models, …) — everything except the match.
   - `:not-matching`       passes the filters but does not match the fulltext/semantic query.
   - `:matched`            passes every stage and is actually present in the returned page.
   - `:ranked-out`         passes every stage but was ranked below the result/distance limit.
 
-  The engine-owned stages (`:missing-from-index`, `:filtered`, `:not-matching`, `:candidate`) come from
-  [[metabase.search.engine/diagnose]]; the engine-independent stages are decided here. `:details` always carries
-  the resolved engine. `:not-searchable` reflects current spec/DB truth, so it wins even if a stale index row
-  lingers."
+  Permission checks run from `search-ctx`'s `:current-user-id` perspective, so callers can diagnose on behalf of
+  another user (see the `for_user_id` parameter of the API). The engine-owned stages (`:missing-from-index`,
+  `:filtered`/`:not-permitted`, `:not-matching`, `:candidate`) come from [[metabase.search.engine/diagnose]]; the
+  engine-independent stages are decided here. `:details` always carries the resolved engine. `:not-searchable`
+  reflects current spec/DB truth, so it wins even if a stale index row lingers."
   [search-ctx        :- :map
    expected-model    :- ms/NonBlankString
    expected-id       :- pos-int?]
   (let [engine-details {:resolved-engine (:search-engine search-ctx)
                         :default-engine  (search.engine/default-engine)}
         result         (or (not-searchable-result expected-model expected-id)
-                           (let [r (search.engine/diagnose search-ctx expected-model expected-id)]
+                           (let [r (split-not-permitted
+                                    (search.engine/diagnose search-ctx expected-model expected-id))]
                              (if (= :candidate (:type r))
                                (terminal-result search-ctx expected-model expected-id r)
                                r)))]
