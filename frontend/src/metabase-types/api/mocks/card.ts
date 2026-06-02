@@ -39,7 +39,6 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   can_write: true,
   can_restore: false,
   can_delete: false,
-  can_run_adhoc_query: true,
   cache_ttl: null,
   collection: null,
   collection_id: null,

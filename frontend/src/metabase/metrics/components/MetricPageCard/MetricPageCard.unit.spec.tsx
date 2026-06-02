@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
+  setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
@@ -11,6 +12,9 @@ import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockDataset,
+  createMockDatasetData,
+  createMockNumericColumn,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -23,7 +27,7 @@ import { MetricPageCard } from "./MetricPageCard";
 const SAMPLE_DB = createSampleDatabase();
 const CARD_ID = 42;
 
-function makeMetricCard(opts: Partial<Card> = {}): Card {
+function makeMetricCard(): Card {
   return createMockCard({
     id: CARD_ID,
     type: "metric",
@@ -35,7 +39,6 @@ function makeMetricCard(opts: Partial<Card> = {}): Card {
       database: SAMPLE_DB_ID,
       query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
     },
-    ...opts,
   });
 }
 
@@ -66,6 +69,10 @@ describe("MetricPageCard", () => {
       status: 403,
       body: PERMISSION_ERROR,
     });
+    fetchMock.post(`path:/api/card/${CARD_ID}/query`, {
+      status: 403,
+      body: PERMISSION_ERROR,
+    });
 
     setup();
 
@@ -75,8 +82,12 @@ describe("MetricPageCard", () => {
     expect(screen.queryByTestId("content")).not.toBeInTheDocument();
   });
 
-  it("renders the unauthorized state when the user can't run the card's query", async () => {
-    setupReadableCard(makeMetricCard({ can_run_adhoc_query: false }));
+  it("renders the unauthorized state when the metric query is forbidden", async () => {
+    setupReadableCard(makeMetricCard());
+    fetchMock.post(`path:/api/card/${CARD_ID}/query`, {
+      status: 403,
+      body: PERMISSION_ERROR,
+    });
 
     setup();
 
@@ -86,8 +97,18 @@ describe("MetricPageCard", () => {
     expect(screen.queryByTestId("content")).not.toBeInTheDocument();
   });
 
-  it("renders children with the card when it is readable and runnable", async () => {
-    setupReadableCard(makeMetricCard({ can_run_adhoc_query: true }));
+  it("renders children when the metric query succeeds (viewable without ad-hoc data access)", async () => {
+    const card = makeMetricCard();
+    setupReadableCard(card);
+    setupCardQueryEndpoints(
+      card,
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [createMockNumericColumn({ name: "count" })],
+          rows: [[18760]],
+        }),
+      }),
+    );
 
     setup();
 

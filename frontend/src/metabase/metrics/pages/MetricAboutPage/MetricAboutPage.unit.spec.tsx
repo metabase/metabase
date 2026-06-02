@@ -69,8 +69,12 @@ function renderPage() {
 }
 
 describe("MetricAboutPage", () => {
-  it("renders the unauthorized state (no tabs) when the user can't run the metric query", async () => {
-    setupBaseEndpoints(makeMetricCard({ can_run_adhoc_query: false }));
+  it("renders the unauthorized state (no tabs) when the metric query is forbidden", async () => {
+    setupBaseEndpoints(makeMetricCard());
+    fetchMock.post(`path:/api/card/${CARD_ID}/query`, {
+      status: 403,
+      body: PERMISSION_ERROR,
+    });
 
     renderPage();
 
@@ -92,6 +96,10 @@ describe("MetricAboutPage", () => {
       body: PERMISSION_ERROR,
     });
     fetchMock.get(`path:/api/card/${CARD_ID}/query_metadata`, {
+      status: 403,
+      body: PERMISSION_ERROR,
+    });
+    fetchMock.post(`path:/api/card/${CARD_ID}/query`, {
       status: 403,
       body: PERMISSION_ERROR,
     });
