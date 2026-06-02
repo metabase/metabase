@@ -62,7 +62,8 @@
     (when (:temp (plugins/plugins-dir-info))
       (log/warn (str "Plugins directory is a temp directory; the sample database will be re-extracted on every startup. "
                      "Set MB_PLUGINS_DIR to a writable directory to make this stable.")))
-    {:db (extract-sample-database!)}))
+    {:db         (extract-sample-database!)
+     :read-only? true}))
 
 (defn extract-and-sync-sample-database!
   "Adds the sample database as a Metabase DB if it doesn't already exist. If it does exist in the app DB,

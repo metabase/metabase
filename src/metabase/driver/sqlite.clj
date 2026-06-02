@@ -104,13 +104,24 @@
   [_]
   :sunday)
 
+(defn- read-only-open-mode
+  "`open_mode` flag value that SQLite-JDBC uses for a read-only connection. Delegate to `SQLiteConfig` rather than
+  hard-coding the bitmask so it tracks the driver's own definition."
+  []
+  (let [config (org.sqlite.SQLiteConfig.)]
+    (.setReadOnly config true)
+    (.getProperty (.toProperties config) "open_mode")))
+
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
-  [_ {:keys [db]
+  [_ {:keys [db read-only?]
       :or   {db "sqlite.db"}
       :as   details}]
   (merge {:subprotocol "sqlite"
           :subname     db}
-         (dissoc details :db)
+         (dissoc details :db :read-only?)
+         ;; SQLite-JDBC can't flip a live connection to read-only, so set it at open time via `open_mode`.
+         (when read-only?
+           {:open_mode (read-only-open-mode)})
          ;; disallow "FDW" (connecting to other SQLite databases on the local filesystem) -- see https://github.com/metabase/metaboat/issues/152
          {:limit_attached 0}))
 
