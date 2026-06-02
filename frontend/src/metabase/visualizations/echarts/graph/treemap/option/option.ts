@@ -8,8 +8,12 @@ import { getTreemapColors } from "../model/colors";
 import { getTreemapNodeId } from "../model/tooltip";
 import type { TreemapNode, TreemapTree } from "../model/types";
 
-// Opacity of the group-header background (the group's hue, translucent).
-const GROUP_HEADER_BG_OPACITY = 0.85;
+// How much of the group's hue remains in its header chip background (the rest
+// is mixed toward white). The chip sits on the group's own opaque background
+// fill — the borderColor that tints the within-group gaps — so a translucent
+// color would be invisible (hue over the same hue). We paint an opaque blend
+// instead, which reads as a translucent band. Lower = paler/more see-through.
+const GROUP_HEADER_BG_TINT = 0.4;
 
 // Hide a tile's label once it occupies less than this fraction of the chart
 // area. A treemap tile's area is proportional to its value, so a node's share
@@ -126,7 +130,7 @@ export function getTreemapChartOption({
     left: 0,
     right: 0,
     bottom: bottomSpace,
-    data: toSeriesData(tree, colors, isDrilled),
+    data: toSeriesData(tree, colors, isDrilled, renderingContext),
     leafDepth: 2,
     ...(hasChildren ? { levels } : {}),
   };
@@ -138,7 +142,9 @@ function toSeriesData(
   tree: TreemapTree,
   colors: Record<string, string>,
   isDrilled: boolean,
+  renderingContext: RenderingContext,
 ): TreemapSeriesNode[] {
+  const headerTintTarget = renderingContext.getColor("white");
   // A leaf's share of the whole chart is its value over the total (the root
   // values already sum the leaves), which equals its share of the rendered area.
   const total = tree.reduce((sum, node) => sum + node.value, 0);
@@ -147,6 +153,13 @@ function toSeriesData(
 
   return tree.map((node, rootIndex) => {
     const groupColor = colors[String(node.rawName)];
+    // A lightened tint of the group hue (mixed toward white), shared by the
+    // header chip and the within-group gap borders so they read as one color.
+    const groupTint = groupColor
+      ? Color(groupColor)
+          .mix(Color(headerTintTarget), 1 - GROUP_HEADER_BG_TINT)
+          .string()
+      : undefined;
     return {
       id: getTreemapNodeId(rootIndex),
       name: node.displayName,
@@ -155,15 +168,15 @@ function toSeriesData(
       rowIndices: node.rowIndices,
       // For a group (a node with children), ECharts fills the background with
       // the node's borderColor and draws the leaves on top with gaps, so setting
-      // borderColor to the group hue paints the within-group gaps in that hue.
+      // borderColor to the group tint paints the within-group gaps in that tint.
       // The between-group separators come from the synthetic root's gaps, whose
       // borderColor we leave at the ECharts default (white). When drilled into a
       // group it fills the canvas, and we want hueless gaps there — a transparent
-      // border reveals the white canvas behind instead of the group hue.
+      // border reveals the white canvas behind instead of the tint.
       itemStyle: {
         color: groupColor,
         ...(node.children != null
-          ? { borderColor: isDrilled ? "transparent" : groupColor }
+          ? { borderColor: isDrilled ? "transparent" : groupTint }
           : {}),
       },
       // Top-level nodes with children render a header chip (always shown), not
@@ -172,15 +185,7 @@ function toSeriesData(
       ...(node.children == null && isTileTooSmall(node.value)
         ? { label: { show: false } }
         : {}),
-      ...(groupColor
-        ? {
-            upperLabel: {
-              backgroundColor: Color(groupColor)
-                .alpha(GROUP_HEADER_BG_OPACITY)
-                .string(),
-            },
-          }
-        : {}),
+      ...(groupTint ? { upperLabel: { backgroundColor: groupTint } } : {}),
       ...(node.children
         ? {
             children: node.children.map((leaf, leafIndex) => ({

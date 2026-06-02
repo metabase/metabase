@@ -189,18 +189,20 @@ describe("getTreemapChartOption zoom", () => {
 });
 
 describe("getTreemapChartOption within-group borders", () => {
-  it("colors a group's internal borders with its own hue via the group node's borderColor", () => {
+  it("colors a group's internal borders with the same lightened tint as its header chip", () => {
     const colors = getTreemapColors(TWO_LEVEL_TREE);
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,
       colors,
       renderingContext,
     });
+    const node = series.data[0];
 
     // ECharts fills a parent node's background with its borderColor and draws
-    // the leaf children on top with gaps, so the within-group gaps/frame show
-    // the group's hue.
-    expect(series.data[0].itemStyle?.borderColor).toBe(colors["Europe"]);
+    // the leaf children on top with gaps, so the within-group gaps show this
+    // color — which matches the header chip tint, not the full group hue.
+    expect(node.itemStyle?.borderColor).toBe(node.upperLabel?.backgroundColor);
+    expect(node.itemStyle?.borderColor).not.toBe(colors["Europe"]);
   });
 
   it("leaves the between-group separators white (no borderColor override on the root level)", () => {
@@ -394,7 +396,7 @@ describe("getTreemapChartOption group header", () => {
     );
   });
 
-  it("backs each group header with the group's color at reduced opacity", () => {
+  it("backs each group header with an opaque, lightened tint of the group's color", () => {
     const colors = getTreemapColors(TWO_LEVEL_TREE);
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,
@@ -403,9 +405,14 @@ describe("getTreemapChartOption group header", () => {
     });
 
     const headerBg = series.data[0].upperLabel?.backgroundColor;
-    expect(headerBg).toMatch(/^rgba\(/);
-    // Same hue as the group's tile color, just translucent.
-    expect(Color(headerBg).hex()).toBe(Color(colors["Europe"]).hex());
-    expect(Color(headerBg).alpha()).toBeCloseTo(0.85);
+    // The chip sits on the group's own opaque background fill (the borderColor
+    // that tints the within-group gaps), so a translucent color would be
+    // invisible. Instead it's an opaque blend of the group hue toward white,
+    // which reads as a translucent band and is lighter than the pure hue.
+    expect(Color(headerBg).alpha()).toBe(1);
+    expect(Color(headerBg).hex()).not.toBe(Color(colors["Europe"]).hex());
+    expect(Color(headerBg).luminosity()).toBeGreaterThan(
+      Color(colors["Europe"]).luminosity(),
+    );
   });
 });
