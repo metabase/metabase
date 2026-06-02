@@ -520,3 +520,55 @@ describe("getTreemapChartOption group header", () => {
     );
   });
 });
+
+describe("getTreemapChartOption leaf labels", () => {
+  it("shows leaf labels by default", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
+
+    expect(series.label).toMatchObject({ show: true });
+  });
+
+  it("hides the series-level leaf label when showLeafLabels is false", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      showLeafLabels: false,
+      renderingContext,
+    });
+
+    expect(series.label).toMatchObject({ show: false });
+  });
+
+  it("forces every leaf tile's label off when showLeafLabels is false", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      showLeafLabels: false,
+      renderingContext,
+    });
+
+    series.data.forEach((group) => {
+      group.children?.forEach((leaf) => {
+        expect(leaf.label).toMatchObject({ show: false });
+      });
+    });
+  });
+
+  it("hides labels on a 1-level treemap's tiles when showLeafLabels is false", () => {
+    const tree: TreemapTree = [
+      { rawName: "A", displayName: "A", value: 10, rowIndices: [0] },
+      { rawName: "B", displayName: "B", value: 25, rowIndices: [1] },
+    ];
+
+    const { series } = getTreemapChartOption({
+      tree,
+      showLeafLabels: false,
+      renderingContext,
+    });
+
+    series.data.forEach((node) => {
+      expect(node.label).toMatchObject({ show: false });
+    });
+  });
+});

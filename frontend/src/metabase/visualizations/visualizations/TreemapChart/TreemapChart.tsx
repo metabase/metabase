@@ -96,6 +96,7 @@ export const TreemapChart = ({
       colors,
       isDrilled: viewRootId != null,
       showParentLabels: settings["treemap.show_parent_labels"] ?? true,
+      showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
       labelLayout,
       renderingContext,
     });

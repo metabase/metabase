@@ -85,7 +85,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
       return t`Show parent labels`;
     },
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
     inline: true,
     // The parent labels are the top-level group header chips, which only exist
     // in a 2-level treemap — hide the setting until a sub-grouping is selected.
@@ -94,6 +94,15 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
       vizSettings: ComputedVisualizationSettings,
     ) => !vizSettings["treemap.sub_grouping"],
     readDependencies: ["treemap.sub_grouping"],
+  },
+  "treemap.show_leaf_labels": {
+    getSection: () => t`Display`,
+    get title() {
+      return t`Show leaf labels`;
+    },
+    widget: "toggle",
+    getDefault: () => true,
+    inline: true,
   },
 };
 

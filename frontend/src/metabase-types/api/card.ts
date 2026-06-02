@@ -360,6 +360,7 @@ export type VisualizationSettings = {
   "treemap.sub_grouping"?: string;
   "treemap.value"?: string;
   "treemap.show_parent_labels"?: boolean;
+  "treemap.show_leaf_labels"?: boolean;
 
   // BoxPlot settings
   "boxplot.whisker_type"?: BoxPlotWhiskerType;

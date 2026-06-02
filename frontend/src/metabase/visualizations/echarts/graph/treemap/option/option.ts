@@ -51,12 +51,19 @@ export function getTreemapChartOption({
   colors = getTreemapColors(tree),
   isDrilled = false,
   showParentLabels = true,
+  showLeafLabels = true,
   labelLayout = {},
   renderingContext,
 }: {
   tree: TreemapTree;
   colors?: Record<string, string>;
   isDrilled?: boolean;
+  /**
+   * Whether the leaf tile labels render. Controlled by the
+   * `treemap.show_leaf_labels` setting; applies to the sub-group tiles in a
+   * 2-level treemap and to the top-level tiles in a 1-level treemap.
+   */
+  showLeafLabels?: boolean;
   /**
    * Whether the top-level group header chips (the parent labels) render at the
    * overview. Controlled by the `treemap.show_parent_labels` setting; only
@@ -132,6 +139,10 @@ export function getTreemapChartOption({
     breadcrumb: { show: false },
     label: {
       ...TREEMAP_CHART_STYLE.nodeLabels,
+      // Default leaf-label visibility; per-tile overrides in `toSeriesData` can
+      // still hide an individual measured tile, but when leaf labels are turned
+      // off this hides every tile the overrides don't touch.
+      show: showLeafLabels,
       // Wrap the label to the per-tile `label.width` set in `toSeriesData`
       // (breaking at word boundaries), and drop any lines that don't fit the
       // tile height rather than overflowing it.
@@ -151,7 +162,14 @@ export function getTreemapChartOption({
     left: 0,
     right: 0,
     bottom: bottomSpace,
-    data: toSeriesData(tree, colors, isDrilled, labelLayout, renderingContext),
+    data: toSeriesData(
+      tree,
+      colors,
+      isDrilled,
+      showLeafLabels,
+      labelLayout,
+      renderingContext,
+    ),
     leafDepth: 2,
     ...(hasChildren ? { levels } : {}),
   };
@@ -163,6 +181,7 @@ function toSeriesData(
   tree: TreemapTree,
   colors: Record<string, string>,
   isDrilled: boolean,
+  showLeafLabels: boolean,
   labelLayout: Record<string, TreemapLabelLayout>,
   renderingContext: RenderingContext,
 ): TreemapSeriesNode[] {
@@ -182,6 +201,11 @@ function toSeriesData(
     id: string,
     value: number,
   ): Pick<TreemapSeriesNode, "label"> | Record<string, never> => {
+    // Leaf labels turned off entirely: hide every tile regardless of fit, so
+    // the per-tile measurement can't re-show one the series default hid.
+    if (!showLeafLabels) {
+      return { label: { show: false } };
+    }
     const layout = labelLayout[id];
     if (layout != null) {
       return { label: { show: layout.show, width: layout.width } };

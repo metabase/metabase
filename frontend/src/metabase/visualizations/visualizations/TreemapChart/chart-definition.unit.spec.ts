@@ -404,7 +404,9 @@ describe("TREEMAP_CHART_DEFINITION", () => {
 
     it("is a toggle in the Display section that defaults to true", () => {
       expect(showParentLabelsSetting.widget).toBe("toggle");
-      expect(showParentLabelsSetting.default).toBe(true);
+      expect(checkNotNull(showParentLabelsSetting.getDefault)([], {})).toBe(
+        true,
+      );
       expect(showParentLabelsSetting.getSection?.()).toBe("Display");
     });
 
@@ -418,6 +420,22 @@ describe("TREEMAP_CHART_DEFINITION", () => {
       expect(
         getHidden([], { "treemap.sub_grouping": "SubCategory" }, {} as never),
       ).toBe(false);
+    });
+  });
+
+  describe("treemap.show_leaf_labels setting", () => {
+    const showLeafLabelsSetting = checkNotNull(
+      TREEMAP_CHART_DEFINITION.settings?.["treemap.show_leaf_labels"],
+    );
+
+    it("is a toggle in the Display section that defaults to true", () => {
+      expect(showLeafLabelsSetting.widget).toBe("toggle");
+      expect(checkNotNull(showLeafLabelsSetting.getDefault)([], {})).toBe(true);
+      expect(showLeafLabelsSetting.getSection?.()).toBe("Display");
+    });
+
+    it("is always available (no sub-grouping requirement)", () => {
+      expect(showLeafLabelsSetting.getHidden).toBeUndefined();
     });
   });
 });
