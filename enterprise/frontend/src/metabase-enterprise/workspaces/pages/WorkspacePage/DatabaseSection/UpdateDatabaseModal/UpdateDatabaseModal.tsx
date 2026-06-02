@@ -8,7 +8,10 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
-import { useUpdateWorkspaceDatabaseMutation } from "metabase-enterprise/api";
+import {
+  useLazyGetWorkspaceQuery,
+  useUpdateWorkspaceDatabaseMutation,
+} from "metabase-enterprise/api";
 import type {
   Database,
   Workspace,
@@ -74,6 +77,7 @@ function UpdateDatabaseForm({
   onClose,
 }: UpdateDatabaseFormProps) {
   const [updateWorkspaceDatabase] = useUpdateWorkspaceDatabaseMutation();
+  const [getWorkspace] = useLazyGetWorkspaceQuery();
 
   const initialValues: UpdateDatabaseFormValues = {
     input_schemas: workspaceDatabase.input_schemas,
@@ -85,6 +89,7 @@ function UpdateDatabaseForm({
       database_id: workspaceDatabase.database_id,
       input_schemas: values.input_schemas,
     }).unwrap();
+    await getWorkspace(workspace.id).unwrap();
     onUpdate(updated);
   };
 

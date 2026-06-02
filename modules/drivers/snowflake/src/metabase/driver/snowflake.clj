@@ -76,6 +76,9 @@
                               :workspace                              false}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
+(defn- quote-schema [s] (sql.u/quote-name :snowflake :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :snowflake :field s))
+
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ messages]
   (let [message (first messages)]
@@ -788,8 +791,8 @@
     ;; So we avoid using it here.
     (-> (jdbc/query
          {:connection conn}
-         [(format "SHOW DYNAMIC TABLES LIKE '%s' IN SCHEMA \"%s\".\"%s\";"
-                  table-name db-name schema-name)])
+         [(format "SHOW DYNAMIC TABLES LIKE '%s' IN SCHEMA %s.%s;"
+                  table-name (quote-schema db-name) (quote-schema schema-name))])
         first
         some?)
     (catch SnowflakeSQLException e
@@ -902,7 +905,7 @@
     (and ((get-method driver/can-connect? :sql-jdbc) driver details)
          (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
            ;; jdbc/query is used to see if we throw, we want to ignore the results
-           (jdbc/query spec (format "SHOW SCHEMAS IN DATABASE \"%s\";" db))
+           (jdbc/query spec (format "SHOW SCHEMAS IN DATABASE %s;" (quote-schema db)))
            true))))
 
 (defn- normalize-details
@@ -1006,7 +1009,7 @@
 
 (defmethod driver/create-schema-if-needed! :snowflake
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (quote-schema schema))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/rename-table! :snowflake
@@ -1064,35 +1067,41 @@
 
 (defmethod driver/init-workspace-isolation! :snowflake
   [_driver database workspace]
-  (let [details     (driver.conn/effective-details database)
-        schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        db-name     (:db details)
-        warehouse   (:warehouse details)
-        role-name   (isolation-role-name workspace)
-        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
-                     :password (driver.u/random-workspace-password)}
-        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+  (let [details          (driver.conn/effective-details database)
+        schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        db-name          (:db details)
+        warehouse        (:warehouse details)
+        role-name        (isolation-role-name workspace)
+        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
+                          :password (driver.u/random-workspace-password)}
+        conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (when-not db-name
-      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
+      (throw (ex-info (tru "Cannot initialize workspace. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
                       {:database-id (:id database) :step :init})))
     (when-not warehouse
-      (throw (ex-info (tru "Snowflake database configuration is missing required ''warehouse'' setting")
+      (throw (ex-info (tru "Cannot initialize workspace. Snowflake connection details must include a ''warehouse''. Set it in the database connection and retry.")
                       {:database-id (:id database) :step :init})))
-    ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
-    (try
-      (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
-                   (format "CREATE ROLE IF NOT EXISTS \"%s\"" role-name)
-                   (format "GRANT USAGE ON DATABASE \"%s\" TO ROLE \"%s\"" db-name role-name)
-                   (format "GRANT USAGE ON WAREHOUSE \"%s\" TO ROLE \"%s\"" warehouse role-name)
-                   (format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                   (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                   (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                   (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = \"%s\""
-                           (:user read-user) (:password read-user) role-name)
-                   (format "GRANT ROLE \"%s\" TO USER \"%s\"" role-name (:user read-user))]]
-        (jdbc/execute! conn-spec [sql]))
-      (catch Throwable t
-        (throw (driver.u/scrub-exceptions t [(:password read-user)]))))
+    (let [quoted-db        (quote-schema db-name)
+          quoted-warehouse (quote-field warehouse)
+          quoted-schema    (quote-schema schema-name)
+          qualified-schema (str quoted-db "." quoted-schema)
+          quoted-role      (quote-field role-name)
+          quoted-user      (quote-field (:user read-user))]
+      ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
+      (try
+        (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" qualified-schema)
+                     (format "CREATE ROLE IF NOT EXISTS %s" quoted-role)
+                     (format "GRANT USAGE ON DATABASE %s TO ROLE %s" quoted-db quoted-role)
+                     (format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" quoted-warehouse quoted-role)
+                     (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                     (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                     (format "GRANT ALL ON FUTURE TABLES IN SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                     (format "CREATE USER IF NOT EXISTS %s PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
+                             quoted-user (:password read-user) quoted-role)
+                     (format "GRANT ROLE %s TO USER %s" quoted-role quoted-user)]]
+          (jdbc/execute! conn-spec [sql]))
+        (catch Throwable t
+          (throw (driver.u/scrub-exceptions t [(:password read-user)])))))
     {:schema           schema-name
      :database_details (assoc read-user :role role-name :use-password true)}))
 
@@ -1105,13 +1114,16 @@
         username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (when-not db-name
-      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
+      (throw (ex-info (tru "Cannot destroy workspace. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
                       {:database-id (:id database) :step :destroy})))
-    ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
-    (doseq [sql [(format "DROP SCHEMA IF EXISTS \"%s\".\"%s\" CASCADE" db-name schema-name)
-                 (format "DROP USER IF EXISTS \"%s\"" username)
-                 (format "DROP ROLE IF EXISTS \"%s\"" role-name)]]
-      (jdbc/execute! conn-spec [sql]))))
+    (let [qualified-schema (str (quote-schema db-name) "." (quote-schema schema-name))
+          quoted-user      (quote-field username)
+          quoted-role      (quote-field role-name)]
+      ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
+      (doseq [sql [(format "DROP SCHEMA IF EXISTS %s CASCADE" qualified-schema)
+                   (format "DROP USER IF EXISTS %s" quoted-user)
+                   (format "DROP ROLE IF EXISTS %s" quoted-role)]]
+        (jdbc/execute! conn-spec [sql])))))
 
 (defmethod driver/grant-workspace-read-access! :snowflake
   [_driver database workspace schemas]
@@ -1119,25 +1131,27 @@
         db-name   (:db (driver.conn/effective-details database))
         role-name (-> workspace :database_details :role)]
     (when-not role-name
-      (throw (ex-info (tru "Workspace isolation is not properly initialized - missing role name")
+      (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no role — initialization may have failed. Re-run workspace initialization and retry.")
                       {:workspace-id (:id workspace) :step :grant})))
     (when (str/blank? db-name)
-      (throw (ex-info (tru "Snowflake workspaces require an explicit database in connection details")
+      (throw (ex-info (tru "Cannot grant workspace read access. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
                       {:database-id (:id database) :step :grant})))
     ;; Each entry in `schemas` is a Snowflake schema in the bound database. The
     ;; catalog (`:db`) comes from connection details rather than per-input — a
     ;; Metabase `Database` row binds to one Snowflake database.
-    (let [qr  (sql.u/quote-name :snowflake :field role-name)
-          qdb (sql.u/quote-name :snowflake :schema db-name)]
+    (let [quoted-role (quote-field role-name)
+          quoted-db   (quote-schema db-name)]
       (doseq [schema schemas]
         (when (str/blank? schema)
-          (throw (ex-info (tru "Snowflake workspace input schema is blank")
+          (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
                           {:database-id (:id database) :step :grant})))
-        (let [qs (sql.u/quote-name :snowflake :schema schema)]
-          (doseq [sql [(format "GRANT USAGE ON DATABASE %s TO ROLE %s" qdb qr)
-                       (format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s" qdb qs qr)
-                       (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s.%s TO ROLE %s" qdb qs qr)
-                       (format "GRANT SELECT ON FUTURE TABLES IN SCHEMA %s.%s TO ROLE %s" qdb qs qr)]]
+        (let [qualified-schema (str quoted-db "." (quote-schema schema))]
+          (doseq [sql [(format "GRANT USAGE ON DATABASE %s TO ROLE %s" quoted-db quoted-role)
+                       (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                       (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO ROLE %s"
+                               qualified-schema quoted-role)
+                       (format "GRANT SELECT ON FUTURE TABLES IN SCHEMA %s TO ROLE %s"
+                               qualified-schema quoted-role)]]
             (jdbc/execute! conn-spec [sql])))))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]

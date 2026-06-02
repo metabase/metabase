@@ -17,3 +17,22 @@
       (is (= 2592000 (oauth-settings/oauth-server-refresh-token-ttl)))
       (oauth-settings/oauth-server-refresh-token-ttl! 86400)
       (is (= 86400 (oauth-settings/oauth-server-refresh-token-ttl))))))
+
+(deftest dynamic-registration-tracks-mcp-test
+  (testing "oauth-server-dynamic-registration-enabled is AND-composed with mcp-enabled?"
+    (testing "MCP off, override true → false (MCP gate wins)"
+      (mt/with-temporary-setting-values [mcp-enabled?                              false
+                                         oauth-server-dynamic-registration-enabled true]
+        (is (false? (oauth-settings/oauth-server-dynamic-registration-enabled)))))
+    (testing "MCP off, override false → false"
+      (mt/with-temporary-setting-values [mcp-enabled?                              false
+                                         oauth-server-dynamic-registration-enabled false]
+        (is (false? (oauth-settings/oauth-server-dynamic-registration-enabled)))))
+    (testing "MCP on, override true → true"
+      (mt/with-temporary-setting-values [mcp-enabled?                              true
+                                         oauth-server-dynamic-registration-enabled true]
+        (is (true? (oauth-settings/oauth-server-dynamic-registration-enabled)))))
+    (testing "MCP on, override false → false (lockdown override preserved)"
+      (mt/with-temporary-setting-values [mcp-enabled?                              true
+                                         oauth-server-dynamic-registration-enabled false]
+        (is (false? (oauth-settings/oauth-server-dynamic-registration-enabled)))))))

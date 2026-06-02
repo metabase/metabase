@@ -110,7 +110,7 @@ describe("MetricAbout", () => {
 
     // Wait for the description section to render so the negative assertion
     // isn't trivially true (the page hasn't loaded yet).
-    expect(await screen.findByText("Source table")).toBeInTheDocument();
+    expect(await screen.findByText("Source")).toBeInTheDocument();
     expect(screen.queryByTestId("explore-link")).not.toBeInTheDocument();
   });
 });

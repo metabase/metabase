@@ -363,6 +363,10 @@
   "Should we enable AI controls (metabot permissions, scope management)?"
   :ai-controls)
 
+(define-premium-feature ^{:added "0.62.0"} enable-schema-viewer?
+  "Should we allow users to view database schemas as ER diagrams?"
+  :schema-viewer)
+
 (define-premium-feature enable-workspaces?
   "Should we allow users to manage workspaces?"
   :workspaces)
@@ -387,6 +391,7 @@
    :database_routing               (enable-database-routing?)
    :library                        (enable-library?)
    :dependencies                   (enable-dependencies?)
+   :schema-viewer                  (enable-schema-viewer?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
    :email_allow_list               (enable-email-allow-list?)

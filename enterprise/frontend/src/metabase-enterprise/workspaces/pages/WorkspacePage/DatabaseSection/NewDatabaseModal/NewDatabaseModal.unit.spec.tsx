@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCreateWorkspaceDatabaseEndpoint,
   setupDatabasesEndpoints,
+  setupGetWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Database, Workspace } from "metabase-types/api";
@@ -63,6 +64,7 @@ function setup({
 
   setupDatabasesEndpoints(availableDatabases);
   setupCreateWorkspaceDatabaseEndpoint(createdWorkspace);
+  setupGetWorkspaceEndpoint(createdWorkspace);
 
   renderWithProviders(
     <NewDatabaseModal

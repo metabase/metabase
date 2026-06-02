@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { LegacyApi } from "./legacy-client";
 
 type OnBeforeRequestHandlerData = {
@@ -298,9 +300,8 @@ describe("api", () => {
         headers: { "X-Custom": "header" },
         retry: true,
         retryCount: 5,
-        formData: true,
         noEvent: false,
-        transformResponse: jest.fn(),
+        rawResponse: true,
       };
 
       const inputData = {
@@ -325,9 +326,89 @@ describe("api", () => {
 
       expect(result.url).toBe("/api/modified-url");
       expect(result.options).toEqual(complexOptions);
-      expect(result.options.transformResponse).toBe(
-        complexOptions.transformResponse,
-      );
+      expect(result.options.rawResponse).toBe(true);
+    });
+  });
+
+  // In test environments (`isTest`) the legacy client routes every request
+  // through `_makeRequestWithFetch`, so these specs cover the fetch path. The
+  // XHR path's empty-body branch mirrors the same `status === 204` check and is
+  // exercised end-to-end by the live app; co-locating both transports' unit
+  // coverage would require a dedicated XHR mock which the spec doesn't
+  // currently set up.
+  describe("response body parsing", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    it("resolves an empty 204 body as null (not the empty string)", async () => {
+      fetchMock.get("path:/api/empty", { status: 204, body: "" });
+
+      const result = await apiInstance.GET("/api/empty")({});
+
+      expect(result).toBeNull();
+    });
+
+    it("leaves an empty non-204 body as the empty string", async () => {
+      // Only 204 No Content is normalized to null. An empty-bodied 200 keeps
+      // its historical empty-string value so callers that index into a body
+      // (e.g. `result.id`) don't begin dereferencing null.
+      fetchMock.get("path:/api/also-empty", { status: 200, body: "" });
+
+      const result = await apiInstance.GET("/api/also-empty")({});
+
+      expect(result).toBe("");
+    });
+
+    it("parses a non-empty JSON body to its decoded value", async () => {
+      fetchMock.get("path:/api/data", {
+        status: 200,
+        body: { hello: "world" },
+      });
+
+      const result = await apiInstance.GET("/api/data")({});
+
+      expect(result).toEqual({ hello: "world" });
+    });
+  });
+
+  describe("form-encoded requests", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    // Regression: a `URLSearchParams` body (e.g. a dataset download) must be
+    // passed through verbatim — not JSON-stringified — and must drop our
+    // default `application/json` Content-Type so the browser can set
+    // `application/x-www-form-urlencoded`. Keeping the JSON header made the
+    // backend reject the request with a 400.
+    //
+    // The Content-Type strip is gated on `body instanceof URLSearchParams`, so
+    // this assertion doubles as proof the body reached `fetch` as a real
+    // `URLSearchParams` rather than a JSON string.
+    it("drops the application/json Content-Type for a URLSearchParams body", async () => {
+      fetchMock.post("path:/api/download", { status: 200, body: "" });
+
+      const body = new URLSearchParams();
+      body.append("query", JSON.stringify({ foo: "bar" }));
+
+      await apiInstance.POST("/api/download")(body, { rawResponse: true });
+
+      const call = fetchMock.callHistory.lastCall("path:/api/download");
+      const headers = new Headers(call?.options?.headers);
+      expect(headers.get("Content-Type")).not.toContain("application/json");
     });
   });
 });
