@@ -381,7 +381,7 @@ export const CreateOrEditQuestionAlertModal = ({
                     ...notification,
                     payload: {
                       ...notification.payload,
-                      send_condition: value as NotificationCardSendCondition,
+                      send_condition: value,
                     },
                   })
                 }

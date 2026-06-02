@@ -40,9 +40,9 @@ export const NotificationDetailSidebar = ({
 
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
-  const cardId = notification?.payload.card_id;
+  const cardId = notification?.payload?.card_id;
   const { currentData: card, isFetching: isCardLoading } = useGetCardQuery(
-    cardId !== undefined ? { id: cardId } : skipToken,
+    cardId != null ? { id: cardId } : skipToken,
   );
 
   useEffect(() => {

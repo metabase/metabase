@@ -130,8 +130,8 @@ export const NotificationsTable = ({
         accessorFn: (notification) => notification.payload?.card?.name ?? "",
         cell: ({ row }) => {
           const card = row.original.payload?.card;
-          const cardId = row.original.payload.card_id;
-          const name = card?.name ?? `#${cardId}`;
+          const cardId = row.original.payload?.card_id;
+          const name = card?.name ?? (cardId ? `#${cardId}` : t`Unknown`);
           return <Ellipsified tooltip={name}>{name}</Ellipsified>;
         },
       },
