@@ -41,10 +41,13 @@ runs:
   steps:
     - name: Authenticate to prevent API rate limit
       shell: bash
+      env:
+        DOCKER_USERNAME: ${{ inputs.username }}
+        DOCKER_PASSWORD: ${{ inputs.password }}
       run: |
         for attempt in 1 2 3; do
           echo "Docker login attempt $attempt of 3..."
-          if echo "${{ inputs.password }}" | docker login --username "${{ inputs.username }}" --password-stdin 2>&1; then
+          if echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin; then
             echo "Docker login succeeded on attempt $attempt"
             break
           fi
