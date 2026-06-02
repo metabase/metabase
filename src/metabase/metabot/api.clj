@@ -506,24 +506,27 @@
 (def ^:private default-limit 50)
 (def ^:private default-offset 0)
 
-;; here
 (api.macros/defendpoint :get "/search-prompt/"
   :- [:map
       [:data   [:sequential SearchPromptEntity]]
       [:total  :int]
       [:limit  :int]
       [:offset :int]]
-  "Get all search prompt entities, paginated."
+  "Get all search prompt entities, paginated. Optionally filter by type."
   [_route-params
-   _query-params]
+   {:keys [type]} :- [:map
+                      [:type {:optional true} [:maybe [:enum "canonical" "sources"]]]]]
   (api/check-superuser)
   (let [limit  (or (request/limit) default-limit)
         offset (or (request/offset) default-offset)]
     {:data   (t2/select :model/SearchPromptEntity
-                        {:order-by [[:id :asc]]
-                         :limit    limit
-                         :offset   offset})
-     :total  (t2/count :model/SearchPromptEntity)
+                        (cond-> {:order-by [[:id :asc]]
+                                 :limit    limit
+                                 :offset   offset}
+                          type (assoc :where [:= :type type])))
+     :total  (if type
+               (t2/count :model/SearchPromptEntity :type type)
+               (t2/count :model/SearchPromptEntity))
      :limit  limit
      :offset offset}))
 
@@ -547,7 +550,7 @@
                                                [:prompt   :string]
                                                [:entities :any]
                                                [:type     {:optional true} [:maybe [:enum "canonical" "sources"]]]
-                                               [:verified [:maybe :boolean]]]]
+                                               [:verified {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (t2/insert-returning-instance! :model/SearchPromptEntity
                                  {:prompt   prompt

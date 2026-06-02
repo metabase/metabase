@@ -1179,6 +1179,26 @@
     (testing "non-superuser gets 403"
       (mt/user-http-request :rasta :get 403 "metabot/search-prompt/"))))
 
+(comment
+  1)
+
+(deftest search-prompt-list-type-filter-test
+  (with-test-prompt [sources-entity {:type "sources"}]
+    (with-test-prompt [canonical-entity {:type "canonical"}]
+      (testing "filtering by type=sources returns only sources entities"
+        (let [response (mt/user-http-request :crowberto :get 200 "metabot/search-prompt/" :type "sources")]
+          (is (some #(= (:id sources-entity) (:id %)) (:data response)))
+          (is (not (some #(= (:id canonical-entity) (:id %)) (:data response))))
+          (is (every? #(= "sources" (:type %)) (:data response)))))
+      (testing "filtering by type=canonical returns only canonical entities"
+        (let [response (mt/user-http-request :crowberto :get 200 "metabot/search-prompt/" :type "canonical")]
+          (is (some #(= (:id canonical-entity) (:id %)) (:data response)))
+          (is (not (some #(= (:id sources-entity) (:id %)) (:data response))))
+          (is (every? #(= "canonical" (:type %)) (:data response)))))
+      (testing "total reflects filtered count"
+        (let [response (mt/user-http-request :crowberto :get 200 "metabot/search-prompt/" :type "canonical")]
+          (is (= (:total response) (count (:data response)))))))))
+
 (deftest search-prompt-get-test
   (with-test-prompt [entity {:prompt "find customers" :verified true}]
     (testing "superuser can fetch a search prompt entity by id"
@@ -1192,29 +1212,29 @@
     (testing "non-superuser gets 403"
       (mt/user-http-request :rasta :get 403 (str "metabot/search-prompt/" (:id entity))))))
 
-#_(deftest search-prompt-create-test
-    (testing "superuser can create a search prompt entity"
-      (let [response (mt/user-http-request :crowberto :post 200 "metabot/search-prompt/"
-                                           {:prompt   "find revenue"
-                                            :entities [{:model "card" :id 42}]})]
-        (try
-          (is (=? {:prompt   "find revenue"
-                   :entities [{:model "card" :id 42}]
-                   :verified false}
-                  response))
-          (finally
-            (t2/delete! :model/SearchPromptEntity :id (:id response))))))
-    (testing "verified defaults to false when omitted"
-      (let [response (mt/user-http-request :crowberto :post 200 "metabot/search-prompt/"
-                                           {:prompt   "find users"
-                                            :entities []})]
-        (try
-          (is (false? (:verified response)))
-          (finally
-            (t2/delete! :model/SearchPromptEntity :id (:id response))))))
-    (testing "non-superuser gets 403"
-      (mt/user-http-request :rasta :post 403 "metabot/search-prompt/"
-                            {:prompt "find orders" :entities []})))
+(deftest search-prompt-create-test
+  (testing "superuser can create a search prompt entity"
+    (let [response (mt/user-http-request :crowberto :post 200 "metabot/search-prompt/"
+                                         {:prompt   "find revenue"
+                                          :entities [{:model "card" :id 42}]})]
+      (try
+        (is (=? {:prompt   "find revenue"
+                 :entities [{:model "card" :id 42}]
+                 :verified false}
+                response))
+        (finally
+          (t2/delete! :model/SearchPromptEntity :id (:id response))))))
+  (testing "verified defaults to false when omitted"
+    (let [response (mt/user-http-request :crowberto :post 200 "metabot/search-prompt/"
+                                         {:prompt   "find users"
+                                          :entities []})]
+      (try
+        (is (false? (:verified response)))
+        (finally
+          (t2/delete! :model/SearchPromptEntity :id (:id response))))))
+  (testing "non-superuser gets 403"
+    (mt/user-http-request :rasta :post 403 "metabot/search-prompt/"
+                          {:prompt "find orders" :entities []})))
 
 (deftest search-prompt-update-test
   (with-test-prompt [entity {}]
