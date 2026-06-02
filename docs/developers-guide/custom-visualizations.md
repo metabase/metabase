@@ -50,6 +50,8 @@ pack.mjs                # Packages the build into a .tgz — don't edit
 tsconfig.json
 ```
 
+Only `index.tsx` has to export the factory. For a more sophisticated plugin, you'd want to split the component, settings, types, and helpers into their own modules (check out the [calendar-heatmap example](#examples-plugins), which keeps the definition in `index.tsx`, the React component in `Visualization.tsx`, and chart configuration and utilities under `src/`.
+
 ### The starter visualization
 
 The scaffold ships a complete, working example: a chart that shows a thumbs-up emoji (👍) when a single numeric result meets a `threshold` setting, and a thumbs-down (👎) otherwise.
@@ -151,13 +153,13 @@ export default createVisualization;
 
 | Property                 | Type                                | Description                                                                                                                                                                                     |
 | ------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                     | `string`                            | Identifier for the visualization definition. It doesn't have to match `name` in `metabase-plugin.json` — the example plugin uses the name `"Calendar Heatmap"` and the id `"calendar-heatmap"`. |
+| `id`                     | `string`                            | Identifier for the visualization definition. |
 | `getName()`              | `() => string`                      | Display name for the visualization.                                                                                                                                                             |
 | `minSize`                | `{ width, height }`                 | Minimum size on a dashboard grid.                                                                                                                                                               |
 | `defaultSize`            | `{ width, height }`                 | Default size on a dashboard grid.                                                                                                                                                               |
 | `noHeader`               | `boolean`                           | When `true`, hides the default card title and description header.                                                                                                                               |
-| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export of the live, interactive chart. Disabled by default. This is distinct from static rendering (subscriptions), which always falls back — see [Sandbox restrictions](#sandbox-restrictions).                |
-| `checkRenderable`        | `(series, settings) => void`        | Throw here to signal the visualization can't render with the current data or settings. Metabase shows the error message to the person viewing the chart.                                        |
+| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export of the live, interactive chart. Disabled by default.               |
+| `checkRenderable`        | `(series, settings) => void`        | Let people know the chart doesn't work with the current data or settings.                                       |
 | `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created with `defineSetting()`.                                                                                                                                      |
 | `VisualizationComponent` | `React.ComponentType`               | The interactive React component that renders the visualization in questions and dashboards.                                                                                                     |
 
@@ -173,11 +175,11 @@ export default createVisualization;
 | `onClick`     | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                      |
 | `onHover`     | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                     |
 
-## Query results
+## Handling query results
 
 `series` is an array of result sets, with one entry per series on the chart. A single question produces one entry; a dashboard card with [multiple series](../dashboards/multiple-series.md) produces several entries. Each entry has a `data` object:
 
-- `data.rows`: an array of rows; each row is an array of cell values in column order. Row order is preserved, so when you map rows to chart points one-to-one, a point's index maps straight back to `data.rows[i]` — convenient when a click or hover needs the whole original row, not just the clicked cell.
+- `data.rows`: an array of rows; each row is an array of cell values in column order. Row order is preserved, so when you map rows to chart points one-to-one, a point's index maps straight back to `data.rows[i]`. Useful for grabbing the whole row, not just the clicked cell.
 - `data.cols`: an array of column objects describing each value. The fields you'll reach for most: `name` (database column name), `display_name` (label shown in the UI), `base_type` (Metabase type, for example `"type/Integer"`), and `semantic_type` (for example `"type/Currency"` or `"type/Latitude"`).
 
 ```tsx
@@ -185,7 +187,7 @@ const [{ data }] = series;
 const total = data.rows.reduce((sum, [value]) => sum + Number(value), 0);
 ```
 
-To classify a column without matching type strings by hand, use the column-type predicates the SDK exports — `isNumeric`, `isDate`, `isString`, `isBoolean`, `isCurrency`, `isLatitude`, `isCoordinate`, `isFK`, `isPK`, `isCategory`, `isURL`, and more — each of which takes a `Column`:
+To classify a column without matching type strings by hand, use the column-type predicates the SDK exports: `isNumeric`, `isDate`, `isString`, `isBoolean`, `isCurrency`, `isLatitude`, `isCoordinate`, `isFK`, `isPK`, `isCategory`, `isURL`. these predicates take a `Column` and resolve type metadata from the host, so they only work inside a running Metabase. See [Formatting and theming](#formatting-and-theming).
 
 ```tsx
 import { isNumeric } from "@metabase/custom-viz";
@@ -193,13 +195,9 @@ import { isNumeric } from "@metabase/custom-viz";
 const numericColumns = data.cols.filter(isNumeric);
 ```
 
-Use `checkRenderable` to bail out when the data isn't a shape your visualization can handle. Throw an `Error` whose message is aimed at the person viewing the chart — Metabase shows it in place of the visualization, so "Pick exactly one numeric column" beats a stray `TypeError`.
-
-`checkRenderable` can run before the defaults computed by `getDefault` are written to stored settings, so a setting it reads may still be `undefined`. Fall back to the same default logic you use in `getDefault` — the calendar-heatmap example does this for its dimension and metric settings (`settings.dimension ?? findDefaultDimensionName(cols)`) so the check passes on first render, before anything is stored.
-
 ## Clicks and tooltips
 
-Your component receives `onClick` and `onHover`. Call them with an object that identifies the data point being interacted with — Metabase positions popovers from it, and for clicks it offers the matching drill-through actions (filter by this value, view these rows, and so on).
+Your component receives `onClick` and `onHover`. Call them with an object that identifies the data point being interacted with. Metabase positions popovers from it, and for clicks it offers the matching drill-through actions (filter by this value, view these rows, and so on).
 
 ```tsx
 <rect
@@ -226,7 +224,7 @@ Your component receives `onClick` and `onHover`. Call them with an object that i
 />
 ```
 
-Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell.
+Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. You can include `settings` (the current resolved settings) in the click object too, so dashboard click behaviors configured against your visualization have what they need.
 
 ## Settings and widgets
 
@@ -247,10 +245,7 @@ settings: {
   }),
 },
 ```
-
 ### Setting definition properties
-
-Settings can depend on each other. `getDefault`, `getValue`, `getProps`, and `isValid` all receive the current `series` and resolved `settings`, so one setting's default or options can react to another's value. Declare those relationships with `readDependencies` (resolve these first), `writeDependencies` (persist these alongside this one), and `eraseDependencies` (reset these when this one changes) so Metabase recomputes everything in the right order.
 
 | Property                       | Description                                                                                      |
 | ------------------------------ | ------------------------------------------------------------------------------------------------ |
@@ -272,6 +267,8 @@ Settings can depend on each other. `getDefault`, `getValue`, `getProps`, and `is
 
 ### Built-in widgets
 
+Widgets for use settings UI.
+
 | Widget               | `getProps()` return type                                                   | Description              |
 | -------------------- | -------------------------------------------------------------------------- | ------------------------ |
 | `"input"`            | `{ placeholder? }`                                                         | Text input               |
@@ -287,7 +284,7 @@ Settings can depend on each other. `getDefault`, `getValue`, `getProps`, and `is
 
 ## Formatting and theming
 
-Render numbers, dates, and currencies the way the rest of Metabase does with `formatValue` from the SDK. Pass the cell's column to pick up that column's formatting settings, or override with options like `currency`, `decimals`, `compact`, or `date_style`:
+Render numbers, dates, and currencies the way the rest of Metabase does with `formatValue`. Pass the cell's column to pick up that column's formatting settings, or override with options like `currency`, `decimals`, `compact`, or `date_style`:
 
 ```tsx
 import { formatValue } from "@metabase/custom-viz";
@@ -296,13 +293,19 @@ formatValue(row[1], { column: cols[1] });
 formatValue(0.084, { number_style: "percent", decimals: 1 }); // "8.4%"
 ```
 
-For layout math — fitting labels, sizing axes — `measureText(text, { size, family, weight })` returns `{ width, height }` in pixels (`measureTextWidth` and `measureTextHeight` are there too if you only need one dimension).
+`formatValue` and the column-type predicates (like `isNumeric` and `isDate`) read formatting and type metadata from Metabase. Called outside of Metabase, like in a unit test, and they'll throw `Metabase Viz API not initialized`.
 
-To match the app's look and follow [dark mode](../people-and-groups/account-settings.md#theme) automatically, style with Metabase's CSS variables — `var(--mb-color-brand)` and the other `--mb-color-*` tokens — instead of hard-coded colors. The `colorScheme` prop (`"light"` or `"dark"`) is available too if you need to branch explicitly.
+For layout math (like fitting labels, sizing axe), `measureText(text, { size, family, weight })` returns `{ width, height }` in pixels. There's also `measureTextWidth` and `measureTextHeight` if you only need one dimension.
+
+To match the Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
+
+Canvas-based charting libraries (ECharts, Chart.js, and most chart libraries) can't read CSS variables, so there you branch on the `colorScheme` prop (`"light"` or `"dark"`) and pass explicit colors. See the calendar-heatmap for an example with ECharts.
 
 ## Bundling assets
 
 The build produces a single JavaScript bundle (`dist/index.js`), and the [icon](#the-visualization-icon) is the only file Metabase serves alongside it. Metabase doesn't serve arbitrary static files, and the [sandbox](#sandbox-restrictions) blocks network access, so you can't load an external image at runtime either.
+
+Your `npm` dependencies are bundled in too. You can pull in a charting library (the calendar-heatmap example bundles [ECharts](https://echarts.apache.org/)), but everything ships in that single `dist/index.js`, so the whole bundle (your code plus its dependencies) has to stay under the [5 MiB limit](#build-and-package-the-plugin).
 
 So anything your visualization renders has to live inside that bundle. For images, you have a few options:
 
@@ -330,7 +333,7 @@ The icon shows up in the chart type picker and elsewhere in the Metabase UI.
 ```
 
 - For more control, you can use Metabase's CSS variables inside an inline SVG, like `fill="var(--mb-color-brand)"`.
-- Keep the icon simple and monochromatic — skip gradients and multiple colors.
+- Keep the icon simple and monochromatic. Skip gradients and multiple colors.
 
 ## Build and package the plugin
 
