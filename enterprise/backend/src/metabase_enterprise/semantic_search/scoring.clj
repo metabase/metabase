@@ -75,8 +75,7 @@
 
 (defn- semantic-distance-score-expr
   "Map a cosine `distance` (pgvector `<=>`, range [0, 2]) to a [0, 1] score.
-  Linear over the raw range: distance 0 scores 1, the maximum distance of 2 scores 0. This is the single place to
-  reshape the distance->score curve."
+  Linear for now: distance 0 scores 1, the maximum distance of 2 scores 0."
   [distance]
   ;; TODO (Chris 2026-06-02) -- consider rescaling against the retrieval cutoff (index/max-cosine-distance) so the
   ;; [0, cutoff] band spans the full [0, 1], and/or a non-linear curve. For now keep the raw distance as transparent

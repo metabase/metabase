@@ -28,11 +28,11 @@
 (defn normalize-text-expr
   "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
   lower-case, replace commas with spaces, collapse whitespace runs to one space, trim.
-  Replacing commas with spaces (rather than deleting them) keeps `a,b` from collapsing into `ab`.
   `db-type` picks the regexp_replace dialect -- Postgres needs the 'g' flag; H2 replaces all by default and
   rejects 'g'."
   ([expr] (normalize-text-expr (mdb/db-type) expr))
   ([db-type expr]
+   ;; Replace commas with a space, not nothing, so `a,b` doesn't collapse into `ab`.
    (let [stripped [:replace [:lower expr] [:inline ","] [:inline " "]]
          collapsed (case db-type
                      :postgres [:regexp_replace stripped [:inline "\\s+"] [:inline " "] [:inline "g"]]

@@ -46,9 +46,9 @@
    (semantic.settings/semantic-search-enabled)))
 
 (defn- with-zero-semantic-distance
-  "Fallback (appdb/in-place) results never went through vector search, so they carry no `:semantic-distance` in their
-  score breakdown. Record it as 0 (maximally distant) so the merged result set is scored consistently."
+  "Record `:semantic-distance` 0 on `results` that lack it, for a consistent merged-result score breakdown."
   [search-ctx results]
+  ;; Fallback (appdb/in-place) results never went through vector search, so they carry no semantic distance.
   (let [entry {:name         :semantic-distance
                :score        0
                :weight       (search.config/weight search-ctx :semantic-distance)
