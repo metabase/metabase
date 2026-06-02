@@ -1,8 +1,9 @@
 import type { NodeProps } from "@xyflow/react";
 import cx from "classnames";
 import { memo, useCallback } from "react";
+import { t } from "ttag";
 
-import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
+import { Box, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
@@ -21,6 +22,8 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   // edge implies the node itself is connected to that edge.
   const isConnectedToSelectedEdge = data.selectedFieldIds.size > 0;
   const isUserSelected = selectedNodeId === id;
+
+  const hasHiddenVisibilityType = data.visibility_type !== null;
 
   const handleDoubleClick = useCallback(() => {
     zoomToNode(id);
@@ -66,6 +69,11 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         >
           {data.name}
         </Box>
+        {hasHiddenVisibilityType && (
+          <Tooltip label={t`This table is hidden`}>
+            <FixedSizeIcon name="eye_crossed_out" c="text-secondary" />
+          </Tooltip>
+        )}
       </Group>
       <Box className={S.fields}>
         {data.fields.map((field) => (

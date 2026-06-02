@@ -5,6 +5,7 @@ import type {
   SchemaName,
   Table,
   TableId,
+  TableVisibilityType,
 } from "./";
 
 export type ErdRelationship = "one-to-one" | "many-to-one";
@@ -30,6 +31,7 @@ export type ErdNode = {
   description: string | null;
   owner: Table["owner"];
   schema: SchemaName | null;
+  visibility_type: TableVisibilityType;
   db_id: DatabaseId;
   fields: ErdField[];
 };
