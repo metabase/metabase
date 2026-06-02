@@ -341,6 +341,33 @@
   (let [occupant (file-entity-id (source.p/read-file snapshot path))]
     (or (nil? occupant) (= occupant entity-id))))
 
+(def ^:private closure-opts
+  {:include-field-values false :include-database-secrets false
+   :continue-on-error false :skip-archived true})
+
+(defn- export-closure
+  "All `[model-type id]` entities a full export would pull for the entity `[model-type model-id]`
+  (its transitive `serdes/descendants` + `serdes/required`, including the entity itself)."
+  [model-type model-id]
+  (keys (merge-with into
+                    (u/traverse #{[model-type model-id]} #(serdes/descendants (first %) (second %) closure-opts))
+                    (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %))))))
+
+(defn- unresolved-content-deps?
+  "True if the entity `[model-type model-id]` references remote-sync content (a Card, snippet, etc.)
+  that isn't tracked by any RemoteSyncObject row. A full export pulls such dependencies via
+  `serdes/descendants`/`required`, but an incremental write of just this entity would omit them — so
+  those changes must fall back to a full export. Non-content dependencies (e.g. databases, which are
+  resolved by reference at import) are ignored. This is what prevents an in-place edit that adds a
+  cross-collection card reference from dropping the referenced card's file."
+  [model-type model-id]
+  (boolean
+   (some (fn [[mt id]]
+           (and (not (and (= mt model-type) (= id model-id)))
+                (spec/spec-for-model-type mt)
+                (not (t2/exists? :model/RemoteSyncObject :model_type mt :model_id id))))
+         (export-closure model-type model-id))))
+
 (defn- incremental-plan
   "Builds a plan for a safe incremental export of the current `dirty-rows`, or nil if any row can't be
   handled incrementally (caller falls back to the full export).
@@ -367,6 +394,12 @@
            (-> plan
                (update :delete-paths conj file_path)
                (update :removed-ids conj (:id row))))
+
+         ;; A change that references remote-sync content not yet in the repo would have it pulled
+         ;; by a full export but omitted by an incremental write -> fall back to full.
+         (and (= "update" status)
+              (unresolved-content-deps? (:model_type row) (:model_id row)))
+         (reduced nil)
 
          (= "update" status)
          (if-let [entity (extract-dirty-entity row)]

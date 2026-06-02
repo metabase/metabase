@@ -11,6 +11,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.test :as mt]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (defn- new-task! []
@@ -42,6 +43,16 @@
   "The repo path of the file whose content contains `eid` (filenames are slug-only)."
   [mock eid]
   (some (fn [[p c]] (when (re-find (re-pattern eid) c) p)) (files mock)))
+
+(defn- entity-exported?
+  "True if some repo file is the serialized entity with top-level `eid` (i.e. the entity has its own
+  file). Distinct from `path-for-eid`, which also matches a mere reference to `eid` inside another
+  entity's file."
+  [mock eid]
+  (boolean (some (fn [[_ c]]
+                   (try (= eid (:entity_id (yaml/parse-string c)))
+                        (catch Exception _ false)))
+                 (files mock))))
 
 (defn- with-exported-collection!
   "Sets up a remote-synced collection with two cards plus synced RemoteSyncObject rows, runs a full
@@ -223,3 +234,83 @@
           (is (= :success (:status result)))
           (is (= "write-files-version" (written-version task))
               "a path holding a different entity fails the safety check and falls back to full"))))))
+
+;;; ---------------------------------- Required-closure regression (GHY-3725) ------------------------------------
+;;; A full export pulls a card's source cards via `serdes/descendants` (transitively, through
+;;; `resolve-targets`), even when the source card lives outside the synced collection. The incremental
+;;; fast-path writes only the changed entities, so a change that introduces such a cross-scope reference
+;;; must still export the referenced dependency — otherwise the reference dangles on import.
+
+(defn- with-cross-scope-setup!
+  "Synced collection C plus a card Y in a NON-synced collection. Runs an initial full export into a
+  fresh MockSource. Calls `f` with `{:mock :c-id :ext-id :y-id :y-eid}`. Y is not referenced yet, so
+  it isn't in the repo after the initial export."
+  [f]
+  (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                     remote-sync-transforms false]
+    (mt/with-temp [:model/Collection {c-id :id}   {:name "Synced" :is_remote_synced true :location "/"}
+                   :model/Collection {ext-id :id} {:name "External" :is_remote_synced false :location "/"}
+                   :model/Card {y-id :id} {:name "Outside Card" :collection_id ext-id
+                                           :database_id (mt/id) :dataset_query (mt/mbql-query venues)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (seed-synced-row! "Collection" c-id)
+      (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
+            y-eid (t2/select-one-fn :entity_id :model/Card :id y-id)]
+        (impl/export! (source.p/snapshot mock) (new-task!) "init")
+        (is (not (entity-exported? mock y-eid)) "Y is not in the repo until something references it")
+        (f {:mock mock :c-id c-id :ext-id ext-id :y-id y-id :y-eid y-eid})))))
+
+(deftest update-adding-external-reference-exports-dependency-test
+  (testing "an in-place update that newly references a card outside the synced collection still exports that dependency"
+    (with-cross-scope-setup!
+      (fn [{:keys [mock c-id y-id y-eid]}]
+        (mt/with-temp [:model/Card {x-id :id} {:name "Synced Card" :collection_id c-id
+                                               :database_id (mt/id) :dataset_query (mt/mbql-query venues)}]
+          (seed-synced-row! "Card" x-id)
+          (impl/export! (source.p/snapshot mock) (new-task!) "add x") ; X now in repo (full), Y still not
+          ;; Edit X to reference the external card Y, then export the single in-place change.
+          (t2/update! :model/Card x-id {:dataset_query (mt/mbql-query nil {:source-table (str "card__" y-id)})})
+          (set-status! "Card" x-id "update")
+          (impl/export! (source.p/snapshot mock) (new-task!) "reference Y")
+          (is (entity-exported? mock y-eid)
+              "the newly-referenced external dependency must be exported"))))))
+
+(deftest create-with-external-reference-exports-dependency-test
+  (testing "a new card that references a card outside the synced collection exports that dependency"
+    (with-cross-scope-setup!
+      (fn [{:keys [mock c-id y-id y-eid]}]
+        (mt/with-temp [:model/Card {x-id :id} {:name "New Synced Card" :collection_id c-id
+                                               :database_id (mt/id)
+                                               :dataset_query (mt/mbql-query nil {:source-table (str "card__" y-id)})}]
+          (seed-synced-row! "Card" x-id)
+          (set-status! "Card" x-id "create")
+          (impl/export! (source.p/snapshot mock) (new-task!) "create x")
+          (is (entity-exported? mock y-eid)
+              "the external dependency referenced by the new card must be exported"))))))
+
+(deftest update-referencing-synced-card-stays-incremental-test
+  (testing "an in-place edit of a card that references a card in another SYNCED collection stays incremental"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                       remote-sync-transforms false]
+      (mt/with-temp [:model/Collection {c-id :id} {:name "C" :is_remote_synced true :location "/"}
+                     :model/Collection {d-id :id} {:name "D" :is_remote_synced true :location "/"}
+                     :model/Card {y-id :id} {:name "Synced Dep" :collection_id d-id
+                                             :database_id (mt/id) :dataset_query (mt/mbql-query venues)}
+                     :model/Card {x-id :id} {:name "Referencing Card" :collection_id c-id
+                                             :database_id (mt/id)
+                                             :dataset_query (mt/mbql-query nil {:source-table (str "card__" y-id)})}]
+        (t2/delete! :model/RemoteSyncObject)
+        (seed-synced-row! "Collection" c-id)
+        (seed-synced-row! "Collection" d-id)
+        (seed-synced-row! "Card" x-id)
+        (seed-synced-row! "Card" y-id)
+        (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
+              y-eid (t2/select-one-fn :entity_id :model/Card :id y-id)]
+          (impl/export! (source.p/snapshot mock) (new-task!) "init")
+          (is (entity-exported? mock y-eid) "the referenced synced card is in the repo")
+          (t2/update! :model/Card x-id {:description "edit"})
+          (set-status! "Card" x-id "update")
+          (let [task (new-task!)]
+            (impl/export! (source.p/snapshot mock) task "edit")
+            (is (= "apply-changes-version" (written-version task))
+                "the dependency is already tracked, so the guard allows the incremental path")))))))
