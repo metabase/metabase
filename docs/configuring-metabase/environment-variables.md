@@ -128,24 +128,6 @@ x.com`
 
 Allowed iframe hosts.
 
-### `MB_CSP_IMG_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `csp-img-enabled`.
-- [Configuration file name](./config-file.md): `csp-img-enabled`
-
-When on, the browser Content Security Policy restricts `img-src` so images can only load from this Metabase instance and the domains listed in `MB_CSP_IMG_ALLOWED_HOSTS`. Must be turned on to enable Custom Visualizations.
-
-### `MB_CSP_IMG_ALLOWED_HOSTS`
-
-- Type: string
-- Default: `""`
-- [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
-- [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
-
-Comma-separated list of domains that images can load from in dashboard text cards, entity descriptions, and custom visualizations when `MB_CSP_IMG_ENABLED` is on. Empty by default, which restricts images to those hosted by your Metabase instance. See [Allowed domains for images](./settings.md#allowed-domains-for-images).
-
 ### `MB_ANALYTICS_PII_RETENTION_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -371,6 +353,24 @@ Identify when new versions of Metabase are available.
 
 Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true,
   but you can disable this behavior if you want to sync it manually or use SerDes to populate its data model.
+
+### `MB_CSP_IMG_ALLOWED_HOSTS`
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
+- [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
+
+Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance.
+
+### `MB_CSP_IMG_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-enabled`.
+- [Configuration file name](./config-file.md): `csp-img-enabled`
+
+Restrict the browser Content Security Policy so images can only load from this Metabase instance or the hosts listed in `csp-img-allowed-hosts`. Must be on to enable Custom Visualizations.
 
 ### `MB_CSV_FIELD_SEPARATOR`
 
@@ -1560,6 +1560,14 @@ The remote branch to sync with, e.g. `main`.
 - [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
 
 Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+
+### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
+
+- Type: integer
+- Default: `60`
+- [Configuration file name](./config-file.md): `remote-sync-git-timeout-seconds`
+
+Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
 

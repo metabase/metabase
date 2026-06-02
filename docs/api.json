@@ -25177,7 +25177,7 @@
       "post" : {
         "operationId" : "post-api-ee-custom-viz-plugin",
         "summary" : "POST /api/ee/custom-viz-plugin",
-        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle, plus any whitelisted assets under\n  `dist/assets/`. The plugin's `identifier` is taken from the manifest's `name`\n  field.",
+        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle. The only static asset served from the bundle\n  is the manifest `icon` (under `dist/assets/`); plugins do not ship arbitrary\n  assets. The plugin's `identifier` is taken from the manifest's `name` field.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -25766,7 +25766,7 @@
       "get" : {
         "operationId" : "get-api-ee-custom-viz-plugin-id-asset",
         "summary" : "GET /api/ee/custom-viz-plugin/{id}/asset",
-        "description" : "Serve a static image asset from the plugin's bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match an entry in the manifest's `assets` whitelist.\n   Only image files are served.\n   In dev mode, proxies from the dev base URL if set.",
+        "description" : "Serve the plugin's icon image from its bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match the manifest `icon`. Only the icon is served — plugins do not\n   ship arbitrary assets.\n   In dev mode, proxies from the dev base URL if set.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -29033,6 +29033,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "branch_missing" : {
+                      "type" : "boolean"
+                    },
                     "cached" : {
                       "type" : "boolean"
                     },
@@ -44608,12 +44611,27 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "type" : "array",
-                "items" : {
-                  "description" : "value must be an integer greater than zero.",
-                  "type" : "integer",
-                  "minimum" : 1
-                }
+                "anyOf" : [ {
+                  "type" : "array",
+                  "items" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "field_order" : {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "field_order" ]
+                } ]
               }
             }
           }
