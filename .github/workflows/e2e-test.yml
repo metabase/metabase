@@ -71,10 +71,6 @@ jobs:
           submodules: true
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-      # Export this job's numeric GitHub job id as $JOB_ID for any later step
-      # (e.g. ci-conductor failed-tests reporting in after:spec). DEV-1999.
-      - uses: ./.github/actions/resolve-job-id
-
       - name: Setup python-runner
         if: ${{ inputs.name == 'python' }}
         env:
@@ -128,6 +124,15 @@ jobs:
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
+
+      # Export this job's numeric GitHub job id as $JOB_ID for the Cypress runs
+      # below (ci-conductor failed-tests reporting reads it in after:spec).
+      # Snapshot generation is itself a Cypress run that fires after:spec, so
+      # this must precede it. Placed late, not after checkout: the Actions jobs
+      # API is eventually consistent, so the longer the job has been alive the
+      # more reliably the lookup resolves. JOB_ID exported here persists to the
+      # steps below. DEV-1999.
+      - uses: ./.github/actions/resolve-job-id
 
       - name: Generate database snapshots
         env:
