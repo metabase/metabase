@@ -18,10 +18,20 @@ export type SelectedChartRange = NonNullable<
   MetabotChartConfig["selected_range"]
 >;
 
+export type DataPointSource = {
+  type?: string;
+  id?: string;
+  question_url?: string;
+};
+
 export type DataPointMentionTarget = {
   columns?: string[];
   row?: RowValue[];
   value_column_index?: number;
+  // Where this data point came from. Lets the chat re-render the source question
+  // on demand when the point's chart isn't currently mounted (e.g. it was run in
+  // a silent tool call or in an earlier turn that's no longer on screen).
+  source?: DataPointSource;
 };
 
 export type DataPointMentionId = string | number;
@@ -355,6 +365,29 @@ const getColumnIndex = (
   return columns.length - 1;
 };
 
+const buildClickedObject = (
+  cols: DatasetColumn[],
+  matchingRow: RowValue[],
+  valueColumnIndex: number,
+): ClickObject => {
+  const valueColumn = cols[valueColumnIndex];
+
+  return {
+    value: matchingRow[valueColumnIndex],
+    column: valueColumn,
+    dimensions: cols
+      .map((column, index) => ({ column, value: matchingRow[index] }))
+      .filter(
+        ({ column, value }, index) =>
+          index !== valueColumnIndex && (column || value !== undefined),
+      ),
+    origin: {
+      cols,
+      row: matchingRow,
+    },
+  };
+};
+
 export const getClickedObjectFromDataPointTarget = (
   result: Dataset | null,
   target: DataPointMentionTarget | undefined,
@@ -375,22 +408,71 @@ export const getClickedObjectFromDataPointTarget = (
     return null;
   }
 
-  const valueColumnIndex = getColumnIndex(cols, target);
-  const valueColumn = cols[valueColumnIndex];
+  return buildClickedObject(cols, matchingRow, getColumnIndex(cols, target));
+};
+
+export type FuzzyDataPointMatch = {
+  clicked: ClickObject;
+  // Number of columns that matched between the target and the result. The router
+  // uses this to pick the best-fitting card when no card holds an exact match.
+  score: number;
+};
+
+// A relaxed match used as a fallback when no rendered card holds the exact row.
+// Instead of requiring the full row to match, it matches on the columns the
+// target and the result share by name. Requires a UNIQUE matching row so we
+// never highlight an arbitrary wrong row; returns the matched cell plus a score
+// so the caller can prefer the card that shares the most columns.
+export const getFuzzyClickedObjectFromDataPointTarget = (
+  result: Dataset | null,
+  target: DataPointMentionTarget | undefined,
+): FuzzyDataPointMatch | null => {
+  if (!result?.data || !target?.row || !target.columns) {
+    return null;
+  }
+
+  const { cols, rows } = result.data;
+  const targetRow = target.row;
+  const targetColumns = target.columns;
+
+  const shared = cols
+    .map((col, resultIndex) => {
+      const targetIndex = targetColumns.findIndex((name) => name === col.name);
+      return targetIndex >= 0 ? { resultIndex, targetIndex } : null;
+    })
+    .filter((pair): pair is { resultIndex: number; targetIndex: number } =>
+      Boolean(pair),
+    );
+
+  if (shared.length === 0) {
+    return null;
+  }
+
+  const matches = rows.filter((row) =>
+    shared.every(({ resultIndex, targetIndex }) =>
+      isSameValue(row[resultIndex], targetRow[targetIndex]),
+    ),
+  );
+
+  // Ambiguous (or no) match — bail rather than risk highlighting the wrong row.
+  if (matches.length !== 1) {
+    return null;
+  }
+
+  const matchingRow = matches[0];
+
+  // Prefer the target's value column when it's one of the shared columns,
+  // otherwise fall back to the last shared column.
+  const sharedValue = shared.find(
+    ({ targetIndex }) => targetIndex === target.value_column_index,
+  );
+  const valueColumnIndex = sharedValue
+    ? sharedValue.resultIndex
+    : shared[shared.length - 1].resultIndex;
 
   return {
-    value: matchingRow[valueColumnIndex],
-    column: valueColumn,
-    dimensions: cols
-      .map((column, index) => ({ column, value: matchingRow[index] }))
-      .filter(
-        ({ column, value }, index) =>
-          index !== valueColumnIndex && (column || value !== undefined),
-      ),
-    origin: {
-      cols,
-      row: matchingRow,
-    },
+    clicked: buildClickedObject(cols, matchingRow, valueColumnIndex),
+    score: shared.length,
   };
 };
 

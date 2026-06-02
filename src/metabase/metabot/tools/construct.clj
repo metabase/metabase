@@ -227,7 +227,8 @@
           structured   (or (:structured-output query-result) (:structured_output query-result))]
       (if-let [query (:query structured)]
         (let [{:keys [output structured-output]} (query-results/format-untruncated-execution-result
-                                                  (query-results/execute-query query))]
+                                                  (query-results/execute-query query)
+                                                  query)]
           (cond-> {:output (silent-execution-output output)
                    :instructions "Use these query results to answer the user. No chart or visualization was created."}
             structured-output (assoc :structured-output structured-output)))

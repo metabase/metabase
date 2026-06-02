@@ -9,6 +9,7 @@ import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensio
 import { modelToUrl } from "metabase/urls";
 
 import type { DataPointMentionTarget } from "../../MetabotChat/data-point-mentions";
+import { routeDataPointMention } from "../../MetabotChat/data-point-router";
 import S from "../AIMarkdown.module.css";
 
 import { InternalLink } from "./InternalLink";
@@ -72,16 +73,7 @@ export const MarkdownSmartLink = ({
         type="button"
         className={S.smartLink}
         onClick={() => {
-          console.warn("[metabot data-point] markdown link click", {
-            id,
-            name,
-            target,
-          });
-          window.dispatchEvent(
-            new CustomEvent("metabot:data-point-mention-click", {
-              detail: { id, target },
-            }),
-          );
+          routeDataPointMention(target, id);
         }}
       >
         <span className={S.smartLinkInner}>{name}</span>

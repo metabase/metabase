@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.query-processor.core :as qp]
    [metabase.util.log :as log]))
@@ -236,11 +237,25 @@
   ([data-point-id column-index]
    (str "metabase://data-point/" data-point-id "/" column-index)))
 
+(defn- data-point-source
+  "Where a data point came from, so the chat can re-render its source question when the chart isn't on
+  screen (e.g. it was produced by a silent query or in an earlier, now-unmounted turn). `reference`
+  is the optional `{:type ... :id ...}` from [[query-reference]]; `query` is the executed query used
+  to build a renderable `/question#` URL. Returns nil when there's no query to render."
+  [reference query]
+  (when query
+    (cond-> {:question_url (streaming/query->question-url query)}
+      (:type reference) (assoc :type (:type reference))
+      (:id reference)   (assoc :id (:id reference)))))
+
 (defn- data-point-target
-  [columns row value-column-index]
-  {:columns            (mapv column-name columns)
-   :row                row
-   :value_column_index value-column-index})
+  ([columns row value-column-index]
+   (data-point-target columns row value-column-index nil))
+  ([columns row value-column-index source]
+   (cond-> {:columns            (mapv column-name columns)
+            :row                row
+            :value_column_index value-column-index}
+     source (assoc :source source))))
 
 (defn- markdown-link
   [label url]
@@ -268,15 +283,17 @@
        "Link every specific value you mention, and choose natural link text for your answer.\n"))
 
 (defn- data-point-link-rows
-  [{:keys [result_columns rows]}]
-  (when (and (seq result_columns) (seq rows))
-    (let [value-column-index (dec (count result_columns))]
-      (mapv (fn [row]
-              (let [data-point-id (str (random-uuid))]
-                {:id                 data-point-id
-                 :value-column-index value-column-index
-                 :target             (data-point-target result_columns row value-column-index)}))
-            rows))))
+  ([summary]
+   (data-point-link-rows summary nil))
+  ([{:keys [result_columns rows]} source]
+   (when (and (seq result_columns) (seq rows))
+     (let [value-column-index (dec (count result_columns))]
+       (mapv (fn [row]
+               (let [data-point-id (str (random-uuid))]
+                 {:id                 data-point-id
+                  :value-column-index value-column-index
+                  :target             (data-point-target result_columns row value-column-index source)}))
+             rows)))))
 
 (defn- data-point-state
   [link-rows]
@@ -374,7 +391,8 @@
     (let [structured       (structured-output result)
           reference        (query-reference structured)
           summary          (execute-query query)
-          data-point-links (data-point-link-rows summary)
+          source           (data-point-source reference query)
+          data-point-links (data-point-link-rows summary source)
           execution-xml    (execution-summary->xml summary data-point-links reference)]
       (cond-> (update result :output #(insert-into-result-block (or % "") execution-xml))
         (seq data-point-links)
@@ -382,9 +400,14 @@
     result))
 
 (defn format-untruncated-execution-result
-  "Format a query execution summary for an agent-only (silent) tool result."
-  [summary]
-  (let [data-point-links (data-point-link-rows summary)]
-    (cond-> {:output (execution-summary->xml summary data-point-links nil)}
-      (seq data-point-links)
-      (assoc :structured-output {:data-points (data-point-state data-point-links)}))))
+  "Format a query execution summary for an agent-only (silent) tool result. `query`, when supplied, is
+  the executed query used to tag each data point with a renderable source so the chat can re-render
+  this silently-run query on demand (its chart is never created in the conversation)."
+  ([summary]
+   (format-untruncated-execution-result summary nil))
+  ([summary query]
+   (let [source           (data-point-source nil query)
+         data-point-links (data-point-link-rows summary source)]
+     (cond-> {:output (execution-summary->xml summary data-point-links nil)}
+       (seq data-point-links)
+       (assoc :structured-output {:data-points (data-point-state data-point-links)})))))

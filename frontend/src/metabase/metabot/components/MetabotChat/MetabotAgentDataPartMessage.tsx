@@ -39,20 +39,27 @@ import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
 import {
+  type DataPointMentionId,
   type DataPointMentionTarget,
   getChartData,
   getClickedObjectFromDataPointTarget,
   getClickedObjectsFromDataSelection,
   getDataPointMention,
-  getDataPointMentionEvent,
-  getDataPointMentionEventId,
   getDataPointMentionMarkdown,
   getDataPointRangeMentionMarkdown,
   getDataSelectionMentionEvent,
+  getFuzzyClickedObjectFromDataPointTarget,
   getNextDataPointRangeMentionId,
   getSelectedChartData,
   getSelectedChartRange,
 } from "./data-point-mentions";
+import {
+  type DataPointCard,
+  type OnDemandHandler,
+  nextDataPointCardMountOrder,
+  registerDataPointCard,
+  setDataPointOnDemandHandler,
+} from "./data-point-router";
 
 type AgentDataPartMessageProps = {
   agentId: MetabotAgentId;
@@ -181,11 +188,16 @@ const EmbeddedQuestionCard = ({
   path,
   title,
   dataPointTargets,
+  autoHighlightTarget,
 }: {
   agentId: MetabotAgentId;
   path: string;
   title?: string;
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+  // When set, this card was rendered on demand to surface a data point whose
+  // source chart wasn't on screen. Once its result loads it highlights this
+  // target automatically.
+  autoHighlightTarget?: DataPointMentionTarget;
 }) => {
   const dispatch = useDispatch();
   const store = useStore();
@@ -240,110 +252,134 @@ const EmbeddedQuestionCard = ({
     [selectedContext],
   );
 
-  useEffect(() => {
-    const handleMentionClick = (event: Event) => {
-      const mentionEvent = getDataPointMentionEvent(event);
-      const mentionTarget =
-        mentionEvent.target ??
-        (mentionEvent.id != null
-          ? dataPointTargets?.[String(mentionEvent.id)]
-          : undefined);
-      const clickedFromTarget = getClickedObjectFromDataPointTarget(
-        resultRef.current,
-        mentionTarget,
-      );
-      console.warn("[metabot data-point] embedded card mention event", {
-        mentionEvent,
-        mentionTarget,
-        hasResult: resultRef.current != null,
-        resultRowCount: resultRef.current?.data?.rows?.length,
-        clickedFromTarget,
-      });
+  // Mirror the latest selection into refs so the registered router callbacks can
+  // stay referentially stable (depending on the state directly would re-register
+  // on every selection change).
+  const selectedContextRef = useRef(selectedContext);
+  selectedContextRef.current = selectedContext;
+  const selectedClickedRef = useRef(selectedClicked);
+  selectedClickedRef.current = selectedClicked;
 
-      if (clickedFromTarget) {
-        const question = questionRef.current;
-        const selectedData = getSelectedChartData(clickedFromTarget);
-        console.warn("[metabot data-point] embedded card target resolved", {
-          hasQuestion: question != null,
-          selectedData,
+  // Highlight a resolved data point in this card's chart. The router calls this
+  // (after scrolling the card into view) when this card holds — or best-fits —
+  // the clicked mention's row.
+  const highlightClickedViaMention = useCallback(
+    (clicked: ClickObject) => {
+      const question = questionRef.current;
+      const selectedData = getSelectedChartData(clicked);
+      setSelectedClicked(null);
+      setSelectedClickedViaMention(null);
+      setSelectedClickedGroup(null);
+      setIsHighlightingSelection(false);
+
+      if (question && selectedData) {
+        setSelectedContext({
+          type: "adhoc",
+          name: questionName,
+          query: question.datasetQuery(),
+          chart_configs: [
+            {
+              title: questionName,
+              description: question.description() ?? undefined,
+              query: question.datasetQuery(),
+              display_type: question.display(),
+              data: getChartData(resultRef.current),
+              selected_data: selectedData,
+            },
+          ],
         });
+      }
+
+      requestAnimationFrame(() => {
+        setSelectedClickedViaMention(clicked);
+        setIsHighlightingSelection(true);
+      });
+    },
+    [questionName],
+  );
+
+  // Re-highlight a selection the user themselves created in this card (a single
+  // cell or a range) when its mention id is clicked again in the chat. Returns
+  // true if this card owns the id.
+  const resolveMentionId = useCallback((id: DataPointMentionId): boolean => {
+    const selectedData =
+      selectedContextRef.current?.chart_configs?.[0]?.selected_data;
+    const selectedRange =
+      selectedContextRef.current?.chart_configs?.[0]?.selected_range;
+    if (id !== selectedData?.mention_id && id !== selectedRange?.mention_id) {
+      return false;
+    }
+
+    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setSelectedClicked(null);
+    setSelectedClickedViaMention(null);
+    setIsHighlightingSelection(false);
+    requestAnimationFrame(() => {
+      setSelectedClickedViaMention(selectedClickedRef.current);
+      setIsHighlightingSelection(true);
+    });
+    return true;
+  }, []);
+
+  const { cardId, cardMountOrder } = useMemo(() => {
+    const order = nextDataPointCardMountOrder();
+    return { cardId: `dpcard_${order}`, cardMountOrder: order };
+  }, []);
+
+  useEffect(() => {
+    const card: DataPointCard = {
+      id: cardId,
+      mountedAt: cardMountOrder,
+      getResult: () => resultRef.current,
+      highlight: highlightClickedViaMention,
+      scrollIntoView: () =>
+        cardRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        }),
+      resolveMentionId,
+    };
+    return registerDataPointCard(card);
+  }, [cardId, cardMountOrder, highlightClickedViaMention, resolveMentionId]);
+
+  // On-demand cards highlight their target once the result is available. The
+  // result arrives asynchronously through the loader's render prop (not as a
+  // dependency here), so poll a few animation frames until resultRef is ready.
+  useEffect(() => {
+    if (!autoHighlightTarget) {
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    const tryHighlight = () => {
+      if (cancelled) {
+        return;
+      }
+      const result = resultRef.current;
+      const clicked =
+        getClickedObjectFromDataPointTarget(result, autoHighlightTarget) ??
+        getFuzzyClickedObjectFromDataPointTarget(result, autoHighlightTarget)
+          ?.clicked;
+      if (clicked) {
         cardRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
         });
-        setSelectedClicked(null);
-        setSelectedClickedViaMention(null);
-        setSelectedClickedGroup(null);
-        setIsHighlightingSelection(false);
-
-        if (question && selectedData) {
-          setSelectedContext({
-            type: "adhoc",
-            name: questionName,
-            query: question.datasetQuery(),
-            chart_configs: [
-              {
-                title: questionName,
-                description: question.description() ?? undefined,
-                query: question.datasetQuery(),
-                display_type: question.display(),
-                data: getChartData(resultRef.current),
-                selected_data: selectedData,
-              },
-            ],
-          });
-        }
-
-        requestAnimationFrame(() => {
-          console.warn("[metabot data-point] embedded card setting clicked", {
-            clickedFromTarget,
-          });
-          setSelectedClickedViaMention(clickedFromTarget);
-          setIsHighlightingSelection(true);
-        });
+        highlightClickedViaMention(clicked);
         return;
       }
-
-      const mentionId = getDataPointMentionEventId(event);
-      const selectedData = selectedContext?.chart_configs?.[0]?.selected_data;
-      const selectedRange = selectedContext?.chart_configs?.[0]?.selected_range;
-      if (
-        !mentionId ||
-        (mentionId !== selectedData?.mention_id &&
-          mentionId !== selectedRange?.mention_id)
-      ) {
-        console.warn("[metabot data-point] embedded card mention ignored", {
-          mentionId,
-          selectedDataMentionId: selectedData?.mention_id,
-          selectedRangeMentionId: selectedRange?.mention_id,
-        });
-        return;
+      // ~2s of frames; the query usually resolves well before this.
+      if (attempts++ < 120) {
+        requestAnimationFrame(tryHighlight);
       }
-
-      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      setSelectedClicked(null);
-      setSelectedClickedViaMention(null);
-      setIsHighlightingSelection(false);
-      requestAnimationFrame(() => {
-        console.warn("[metabot data-point] embedded card restoring clicked", {
-          selectedClicked,
-        });
-        setSelectedClickedViaMention(selectedClicked);
-        setIsHighlightingSelection(true);
-      });
     };
+    tryHighlight();
 
-    window.addEventListener(
-      "metabot:data-point-mention-click",
-      handleMentionClick,
-    );
     return () => {
-      window.removeEventListener(
-        "metabot:data-point-mention-click",
-        handleMentionClick,
-      );
+      cancelled = true;
     };
-  }, [dataPointTargets, questionName, selectedClicked, selectedContext]);
+  }, [autoHighlightTarget, highlightClickedViaMention]);
 
   useEffect(() => {
     const handleSelectionClick = (event: Event) => {
@@ -563,6 +599,69 @@ const EmbeddedQuestionCard = ({
         <NavigateToQuestionError />
       )}
     </Box>
+  );
+};
+
+type OnDemandCardState = {
+  key: string;
+  path: string;
+  target: DataPointMentionTarget;
+};
+
+// Hosts data-point cards rendered on demand: when a clicked mention can't be
+// resolved against any card currently on screen (its source ran silently or in
+// an earlier, now-unmounted turn), the router asks us to render the point's
+// source question here so it can be highlighted in context.
+export const DataPointOnDemandHost = ({
+  agentId,
+  dataPointTargets,
+}: {
+  agentId: MetabotAgentId;
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+}) => {
+  const [cards, setCards] = useState<OnDemandCardState[]>([]);
+  const keyRef = useRef(0);
+
+  useEffect(() => {
+    const handler: OnDemandHandler = (target) => {
+      const url = target.source?.question_url;
+      if (!url) {
+        return;
+      }
+      setCards((prev) => {
+        // The registry routes to a mounted card whenever one can resolve the
+        // point, so we only get here when none exists. Guard against re-adding
+        // the same source if two still-unresolved points share it.
+        if (prev.some((card) => card.path === url)) {
+          return prev;
+        }
+        keyRef.current += 1;
+        return [
+          ...prev,
+          { key: `ondemand_${keyRef.current}`, path: url, target },
+        ];
+      });
+    };
+    return setDataPointOnDemandHandler(handler);
+  }, []);
+
+  if (cards.length === 0) {
+    return null;
+  }
+
+  return (
+    <Stack gap="md" data-testid="metabot-data-point-on-demand">
+      {cards.map((card) => (
+        <EmbeddedQuestionCard
+          key={card.key}
+          agentId={agentId}
+          path={card.path}
+          title={t`Source data`}
+          dataPointTargets={dataPointTargets}
+          autoHighlightTarget={card.target}
+        />
+      ))}
+    </Stack>
   );
 };
 
