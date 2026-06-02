@@ -2709,10 +2709,10 @@ LIMIT
       cy.log("'Change target' button is not displayed");
       cy.findByRole("button", { name: /Change target/ }).should("not.exist");
 
-      cy.log("'Only process new and changed data' switch is not displayed");
-      cy.findByRole("switch", {
-        name: /Only process new and changed data/,
-      }).should("be.disabled");
+      cy.log("'Only process new data' switch is not displayed");
+      cy.findByRole("switch", { name: /Only process new data/ }).should(
+        "be.disabled",
+      );
 
       cy.log("visiting edit mode url directly redirects to view-only mode");
       cy.visit("/data-studio/transforms/1/edit");
