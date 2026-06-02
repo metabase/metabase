@@ -15,6 +15,7 @@ import type {
 } from "metabase-types/api";
 
 import { DimensionList } from "../NewExplorationData/DimensionList";
+import { filterDimensionGroupsBySearch } from "../NewExplorationData/utils";
 
 import S from "./NewExplorationLeftTabs.module.css";
 
@@ -44,8 +45,12 @@ export function BrowseDimensionsPanel({
   });
 
   const visibleGroups = useMemo<ExplorationDimensionGroup[]>(
-    () => response?.dimension_groups ?? [],
-    [response],
+    () =>
+      filterDimensionGroupsBySearch(
+        response?.dimension_groups ?? [],
+        debouncedSearch,
+      ),
+    [response, debouncedSearch],
   );
 
   // Group representative row: take the first dimension as the row's
