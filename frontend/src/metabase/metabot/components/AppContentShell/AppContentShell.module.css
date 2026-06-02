@@ -15,11 +15,6 @@
   gap: 0;
 }
 
-.shellExpanded {
-  padding-left: 18px;
-  padding-right: 18px;
-}
-
 .contentArea {
   position: relative;
   flex: 1 1 auto;
@@ -37,14 +32,23 @@
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-background-primary);
+  /* the scaleX inset (applied inline) is a fixed pixel amount per side; using
+     a transform keeps the page content from reflowing */
+  transition: transform 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content {
+    transition: none;
+  }
 }
 
 .overlay {
   position: absolute;
   top: 8px;
-  right: -8px;
+  right: 0;
   bottom: 0;
-  left: -8px;
+  left: 0;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -53,6 +57,8 @@
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-background-primary);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transform-origin: bottom right;
+  will-change: transform, opacity;
 }
 
 .contentBare {
