@@ -492,16 +492,21 @@
    [:id    :int]
    [:name  {:optional true} :string]])
 
+(def ^:private SearchPromptType
+  [:enum :canonical :sources])
+
 (def ^:private SearchPromptEntity
   [:map
    [:id       ms/PositiveInt]
    [:prompt   :string]
+   [:type     SearchPromptType]
    [:entities [:sequential SearchPromptActualEntity]]
    [:verified :boolean]])
 
 (def ^:private default-limit 50)
 (def ^:private default-offset 0)
 
+;; here
 (api.macros/defendpoint :get "/search-prompt/"
   :- [:map
       [:data   [:sequential SearchPromptEntity]]
@@ -522,6 +527,7 @@
      :limit  limit
      :offset offset}))
 
+;; here
 (api.macros/defendpoint :get "/search-prompt/:id"
   :- SearchPromptEntity
   "Get a search prompt entity by ID."
@@ -530,18 +536,23 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/SearchPromptEntity :id id)))
 
+;; has to have all fields
 (api.macros/defendpoint :post "/search-prompt/"
   :- SearchPromptEntity
   "Create a new search prompt entity."
   [_route-params
    _query-params
-   {:keys [prompt entities verified]} :- [:map
-                                          [:prompt   [:string {:min 1 :max 2048}]]
-                                          [:entities [:sequential :any]]
-                                          [:verified {:optional true} [:maybe :boolean]]]]
+   {:keys [prompt entities verified type]} :- [:map
+                                               ;; this should go
+                                               [:prompt   :string]
+                                               [:entities :any]
+                                               [:type     {:optional true} [:maybe [:enum "canonical" "sources"]]]
+                                               [:verified [:maybe :boolean]]]]
   (api/check-superuser)
   (t2/insert-returning-instance! :model/SearchPromptEntity
                                  {:prompt   prompt
+                                  ;; for previous fe
+                                  :type     (or type "sources")
                                   :entities entities
                                   :verified (boolean verified)}))
 
@@ -550,14 +561,17 @@
   "Update the prompt of a search prompt entity by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [prompt entities verified]} :- [:map
-                                          [:prompt   {:optional true} [:string {:min 1 :max 2048}]]
-                                          [:entities {:optional true} :any]
-                                          [:verified {:optional true} [:maybe :boolean]]]]
+   {:keys [prompt entities verified type]} :- [:map
+                                               ;; this should go
+                                               [:prompt   {:optional true} :string]
+                                               [:entities {:optional true} :any]
+                                               [:type     {:optional true} [:maybe [:enum "canonical" "sources"]]]
+                                               [:verified {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/SearchPromptEntity :id id))
   (let [changes (cond-> {}
                   (some? prompt)   (assoc :prompt prompt)
+                  (some? type)     (assoc :type type)
                   (some? entities) (assoc :entities entities)
                   (some? verified) (assoc :verified (boolean verified)))]
     (when (seq changes)

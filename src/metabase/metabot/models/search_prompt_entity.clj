@@ -22,7 +22,8 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/SearchPromptEntity
-  {:entities mi/transform-json})
+  {:entities mi/transform-json
+   :type     mi/transform-keyword})
 
 ;;; This appdb table is authoritative. After-insert/update and before-delete hooks mirror each row
 ;;; into a companion table in the enterprise pgvector store, which carries the embedding and serves

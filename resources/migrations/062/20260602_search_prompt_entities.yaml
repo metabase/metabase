@@ -66,3 +66,20 @@ databaseChangeLog:
                   remarks: When the prompt-entity mapping was last updated
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v62.2026-06-02T00:00:02
+      author: lbrdnk
+      comment: Add type column to search_prompt_entities (canonical or sources)
+      changes:
+        - addColumn:
+            tableName: search_prompt_entities
+            columns:
+              - column:
+                  name: type
+                  type: varchar(50)
+                  remarks: Discriminates the shape of entities — canonical (single entity) or sources (list of sources)
+                  defaultValue: canonical
+                  constraints:
+                    nullable: false
+
