@@ -22,6 +22,7 @@ import {
 import type {
   SearchPromptEntity,
   SearchPromptEntityRef,
+  SearchPromptType,
 } from "metabase-types/api";
 
 import { SearchPromptEntityList } from "./SearchPromptEntityList";
@@ -38,9 +39,11 @@ const PROMPT_MAX_LENGTH = 2048;
 
 export function SearchPromptModal({
   searchPrompt,
+  type,
   onClose,
 }: {
   searchPrompt?: SearchPromptEntity;
+  type: SearchPromptType;
   onClose: () => void;
 }) {
   const isEditing = searchPrompt != null;
@@ -81,7 +84,7 @@ export function SearchPromptModal({
           entities,
           verified,
         })
-      : await createSearchPrompt({ prompt, entities, verified });
+      : await createSearchPrompt({ prompt, entities, verified, type });
 
     if (error) {
       sendToast({

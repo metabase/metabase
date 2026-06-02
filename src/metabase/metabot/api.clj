@@ -530,7 +530,6 @@
      :limit  limit
      :offset offset}))
 
-;; here
 (api.macros/defendpoint :get "/search-prompt/:id"
   :- SearchPromptEntity
   "Get a search prompt entity by ID."
@@ -539,14 +538,12 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/SearchPromptEntity :id id)))
 
-;; has to have all fields
 (api.macros/defendpoint :post "/search-prompt/"
   :- SearchPromptEntity
   "Create a new search prompt entity."
   [_route-params
    _query-params
    {:keys [prompt entities verified type]} :- [:map
-                                               ;; this should go
                                                [:prompt   :string]
                                                [:entities :any]
                                                [:type     {:optional true} [:maybe [:enum "canonical" "sources"]]]
@@ -554,7 +551,6 @@
   (api/check-superuser)
   (t2/insert-returning-instance! :model/SearchPromptEntity
                                  {:prompt   prompt
-                                  ;; for previous fe
                                   :type     (or type "sources")
                                   :entities entities
                                   :verified (boolean verified)}))
@@ -565,7 +561,6 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [prompt entities verified type]} :- [:map
-                                               ;; this should go
                                                [:prompt   {:optional true} :string]
                                                [:entities {:optional true} :any]
                                                [:type     {:optional true} [:maybe [:enum "canonical" "sources"]]]

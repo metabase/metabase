@@ -18,9 +18,10 @@ import {
   Center,
   Flex,
   Icon,
+  Text,
   Tooltip,
 } from "metabase/ui";
-import type { SearchPromptEntity } from "metabase-types/api";
+import type { SearchPromptEntity, SearchPromptType } from "metabase-types/api";
 
 import { SearchPromptEntityList } from "./SearchPromptEntityList";
 import { SearchPromptModal } from "./SearchPromptModal";
@@ -28,12 +29,27 @@ import { SearchPromptModal } from "./SearchPromptModal";
 export const PAGE_SIZE = 10;
 
 type ModalState =
-  | { type: "create" }
-  | { type: "edit"; searchPrompt: SearchPromptEntity }
-  | { type: "delete"; searchPrompt: SearchPromptEntity }
+  | { kind: "create" }
+  | { kind: "edit"; searchPrompt: SearchPromptEntity }
+  | { kind: "delete"; searchPrompt: SearchPromptEntity }
   | null;
 
 export function SearchPromptsPage() {
+  return (
+    <SettingsPageWrapper title={t`Search prompts`}>
+      <SearchPromptSection type="sources" heading={t`Sources`} />
+      <SearchPromptSection type="canonical" heading={t`Canonical entity`} />
+    </SettingsPageWrapper>
+  );
+}
+
+function SearchPromptSection({
+  type,
+  heading,
+}: {
+  type: SearchPromptType;
+  heading: string;
+}) {
   const [sendToast] = useToast();
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
   const offset = page * PAGE_SIZE;
@@ -43,6 +59,7 @@ export function SearchPromptsPage() {
   const { data, isLoading, error } = useListSearchPromptsQuery({
     limit: PAGE_SIZE,
     offset,
+    type,
   });
   const [deleteSearchPrompt, { isLoading: isDeleting }] =
     useDeleteSearchPromptMutation();
@@ -73,77 +90,79 @@ export function SearchPromptsPage() {
   };
 
   return (
-    <SettingsPageWrapper title={t`Search prompts`}>
-      <Flex justify="flex-end">
+    <Box maw="80rem" mb="xl">
+      <Flex justify="space-between" align="center" mb="sm">
+        <Text fw="bold" fz="lg">
+          {heading}
+        </Text>
         <Button
           variant="filled"
           leftSection={<Icon name="add" />}
-          onClick={() => setModal({ type: "create" })}
+          onClick={() => setModal({ kind: "create" })}
         >
           {t`New search prompt`}
         </Button>
       </Flex>
 
-      <Box maw="80rem">
-        <Table<SearchPromptEntity>
-          cols={
-            <>
-              <col width="2.5rem" />
-              <col width="45%" />
-              <col width="45%" />
-              <col width="5.5rem" />
-            </>
-          }
-          columns={[
-            { name: "", key: "verified", sortable: false },
-            { name: t`Prompt`, key: "prompt", sortable: false },
-            { name: t`Entities`, key: "entities", sortable: false },
-            { name: "", key: "actions", sortable: false },
-          ]}
-          rows={rows}
-          rowRenderer={(row) => (
-            <SearchPromptRow
-              key={row.id}
-              row={row}
-              onEdit={() => setModal({ type: "edit", searchPrompt: row })}
-              onDelete={() => setModal({ type: "delete", searchPrompt: row })}
-            />
-          )}
-          emptyBody={
-            error ? (
-              <Center my="lg" fw="bold" c="danger">
-                {t`Something went wrong.`}
-              </Center>
-            ) : !isLoading && total === 0 ? (
-              <Center my="lg" fw="bold" c="text-tertiary">
-                {t`No search prompts yet.`}
-              </Center>
-            ) : null
-          }
-        />
-
-        <Flex justify="flex-end" w="100%">
-          <PaginationControls
-            page={page}
-            pageSize={PAGE_SIZE}
-            itemsLength={rows.length}
-            total={total}
-            showTotal
-            onNextPage={handleNextPage}
-            onPreviousPage={handlePreviousPage}
-            data-testid="search-prompts-pagination"
+      <Table<SearchPromptEntity>
+        cols={
+          <>
+            <col width="2.5rem" />
+            <col width="45%" />
+            <col width="45%" />
+            <col width="5.5rem" />
+          </>
+        }
+        columns={[
+          { name: "", key: "verified", sortable: false },
+          { name: t`Prompt`, key: "prompt", sortable: false },
+          { name: t`Entities`, key: "entities", sortable: false },
+          { name: "", key: "actions", sortable: false },
+        ]}
+        rows={rows}
+        rowRenderer={(row) => (
+          <SearchPromptRow
+            key={row.id}
+            row={row}
+            onEdit={() => setModal({ kind: "edit", searchPrompt: row })}
+            onDelete={() => setModal({ kind: "delete", searchPrompt: row })}
           />
-        </Flex>
-      </Box>
+        )}
+        emptyBody={
+          error ? (
+            <Center my="lg" fw="bold" c="danger">
+              {t`Something went wrong.`}
+            </Center>
+          ) : !isLoading && total === 0 ? (
+            <Center my="lg" fw="bold" c="text-tertiary">
+              {t`No search prompts yet.`}
+            </Center>
+          ) : null
+        }
+      />
 
-      {(modal?.type === "create" || modal?.type === "edit") && (
+      <Flex justify="flex-end" w="100%">
+        <PaginationControls
+          page={page}
+          pageSize={PAGE_SIZE}
+          itemsLength={rows.length}
+          total={total}
+          showTotal
+          onNextPage={handleNextPage}
+          onPreviousPage={handlePreviousPage}
+          data-testid={`search-prompts-pagination-${type}`}
+        />
+      </Flex>
+
+      {(modal?.kind === "create" || modal?.kind === "edit") && (
         <SearchPromptModal
-          searchPrompt={modal.type === "edit" ? modal.searchPrompt : undefined}
+          searchPrompt={modal.kind === "edit" ? modal.searchPrompt : undefined}
+          type={type}
           onClose={() => setModal(null)}
         />
       )}
 
-      {modal?.type === "delete" && (
+      {modal?.kind === "delete" && (
         <ConfirmModal
           opened
           title={t`Delete this search prompt?`}
@@ -154,7 +173,7 @@ export function SearchPromptsPage() {
           onClose={() => setModal(null)}
         />
       )}
-    </SettingsPageWrapper>
+    </Box>
   );
 }
 

@@ -1179,9 +1179,6 @@
     (testing "non-superuser gets 403"
       (mt/user-http-request :rasta :get 403 "metabot/search-prompt/"))))
 
-(comment
-  1)
-
 (deftest search-prompt-list-type-filter-test
   (with-test-prompt [sources-entity {:type "sources"}]
     (with-test-prompt [canonical-entity {:type "canonical"}]

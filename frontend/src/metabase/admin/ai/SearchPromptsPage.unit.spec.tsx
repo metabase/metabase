@@ -13,12 +13,14 @@ const PROMPTS: SearchPromptEntity[] = [
   {
     id: 1,
     prompt: "active users",
+    type: "sources",
     entities: [{ model: "metric", id: 10, name: "Active users" }],
     verified: true,
   },
   {
     id: 2,
     prompt: "revenue by month",
+    type: "canonical",
     entities: [],
     verified: false,
   },
@@ -33,20 +35,22 @@ const setup = ({ prompts = PROMPTS, error = false }: SetupOpts = {}) => {
   if (error) {
     fetchMock.get("path:/api/metabot/search-prompt/", 500);
   } else {
-    fetchMock.get("path:/api/metabot/search-prompt/", {
-      data: prompts,
-      total: prompts.length,
-      limit: 10,
-      offset: 0,
+    fetchMock.get("path:/api/metabot/search-prompt/", (url: string) => {
+      const type = new URL(url).searchParams.get("type") as
+        | "sources"
+        | "canonical"
+        | null;
+      const filtered = type ? prompts.filter((p) => p.type === type) : prompts;
+      return { data: filtered, total: filtered.length, limit: 10, offset: 0 };
     });
   }
 
-  fetchMock.post("path:/api/metabot/search-prompt/", (call) => {
-    const body = JSON.parse(String(call.options?.body ?? "{}"));
-    return { id: 99, verified: false, entities: [], ...body };
+  fetchMock.post("path:/api/metabot/search-prompt/", (url: string, call) => {
+    const body = JSON.parse(String(call.body ?? "{}"));
+    return { id: 99, verified: false, entities: [], type: "sources", ...body };
   });
-  fetchMock.put("path:/api/metabot/search-prompt/1", (call) => {
-    const body = JSON.parse(String(call.options?.body ?? "{}"));
+  fetchMock.put("path:/api/metabot/search-prompt/1", (url: string, call) => {
+    const body = JSON.parse(String(call.body ?? "{}"));
     return { ...PROMPTS[0], ...body };
   });
   fetchMock.delete("path:/api/metabot/search-prompt/1", 204);
@@ -66,39 +70,41 @@ const lastBody = (matcher: string, method: string) => {
 };
 
 describe("SearchPromptsPage", () => {
-  it("renders a row per search prompt with its entities and verified icon", async () => {
+  it("renders each section with its prompts, entities, and verified icon", async () => {
     setup();
 
+    // sources section
     expect(await screen.findByText("active users")).toBeInTheDocument();
-    expect(screen.getByText("revenue by month")).toBeInTheDocument();
     expect(screen.getByText("Active users")).toBeInTheDocument();
 
-    // only the single verified row shows the verified icon
+    // canonical section
+    expect(screen.getByText("revenue by month")).toBeInTheDocument();
+
+    // only the verified row shows the verified icon
     expect(screen.getAllByTestId("search-prompt-verified")).toHaveLength(1);
   });
 
   it("shows the empty state when there are no prompts", async () => {
     setup({ prompts: [] });
 
-    expect(
-      await screen.findByText("No search prompts yet."),
-    ).toBeInTheDocument();
+    const emptyMessages = await screen.findAllByText("No search prompts yet.");
+    expect(emptyMessages.length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows the error state when the list request fails", async () => {
     setup({ error: true });
 
-    expect(
-      await screen.findByText("Something went wrong."),
-    ).toBeInTheDocument();
+    const errorMessages = await screen.findAllByText("Something went wrong.");
+    expect(errorMessages.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("creates a search prompt with the entered prompt", async () => {
+  it("creates a search prompt in the sources section with the entered prompt", async () => {
     setup({ prompts: [] });
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /New search prompt/ }),
-    );
+    const addButtons = await screen.findAllByRole("button", {
+      name: /New search prompt/,
+    });
+    await userEvent.click(addButtons[0]); // first button is the sources section
     await userEvent.type(await screen.findByRole("textbox"), "new prompt");
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
@@ -113,6 +119,7 @@ describe("SearchPromptsPage", () => {
       prompt: "new prompt",
       entities: [],
       verified: false,
+      type: "sources",
     });
   });
 

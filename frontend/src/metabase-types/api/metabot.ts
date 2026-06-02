@@ -426,14 +426,19 @@ export type SearchPromptEntityRef = {
   name: string;
 };
 
+export type SearchPromptType = "canonical" | "sources";
+
 export type SearchPromptEntity = {
   id: number;
   prompt: string;
+  type: SearchPromptType;
   entities: SearchPromptEntityRef[];
   verified: boolean;
 };
 
-export type ListSearchPromptsRequest = PaginationRequest;
+export type ListSearchPromptsRequest = PaginationRequest & {
+  type?: SearchPromptType;
+};
 
 export type ListSearchPromptsResponse = {
   data: SearchPromptEntity[];
@@ -443,6 +448,7 @@ export type CreateSearchPromptRequest = {
   prompt: string;
   entities: SearchPromptEntityRef[];
   verified?: boolean;
+  type?: SearchPromptType;
 };
 
 export type UpdateSearchPromptRequest = {
