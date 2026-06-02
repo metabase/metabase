@@ -577,6 +577,28 @@
                      " but tracing :collection-id through its join equalities only reaches "
                      reached))))))))
 
+(deftest keyword-form-derived-search-models-trace-to-own-model-test
+  (testing "every keyword-form-derived search-model denormalizes :collection_id from its own t2-model"
+    ;; The string form of `define-collection-based-visibility!` carries an explicit `:denormalized-from`
+    ;; claim verified above. The keyword form has no such claim: sibling specs like "dataset"/"metric"
+    ;; are swept into the fast path purely because their `:model` is a registered t2-model. The fast path
+    ;; checks `can-read-via-parent-collection?` against the index row's `:collection_id`, so this is only
+    ;; correct if the spec's `:collection-id` is its own collection. Assert that structurally — tracing
+    ;; `:collection-id` through join equalities must reach the spec's own registered t2-model — so a future
+    ;; sibling sourcing `:collection-id` from a join (a different collection) fails here instead of
+    ;; silently gaining incorrect read semantics.
+    (let [specs                (search/specifications)
+          registered-t2-models (perms/collection-id-only-read-models)]
+      (doseq [[search-model spec] specs
+              :let [t2-model (:model spec)]
+              :when (contains? registered-t2-models t2-model)]
+        (testing (str search-model " traces :collection-id to its own model " t2-model)
+          (let [reached (spec-trace/trace-collection-id-source-models spec)]
+            (is (contains? reached t2-model)
+                (str (pr-str search-model) " is derived into the fast path via its registered t2-model "
+                     (pr-str t2-model) " but tracing :collection-id through its join equalities only reaches "
+                     reached " — its denormalized :collection_id is not its own collection"))))))))
+
 (deftest collection-id-only-search-models-cold-start-regression-test
   (testing "derivation populates correctly even if registry is empty at first access"
     ;; The derivation must call `search/specifications` before reading either registry — `t2/resolve-model`
