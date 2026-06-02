@@ -468,7 +468,7 @@ describe("scenarios > metrics > explorer", () => {
 
     it("should add metrics and measures from the entity picker", () => {
       H.activateToken("pro-self-hosted").then(() => {
-        createLibraryWithTable();
+        return createLibraryWithTable();
       });
       H.MetricsViewer.goToViewer();
 
