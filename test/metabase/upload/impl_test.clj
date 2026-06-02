@@ -1307,7 +1307,7 @@
         (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
                java.lang.Exception
-               #"^Uploads are not supported on \w+ databases\."
+               #"^Uploads are not supported on [\w-]+ databases\."
                (do-with-uploaded-example-csv!
                 {:schema-name "public", :table-prefix "uploaded_magic_"}
                 identity)))))

@@ -188,7 +188,7 @@
                                           :filter [:and
                                                    ;; This still gets :default bucketing! auto-bucket-datetimes
                                                    ;; puts :day bucketing on both parts of this filter, since it's
-                                                   ;; matching a YYYY-mm-dd string. Then optimize-temporal-filters
+                                                   ;; matching a YYYY-mm-dd string. Then optimize-temporal-clauses
                                                    ;; sees that the
                                                    ;; :type/Date column already has :day
                                                    ;; granularity, and switches both to :default

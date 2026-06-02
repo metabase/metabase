@@ -223,7 +223,7 @@
               {:expressions {"foo" $date}
                :filter      [:>
                              [:expression "foo" {:base-type :type/DateTime}]
-                             [:absolute-datetime #t "2014-01-01T00:00" :default]]})
+                             [:absolute-datetime #t "2014-01-01T00:00" :day]]})
             (wrap-value-literals
              (lib.tu.macros/mbql-query checkins
                {:expressions {"foo" $date}
