@@ -36112,7 +36112,7 @@
     },
     "/api/metabot/metabot/{id}/prompt-suggestions/regenerate" : {
       "post" : {
-        "description" : "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones.",
+        "description" : "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.\n   The response `:status` is `:generated` (with a `:prompt_count`) when prompts were created,\n   `:no-library-content` when the Metabot has no models or metrics to summarize, or\n   `:ai-produced-no-prompts` when generation produced nothing.\n   Returns a 402 if the instance has reached its managed-AI usage limit.",
         "operationId" : "post-api-metabot-metabot-id-prompt-suggestions-regenerate",
         "parameters" : [ {
           "in" : "path",
@@ -36125,6 +36125,44 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "prompt_count" : {
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "status" : {
+                        "const" : "generated"
+                      }
+                    },
+                    "required" : [ "status", "prompt_count" ],
+                    "type" : "object"
+                  }, {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "status" : {
+                        "const" : "no-library-content"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "type" : "object"
+                  }, {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "status" : {
+                        "const" : "ai-produced-no-prompts"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "type" : "object"
+                  } ]
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {

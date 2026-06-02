@@ -25,6 +25,7 @@ export * from "./email";
 export * from "./embed";
 export * from "./embedding-theme";
 export * from "./entity-id";
+export * from "./erd";
 export * from "./field";
 export * from "./geojson";
 export * from "./group";

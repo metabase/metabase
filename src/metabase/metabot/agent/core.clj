@@ -15,6 +15,7 @@
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -628,7 +629,7 @@
                     (cond
                       (and api-error status)
                       (log/errorf e "Agent loop API error: %s status=%s provider=%s body=%s"
-                                  msg status provider (pr-str body))
+                                  msg status provider (self.core/body-for-log body))
 
                       api-error
                       (log/errorf e "Agent loop API error: %s provider=%s" msg provider)

@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCreateWorkspaceDatabaseEndpoint,
   setupDatabasesEndpoints,
+  setupGetWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Database, Workspace } from "metabase-types/api";
@@ -63,6 +64,7 @@ function setup({
 
   setupDatabasesEndpoints(availableDatabases);
   setupCreateWorkspaceDatabaseEndpoint(createdWorkspace);
+  setupGetWorkspaceEndpoint(createdWorkspace);
 
   renderWithProviders(
     <NewDatabaseModal
@@ -99,8 +101,9 @@ describe("NewDatabaseModal", () => {
   it("tracks an analytics event when a database is added", async () => {
     const { workspace } = setup();
 
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
     await userEvent.click(
-      await screen.findByRole("checkbox", { name: "public" }),
+      await screen.findByRole("option", { name: "public" }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Add database" }));
 

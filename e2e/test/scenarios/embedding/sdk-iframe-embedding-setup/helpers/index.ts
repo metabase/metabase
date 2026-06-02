@@ -99,12 +99,25 @@ export const navigateToEntitySelectionStep = (
   const hasEntitySelection =
     experience !== "exploration" && experience !== "metabot";
 
+  // Switch to the requested auth mode if we're not already on it. When we
+  // ARE already on it (e.g. SSO is the default and `preselectSso` is set),
+  // the radio click is a no-op AND the section's terms were already accepted
+  // by visitNewEmbedPage()'s embedModalEnableEmbedding() — so calling the
+  // helper again would race the now-frozen disabled "Enabled" button.
+  const ensureAuthMode = (label: string) => {
+    cy.findByLabelText(label).then(($radio) => {
+      if ($radio.is(":checked")) {
+        return;
+      }
+      cy.wrap($radio).click();
+      embedModalEnableEmbedding();
+    });
+  };
+
   if (preselectSso || !isQuestionOrDashboardExperience) {
-    cy.findByLabelText("Metabase account (SSO)").click();
-    embedModalEnableEmbedding();
+    ensureAuthMode("Metabase account (SSO)");
   } else if (preselectGuest) {
-    cy.findByLabelText("Guest").click();
-    embedModalEnableEmbedding();
+    ensureAuthMode("Guest");
   }
 
   const labelByExperience = match(experience)

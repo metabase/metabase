@@ -90,21 +90,21 @@
                            :mimeType "text/html;profile=mcp-app"
                            :_meta    {:ui {:prefersBorder true}}}]}
               (mcp.resources/read-resource "ui://metabase/visualize-query.html"
-                                           #{"agent:visualize"}
+                                           #{"agent:viz:mcp-ui:query"}
                                            {}))))))
 
 (deftest drill-through-ui-resource-is-distinct-from-visualize-query-test
   (testing "render_drill_through has its own UI resource URI (ChatGPT dedupes the iframe by `_meta.ui.resourceUri`; sharing the URI prevents a fresh widget from mounting on drill)"
-    (let [uris (set (map :uri (:resources (mcp.resources/list-resources #{"agent:visualize"}))))]
+    (let [uris (set (map :uri (:resources (mcp.resources/list-resources #{"agent:viz:*"}))))]
       (is (contains? uris "ui://metabase/visualize-query.html"))
       (is (contains? uris "ui://metabase/render-drill-through.html"))))
   (testing "the two UI resources return byte-distinct HTML (ChatGPT's asset CDN appears to dedupe by body hash, so identical bodies cause the second asset to silently 404)"
     (mcp.resources/with-fallback-template
       (let [viz-html   (-> (mcp.resources/read-resource "ui://metabase/visualize-query.html"
-                                                        #{"agent:visualize"} {})
+                                                        #{"agent:viz:mcp-ui:query"} {})
                            :contents first :text)
             drill-html (-> (mcp.resources/read-resource "ui://metabase/render-drill-through.html"
-                                                        #{"agent:visualize"} {})
+                                                        #{"agent:viz:mcp-ui:drill-through"} {})
                            :contents first :text)]
         (is (string? viz-html))
         (is (string? drill-html))
@@ -123,7 +123,7 @@
           uri      "ui://metabase/visualize-query.html"
           read-ui  (fn []
                      (mcp.resources/with-fallback-template
-                       (mcp.resources/read-resource uri #{"agent:visualize"} {})))]
+                       (mcp.resources/read-resource uri #{"agent:viz:mcp-ui:query"} {})))]
       (with-redefs [system/site-url (constantly site-url)]
         (testing "no request bound → CSP origins still emitted, :domain suppressed"
           (with-redefs [config/is-dev? false]

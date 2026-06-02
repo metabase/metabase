@@ -1,5 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import { useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
@@ -73,15 +74,27 @@ export const MetabotPromptSuggestionPane = ({
   };
 
   const handleRegeneratePrompts = async () => {
-    const { error } = await regeneratePrompts(metabot.id);
-    if (error) {
-      sendToast({
-        message: t`Error regenerate prompts`,
-        icon: "warning",
-      });
-    } else {
-      setPage(0);
+    const { data, error } = await regeneratePrompts(metabot.id);
+    if (error || !data) {
+      sendToast({ message: t`Error regenerating prompts`, icon: "warning" });
+      return;
     }
+    setPage(0);
+    match(data)
+      .with({ status: "generated" }, () => undefined)
+      .with({ status: "no-library-content" }, () => {
+        sendToast({
+          message: t`Add some models or metrics to this Metabot's collection to generate prompts.`,
+          icon: "info",
+        });
+      })
+      .with({ status: "ai-produced-no-prompts" }, () => {
+        sendToast({
+          message: t`Metabot couldn't come up with any prompts. Try again in a moment.`,
+          icon: "info",
+        });
+      })
+      .exhaustive();
   };
 
   const prompts = useMemo(() => data?.prompts ?? [], [data?.prompts]);

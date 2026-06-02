@@ -203,7 +203,9 @@
           tool  (-> tool
                     (update :inputSchema  malli->ui-input-schema)
                     (cond-> (:outputSchema tool) (update :outputSchema malli->ui-output-schema))
-                    (assoc :scope scope :_meta {:ui {:resourceUri uri}}))]
+                    (assoc :scope scope
+                           :required-extensions #{:mcp-app-ui}
+                           :_meta {:ui {:resourceUri uri}}))]
       (swap! registry assoc-in [:tools (:name tool)] tool)
       tool)
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
@@ -301,7 +303,7 @@
 (register-ui-resource!
  :visualize-query
  "ui://metabase/visualize-query.html"
- "agent:visualize"
+ "agent:viz:mcp-ui:query"
  {:name          "Visualize Query"
   :description   "Interactive Metabase SDK visualization for a query"
   :prefersBorder true
@@ -310,7 +312,7 @@
 (register-ui-resource!
  :render-drill-through
  "ui://metabase/render-drill-through.html"
- "agent:visualize"
+ "agent:viz:mcp-ui:drill-through"
  {:name          "Render Drill Through"
   :description   "Interactive Metabase SDK visualization for a drill-through follow-up"
   :prefersBorder true
