@@ -7,6 +7,14 @@ import type { EChartsType } from "echarts/core";
  */
 export const MIN_LABEL_TILE_WIDTH = 100;
 
+/**
+ * Tiles shorter than this (in rendered px) hide their label entirely. A label
+ * line can't be drawn legibly in a tile this short — ECharts would only
+ * vertically truncate it — so below this height we drop it, matching the
+ * width-based rule above.
+ */
+export const MIN_LABEL_TILE_HEIGHT = 40;
+
 export interface TreemapLabelLayout {
   /** Whether to render the tile's label at all. */
   show: boolean;
@@ -34,21 +42,23 @@ export interface TreemapLayoutNode {
 export interface TreemapLabelLayoutConfig {
   /** Minimum rendered tile width (px) to show a label at all. */
   minTileWidth: number;
+  /** Minimum rendered tile height (px) to show a label at all. */
+  minTileHeight: number;
   /** Inset from the tile edge on every side (matches `label.position`). */
   padding: number;
 }
 
 /**
  * Resolve a single tile's label layout from its rendered rectangle: show the
- * label only when the tile is at least `minTileWidth` wide, and wrap its text to
- * the inset tile width.
+ * label only when the tile is at least `minTileWidth` wide and `minTileHeight`
+ * tall, and wrap its text to the inset tile width.
  */
 export function getTreemapLabelLayout(
   rect: { width: number; height: number },
-  { minTileWidth, padding }: TreemapLabelLayoutConfig,
+  { minTileWidth, minTileHeight, padding }: TreemapLabelLayoutConfig,
 ): TreemapLabelLayout {
   return {
-    show: rect.width >= minTileWidth,
+    show: rect.width >= minTileWidth && rect.height >= minTileHeight,
     width: Math.max(0, rect.width - padding * 2),
   };
 }

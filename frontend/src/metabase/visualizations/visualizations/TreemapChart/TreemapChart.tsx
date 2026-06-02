@@ -16,6 +16,7 @@ import {
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import type { TreemapLabelLayout } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import {
+  MIN_LABEL_TILE_HEIGHT,
   MIN_LABEL_TILE_WIDTH,
   getTreemapLabelLayouts,
   getTreemapLayoutNodes,
@@ -135,6 +136,7 @@ export const TreemapChart = ({
     const nodes = getTreemapLayoutNodes(chart);
     const nextLayout = getTreemapLabelLayouts(nodes, {
       minTileWidth: MIN_LABEL_TILE_WIDTH,
+      minTileHeight: MIN_LABEL_TILE_HEIGHT,
       padding: LABEL_PADDING,
     });
     setLabelLayout((prev) => (_.isEqual(prev, nextLayout) ? prev : nextLayout));
