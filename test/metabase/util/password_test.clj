@@ -56,25 +56,36 @@
           (is (= expected
                  (apply #'u.password/password-has-char-counts? input))))))))
 
-(deftest ^:parallel is-valid?-normal-test
-  (testing "Do some tests with the default (:normal) password requirements"
-    (doseq [[input expected] {"ABC"           false
-                              "ABCDEF"        false
-                              "ABCDE1"        false
-                              "123456"        false
-                              "passw0rd"      false
-                              "PASSW0RD"      false
-                              "unc0mmonpw"    true
-                              "pa$$w0®∂"      true
-                              "s6n!8z-6.gcJe" true}]
+(deftest is-valid?-normal-test
+  (testing "Do some tests with :normal password requirements"
+    (mt/with-temp-env-var-value! [:mb-password-complexity "normal"]
+      (doseq [[input expected] {"ABC"           false
+                                "ABCDEF"        false
+                                "ABCDE1"        false
+                                "123456"        false
+                                "passw0rd"      false
+                                "PASSW0RD"      false
+                                "unc0mmonpw"    true
+                                "pa$$w0®∂"      true
+                                "s6n!8z-6.gcJe" true}]
+        (testing (pr-str (list 'is-valid? input))
+          (is (= expected
+                 (u.password/is-valid? input))))))))
+
+(deftest ^:parallel is-valid?-default-strong-enough-test
+  (testing "Do some tests with the default (:strong-enough) password requirements"
+    (doseq [[input expected] {"ABC"                false
+                              "ABCDEFGHIJKLM"    false
+                              "abcdefghijklmno"  true
+                              "123456789012345"  true}]
       (testing (pr-str (list 'is-valid? input))
         (is (= expected
                (u.password/is-valid? input)))))))
 
 (deftest default-password-complexity-config-test
-  (testing "When MB_PASSWORD_COMPLEXITY is unset, default is :normal"
+  (testing "When MB_PASSWORD_COMPLEXITY is unset, default is :strong-enough"
     (with-redefs [env/env (dissoc env/env :mb-password-complexity)]
-      (is (= :normal (config/config-kw :mb-password-complexity))))))
+      (is (= :strong-enough (config/config-kw :mb-password-complexity))))))
 
 (deftest is-valid?-weak-test
   (testing "Do some tests with password complexity requirements set to :weak.
