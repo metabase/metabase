@@ -651,13 +651,12 @@
   (fn [actual]
     (= (t/local-date expected-date) (t/local-date actual))))
 
-(defn- local-date-time= [expected]
-  (fn [actual]
-    (= (t/local-date-time expected) (t/local-date-time actual))))
+(defn- temporal? [x]
+  (instance? java.time.temporal.Temporal x))
 
 (deftest ^:parallel optimize-temporal-between-clauses-test
-  (mt/test-drivers (mt/normal-driver-select)
-    (mt/dataset attempted-murders
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/date-type)
+    (mt/dataset attempted-murders-no-time
       (are [start-date end-date expect-expressions expect-rows]
            (let [mp (mt/metadata-provider)
                  attempts (lib.metadata/table mp (mt/id :attempts))
@@ -669,15 +668,15 @@
                            (lib/expression "datetime_between" (lib/between datetime start-date end-date))
                            (lib/expression "datetime_tz_between" (lib/between datetime-tz start-date end-date))
                            (lib/limit 10)
-                           (as-> q (lib/with-fields q [date (lib/expression-ref q "date_between")
-                                                       datetime (lib/expression-ref q "datetime_between")
-                                                       datetime-tz (lib/expression-ref q "datetime_tz_between")])))
+                           (as-> q (lib/with-fields q [(lib/expression-ref q "date_between")
+                                                       (lib/expression-ref q "datetime_between")
+                                                       (lib/expression-ref q "datetime_tz_between")])))
                  opt-expressions (-> query
                                      qp.preprocess/preprocess
                                      lib/expressions
                                      lib.schema.util/remove-lib-uuids)]
              (is (=? expect-expressions opt-expressions))
-             (is (= expect-rows (mt/formatted-rows [identity mt/boolish->bool identity mt/boolish->bool identity mt/boolish->bool]
+             (is (= expect-rows (mt/formatted-rows [mt/boolish->bool mt/boolish->bool mt/boolish->bool]
                                                    (qp/process-query query)))))
 
         ;; Date strings with no time component should have bucketing of `:day` and get optimized
@@ -700,16 +699,16 @@
           [:< {}
            [:field map? int?]
            [:absolute-datetime {} (local-date= "2019-11-08") :default]]]]
-        [["2019-11-01T00:00:00Z" false "2019-11-01T00:23:18.331Z" false "2019-11-01T07:23:18.331Z" false]
-         ["2019-11-02T00:00:00Z" false "2019-11-02T00:14:14.246Z" false "2019-11-02T07:14:14.246Z" false]
-         ["2019-11-03T00:00:00Z" false "2019-11-03T23:35:17.906Z" false "2019-11-04T07:35:17.906Z" true]
-         ["2019-11-04T00:00:00Z" true "2019-11-04T01:04:09.593Z" true "2019-11-04T09:04:09.593Z" true]
-         ["2019-11-05T00:00:00Z" true "2019-11-05T14:23:46.411Z" true "2019-11-05T22:23:46.411Z" true]
-         ["2019-11-06T00:00:00Z" true "2019-11-06T18:51:16.27Z" true "2019-11-07T02:51:16.27Z" true]
-         ["2019-11-07T00:00:00Z" true "2019-11-07T02:45:34.443Z" true "2019-11-07T10:45:34.443Z" true]
-         ["2019-11-08T00:00:00Z" false "2019-11-08T19:51:39.753Z" false "2019-11-09T03:51:39.753Z" false]
-         ["2019-11-09T00:00:00Z" false "2019-11-09T09:59:10.483Z" false "2019-11-09T17:59:10.483Z" false]
-         ["2019-11-10T00:00:00Z" false "2019-11-10T08:41:35.86Z" false "2019-11-10T16:41:35.86Z" false]]
+        [[false false false]
+         [false false false]
+         [false false true]
+         [true true true]
+         [true true true]
+         [true true true]
+         [true true true]
+         [false false false]
+         [false false false]
+         [false false false]]
 
         ;; Datetime strings should have bucketing of `:default` and not get optimized
         "2019-11-04T12:00:00" "2019-11-07T01:00:00"
@@ -719,22 +718,22 @@
           [:absolute-datetime {} #t "2019-11-07" :default]]
          [:between {:lib/expression-name "datetime_between"}
           [:field map? int?]
-          [:absolute-datetime {} (local-date-time= "2019-11-04T12:00") :default]
-          [:absolute-datetime {} (local-date-time= "2019-11-07T01:00") :default]]
+          [:absolute-datetime {} temporal? :default]
+          [:absolute-datetime {} temporal? :default]]
          [:between {:lib/expression-name "datetime_tz_between"}
           [:field map? int?]
-          [:absolute-datetime {} (t/offset-date-time "2019-11-04T12:00Z") :default]
-          [:absolute-datetime {} (t/offset-date-time "2019-11-07T01:00Z") :default]]]
-        [["2019-11-01T00:00:00Z" false "2019-11-01T00:23:18.331Z" false "2019-11-01T07:23:18.331Z" false]
-         ["2019-11-02T00:00:00Z" false "2019-11-02T00:14:14.246Z" false "2019-11-02T07:14:14.246Z" false]
-         ["2019-11-03T00:00:00Z" false "2019-11-03T23:35:17.906Z" false "2019-11-04T07:35:17.906Z" false]
-         ["2019-11-04T00:00:00Z" true "2019-11-04T01:04:09.593Z" false "2019-11-04T09:04:09.593Z" false]
-         ["2019-11-05T00:00:00Z" true "2019-11-05T14:23:46.411Z" true "2019-11-05T22:23:46.411Z" true]
-         ["2019-11-06T00:00:00Z" true "2019-11-06T18:51:16.27Z" true "2019-11-07T02:51:16.27Z" false]
-         ["2019-11-07T00:00:00Z" true "2019-11-07T02:45:34.443Z" false "2019-11-07T10:45:34.443Z" false]
-         ["2019-11-08T00:00:00Z" false "2019-11-08T19:51:39.753Z" false "2019-11-09T03:51:39.753Z" false]
-         ["2019-11-09T00:00:00Z" false "2019-11-09T09:59:10.483Z" false "2019-11-09T17:59:10.483Z" false]
-         ["2019-11-10T00:00:00Z" false "2019-11-10T08:41:35.86Z" false "2019-11-10T16:41:35.86Z" false]]
+          [:absolute-datetime {} temporal? :default]
+          [:absolute-datetime {} temporal? :default]]]
+        [[false false false]
+         [false false false]
+         [false false false]
+         [true false false]
+         [true true true]
+         [true true false]
+         [true false false]
+         [false false false]
+         [false false false]
+         [false false false]]
 
         ;; Datetime strings without a T should have bucketing of `:default` and not get optimized
         "2019-11-04 12:00:00" "2019-11-07 01:00:00"
@@ -744,19 +743,19 @@
           [:absolute-datetime {} #t "2019-11-07" :default]]
          [:between {:lib/expression-name "datetime_between"}
           [:field map? int?]
-          [:absolute-datetime {} (local-date-time= "2019-11-04T12:00") :default]
-          [:absolute-datetime {} (local-date-time= "2019-11-07T01:00") :default]]
+          [:absolute-datetime {} temporal? :default]
+          [:absolute-datetime {} temporal? :default]]
          [:between {:lib/expression-name  "datetime_tz_between"}
           [:field map? int?]
-          [:absolute-datetime {} (t/offset-date-time "2019-11-04T12:00Z") :default]
-          [:absolute-datetime {} (t/offset-date-time "2019-11-07T01:00Z") :default]]]
-        [["2019-11-01T00:00:00Z" false "2019-11-01T00:23:18.331Z" false "2019-11-01T07:23:18.331Z" false]
-         ["2019-11-02T00:00:00Z" false "2019-11-02T00:14:14.246Z" false "2019-11-02T07:14:14.246Z" false]
-         ["2019-11-03T00:00:00Z" false "2019-11-03T23:35:17.906Z" false "2019-11-04T07:35:17.906Z" false]
-         ["2019-11-04T00:00:00Z" true "2019-11-04T01:04:09.593Z" false "2019-11-04T09:04:09.593Z" false]
-         ["2019-11-05T00:00:00Z" true "2019-11-05T14:23:46.411Z" true "2019-11-05T22:23:46.411Z" true]
-         ["2019-11-06T00:00:00Z" true "2019-11-06T18:51:16.27Z" true "2019-11-07T02:51:16.27Z" false]
-         ["2019-11-07T00:00:00Z" true "2019-11-07T02:45:34.443Z" false "2019-11-07T10:45:34.443Z" false]
-         ["2019-11-08T00:00:00Z" false "2019-11-08T19:51:39.753Z" false "2019-11-09T03:51:39.753Z" false]
-         ["2019-11-09T00:00:00Z" false "2019-11-09T09:59:10.483Z" false "2019-11-09T17:59:10.483Z" false]
-         ["2019-11-10T00:00:00Z" false "2019-11-10T08:41:35.86Z" false "2019-11-10T16:41:35.86Z" false]]))))
+          [:absolute-datetime {} temporal? :default]
+          [:absolute-datetime {} temporal? :default]]]
+        [[false false false]
+         [false false false]
+         [false false false]
+         [true false false]
+         [true true true]
+         [true true false]
+         [true false false]
+         [false false false]
+         [false false false]
+         [false false false]]))))
