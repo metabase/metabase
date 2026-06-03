@@ -2,7 +2,6 @@ import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
 import {
-  formatDurationLong,
   formatRunMethod,
   formatStatus,
   getRunDurationMs,
@@ -19,6 +18,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { formatDurationLong } from "metabase/utils/formatting/time";
 import {
   TRANSFORM_RUN_SORT_COLUMNS,
   type TransformRun,
