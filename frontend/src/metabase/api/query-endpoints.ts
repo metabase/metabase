@@ -56,13 +56,16 @@ export function shouldUsePivotEndpoint(
   metadata: Metadata,
 ): boolean {
   const question = new Question(card, metadata);
+  // Short-circuit on the cheap, always-safe checks first. `question.database()`
+  // resolves the database via Lib, which throws for query types Lib doesn't
+  // support (e.g. the `internal` queries the audit pages run), so it must not
+  // be evaluated for non-pivot/native cards.
+  if (question.display() !== "pivot" || isNative(card)) {
+    return false;
+  }
   const database = question.database();
-  return (
-    question.display() === "pivot" &&
-    !isNative(card) &&
-    // if we have metadata for the db, check if it supports pivots
-    (!database || database.supportsPivots())
-  );
+  // if we have metadata for the db, check if it supports pivots
+  return !database || database.supportsPivots();
 }
 
 /**

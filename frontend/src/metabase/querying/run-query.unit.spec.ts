@@ -212,6 +212,25 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       const { result, mockResult } = await setupRunQuestionQuery(question);
       expect(result).toEqual([mockResult]);
     });
+
+    it("runs `internal` queries (e.g. audit pages) without throwing in the pivot check", async () => {
+      // `internal` queries aren't supported by Lib, so `question.database()`
+      // throws for them. The pivot-endpoint check must not call it for a
+      // non-pivot card, otherwise the query never reaches `/api/dataset` (the
+      // audit "Erroring Questions" table renders nothing).
+      const question = createMockAdHocQuestion({
+        dataset_query: {
+          type: "internal",
+          fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
+          args: [null, null, null, "last_run_at", "desc"],
+        } as unknown as UnsavedCard["dataset_query"],
+      });
+
+      const { result, mockResult } = await setupRunQuestionQuery(question);
+
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
+      expect(result).toEqual([mockResult]);
+    });
   });
 
   describe("error handling", () => {
