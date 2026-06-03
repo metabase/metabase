@@ -131,25 +131,25 @@ function InnerSavedEntityPicker({
     ];
   }, [collections, rootCollection, currentUser, type]);
 
-  const initialCollection = useMemo(
-    () =>
-      (collectionId != null
-        ? findCollectionById(collectionTree, collectionId)
-        : null) ?? collectionTree[0],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
-  const [selectedCollection, setSelectedCollection] =
-    useState(initialCollection);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<
+    CollectionId | undefined
+  >(() => {
+    if (collectionId != null) {
+      const collection = findCollectionById(collectionTree, collectionId);
+      if (collection) {
+        return collection.id;
+      }
+    }
+    return collectionTree[0]?.id;
+  });
 
   const handleSelect = useCallback((collection: ITreeNodeItem) => {
     if (collection.id === PERSONAL_COLLECTIONS.id) {
       return;
     }
-    // Tree erases the concrete item type to ITreeNodeItem, but at runtime the
-    // selected node is one of the CollectionTreeItem entries we passed in.
-    setSelectedCollection(collection as CollectionTreeItem);
+    // Tree erases node ids to string | number, but a selected collection
+    // node's id is always a CollectionId.
+    setSelectedCollectionId(collection.id as CollectionId);
   }, []);
 
   return (
@@ -167,13 +167,13 @@ function InnerSavedEntityPicker({
           <Tree
             data={collectionTree}
             onSelect={handleSelect}
-            selectedId={selectedCollection?.id}
+            selectedId={selectedCollectionId}
           />
         </Box>
       </Box>
       <SavedEntityList
         type={type}
-        collection={selectedCollection}
+        collectionId={selectedCollectionId}
         selectedId={tableId}
         databaseId={databaseId}
         onSelect={onSelect}
