@@ -1,9 +1,10 @@
-import cx from "classnames";
 import { Link, type LinkProps } from "react-router";
 
-import CS from "metabase/css/core/index.css";
+import { Box, Flex, Text, Title } from "metabase/ui";
 
 import S from "./NewModelOption.module.css";
+
+const DEFAULT_IMAGE_WIDTH = 210;
 
 type NewModelOptionProps = LinkProps & {
   image: string;
@@ -13,7 +14,7 @@ type NewModelOptionProps = LinkProps & {
 };
 
 export function NewModelOption({
-  width,
+  width = DEFAULT_IMAGE_WIDTH,
   image,
   title,
   description,
@@ -21,28 +22,17 @@ export function NewModelOption({
 }: NewModelOptionProps) {
   return (
     <Link {...props} className={S.linkWrapper}>
-      <div
-        className={cx(CS.flex, CS.alignCenter, CS.layoutCentered)}
-        style={{ height: "160px" }}
-      >
-        <img
-          src={`${image}.png`}
-          style={{ width: width ? `${width}px` : "210px" }}
-          srcSet={`${image}@2x.png 2x`}
-        />
-      </div>
-      <div
-        className={cx(CS.textNormal, CS.mt2, CS.mb2, CS.textParagraph)}
-        style={{ lineHeight: "1.25em" }}
-      >
-        <h2 className={S.modelTitle}>{title}</h2>
-        <p
-          className={cx(CS.textMedium, CS.textSmall)}
-          style={{ maxWidth: "360px" }}
-        >
+      <Flex align="center" justify="center" h="10rem">
+        <img src={`${image}.png`} srcSet={`${image}@2x.png 2x`} width={width} />
+      </Flex>
+      <Box my="md">
+        <Title order={2} className={S.modelTitle}>
+          {title}
+        </Title>
+        <Text c="text-secondary" maw="22.5rem" mt="sm">
           {description}
-        </p>
-      </div>
+        </Text>
+      </Box>
     </Link>
   );
 }

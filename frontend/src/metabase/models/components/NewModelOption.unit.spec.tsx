@@ -45,12 +45,12 @@ describe("NewModelOption", () => {
     const img = screen.getByRole("img");
     expect(img).toHaveAttribute("src", "app/img/sql_illustration.png");
     expect(img).toHaveAttribute("srcset", "app/img/sql_illustration@2x.png 2x");
-    expect(img).toHaveStyle({ width: "180px" });
+    expect(img).toHaveAttribute("width", "180");
   });
 
   it("falls back to the default image width when none is provided", () => {
     setup();
 
-    expect(screen.getByRole("img")).toHaveStyle({ width: "210px" });
+    expect(screen.getByRole("img")).toHaveAttribute("width", "210");
   });
 });
