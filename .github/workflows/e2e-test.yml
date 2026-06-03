@@ -133,10 +133,6 @@ jobs:
       # more reliably the lookup resolves. JOB_ID exported here persists to the
       # steps below. DEV-1999.
       - uses: ./.github/actions/resolve-job-id
-        with:
-          # Must match this job's `name:` above so the action can find this job
-          # among all jobs in the run. DEV-2117.
-          job-display-name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
 
       - name: Generate database snapshots
         env:
