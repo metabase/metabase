@@ -32,7 +32,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { RouterProvider } from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
-import { ThemeProvider, useMantineTheme } from "metabase/ui";
+import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import MetabaseSettings from "metabase/utils/settings";
@@ -287,6 +287,7 @@ export function TestWrapper({
               onUpdateWhitelabelColors={handleUpdateWhitelabelColors}
             >
               <GlobalStylesForTest />
+              <PortalContainer />
 
               <MaybeKBar hasKBar={withKBar}>
                 <MaybeRouter hasRouter={withRouter} history={history}>
@@ -476,7 +477,10 @@ const ThemeProviderWrapper = ({
   ...props
 }: React.PropsWithChildren) => (
   <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
-    <ThemeProvider {...props}>{children}</ThemeProvider>
+    <ThemeProvider {...props}>
+      <PortalContainer />
+      {children}
+    </ThemeProvider>
   </ThemeProviderContext.Provider>
 );
 
