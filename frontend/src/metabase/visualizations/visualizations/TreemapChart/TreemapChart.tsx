@@ -36,7 +36,12 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 import S from "./TreemapChart.module.css";
 import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
-import { dispatchTreemapViewRoot, useChartEvents } from "./events";
+import {
+  type TreemapHoverOverlay,
+  dispatchTreemapViewRoot,
+  hideTreemapHoverOverlay,
+  useChartEvents,
+} from "./events";
 
 // Inset from each tile edge, matching the option's `label.position` — the wrap
 // width is the rendered tile width minus this on both sides.
@@ -54,6 +59,10 @@ export const TreemapChart = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
+  // The hover-overlay zrender element, added/removed directly on the chart's
+  // zrender layer (see events.ts). Owned here so we can also clear it when the
+  // view or data changes.
+  const overlayRef = useRef<TreemapHoverOverlay | null>(null);
   // `null` = overview (initial 2-level view); `"0".."N-1"` = drilled into that
   // top-level group. The breadcrumb and the bottom inset render from
   // `viewRootId` state; the tooltip formatter reads the synced `viewRootIdRef`
@@ -122,7 +131,13 @@ export const TreemapChart = ({
   const hasChildren = Boolean(
     chartData?.tree.some((node) => node.children != null),
   );
-  const { eventHandlers } = useChartEvents(hasChildren, handleViewRootChange);
+  const { eventHandlers } = useChartEvents(
+    chartRef,
+    overlayRef,
+    hasChildren,
+    viewRootId != null,
+    handleViewRootChange,
+  );
 
   // Second pass of the label layout: after ECharts finishes laying out (or
   // re-laying out on drill/resize), read each tile's rendered size and recompute
@@ -164,8 +179,10 @@ export const TreemapChart = ({
   // the absolute root, so after each change re-apply the drill for a drilled-in
   // view. This effect runs after the renderer's `setOption` effect (child
   // effects fire before parent effects). No canvas resize is involved, so the
-  // layout stays clean.
+  // layout stays clean. Also drop any stale hover overlay — its rect belongs to
+  // the pre-change layout; the next `mouseover` re-adds it for the new view.
   useEffect(() => {
+    hideTreemapHoverOverlay(chartRef, overlayRef);
     dispatchTreemapViewRoot(chartRef, viewRootId);
   }, [option, viewRootId]);
 

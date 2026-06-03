@@ -94,8 +94,7 @@ export function getTreemapChartOption({
   // as an empty strip across the top of the whole treemap (see
   // `getUpperLabelHeight` in treemapLayout), so we keep the root's header off,
   // letting the group headers start at y=0 so the rounded top corners land on
-  // them. Reused for the emphasis (hover) state so the label doesn't shift —
-  // ECharts' default `emphasis.upperLabel` drops our padding.
+  // them.
   const groupUpperLabel: NonNullable<TreemapChartSeriesOption["upperLabel"]> = {
     show: showParentLabels && !isDrilled,
     height: 32,
@@ -124,7 +123,6 @@ export function getTreemapChartOption({
       itemStyle: { borderWidth: 0, gapWidth: 1 },
       colorSaturation: [0.3, 0.5],
       upperLabel: groupUpperLabel,
-      emphasis: { upperLabel: groupUpperLabel },
     },
   ];
 
@@ -135,6 +133,12 @@ export function getTreemapChartOption({
     // the initial view at two levels.
     nodeClick: false,
     roam: false,
+    // ECharts' built-in per-node hover highlight is disabled: hover is shown by
+    // washing the whole hovered section (a custom `graphic` overlay driven by
+    // `mouseover`/`globalout` in TreemapChart/events.ts), so a second per-tile
+    // emphasis on top of it would double up. Disabling emphasis also means the
+    // group header no longer enters an emphasis state, so it can't shift on hover.
+    emphasis: { disabled: true },
     // A custom React breadcrumb (see TreemapChart) replaces ECharts' native one.
     breadcrumb: { show: false },
     label: {

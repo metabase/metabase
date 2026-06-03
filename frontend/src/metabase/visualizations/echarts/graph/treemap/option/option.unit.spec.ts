@@ -489,15 +489,13 @@ describe("getTreemapChartOption group header", () => {
     expect(series.levels?.[1]?.upperLabel).toMatchObject({ show: false });
   });
 
-  it("keeps the header identical on hover so it doesn't shift (emphasis mirrors normal)", () => {
+  it("disables ECharts' built-in per-node emphasis (hover is the section overlay instead)", () => {
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,
       renderingContext,
     });
 
-    expect(series.levels?.[1]?.emphasis?.upperLabel).toEqual(
-      series.levels?.[1]?.upperLabel,
-    );
+    expect(series.emphasis).toEqual({ disabled: true });
   });
 
   it("backs each group header with an opaque, lightened tint of the group's color", () => {
