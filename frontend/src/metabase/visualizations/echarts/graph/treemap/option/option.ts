@@ -129,9 +129,12 @@ export function getTreemapChartOption({
 
   const levels: TreemapSeriesOption["levels"] = [
     // levels[0] → synthetic root. Keep its header off so it reserves no top
-    // strip; its `gapWidth` spaces the top-level groups apart.
+    // strip; its `gapWidth` spaces the top-level groups apart. The gaps are
+    // filled with this node's `borderColor`; a transparent border reveals the
+    // canvas behind instead of painting white separators (which look wrong on a
+    // dark-mode background).
     {
-      itemStyle: { borderWidth: 0, gapWidth: 2 },
+      itemStyle: { borderWidth: 0, gapWidth: 2, borderColor: "transparent" },
       upperLabel: { show: false },
     },
     // levels[1] → the groups. The header band lives here. `borderWidth` is kept
@@ -273,7 +276,8 @@ function toSeriesData(
       // the node's borderColor and draws the leaves on top with gaps, so setting
       // borderColor to the group tint paints the within-group gaps in that tint.
       // The between-group separators come from the synthetic root's gaps, whose
-      // borderColor we leave at the ECharts default (white). When drilled into a
+      // borderColor is transparent (see levels[0]) so they read as canvas. When
+      // drilled into a
       // group it fills the canvas, and we want hueless gaps there — a transparent
       // border reveals the white canvas behind instead of the tint.
       itemStyle: {

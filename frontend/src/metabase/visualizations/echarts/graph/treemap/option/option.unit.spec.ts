@@ -205,15 +205,16 @@ describe("getTreemapChartOption within-group borders", () => {
     expect(node.itemStyle?.borderColor).not.toBe(colors["Europe"]);
   });
 
-  it("leaves the between-group separators white (no borderColor override on the root level)", () => {
+  it("makes the between-group separators transparent (canvas-colored, for dark mode)", () => {
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,
       renderingContext,
     });
 
-    // The synthetic root's gaps separate the groups; leaving its borderColor at
-    // the ECharts default keeps those separators white.
-    expect(series.levels?.[0]?.itemStyle?.borderColor).toBeUndefined();
+    // The synthetic root's gaps separate the groups; a transparent borderColor
+    // reveals the canvas behind instead of painting white separators that look
+    // wrong on a dark-mode background.
+    expect(series.levels?.[0]?.itemStyle?.borderColor).toBe("transparent");
   });
 
   it("uses a hueless transparent border when drilled into a group (level 2)", () => {
