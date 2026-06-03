@@ -351,17 +351,18 @@
 ;; [[metabase.api-routes.routes]] and resource-metadata endpoints in [[metabase.oauth-server.api.metadata]].
 (def endpoint-paths
   "URL paths that serve the MCP endpoint, relative to site-url.
-   `/api/mcp` is canonical; the rest are aliases for clients that can't reconfigure to it."
-  #{"/api/mcp" "/api/metabase-mcp" "/api/metabase/mcp"})
+   `/api/metabase-mcp` is canonical (the advertised URL); `/api/mcp` is a legacy alias kept for
+   back-compat with existing clients."
+  #{"/api/metabase-mcp" "/api/mcp"})
 
 (defn- www-authenticate-discovery
   "Build the `WWW-Authenticate` header advertising OAuth discovery for the path the client hit.
    A client connecting via an alias is pointed at that same alias as the protected resource."
   [request]
-  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase/mcp/`) still
+  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
   ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
   (let [uri  (str/replace (:uri request) #"/+$" "")
-        path (if (contains? endpoint-paths uri) uri "/api/mcp")]
+        path (if (contains? endpoint-paths uri) uri "/api/metabase-mcp")]
     (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\"")))
 
 (def +mcp-enabled

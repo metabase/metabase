@@ -192,11 +192,10 @@
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
+   ;; `/mcp` is a legacy alias of the canonical `/metabase-mcp` below, kept for back-compat with
+   ;; existing clients. See [[metabase.mcp.api/endpoint-paths]].
    "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
-   ;; `/metabase/mcp` and `/metabase-mcp` are aliases of `/mcp` above, for MCP clients that can't be
-   ;; reconfigured to the canonical URL. See [[metabase.mcp.api/endpoint-paths]].
-   "/metabase"             {"/mcp" (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)}
    "/metabase-mcp"         (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)

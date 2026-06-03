@@ -38,9 +38,9 @@
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))
 
-;; One endpoint per MCP route alias, kept in sync with [[metabase.mcp.api/endpoint-paths]].
-;; Each advertises its own path as `:resource`, so a strict RFC 9728 client connecting via an
-;; alias sees a resource value matching the URL it hit.
+;; One endpoint per MCP path (canonical and legacy), kept in sync with [[metabase.mcp.api/endpoint-paths]].
+;; Each advertises its own path as `:resource`, so a strict RFC 9728 client connecting via the legacy
+;; alias still sees a resource value matching the URL it hit.
 (def ^:private resource-metadata-response-schema
   [:map
    [:status [:= 200]]
@@ -61,23 +61,17 @@
                :scopes_supported          (vec (oauth-server/all-agent-scopes))
                :bearer_methods_supported  ["header"]}}))
 
-(api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
+(api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
   []
-  (protected-resource-metadata "/api/mcp"))
-
-(api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp"
-  :- resource-metadata-response-schema
-  "Returns OAuth Protected Resource Metadata (RFC 9728) for the `/api/metabase-mcp` MCP alias."
-  []
   (protected-resource-metadata "/api/metabase-mcp"))
 
-(api.macros/defendpoint :get "/oauth-protected-resource/api/metabase/mcp"
+(api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
   :- resource-metadata-response-schema
-  "Returns OAuth Protected Resource Metadata (RFC 9728) for the `/api/metabase/mcp` MCP alias."
+  "Returns OAuth Protected Resource Metadata (RFC 9728) for the legacy `/api/mcp` MCP alias."
   []
-  (protected-resource-metadata "/api/metabase/mcp"))
+  (protected-resource-metadata "/api/mcp"))
 
 ;; Some clients probe the bare resource path instead of the resource-specific one; serve the same metadata here so
 ;; the request doesn't fall through to the SPA's HTML catch-all and trip a `JSON.parse` error (BOT-1617).

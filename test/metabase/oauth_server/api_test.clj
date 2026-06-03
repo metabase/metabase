@@ -37,9 +37,9 @@
         (is (nil? (:id_token_signing_alg_values_supported response)))))))
 
 (deftest protected-resource-metadata-test
-  (testing "each MCP endpoint alias advertises itself as the OAuth protected resource (RFC 9728)"
+  (testing "the canonical and legacy MCP paths each advertise themselves as the OAuth protected resource (RFC 9728)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (doseq [path ["/api/mcp" "/api/metabase-mcp" "/api/metabase/mcp"]]
+      (doseq [path ["/api/metabase-mcp" "/api/mcp"]]
         (testing path
           (let [response (mt/user-http-request :crowberto :get 200
                                                (str ".well-known/oauth-protected-resource" path))]

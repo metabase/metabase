@@ -78,8 +78,9 @@
                                {:request-options {:headers extra-headers}}))
 
 (def ^:private mcp-endpoint-paths
-  "Client paths for the canonical MCP endpoint and its route aliases, appended to the test client's `/api`."
-  ["mcp" "metabase-mcp" "metabase/mcp"])
+  "Client paths that serve the MCP endpoint, appended to the test client's `/api`: the canonical
+   `metabase-mcp` and the legacy `mcp` alias."
+  ["metabase-mcp" "mcp"])
 
 (defn- mcp-request-to
   "Like `mcp-request` but to an explicit endpoint path (e.g. \"metabase-mcp\"), authenticated as :crowberto."
@@ -1119,10 +1120,10 @@
                  :headers {"WWW-Authenticate" #(str/includes? % "oauth-protected-resource")}}
                 response))))))
 
-;;; ------------------------------------------------ Endpoint aliases ----------------------------------------------
+;;; ----------------------------------------- Canonical and legacy endpoints ---------------------------------------
 
 (deftest endpoint-alias-routing-test
-  (testing "initialize succeeds (session auth) on every MCP endpoint alias"
+  (testing "initialize succeeds (session auth) on both the canonical and legacy MCP paths"
     (doseq [path mcp-endpoint-paths]
       (testing (str "/api/" path)
         (is (=? {:status  200
@@ -1131,7 +1132,7 @@
                 (mcp-request-to path (jsonrpc-request "initialize"))))))))
 
 (deftest endpoint-alias-discovery-401-test
-  (testing "unauthenticated request on each alias advertises that same alias as the protected resource"
+  (testing "unauthenticated request on each path advertises that same path as the protected resource"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (doseq [path mcp-endpoint-paths]
         (testing (str "/api/" path)
@@ -1142,18 +1143,18 @@
                     (mcp-request-unauthenticated-to path (jsonrpc-request "initialize"))))))))))
 
 (deftest endpoint-alias-trailing-slash-discovery-test
-  (testing "a trailing-slash request still advertises the matching alias (not canonical fallback)"
+  (testing "a trailing-slash request still advertises the matching path (not canonical fallback)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (let [expected "/.well-known/oauth-protected-resource/api/metabase-mcp\""]
+      (let [expected "/.well-known/oauth-protected-resource/api/mcp\""]
         (is (=? {:status  401
                  :headers {"WWW-Authenticate" #(str/includes? % expected)}}
-                (mcp-request-unauthenticated-to "metabase-mcp/" (jsonrpc-request "initialize"))))))))
+                (mcp-request-unauthenticated-to "mcp/" (jsonrpc-request "initialize"))))))))
 
 (deftest endpoint-alias-bearer-token-test
-  (testing "bearer-token handling is identical on an alias — same invalid_token 401 as canonical"
-    ;; Bearer validation (validate-bearer-token) has no path logic, so reaching it via an alias must
-    ;; behave exactly like the canonical path. We assert the invalid-token branch since it's
-    ;; deterministic and doesn't depend on minting a live token.
+  (testing "bearer-token handling is identical on the legacy path — same invalid_token 401 as canonical"
+    ;; Bearer validation (validate-bearer-token) has no path logic, so reaching it via the legacy
+    ;; alias must behave exactly like the canonical path. We assert the invalid-token branch since
+    ;; it's deterministic and doesn't depend on minting a live token.
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (oauth-server/reset-provider!)
       (try
