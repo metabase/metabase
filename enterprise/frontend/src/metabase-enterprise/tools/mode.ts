@@ -15,7 +15,7 @@ const ErrorDrill = ({ clicked }: ErrorDrillProps) => {
     return [];
   }
 
-  const cardId = clicked.origin.row[CARD_ID_ROW_IDX] as number;
+  const cardId = Number(clicked.origin.row[CARD_ID_ROW_IDX]);
 
   return [
     {
