@@ -40,8 +40,8 @@ export const GitSyncControls = () => {
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
   const [nextBranch, setNextBranch] = useState<string | null>(null);
-  // Set when a dirty pull needs the conflict modal; carries whether a clean merge is available.
-  const [pullPreflight, setPullPreflight] =
+  // Set when a push or pull needs the conflict modal; carries whether a clean merge is available.
+  const [conflictPreflight, setConflictPreflight] =
     useState<ExportPreflightResponse | null>(null);
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
   const [sendToast] = useToast();
@@ -113,10 +113,23 @@ export const GitSyncControls = () => {
     [currentBranch, refetchDirty, dispatch, changeBranch, sendToast],
   );
 
-  const handlePushClick = useCallback(() => {
-    togglePushModal();
+  const handlePushClick = useCallback(async () => {
     combobox.closeDropdown();
-  }, [combobox, togglePushModal]);
+
+    // Find out up front whether the remote has advanced, so we open the right modal directly instead of
+    // collecting a commit message and only then discovering the divergence.
+    try {
+      const preflight = await runExportPreflight().unwrap();
+      if (preflight.has_changes) {
+        setConflictPreflight(preflight);
+        dispatch(syncConflictVariantUpdated("push"));
+        return;
+      }
+    } catch {
+      // fall through to the plain push modal on a preflight error
+    }
+    togglePushModal();
+  }, [combobox, dispatch, runExportPreflight, togglePushModal]);
 
   const handlePullClick = useCallback(async () => {
     if (!currentBranch) {
@@ -130,9 +143,9 @@ export const GitSyncControls = () => {
     if (isDirty) {
       try {
         const preflight = await runExportPreflight().unwrap();
-        setPullPreflight(preflight);
+        setConflictPreflight(preflight);
       } catch {
-        setPullPreflight(null);
+        setConflictPreflight(null);
       }
       dispatch(syncConflictVariantUpdated("pull"));
       return;
@@ -149,7 +162,7 @@ export const GitSyncControls = () => {
       const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
 
       if (hasConflict) {
-        setPullPreflight(null);
+        setConflictPreflight(null);
         dispatch(syncConflictVariantUpdated("pull"));
         return;
       }
@@ -172,7 +185,7 @@ export const GitSyncControls = () => {
   const handleCloseSyncConflictModal = useCallback(() => {
     dispatch(syncConflictVariantUpdated(null));
     setNextBranch(null);
-    setPullPreflight(null);
+    setConflictPreflight(null);
   }, [dispatch]);
 
   const handleSwitchBranchClick = useCallback(() => {
@@ -262,8 +275,8 @@ export const GitSyncControls = () => {
           nextBranch={nextBranch}
           onClose={handleCloseSyncConflictModal}
           variant={conflictVariant}
-          canMerge={pullPreflight?.clean}
-          conflicts={pullPreflight?.conflicts}
+          canMerge={conflictPreflight?.clean}
+          conflicts={conflictPreflight?.conflicts}
         />
       )}
     </>

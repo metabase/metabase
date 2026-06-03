@@ -23,6 +23,7 @@ import type {
 } from "metabase-types/api";
 
 import { ChangesLists } from "../ChangesLists";
+import { CommitMessageSection } from "../PushChangesModal/CommitMessageSection";
 
 import { BranchNameInput } from "./BranchNameInput";
 import { ConflictingChangesList } from "./ConflictingChangesList";
@@ -50,22 +51,15 @@ interface UnsyncedWarningModalProps {
   canMerge?: boolean;
   /** Push variant only: labels of entities that conflict (shown when the merge isn't clean). */
   conflicts?: string[];
-  /** Push variant only: the commit message entered before the conflict was detected. */
-  message?: string;
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
-  const {
-    onClose,
-    currentBranch,
-    nextBranch,
-    variant,
-    canMerge,
-    conflicts,
-    message,
-  } = props;
+  const { onClose, currentBranch, nextBranch, variant, canMerge, conflicts } =
+    props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
+  // The push variant collects a commit message here, since merge/force/new-branch all push.
+  const [commitMessage, setCommitMessage] = useState<string>("");
   const { sendErrorToast } = useMetadataToasts();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
@@ -115,6 +109,8 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     settingValues,
     updateRemoteSyncSettings,
   ]);
+
+  const message = commitMessage.trim() || undefined;
 
   const handleContinueButtonClick = async () => {
     if (!optionValue) {
@@ -202,6 +198,16 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
             setValue={setNewBranchName}
             value={newBranchName}
           />
+        )}
+
+        {/* Pushing (merge / force / new branch) needs a commit message; pull/switch/setup don't. */}
+        {variant === "push" && optionValue && optionValue !== "discard" && (
+          <Box mt="lg">
+            <CommitMessageSection
+              value={commitMessage}
+              onChange={setCommitMessage}
+            />
+          </Box>
         )}
 
         <Group gap="sm" justify="end" mt="lg">

@@ -11,16 +11,11 @@ import {
   Modal,
   Stack,
 } from "metabase/ui";
-import {
-  useExportChangesMutation,
-  useLazyGetExportPreflightQuery,
-} from "metabase-enterprise/api";
-import type { ExportPreflightResponse } from "metabase-types/api";
+import { useExportChangesMutation } from "metabase-enterprise/api";
 
 import { trackPushChanges } from "../../analytics";
 import { type SyncError, parseSyncError } from "../../utils";
 import { ChangesLists } from "../ChangesLists";
-import { SyncConflictModal } from "../SyncConflictModal";
 
 import { CommitMessageSection } from "./CommitMessageSection";
 
@@ -29,23 +24,21 @@ interface PushChangesModalProps {
   onClose: () => void;
 }
 
+/**
+ * Plain push of local changes. Only shown when the remote has NOT advanced — the caller
+ * (GitSyncControls) runs the export preflight first and, when the remote is ahead, opens the
+ * SyncConflictModal (push variant) directly instead of this modal.
+ */
 export const PushChangesModal = ({
   onClose,
   currentBranch,
 }: PushChangesModalProps) => {
   const [commitMessage, setCommitMessage] = useState("");
-  // Set once the export preflight detects the remote has advanced; switches the UI to the conflict modal
-  // so the user can choose to merge, force push, or branch.
-  const [preflight, setPreflight] = useState<ExportPreflightResponse | null>(
-    null,
-  );
 
   const [
     exportChanges,
     { isLoading: isPushing, error: exportError, isSuccess },
   ] = useExportChangesMutation();
-  const [runPreflight, { isFetching: isCheckingPreflight }] =
-    useLazyGetExportPreflightQuery();
 
   const { errorMessage } = useMemo(
     () => parseSyncError(exportError as SyncError),
@@ -58,22 +51,13 @@ export const PushChangesModal = ({
     }
   }, [isSuccess, onClose]);
 
-  const handlePush = useCallback(async () => {
+  const handlePush = useCallback(() => {
     if (!currentBranch) {
       throw new Error("Current branch is not set");
     }
 
-    const message = commitMessage.trim() || undefined;
-    const result = await runPreflight().unwrap();
-
-    // Remote has advanced — hand off to the conflict modal so the user picks how to reconcile.
-    if (result.has_changes) {
-      setPreflight(result);
-      return;
-    }
-
     exportChanges({
-      message,
+      message: commitMessage.trim() || undefined,
       branch: currentBranch,
     });
 
@@ -81,22 +65,7 @@ export const PushChangesModal = ({
       triggeredFrom: "app-bar",
       force: false,
     });
-  }, [commitMessage, exportChanges, runPreflight, currentBranch]);
-
-  if (preflight?.has_changes) {
-    return (
-      <SyncConflictModal
-        currentBranch={currentBranch}
-        onClose={onClose}
-        variant="push"
-        canMerge={preflight.clean}
-        conflicts={preflight.conflicts}
-        message={commitMessage.trim() || undefined}
-      />
-    );
-  }
-
-  const isBusy = isPushing || isCheckingPreflight;
+  }, [commitMessage, exportChanges, currentBranch]);
 
   return (
     <Modal
@@ -132,9 +101,9 @@ export const PushChangesModal = ({
           </Button>
           <Button
             color="brand"
-            disabled={isBusy}
+            disabled={isPushing}
             leftSection={<Icon name="upload" />}
-            loading={isBusy}
+            loading={isPushing}
             onClick={handlePush}
             variant="filled"
           >
