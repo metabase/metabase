@@ -28,7 +28,6 @@ import {
 } from "metabase/ui";
 
 import S from "./DimensionPickerSidebar.module.css";
-import { useDimensionPickerSidebar } from "./DimensionPickerSidebarContext";
 import { AllFieldsList } from "./components/AllFieldsList";
 import { CategoryItem } from "./components/CategoryItem";
 import {
@@ -53,8 +52,8 @@ export function DimensionPickerSidebar() {
     sourceDataById,
     selectDimensionBreakout: onSelectDimensionBreakout,
     updateActiveDimensionBreakout: onUpdateActiveDimensionBreakout,
+    closeSidebar,
   } = useMetricsViewerContext();
-  const { close } = useDimensionPickerSidebar();
   const [searchText, setSearchText] = useState("");
   const [mode, setMode] = useState<SidebarMode>("default");
   const [expandedCategoryKey, setExpandedCategoryKey] = useState<string | null>(
@@ -301,7 +300,11 @@ export function DimensionPickerSidebar() {
             {showAllFields ? t`All fields` : t`Break out by`}
           </Title>
         </Flex>
-        <ActionIcon aria-label={t`Close`} variant="subtle" onClick={close}>
+        <ActionIcon
+          aria-label={t`Close`}
+          variant="subtle"
+          onClick={closeSidebar}
+        >
           <Icon name="close" />
         </ActionIcon>
       </Flex>

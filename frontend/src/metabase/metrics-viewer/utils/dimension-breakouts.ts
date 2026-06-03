@@ -3,17 +3,20 @@ import { t } from "ttag";
 import type { DimensionDescriptor } from "metabase/metrics/common/utils/dimension-descriptors";
 import { getDimensionDescriptors } from "metabase/metrics/common/utils/dimension-descriptors";
 import { GEO_SUBTYPE_PRIORITY } from "metabase/metrics/common/utils/dimension-types";
-import { getObjectEntries } from "metabase/utils/objects";
+import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { IconName } from "metabase-types/api";
 
 import { MAX_AUTO_DIMENSION_BREAKOUTS } from "../constants";
 import type {
+  DimensionBreakoutInfo,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDimensionBreakoutState,
   MetricsViewerDimensionBreakoutType,
+  MetricsViewerFormulaEntity,
   StoredMetricsViewerDimensionBreakout,
 } from "../types";
 
@@ -22,7 +25,7 @@ import {
   type DimensionBreakoutTypeDefinition,
   getDimensionBreakoutConfig,
 } from "./dimension-breakout-config";
-import type { MetricSlot } from "./metric-slots";
+import { type MetricSlot, computeMetricSlots } from "./metric-slots";
 
 // ── Dimension classification ──
 
@@ -156,6 +159,136 @@ export function recomputeDimensionBreakoutLabels(
   });
 
   return changed ? result : dimensionBreakouts;
+}
+
+export function getValidSelectedDimensionBreakoutId(
+  currentSelectedDimensionBreakoutId: string | null,
+  newDimensionBreakouts: MetricsViewerDimensionBreakoutState[],
+): string | null {
+  const selectedDimensionBreakoutExists = newDimensionBreakouts.some(
+    (dimensionBreakout) =>
+      dimensionBreakout.id === currentSelectedDimensionBreakoutId,
+  );
+
+  if (selectedDimensionBreakoutExists) {
+    return currentSelectedDimensionBreakoutId;
+  }
+
+  return newDimensionBreakouts[0]?.id ?? null;
+}
+
+export function assignDimensionsForUnmappedSlots(
+  dimensionBreakouts: MetricsViewerDimensionBreakoutState[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  formulaEntities: MetricsViewerFormulaEntity[],
+): MetricsViewerDimensionBreakoutState[] {
+  const slots = computeMetricSlots(formulaEntities);
+  if (slots.length === 0) {
+    return dimensionBreakouts;
+  }
+
+  const slotIndexToSourceId = new Map<number, MetricSourceId>();
+  for (const slot of slots) {
+    slotIndexToSourceId.set(slot.slotIndex, slot.sourceId);
+  }
+
+  return dimensionBreakouts.map((dimensionBreakout) => {
+    if (dimensionBreakout.label == null) {
+      return dimensionBreakout;
+    }
+
+    const unmappedBySource = new Map<
+      MetricSourceId,
+      { slotIndices: number[]; definition: MetricDefinition }
+    >();
+
+    for (const slot of slots) {
+      const existing = dimensionBreakout.dimensionMapping[slot.slotIndex];
+      if (existing !== undefined) {
+        continue;
+      }
+      const defEntry = definitions[slot.sourceId];
+      if (!defEntry?.definition) {
+        continue;
+      }
+      let group = unmappedBySource.get(slot.sourceId);
+      if (!group) {
+        group = { slotIndices: [], definition: defEntry.definition };
+        unmappedBySource.set(slot.sourceId, group);
+      }
+      group.slotIndices.push(slot.slotIndex);
+    }
+
+    if (unmappedBySource.size === 0) {
+      return dimensionBreakout;
+    }
+
+    const activeMappings: Record<number, string> = {};
+    for (const [key, value] of getObjectEntries(
+      dimensionBreakout.dimensionMapping,
+    )) {
+      if (value != null) {
+        activeMappings[Number(key)] = value;
+      }
+    }
+    const storedDimensionBreakout: StoredMetricsViewerDimensionBreakout = {
+      id: dimensionBreakout.id,
+      type: dimensionBreakout.type,
+      label: dimensionBreakout.label,
+      dimensionBySlotIndex: activeMappings,
+    };
+
+    let newMappings: Record<number, string> | null = null;
+
+    for (const [sourceId, { slotIndices, definition }] of unmappedBySource) {
+      const existingDefinitions = objectFromEntries(
+        Object.values(definitions)
+          .filter((entry) => entry.id !== sourceId && entry.definition != null)
+          .map((entry) => [entry.id, entry.definition] as const),
+      );
+
+      const matchingDimension = findMatchingDimensionForBreakout(
+        definition,
+        storedDimensionBreakout,
+        existingDefinitions,
+        slotIndexToSourceId,
+      );
+
+      if (matchingDimension) {
+        if (!newMappings) {
+          newMappings = {};
+        }
+        for (const idx of slotIndices) {
+          newMappings[idx] = matchingDimension;
+        }
+      }
+    }
+
+    if (!newMappings) {
+      return dimensionBreakout;
+    }
+
+    return {
+      ...dimensionBreakout,
+      dimensionMapping: {
+        ...dimensionBreakout.dimensionMapping,
+        ...newMappings,
+      },
+    };
+  });
+}
+
+export function areDimensionBreakoutDimensionsValid(
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
+): boolean {
+  const dimensionBreakoutConfig = getDimensionBreakoutConfig(
+    dimensionBreakout.type,
+  );
+
+  return (
+    Object.values(dimensionBreakout.dimensionMapping).filter(isNotNull)
+      .length >= dimensionBreakoutConfig.minDimensions
+  );
 }
 
 // ── Default dimensionBreakout computation ──
@@ -579,13 +712,6 @@ export function computeDefaultDimensionBreakouts(
 }
 
 // ── Manual dimensionBreakout creation ──
-
-export interface DimensionBreakoutInfo {
-  id?: string;
-  type: MetricsViewerDimensionBreakoutType;
-  label: string;
-  dimensionMapping: Record<number, string | null>;
-}
 
 export function createDimensionBreakoutFromInfo(
   dimensionBreakoutInfo: DimensionBreakoutInfo,

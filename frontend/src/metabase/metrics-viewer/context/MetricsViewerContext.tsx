@@ -1,14 +1,14 @@
 import { type ReactNode, createContext, useContext } from "react";
 
-import type { UseMetricsViewerResult } from "metabase/metrics-viewer/hooks/use-metrics-viewer";
+import type { UseViewerStateResult } from "metabase/metrics-viewer/types";
 
-const MetricsViewerContext = createContext<UseMetricsViewerResult | null>(null);
+const MetricsViewerContext = createContext<UseViewerStateResult | null>(null);
 
 export function MetricsViewerProvider({
   value,
   children,
 }: {
-  value: UseMetricsViewerResult;
+  value: UseViewerStateResult;
   children: ReactNode;
 }) {
   return (
@@ -18,7 +18,7 @@ export function MetricsViewerProvider({
   );
 }
 
-export function useMetricsViewerContext(): UseMetricsViewerResult {
+export function useMetricsViewerContext(): UseViewerStateResult {
   const context = useContext(MetricsViewerContext);
   if (!context) {
     throw new Error(

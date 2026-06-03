@@ -13,34 +13,25 @@ import * as LibMetric from "metabase-lib/metric";
 import type { IconName } from "metabase-types/api";
 
 import type {
+  AvailableDimension,
+  AvailableDimensionsResult,
   MetricSourceId,
   MetricsViewerDimensionBreakoutState,
   MetricsViewerDimensionBreakoutType,
   SourceColorMap,
+  SourceDisplayInfo,
 } from "../types";
 
-import {
-  type DimensionBreakoutInfo,
-  getDimensionIcon,
-  getDimensionsByType,
-} from "./dimension-breakouts";
+export type {
+  AvailableDimension,
+  AvailableDimensionsResult,
+  SourceDisplayInfo,
+} from "../types";
+
+import { getDimensionIcon, getDimensionsByType } from "./dimension-breakouts";
 import type { MetricSlot } from "./metric-slots";
 
 // ── Dimension picker ──
-
-export interface AvailableDimension {
-  icon: IconName;
-  group?: DimensionGroup;
-  canListValues?: boolean;
-  isPreferred?: boolean;
-  geoSubtype?: GeoSubtype | null;
-  dimensionBreakoutInfo: DimensionBreakoutInfo;
-}
-
-export interface AvailableDimensionsResult {
-  shared: AvailableDimension[];
-  bySource: Record<MetricSourceId, AvailableDimension[]>;
-}
 
 export function getExistingDimensionBreakoutDimensionIds(
   dimensionBreakouts: MetricsViewerDimensionBreakoutState[],
@@ -223,11 +214,6 @@ export function getAvailableDimensionsForPicker(
 }
 
 // ── Display helpers ──
-
-export interface SourceDisplayInfo {
-  type: "metric" | "measure";
-  name: string;
-}
 
 // ── Dimension picker sections ──
 

@@ -2,11 +2,7 @@ import type { Location } from "history";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
-import {
-  DimensionPickerSidebar,
-  DimensionPickerSidebarProvider,
-  useDimensionPickerSidebar,
-} from "metabase/metrics-viewer/components/DimensionPickerSidebar";
+import { DimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
 import {
   MetricsViewerEmptyState,
   MetricsViewerNoDimensionBreakoutEmptyState,
@@ -17,7 +13,7 @@ import {
   MetricsViewerProvider,
   useMetricsViewerContext,
 } from "metabase/metrics-viewer/context";
-import { useMetricsViewer } from "metabase/metrics-viewer/hooks";
+import { useViewerState } from "metabase/metrics-viewer/hooks";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import S from "./MetricsViewerPage.module.css";
@@ -27,17 +23,9 @@ export type MetricsViewerPageProps = {
 };
 
 export function MetricsViewerPage(props: MetricsViewerPageProps) {
-  return (
-    <DimensionPickerSidebarProvider>
-      <MetricsViewerPageContent {...props} />
-    </DimensionPickerSidebarProvider>
-  );
-}
+  const viewerState = useViewerState(props);
 
-function MetricsViewerPageContent(props: MetricsViewerPageProps) {
-  const useMetricsViewerResult = useMetricsViewer(props);
-
-  if (!useMetricsViewerResult.initialLoadComplete) {
+  if (!viewerState.initialLoadComplete) {
     // parsing formulas won't work until the initial set of definitions are loaded
     return (
       <Center h="100%">
@@ -47,24 +35,23 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
   }
 
   return (
-    <MetricsViewerProvider value={useMetricsViewerResult}>
+    <MetricsViewerProvider value={viewerState}>
       <MetricsViewerPageBody />
     </MetricsViewerProvider>
   );
 }
 
 function MetricsViewerPageBody() {
-  const { isOpen: isDimensionPickerSidebarOpen } = useDimensionPickerSidebar();
-  const { definitions, activeDimensionBreakout } = useMetricsViewerContext();
+  const { definitions, activeDimensionBreakout, isSidebarOpen } =
+    useMetricsViewerContext();
 
   const hasDefinitions = Object.keys(definitions).length > 0;
   const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
-  const showDimensionPickerSidebar =
-    isDimensionPickerSidebarOpen && !!activeDimensionBreakout;
+  const showDimensionPickerSidebar = isSidebarOpen && !!activeDimensionBreakout;
   const showBreakoutLegend =
-    !isDimensionPickerSidebarOpen &&
+    !isSidebarOpen &&
     !!activeDimensionBreakout &&
     activeDimensionBreakout.type !== "scalar";
 

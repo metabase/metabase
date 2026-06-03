@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useDimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type {
   MetricsViewerDimensionBreakoutProjectionConfig,
@@ -51,12 +50,12 @@ export function MetricControls({
   showStackSeries,
   canToggleColumnLabels,
 }: MetricControlsProps) {
-  const { open: openDimensionPickerSidebar } = useDimensionPickerSidebar();
   const {
     activeDimensionBreakout: dimensionBreakout,
     availableDimensions,
     sourceOrder,
     updateActiveDimensionBreakout: onDimensionBreakoutUpdate,
+    openSidebar,
   } = useMetricsViewerContext();
 
   const updateProjectionConfig = useCallback(
@@ -187,7 +186,7 @@ export function MetricControls({
                 variant="subtle"
                 color="text-primary"
                 leftSection={<Icon c="brand" name="unreferenced" size={16} />}
-                onClick={openDimensionPickerSidebar}
+                onClick={openSidebar}
               >
                 {t`No breakout`}
               </Button>
@@ -237,7 +236,7 @@ export function MetricControls({
                             <Icon c="brand" name={columnPickerIcon} size={16} />
                           ) : undefined
                         }
-                        onClick={openDimensionPickerSidebar}
+                        onClick={openSidebar}
                       >
                         {columnPickerLabel}
                       </Button>

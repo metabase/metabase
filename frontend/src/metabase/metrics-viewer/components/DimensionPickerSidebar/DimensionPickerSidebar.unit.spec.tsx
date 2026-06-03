@@ -14,7 +14,6 @@ import type {
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 
 import { DimensionPickerSidebar } from "./DimensionPickerSidebar";
-import { DimensionPickerSidebarProvider } from "./DimensionPickerSidebarContext";
 
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
@@ -113,9 +112,7 @@ function setup({
 
   renderWithProviders(
     <MetricsViewerProvider value={metricsViewerResult}>
-      <DimensionPickerSidebarProvider>
-        <DimensionPickerSidebar />
-      </DimensionPickerSidebarProvider>
+      <DimensionPickerSidebar />
     </MetricsViewerProvider>,
   );
 
