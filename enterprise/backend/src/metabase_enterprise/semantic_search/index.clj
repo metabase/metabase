@@ -662,7 +662,7 @@
     {:with     [[:vector_candidates filtered-query :materialized]]
      :select   (into common-search-columns
                      [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                      [:distance :semantic_score]])
+                      [:distance :semantic_distance]])
      :from     [:vector_candidates]
      :where    [:<= :distance max-cosine-distance]
      :order-by [[:semantic_rank :asc]]
