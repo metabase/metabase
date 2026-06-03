@@ -52,6 +52,7 @@ export const TreemapChart = ({
   settings,
   fontFamily,
   onVisualizationClick,
+  isDashboard,
 }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -222,8 +223,8 @@ export const TreemapChart = ({
           "--treemap-bottom-inset": `${viewRootId != null ? DRILLED_BOTTOM_INSET : 0}px`,
         } as CSSProperties
       }
-      py={48}
-      px={96}
+      py={isDashboard ? 24 : 48}
+      px={isDashboard ? 24 : 96}
       w="100%"
       h="100%"
     >
