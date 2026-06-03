@@ -1,0 +1,11 @@
+.breadcrumb {
+  &:hover {
+    .content {
+      color: var(--mb-color-brand);
+    }
+  }
+}
+
+.content {
+  color: var(--mb-color-text-tertiary);
+}

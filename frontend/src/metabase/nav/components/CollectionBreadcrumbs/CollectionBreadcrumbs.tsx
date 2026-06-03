@@ -1,7 +1,6 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import { Badge } from "metabase/common/components/Badge";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
@@ -14,6 +13,7 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 
+import { Breadcrumb } from "./Breadcrumb";
 import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
@@ -96,14 +96,10 @@ export const CollectionBreadcrumbs = ({
       {dashboard && (
         <>
           {separator}
-          <Badge
-            icon={{ name: "dashboard" }}
-            inactiveColor="text-tertiary"
-            isSingleLine
-            to={Urls.dashboard(dashboard)}
-          >
+
+          <Breadcrumb icon="dashboard" to={Urls.dashboard(dashboard)}>
             {tc(dashboard.name)}
-          </Badge>
+          </Breadcrumb>
         </>
       )}
     </>
