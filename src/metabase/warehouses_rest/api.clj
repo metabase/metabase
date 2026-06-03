@@ -1524,7 +1524,7 @@
                             can-query?          (filter mi/can-query?)
                             can-write-metadata? (filter mi/can-write?))
          hydration-keys   (cond-> []
-                            (premium-features/has-feature? :transforms-basic)   (conj :transform)
+                            (premium-features/any-transforms-enabled?)   (conj :transform)
                             include-measures? (conj :measures))]
      (if (seq hydration-keys)
        (apply t2/hydrate filtered-tables hydration-keys)
