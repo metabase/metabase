@@ -1,14 +1,13 @@
 (ns metabase.health-inspector.core
   (:require
-   [clojure.core.reducers :as r]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.health-inspector.settings :as setting]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as schema]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.task.core :as task]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -20,10 +19,12 @@
   5)
 
 (defn- validate-query [{:keys [total valid]} {:keys [dataset_query]}]
-  (Thread/sleep ^Long *delay-ms*)
-  (let [query (lib-be/normalize-query (json/decode dataset_query keyword))]
+  (let [timer (u/start-timer)
+        query (lib-be/normalize-query (json/decode dataset_query keyword))
+        valid? (mr/validate ::schema/query query)]
+    (Thread/sleep ^Long (u/since-ms timer))
     {:total (inc total)
-     :valid (if (mr/validate ::schema/query query)
+     :valid (if valid?
               (inc valid)
               valid)}))
 
@@ -31,7 +32,7 @@
 
 (defn- validate-queries []
   (let [queries (t2/reducible-select :report_card {:where [:= :archived false]})
-        {:keys [total valid]} (r/reduce validate-query {:total 0 :valid 0} queries)
+        {:keys [total valid]} (reduce validate-query {:total 0 :valid 0} queries)
         ratio (if (zero? total)
                 1
                 (/ valid total))]
@@ -67,18 +68,8 @@
   [limit]
   (t2/select :health_inspector_runs {:limit limit :order-by [[:run_at :desc]]}))
 
-#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
-(defsetting health-inspector-enabled
-  (deferred-tru "Enable or disable all health inspector checks.")
-  :type       :boolean
-  :default    false
-  :doc        false
-  :visibility :admin
-  :export?    false
-  :audit      :getter)
-
 (task/defjob ^:private SaveReport [_]
-  (when (health-inspector-enabled)
+  (when (setting/health-inspector-enabled)
     ;; background job should always be the lowest priority
     (.setPriority (Thread/currentThread) 1)
     ;; quartz doesn't have support for jitter, so we fake it with a sleep
