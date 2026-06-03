@@ -200,20 +200,6 @@ describe("issue 52411", { tags: "@external" }, () => {
   it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
     cy.visit("/admin/datamodel/segments");
     cy.findByTestId("segment-list-table").findByText("Filter by table").click();
-
-    // The picker auto-selects the first database and, when that database has a
-    // single schema, drills into its tables instead of showing the database
-    // list. This races metadata loading and intermittently drills into Sample
-    // Database, so wait until the picker settles (the database list or Sample's
-    // tables), then step back if it drilled in — going back does not re-drill
-    // (metabase#52411).
-    H.popover().findByText(/Writable Postgres12|Orders/, { timeout: 10000 });
-    H.popover().then(($popover) => {
-      if (!$popover.text().includes("Writable Postgres12")) {
-        H.popover().findByText("Sample Database").click();
-      }
-    });
-
     H.popover().within(() => {
       // force-click dodges the list re-render that detaches the item mid-click.
       cy.findByText("Writable Postgres12").click({ force: true });
