@@ -1886,12 +1886,17 @@
 
 (deftest ^:synchronized prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
-    (let [calls (atom nil)]
-      (mt/with-dynamic-fn-redefs [analytics/inc! #(swap! calls conj %)]
+    (let [calls    (atom nil)
+          observed (atom [])]
+      (mt/with-dynamic-fn-redefs [analytics/inc!     (fn [metric & _] (swap! calls conj metric))
+                                  analytics/observe! (fn [& args] (swap! observed conj (vec args)))]
         (testing "Success response"
-          (search-request :crowberto :q "test")
-          (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
-          (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
+          (let [response (search-request :crowberto :q "test")]
+            (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
+            (is (= 0 (count (filter #{:metabase-search/response-error} @calls))))
+            (testing "result count is observed and matches the response :total"
+              (is (= [[:metabase-search/response-results (:total response)]]
+                     (filter (comp #{:metabase-search/response-results} first) @observed))))))
         (testing "Bad request (400)"
           (mt/user-http-request :crowberto :get 400 "/search" :archived "meow")
           (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
