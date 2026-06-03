@@ -112,8 +112,7 @@ describe("scenarios > data studio > library > metrics", () => {
     });
   });
 
-  it("should edit metric definition and save changes", function () {
-    cy.log("Navigate to Data Studio Library");
+  it("should edit metric definition and save changes", () => {
     H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
@@ -145,7 +144,6 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should cancel editing and revert changes", () => {
-    cy.log("Navigate to Data Studio Library");
     H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
@@ -168,7 +166,6 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should show unsaved changes warning when navigating away", () => {
-    cy.log("Navigate to Data Studio Library");
     H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
@@ -197,7 +194,6 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should archive and restore a metric", () => {
-    cy.log("Navigate to Data Studio Library");
     H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
@@ -252,7 +248,6 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should view metric in the metrics explorer view via the Explore button", () => {
-    cy.log("Navigate to Data Studio Library");
     H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
@@ -270,7 +265,6 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should duplicate metric via more menu", () => {
-    cy.log("Navigate to Data Studio Library");
     H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
@@ -320,7 +314,6 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should move metric to different collection via more menu", () => {
-    cy.log("Navigate to Data Studio Library");
     H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
@@ -409,7 +402,6 @@ describe("scenarios > data studio > library > metrics", () => {
     it("should allow changing metric caching settings", () => {
       cy.intercept("PUT", "/api/cache").as("updateCacheConfig");
 
-      cy.log("Navigate to Data Studio Library");
       H.DataStudio.Library.visit();
 
       cy.log("Click on the metric from the collection view");
