@@ -26,7 +26,10 @@ export type NotificationsUrlState = {
 };
 
 export type TabFilters = Partial<
-  Pick<AdminNotificationListParams, "last_send_status" | "creatorless">
+  Pick<
+    AdminNotificationListParams,
+    "last_send_status" | "last_check_status" | "creatorless"
+  >
 >;
 
 export type FilterDraft = {

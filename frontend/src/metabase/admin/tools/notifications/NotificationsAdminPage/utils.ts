@@ -182,8 +182,8 @@ export const buildListParams = (
     active: state.active ?? undefined,
     query: state.query || undefined,
     channel: state.channel.length === 0 ? undefined : state.channel,
-    last_send_status:
-      tabFilters.last_send_status ?? state.last_send_status ?? undefined,
+    last_send_status: state.last_send_status ?? undefined,
+    last_check_status: tabFilters.last_check_status ?? undefined,
     creatorless: tabFilters.creatorless,
     creator_active:
       state.tab === "ownerless"

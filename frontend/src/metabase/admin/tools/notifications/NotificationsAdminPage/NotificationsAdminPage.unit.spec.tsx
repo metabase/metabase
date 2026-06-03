@@ -78,7 +78,7 @@ const setup = ({
     const params = new URL(call.url).searchParams;
     if (
       params.get("limit") === "1" &&
-      params.get("last_send_status") === "failing"
+      params.get("last_check_status") === "failing"
     ) {
       return { data: [], total: failingCount, limit: 1, offset: 0 };
     }
