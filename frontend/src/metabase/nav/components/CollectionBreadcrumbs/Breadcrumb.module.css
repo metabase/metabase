@@ -1,5 +1,6 @@
 .breadcrumb {
   min-width: 0;
+  font-size: 0.875em;
 
   &:hover {
     .content {

@@ -25,7 +25,7 @@ export const Breadcrumb = ({
     <Group align="center" className={S.content} gap="xs" wrap="nowrap">
       <Icon flex="0 0 auto" name={icon} size={iconSize} />
 
-      <Ellipsified fw="bold" fz="sm" lh="normal" showTooltip={false}>
+      <Ellipsified fw="bold" lh="normal" showTooltip={false}>
         {children}
       </Ellipsified>
     </Group>
