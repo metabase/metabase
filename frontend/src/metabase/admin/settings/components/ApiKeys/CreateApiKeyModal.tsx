@@ -51,20 +51,15 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
               <FormTextInput
                 name="name"
                 label={t`Key name`}
-                size="sm"
                 required
                 maxLength={250}
               />
               <FormGroupWidget
                 name="group_id"
                 label={t`Which group should this key belong to? The key will have the same permissions granted to that group.`}
-                size="sm"
                 required
               />
-              <Text
-                my="sm"
-                size="sm"
-              >{t`We don't version the Metabase API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.`}</Text>
+              <Text my="sm">{t`We don't version the Metabase API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.`}</Text>
               <FormErrorMessage />
               <Group justify="flex-end">
                 <Button onClick={onClose}>{t`Cancel`}</Button>

@@ -24,11 +24,17 @@ export const SecretKeyModal = ({
       <Text c="text-secondary">{t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}</Text>
       <CopyTextInput
         aria-label={t`The API key`}
-        size="sm"
         value={secretKey}
         readOnly
         styles={{
           input: {
+            height: "auto",
+            minHeight: "auto",
+            padding: "0.5rem 1rem",
+            border: "none",
+            borderRadius: "0.5rem",
+            lineHeight: "1.25rem",
+            backgroundColor: "var(--mb-color-background-secondary)",
             fontFamily: fontFamilyMonospace as string,
           },
         }}

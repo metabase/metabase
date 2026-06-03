@@ -55,22 +55,16 @@ const RegenerateKeyModal = ({
                 component="label"
                 fw="bold"
                 color="text-tertiary"
-                size="sm"
               >{t`Key name`}</Text>
-              <Text fw="bold" size="sm">
-                {apiKey.name}
-              </Text>
+              <Text fw="bold">{apiKey.name}</Text>
             </Stack>
             <Stack gap="xs">
               <Text
                 component="label"
                 fw="bold"
                 color="text-tertiary"
-                size="sm"
               >{t`Group`}</Text>
-              <Text fw="bold" size="sm">
-                {apiKey.group.name}
-              </Text>
+              <Text fw="bold">{apiKey.group.name}</Text>
             </Stack>
             <Text>{t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`}</Text>
             <FormErrorMessage />
@@ -144,19 +138,16 @@ export const EditApiKeyModal = ({
                 <FormTextInput
                   name="name"
                   label={t`Key name`}
-                  size="sm"
                   required
                   withAsterisk={false}
                 />
                 <FormGroupWidget
                   name="group_id"
                   label={t`Which group should this key belong to? The key will have the same permissions granted to that group.`}
-                  size="sm"
                 />
                 <FormTextInput
                   name="masked_key"
                   label={t`API Key`}
-                  size="sm"
                   styles={{
                     input: {
                       color: `black !important`,

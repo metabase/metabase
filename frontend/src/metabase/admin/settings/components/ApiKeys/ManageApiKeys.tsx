@@ -3,15 +3,13 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg";
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useListApiKeysQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
   Box,
   Button,
+  Card,
   Center,
   Ellipsified,
   Group,
@@ -33,6 +31,7 @@ import type { ApiKey } from "metabase-types/api";
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
+import S from "./ManageApiKeys.module.css";
 import { formatMaskedKey } from "./utils";
 
 const { fontFamilyMonospace } = getThemeOverrides();
@@ -102,9 +101,7 @@ function useApiKeyColumns({
       {
         id: "name",
         header: t`Key name`,
-        width: "auto",
-        minWidth: 160,
-        maxAutoWidth: 400,
+        minWidth: 140,
         enableSorting: true,
         accessorFn: (apiKey) => apiKey.name,
         cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
@@ -112,9 +109,7 @@ function useApiKeyColumns({
       {
         id: "group_name",
         header: t`Group`,
-        width: "auto",
-        minWidth: 120,
-        maxAutoWidth: 240,
+        minWidth: 130,
         enableSorting: true,
         accessorFn: (apiKey) => apiKey.group.name,
         cell: ({ row }) => <Ellipsified>{row.original.group.name}</Ellipsified>,
@@ -122,8 +117,7 @@ function useApiKeyColumns({
       {
         id: "masked_key",
         header: t`Key`,
-        width: "auto",
-        minWidth: 140,
+        minWidth: 130,
         enableSorting: false,
         accessorFn: (apiKey) => apiKey.masked_key,
         cell: ({ row }) => (
@@ -135,9 +129,7 @@ function useApiKeyColumns({
       {
         id: "updated_by_name",
         header: t`Last modified by`,
-        width: "auto",
-        minWidth: 140,
-        maxAutoWidth: 240,
+        minWidth: 130,
         enableSorting: true,
         accessorFn: (apiKey) => apiKey.updated_by?.common_name ?? "",
         cell: ({ row }) => (
@@ -159,7 +151,7 @@ function useApiKeyColumns({
       {
         id: "actions",
         header: "",
-        width: 48,
+        width: 56,
         enableSorting: false,
         cell: ({ row }) => (
           <ApiKeyActionsMenu
@@ -188,6 +180,7 @@ function ApiKeysTable({
     data: apiKeys,
     columns,
     getNodeId,
+    defaultRowHeight: 48,
   });
 
   const getRowProps = useCallback(
@@ -199,13 +192,14 @@ function ApiKeysTable({
   );
 
   return (
-    <Box mih="20rem" data-testid="api-keys-table">
+    <Box data-testid="api-keys-table">
       <TreeTable
         instance={instance}
         hierarchical={false}
         headerVariant="pill"
         ariaLabel={t`API keys`}
         getRowProps={getRowProps}
+        classNames={{ cell: S.cell, row: S.row }}
       />
     </Box>
   );
@@ -260,9 +254,11 @@ export const ManageApiKeys = () => {
           {t`Create an API key`}
         </Button>
       </Group>
-      <SettingsSection>
+      <Card withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
         {showLoadingOrError ? (
-          <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+          <Box p="xl" mih="20rem">
+            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+          </Box>
         ) : hasKeys ? (
           <ApiKeysTable
             apiKeys={sortedApiKeys}
@@ -272,7 +268,7 @@ export const ManageApiKeys = () => {
         ) : (
           <EmptyState />
         )}
-      </SettingsSection>
+      </Card>
     </SettingsPageWrapper>
   );
 };
