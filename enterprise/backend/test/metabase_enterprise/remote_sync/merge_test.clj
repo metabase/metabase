@@ -95,9 +95,15 @@
       (is (= {:added 0 :updated 0 :removed 0} (:summary result))))))
 
 (deftest conflict-label-test
-  (testing "conflict-label renders model, id and path"
-    (is (= "Card A (collections/bar.yaml)"
+  (testing "conflict-label uses the entity's name and path"
+    (is (= "bar (collections/bar.yaml)"
            (remote-sync.merge/conflict-label
             {:key   [["Card" "A"]]
              :ours  (card "A" "bar")
-             :theirs (card "A" "baz")})))))
+             :theirs (card "A" "baz")}))))
+  (testing "falls back to model + id when the content has no name"
+    (is (= "Card A (collections/a.yaml)"
+           (remote-sync.merge/conflict-label
+            {:key   [["Card" "A"]]
+             :ours  {:path "collections/a.yaml" :content "not-an-entity"}
+             :theirs {:path "collections/a.yaml" :content "also-not"}})))))

@@ -65,11 +65,14 @@
 
 (defn conflict-label
   "Renders a single conflict from [[three-way-merge]] into a human-readable string for display, e.g.
-  \"Card def456 (collections/foo/bar.yaml)\"."
+  \"Card A (collections/foo/bar.yaml)\". Prefers the entity's name (parsed from the serialized content),
+  falling back to its serdes model + id when there's no name."
   [{:keys [key ours theirs]}]
-  (let [[model id] (last key)
-        path (or (:path ours) (:path theirs))]
-    (cond-> (str model " " id)
+  (let [content (or (:content ours) (:content theirs))
+        entity  (try (yaml/parse-string content) (catch Exception _ nil))
+        [model id] (last key)
+        path    (or (:path ours) (:path theirs))]
+    (cond-> (or (:name entity) (str model " " id))
       path (str " (" path ")"))))
 
 (defn three-way-merge
