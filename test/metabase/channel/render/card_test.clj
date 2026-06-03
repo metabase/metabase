@@ -53,15 +53,6 @@
                  first
                  last))))))
 
-(deftest ^:parallel detect-pulse-chart-type-test
-  (testing "Pin maps remain unsupported for static-viz and return `nil`."
-    ;; (Region maps — :state/:country and :map with a built-in region — are handled in
-    ;; detect-pulse-chart-type-region-map-test.)
-    (is (nil? (channel.render/detect-pulse-chart-type {:display :pin_map}
-                                                      nil
-                                                      {:cols [{:base_type :type/Number}]
-                                                       :rows [[2]]})))))
-
 (deftest ^:parallel detect-pulse-chart-type-region-map-test
   (let [data {:cols [{:base_type :type/Text :name "state"}
                      {:base_type :type/Number :name "count"}]
@@ -143,6 +134,47 @@
         (is (not= :region_map
                   (channel.render/detect-pulse-chart-type
                    (card {"map.region" "unconfigured_region"}) nil data)))))))
+
+(deftest ^:parallel detect-pulse-chart-type-pin-map-test
+  (let [data {:cols [{:name "lat"} {:name "lon"}] :rows [[1.0 2.0]]}
+        card (fn [settings] {:display :map :visualization_settings settings})]
+    (testing "pin maps route to :pin_map"
+      (is (= :pin_map (channel.render/detect-pulse-chart-type (card {"map.type" "pin"}) nil data)))
+      (testing "legacy :pin_map display too"
+        (is (= :pin_map (channel.render/detect-pulse-chart-type {:display :pin_map} nil data))))
+      (testing "and in a dashboard subscription with empty dashcard viz-settings"
+        (is (= :pin_map (channel.render/detect-pulse-chart-type
+                         (card {"map.type" "pin"}) {:visualization_settings {}} data)))))
+    (testing "heat maps are not statically rendered yet (fall through to table)"
+      (is (= :table (channel.render/detect-pulse-chart-type (card {"map.type" "heat"}) nil data))))
+    (testing "a coordinate map is a pin map (not a region map) even with a State column and unset map.type"
+      ;; Regression: lat/long columns must win over region column-inference.
+      (let [pin+state {:cols [{:name "lat" :semantic_type :type/Latitude}
+                              {:name "lon" :semantic_type :type/Longitude}
+                              {:name "state" :semantic_type :type/State}]
+                       :rows [[37.77 -122.42 "CA"]]}]
+        (is (= :pin_map
+               (channel.render/detect-pulse-chart-type
+                (card {"map.latitude_column" "lat" "map.longitude_column" "lon"}) nil pin+state)))))))
+
+(deftest ^:parallel detect-pulse-chart-type-grid-map-test
+  (let [binned   [{:name "lat" :semantic_type :type/Latitude :binning_info {:bin_width 1.0}}
+                  {:name "lon" :semantic_type :type/Longitude :binning_info {:bin_width 1.0}}
+                  {:name "n" :base_type :type/Integer}]
+        unbinned [{:name "lat" :semantic_type :type/Latitude}
+                  {:name "lon" :semantic_type :type/Longitude}
+                  {:name "n" :base_type :type/Integer}]
+        data     (fn [cols] {:cols cols :rows [[37.0 -122.0 5]]})
+        card     (fn [settings] {:display :map :visualization_settings settings})]
+    (testing "binned lat/long maps route to :grid_map (map.type unset)"
+      (is (= :grid_map (channel.render/detect-pulse-chart-type (card {}) nil (data binned))))
+      (testing "and in a dashboard subscription with empty dashcard settings"
+        (is (= :grid_map (channel.render/detect-pulse-chart-type
+                          (card {}) {:visualization_settings {}} (data binned))))))
+    (testing "explicit map.type grid"
+      (is (= :grid_map (channel.render/detect-pulse-chart-type (card {"map.type" "grid"}) nil (data unbinned)))))
+    (testing "unbinned lat/long is a pin map, not a grid map"
+      (is (= :pin_map (channel.render/detect-pulse-chart-type (card {}) nil (data unbinned)))))))
 
 (deftest ^:parallel detect-pulse-chart-type-test-2
   (testing "Queries resulting in no rows return `:empty`."

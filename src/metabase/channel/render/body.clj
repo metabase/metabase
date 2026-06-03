@@ -7,6 +7,7 @@
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.render.maps :as maps]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.channel.render.table-data :as table-data]
@@ -18,6 +19,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
+   [metabase.tiles.settings :as tiles.settings]
    [metabase.timeline.core :as timeline]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -466,6 +468,90 @@
         (javascript-visualization->rendered-part
          render-type
          (js.svg/*javascript-visualization* cards-with-data viz-settings))))))
+
+(defn- png->rendered-part
+  "Wrap PNG `byte[]` (from a server-side map render) as a RenderedPartCard `<img>`."
+  [render-type png-bytes]
+  (let [image-bundle (image-bundle/make-image-bundle render-type png-bytes)]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+
+(defn- coordinate-col-index
+  "Resolve a coordinate column's index, mirroring the frontend default: the named column if the setting is
+  present, else the first column with semantic type `sem-type` (`:type/Latitude` / `:type/Longitude`)."
+  [cols col-name sem-type]
+  (or (when col-name (first (get-col-by-name cols col-name)))
+      (first (keep-indexed (fn [i col]
+                             (when (isa? (some-> (:semantic_type col) keyword) sem-type) i))
+                           cols))))
+
+(defn- metric-col-index
+  "Resolve the metric column's index: the named column if set, else the first numeric column that isn't the
+  lat/long column. Returns nil when there's no metric (the cells then render at a uniform colour)."
+  [cols lat-idx lon-idx col-name]
+  (or (when col-name (first (get-col-by-name cols col-name)))
+      (first (keep-indexed (fn [i col]
+                             (when (and (not= i lat-idx) (not= i lon-idx)
+                                        (isa? (some-> (or (:semantic_type col) (:base_type col)) keyword)
+                                              :type/Number))
+                               i))
+                           cols))))
+
+(defn- column-bin-width
+  "The bin width (degrees) for a binned coordinate column, or an inferred fallback from the row values."
+  [col idx rows]
+  (or (get-in col [:binning_info :bin_width])
+      (let [vs (sort (distinct (keep (fn [row] (let [v (nth row idx nil)] (when (number? v) v))) rows)))]
+        (->> (map - (rest vs) vs) (filter pos?) (reduce min ##Inf) (#(when (not= ##Inf %) %))))))
+
+(mu/defmethod render :pin_map :- ::RenderedPartCard
+  [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
+  (let [viz-settings (merge (:visualization_settings card) (:visualization_settings dashcard))
+        setting      (fn [k] (or (get viz-settings k) (get viz-settings (keyword k))))
+        lat-idx      (coordinate-col-index cols (setting "map.latitude_column") :type/Latitude)
+        lon-idx      (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)
+        points       (when (and lat-idx lon-idx)
+                       (for [row   rows
+                             :let  [lat (nth row lat-idx nil)
+                                    lon (nth row lon-idx nil)]
+                             :when (and (number? lat) (number? lon))]
+                         [lat lon]))]
+    (if (empty? points)
+      ;; No usable coordinates (mismatched columns, all nil, etc.) — degrade to a table of the data.
+      (render :table render-type timezone-id card dashcard data)
+      (png->rendered-part
+       render-type
+       (maps/render-pin-map points {:tile-url (tiles.settings/map-tile-server-url)
+                                    :pin-type (setting "map.pin_type")})))))
+
+(mu/defmethod render :grid_map :- ::RenderedPartCard
+  [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
+  (let [viz-settings (merge (:visualization_settings card) (:visualization_settings dashcard))
+        setting      (fn [k] (or (get viz-settings k) (get viz-settings (keyword k))))
+        lat-idx      (coordinate-col-index cols (setting "map.latitude_column") :type/Latitude)
+        lon-idx      (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)
+        metric-idx   (metric-col-index cols lat-idx lon-idx (setting "map.metric_column"))
+        lat-bin      (when lat-idx (column-bin-width (nth cols lat-idx) lat-idx rows))
+        lon-bin      (when lon-idx (column-bin-width (nth cols lon-idx) lon-idx rows))
+        cells        (when (and lat-idx lon-idx lat-bin lon-bin)
+                       (for [row   rows
+                             :let  [lat (nth row lat-idx nil)
+                                    lon (nth row lon-idx nil)]
+                             :when (and (number? lat) (number? lon))]
+                         {:lat lat :lon lon :lat-bin lat-bin :lon-bin lon-bin
+                          :metric (when metric-idx
+                                    (let [m (nth row metric-idx nil)] (when (number? m) m)))}))]
+    (if (empty? cells)
+      (render :table render-type timezone-id card dashcard data)
+      (png->rendered-part
+       render-type
+       (maps/render-grid-map cells {:tile-url (tiles.settings/map-tile-server-url)})))))
 
 (defn- smart-scalar-comparison-statement
   [unit value]

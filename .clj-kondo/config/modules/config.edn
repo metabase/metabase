@@ -505,6 +505,7 @@
            slackbot
            system
            task
+           tiles
            timeline
            types
            util}
@@ -2242,7 +2243,8 @@
   tiles
   {:team "UX West"
    :api  #{metabase.tiles.api
-           metabase.tiles.init}
+           metabase.tiles.init
+           metabase.tiles.settings}
    :uses #{api
            legacy-mbql
            lib
