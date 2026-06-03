@@ -249,11 +249,13 @@
     "create_question"
     "execute_query"
     "execute_sql"
+    "list_glossary"
     "query"
     "read_resource"
     "render_drill_through"
     "search"
     "update_dashboard"
+    "update_glossary"
     "update_question"
     "visualize_query"})
 
@@ -634,7 +636,8 @@
   #{"search" "construct_query" "query" "execute_query" "execute_sql"
     "read_resource"
     "create_question" "create_dashboard"
-    "update_question" "update_dashboard" "create_collection"})
+    "update_question" "update_dashboard" "create_collection"
+    "list_glossary" "update_glossary"})
 
 (deftest tools-call-smoke-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -672,6 +675,9 @@
                                              :sql         "SELECT 1"})
                   _              (call-tool session-id "read_resource"
                                             {:uris ["metabase://databases"]})
+                  _              (call-tool session-id "list_glossary" {})
+                  _              (call-tool session-id "update_glossary"
+                                            {:terms {"smoke_mau" "Monthly active users"}})
                   ;; Write tools — record IDs as soon as they're known so the `finally` block
                   ;; can clean up even if a later step throws.
                   question-data  (call-tool session-id "create_question"
@@ -693,6 +699,7 @@
                                             {:name "Smoke Collection"})]
               (reset! coll-id (:id coll-data)))
             (finally
+              (t2/delete! :model/Glossary :term "smoke_mau")
               (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
               (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
               (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid)))))))))
