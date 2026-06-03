@@ -16,12 +16,11 @@ import type {
   SdkQuestionState,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
+import { isAbortError } from "metabase/api/legacy-client";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
-import { type Deferred, defer } from "metabase/utils/promise";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import { isObject } from "metabase-types/guards";
 
 type LoadQuestionResult = Promise<
   SdkQuestionState & { originalQuestion?: Question }
@@ -94,19 +93,19 @@ export function useLoadQuestion({
   const tokenRef = useRef(token);
   tokenRef.current = token;
 
-  const deferredRef = useRef<Deferred>();
+  const controllerRef = useRef<AbortController>();
 
-  function deferred() {
+  function nextSignal() {
     // Cancel the previous query when a new one is started.
-    deferredRef.current?.resolve();
-    deferredRef.current = defer();
+    controllerRef.current?.abort();
+    controllerRef.current = new AbortController();
 
-    return deferredRef.current;
+    return controllerRef.current.signal;
   }
 
   // Cancel the running query when the component unmounts.
   useUnmount(() => {
-    deferredRef.current?.resolve();
+    controllerRef.current?.abort();
   });
 
   // Avoid re-running the query if the parameters haven't changed.
@@ -141,7 +140,8 @@ export function useLoadQuestion({
         token: tokenRef.current,
         originalQuestion: questionState.originalQuestion,
         parameterValues: questionState.parameterValues,
-        cancelDeferred: deferred(),
+        signal: nextSignal(),
+        dispatch,
       });
 
       mergeQuestionState(results);
@@ -149,9 +149,12 @@ export function useLoadQuestion({
       setIsQuestionLoading(false);
       return { ...results, originalQuestion };
     } catch (err) {
-      // Ignore cancelled requests (e.g. when the component unmounts).
-      // React simulates unmounting on strict mode, therefore "Question not found" will be shown without this.
-      if (isCancelledRequestError(err)) {
+      // Ignore cancelled requests (e.g. when the component unmounts, or when a
+      // controlled `sqlParameters` push cancels the in-flight load query via the
+      // shared `controllerRef`). React simulates unmounting on strict mode,
+      // therefore "Question not found" will be shown without this.
+      if (isAbortError(err)) {
+        setIsQuestionLoading(false);
         return {};
       }
 
@@ -195,7 +198,8 @@ export function useLoadQuestion({
       token,
       originalQuestion,
       parameterValues,
-      cancelDeferred: deferred(),
+      signal: nextSignal(),
+      dispatch,
     });
 
     mergeQuestionState(state);
@@ -224,7 +228,7 @@ export function useLoadQuestion({
           previousQuestion: question,
           originalQuestion,
           nextParameterValues: parameterValues ?? {},
-          cancelDeferred: deferred(),
+          signal: nextSignal(),
           optimisticUpdateQuestion: (question) =>
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: run,
@@ -262,7 +266,7 @@ export function useLoadQuestion({
           previousQuestion: question,
           originalQuestion,
           nextParameterValues,
-          cancelDeferred: deferred(),
+          signal: nextSignal(),
           optimisticUpdateQuestion: (question) =>
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: true,
@@ -293,7 +297,7 @@ export function useLoadQuestion({
           token,
           originalQuestion,
           parameterValues,
-          cancelDeferred: deferred(),
+          signal: nextSignal(),
           onQuestionChange: (question) => mergeQuestionState({ question }),
           onClearQueryResults: () =>
             mergeQuestionState({ queryResults: [null] }),
@@ -348,6 +352,3 @@ export const getParameterDependencyKey = (
     .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
     .map(([key, value]) => `${key}=${value}`)
     .join(":");
-
-const isCancelledRequestError = (error: unknown) =>
-  isObject(error) && "isCancelled" in error && error.isCancelled === true;

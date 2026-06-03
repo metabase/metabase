@@ -151,7 +151,7 @@
   This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
   strings."
   [identifier-type :- IdentifierType
-   & components    :- [:* {:min 1} [:maybe [:or :keyword ms/NonBlankString [:fn identifier?]]]]]
+   & components    :- [:* {:min 1} [:maybe [:or :keyword :string [:fn identifier?]]]]]
   [::identifier
    identifier-type
    (vec (for [component components
@@ -436,9 +436,9 @@
   "HoneySQL form that should be used to get the current `datetime` (or equivalent), e.g. `:%now`."
   [db-type]
   (case db-type
-    :h2       (with-database-type-info :%now "timestamp")
+    (:h2 :h2-mbql5) (with-database-type-info :%now "timestamp")
     :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
-    :postgres (with-database-type-info :%now "timestamptz")))
+    (:postgres :postgres-mbql5) (with-database-type-info :%now "timestamptz")))
 
 (defn- format-postgres-interval
   "Generate a Postgres 'INTERVAL' literal.
@@ -493,6 +493,10 @@
       (-> (+ hsql-form (pg-interval amount unit))
           (with-type-info (type-info hsql-form))))))
 
+(defmethod add-interval-honeysql-form :postgres-mbql5
+  [db-type hsql-form amount unit]
+  ((get-method add-interval-honeysql-form :postgres) db-type hsql-form amount unit))
+
 (defmethod add-interval-honeysql-form :mysql
   [db-type hsql-form amount unit]
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
@@ -524,6 +528,10 @@
 
     :else
     (dateadd-h2 unit amount hsql-form)))
+
+(defmethod add-interval-honeysql-form :h2-mbql5
+  [db-type hsql-form amount unit]
+  ((get-method add-interval-honeysql-form :h2) db-type hsql-form amount unit))
 
 (defmethod add-interval-honeysql-form :default
   [db-type hsql-form amount unit]

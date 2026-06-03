@@ -1,0 +1,30 @@
+name: usage_log_id
+display_name: Usage Log ID
+description: Primary key from ai_usage_log.id.
+created_at: '2026-04-24T19:39:29.861736Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_ai_usage_log
+database_type: int8
+base_type: type/BigInteger
+effective_type: type/BigInteger
+semantic_type: type/PK
+dimensions: []
+position: 0
+custom_position: 0
+database_position: 0
+has_field_values: auto-list
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_ai_usage_log
+  model: Table
+- id: usage_log_id
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

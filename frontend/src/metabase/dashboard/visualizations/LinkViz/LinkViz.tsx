@@ -5,11 +5,10 @@ import _ from "underscore";
 import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getParameterValues } from "metabase/dashboard/selectors";
-import { Search } from "metabase/entities/search";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { useSelector } from "metabase/redux";
-import { getUrlTarget } from "metabase/utils/dom";
-import { modelToUrl } from "metabase/utils/urls";
+import { modelToUrl } from "metabase/urls";
+import { getUrlTarget } from "metabase/visualizations/lib/open-url";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
@@ -123,17 +122,17 @@ function LinkVizInner({
       );
     }
 
-    const wrappedEntity: UnrestrictedLinkEntity = Search.wrapEntity({
+    const linkEntity = {
       ...entity,
       database_id: entity.db_id ?? entity.database_id,
       table_id: entity.model === "table" ? entity.id : undefined,
       collection: {},
-    });
+    };
 
     if (isEditing) {
       return (
         <EditLinkCardWrapper data-testid="entity-edit-display-link">
-          <EntityDisplay entity={wrappedEntity} showDescription={false} />
+          <EntityDisplay entity={linkEntity} showDescription={false} />
         </EditLinkCardWrapper>
       );
     }
@@ -142,11 +141,11 @@ function LinkVizInner({
       <DisplayLinkCardWrapper>
         <CardLink
           data-testid="entity-view-display-link"
-          to={modelToUrl(wrappedEntity)}
+          to={modelToUrl(linkEntity)}
           rel="noreferrer"
           role="link"
         >
-          <EntityDisplay entity={wrappedEntity} showDescription />
+          <EntityDisplay entity={linkEntity} showDescription />
         </CardLink>
       </DisplayLinkCardWrapper>
     );

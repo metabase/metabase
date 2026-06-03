@@ -1,10 +1,9 @@
 import type { CSSProperties } from "react";
 
 import type { ColorName } from "metabase/ui/colors/types";
+import type { MetabaseFontFamily } from "metabase/ui/fonts";
 
 import type { DeepPartial } from "../types/utils";
-
-import type { MetabaseFontFamily } from "./fonts";
 
 export type MetabaseThemePreset = "light" | "dark";
 

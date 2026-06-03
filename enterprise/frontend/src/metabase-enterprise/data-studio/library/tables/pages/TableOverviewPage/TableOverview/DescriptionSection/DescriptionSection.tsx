@@ -24,8 +24,8 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import type { Table, TableDataSource, UserId } from "metabase-types/api";
 
 import S from "./DescriptionSection.module.css";

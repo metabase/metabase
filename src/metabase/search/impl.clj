@@ -129,9 +129,9 @@
                                         {:location (:collection_location result)})
                                       :effective_ancestors)
                                      :effective_ancestors
-                                      ;; two pieces for backwards compatibility:
-                                      ;; - remove the root collection
-                                      ;; - remove the `personal_owner_id`
+                                     ;; two pieces for backwards compatibility:
+                                     ;; - remove the root collection
+                                     ;; - remove the `personal_owner_id`
                                      (remove collection.root/is-root-collection?)
                                      (map #(dissoc % :personal_owner_id))))))]
     (map annotate search-results)))
@@ -264,6 +264,7 @@
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
+   [:vector-search-strategy              {:optional true} [:maybe string?]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
@@ -302,6 +303,7 @@
            models
            offset
            search-engine
+           vector-search-strategy
            search-native-query
            search-string
            table-db-id
@@ -344,6 +346,7 @@
                  (some? table-db-id)                         (assoc :table-db-id table-db-id)
                  (some? limit)                               (assoc :limit-int limit)
                  (some? offset)                              (assoc :offset-int offset)
+                 (not (str/blank? vector-search-strategy))    (assoc :vector-search-strategy (keyword vector-search-strategy))
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
@@ -445,7 +448,7 @@
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
-  [search-ctx :- search.config/SearchContext]
+  [search-ctx :- SearchContext]
   (tracing/with-span :search "search.execute" {:search/engine       (name (:search-engine search-ctx))
                                                :search/query-length (count (:search-string search-ctx))
                                                :search/model-count  (count (:models search-ctx))}

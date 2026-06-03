@@ -1,5 +1,6 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.test.data.sql]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -171,12 +172,19 @@
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
   :hierarchy #'driver/hierarchy)
 
+(defn- find-method-for-ancestor-type
+  "Find a registered method for `driver` (or any of its ancestors) with `ancestor-type`."
+  [driver ancestor-type]
+  (let [methods* (methods field-base-type->sql-type)]
+    (some #(get methods* [% ancestor-type])
+          (cons driver (ancestors driver/hierarchy driver)))))
+
 (defmethod field-base-type->sql-type :default
   [driver base-type]
   (or (some
        (fn [ancestor-type]
          (when-not (= ancestor-type :type/*)
-           (when-let [method (get (methods field-base-type->sql-type) [driver ancestor-type])]
+           (when-let [method (find-method-for-ancestor-type driver ancestor-type)]
              (log/infof "No test data type mapping for driver %s for base type %s, falling back to ancestor base type %s"
                         driver base-type ancestor-type)
              (method driver base-type))))
@@ -361,7 +369,6 @@
         _ (when (< 1 (count pk-names))
             (throw (IllegalArgumentException. "`add-fk-sql` only works with tables with a single PK field")))
         pk-name             (first pk-names)]
-
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that

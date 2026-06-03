@@ -1,72 +1,94 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
+import * as domUtils from "metabase/utils/dom";
 
 import {
-  assertLeftColumnContent,
   setup,
-  transformsAdvancedPrice,
-  transformsBasicPrice,
   waitForLoadingToFinish,
 } from "./TransformsUpsellPage.setup.spec";
 
 describe("TransformsUpsellPage", () => {
-  it("renders single column layout without CTA when user is not a store user", async () => {
+  beforeEach(() => {
+    fetchMock.post("path:/api/ee/cloud-add-ons/transforms-basic-metered", 200);
+    jest.spyOn(domUtils, "reload").mockImplementation(() => undefined);
+  });
+
+  it("does not render an enable button if the user is not a store user", async () => {
     setup({ isHosted: true, isStoreUser: false });
-
     await waitForLoadingToFinish();
-    assertLeftColumnContent();
 
     expect(
-      screen.queryByRole("heading", { name: "Add transforms to your plan" }),
+      screen.queryByRole("button", { name: "Enable transforms" }),
     ).not.toBeInTheDocument();
-
     expect(
-      screen.queryByRole("button", { name: "Confirm purchase" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("renders 2-column layout with CTA when user is a store user", async () => {
-    setup({ isHosted: true, isStoreUser: true });
-
-    await waitForLoadingToFinish();
-    assertLeftColumnContent();
-
-    expect(
-      screen.getByRole("heading", { name: "Add transforms to your plan" }),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("button", { name: "Confirm purchase" }),
+      screen.getByText(/contact a store administrator/i),
     ).toBeInTheDocument();
   });
 
-  it("shows both transforms tiers and updates price when switching", async () => {
+  it("proceeds to an agree step with an overview of the free bucket", async () => {
     setup({ isHosted: true, isStoreUser: true });
-
     await waitForLoadingToFinish();
 
-    await userEvent.click(screen.getByRole("radio", { name: /SQL only/ }));
-    expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
-      `$${transformsBasicPrice}`,
+    expect(
+      screen.getByText("Customize and clean up your data"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enable transforms" }),
     );
 
-    await userEvent.click(screen.getByRole("radio", { name: /SQL \+ Python/ }));
-    expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
-      `$${transformsAdvancedPrice}`,
+    expect(screen.getByText("1,000 free transform runs")).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+        { method: "POST" },
+      ),
+    ).toHaveLength(0);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Agree and continue" }),
     );
+
+    expect(
+      screen.getByText("Setting up transforms, please wait"),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+        { method: "POST" },
+      ),
+    ).toHaveLength(1);
   });
 
-  it("shows due today as $0 and trial heading when trial is available", async () => {
-    setup({ isHosted: true, isStoreUser: true, trialDays: 13 });
-
+  it("skips the free bucket overview if the user has had transforms before", async () => {
+    setup({ isHosted: true, isStoreUser: true, hadTransforms: true });
     await waitForLoadingToFinish();
 
     expect(
-      screen.getByRole("heading", {
-        name: "Start a free 13-day trial of transforms",
-      }),
+      screen.queryByText("1,000 free transform runs"),
+    ).not.toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+        { method: "POST" },
+      ),
+    ).toHaveLength(0);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enable transforms" }),
+    );
+
+    expect(
+      screen.getByText("Setting up transforms, please wait"),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("due-today-amount")).toHaveTextContent(`$0`);
+
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+        { method: "POST" },
+      ),
+    ).toHaveLength(1);
   });
 });

@@ -1,9 +1,9 @@
 import L from "leaflet";
 import type { ContextType } from "react";
 
+import { GET } from "metabase/api/legacy-client";
 import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { GET } from "metabase/utils/api";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { DashboardId } from "metabase-types/api";
 
@@ -53,10 +53,17 @@ interface LeafletTilePinMapProps extends LeafletMapProps {
   } | null;
 }
 
+// Narrow `this.context` to the EmbeddingEntityContext value type via
+// declaration merging. We can't use a `declare context: …` class field here
+// because babel's `@babel/preset-typescript` doesn't enable
+// `allowDeclareFields` and would treat it as a syntax error in the SDK bundle
+// build.
+export interface LeafletTilePinMap {
+  context: ContextType<typeof EmbeddingEntityContext>;
+}
+
 export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
   static contextType = EmbeddingEntityContext;
-  // @ts-expect-error - see: https://linear.app/metabase/issue/GDGT-1891/migrate-babel-config-to-allowdeclarefields
-  context!: ContextType<typeof EmbeddingEntityContext>;
 
   pinTileLayer: L.TileLayer | null = null;
 
@@ -180,9 +187,8 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
 
       (
         GET(tileUrl, {
-          fetch: true,
           signal: controller.signal,
-          transformResponse: ({ response }) => response,
+          rawResponse: true,
         })() as Promise<Response>
       )
         .then((response) => response.blob())

@@ -70,6 +70,7 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
+  DatasetColumn,
   RawSeries,
   TimelineEvent,
   TimelineEventId,
@@ -137,7 +138,7 @@ export const getEventDimensions = (
       ? dimensionModel.columnByCardId[seriesModel.cardId]
       : dimensionModel.column;
 
-  const hasDimensionValue = sameCardDatumColumns.includes(dimensionColumn);
+  const hasDimensionValue = sameCardDatumColumns.length > 0;
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {
@@ -161,6 +162,25 @@ export const getEventDimensions = (
       column: seriesModel.breakoutColumn,
       value: seriesModel.breakoutValue,
     });
+  }
+
+  // Include any other breakout column whose value is present at this data point but isn't yet
+  // captured as a dimension — e.g. a scatterplot whose categorical breakout is not bound to the
+  // series/color in viz settings would otherwise drop that filter from "See these records" (#73803).
+  const alreadyAddedColumns = new Set(
+    dimensions.map((dimension) => dimension.column),
+  );
+  for (const dataKey of sameCardDataKeys) {
+    const column = chartModel.columnByDataKey[dataKey];
+    if (
+      column != null &&
+      column.source === "breakout" &&
+      !alreadyAddedColumns.has(column) &&
+      dataKey in datum
+    ) {
+      dimensions.push({ column, value: datum[dataKey] });
+      alreadyAddedColumns.add(column);
+    }
   }
 
   return dimensions.filter(
@@ -283,6 +303,7 @@ const computeDiffWithPreviousPeriod = (
 export const canBrush = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
+  dimensionColumn: DatasetColumn | undefined,
   onChangeCardAndRun?: OnChangeCardAndRun | null,
   onBrush?: ((range: { start: number; end: number }) => void) | null,
 ) => {
@@ -296,6 +317,11 @@ export const canBrush = (
 
   if (onBrush) {
     return true;
+  }
+
+  // Can't filter an aggregation in the stage that produces it (metabase#71073).
+  if (dimensionColumn?.source === "aggregation") {
+    return false;
   }
 
   const hasCombinedCards = series.length > 1;
@@ -842,10 +868,28 @@ export const getOtherSeriesTooltipModel = (
   };
 };
 
+const isMouseEventWithXAxis = (
+  event: EChartsSeriesMouseEvent,
+): event is EChartsSeriesMouseEvent<{ xAxis: string }> => {
+  return (
+    typeof event.data === "object" &&
+    event.data !== null &&
+    "xAxis" in event.data &&
+    typeof event.data.xAxis === "string" &&
+    event.data.xAxis.length > 0
+  );
+};
+
 export const getTimelineEventsForEvent = (
   timelineEventsModel: TimelineEventsModel,
   event: EChartsSeriesMouseEvent,
 ) => {
+  if (isMouseEventWithXAxis(event)) {
+    return timelineEventsModel.find(
+      (timelineEvents) => timelineEvents.date === event.data.xAxis,
+    )?.events;
+  }
+
   return timelineEventsModel.find(
     (timelineEvents) => timelineEvents.date === event.value,
   )?.events;

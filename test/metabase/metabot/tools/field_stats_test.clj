@@ -1,4 +1,5 @@
 (ns metabase.metabot.tools.field-stats-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.field-stats-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
@@ -38,14 +39,19 @@
                                      {:distinct-count 2308
                                       :percent-null   0.0
                                       :earliest       "1958-04-26"
-                                      :latest         "2000-04-03"}}
+                                      :latest         "2000-04-03"
+                                      :mode-fraction  0.0012
+                                      :top-3-fraction 0.0032}}
           people-id   state-id      {:statistics   {:distinct-count 49
                                                     :percent-null   0.0
                                                     :percent-json   0.0
                                                     :percent-url    0.0
                                                     :percent-email  0.0
                                                     :percent-state  1.0
-                                                    :average-length 2.0}
+                                                    :average-length 2.0
+                                                    :mode-fraction  0.0776
+                                                    :top-3-fraction 0.1624
+                                                    :percent-blank  0.0}
                                      :field_values ["AK" "AL" "AR" "AZ" "CA"]}
           products-id category-id   {:statistics   {:distinct-count 4
                                                     :percent-null   0.0
@@ -53,7 +59,10 @@
                                                     :percent-url    0.0
                                                     :percent-email  0.0
                                                     :percent-state  0.0
-                                                    :average-length 6.375}
+                                                    :average-length 6.375
+                                                    :mode-fraction  0.27
+                                                    :top-3-fraction 0.79
+                                                    :percent-blank  0.0}
                                      :field_values ["Doohickey" "Gadget" "Gizmo" "Widget"]})))))
 
 (deftest field-values-model-test

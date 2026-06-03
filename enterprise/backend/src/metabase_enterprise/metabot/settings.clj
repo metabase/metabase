@@ -48,3 +48,12 @@
   :encryption :no
   :export?    true
   :doc        false)
+
+(defsetting metabot-advanced-permissions
+  (deferred-tru "Whether AI feature access uses advanced group-level permissions.")
+  :type       :boolean
+  :default    false
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :doc        false)

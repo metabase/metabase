@@ -121,14 +121,14 @@
           (transduce (comp
                       (map (fn [schema]
                              (log/infof "Fetching field metadata for %s.%s" (:name database) schema)
-                             (fetch-metadata/fields-metadata database
-                                                             :schema-names [schema])))
+                             (into [] (fetch-metadata/fields-metadata database
+                                                                      :schema-names [schema]))))
                       (map sync!))
                      (completing (partial merge-with +))
                      {:total-fields   0
                       :updated-fields 0}
                      (sync-util/sync-schemas database))
-          (sync! (fetch-metadata/fields-metadata database)))))))
+          (sync! (into [] (fetch-metadata/fields-metadata database))))))))
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."

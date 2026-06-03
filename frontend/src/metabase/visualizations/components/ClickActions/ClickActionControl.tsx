@@ -1,5 +1,5 @@
 import { useDispatch } from "metabase/redux";
-import { Box, Button, Icon, Tooltip } from "metabase/ui";
+import { Box, Button, Icon, Text, Tooltip } from "metabase/ui";
 import {
   type ClickAction,
   isCustomClickAction,
@@ -143,6 +143,10 @@ export const ClickActionControl = ({
       );
 
     case "info":
-      return <Box className={S.infoControl}>{action.title}</Box>;
+      return (
+        <Text c="text-primary" fw="bold" lh="1.5rem" maw="10.75rem">
+          {action.title}
+        </Text>
+      );
   }
 };

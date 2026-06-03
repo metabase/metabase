@@ -150,6 +150,16 @@ describe("scenarios > admin > databases > writable connection", () => {
 
       createWritableConnection(DEFAULT_USER);
       refreshModelPersistenceAndAwaitSuccess(model.id);
+
+      // Regression for metabase#74449: the Persist model data toggle must
+      // reflect the mutation result without a page reload (persistModel
+      // returns HTTP 204, and the UI relies on RTK cache invalidation to
+      // refetch the persisted state).
+      cy.visit(`/model/${model.id}`);
+      H.openQuestionActions("Edit settings");
+      cy.findByLabelText("Persist model data").should("be.checked").click();
+      cy.findByLabelText("Persist model data").should("not.be.checked").click();
+      cy.findByLabelText("Persist model data").should("be.checked");
     });
   });
 

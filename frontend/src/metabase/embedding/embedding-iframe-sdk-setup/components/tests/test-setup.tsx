@@ -1,8 +1,12 @@
+import fetchMock from "fetch-mock";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
+  setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
   setupNotificationChannelsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -14,6 +18,7 @@ import { renderWithProviders, waitFor } from "__support__/ui";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
+  createMockCollection,
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDatabase,
@@ -30,6 +35,8 @@ export const setup = (options?: {
   jwtReady?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
   hasEmailSetup?: boolean;
+  metabotEnabled?: boolean;
+  siteUrl?: string;
 }) => {
   const { enterprisePlugins } = options ?? {};
 
@@ -54,10 +61,19 @@ export const setup = (options?: {
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
     "jwt-enabled-and-configured": options?.jwtReady ?? false,
+    "embedded-metabot-enabled?": options?.metabotEnabled ?? false,
+    "llm-metabot-configured?": options?.metabotEnabled ?? false,
+    // Default to the jsdom test origin so the embed wizard preview renders
+    // (mismatched origins surface a Site URL configuration error).
+    "site-url": options?.siteUrl ?? window.location.origin,
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupSearchEndpoints([]);
+  setupDatabasesEndpoints([mockDatabase]);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", name: "Our analytics" })],
+  });
   setupDashboardEndpoints(mockDashboard);
   setupDashboardQueryMetadataEndpoint(
     mockDashboard,
@@ -70,6 +86,7 @@ export const setup = (options?: {
   setupNotificationChannelsEndpoints(
     options?.hasEmailSetup ? { email: { configured: true } as any } : {},
   );
+  fetchMock.get("path:/api/embed-theme", []);
 
   renderWithProviders(
     <SdkIframeEmbedSetupModal

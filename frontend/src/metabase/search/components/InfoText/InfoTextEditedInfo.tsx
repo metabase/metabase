@@ -3,11 +3,10 @@ import { t } from "ttag";
 import { isNull } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
-import type { WrappedResult } from "metabase/search/types";
 import { Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
-import type { UserListResult } from "metabase-types/api";
+import type { SearchResult, UserListResult } from "metabase-types/api";
 
 import {
   LastEditedInfoText,
@@ -34,7 +33,7 @@ export const InfoTextEditedInfo = ({
   result,
   isCompact,
 }: {
-  result: WrappedResult;
+  result: SearchResult;
   isCompact?: boolean;
 }) => {
   const { isLoading, data, error } = useListUserRecipientsQuery();

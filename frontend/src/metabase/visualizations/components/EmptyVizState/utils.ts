@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { getSubpathSafeUrl } from "metabase/utils/urls";
+import { getSubpathSafeUrl } from "metabase/urls";
 import type { CardDisplayType } from "metabase-types/api";
 
 /**

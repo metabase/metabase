@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
-import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
 import Settings from "metabase/utils/settings";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type { UserId } from "metabase-types/api";
 
 export const formatCreatorMessage = (

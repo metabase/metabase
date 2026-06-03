@@ -2,7 +2,6 @@ import type { DimensionType } from "metabase/metrics/common/utils/dimension-type
 import type { MetricDefinition } from "metabase-lib/metric";
 import type {
   CardDisplayType,
-  ConcreteTableId,
   DimensionId,
   MathOperator,
   TemporalUnit,
@@ -159,6 +158,5 @@ export type SelectedMetric = {
   id: number;
   name: string | null;
   sourceType: "metric" | "measure";
-  tableId?: ConcreteTableId;
   isLoading?: boolean;
 };

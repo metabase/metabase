@@ -8,8 +8,6 @@ import {
 } from "e2e/support/cypress_data";
 import type { DatabaseId } from "metabase-types/api";
 
-import { interceptPerformanceRoutes } from "../performance/helpers/e2e-performance-helpers";
-
 import {
   BASE_POSTGRES_DESTINATION_DB_INFO,
   configureDbRoutingViaAPI,
@@ -652,7 +650,7 @@ function assertDbRoutingDisabled() {
 }
 
 function setupModelPersistence() {
-  interceptPerformanceRoutes();
+  cy.intercept("POST", "/api/persist/enable").as("enablePersistence");
   cy.visit("/admin/performance/models");
   cy.findByTestId("admin-layout-content").findByLabelText("Disabled").click();
   cy.wait("@enablePersistence");

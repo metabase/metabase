@@ -22,6 +22,19 @@ const sdkBundleCleanup = () => {
   deleteConflictingCljsGlobals();
 };
 
+// After `<MetabaseProvider>` unmounts, the props store's `cleanup()` resets
+// state in place rather than removing the singleton (EMB-1684). Use this
+// helper to assert the post-unmount shape.
+const assertPropsStoreReset = () => {
+  cy.window().should((win) => {
+    const store = (win as any).METABASE_PROVIDER_PROPS_STORE;
+    expect(store, "store singleton persists").to.exist;
+    const state = store.getState();
+    expect(state.props, "props reset").to.be.null;
+    expect(state.internalProps.reduxStore, "reduxStore reset").to.be.null;
+  });
+};
+
 describe(
   "scenarios > embedding-sdk > sdk-bundle",
   {
@@ -79,10 +92,12 @@ describe(
 
           cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("exist");
 
-          // Unmount
+          // Unmount — cleanup() resets the singleton's state in place rather
+          // than dropping it from `window` (EMB-1684 — dropping the singleton
+          // orphaned consumers that outlive a provider unmount).
           cy.mount(<></>);
 
-          cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
+          assertPropsStoreReset();
 
           cy.mount(metabaseProviderElement);
 
@@ -91,7 +106,7 @@ describe(
           // Unmount
           cy.mount(<></>);
 
-          cy.window().its("METABASE_PROVIDER_PROPS_STORE").should("not.exist");
+          assertPropsStoreReset();
         });
 
         it("should properly render global Mantine and Emotion styles once for multiple rendered components", () => {

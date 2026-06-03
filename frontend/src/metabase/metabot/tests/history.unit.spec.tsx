@@ -61,8 +61,7 @@ describe("metabot > history", () => {
     hideMetabot(store.dispatch);
     showMetabot(store.dispatch);
     await enterChatMessage("Hi!");
-    const lastCall = agentSpy.mock.lastCall;
-    const reqBody = JSON.parse(String(lastCall?.[1]?.body));
+    const reqBody = await lastReqBody(agentSpy);
     const sentHistory = reqBody.history;
     expect(sentHistory).not.toEqual([]);
   });
@@ -107,7 +106,9 @@ describe("metabot > history", () => {
       type: "text",
       message: "Who is your favorite?",
     });
-    expect(_.omit(beforeResetState.messages[1], ["id"])).toStrictEqual({
+    expect(
+      _.omit(beforeResetState.messages[1], ["id", "externalId"]),
+    ).toStrictEqual({
       role: "agent",
       type: "text",
       message: "You, but don't tell anyone.",

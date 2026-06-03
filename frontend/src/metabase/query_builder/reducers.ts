@@ -5,10 +5,10 @@ import _ from "underscore";
 import {
   createCardPublicLink,
   deleteCardPublicLink,
+  timelineEventApi,
   updateCardEmbeddingParams,
   updateCardEnableEmbedding,
 } from "metabase/api";
-import { TimelineEvents } from "metabase/entities/timeline-events";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
   API_UPDATE_QUESTION,
@@ -58,7 +58,6 @@ import type {
   Range,
 } from "metabase/redux/store";
 import { clone } from "metabase/utils/clone";
-import type { Deferred } from "metabase/utils/promise";
 import type {
   Card,
   CollectionItemModel,
@@ -310,7 +309,6 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
           ...UI_CONTROLS_SIDEBAR_DEFAULTS,
           ...CLOSED_NATIVE_EDITOR_SIDEBARS,
           isShowingQuestionInfoSidebar: true,
-          queryBuilderMode: "view",
         }),
       )
       .addCase(CLOSE_QUESTION_INFO, (state) => ({
@@ -321,7 +319,6 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         setUIControls(state, {
           ...(UI_CONTROLS_SIDEBAR_DEFAULTS as Partial<QueryBuilderUIControls>),
           isShowingQuestionSettingsSidebar: true,
-          queryBuilderMode: "view",
         } as Partial<QueryBuilderUIControls>),
       )
       .addCase(CLOSE_QUESTION_SETTINGS, (state) => ({
@@ -490,15 +487,15 @@ export const metadataDiff = createReducer<Record<string, Partial<Field>>>(
   },
 );
 
-// promise used for tracking a query execution in progress. when a query is started we capture this.
-export const cancelQueryDeferred = createReducer<Deferred<void> | null>(
+// AbortController used for tracking a query execution in progress. when a query is started we capture this.
+export const cancelQueryController = createReducer<AbortController | null>(
   null,
   (builder) => {
     builder
       .addCase<
         string,
-        { type: string; payload: { cancelQueryDeferred: Deferred<void> } }
-      >(RUN_QUERY, (_state, action) => action.payload.cancelQueryDeferred)
+        { type: string; payload: { cancelQueryController: AbortController } }
+      >(RUN_QUERY, (_state, action) => action.payload.cancelQueryController)
       .addCase(CANCEL_QUERY, () => null)
       .addCase(QUERY_COMPLETED, () => null)
       .addCase(QUERY_ERRORED, () => null);
@@ -601,14 +598,11 @@ export const visibleTimelineEventIds = createReducer<number[]>(
           return state.filter((eventId) => !eventIdsToHide.includes(eventId));
         },
       )
-      .addCase<
-        string,
-        { type: string; payload: { timelineEvent: { id: number } } }
-      >(TimelineEvents.actionTypes.CREATE, (state, action) => [
-        ...state,
-        action.payload.timelineEvent.id,
-      ])
-      .addCase(RESET_QB, () => []);
+      .addCase(RESET_QB, () => [])
+      .addMatcher(
+        timelineEventApi.endpoints.createTimelineEvent.matchFulfilled,
+        (state, action) => [...state, action.payload.id],
+      );
   },
 );
 

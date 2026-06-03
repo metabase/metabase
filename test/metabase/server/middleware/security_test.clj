@@ -82,7 +82,9 @@
 (deftest nonce-test
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
     (let [nonceJSON (atom nil)
-          render-file stencil/render-file]
+          render-file (mt/original-fn #'stencil/render-file)]
+      ;; http/get hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [stencil/render-file (fn [path variables]
                                           (reset! nonceJSON (:nonceJSON variables))
                                           ;; Use index_template.html instead of index.html so the frontend doesn't
@@ -373,7 +375,6 @@
            [2 ["" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
            [3 ["" "http://my-site.com" "http://public.metabase.com" nil]]
            [4 ["" "http://my-site.com" "http://www.a-site.com" nil]]
-
            ;; CORS origins configured = CORS enabled via origins
            [5  ["localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
            [6  ["localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
@@ -422,7 +423,7 @@
                   response (wrapped-handler {:headers {"origin" request-origin} :uri request-uri} identity identity)]
               [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri (-> response :headers (get "Access-Control-Allow-Origin"))])))))
 
-(deftest add-cors-headers-for-auth-sso-test
+(deftest ^:parallel add-cors-headers-for-auth-sso-test
   (testing "Should add CORS headers for /auth/sso endpoint with 402 status (embedding disabled errors)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -437,8 +438,9 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
           "Should set Access-Control-Allow-Headers to * for /auth/sso with 402 status")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
-          "Should set Access-Control-Allow-Methods to * for /auth/sso with 402 status")))
+          "Should set Access-Control-Allow-Methods to * for /auth/sso with 402 status"))))
 
+(deftest ^:parallel add-cors-headers-for-auth-sso-test-2
   (testing "Should add CORS headers for /auth/sso endpoint with 400 status (client errors)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -453,8 +455,9 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
           "Should set Access-Control-Allow-Headers to * for /auth/sso with 400 status")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
-          "Should set Access-Control-Allow-Methods to * for /auth/sso with 400 status")))
+          "Should set Access-Control-Allow-Methods to * for /auth/sso with 400 status"))))
 
+(deftest ^:parallel add-cors-headers-for-auth-sso-test-3
   (testing "Should add CORS headers for /auth/sso OPTIONS requests (preflight)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -471,8 +474,9 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
           "Should set Access-Control-Allow-Headers to * for OPTIONS /auth/sso")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
-          "Should set Access-Control-Allow-Methods to * for OPTIONS /auth/sso")))
+          "Should set Access-Control-Allow-Methods to * for OPTIONS /auth/sso"))))
 
+(deftest ^:parallel add-cors-headers-for-auth-sso-test-4
   (testing "Should not add CORS headers for /auth/sso endpoint with other status codes"
     (doseq [status [200 201 500 503]]
       (let [wrapped-handler (mw.security/add-security-headers
@@ -493,46 +497,39 @@
         (let [headers (mw.security/security-headers)]
           (is (= "cross-origin" (get headers "Cross-Origin-Resource-Policy"))
               "Should include Cross-Origin-Resource-Policy header when env var is set"))))
-
     (testing "Should not add header when MB_CROSS_ORIGIN_RESOURCE_POLICY is not set"
       (with-redefs [env/env {}]
         (let [headers (mw.security/security-headers)]
           (is (nil? (get headers "Cross-Origin-Resource-Policy"))
               "Should not include Cross-Origin-Resource-Policy header when env var is not set")))))
-
   (testing "Cross-Origin-Embedder-Policy header from environment variable"
     (testing "Should add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is set"
       (with-redefs [env/env {:mb-cross-origin-embedder-policy "require-corp"}]
         (let [headers (mw.security/security-headers)]
           (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy"))
               "Should include Cross-Origin-Embedder-Policy header when env var is set"))))
-
     (testing "Should not add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is not set"
       (with-redefs [env/env {}]
         (let [headers (mw.security/security-headers)]
           (is (nil? (get headers "Cross-Origin-Embedder-Policy"))
               "Should not include Cross-Origin-Embedder-Policy header when env var is not set")))))
-
   (testing "Both Cross-Origin headers can be set independently"
     (testing "Only CORP set"
       (with-redefs [env/env {:mb-cross-origin-resource-policy "same-origin"}]
         (let [headers (mw.security/security-headers)]
           (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
           (is (nil? (get headers "Cross-Origin-Embedder-Policy"))))))
-
     (testing "Only COEP set"
       (with-redefs [env/env {:mb-cross-origin-embedder-policy "credentialless"}]
         (let [headers (mw.security/security-headers)]
           (is (nil? (get headers "Cross-Origin-Resource-Policy")))
           (is (= "credentialless" (get headers "Cross-Origin-Embedder-Policy"))))))
-
     (testing "Both set"
       (with-redefs [env/env {:mb-cross-origin-resource-policy "same-site"
                              :mb-cross-origin-embedder-policy "require-corp"}]
         (let [headers (mw.security/security-headers)]
           (is (= "same-site" (get headers "Cross-Origin-Resource-Policy")))
           (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy")))))))
-
   (testing "Cross-Origin headers are included in middleware response"
     (testing "Headers are present in actual HTTP response"
       (with-redefs [env/env {:mb-cross-origin-resource-policy "cross-origin"
@@ -547,3 +544,82 @@
               "Cross-Origin-Resource-Policy should be in the response")
           (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"]))
               "Cross-Origin-Embedder-Policy should be in the response"))))))
+
+(deftest csp-header-img-src-tests
+  (testing "img-src defaults to permissive wildcard, data, self when csp-img-enabled is false"
+    (mt/with-temporary-setting-values [csp-img-enabled false
+                                       csp-img-allowed-hosts "example.com"]
+      (is (= "img-src * 'self' data:" (csp-directive "img-src")))))
+  (testing "with csp-img-enabled, img-src is restricted to 'self' and data: by default"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts ""]
+      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+  (testing "nil csp-img-allowed-hosts behaves like empty input"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts nil]
+      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+  (testing "csp-img-allowed-hosts widens img-src (with wildcard expansion)"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"]
+      (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com"
+             (csp-directive "img-src"))))))
+
+(deftest csp-header-font-src-tests
+  (testing "font-src is restricted to 'self' and data: when no custom fonts are configured"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files nil]
+        (is (= "font-src 'self' data:" (csp-directive "font-src"))))))
+  (testing "font-src dynamically includes the origin of each custom font file"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files [{:src "https://fonts.example.com/a.woff2" :fontFormat "woff2" :fontWeight 400}
+                                                                 {:src "https://fonts.example.com/b.woff2" :fontFormat "woff2" :fontWeight 700}
+                                                                 {:src "https://cdn.other.com:8443/c.ttf" :fontFormat "ttf" :fontWeight 400}]]
+        (is (= "font-src 'self' data: https://fonts.example.com https://cdn.other.com:8443"
+               (csp-directive "font-src"))
+            "duplicate origins are de-duplicated and ports preserved"))))
+  (testing "font-src keeps IPv6 hosts bracketed"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files [{:src "https://[2001:db8::1]:8443/c.ttf" :fontFormat "ttf" :fontWeight 400}]]
+        (is (= "font-src 'self' data: https://[2001:db8::1]:8443"
+               (csp-directive "font-src"))))))
+  (testing "malformed / relative / missing font srcs are skipped without error"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files [{:src "/relative/font.woff"}
+                                                                 {:src nil}
+                                                                 {:fontWeight 400}
+                                                                 {:src "https://ok.example.com/d.woff2"}]]
+        (is (= "font-src 'self' data: https://ok.example.com"
+               (csp-directive "font-src")))))))
+
+(deftest csp-header-dev-asset-host-tests
+  (testing "in dev, the webpack dev server origin is allowed for img-src and font-src (assets like logos load from there)"
+    (mt/with-temporary-setting-values [csp-img-enabled true]
+      (with-redefs [config/is-dev? true]
+        (is (str/includes? (csp-directive "img-src") @#'mw.security/frontend-address))
+        (is (str/includes? (csp-directive "font-src") @#'mw.security/frontend-address)))))
+  (testing "in prod the dev server origin is not added"
+    (mt/with-temporary-setting-values [csp-img-enabled true]
+      (with-redefs [config/is-dev? false]
+        (is (= "img-src 'self' data:" (csp-directive "img-src")))
+        (is (= "font-src 'self' data:" (csp-directive "font-src")))))))
+
+(deftest ^:parallel parse-allowed-resource-hosts-test
+  (testing "parses like the iframe parser, seeded with the always-allowed resource hosts"
+    (is (= (concat @#'mw.security/always-allowed-resource-hosts
+                   ["mysite.com" "*.mysite.com" "http://localhost:8000" "cdn.deep.example.com"])
+           (mw.security/parse-allowed-resource-hosts "mysite.com, http://localhost:8000, cdn.deep.example.com"))))
+  (testing "empty / blank input yields just the seed hosts"
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts nil)))
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts "")))
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts "   "))))
+  (testing "invalid hosts are dropped"
+    (is (= @#'mw.security/always-allowed-resource-hosts
+           (mw.security/parse-allowed-resource-hosts "asdf/wasd/:8000 */localhost:*")))))
+
+(deftest csp-img-enabled-setter-oss-test
+  (testing "csp-img-enabled can be turned on/off freely when no enterprise custom-viz setter is loaded"
+    (mt/with-temporary-setting-values [csp-img-enabled false]
+      (server.settings/csp-img-enabled! true)
+      (is (true? (server.settings/csp-img-enabled)))
+      (server.settings/csp-img-enabled! false)
+      (is (false? (server.settings/csp-img-enabled))))))

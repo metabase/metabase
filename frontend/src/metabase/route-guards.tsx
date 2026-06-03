@@ -1,11 +1,11 @@
 import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { metabaseReduxContext } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { getAdminPaths } from "metabase/selectors/admin";
 import { getSetting } from "metabase/selectors/settings";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 
@@ -16,7 +16,7 @@ import { canAccessTransforms } from "./transforms/selectors";
 type Props = { children: React.ReactElement };
 
 /** Paths that are handled by the backend server, not the frontend SPA router. */
-export const BACKEND_ONLY_PATH_PREFIXES = ["/oauth/"];
+export const BACKEND_ONLY_PATH_PREFIXES = ["/oauth/", "/auth/sso/"];
 
 export const isBackendOnlyPath = (path: string): boolean =>
   BACKEND_ONLY_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));

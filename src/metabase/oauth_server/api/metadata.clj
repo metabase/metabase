@@ -38,20 +38,36 @@
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))
 
-(api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
-  :- [:map
-      [:status [:= 200]]
-      [:body [:map
-              [:resource :string]
-              [:authorization_servers [:sequential :string]]
-              [:scopes_supported [:sequential :string]]
-              [:bearer_methods_supported [:sequential :string]]]]]
-  "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
+(defn- protected-resource-response
+  "Build the OAuth Protected Resource Metadata (RFC 9728) response for the MCP endpoint."
   []
   (let [site-url (system/site-url)]
     {:status  200
      :headers {"Content-Type" "application/json"}
      :body    {:resource                  (str site-url "/api/mcp")
                :authorization_servers     [site-url]
-               :scopes_supported          (oauth-server/all-agent-scopes)
+               :scopes_supported          (vec (oauth-server/all-agent-scopes))
                :bearer_methods_supported  ["header"]}}))
+
+(def ^:private protected-resource-schema
+  [:map
+   [:status [:= 200]]
+   [:body [:map
+           [:resource :string]
+           [:authorization_servers [:sequential :string]]
+           [:scopes_supported [:sequential :string]]
+           [:bearer_methods_supported [:sequential :string]]]]])
+
+(api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
+  :- protected-resource-schema
+  "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
+  []
+  (protected-resource-response))
+
+;; Some clients probe the bare resource path instead of the resource-specific one; serve the same metadata here so
+;; the request doesn't fall through to the SPA's HTML catch-all and trip a `JSON.parse` error (BOT-1617).
+(api.macros/defendpoint :get "/oauth-protected-resource"
+  :- protected-resource-schema
+  "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
+  []
+  (protected-resource-response))

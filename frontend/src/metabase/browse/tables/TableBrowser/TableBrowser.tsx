@@ -1,15 +1,18 @@
-import _ from "underscore";
+import { useEffect, useState } from "react";
 
-import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import {
+  skipToken,
+  useGetDatabaseMetadataQuery,
+  useListDatabaseSchemaTablesQuery,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import * as Urls from "metabase/utils/urls";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type { DatabaseId, Table } from "metabase-types/api";
 
 import { RELOAD_INTERVAL } from "../../constants";
@@ -26,7 +29,10 @@ type TableBrowserContainerProps = {
   dbId?: DatabaseId | string;
   schemaName?: string;
   params?: RouteParams;
+  showSchemaInHeader?: boolean;
 };
+
+const EMPTY_TABLES: Table[] = [];
 
 const getDatabaseId = (
   props: TableBrowserContainerProps,
@@ -48,33 +54,65 @@ const getDatabaseId = (
 };
 
 const getSchemaName = (props: TableBrowserContainerProps): string | undefined =>
-  props.schemaName ?? props.params?.schemaName;
-
-const getReloadInterval = (
-  _state: State,
-  _props: TableBrowserContainerProps,
-  tables: Table[] = [],
-): number => (tables.some((t) => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0);
+  props.schemaName || props.params?.schemaName || undefined;
 
 export const getTableUrl = (table: Table, metadata?: Metadata): string => {
   const metadataTable = metadata?.table(table.id);
   const question = metadataTable?.newQuestion();
-  return question ? ML_Urls.getUrl(question) : "";
+  return question ? Urls.question(question) : "";
 };
 
-export const TableBrowser = _.compose(
-  Tables.loadList({
-    query: (_state: State, props: TableBrowserContainerProps) => ({
-      dbId: getDatabaseId(props, { includeVirtual: true }),
-      schemaName: getSchemaName(props),
-    }),
-    reloadInterval: getReloadInterval,
-  }),
-  connect((state: State, props: TableBrowserContainerProps) => ({
-    dbId: getDatabaseId(props, { includeVirtual: true }),
-    schemaName: getSchemaName(props),
-    metadata: getMetadata(state),
-    xraysEnabled: getSetting(state, "enable-xrays"),
-    getTableUrl,
-  })),
-)(TableBrowserInner);
+export const TableBrowser = (props: TableBrowserContainerProps) => {
+  const dbId = getDatabaseId(props, { includeVirtual: true });
+  const schemaName = getSchemaName(props);
+  const { showSchemaInHeader } = props;
+  const metadata = useSelector(getMetadata);
+  const xraysEnabled = useSelector((state) =>
+    getSetting(state, "enable-xrays"),
+  );
+
+  // Poll while any table is still syncing so newly-added databases refresh.
+  const [reloadInterval, setReloadInterval] = useState(0);
+  const useSchemaTables = dbId != null && schemaName != null;
+
+  const schemaTablesResult = useListDatabaseSchemaTablesQuery(
+    useSchemaTables ? { id: dbId, schema: schemaName } : skipToken,
+    { pollingInterval: reloadInterval || undefined },
+  );
+  const databaseResult = useGetDatabaseMetadataQuery(
+    dbId != null && !useSchemaTables ? { id: dbId } : skipToken,
+    { pollingInterval: reloadInterval || undefined },
+  );
+
+  const tables =
+    (useSchemaTables ? schemaTablesResult.data : databaseResult.data?.tables) ??
+    EMPTY_TABLES;
+  const isLoading = useSchemaTables
+    ? schemaTablesResult.isLoading
+    : databaseResult.isLoading;
+  const error = useSchemaTables
+    ? schemaTablesResult.error
+    : databaseResult.error;
+
+  useEffect(() => {
+    setReloadInterval(tables.some(isSyncInProgress) ? RELOAD_INTERVAL : 0);
+  }, [tables]);
+
+  if (dbId == null) {
+    return null;
+  }
+
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      <TableBrowserInner
+        tables={tables}
+        getTableUrl={getTableUrl}
+        metadata={metadata}
+        dbId={dbId}
+        schemaName={schemaName}
+        xraysEnabled={xraysEnabled}
+        showSchemaInHeader={showSchemaInHeader}
+      />
+    </LoadingAndErrorWrapper>
+  );
+};

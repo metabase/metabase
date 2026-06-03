@@ -70,12 +70,12 @@ jest.mock("../MetricExpressionPill", () => ({
 jest.mock("../MetricSearchDropdown", () => ({
   MetricSearchDropdown: ({
     onSelect,
-    externalSearchText,
+    searchQuery,
   }: {
     onSelect: (metric: SelectedMetric) => void;
-    externalSearchText: string;
+    searchQuery: string;
   }) => (
-    <div data-testid="search-dropdown" data-search-text={externalSearchText}>
+    <div data-testid="search-dropdown" data-search-text={searchQuery}>
       <button
         onClick={() =>
           onSelect({ id: 99, name: "New Metric", sourceType: "metric" })

@@ -19,8 +19,6 @@ import {
   ExpressionWidgetHeader,
 } from "metabase/querying/components/expressions";
 import {
-  type DefinedClauseName,
-  type MBQLClauseFunctionConfig,
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
@@ -73,7 +71,7 @@ type MeasureListItem = Lib.MeasureDisplayInfo & {
 
 type ExpressionClauseListItem = {
   type: "expression-clause";
-  clause: MBQLClauseFunctionConfig;
+  clause: Lib.MBQLClauseFunctionConfig;
   displayName: string;
 };
 
@@ -119,7 +117,7 @@ export function AggregationPicker({
     }),
   );
   const [initialExpressionClause, setInitialExpressionClause] =
-    useState<DefinedClauseName | null>(null);
+    useState<Lib.DefinedClauseName | null>(null);
 
   // For really simple inline expressions like Average([Price]),
   // Lib can figure out that "Average" operator is used.
@@ -258,7 +256,7 @@ export function AggregationPicker({
   );
 
   const handleExpressionSelect = useCallback(
-    (clause?: DefinedClauseName) => {
+    (clause?: Lib.DefinedClauseName) => {
       if (clause) {
         setInitialExpressionClause(clause);
       }
@@ -584,7 +582,7 @@ function getMeasureListItem(
 }
 
 function getExpressionClauseListItem(
-  clause: MBQLClauseFunctionConfig,
+  clause: Lib.MBQLClauseFunctionConfig,
 ): ExpressionClauseListItem {
   return {
     type: "expression-clause",

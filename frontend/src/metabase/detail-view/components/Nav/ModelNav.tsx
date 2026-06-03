@@ -6,7 +6,7 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { Group, type GroupProps } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Table } from "metabase-types/api";
 
@@ -56,7 +56,7 @@ export const ModelNav = ({ rowName, table, ...props }: Props) => {
 
       {card && (
         <>
-          <Breadcrumb href={Urls.question(card)} icon="model">
+          <Breadcrumb href={Urls.card(card)} icon="model">
             {card.name}
           </Breadcrumb>
 

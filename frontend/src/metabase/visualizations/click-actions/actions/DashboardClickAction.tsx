@@ -1,12 +1,5 @@
 import { selectTab } from "metabase/redux/dashboard";
 import type { Dispatch } from "metabase/redux/store";
-import type {
-  AlwaysDefaultClickAction,
-  AlwaysDefaultClickActionSubAction,
-  ClickObject,
-  LegacyDrill,
-} from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
 import {
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
@@ -14,7 +7,14 @@ import {
   getDashboardDrillTab,
   getDashboardDrillType,
   getDashboardDrillUrl,
-} from "metabase-lib/v1/queries/drills/dashboard-click-drill";
+} from "metabase/visualizations/click-actions/lib/dashboard-click-drill";
+import type {
+  AlwaysDefaultClickAction,
+  AlwaysDefaultClickActionSubAction,
+  ClickObject,
+  LegacyDrill,
+} from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DashboardDrillType =
@@ -91,9 +91,14 @@ function getAction(
 
 export const DashboardClickAction: LegacyDrill = ({
   question,
+  settings,
   clicked = {},
 }): AlwaysDefaultClickAction[] => {
-  const type = getDashboardDrillType(clicked);
+  const clickObject: ClickObject = clicked.settings
+    ? clicked
+    : { ...clicked, settings };
+  const type = getDashboardDrillType(clickObject);
+
   if (!type) {
     return [];
   }
@@ -102,7 +107,7 @@ export const DashboardClickAction: LegacyDrill = ({
     {
       name: "click_behavior",
       defaultAlways: true,
-      ...getAction(type, question, clicked),
+      ...getAction(type, question, clickObject),
     },
   ];
 };

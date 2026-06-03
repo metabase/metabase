@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
+import { Button } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import ModalFooter from "../ModalFooter";
@@ -32,7 +32,11 @@ const DeleteEventModal = ({
       <ModalHeader title={t`Delete ${event?.name}?`} onClose={onClose} />
       <ModalFooter hasPadding>
         <Button onClick={onClose}>{t`Cancel`}</Button>
-        <Button danger onClick={handleSubmit}>{t`Delete`}</Button>
+        <Button
+          variant="filled"
+          color="error"
+          onClick={handleSubmit}
+        >{t`Delete`}</Button>
       </ModalFooter>
     </div>
   );

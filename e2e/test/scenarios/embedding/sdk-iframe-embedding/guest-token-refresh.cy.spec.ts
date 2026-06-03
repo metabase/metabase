@@ -265,7 +265,8 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                         component: "metabase-dashboard",
                         attributes: {
                           token: expiredToken,
-                          "custom-context": "test-custom-context",
+                          "custom-context":
+                            '{"param":"value","nested":{"a":1}}',
                         },
                       },
                     ],
@@ -275,7 +276,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     expect(interception.request.body).to.deep.include({
                       entityType: "dashboard",
                       entityId: dashboardId,
-                      customContext: "test-custom-context",
+                      customContext: { param: "value", nested: { a: 1 } },
                     });
                   });
 

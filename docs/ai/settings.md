@@ -7,37 +7,56 @@ redirect_from:
 
 # AI settings
 
-> AI features are available with your own AI provider API key, or as an add-on on [Metabase Cloud](https://www.metabase.com/features/metabot-ai).
+_Admin > AI_
+
+This page covers admin settings for AI features in Metabase, including [Metabot](./metabot.md). To limit _who_ can use Metabot, see [AI controls](./usage-controls.md).
+
+## Enable AI features
+
+AI features are available on both Metabase Cloud and self-hosted Metabase. To turn them on:
+
+1. Go to **Admin settings > AI**.
+2. In **Connect to an AI provider**, choose a **Provider**:
+   - **Metabase**: The Metabase AI service. Metabase picks a benchmarked, cost-effective model for you, and charges you on token usage. See [Choose AI provider](#choose-ai-provider)
+   - Another supported provider. See [bring your own API key](#bring-your-own-api-key).
+3. Once connected, configure [Metabot](#configure-metabot) and other AI features below.
+
+## Choose AI provider
 
 _Admin > AI_
 
-This page covers admin settings for AI features in Metabase, including [Metabot](./metabot.md).
+You can choose which AI provider and model is used to power Metabase's built-in agent.
 
-On **Metabase Cloud** you can either:
+- If you're **self-hosting Metabase** and want to use Metabot, you need to [bring your own AI API key](#bring-your-own-api-key).
+- On **Metabase Cloud**, you can either [bring your own AI API key](#bring-your-own-api-key) or [use the Metabase AI Service](#metabase-ai-service).
 
-- [Purchase the Metabot add-on](#add-metabot-from-the-metabase-store) from the Metabase Store, or
-- [Bring your own API key](#bring-your-own-api-key) from a supported AI provider.
+The AI provider that you specify in AI settings powers Metabase's built-in AI functionality, not the MCP server. [With the MCP server, your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
 
-On **self-hosted Metabases**: you can [bring your own API key](#bring-your-own-api-key) from a supported AI provider.
+### Metabase AI Service
 
-## Add Metabot from the Metabase Store
+On Metabase Cloud, you can have us manage the AI for you with our AI Service.
 
-If you're on [Metabase Cloud](https://www.metabase.com/cloud/), you can add Metabot from the Metabase Store:
+Metabase's AI Service is a good option if you don't have a preferred AI provider, or if you want to manage all your Metabase AI costs through Metabase. We (Metabase the company) select the models for you. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
 
-1. Go to [store.metabase.com](https://store.metabase.com).
-2. Log in with your **Metabase Store account** (distinct from the account you use to log in to your Metabase).
-3. In the **Instances** tab, find the instance you'd like to add Metabot to, and click "Add Metabot AI".
-4. Pick the plan based on the number of requests you expect you'll need.
+If you use Metabase's AI Service, you'll get charge based on token usage (in addition to your regular Metabase Cloud subscription fee). See [Pricing](https://www.metabase.com/pricing).
 
-   A "request" is any message anyone in your Metabase sends to Metabot. Several messages sent within the same chat session are counted as separate requests. Requests are added across the entire instance.
+To use Metabase AI provider for your Metabot:
 
-5. Read through the [terms of service](https://www.metabase.com/license/hosting) and click **Add Metabot AI**.
+1. Go to **Admin > AI > AI settings**.
+2. In **Connect to an AI provider**, choose **Metabase** as the provider.
+3. Agree to the terms of service.
+4. Click **Connect**.
 
-Once you've added Metabot AI in the Metabase store, you can log in to your Metabase and configure it in _Admin > AI_.
+To disable Metabase AI provider and stop charges:
 
-## Bring your own API key
+1. Go to **Admin > AI > AI settings**.
+2. Under **Connected to Metabase**, click **Disconnect**.
 
-_Admin > AI_
+### Bring your own API key
+
+You can specify your own API key and model for Metabot from one of the supported providers. Currently, Metabase only supports models from Anthropic.
+
+If you're interested in Metabase supporting more AI providers, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
 
 To enable AI features with your own API key:
 
@@ -47,17 +66,13 @@ To enable AI features with your own API key:
 4. Click **Connect**.
 5. Select a **Model** from the dropdown. Available models are fetched from the provider using your API key.
 
-When your connection is active, the provider card header shows **Connected to [provider]** (for example, "Connected to Anthropic") next to a green status dot. With your key connected, you get access to [Metabot](./metabot.md), [inline SQL generation](./metabot.md#inline-sql-editing), the [MCP server](./mcp.md), and the [Agent API](./agent-api.md).
+When your connection is active, the provider card header shows **Connected to [provider]** (for example, "Connected to Anthropic") next to a green status dot. With your key connected, you get access to [Metabot](./metabot.md), and [inline SQL generation](./metabot.md#inline-sql-editing).
 
 To clear your provider connection, click **Disconnect**. Disconnecting removes the stored API key and turns off any AI features that depend on the provider.
 
-### Supported providers
-
-Currently, Metabase only supports models from Anthropic.
-
 ## Configure Metabot
 
-_Admin > AI > Metabot settings_
+_Admin > AI > AI settings_
 
 ![Metabot settings](./images/ai-settings.png)
 
@@ -69,7 +84,7 @@ _Internal tab._
 
 Toggle [Metabot](./metabot.md) on or off for your Metabase. Metabot is enabled by default.
 
-When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden. Currently, Metabot is available to everyone who uses your Metabase. There's no way to scope Metabot usage per person.
+When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden. To scope Metabot to specific user or tenant groups, or to cap token usage, see [AI controls](./usage-controls.md).
 
 Toggling off Metabot only turns off in-app Metabot features. People can still use the [MCP server](./mcp.md) and [Agent API](./agent-api.md) if those are enabled.
 
@@ -114,41 +129,13 @@ When people open a new Metabot chat, Metabase shows a few suggested prompts base
 
 Click **Regenerate suggested prompts** to generate a fresh set of prompts. You can also run individual prompts to test Metabot's answers, or delete prompts that aren't useful. The Internal and Embedded tabs each maintain their own set of suggestions, so regenerating on one tab doesn't affect the other.
 
-## MCP server settings
-
-Use the **MCP server** toggle to turn external access to the [MCP server](./mcp.md) on or off.
-
-### Supported MCP clients
-
-Under **Supported MCP clients**, switch on any clients you want to allow:
-
-- **Claude** (Claude Desktop and Claude on the web)
-- **Cursor and VS Code**
-- **ChatGPT**
-
-Toggling on a client automatically adds that client's sandbox domains to Metabase's CORS allowlist, which is what lets browser-based MCP clients make cross-origin requests to your Metabase.
-
-Some clients run outside the browser (like Claude Code on your own machine) and don't need a CORS allowlist entry. You can connect those clients without toggling anything on (assuming you've turned on the main MCP server setting).
-
-### Custom MCP client domains
-
-If you run a self-hosted MCP client or one that isn't in the supported list, add its domain to the **Custom MCP client domains** field. Separate values with a space, for example:
-
-```
-https://mcp.internal.example.com https://*.staging.example.com
-```
-
-The field accepts wildcards (`*`) for subdomains. Changes take effect in about a minute. Might be a good time to get up and pour yourself a glass of water.
-
-## Agent API settings
-
-Use the **Agent API** toggle to turn external access to the [Agent API](./agent-api.md) on or off.
-
 ## Disable all AI features
 
 The **Disable all AI features** toggle at the bottom of the AI features page is a master kill switch. When turned on, it hides all AI features across your instance — Metabot, inline SQL generation, the MCP server, the Agent API, and any embedded chat components — regardless of the individual toggles above.
 
 Use this toggle for an instance-wide shut-off without having to disconnect your provider or change each feature's own toggle. Turn it off again to restore your previous configuration.
+
+For more granular options, check out [AI usage controls](./usage-controls.md).
 
 ## Tips for making the most of Metabot
 
@@ -192,34 +179,20 @@ In other words, to restrict what data Metabot can see for each person, simply ap
 
 ## Viewing Metabot usage
 
-If you're on Metabase Cloud with the Metabot add-on, you can see how many Metabot requests people have made this month by going to **Admin > Settings > License**.
+If you're using the Metabase AI service, you can see how many Metabot requests people have made this month by going to **Admin > AI**.
 
 If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
-The **Metabot AI requests used, this month (updated daily)** field shows how many requests your Metabase has used this month. Each message sent to Metabot counts as a request.
-
 If you're using your own API key, you can track usage and costs through your AI provider's dashboard.
 
-## Choosing the AI model
+On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](usage-auditing.md) with detailed breakdown of AI usage by user, tool, feature etc.
 
-If you're using your own API key, you can choose which AI model Metabase uses when you [bring your own API key](#bring-your-own-api-key).
+## Further reading
 
-On Metabase Cloud, Metabase's AI service selects models automatically. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
-
-## Privacy
-
-On Metabase Cloud with the Metabot add-on, your questions and conversations remain private to your Metabase -- we don't send your data to external services. We do collect some metadata to gauge and improve usage.
-
-If you're using your own API key, your prompts and data are sent to your selected AI provider. Review your provider's data handling and privacy policies. When using the [MCP server](./mcp.md), query results are sent to the connected MCP client.
-
-In both cases, Metabot can't create assets or write data. If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses), the form you send may contain sensitive data from your conversation.
-
-### What Metabot can see
-
-Metabot has access to your Metabase metadata and some data values to help answer your questions:
-
-- **Table, Question, Model, Dashboard, and Metric metadata**: Metabot can see the structure and configuration of your content.
-- **Sample field values**: When you ask questions like "Filter everyone from Wisconsin," Metabot might check the values in the state field to understand how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
-- **Timeseries data**: For chart analysis, Metabot might see the timeseries data used to draw certain visualizations, depending on the chart type.
-
-This data may be included when you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses).
+- [Using Metabot](metabot.md)
+- [MCP server](mcp.md)
+- [AI privacy](privacy.md)
+- [AI access and usage controls](usage-controls.md)
+- [AI usage auditing](usage-auditing.md)
+- [Metabot customization](customization.md)
+- [Metabot system prompts](system-prompts.md)

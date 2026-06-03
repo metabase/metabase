@@ -56,19 +56,6 @@ export function precision(a: RowValue): number {
   return Math.pow(10, e);
 }
 
-export function decimalCount(a: number): number {
-  if (!isFinite(a)) {
-    return 0;
-  }
-  let e = 1;
-  let p = 0;
-  while (Math.round(a * e) / e !== a) {
-    e *= 10;
-    p++;
-  }
-  return p;
-}
-
 export function computeNumericDataInterval(xValues: RowValues): number {
   let bestPrecision = Infinity;
   for (const value of xValues) {

@@ -33,16 +33,76 @@ _Data Studio > Jobs_
 
 Jobs run one or more transforms on schedule based on transform tags.
 
-To see all jobs, go to **Data Studio** and click on the **Jobs** at the bottom of the left sidebar.
-
-To create a new job, go to **Data Studio > Jobs**, and click on the **+ New** button in the top right.
-
 Jobs have two components: schedule and tags.
 
 - **Schedule** determines when the job will be executed: daily, hourly, etc. You can specify a custom cron schedule (e.g. "Every weekday at 9:05 AM"). The times are given in your Metabase's system timezone.
 - **Tags** determine _which_ transforms a job runs, not when the job runs. For example, you can create a `Weekdays` tag, add that tag to a few transforms, then create a job that runs all the transforms with the `Weekdays` tag every weekday at 9:05AM.
 
-Job can use multiple tags, and will run all transforms that have _any_ of those tags. For example, you can have a job "Weekend job" that is scheduled run at noon on Saturdays and Sundays that picks up all transforms tagged either "Saturday", "Sunday", or "Weekend".
+Jobs will run all transforms tagged with any of the tags, plus any transforms that the tagged transforms depend on, see [Jobs will run all dependent transforms](#jobs-will-run-all-dependent-transforms).
+
+You can see which transforms a job will run and in which order on the job's page.
+
+### See all jobs
+
+To see all jobs, go to **Data Studio** and click the **Jobs** at the bottom of the left sidebar.
+
+### Create a job
+
+To create a new job:
+
+1. Go to **Data Studio > Jobs**
+2. Click the **+ New** button in the top right.
+3. Specify the schedule: select one of the built-in schedules or use cron syntax to specify a custom schedule,
+
+   ![Jobs schedule](../images/jobs-schedule.png)
+
+   Job can use multiple tags, and will run all transforms that have _any_ of those tags. For example, you can have a job "Weekend job" that is scheduled run at noon on Saturdays and Sundays that picks up all transforms tagged either "Saturday", "Sunday", or "Weekend".
+
+### Disable jobs
+
+You can disable jobs without deleting them. Unlike deletion (which is permanent), disabling a job just means it won't run until you re-enable it. This is useful when you want to temporarily stop transforms from running - for example, for debugging purposes. This way you don't your lose configuration settings like tags and schedules.
+
+To disable a specific job:
+
+1. Go to **Data studio > Jobs**.
+2. Find the job you want to disable and click the **three dots** icon to the right of the job's name.
+3. Select **Disable**
+
+To disable all jobs:
+
+1. Go to **Data studio > Jobs**.
+2. Click the **three dots** icon above the table with all the jobs, and select **Disable all**.
+
+   ![Disable all jobs](../images/disable-all-jobs.png)
+
+Even if you disable all jobs, new jobs will still be created enabled by default.
+
+### Re-enable jobs
+
+If you [disabled any jobs](#disable-jobs), you can later re-enable them:
+
+To re-enable a specific job:
+
+1. Go to **Data studio > Jobs**.
+2. Find the job you want to re-enable and click the **three dots** icon to the right of the job's name.
+3. Select **Re-enable**
+
+To re-enable all jobs:
+
+1. Go to **Data studio > Jobs**.
+2. Click the **three dots** icon above the table with all the jobs, and select **Re-enable all**.
+
+### Delete a job
+
+Deleting a job will not delete any transforms.
+
+Deleted jobs can't be restored. If you want to temporarily stop a job from running, consider disabling the job instead.
+
+To delete a job:
+
+1. Go to **Data Studio > Jobs**.
+2. Find the job you want to delete and click the **three dots** icon to the right of the job's name.
+3. Select **Delete**.
 
 ## Jobs will run all dependent transforms
 

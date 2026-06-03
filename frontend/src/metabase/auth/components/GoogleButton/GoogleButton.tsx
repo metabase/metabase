@@ -8,8 +8,8 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { Link } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
-import * as Urls from "metabase/utils/urls";
 
 import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";

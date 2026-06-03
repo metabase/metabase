@@ -3,12 +3,12 @@ import {
   cardParametersAreEquivalent,
 } from "metabase/common/utils/card";
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { setErrorPage } from "metabase/redux/app";
 import type { Dispatch } from "metabase/redux/store";
 import { DashboardApi } from "metabase/services";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import type { Card, Parameter } from "metabase-types/api";
 
 type BlankQueryOptions = {

@@ -9,6 +9,7 @@
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -1205,14 +1206,14 @@
                 products-id (mt/id :products)
                 products (lib.metadata/table mp products-id)
                 price (lib.metadata/field mp (mt/id :products :price))
-              ;; Create measure A (base measure) via API
+                ;; Create measure A (base measure) via API
                 {measure-a-id :id} (mt/user-http-request :crowberto :post 200 "measure"
                                                          {:name "Measure A"
                                                           :table_id products-id
                                                           :definition (-> (lib/query mp products)
                                                                           (lib/aggregate (lib/sum price)))})
                 mp' (mt/metadata-provider)
-              ;; Create measure B that depends on measure A
+                ;; Create measure B that depends on measure A
                 {measure-b-id :id} (mt/user-http-request :crowberto :post 200 "measure"
                                                          {:name "Measure B"
                                                           :table_id products-id
@@ -1220,7 +1221,7 @@
                                                                           (lib/aggregate (lib/* (lib.metadata/measure mp' measure-a-id)
                                                                                                 2)))})
                 mp'' (mt/metadata-provider)
-              ;; Create measure C that depends on measure B
+                ;; Create measure C that depends on measure B
                 {measure-c-id :id} (mt/user-http-request :crowberto :post 200 "measure"
                                                          {:name "Measure C"
                                                           :table_id products-id
@@ -1237,14 +1238,14 @@
                 (is (contains? node-ids measure-b-id))
                 (is (contains? node-ids measure-c-id))
                 (is (contains? node-ids products-id))
-              ;; Verify the edge from B to A exists
+                ;; Verify the edge from B to A exists
                 (is (some #(and (= (:from_entity_type %) "measure")
                                 (= (:from_entity_id %) measure-b-id)
                                 (= (:to_entity_type %) "measure")
                                 (= (:to_entity_id %) measure-a-id))
                           edges)
                     "Edge from B to A should exist")))
-          ;; Archive measure B (the middle of the chain)
+            ;; Archive measure B (the middle of the chain)
             (mt/user-http-request :crowberto :put 200 (str "measure/" measure-b-id)
                                   {:archived true :revision_message "Archive middle measure"})
             (deps.test/synchronously-run-backfill!)
@@ -1256,7 +1257,7 @@
                 (is (contains? node-ids measure-c-id) "measure C should still appear")
                 (is (not (contains? node-ids measure-b-id)) "archived measure B should be excluded")
                 (is (not (contains? node-ids measure-a-id)) "measure A should be excluded (unreachable)")
-              ;; products table still appears because measure C has a direct dependency on it
+                ;; products table still appears because measure C has a direct dependency on it
                 (is (contains? node-ids products-id) "products table still appears (direct dep from C)")))
             (testing "with archived=true, the full chain is visible again"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
@@ -1348,7 +1349,11 @@
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
             products (lib.metadata/table mp (mt/id :products))]
-        (mt/with-temp [:model/Transform {unreffed-transform-id :id} {:name "Unreferenced Transform - unreftest"
+        (mt/with-temp [:model/Table     {referenced-table-id :id} {:db_id  (mt/id)
+                                                                   :schema "PUBLIC"
+                                                                   :name   "referenced_transform_table"
+                                                                   :active true}
+                       :model/Transform {unreffed-transform-id :id} {:name "Unreferenced Transform - unreftest"
                                                                      :source {:type :query
                                                                               :query (lib/query mp products)}
                                                                      :target {:schema "PUBLIC"
@@ -1358,24 +1363,20 @@
                                                                                 :query (lib/query mp products)}
                                                                        :target {:schema "PUBLIC"
                                                                                 :name "referenced_transform_table"}}]
-          ;; Simulate the referenced transform having been run: activate its provisional target table
+          ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph (which filters active=true).
-          (t2/update! :model/Table {:db_id (mt/id) :schema "PUBLIC" :name "referenced_transform_table"} {:active true})
+          (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
                                            :output-schema "PUBLIC"
                                            :output-table "referenced_transform_table"
                                            :transform-id referenced-transform-id}})
           (deps.test/synchronously-run-backfill!)
-          (try
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
-              (is (=? {:data [{:id unreffed-transform-id
-                               :type "transform"
-                               :data {:name "Unreferenced Transform - unreftest"}}]}
-                      response)))
-            (finally
-              ;; Clean up provisional table rows created by define-before-insert
-              (t2/delete! :model/Table :db_id (mt/id) :name [:in ["referenced_transform_table" "unreferenced_transform_table"]]))))))))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
+            (is (=? {:data [{:id unreffed-transform-id
+                             :type "transform"
+                             :data {:name "Unreferenced Transform - unreftest"}}]}
+                    response))))))))
 
 (deftest ^:sequential unreferenced-snippets-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced snippets are returned"
@@ -1554,6 +1555,57 @@
               snippet-ids (set (map :id (:data response)))]
           (is (contains? snippet-ids unreffed-snippet-id))
           (is (not (contains? snippet-ids archived-snippet-id))))))))
+
+(deftest ^:sequential unreferenced-excludes-internal-content-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced excludes system-managed (internal-user) content"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Card {regular-card-id :id} {:name "Regular Card - intcontent"
+                                                          :type :question
+                                                          :dataset_query (lib/query mp products)}
+                       :model/Card {internal-card-id :id} {:name "Internal Card - intcontent"
+                                                           :type :question
+                                                           :creator_id config/internal-mb-user-id
+                                                           :dataset_query (lib/query mp products)}
+                       :model/Dashboard {regular-dashboard-id :id} {:name "Regular Dashboard - intcontent"}
+                       :model/Dashboard {internal-dashboard-id :id} {:name "Internal Dashboard - intcontent"
+                                                                     :creator_id config/internal-mb-user-id}]
+          (deps.test/synchronously-run-backfill!)
+          (testing "internal-user cards are filtered out"
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/unreferenced?types=card&query=intcontent")
+                  card-ids (set (map :id (:data response)))]
+              (is (contains? card-ids regular-card-id))
+              (is (not (contains? card-ids internal-card-id)))))
+          (testing "internal-user dashboards are filtered out"
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/unreferenced?types=dashboard&query=intcontent")
+                  dashboard-ids (set (map :id (:data response)))]
+              (is (contains? dashboard-ids regular-dashboard-id))
+              (is (not (contains? dashboard-ids internal-dashboard-id))))))))))
+
+(deftest ^:sequential breaking-entities-includes-internal-content-test
+  (testing "GET /api/ee/dependencies/graph/breaking still surfaces internal-user (system-managed) content"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
+          (let [[internal-model dependent-card]
+                (lib-be/with-metadata-provider-cache
+                  (let [internal-model (create-model-card! user "Internal Model - intbreaking")
+                        dependent-card (create-dependent-card-on-model! user internal-model "Dependent - intbreaking")]
+                    [internal-model dependent-card]))]
+            (t2/update! :model/Card (:id internal-model) {:creator_id config/internal-mb-user-id})
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! (t2/select-one :model/Card :id (:id internal-model))))
+            (lib-be/with-metadata-provider-cache
+              (deps.test/synchronously-run-backfill!)
+              (run-analysis-for-card! (:id dependent-card)))
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/breaking?types=card&query=intbreaking")
+                  card-ids (set (map :id (:data response)))]
+              (is (contains? card-ids (:id internal-model))
+                  "Internal-user model card should still appear in breaking list"))))))))
 
 (deftest ^:sequential unreferenced-archived-segment-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for segments"
@@ -2586,14 +2638,12 @@
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set))))
-
           (testing "both tables returned with unused_only=false"
             (is (= #{table-1-id table-2-id}
                    (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only false)
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set))))
-
           (mt/with-temp [:model/Card card {:database_id   db-id
                                            :table_id      table-1-id
                                            :dataset_query {:database db-id

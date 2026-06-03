@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { getGuestEmbedFilteredParameters } from "embedding-sdk-bundle/lib/get-guest-embed-filtered-parameters";
 import {
   QuestionDownloadWidget,
   type UseDownloadDataParams,
@@ -24,7 +25,7 @@ const DownloadWidgetInner = ({
   ...rest
 }: DownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
-  const { withDownloads } = useSdkQuestionContext();
+  const { withDownloads, parameterValues } = useSdkQuestionContext();
   const { token } = useEmbeddingEntityContext();
 
   const visualizationSettings = useMemo(
@@ -35,10 +36,19 @@ const DownloadWidgetInner = ({
     [question, result],
   );
 
+  // For Guest Embeds, downloads must honor the active editable filter state
+  // (EMB-1549). The `params` slug-keyed map mirrors what `runQuestionQuerySdk`
+  // sends for live results.
+  const params = useMemo(
+    () => getGuestEmbedFilteredParameters(question, parameterValues),
+    [question, parameterValues],
+  );
+
   const [, handleDownload] = useDownloadData({
     question,
     result,
     token,
+    params,
     visualizationSettings,
   });
 

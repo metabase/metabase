@@ -36,11 +36,9 @@
   easier for the caller.
   "
   ([cards display-type]
-   (let [{:keys [width height]} (:default (get dashboard.constants/card-size-defaults display-type))]
-     (get-position-for-new-dashcard cards
-                                    width
-                                    height
-                                    default-grid-width)))
+   (let [{:keys [width height]} (merge dashboard.constants/default-card-size
+                                       (:default (get dashboard.constants/card-size-defaults display-type)))]
+     (get-position-for-new-dashcard cards width height default-grid-width)))
   ([cards size-x size-y grid-width]
    (let [dashboard-tab-id (:dashboard_tab_id (first cards))]
      (first

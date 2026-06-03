@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.driver.bigquery-cloud-sdk-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.driver.bigquery-cloud-sdk-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -8,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib.core :as lib]
@@ -16,6 +20,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.impl :as data.impl]
@@ -28,7 +33,8 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery BigQuery TableResult)))
+   (com.google.cloud.bigquery BigQuery BigQueryException TableResult)
+   (com.google.cloud.http HttpTransportOptions)))
 
 (set! *warn-on-reflection* true)
 
@@ -396,7 +402,6 @@
                    (into #{}
                          (filter (comp #{view-name} :name))
                          (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
-
         (testing "We should be able to run queries against the view (#3414)"
           (is (= [[1 "Red Medicine" "Asian"]
                   [2 "Stout Burgers & Beers" "Burger"]
@@ -420,7 +425,6 @@
                    (into #{}
                          (filter (comp #{view-name} :name))
                          (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
-
         (testing "We should be able to run queries against the view (#3414)"
           (is (= [[42]]
                  (mt/rows
@@ -554,12 +558,10 @@
                                              "partition_by_range_not_required"
                                              "partition_by_ingestion_time_not_required"} :name))
                              (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
-
             (testing "tables that require a filter are correctly identified"
               (is (= table-name->is-filter-required?
                      (t2/select-fn->fn :name :database_require_filter :model/Table
                                        :name [:in (keys table-name->is-filter-required?)]))))
-
             (testing "partitioned fields are correctly identified"
               (is (= {["not_partitioned"                 "transaction_id"]   false
                       ["partition_by_range_not_required" "customer_id"]      true
@@ -654,6 +656,32 @@
               (finally
                 (drop-table-if-exists! table-name)))))))))
 
+(deftest ^:synchronized sync-fields-grouped-by-table!-on-partitioned-bigquery-table-test
+  (testing "Partitioned BigQuery tables that require a partition filter can't go through
+            run-distinct-batch directly (it bypasses the metadata-from-qp middleware that
+            injects the partition filter). sync-fields-grouped-by-table! should detect this
+            via can-batch-distinct? and fall back to the per-field path, which does go through
+            the middleware. The distinct values must still come back correctly."
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/dataset native-dataset
+        (let [category-field-id (u/auto-retry 1
+                                  (try (mt/id :fv_partitioned_table :category)
+                                       (catch Exception e
+                                         (sync/sync-database! (mt/db) {:scan :schema})
+                                         (throw e))))
+              category-field    (t2/select-one :model/Field :id category-field-id)
+              table             (t2/select-one :model/Table :id (:table_id category-field))]
+          (testing "Dispatcher identifies this as a non-batch-able table"
+            (is (false? (#'sync.field-values/can-batch-distinct? table))))
+          (testing "Distinct values come back correctly via the fallback per-field path"
+            (t2/update! :model/Field category-field-id {:has_field_values :list})
+            (t2/delete! :model/FieldValues :field_id category-field-id)
+            (sync.field-values/sync-fields-grouped-by-table! [category-field])
+            (is (= #{"coffee" "tea" "matcha"}
+                   (set (:values (t2/select-one :model/FieldValues
+                                                :field_id category-field-id
+                                                :type :full)))))))))))
+
 (deftest search-field-from-table-requires-a-filter-test
   (testing "#40673"
     (mt/test-driver
@@ -707,7 +735,6 @@
                                                :parameter_mappings [{:parameter_id "_NAME_"
                                                                      :card_id      (:id card-product)
                                                                      :target       [:dimension (mt/$ids $cf_product.name)]}]}]
-
           (testing "chained filter works"
             (is (= {:has_more_values false
                     :values          [["Americano"] ["Cold brew"]]}
@@ -738,6 +765,36 @@
             {:database (mt/id)
              :type     :native
              :native   {:query "SELECT abc FROM 123;"}}))))))
+
+(deftest synchronous-bigquery-exception-is-invalid-query-test
+  (testing (str "BigQueryException thrown synchronously from .create (e.g. 'Too many query "
+                "parameters') is wrapped with :type :invalid-query so the FE renders the "
+                "actual error instead of 'We're experiencing server issues' (#71558)")
+    ;; Simulate BigQuery rejecting the job at submission time (the synchronous .create path),
+    ;; which is what happens when a query exceeds the 10000 parameter limit. Only `.create` is
+    ;; called on the client before the throw, so the reify can stop there.
+    (let [sync-error  (BigQueryException.
+                       400
+                       "Too many query parameters: 13444 exceeds limit of 10000.")
+          mock-client (reify BigQuery
+                        (^com.google.cloud.bigquery.Job create
+                          [_
+                           ^com.google.cloud.bigquery.JobInfo _job-info
+                           ^"[Lcom.google.cloud.bigquery.BigQuery$JobOption;" _opts]
+                          (throw sync-error)))]
+      (with-redefs [bigquery/database-details->client (constantly mock-client)]
+        (let [ex (try
+                   (#'bigquery/execute-bigquery (constantly nil) {} "SELECT 1" [] nil)
+                   nil
+                   (catch Throwable t t))]
+          (is (some? ex)
+              "expected execute-bigquery to throw")
+          (is (instance? clojure.lang.ExceptionInfo ex)
+              "execute-bigquery should wrap the raw BigQueryException in an ex-info")
+          (is (= :invalid-query (some-> ex ex-data :type))
+              "synchronous BigQueryException should be classified as :invalid-query")
+          (is (re-find #"Too many query parameters" (ex-message ex))
+              "the underlying BigQuery error message should be preserved"))))))
 
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1257,7 +1314,6 @@
          [[12345678901234567890.1234567890M]
           [22345678901234567890.1234567890M]
           [32345678901234567890.1234567890M]]]])
-
       ;; Must sync field values
       (sync/sync-database! (mt/db))
       (is (= "BIGNUMERIC"
@@ -1324,7 +1380,7 @@
     (testing "Read timeout is configured as the query-timeout-ms setting"
       (let [^BigQuery client (#'bigquery/database-details->client (:details (mt/db)))
             options (.getOptions client)
-            transport-options (.getTransportOptions options)]
+            ^HttpTransportOptions transport-options (.getTransportOptions options)]
         (is (= driver.settings/*query-timeout-ms*
                (.getReadTimeout transport-options)))))))
 
@@ -1381,3 +1437,24 @@
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
 
+(deftest ^:parallel ws-sa-description-roundtrip-test
+  (testing "ws-sa-description and ws-sa-description->created-at are exact inverses"
+    ;; This is a contract test. The SA description is the only place the
+    ;; created-at marker is stored, so the writer in
+    ;; `ws-create-service-account!` and the reader used by CI cleanup
+    ;; (`metabase.test.data.bigquery-cloud-sdk/delete-old-isolation-service-accounts!`)
+    ;; must agree on format. If this test fails, orphan SA cleanup will
+    ;; silently break -- expired SAs will accumulate because their created-at
+    ;; can no longer be parsed.
+    (doseq [instant [(java.time.Instant/parse "2026-01-15T10:30:45.123456789Z")
+                     (java.time.Instant/parse "2026-12-31T23:59:59Z")
+                     (java.time.Instant/parse "2020-06-15T00:00:00Z")
+                     (java.time.Instant/now)]]
+      (is (= instant
+             (bigquery.ws/ws-sa-description->created-at (bigquery.ws/ws-sa-description instant)))
+          (str "round-trip failed for " instant))))
+  (testing "ws-sa-description->created-at returns nil for non-conforming inputs"
+    (is (nil? (bigquery.ws/ws-sa-description->created-at nil)))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "")))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "some other description")))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "created-at:not-an-instant")))))

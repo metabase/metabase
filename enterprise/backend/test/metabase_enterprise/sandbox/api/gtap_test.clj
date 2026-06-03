@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.api.gtap-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.gtap-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
@@ -14,7 +15,6 @@
     (mt/with-premium-features #{:sandboxes}
       (is (= (get api.response/response-unauthentic :body)
              (client/client :get 401 "mt/gtap")))
-
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "mt/gtap"))))))
 
@@ -73,7 +73,6 @@
                (filter
                 #(#{gtap-id-1 gtap-id-2} (:id %))
                 (mt/user-http-request :crowberto :get 200 "mt/gtap/")))))
-
         (testing "Test that we can fetch the GTAP for a specific table and group"
           (is (partial=
                {:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
@@ -95,7 +94,6 @@
                      (mt/boolean-ids-and-timestamps post-results)))
               (is (= post-results
                      (mt/user-http-request :crowberto :get 200 (format "mt/gtap/%s" (:id post-results)))))))))
-
       (testing "Test that we can create a new GTAP without a card"
         (with-gtap-cleanup!
           (let [post-results (gtap-post {:table_id             table-id
@@ -106,7 +104,6 @@
                    (mt/boolean-ids-and-timestamps post-results)))
             (is (= post-results
                    (mt/user-http-request :crowberto :get 200 (format "mt/gtap/%s" (:id post-results))))))))
-
       (testing "Meaningful errors should be returned if you create an invalid GTAP"
         (mt/with-temp [:model/Field _ {:name "My field" :table_id table-id :base_type :type/Integer}
                        :model/Card  {card-id :id} {:dataset_query (mt/mbql-query venues
@@ -133,7 +130,6 @@
                                   {:table_id             table-id
                                    :group_id             group-id
                                    :card_id              card-id}))))
-
       (testing "A sandbox without a card-id passes validation, because the validation is not applicable in this case"
         (with-gtap-cleanup!
           (mt/user-http-request :crowberto :post 204 "mt/gtap/validate"
@@ -141,7 +137,6 @@
                                  :group_id             group-id
                                  :card_id              nil
                                  :attribute_remappings {"foo" 1}})))
-
       (testing "An invalid sandbox results in a 400 error being returned"
         (mt/with-temp [:model/Field _ {:name "My field", :table_id table-id, :base_type :type/Integer}
                        :model/Card  {card-id :id} {:dataset_query (mt/mbql-query venues
@@ -200,7 +195,6 @@
                    (mt/boolean-ids-and-timestamps
                     (mt/user-http-request :crowberto :put 200 (format "mt/gtap/%s" gtap-id)
                                           {:attribute_remappings {:bar 2}}))))))
-
         (testing "Test that we can add a card_id via PUT"
           (mt/with-temp [:model/Sandbox {gtap-id :id} {:table_id             table-id
                                                        :group_id             group-id
@@ -210,7 +204,6 @@
                    (mt/boolean-ids-and-timestamps
                     (mt/user-http-request :crowberto :put 200 (format "mt/gtap/%s" gtap-id)
                                           {:card_id card-id}))))))
-
         (testing "Test that we can remove a card_id via PUT"
           (mt/with-temp [:model/Sandbox {gtap-id :id} {:table_id             table-id
                                                        :group_id             group-id
@@ -220,7 +213,6 @@
                    (mt/boolean-ids-and-timestamps
                     (mt/user-http-request :crowberto :put 200 (format "mt/gtap/%s" gtap-id)
                                           {:card_id nil}))))))
-
         (testing "Test that we can remove a card_id and change attribute remappings via PUT"
           (mt/with-temp [:model/Sandbox {gtap-id :id} {:table_id             table-id
                                                        :group_id             group-id
@@ -256,7 +248,6 @@
                         :attribute_remappings {:foo 1}}]
                       (:sandboxes result)))
               (is (t2/exists? :model/Sandbox :table_id table-id-1 :group_id group-id))))
-
           (testing "Test that we can update a sandbox using the permission graph API"
             (let [sandbox-id (t2/select-one-fn :id :model/Sandbox
                                                :table_id table-id-1
@@ -273,7 +264,6 @@
                             (t2/select-one :model/Sandbox
                                            :table_id table-id-1
                                            :group_id group-id)))))
-
           (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
             (let [sandbox-id (t2/select-one-fn :id :model/Sandbox
                                                :table_id table-id-1

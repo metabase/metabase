@@ -3,7 +3,11 @@ import querystring from "querystring";
 import _ from "underscore";
 
 import { clone } from "metabase/utils/clone";
-import { b64hash_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
+import {
+  b64hash_to_utf8,
+  b64url_to_utf8,
+  utf8_to_b64url,
+} from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -14,6 +18,7 @@ import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   ActionParametersMapping,
   Card,
+  CardId,
   DashboardParameterMapping,
   DatasetQuery,
   LegacyDatasetQuery,
@@ -58,7 +63,8 @@ function getCleanCard(
   if (includeDatasetQuery) {
     keysToInclude.push("dataset_query");
   }
-  if (includeOriginalCardId) {
+  if (includeOriginalCardId && !isTransientCardId(value.original_card_id)) {
+    // transient card id's are never included
     keysToInclude.push("original_card_id");
   }
   if (includeDisplayIsLocked) {
@@ -100,6 +106,18 @@ export function serializeCardForUrl(
 
 export function deserializeCardFromUrl(serialized: string): Card {
   return JSON.parse(b64hash_to_utf8(serialized));
+}
+
+/**
+ * Converts a Metabot `navigate_to` path like `/question#<base64>` into a
+ * Card suitable for `deserializedCard`.
+ *
+ * Sole producer is Metabot's `navigate_to` stream part, which always emits
+ * `/question#<base64>`. Intentionally not guarded against other shapes.
+ */
+export function deserializeCardFromQuery(query: string): Card {
+  const base64 = query.replace(/^\/question#/, "");
+  return JSON.parse(b64url_to_utf8(base64));
 }
 
 export function deserializeCard(serializedCard: string) {
@@ -248,4 +266,8 @@ export function applyParameters(
   }
 
   return datasetQuery;
+}
+
+export function isTransientCardId(id: CardId | string | null | undefined) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }

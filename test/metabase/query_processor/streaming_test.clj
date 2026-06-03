@@ -1,4 +1,5 @@
 (ns metabase.query-processor.streaming-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.streaming-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
@@ -403,7 +404,7 @@
                             :limit        2}}
     :assertions {:csv  (fn [results]
                          (is (string? results))
-                          ;; CSVs round decimals to 2 digits without viz-settings
+                         ;; CSVs round decimals to 2 digits without viz-settings
                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                  ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
                                  ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
@@ -755,7 +756,6 @@
           _ (a/>!! canceled-chan ::cancel)
           query (mt/mbql-query venues {:limit 1})
           mock-rff (constantly identity)]
-
       (binding [qp.pipeline/*canceled-chan* canceled-chan]
         (let [result (qp.pipeline/*run* query mock-rff)]
           (is (nil? result) "Cancelled query returns nil")
@@ -764,10 +764,9 @@
 (deftest streaming-response-handles-cancellation-test
   (testing "Streaming response handles cancellation gracefully without assertion errors"
     (let [mock-qp-fn (fn [rff]
-                      ;; Simulate immediate cancellation
-                       (with-redefs [qp.pipeline/canceled? (constantly true)]
+                       ;; Simulate immediate cancellation
+                       (mt/with-dynamic-fn-redefs [qp.pipeline/canceled? (constantly true)]
                          (qp.pipeline/*run* (mt/mbql-query venues {:limit 1}) rff)))]
-
       ;; Should not throw "QP unexpectedly returned nil" assertion error
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
           "Streaming response should handle cancellation without assertion error"))))
@@ -776,9 +775,8 @@
   (testing "Streaming response handles nil + canceled? gracefully"
     (let [mock-qp-fn (fn [_rff]
                        ;; Return nil and set up canceled? to return truthy
-                       (with-redefs [qp.pipeline/canceled? (constantly ::cancel)]
+                       (mt/with-dynamic-fn-redefs [qp.pipeline/canceled? (constantly ::cancel)]
                          nil))]
-
       ;; Should not throw any assertion errors
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
           "Streaming response should handle cancellation without assertion error"))))

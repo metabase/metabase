@@ -4,12 +4,9 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import type { DisplayTheme } from "metabase/embedding/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
-import type {
-  DisplayTheme,
-  EmbedResourceDownloadOptions,
-} from "metabase/public/lib/types";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -19,6 +16,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
   Dataset,
+  EmbedResourceDownloadOptions,
   ParameterId,
   ParameterValuesMap,
   RawSeries,

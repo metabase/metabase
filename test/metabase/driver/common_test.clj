@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.common-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.common-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.common-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -60,7 +62,7 @@
 (deftest cloud-ip-address-info-test
   (testing "The cloud-ip-address-info field is correctly resolved when fetching driver connection properties"
     (mt/with-temp-env-var-value! [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
-      (with-redefs [premium-features/is-hosted? (constantly true)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
         ;; make sure Postgres driver is initialized before trying to get its connection properties.
         (driver/the-initialized-driver :postgres)
         (let [connection-props (-> (driver.u/available-drivers-info)
@@ -125,7 +127,6 @@
         (mt/as-admin
           (try
             (driver/create-table! driver db-id qualified-table-name column-definitions {})
-
             (testing "insert-from-source! should insert rows with all basic types correctly"
               (let [data-source {:type :rows :data data}
                     _ (driver/insert-from-source! driver db-id
@@ -156,7 +157,6 @@
         (mt/as-admin
           (try
             (driver/create-table! driver db-id qualified-table-name column-definitions {})
-
             (testing "insert-from-source! should insert rows from JSONL file correctly"
               (let [temp-file (java.io.File/createTempFile "test-data" ".jsonl")
                     col-names (map :name columns)
@@ -165,11 +165,9 @@
                                      (into {} (map vector col-names row)))
                                    data)]
                 (try
-
                   (with-open [writer (java.io.FileWriter. temp-file)]
                     (doseq [row json-rows]
                       (.write writer (str (json/encode row) "\n"))))
-
                   (let [data-source {:type :jsonl-file :file temp-file}
                         _ (driver/insert-from-source! driver db-id
                                                       {:name qualified-table-name

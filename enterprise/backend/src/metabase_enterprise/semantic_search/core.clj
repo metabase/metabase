@@ -5,12 +5,13 @@
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders]
+   [metabase-enterprise.semantic-search.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
    [metabase.tracing.core :as tracing]
@@ -22,7 +23,9 @@
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
   active-embedding-model
-  search-index-embedder])
+  search-index-embedder]
+ [metabase-enterprise.semantic-search.embedding
+  get-embeddings-batch])
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
@@ -67,10 +70,8 @@
                         final-count threshold raw-count fallback)
             (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
             (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
-
             (when (some-> (:offset-int search-ctx) pos?)
               (log/warn "Using an offset with semantic search will produce strange results, e.g. missing expected results, or duplicating them across pages"))
-
             (let [total-limit      (semantic.settings/semantic-search-results-limit)
                   fallback-results (try
                                      (cond->> (search.engine/results (assoc search-ctx :search-engine fallback))

@@ -1,4 +1,4 @@
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import type { MetricUrls } from "./types";
 
@@ -7,6 +7,7 @@ export const metricUrls: MetricUrls = {
   overview: Urls.metricOverview,
   query: Urls.metricQuery,
   dependencies: Urls.metricDependencies,
-  caching: Urls.metricCaching,
   history: Urls.metricHistory,
+  database: (id) => Urls.browseDatabase({ id }),
+  table: (databaseId, tableId) => Urls.tableRowsQuery(databaseId, tableId),
 };

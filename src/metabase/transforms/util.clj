@@ -9,10 +9,14 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -31,8 +35,8 @@
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
   (cond
-    (transforms-base.u/query-transform? transform) (transforms.gating/query-transforms-enabled?)
-    (transforms-base.u/python-transform? transform) (transforms.gating/python-transforms-enabled?)
+    (transforms-base.u/query-transform? transform) (premium-features/query-transforms-enabled?)
+    (transforms-base.u/python-transform? transform) (premium-features/python-transforms-enabled?)
     :else false))
 
 (defn enabled-source-types-for-user
@@ -114,15 +118,30 @@
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (try
-    (when-not (driver/schema-exists? driver db-id output-schema)
+    (when (and (not (str/blank? output-schema))
+               (not (driver/schema-exists? driver db-id output-schema)))
       (driver/create-schema-if-needed! driver conn-spec output-schema))
-    (let [source-range-params (transforms-base.u/get-source-range-params transform)]
+    (let [source-range-params  (transforms-base.u/get-source-range-params transform)
+          transform-timeout    (transforms.settings/transform-timeout)
+          transform-timeout-ms (u/minutes->ms transform-timeout)]
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
-      (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
+      ;; Enrich the active task.transform.* span with checkpoint range attrs for
+      ;; incremental runs. No-op when tracing is disabled or no span is active.
+      (when source-range-params
+        (tracing/add-span-attrs! :tasks (transforms-base.u/checkpoint-span-attrs source-range-params)))
+      (canceling/chan-start-timeout-vthread! run-id transform-timeout)
       (let [cancel-chan (a/promise-chan)
-            ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
-                  (canceling/chan-start-run! run-id cancel-chan)
-                  (run-transform! cancel-chan source-range-params))]
+            ret (driver.conn/with-transform-connection
+                  ;; Route through the `:transform` JDBC pool, whose `unreturnedConnectionTimeout` will be set
+                  ;; from the `*query-timeout-ms*` binding below at pool-creation time. This keeps the default
+                  ;; pool's leak-detector at `MB_DB_QUERY_TIMEOUT_MINUTES` for all non-transform traffic.
+                  (binding [qp.pipeline/*canceled-chan*          cancel-chan
+                            driver.settings/*query-timeout-ms*   transform-timeout-ms
+                            ;; Match the query timeout so a single slow socket read (or a driver that waits for
+                            ;; the full server-side query) does not get killed before the transform's own deadline.
+                            driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
+                    (canceling/chan-start-run! run-id cancel-chan)
+                    (run-transform! cancel-chan source-range-params)))]
         (transforms-base.u/save-watermark! (:id transform) source-range-params)
         (transform-run/succeed-started-run! run-id)
         ret))
@@ -138,5 +157,5 @@
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
   [table]
   (boolean
-   (when-let [table-name (and (transforms.gating/any-transforms-enabled?) (:name table))]
+   (when-let [table-name (and (premium-features/any-transforms-enabled?) (:name table))]
      (str/starts-with? (u/lower-case-en table-name) driver.u/transform-temp-table-prefix))))

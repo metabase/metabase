@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { type FC, type PropsWithChildren, useMemo } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -33,7 +33,11 @@ import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-l
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
-import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
+import type {
+  SdkQuestionEntityInternalProps,
+  SdkQuestionEntityPublicProps,
+} from "embedding-sdk-bundle/types/question";
+import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
@@ -42,12 +46,7 @@ import type Question from "metabase-lib/v1/Question";
 
 import { staticQuestionSchema } from "./StaticQuestion.schema";
 
-/**
- * @interface
- * @expand
- * @category StaticQuestion
- */
-export type StaticQuestionProps = PropsWithChildren<
+type StaticQuestionBaseProps = PropsWithChildren<
   Pick<
     SdkQuestionProps,
     | "withChartTypeSelector"
@@ -56,13 +55,29 @@ export type StaticQuestionProps = PropsWithChildren<
     | "className"
     | "style"
     | "initialSqlParameters"
+    | "sqlParameters"
+    | "onSqlParametersChange"
     | "hiddenParameters"
     | "withDownloads"
     | "withAlerts"
     | "title"
   >
-> &
+>;
+
+/**
+ * @interface
+ * @expand
+ * @category StaticQuestion
+ */
+export type StaticQuestionProps = StaticQuestionBaseProps &
   SdkQuestionEntityPublicProps;
+
+/**
+ * Internal type that includes the `query` prop used by the `useMetabot` hook.
+ * Not re-exported from the public SDK package entry point.
+ */
+export type StaticQuestionInternalProps = StaticQuestionBaseProps &
+  SdkQuestionEntityInternalProps;
 
 /**
  * @interface
@@ -88,11 +103,15 @@ export type StaticQuestionComponents = {
 };
 
 const StaticQuestionInner = (
-  props: StaticQuestionProps,
+  props: StaticQuestionInternalProps,
 ): JSX.Element | null => {
+  const query = props.query;
+
   // Normalize props for Guest Embed usage (e.g. enforce withDownloads in OSS).
   const normalizedProps =
-    useNormalizeGuestEmbedQuestionOrDashboardComponentProps(props);
+    useNormalizeGuestEmbedQuestionOrDashboardComponentProps(
+      props as StaticQuestionProps,
+    );
 
   const {
     questionId,
@@ -103,12 +122,19 @@ const StaticQuestionInner = (
     className,
     style,
     initialSqlParameters,
+    sqlParameters,
+    onSqlParametersChange,
     hiddenParameters,
     withDownloads,
     withAlerts,
     title = false, // Hidden by default for backwards-compatibility.
     children,
   } = normalizedProps;
+
+  const deserializedCard = useMemo(
+    () => (query ? deserializeCardFromQuery(query) : undefined),
+    [query],
+  );
 
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
@@ -130,11 +156,14 @@ const StaticQuestionInner = (
 
   return (
     <SdkQuestion
-      questionId={questionId ?? null}
+      questionId={questionId}
       token={token}
+      deserializedCard={deserializedCard}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
+      sqlParameters={sqlParameters}
+      onSqlParametersChange={onSqlParametersChange}
       hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
       withAlerts={withAlerts}
@@ -215,10 +244,22 @@ const subComponents: StaticQuestionComponents = {
   SqlParametersList: SqlParametersList,
 };
 
+const _StaticQuestionWrapped = withPublicComponentWrapper(StaticQuestionInner, {
+  supportsGuestEmbed: true,
+});
+
 export const StaticQuestion = Object.assign(
-  withPublicComponentWrapper(StaticQuestionInner, {
-    supportsGuestEmbed: true,
-  }),
+  _StaticQuestionWrapped as FC<StaticQuestionProps>,
+  subComponents,
+  { schema: staticQuestionSchema },
+);
+
+/**
+ * Same runtime component as {@link StaticQuestion}, typed to accept the
+ * internal `query` prop. This component is intended for internal use only.
+ */
+export const StaticQuestionInternal = Object.assign(
+  _StaticQuestionWrapped as FC<StaticQuestionInternalProps>,
   subComponents,
   { schema: staticQuestionSchema },
 );

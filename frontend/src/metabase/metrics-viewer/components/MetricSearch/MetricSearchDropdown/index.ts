@@ -1,1 +1,4 @@
-export { MetricSearchDropdown } from "./MetricSearchDropdown";
+export {
+  MetricSearchDropdown,
+  type MetricSearchDropdownRef,
+} from "./MetricSearchDropdown";

@@ -18,7 +18,7 @@ import {
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { createMockLocation } from "metabase/redux/store/mocks";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";

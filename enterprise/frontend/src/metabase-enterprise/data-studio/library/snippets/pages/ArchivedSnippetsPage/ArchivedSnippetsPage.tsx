@@ -20,7 +20,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { CollectionItem } from "metabase-types/api";
 
 import { useColumnDef } from "./hooks/useColumnDef";
@@ -36,7 +36,7 @@ export function ArchivedSnippetsPage() {
   const [updateSnippet] = useUpdateSnippetMutation();
 
   const handleUnarchiveClick = useCallback(
-    async (item: CollectionItem) => {
+    async (item: Pick<CollectionItem, "id" | "name">) => {
       try {
         await updateSnippet({
           id: item.id,

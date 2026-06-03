@@ -1,11 +1,17 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { plugin as cypressGrepPlugin } from "@cypress/grep/plugin";
 import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
+import {
+  extractFailedTests,
+  reportFailedTestsToConductor,
+} from "./ci_conductor";
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
@@ -15,6 +21,10 @@ import {
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
+import {
+  startCustomVizDevServer,
+  stopCustomVizDevServer,
+} from "./helpers/e2e-custom-viz-dev-server-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 import {
   startMockLlmServer,
@@ -64,22 +74,31 @@ const defaultConfig = {
       : undefined,
   },
 
-  // Note: We can't set `allowCypressEnv: false` yet because @cypress/grep
-  // plugin still uses Cypress.env() internally
-  // FIXME: enable once we upgrade (DEV-1620)
-  // allowCypressEnv: false,
+  allowCypressEnv: false,
 
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(cypressOn, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
 
+    // Build custom-viz .tgz fixtures from sources
+    execFileSync(
+      "node",
+      [
+        path.resolve(
+          __dirname,
+          "../../enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs",
+        ),
+      ],
+      { stdio: "inherit" },
+    );
+
     // Use cypress-on-fix to enable multiple handlers
     const on = cypressOnFix(cypressOn);
 
     // CLI grep can't handle commas in the name
     // needed when we want to run only specific tests
-    config.env.grep ??= process.env.GREP;
+    config.expose.grep ??= process.env.GREP;
 
     // cypress-terminal-report
     if (isCI) {
@@ -142,6 +161,8 @@ const defaultConfig = {
       signJwt,
       startMockLlmServer,
       stopMockLlmServer,
+      startCustomVizDevServer,
+      stopCustomVizDevServer,
     });
 
     /********************************************************************
@@ -150,20 +171,41 @@ const defaultConfig = {
 
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
-    config.env.grepIntegrationFolder = "../../";
-    config.env.grepFilterSpecs = true;
-    config.env.grepOmitFiltered = true;
+    config.expose.grepIntegrationFolder = "../../";
+    config.expose.grepFilterSpecs = true;
+    config.expose.grepOmitFiltered = true;
 
-    require("@cypress/grep/src/plugin")(config);
+    cypressGrepPlugin(config);
 
     if (isCI) {
       cypressSplit(on, config);
       collectFailingTests(on, config);
     }
 
-    // this is an official workaround to keep recordings of the failed specs only
-    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
-    on("after:spec", (spec, results) => {
+    // Surface the resolved Cypress retry ceiling so the ci-conductor reporter
+    // can include it in the payload (CYPRESS_RETRIES isn't otherwise set in CI;
+    // the value lives in mainConfig.retries.runMode). DEV-1999.
+    const resolvedRetries =
+      typeof config.retries === "number"
+        ? config.retries
+        : (config.retries?.runMode ?? 0);
+    process.env.CYPRESS_RETRIES = String(resolvedRetries);
+
+    on("after:spec", async (spec, results) => {
+      // Report failures to ci-conductor mid-run (no-ops unless configured).
+      if (isCI) {
+        // Reporting to ci-conductor must NEVER break the test run, so this is
+        // a hard backstop around everything — extraction, payload build, and
+        // the request. The reporter also handles its own errors internally.
+        try {
+          await reportFailedTestsToConductor(extractFailedTests(spec, results));
+        } catch (error) {
+          console.error("[ci-conductor] reporting failed (ignored)", error);
+        }
+      }
+
+      // this is an official workaround to keep recordings of the failed specs only
+      // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
       if (results && results.video) {
         // Do we have test failures?
         if (results && results.video && results.stats.failures === 0) {
@@ -188,7 +230,7 @@ const defaultConfig = {
   viewportWidth: 1280,
   // enable video recording in run mode
   video: process.env["CYPRESS_VIDEO"] !== "false",
-  videoCompression: true,
+  videoCompression: false,
 };
 
 const mainConfig = {

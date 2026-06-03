@@ -11,12 +11,9 @@ import { getActivePulseParameters } from "metabase/pulse";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Button, Icon, Tooltip } from "metabase/ui";
-import {
-  conjunct,
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/utils/formatting";
+import { conjunct, formatTimeWithUnit } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -106,8 +103,11 @@ function _PulsesListSidebar({
             <PulseCard
               aria-label="Pulse Card"
               key={pulse.id}
-              flat
               canEdit={canEdit}
+              p={0}
+              radius="md"
+              shadow="none"
+              withBorder
               onClick={() =>
                 canEdit &&
                 editPulse(pulse, pulse.channels[0].channel_type as ChannelType)

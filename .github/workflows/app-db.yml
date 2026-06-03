@@ -103,7 +103,7 @@ jobs:
     # "be-tests-mariadb-10-6-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -133,9 +133,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MySQL 8.4
-            junit-name: be-tests-mysql-8-4-ee
-            image: mysql:8.4
+          - name: MySQL 8.0
+            junit-name: be-tests-mysql-8-0-ee
+            image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
@@ -226,7 +226,7 @@ jobs:
     # "be-tests-mariadb-10-6-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -336,7 +336,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -369,7 +369,7 @@ jobs:
     if: always() && !cancelled()
     steps:
       - name: Check job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:

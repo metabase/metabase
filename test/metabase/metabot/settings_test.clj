@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -98,14 +99,14 @@
 
 (deftest metabot-configured-with-direct-provider-no-api-key-test
   (testing "returns false when direct provider has no API key"
-    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
       (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
         (is (false? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-configured-proxy-url-not-fallback-for-direct-provider-test
   (testing "proxy URL alone does not make a direct provider configured"
     (mt/with-premium-features #{:metabase-ai-managed}
-      (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+      (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
         (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
                                            llm-proxy-base-url   "https://proxy.example.com"]
           (is (false? (metabot.settings/llm-metabot-configured?))))))))
@@ -187,3 +188,32 @@
     (mt/with-premium-features #{:metabase-ai-managed}
       (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
         (is (= "metabase/anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+;;; ------------------------------------------- ai-usage-max-retention-days Tests -------------------------------------------
+
+(deftest ai-usage-max-retention-days-default-test
+  (testing "defaults to 180 days when no env var is set"
+    (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days nil]
+      (is (= 180 (metabot.settings/ai-usage-max-retention-days))))))
+
+(deftest ai-usage-max-retention-days-infinite-test
+  (testing "0 is an alias for infinite retention"
+    (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 0]
+      (is (nil? (metabot.settings/ai-usage-max-retention-days))))))
+
+(deftest ai-usage-max-retention-days-passthrough-test
+  (testing "values at or above the minimum pass through unchanged"
+    (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 100]
+      (is (= 100 (metabot.settings/ai-usage-max-retention-days))))))
+
+(deftest ai-usage-max-retention-days-clamp-test
+  (testing "values below the minimum are clamped up to 30"
+    (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 1]
+      (is (= 30 (metabot.settings/ai-usage-max-retention-days))))))
+
+(deftest ai-usage-max-retention-days-read-only-test
+  (testing "the setting is env-var-only and cannot be set at runtime"
+    (is (thrown-with-msg?
+         java.lang.UnsupportedOperationException
+         #"You cannot set ai-usage-max-retention-days"
+         (setting/set! :ai-usage-max-retention-days 30)))))

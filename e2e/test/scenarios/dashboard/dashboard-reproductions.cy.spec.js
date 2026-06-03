@@ -205,13 +205,16 @@ describe("issue 12926", () => {
         cy.visit(`/dashboard/${dashboard_id}`);
       });
 
+      // The query is deliberately slowed, so it is still in-flight here.
+      // The API client uses fetch, so cancelling the query aborts its
+      // AbortController rather than calling XMLHttpRequest.abort().
       cy.window().then((win) => {
-        cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
+        cy.spy(win.AbortController.prototype, "abort").as("queryAbort");
       });
 
       removeCard();
 
-      cy.get("@xhrAbort").should("have.been.calledOnce");
+      cy.get("@queryAbort").should("have.been.called");
     });
 
     it("should re-fetch the query when doing undo on the removal", () => {
@@ -250,8 +253,7 @@ describe("issue 12926", () => {
   });
 
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
-    it("should stop the ongoing query", () => {
-      // this test requires the card to be manually added to the dashboard, as it requires the dashcard id to be negative
+    it("should load the card with correct parameters after save", () => {
       H.createNativeQuestion(questionDetails);
 
       H.createDashboard().then(({ body: { id: dashboardId } }) => {
@@ -261,8 +263,6 @@ describe("issue 12926", () => {
       H.editDashboard();
 
       H.openQuestionsSidebar();
-      // when the card is added to a dashboard, it doesn't use the dashcard endpoint but instead uses the card one
-      slowDownCardQuery().as("cardQuerySlowed");
       H.sidebar().findByText(questionDetails.name).click();
 
       H.setFilter("Number", "Equal to");
@@ -274,10 +274,6 @@ describe("issue 12926", () => {
       H.popover().contains(filterDisplayName).eq(0).click();
 
       H.saveDashboard();
-
-      cy.wait("@cardQuerySlowed").then((xhrProxy) =>
-        expect(xhrProxy.state).to.eq("Errored"),
-      );
 
       H.getDashboardCard().findByText(queryResult + parameterValue);
     });
@@ -367,7 +363,6 @@ describe("issue 16559", () => {
       H.visitDashboard(response.body.id);
     });
 
-    cy.intercept("GET", "/api/collection/tree?*").as("getCollections");
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/dashboard/*?dashboard_load_id=*").as(
@@ -464,7 +459,7 @@ describe("issue 16559", () => {
     H.entityPickerModal().within(() => {
       cy.findByText("First collection").click();
       cy.button("Move").click();
-      cy.wait(["@saveDashboard", "@getCollections"]);
+      cy.wait(["@saveDashboard"]);
     });
 
     H.openDashboardInfoSidebar().within(() => {

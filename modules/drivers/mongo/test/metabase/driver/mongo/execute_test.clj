@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.execute-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mongo.execute-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mongo.execute-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
@@ -70,9 +72,9 @@
     :mongo
     (mt/dataset
       test-data
-    ;; Dummy query execution here. If the dataset was not initialized before running this test, the timing gets out of
-    ;; sync and test fails. I suspect dataset initialization happens after (or while) the future is executed.
-    ;; To overcome that next line is executed - and dataset initialization forced - before the test code runs.
+      ;; Dummy query execution here. If the dataset was not initialized before running this test, the timing gets out of
+      ;; sync and test fails. I suspect dataset initialization happens after (or while) the future is executed.
+      ;; To overcome that next line is executed - and dataset initialization forced - before the test code runs.
       (mt/run-mbql-query people {:limit 10})
       (let [canceled-chan (a/chan)]
         (binding [qp.pipeline/*canceled-chan* canceled-chan]
@@ -117,7 +119,7 @@
                                                               (throw t))))]
               (let [model-based-query (-> (mt/mbql-query orders {:source-table (str "card__" (:id c))})
                                           (update :cache_strategy assoc
-                                                 ;; Enable caching for current query
+                                                  ;; Enable caching for current query
                                                   :avg-execution-time 5000
                                                   :min_duration_ms 1
                                                   :multiplier 100000

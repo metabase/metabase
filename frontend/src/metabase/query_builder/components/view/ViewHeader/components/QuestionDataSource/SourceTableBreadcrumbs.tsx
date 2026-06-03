@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 

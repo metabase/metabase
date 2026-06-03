@@ -1,18 +1,23 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { Component, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  cardApi,
+  databaseApi,
+  useLazyListDatabaseSchemaTablesQuery,
+  useLazyListDatabaseSchemasQuery,
+  useListDatabasesQuery,
+  useSearchQuery,
+} from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Databases } from "metabase/entities/databases";
-import { Questions } from "metabase/entities/questions";
-import { Schemas } from "metabase/entities/schemas";
-import { Search } from "metabase/entities/search";
-import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/redux";
+import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { canUserCreateQueries } from "metabase/selectors/user";
@@ -22,6 +27,7 @@ import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { parseSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 import DataBucketPicker from "../DataSelectorDataBucketPicker";
 import DatabasePicker from "../DataSelectorDatabasePicker";
@@ -282,7 +288,6 @@ export class UnconnectedDataSelector extends Component {
   }
 
   isSearchLoading = () => {
-    // indicates status of API request triggered by Search.loadList
     return this.props.loading;
   };
 
@@ -858,53 +863,120 @@ export class UnconnectedDataSelector extends Component {
   }
 }
 
-const DataSelector = _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-    listName: "databases",
-    query: { saved: true },
-  }),
-  // If there is at least one model,
-  // we want to display a slightly different data picker view
-  // (see DATA_BUCKET step)
-  Search.loadList({
-    query: {
+// Exposes `fetchSchemas` / `fetchSchemaTables` as props backed by RTK's lazy
+// query triggers. The triggers' subscriptions are tied to this wrapper's
+// lifecycle, so the cache is released when the DataSelector unmounts.
+function withSchemaFetchers(WrappedComponent) {
+  return function DataSelectorWithSchemaFetchers(props) {
+    const [triggerListSchemas] = useLazyListDatabaseSchemasQuery();
+    const [triggerListSchemaTables] = useLazyListDatabaseSchemaTablesQuery();
+
+    const fetchSchemas = useCallback(
+      (databaseId) => triggerListSchemas({ id: databaseId }).unwrap(),
+      [triggerListSchemas],
+    );
+
+    const fetchSchemaTables = useCallback(
+      (schemaId) => {
+        const [dbId, schema] = parseSchemaId(schemaId);
+        return triggerListSchemaTables({ id: dbId, schema }).unwrap();
+      },
+      [triggerListSchemaTables],
+    );
+
+    return (
+      <WrappedComponent
+        {...props}
+        fetchSchemas={fetchSchemas}
+        fetchSchemaTables={fetchSchemaTables}
+      />
+    );
+  };
+}
+
+// If there is at least one model, we want to display a slightly different
+// data picker view (see DATA_BUCKET step). Pre-fetches available models via
+// search and exposes them as `metadata`/`loading`/`loaded` props.
+function withAvailableModels(WrappedComponent) {
+  return function DataSelectorWithAvailableModels(props) {
+    const { data: response, isLoading } = useSearchQuery({
       calculate_available_models: true,
       limit: 0,
       models: ["dataset"],
-    },
-    loadingAndErrorWrapper: false,
-  }),
+    });
+    const { data: _data, ...metadata } = response ?? {};
+    return (
+      <WrappedComponent
+        {...props}
+        metadata={metadata}
+        loading={isLoading}
+        loaded={!isLoading && response != null}
+        allLoading={isLoading || (props.allLoading ?? false)}
+      />
+    );
+  };
+}
+
+function withSavedDatabasesPrefetch(WrappedComponent) {
+  return function DataSelectorWithSavedDatabasesPrefetch(props) {
+    useListDatabasesQuery({ saved: true });
+    return <WrappedComponent {...props} />;
+  };
+}
+
+const isListDatabasesQuerySuccess = (state, query) =>
+  databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
+
+const DataSelector = _.compose(
+  withSavedDatabasesPrefetch,
+  withAvailableModels,
+  withSchemaFetchers,
   connect(
-    (state, ownProps) => ({
-      // `metadata` is the response of `Search.loadList`. Not to be confused with Query Builder's metadata.
-      availableModels: ownProps.metadata?.available_models ?? [],
-      metadata: getMetadata(state),
-      hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", saved: true },
-      }),
-      hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { saved: true },
-      }),
-      hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables" },
-      }),
-      hasDataAccess: canUserCreateQueries(state),
-      hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-      selectedQuestion: Questions.selectors.getObject(state, {
-        entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
-      }),
-    }),
-    {
-      fetchDatabases: () => Databases.actions.fetchList({ saved: true }),
-      fetchSchemas: (databaseId) =>
-        Schemas.actions.fetchList({ dbId: databaseId }),
-      fetchSchemaTables: (schemaId) => Schemas.actions.fetch({ id: schemaId }),
-      fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
-      fetchQuestion: (id) =>
-        Questions.actions.fetch({
-          id: getQuestionIdFromVirtualTableId(id),
+    (state, ownProps) => {
+      const response = databaseApi.endpoints.listDatabases.select({
+        saved: true,
+      })(state).data;
+      const metadata = getMetadata(state);
+      return {
+        // `metadata` exposes the search response (available_models, etc.). Not to
+        // be confused with Query Builder's metadata.
+        availableModels: ownProps.metadata?.available_models ?? [],
+        metadata,
+        databases: (response?.data ?? [])
+          .map(({ id }) => metadata.database(id))
+          .filter((database) => database != null),
+        hasLoadedDatabasesWithTablesSaved: isListDatabasesQuerySuccess(state, {
+          include: "tables",
+          saved: true,
         }),
+        hasLoadedDatabasesWithSaved: isListDatabasesQuerySuccess(state, {
+          saved: true,
+        }),
+        hasLoadedDatabasesWithTables: isListDatabasesQuerySuccess(state, {
+          include: "tables",
+        }),
+        hasDataAccess: canUserCreateQueries(state),
+        hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
+        selectedQuestion: getMetadata(state).question(
+          getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
+        ),
+      };
     },
+    (dispatch) => ({
+      fetchDatabases: () =>
+        runRtkEndpoint(
+          { saved: true },
+          dispatch,
+          databaseApi.endpoints.listDatabases,
+          { forceRefetch: false },
+        ),
+      fetchFields: (tableId) => dispatch(fetchTableMetadata({ id: tableId })),
+      fetchQuestion: (id) =>
+        runRtkEndpoint(
+          { id: getQuestionIdFromVirtualTableId(id) },
+          dispatch,
+          cardApi.endpoints.getCard,
+        ),
+    }),
   ),
 )(UnconnectedDataSelector);

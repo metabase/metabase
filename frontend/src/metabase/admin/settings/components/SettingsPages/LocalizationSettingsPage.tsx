@@ -25,6 +25,7 @@ export function LocalizationSettingsPage() {
         <AdminSettingInput
           name="site-locale"
           title={t`Instance language`}
+          searchable
           options={_.sortBy(availableLocales || [], ([, label]) => label).map(
             ([code, label]) => ({ label, value: code }),
           )}

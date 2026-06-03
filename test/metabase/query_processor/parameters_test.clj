@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.parameters-test
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.parameters-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -628,7 +629,7 @@
                   (is (= "Organic"
                          people-source)))
                 (testing "state != OR"
-                  (is (not= people-state "OR")))))
+                  (is (not= "OR" people-state)))))
             (testing "Should contain row with 'Emilie Goyette'"
               (is (some (fn [[_orders-id _orders-created-at _people-state people-name _people-source :as _row]]
                           (= people-name "Emilie Goyette"))

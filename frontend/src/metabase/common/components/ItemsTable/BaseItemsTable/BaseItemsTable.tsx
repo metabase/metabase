@@ -9,13 +9,11 @@ import type {
   OnMove,
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
-import {
-  isRootTrashCollection,
-  isTrashedCollection,
-} from "metabase/collections/utils";
+import { isTrashedCollection } from "metabase/collections/utils";
 import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
+import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -156,9 +154,7 @@ export const BaseItemsTable = ({
   onClick,
   ...props
 }: BaseItemsTableProps) => {
-  const canSelect =
-    (collection?.can_write || isRootTrashCollection(collection)) &&
-    typeof onToggleSelected === "function";
+  const canSelect = canSelectItems(collection, onToggleSelected);
   const isTrashed = !!collection && isTrashedCollection(collection);
 
   return (

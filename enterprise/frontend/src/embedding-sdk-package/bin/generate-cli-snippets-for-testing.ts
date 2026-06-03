@@ -127,7 +127,6 @@ const generateExpressServerSnippet = ({
   setupOutDir(outDir);
 
   const snippetContent = getExpressServerSnippet({
-    instanceUrl: "https://example.com",
     tenantIdsMap: {},
   });
   const packageJsonContent = JSON.stringify(MOCK_SERVER_PACKAGE_JSON, null, 2);

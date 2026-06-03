@@ -50,17 +50,21 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Install the SDK in your React application
 
-You can install the modular embedding SDK for React via npm. Make sure to use the dist-tag that corresponds to your Metabase version, example: 56-stable for Metabase 56:
+Install the SDK Package matching your Metabase major with the `@{major}-stable` dist-tag, so the package's TypeScript types and exported components stay in sync with your instance's SDK Bundle:
 
 ```bash
-npm install @metabase/embedding-sdk-react@56-stable
+npm install @metabase/embedding-sdk-react@60-stable
 ```
 
 or with Yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@56-stable
+yarn add @metabase/embedding-sdk-react@60-stable
 ```
+
+On **Metabase 56 or earlier**, the SDK major _must_ match your Metabase major. On **Metabase 57 and later**, you can also install without a dist-tag to track the latest published SDK major.
+
+See [SDK versions](./version.md) for more on compatibility.
 
 ### Resolving `@types/react` version mismatches
 
@@ -93,7 +97,7 @@ To enforce a single `@types/react` version across all dependencies, add an `over
 Starting with Metabase 57, the SDK consists of two parts:
 
 - **SDK Package** – The `@metabase/embedding-sdk-react` npm package is a lightweight bootstrapper library. Its primary purpose is to load and run the main SDK Bundle code.
-- **SDK Bundle** – The full SDK code, served directly from your self-hosted Metabase instance or Metabase Cloud, and it's the part of the Metabase. This ensures that the main SDK code is always compatible with its corresponding Metabase instance.
+- **SDK Bundle** – The full SDK code, served directly from your self-hosted Metabase instance or Metabase Cloud, and it's a part of Metabase. This ensures that the main SDK code is always compatible with its corresponding Metabase instance.
 
 ## Developing with the modular embedding SDK
 

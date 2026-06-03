@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.pivot-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -110,9 +111,9 @@
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
          (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true)))))
-  ;; TODO -- we should require these columns to be distinct as well (I think?)
-  ;; TODO -- require all numbers to be positive
-  ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
+;; TODO -- we should require these columns to be distinct as well (I think?)
+;; TODO -- require all numbers to be positive
+;; TODO -- can you specify something in both pivot-rows and pivot-cols?
 
 (defn- test-query []
   (mt/dataset test-data

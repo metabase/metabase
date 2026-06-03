@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sqlite-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlite-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlite-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -155,7 +157,6 @@
               (testing "database should be synced"
                 (is (= {:tables (set (map default-table-result ["timestamp_table"]))}
                        (driver/describe-database driver db))))
-
               (testing "timestamp column should exist"
                 (is (=? {:name "timestamp_table"
                          :schema nil

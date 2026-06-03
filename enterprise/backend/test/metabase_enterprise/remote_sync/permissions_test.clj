@@ -1,4 +1,5 @@
 (ns metabase-enterprise.remote-sync.permissions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -252,7 +253,6 @@
             (testing "remote-synced-collection? returns false for tenant collections by default"
               (is (false? (collections/remote-synced-collection? tenant-coll))
                   "Tenant collection should NOT be remote-synced by default"))
-
             (testing "Tenant collections are editable by superuser by default"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (true? (mi/can-write? tenant-coll))
@@ -270,7 +270,6 @@
             (testing "remote-synced-collection? returns true when is_remote_synced flag is set"
               (is (true? (collections/remote-synced-collection? tenant-coll))
                   "Tenant collection should be remote-synced when flag is set"))
-
             (testing "Tenant collections are NOT editable by superuser when remote-sync-type is read-only"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (false? (mi/can-write? tenant-coll))
@@ -288,7 +287,6 @@
             (testing "remote-synced-collection? returns true when is_remote_synced flag is set"
               (is (true? (collections/remote-synced-collection? tenant-coll))
                   "Tenant collection should be remote-synced when flag is set"))
-
             (testing "Tenant collections ARE editable by superuser when remote-sync-type is read-write"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (true? (mi/can-write? tenant-coll))
@@ -311,16 +309,13 @@
             (testing "Parent tenant collection is remote-synced"
               (is (true? (collections/remote-synced-collection? parent-coll))
                   "Parent tenant collection should be remote-synced"))
-
             (testing "Child tenant collection is remote-synced"
               (is (true? (collections/remote-synced-collection? child-coll))
                   "Child tenant collection should be remote-synced"))
-
             (testing "Parent tenant collection is not editable by superuser"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (false? (mi/can-write? parent-coll))
                     "Parent tenant collection should not be writable")))
-
             (testing "Child tenant collection is not editable by superuser"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (false? (mi/can-write? child-coll))
@@ -344,24 +339,19 @@
             (testing "Remote-synced tenant collection is remote-synced"
               (is (true? (collections/remote-synced-collection? remote-synced-tenant))
                   "Remote-synced tenant collection should be remote-synced"))
-
             (testing "Regular tenant collection is NOT remote-synced"
               (is (false? (collections/remote-synced-collection? regular-tenant))
                   "Regular tenant collection should NOT be remote-synced"))
-
             (testing "Regular collection is NOT remote-synced"
               (is (false? (collections/remote-synced-collection? regular-coll))
                   "Regular collection should NOT be remote-synced"))
-
             (mt/with-current-user (mt/user->id :crowberto)
               (testing "Remote-synced tenant collection is not editable by superuser"
                 (is (false? (mi/can-write? remote-synced-tenant))
                     "Remote-synced tenant collection should not be writable"))
-
               (testing "Regular tenant collection is editable by superuser"
                 (is (true? (mi/can-write? regular-tenant))
                     "Regular tenant collection should be writable"))
-
               (testing "Regular collection remains editable by superuser"
                 (is (true? (mi/can-write? regular-coll))
                     "Regular collection should be writable")))))))))

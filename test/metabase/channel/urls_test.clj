@@ -29,11 +29,9 @@
                                      :id "acd0dfab",
                                      :type "string/contains",
                                      :sectionId "string"}]))))
-
     (testing "If no filters are set, the base dashboard url is returned"
       (is (= "https://metabase.com/dashboard/1"
              (urls/dashboard-url 1 {}))))
-
     (testing "Filters slugs and values are encoded properly for the URL"
       (is (= "https://metabase.com/dashboard/1?%26=contains%3F"
              (urls/dashboard-url 1 [{:value "contains?", :slug "&"}]))))))
@@ -43,7 +41,6 @@
     (testing "A valid dashcard URL can be generated without parameters"
       (is (= "https://metabase.com/dashboard/1#scrollTo=123"
              (urls/dashcard-url {:dashboard_id 1 :id 123}))))
-
     (testing "A valid dashcard URL can be generated with parameters"
       (binding [urls/*dashcard-parameters* [{:name "State"
                                              :slug "state"
@@ -59,11 +56,9 @@
                                              :sectionId "date"}]]
         (is (= "https://metabase.com/dashboard/1?state=CA&state=NY&quarter=Q1-2021#scrollTo=123"
                (urls/dashcard-url {:dashboard_id 1 :id 123})))))
-
     (testing "A valid dashcard URL can be generated with tab ID"
       (is (= "https://metabase.com/dashboard/1?tab=5#scrollTo=123"
              (urls/dashcard-url {:dashboard_id 1 :id 123 :dashboard_tab_id 5}))))
-
     (testing "A valid dashcard URL can be generated with both parameters and tab ID"
       (binding [urls/*dashcard-parameters* [{:name "Category"
                                              :slug "category"

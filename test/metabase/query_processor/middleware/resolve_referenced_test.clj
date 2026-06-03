@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.resolve-referenced-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.resolve-referenced-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -175,7 +176,6 @@
                                :type     :native
                                :native   {:query         "SELECT * FROM {{#1}}"
                                           :template-tags (card-template-tags [1])}})]
-
         (testing "Should throw an exception for circular reference"
           (is (thrown-with-msg?
                ExceptionInfo
@@ -228,13 +228,11 @@
                                :type     :native
                                :native   {:query         "SELECT * FROM {{#1}}"
                                           :template-tags (card-template-tags [1])}})]
-
         (testing "Should throw an exception for circular reference"
           (is (thrown-with-msg?
                ExceptionInfo
                #"circular|cycle"
                (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))
-
         (testing "The cycle detection should work from any entry point"
           ;; Starting from Card B should also detect the cycle
           (let [card-b-query (lib/query
@@ -276,7 +274,6 @@
                ExceptionInfo
                #"circular|cycle"
                (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))))
-
     (testing "Self-referencing snippet"
       (let [metadata-provider-with-snippet
             (lib.tu/mock-metadata-provider
@@ -335,7 +332,6 @@
                                :type :native
                                :native {:query "SELECT * FROM {{#1}}"
                                         :template-tags (card-template-tags [1])}})]
-
         (testing "Should NOT throw an exception for valid non-cyclic chain"
           ;; This should complete, without throwing an exception, and return a dependency graph
           (is (some? (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))))))

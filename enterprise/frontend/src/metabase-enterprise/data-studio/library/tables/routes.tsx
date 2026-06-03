@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { IndexRoute, Route } from "react-router";
 
 import { PublishedTableMeasureDependenciesPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
@@ -9,7 +10,6 @@ import { PublishedTableSegmentDependenciesPage } from "metabase/data-studio/segm
 import { PublishedTableSegmentDetailPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentDetailPage";
 import { PublishedTableSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IsAdmin } from "metabase/route-guards";
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
@@ -17,7 +17,7 @@ import { TableMeasuresPage } from "./pages/TableMeasuresPage";
 import { TableOverviewPage } from "./pages/TableOverviewPage";
 import { TableSegmentsPage } from "./pages/TableSegmentsPage";
 
-export function getDataStudioTableRoutes() {
+export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
   return (
     <Route path="tables">
       <Route path=":tableId" component={TableOverviewPage} />

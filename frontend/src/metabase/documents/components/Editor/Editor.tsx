@@ -39,7 +39,7 @@ import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/Sup
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Loader } from "metabase/ui";
+import { Box, Center, Loader } from "metabase/ui";
 
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
@@ -222,7 +222,9 @@ export const Editor: React.FC<EditorProps> = React.memo(
     if (isLoading) {
       return (
         <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
-          <Loader data-testid="editor-loader" />
+          <Center flex={1}>
+            <Loader data-testid="editor-loader" />
+          </Center>
         </Box>
       );
     }

@@ -15,6 +15,7 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -33,7 +34,6 @@ import type {
   DashCardDataMap,
   Dashboard,
   DashboardCard,
-  DashboardCardLayoutAttrs,
   Database,
   Dataset,
   DatasetQuery,
@@ -42,7 +42,6 @@ import type {
   ParameterId,
   QuestionDashboardCard,
   VirtualCard,
-  VirtualCardDisplay,
   VirtualDashboardCard,
 } from "metabase-types/api";
 
@@ -261,17 +260,21 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-export function getDashcardResultsError(
-  datasets: Dataset[],
-  isGuestEmbed: boolean,
+export function isDashcardAccessRestricted(
+  datasets: ReadonlyArray<Pick<Dataset, "error" | "error_type">>,
 ) {
-  const isAccessRestricted = datasets.some(
+  return datasets.some(
     (s) =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
       (typeof s.error === "object" && s.error?.status === 403),
   );
+}
 
-  if (isAccessRestricted) {
+export function getDashcardResultsError(
+  datasets: Dataset[],
+  isGuestEmbed: boolean,
+) {
+  if (isDashcardAccessRestricted(datasets)) {
     return {
       message: getPermissionErrorMessage(),
       icon: "key" as const,
@@ -322,8 +325,7 @@ const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
   return (
     queryResults.length > 0 &&
     queryResults.every(
-      (queryResult) =>
-        "data" in queryResult && queryResult.data.rows.length > 0,
+      (queryResult) => "data" in queryResult && !hasNoResults(queryResult.data),
     )
   );
 };
@@ -389,44 +391,12 @@ export const getActionIsEnabledInDatabase = (
 export const calculateDashCardRowAfterUndo = (originalRow: number) =>
   originalRow - 0.1;
 
-let tempId = -1;
-
-export function generateTemporaryDashcardId() {
-  return tempId--;
-}
-
-export type NewDashboardCard = Omit<
-  DashboardCard,
-  "entity_id" | "created_at" | "updated_at"
->;
-
-type MandatoryDashboardCardAttrs = Pick<
-  DashboardCard,
-  "dashboard_id" | "card"
-> &
-  DashboardCardLayoutAttrs;
-
-export function createDashCard(
-  attrs: Partial<NewDashboardCard> & MandatoryDashboardCardAttrs,
-): NewDashboardCard {
-  return {
-    id: generateTemporaryDashcardId(),
-    dashboard_tab_id: null,
-    card_id: null,
-    parameter_mappings: [],
-    visualization_settings: {},
-    ...attrs,
-  };
-}
-
-export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
-  return {
-    name: null,
-    display,
-    visualization_settings: {},
-    archived: false,
-  };
-}
+export {
+  createDashCard,
+  createVirtualCard,
+  generateTemporaryDashcardId,
+  type NewDashboardCard,
+} from "metabase/common/utils/dashboard";
 
 export const isDashboardCacheable = (
   dashboard: Dashboard,

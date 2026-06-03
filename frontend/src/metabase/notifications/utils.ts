@@ -5,10 +5,10 @@ import type { NotificationListItem } from "metabase/account/notifications/types"
 import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { getEmailDomain, isEmail } from "metabase/utils/email";
-import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
 import { formatTimeWithUnit } from "metabase/utils/formatting/time";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,

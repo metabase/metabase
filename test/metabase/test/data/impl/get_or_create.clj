@@ -101,10 +101,22 @@
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
                                                           field-name
                                                           (u/pprint-to-str field-definition))))))]
-          (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
+          (doseq [property [:visibility-type :semantic-type]]
             (when-let [v (get field-definition property)]
               (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (t2/update! :model/Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
+              (t2/update! :model/Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)})))
+          ;; effective-type and coercion-strategy must be set atomically — the GHY-3388 model
+          ;; invariant requires effective_type=base_type when coercion_strategy is nil, so a
+          ;; sequence that sets effective_type alone first would be reverted before
+          ;; coercion_strategy lands.
+          (let [eff-type (:effective-type field-definition)
+                coerce   (:coercion-strategy field-definition)
+                upd      (cond-> {}
+                           eff-type (assoc :effective_type (u/qualified-name eff-type))
+                           coerce   (assoc :coercion_strategy (u/qualified-name coerce)))]
+            (when (seq upd)
+              (log/debugf "SET effective-type/coercion-strategy %s.%s -> %s" table-name field-name upd)
+              (t2/update! :model/Field (:id @field) upd))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -284,15 +296,15 @@
                 full-sync?         (= scan :full)]
             (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
                                (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
-            ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-            ;;
-            ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
-            ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
-            ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
-            ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
+              ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+              ;;
+              ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
+              ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
+              ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
+              ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
               (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
                 (sync/sync-database! db {:scan scan}))
-            ;; add extra metadata for fields
+              ;; add extra metadata for fields
               (try
                 (add-extra-metadata! database-definition db)
                 (catch Throwable e
@@ -403,7 +415,7 @@
     (do
       (log/info "Data has not been loaded yet. Loading...")
       (u/with-timeout create-database-timeout-ms
-      ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
+        ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
         (test.tz/with-system-timezone-id! "UTC"
           (tx/create-db! driver dbdef)))))
   (tx/track-dataset driver dbdef))

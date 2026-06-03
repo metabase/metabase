@@ -34,8 +34,8 @@ import {
 } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import * as Urls from "metabase/urls";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
-import * as Urls from "metabase/utils/urls";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";

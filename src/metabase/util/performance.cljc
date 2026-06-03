@@ -68,7 +68,6 @@
        (when-not (.isEmpty ^List coll)
          (.get ^List coll 0))
        (clojure.core/first coll)))
-
    :cljs
    (def first
      "Returns the first item in the collection. Calls seq on its argument. If coll is nil, returns nil."
@@ -79,7 +78,6 @@
      "Like `clojure.core/second`, but uses `RT/nth` directly for allocation-free access."
      [coll]
      (RT/nth coll 1 nil))
-
    :cljs
    (def second
      "Same as (first (next x))"
@@ -140,7 +138,6 @@
                   @res
                   (recur res)))
               res))))))
-
    :cljs
    (defn reduce
      "Passthrough fallback to `clojure.core/reduce`."
@@ -160,7 +157,6 @@
 
      (persistent [_]
        (LazilyPersistentVector/createOwning arr)))
-
    :cljs
    (deftype SmallTransientImpl [^:mutable arr, ^:mutable cnt, f]))
 
@@ -317,6 +313,28 @@
      (reduce conj! res f)
      (reduce (fn [res l] (reduce conj! res l)) res more)
      (persistent! res))))
+
+(defn insert
+  "Insert `el` at a position `pos` into a vector `v`. When position is equal to number of elements in `v`, insert at the
+  tail. Throws if position is negative or bigger than item count in `v`."
+  [v pos el]
+  (when-not (<= 0 pos (count v))
+    (throw (ex-info "Position should be in the range [0; N] of vector." {})))
+  (let [v (vec v)
+        n (count v)]
+    (if (= pos n)
+      (conj v el)
+      (let [i (volatile! -1)]
+        (persistent! (reduce (fn [acc x]
+                               (vswap! i inc)
+                               (conj! (cond-> acc
+                                        (= @i pos) (conj! el))
+                                      x))
+                             #?(:clj (if (<= n 32)
+                                       (small-transient (inc n) identity)
+                                       (transient []))
+                                :cljs (transient []))
+                             v))))))
 
 #?(:clj
    (defn transpose

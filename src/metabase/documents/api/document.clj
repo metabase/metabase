@@ -219,7 +219,6 @@
     (api/write-check existing-document)
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
-
     ;; Handle archiving logic
     (let [document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
       (t2/with-transaction [_conn]

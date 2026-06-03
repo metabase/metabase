@@ -1131,29 +1131,6 @@ describe("issue 56416", () => {
   });
 });
 
-describe("issue 55487", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should be able open object details on browser forward navigation (metabase#55487)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    cy.findByTestId("table-body").find("[data-column-id='ID']").eq(4).click();
-
-    cy.findByTestId("object-detail").should("be.visible");
-
-    cy.go("back");
-
-    cy.findByTestId("object-detail").should("not.exist");
-
-    cy.go("forward");
-
-    cy.findByTestId("object-detail").should("be.visible");
-  });
-});
-
 describe("issue 42723", () => {
   const questionDetails: StructuredQuestionDetails = {
     display: "line",

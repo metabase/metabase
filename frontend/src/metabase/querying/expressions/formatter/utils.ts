@@ -2,7 +2,6 @@ import type { AstPath } from "prettier";
 
 import * as Lib from "metabase-lib";
 
-import { EXPRESSION_OPERATORS } from "../config";
 import * as literal from "../literal";
 
 type Assertion<T> = T extends ((expr: any) => expr is infer U) ? U : never;
@@ -64,7 +63,9 @@ export const pathMatchers = lift({
 export function isExpressionOperator(
   node: Lib.ExpressionParts | Lib.ExpressionArg,
 ): node is Lib.ExpressionParts {
-  return Lib.isExpressionParts(node) && node.operator in EXPRESSION_OPERATORS;
+  return (
+    Lib.isExpressionParts(node) && node.operator in Lib.EXPRESSION_OPERATORS
+  );
 }
 
 /**

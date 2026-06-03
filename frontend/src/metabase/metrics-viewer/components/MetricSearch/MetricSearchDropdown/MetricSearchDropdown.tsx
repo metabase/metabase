@@ -1,172 +1,254 @@
 import {
   type Dispatch,
   type SetStateAction,
+  forwardRef,
   useCallback,
-  useEffect,
-  useMemo,
+  useImperativeHandle,
+  useRef,
   useState,
 } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
-import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
-import { Box, Flex, TextInput } from "metabase/ui";
-
 import {
-  type MetricOrMeasureResult,
-  useMetricMeasureSearch,
-} from "../../../hooks/use-metric-measure-search";
+  EntityPickerModal,
+  MiniPicker,
+  type OmniPickerItem,
+} from "metabase/common/components/Pickers";
+import type {
+  MiniPickerItem,
+  MiniPickerPickableItem,
+} from "metabase/common/components/Pickers/MiniPicker/types";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
+import type { MenuProps } from "metabase/ui";
+import type { SearchRequest } from "metabase-types/api";
+
 import type { SelectedMetric } from "../../../types/viewer-state";
 import { createSourceId } from "../../../utils/source-ids";
-import { MetricSearchResults } from "../MetricSearchResults";
-import {
-  type ExcludeMetric,
-  type MetricNameMap,
-  filterSearchResults,
-} from "../utils";
+import type { MetricNameMap } from "../utils";
 
-import S from "./MetricSearchDropdown.module.css";
+export interface MetricSearchDropdownRef {
+  onArrowDown: () => boolean;
+  onArrowUp: () => boolean;
+  containerRef: React.RefObject<HTMLDivElement>;
+}
 
 type MetricSearchDropdownProps = {
-  selectedMetricIds?: Set<number>;
-  selectedMeasureIds?: Set<number>;
+  anchorRect?: { left: number; top: number };
   onSelect: (metric: SelectedMetric) => void;
-  onClose?: () => void;
-  excludeMetric?: ExcludeMetric;
-  showSearchInput?: boolean;
-  externalSearchText?: string;
-  onHasSelectionChange?: (hasSelection: boolean) => void;
+  onClose: () => void;
+  searchQuery?: string;
+  selectedMetric?: SelectedMetric;
+  menuProps?: MenuProps;
   setSearchMetricNames?: Dispatch<SetStateAction<MetricNameMap>>;
 };
 
-export function MetricSearchDropdown({
-  selectedMetricIds,
-  selectedMeasureIds,
-  onSelect,
-  onClose,
-  excludeMetric,
-  showSearchInput = false,
-  externalSearchText,
-  onHasSelectionChange,
-  setSearchMetricNames,
-}: MetricSearchDropdownProps) {
-  const [internalSearchText, setInternalSearchText] = useState("");
-  const searchText = showSearchInput
-    ? internalSearchText
-    : (externalSearchText ?? "");
+// needs to be stable, otherwise onSearchResults calling setSearchMetricNames creates an infinite loop
+const MINI_PICKER_MODELS = ["metric" as const, "measure" as const];
 
-  const { results, isLoading } = useMetricMeasureSearch(searchText);
+export const MetricSearchDropdown = forwardRef<
+  MetricSearchDropdownRef,
+  MetricSearchDropdownProps
+>(function MetricSearchDropdown(
+  {
+    anchorRect,
+    onSelect,
+    onClose,
+    searchQuery,
+    selectedMetric,
+    menuProps,
+    setSearchMetricNames,
+  },
+  ref,
+) {
+  const [isBrowsing, setIsBrowsing] = useState(false);
 
-  const filteredResults = useMemo(
-    () =>
-      filterSearchResults(
-        results,
-        selectedMetricIds,
-        selectedMeasureIds,
-        excludeMetric,
-      ),
-    [results, selectedMetricIds, selectedMeasureIds, excludeMetric],
+  const libraryMetricsCollection =
+    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
+      type: "library-metrics",
+    });
+
+  const getSearchParams = useCallback(
+    (params: SearchRequest): Partial<SearchRequest> => {
+      const scopeMiniPickerToLibraryMetrics =
+        libraryMetricsCollection !== undefined &&
+        (libraryMetricsCollection.here?.includes("metric") ||
+          libraryMetricsCollection.below?.includes("metric")) &&
+        !params.q;
+
+      return {
+        limit: 5,
+        ...(scopeMiniPickerToLibraryMetrics
+          ? { collection: libraryMetricsCollection.id }
+          : {}),
+      };
+    },
+    [libraryMetricsCollection],
   );
 
-  useEffect(() => {
-    setSearchMetricNames?.((prev) => ({
-      ...prev,
-      ...Object.fromEntries(
-        filteredResults.map((result) => [
-          createSourceId(result.id, result.model),
-          result.name,
-        ]),
-      ),
-    }));
-  }, [filteredResults, setSearchMetricNames]);
+  const miniPickerRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    onArrowDown: () => {
+      const firstElement =
+        miniPickerRef.current?.querySelector('[role="menuitem"]');
+      if (firstElement) {
+        (firstElement as HTMLElement).focus();
+      }
+      return true;
+    },
+    onArrowUp: () => {
+      const elements =
+        miniPickerRef.current?.querySelectorAll('[role="menuitem"]') ?? [];
+      const lastElement = elements[elements.length - 1];
+      if (lastElement) {
+        (lastElement as HTMLElement).focus();
+      }
+      return true;
+    },
+    containerRef: miniPickerRef,
+  }));
+
+  const handleSearchResults = useCallback(
+    (results: MiniPickerPickableItem[]) => {
+      setSearchMetricNames?.((prev) => ({
+        ...prev,
+        ...Object.fromEntries(
+          results
+            .filter(
+              (
+                result,
+              ): result is {
+                id: number;
+                model: "metric" | "measure";
+                name: string;
+              } => result.model === "metric" || result.model === "measure",
+            )
+            .map((result) => [
+              createSourceId(result.id, result.model),
+              result.name,
+            ]),
+        ),
+      }));
+    },
+    [setSearchMetricNames],
+  );
 
   useUnmount(() => {
     setSearchMetricNames?.({});
   });
 
   const handleSelectResult = useCallback(
-    (id: number, model: "metric" | "measure") => {
-      const result = results?.find((r) => r.id === id && r.model === model);
-      if (result) {
-        onSelect({
-          id,
-          name: result.name,
-          sourceType: result.model,
-          tableId:
-            result.model === "measure" && typeof result.table_id === "number"
-              ? result.table_id
-              : undefined,
-        });
+    (item: OmniPickerItem) => {
+      if (item.model !== "metric" && item.model !== "measure") {
+        return;
       }
-    },
-    [results, onSelect],
-  );
-
-  const handleEnter = useCallback(
-    (item: (typeof filteredResults)[number]) => {
-      handleSelectResult(item.id, item.model);
-    },
-    [handleSelectResult],
-  );
-
-  const { cursorIndex, getRef } = useListKeyboardNavigation<
-    MetricOrMeasureResult,
-    HTMLDivElement
-  >({
-    list: filteredResults,
-    onEnter: handleEnter,
-  });
-
-  useEffect(() => {
-    onHasSelectionChange?.(cursorIndex != null);
-  }, [cursorIndex, onHasSelectionChange]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose?.();
+      if (typeof item.id !== "number") {
+        return;
       }
+      onSelect({
+        id: item.id,
+        name: item.name,
+        sourceType: item.model,
+      });
     },
-    [onClose],
+    [onSelect],
   );
 
-  if (showSearchInput) {
-    return (
-      <Flex
-        direction="column"
-        w="22rem"
-        mah="25rem"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Box p="sm" className={S.searchInputWrapper}>
-          <TextInput
-            placeholder={t`Search for metrics...`}
-            value={internalSearchText}
-            onChange={(e) => setInternalSearchText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoFocus
-          />
-        </Box>
-        <Box flex={1} className={S.resultsContainer}>
-          <MetricSearchResults
-            results={filteredResults}
-            isLoading={isLoading}
-            cursorIndex={cursorIndex}
-            getRef={getRef}
-            onSelectResult={handleSelectResult}
-          />
-        </Box>
-      </Flex>
-    );
-  }
+  const shouldHide = useCallback(
+    (item: MiniPickerItem | unknown) => {
+      if (
+        !item ||
+        typeof item !== "object" ||
+        !("id" in item) ||
+        !("model" in item)
+      ) {
+        return true;
+      }
+      if (selectedMetric) {
+        return (
+          item.id === selectedMetric.id &&
+          item.model === selectedMetric.sourceType
+        );
+      }
+      return false;
+    },
+    [selectedMetric],
+  );
 
   return (
-    <MetricSearchResults
-      results={filteredResults}
-      isLoading={isLoading}
-      cursorIndex={cursorIndex}
-      getRef={getRef}
-      onSelectResult={handleSelectResult}
-    />
+    <>
+      <MiniPicker
+        opened={!isBrowsing}
+        searchQuery={searchQuery}
+        onChange={handleSelectResult}
+        onClose={onClose}
+        models={MINI_PICKER_MODELS}
+        onBrowseAll={() => setIsBrowsing(true)}
+        forceSearch={true}
+        showSearchInput={searchQuery === undefined}
+        searchInputPlaceholder={t`Search metrics and measures…`}
+        searchParams={getSearchParams}
+        onSearchResults={handleSearchResults}
+        shouldHide={shouldHide}
+        menuProps={menuProps}
+        menuDropdownRef={miniPickerRef}
+      >
+        {anchorRect && (
+          <span
+            aria-hidden
+            style={{
+              position: "fixed",
+              left: anchorRect.left,
+              top: anchorRect.top,
+              width: 0,
+              height: 0,
+              pointerEvents: "none",
+            }}
+          />
+        )}
+      </MiniPicker>
+      {isBrowsing && (
+        <EntityPickerModal
+          title={t`Pick a metric or measure`}
+          value={
+            libraryMetricsCollection
+              ? {
+                  model: "collection",
+                  id: libraryMetricsCollection.id as number,
+                }
+              : undefined
+          }
+          onChange={handleSelectResult}
+          onClose={() => setIsBrowsing(false)}
+          models={["metric", "measure", "table"]}
+          isSelectableItem={(item) =>
+            item.model === "metric" || item.model === "measure"
+          }
+          isDisabledItem={isTableWithoutMeasures}
+          options={{
+            hasConfirmButtons: false,
+            hasDatabases: true,
+            getItemTooltip: getTableWithoutMeasuresTooltip,
+            disableSearchScope: true,
+          }}
+        />
+      )}
+    </>
   );
+});
+
+function isTableWithoutMeasures(item: OmniPickerItem) {
+  return (
+    item.model === "table" &&
+    "measures" in item &&
+    (item.measures?.length ?? 0) === 0
+  );
+}
+
+function getTableWithoutMeasuresTooltip(item: OmniPickerItem) {
+  if (isTableWithoutMeasures(item)) {
+    return t`This table has no measures`;
+  }
+  return undefined;
 }

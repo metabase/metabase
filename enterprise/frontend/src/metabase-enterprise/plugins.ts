@@ -19,6 +19,7 @@ import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
+import { initializePlugin as initializeCustomViz } from "./custom_viz";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
@@ -36,6 +37,7 @@ import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
 import { initializePlugin as initializeSandboxes } from "./sandboxes";
+import { initializePlugin as initializeSchemaViewer } from "./schema_viewer";
 import { initializePlugin as initializeSecurityCenter } from "./security_center";
 import { initializePlugin as initializeSemanticSearch } from "./semantic_search";
 import { initializePlugin as initializeSharing } from "./sharing";
@@ -51,6 +53,7 @@ import { initializePlugin as initializeTransformsPython } from "./transforms-pyt
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
 import { initializePlugin as initializeWhitelabel } from "./whitelabel";
+import { initializePlugin as initializeWorkspaces } from "./workspaces";
 import { initializePlugin as initializeWritableConnection } from "./writable_connection";
 
 /**
@@ -65,6 +68,7 @@ export function initializePlugins() {
   initializeCollections();
   initializeContentTranslation();
   initializeContentVerification();
+  initializeCustomViz();
   initializeDatabaseRouting();
   initializeRemoteSync();
   initializeReplacement();
@@ -92,6 +96,7 @@ export function initializePlugins() {
   initializeDatabaseReplication();
   initializeTableEditing();
   initializeDependencies();
+  initializeSchemaViewer();
   initializeSecurityCenter();
   initializeSemanticSearch();
   initializeTransforms();
@@ -100,5 +105,6 @@ export function initializePlugins() {
   initializeSupport();
   initializeTenants?.();
   initializeWritableConnection();
+  initializeWorkspaces();
   initializeAiControls();
 }

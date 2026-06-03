@@ -7,6 +7,10 @@ const {
   CopyJsFromTmpDirectoryPlugin,
 } = require("./frontend/build/shared/rspack/copy-js-from-tmp-directory-plugin");
 
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
+
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
@@ -38,8 +42,10 @@ module.exports = {
     // otherwise the path conflicts and the output bundle will not appear.
     path: OUT_TEMP_PATH,
     filename: OUT_FILE_NAME,
-    library: "metabase.embed",
-    libraryTarget: "umd",
+    library: {
+      name: ["metabase", "embed"],
+      type: "umd",
+    },
     globalObject: "this",
     publicPath: `http://localhost:${DEV_PORT}/app`,
   },
@@ -70,11 +76,10 @@ module.exports = {
   optimization: { splitChunks: false, runtimeChunk: false },
   devtool: false,
   plugins: [
+    ...COMPRESSION_CONFIG,
     CopyJsFromTmpDirectoryPlugin({
-      fileName: OUT_FILE_NAME,
       tmpPath: OUT_TEMP_PATH,
       outputPath: path.join(BUILD_PATH, "app/"),
-      copySourceMap: false,
       cleanupInDevMode: true,
     }),
   ],

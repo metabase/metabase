@@ -1,10 +1,14 @@
 (ns ^:mb/driver-tests metabase.transforms.util-test
   "Tests for transform utility functions."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.transforms.util-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -14,8 +18,11 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.canceling :as transforms.canceling]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -24,14 +31,12 @@
   (testing "temp-table-name generates valid table names respecting driver limits"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (let [driver driver/*driver*]
-
         (testing "Basic table name generation"
           (let [result (driver.u/temp-table-name driver nil)
                 table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
             (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" table-name))))
-
         (testing "Table name preserves namespace when present"
           (let [result (driver.u/temp-table-name driver :schema/orders)]
             (is (= "schema" (namespace result)))
@@ -91,7 +96,6 @@
             (testing "Creating table with ordered columns"
               (transforms-base.u/create-table-from-schema! driver db-id table-schema)
               (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
-
             (when (get-method driver/describe-table driver)
               (testing "Column order matches schema definition order (not alphabetical)"
                 (let [table-metadata {:schema schema-name :name (name table-name)}
@@ -102,7 +106,6 @@
                   (is (= expected-names column-names)
                       (str "Expected column order " expected-names
                            " but got " column-names)))))
-
             (finally
               (try
                 (driver/drop-table! driver db-id qualified-table-name)
@@ -121,7 +124,6 @@
           range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
           range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
           range-end-only      {:start nil :end "2024-02-01T00:00:00Z"}]
-
       (testing "with both start and end bounds"
         (are [expected timestamp]
              (= expected (matching-timestamp? {:start_time timestamp} field-path range-jan-feb))
@@ -161,17 +163,14 @@
       (testing "returns nil for empty input"
         (is (nil? (transforms-base.u/batch-lookup-table-ids [])))
         (is (nil? (transforms-base.u/batch-lookup-table-ids nil))))
-
       (testing "looks up table without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}]
               result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) nil "table_one"] (:id t1)} result))))
-
       (testing "looks up table with schema"
         (let [refs [{:database_id (:id db) :schema "my_schema" :table "table_two"}]
               result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) "my_schema" "table_two"] (:id t2)} result))))
-
       (testing "handles mixed refs with and without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}
                     {:database_id (:id db) :schema "my_schema" :table "table_two"}]
@@ -179,7 +178,6 @@
           (is (= {[(:id db) nil "table_one"] (:id t1)
                   [(:id db) "my_schema" "table_two"] (:id t2)}
                  result))))
-
       (testing "returns empty for non-existent table"
         (let [refs [{:database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms-base.u/batch-lookup-table-ids refs)]
@@ -195,26 +193,21 @@
           (is (= (:id db) (:database_id entry)))
           (is (= "existing_table" (:table entry)))
           (is (= (:id t1) (:table_id entry)))))
-
       (testing "throws for non-existent table_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found for ids: 999999"
                               (transforms-base.u/normalize-source-tables [{:alias "t" :table_id 999999}]))))
-
       (testing "populates table_id for existing table ref"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "existing_table"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= (:id t1) (:table_id (first result))))))
-
       (testing "preserves existing table_id when table metadata present"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "existing_table" :table_id 999}]
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= 999 (:table_id (first result))))))
-
-      (testing "creates transform target table for non-existent table ref"
+      (testing "leaves :table_id nil for non-existent table ref"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
-          (is (int? (:table_id (first result))))))
-
+          (is (nil? (:table_id (first result))))))
       (testing "handles entries needing different kinds of enrichment"
         (let [source-tables [{:alias "t1" :table_id (:id t1)}
                              {:alias "t2" :database_id (:id db) :schema nil :table "existing_table"}]
@@ -232,22 +225,18 @@
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]
               result        (transforms-base.u/resolve-source-tables source-tables)]
           (is (= (:id t1) (:table_id (first result))))))
-
       (testing "looks up table_id for entry without it"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]
               result        (transforms-base.u/resolve-source-tables source-tables)]
           (is (= (:id t1) (:table_id (first result))))))
-
       (testing "throws for non-existent table"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: nonexistent"
                                 (transforms-base.u/resolve-source-tables source-tables)))))
-
       (testing "throws with schema in error message"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema "my_schema" :table "nonexistent"}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
                                 (transforms-base.u/resolve-source-tables source-tables)))))
-
       (testing "handles multiple entries"
         (let [source-tables [{:alias "t1" :table_id (:id t1) :database_id (:id db) :schema nil}
                              {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]
@@ -267,12 +256,10 @@
                 (let [transform {:source {:type :query
                                           :query {:database db-id}}}]
                   (is (true? (transforms.u/source-tables-readable? transform)))))
-
               (testing "returns true for python transform when user can read all source tables"
                 (let [transform {:source {:type :python
                                           :source-tables [{:alias "t1" :table_id table-id}]}}]
                   (is (true? (transforms.u/source-tables-readable? transform)))))
-
               (testing "handles source tables with table_id"
                 (let [transform {:source {:type :python
                                           :source-tables [{:alias "t1" :table_id table-id}]}}]
@@ -285,7 +272,6 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
                        :model/Table {table1-id :id} {:db_id db-id :name "test_table_1"}
                        :model/Table {table2-id :id} {:db_id db-id :name "test_table_2"}]
-
           (testing "Query transforms - blocked database access"
             (let [transform {:source {:type  :query
                                       :query {:database db-id}}}]
@@ -296,7 +282,6 @@
                     (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.u/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source database")))))))
-
           (testing "Python transforms - blocked database access"
             (let [transform {:source {:type          :python
                                       :source-tables [{:alias "t1" :table_id table1-id}]}}]
@@ -307,7 +292,6 @@
                     (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.u/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source tables")))))))
-
           (testing "Python transforms - granular access but missing some tables"
             (let [transform {:source {:type          :python
                                       :source-tables [{:alias "t1" :table_id table1-id}
@@ -368,20 +352,22 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms-basic}
         (let [target {:type "table" :schema nil :name "test_output_table"}]
-          ;; The Transform after-insert hook creates a provisional table for the target,
-          ;; so we don't need to create one explicitly.
-          (mt/with-temp [:model/Transform {transform-id :id :as transform}
+          (mt/with-temp [:model/Table {table-id :id} {:db_id  (mt/id)
+                                                      :schema nil
+                                                      :name   "test_output_table"}
+                         :model/Transform {transform-id :id :as transform}
                          {:target target
                           :source {:type  "query"
                                    :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}]
-            (let [table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_output_table" :schema nil)]
-              ;; Mock execute-base! to return success without actually running a query,
-              ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
-              ;; and sync-target! to skip driver calls but still return the provisional table
-              ;; so complete-execution! can set transform_id on it.
+            ;; Mock execute-base! to return success without actually running a query,
+            ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
+            ;; and sync-target! to skip driver calls but still return the target table
+            ;; so complete-execution! can set transform_id on it. execute-base! is a multimethod,
+            ;; so it needs with-redefs (with-dynamic-fn-redefs refuses to proxy multimethods);
+            ;; the plain fns go through with-dynamic-fn-redefs to keep them thread-local.
+            (with-redefs [transforms-base.i/execute-base! (constantly {:status :succeeded})]
               (mt/with-dynamic-fn-redefs
-                [transforms-base.i/execute-base!        (constantly {:status :succeeded})
-                 transforms-base.u/sync-target!         (fn [_target _database]
+                [transforms-base.u/sync-target!         (fn [_target _database]
                                                           (t2/select-one :model/Table table-id))
                  transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
                                                           (run-fn (a/promise-chan) nil))]
@@ -398,12 +384,117 @@
           (let [hydrated (t2/hydrate table :transform)]
             (is (some? (:transform hydrated)))
             (is (= transform-id (-> hydrated :transform :id))))))))
-
   (testing "hydrating :transform returns nil when transform_id is nil"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Table table {:transform_id nil}]
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
+
+(deftest transform-pool-uses-its-own-leak-detector-test
+  (testing "Inside a `with-transform-connection` scope, the data-warehouse pool's
+            `unreturnedConnectionTimeout` default tracks the transform's bound `*query-timeout-ms*` — not the
+            ambient `MB_DB_QUERY_TIMEOUT_MINUTES`. This is what makes transforms safe without weakening the leak
+            detector on the default pool: the `:transform` pool is created with a different value (transform-timeout)
+            than the `:default` pool (db-query-timeout)."
+    (mt/with-temporary-setting-values [jdbc-data-warehouse-unreturned-connection-timeout-seconds nil]
+      (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 20)]
+        (testing "outside `with-transform-connection`, the default is db-query-timeout in seconds"
+          (is (= (* 20 60)
+                 (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))
+        (testing "inside `with-transform-connection` with the transform rebinding *query-timeout-ms*, the default
+                  rises to transform-timeout in seconds — so the `:transform` pool created in this scope picks up
+                  the longer leak-detector"
+          (driver.conn/with-transform-connection
+            (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 240)]
+              (is (= (* 240 60)
+                     (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))))
+        (testing "an explicit env-var/setting override still wins over the computed default"
+          (mt/with-temporary-setting-values [jdbc-data-warehouse-unreturned-connection-timeout-seconds 15]
+            (driver.conn/with-transform-connection
+              (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 240)]
+                (is (= 15 (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))))))))
+
+(deftest transform-connection-type-is-distinct-pool-key-test
+  (testing "The pool cache key derived from `*connection-type*` distinguishes `:transform` from `:default`, so the
+            two contexts get separate c3p0 pools with separate properties. This is the core mechanism that keeps the
+            default pool's leak detector tight on non-transform instances."
+    (mt/with-temp [:model/Database db {:engine :h2}]
+      (is (= :default
+             (driver.conn/effective-connection-type db)))
+      (driver.conn/with-transform-connection
+        (is (= :transform
+               (driver.conn/effective-connection-type db)))))))
+
+;; Not ^:parallel: the kondo linter flags `set-statement-query-timeout!` (`!`-suffixed, so classified "destructive")
+;; when used inside a parallel test. The call site here only mutates a local proxy Statement and is safe, but marking
+;; synchronous avoids growing the whitelist.
+(deftest set-statement-query-timeout!-test
+  (testing "the helper that populates Statement.setQueryTimeout reads *query-timeout-ms* and converts to seconds.
+            Proved via a mock Statement so the test is deterministic and independent of any driver's enforcement
+            semantics."
+    (let [captured-seconds (atom nil)
+          mock-stmt        (proxy [java.sql.Statement] []
+                             (setQueryTimeout [secs] (reset! captured-seconds secs)))
+          set-timeout!     @#'sql-jdbc.execute/set-statement-query-timeout!]
+      (testing "default dynamic scope"
+        (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 3)]
+          (set-timeout! :h2 mock-stmt)
+          (is (= (* 3 60) @captured-seconds))))
+      (testing "transform-scope rebinding lands in the Statement"
+        (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 90)]
+          (set-timeout! :h2 mock-stmt)
+          (is (= (* 90 60) @captured-seconds))))
+      (testing "a throwing driver does not propagate the exception"
+        (let [throwing-stmt (proxy [java.sql.Statement] []
+                              (setQueryTimeout [_] (throw (java.sql.SQLFeatureNotSupportedException.))))]
+          (is (nil? (set-timeout! :h2 throwing-stmt)))))
+      (testing "drivers that opt out via :jdbc/set-query-timeout=false skip the call entirely"
+        (reset! captured-seconds :not-called)
+        (with-redefs [driver/database-supports? (fn [_ feature _] (not= feature :jdbc/set-query-timeout))]
+          (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 3)]
+            (set-timeout! :sparksql mock-stmt)
+            (is (= :not-called @captured-seconds))))))))
+
+(deftest statement-or-prepared-statement-round-trips-query-timeout-test
+  (testing "statement-or-prepared-statement creates a Statement whose .getQueryTimeout reflects the currently
+            bound *query-timeout-ms*, for every SQL-JDBC driver in CI that supports `:jdbc/set-query-timeout`.
+            Drivers that opt out (e.g. SparkSQL — Hive's Thrift transport breaks if setQueryTimeout is called) are
+            excluded; we just verify the Statement was created."
+    (mt/test-drivers (into #{} (filter #(isa? driver/hierarchy % :sql-jdbc)) (mt/normal-drivers))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver* (mt/db) {:write? false}
+       (fn [^java.sql.Connection conn]
+         (doseq [minutes [3 90]]
+           (binding [driver.settings/*query-timeout-ms* (u/minutes->ms minutes)]
+             (with-open [^java.sql.Statement stmt (sql-jdbc.execute/statement-or-prepared-statement
+                                                   driver/*driver* conn "SELECT 1" [] nil)]
+               (if (driver/database-supports? driver/*driver* :jdbc/set-query-timeout nil)
+                 (is (= (* minutes 60) (.getQueryTimeout stmt))
+                     (str "driver " driver/*driver* " did not round-trip " minutes "min via setQueryTimeout"))
+                 (is (some? stmt)
+                     (str "driver " driver/*driver* " opted out of :jdbc/set-query-timeout; just confirming a Statement was returned")))))))))))
+
+(deftest run-cancelable-transform!-propagates-timeout-to-driver-test
+  (testing "run-cancelable-transform! rebinds *query-timeout-ms* for the whole transform body, so any driver that
+            reads the dynamic var at query time (SQL JDBC via setQueryTimeout, Mongo/Druid/BigQuery directly) sees
+            the transform timeout instead of db-query-timeout."
+    (let [driver-observed-timeout-ms (atom nil)]
+      (with-redefs [driver/schema-exists?                            (constantly true)
+                    driver/create-schema-if-needed!                  (constantly nil)
+                    transforms-base.u/get-source-range-params        (constantly nil)
+                    transforms-base.u/save-run-checkpoint-range!     (constantly nil)
+                    transforms-base.u/save-watermark!                (constantly nil)
+                    transforms.canceling/chan-start-timeout-vthread! (constantly nil)
+                    transforms.canceling/chan-start-run!             (constantly nil)
+                    transforms.canceling/chan-end-run!               (constantly nil)
+                    transform-run/succeed-started-run!               (constantly nil)]
+        (mt/with-premium-features #{:transforms-basic}
+          (mt/with-temporary-setting-values [transform-timeout 90]
+            (transforms.u/run-cancelable-transform!
+             1 {:id 1} :h2 {:db-id 1 :conn-spec nil :output-schema "x"}
+             (fn [_cancel-chan _range-params]
+               (reset! driver-observed-timeout-ms driver.settings/*query-timeout-ms*))))))
+      (is (= (u/minutes->ms 90) @driver-observed-timeout-ms)))))
 
 (deftest ^:parallel massage-sql-query-test
   (testing "massage-sql-query sets disable-remaps? and disable-max-results?"
@@ -449,7 +540,6 @@
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (= "PUBLIC" (:schema table))
                 "Table schema should be updated to the driver's default schema"))))))
-
   (testing "activate-table-and-mark-computed! leaves nil schema when physical table has no default schema"
     (let [target {:type "table" :schema nil :name "test_nil_schema_no_default"}
           synced-table (atom nil)]

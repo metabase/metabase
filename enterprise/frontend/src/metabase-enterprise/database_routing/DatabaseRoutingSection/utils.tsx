@@ -7,7 +7,7 @@ import {
   hasFeature,
   hasTableEditingEnabled,
   hasWritableConnectionDetails,
-} from "metabase/admin/databases/utils";
+} from "metabase/common/utils/database";
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
