@@ -21,6 +21,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
+   [metabase.app-db.transient-error :as transient-error]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
@@ -44,7 +45,11 @@
       (instance? SQLIntegrityConstraintViolationException (ex-cause e))
       ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
       (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))
-      (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
+      (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)
+      ;; On multi-master appdbs (e.g. MariaDB Galera) row locks aren't replicated across nodes, so the lock
+      ;; doesn't serialize writers and the conflicting commit surfaces as a deadlock. These are transient and
+      ;; safe to retry since the locked body re-runs in a fresh transaction.
+      (transient-error/transient-error? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
   {:max-retries 4

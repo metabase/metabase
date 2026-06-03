@@ -8,11 +8,29 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
+   (java.sql SQLException)
    (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- deadlock-exception
+  "Build a deadlock SQLException for the current appdb type. Mirrors the codes in
+  [[metabase.app-db.transient-error]] so the test exercises the real db-type path."
+  []
+  (case (mdb/db-type)
+    :postgres (SQLException. "deadlock detected" "40P01")
+    :mysql    (SQLException. "Deadlock found when trying to get lock; try restarting transaction" "40001" 1213)
+    :h2       (SQLException. "Deadlock" "40001" 40001)))
+
+(deftest retryable-deadlock-test
+  (testing "transient deadlocks are retryable so cluster-lock writes survive Galera/multi-master commit conflicts"
+    (is (#'sut/retryable? (deadlock-exception)))
+    (testing "even when wrapped in the rollback wrapper the driver adds"
+      (is (#'sut/retryable? (ex-info "Error rolling back after previous error" {} (deadlock-exception))))))
+  (testing "non-transient errors are still not retryable"
+    (is (not (#'sut/retryable? (ex-info "Bad Error" {}))))))
 
 (deftest with-cluster-locking-test
   (testing "works when used non-concurrently"
