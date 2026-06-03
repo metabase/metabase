@@ -10,6 +10,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-run-cancelation :as wr.cancelation]
+   [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -21,6 +22,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private job-key "metabase.transforms.canceling")
+
+(def ^:private heartbeat-job-key "metabase.transforms.heartbeat")
 
 (defonce ^:private ^ScheduledExecutorService scheduler
   (Executors/newScheduledThreadPool 1))
@@ -46,6 +49,13 @@
   (when-some [cancel-chan (chan-end-run! run-id)]
     (a/put! cancel-chan :cancel!)
     true))
+
+(defn send-heartbeat!
+  "Stamp a heartbeat on every run this instance is actively executing — i.e. the run-ids currently registered
+  in `connections` (between `chan-start-run!` and `chan-end-run!`). When this process dies these stamps
+  stop, so the run's heartbeat goes stale and [[transform-run/reap-orphaned-runs!]] reaps it."
+  []
+  (transform-run/heartbeat-runs! (keys @connections)))
 
 (defn chan-start-timeout-vthread!
   "Starts a thread that will signal a timeout after a given number of minutes."
@@ -144,6 +154,40 @@
 (defmethod task/init! ::CancelOldTransformRuns [_]
   (log/info "Scheduling cancel transforms task.")
   (start-job!))
+
+(def ^:private transform-heartbeat-stale-minutes 5)
+
+(defn- transform-run-heartbeat! [_ctx]
+  ;; Two responsibilities, mirroring metabase.task-history.task.task-run-heartbeat:
+  ;;   1. Stamp a heartbeat on the runs THIS process is executing (so they aren't reaped while alive).
+  ;;   2. Reap runs whose heartbeat has gone stale (their owning process died).
+  (tracing/with-span :tasks "task.transform.heartbeat" {}
+    (send-heartbeat!)
+    (when-let [reaped (not-empty (transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes))]
+      (log/infof "Reaped %d orphaned transform run(s) with stale heartbeats." (count reaped)))))
+
+(task/defjob  ^{:doc "Heartbeat active transform runs owned by this process and reap orphaned ones"
+                org.quartz.DisallowConcurrentExecution true}
+  TransformRunHeartbeat [ctx]
+  (transform-run-heartbeat! ctx))
+
+(defn- start-heartbeat-job! []
+  (when (not (task/job-exists? heartbeat-job-key))
+    (let [job (jobs/build
+               (jobs/of-type TransformRunHeartbeat)
+               (jobs/with-identity (jobs/key heartbeat-job-key)))
+          trigger (triggers/build
+                   (triggers/with-identity (triggers/key heartbeat-job-key))
+                   (triggers/start-now)
+                   (triggers/with-schedule
+                    (calendar-interval/schedule
+                     (calendar-interval/with-interval-in-minutes 1)
+                     (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
+      (task/schedule-task! job trigger))))
+
+(defmethod task/init! ::TransformRunHeartbeat [_]
+  (log/info "Scheduling transform run heartbeat task.")
+  (start-heartbeat-job!))
 
 (defmethod task/init! ::CancelRuns [_]
   (log/info "Scheduling the cancelation background task.")

@@ -116,41 +116,43 @@
   - `:ex-message-fn` change how caught exceptions are presented to the user in run logs, by default the same as clojure.core/ex-message"
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
-  (try
-    (when (and (not (str/blank? output-schema))
-               (not (driver/schema-exists? driver db-id output-schema)))
-      (driver/create-schema-if-needed! driver conn-spec output-schema))
-    (let [source-range-params  (transforms-base.u/get-source-range-params transform)
-          transform-timeout    (transforms.settings/transform-timeout)
-          transform-timeout-ms (u/minutes->ms transform-timeout)]
-      (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
-      ;; Enrich the active task.transform.* span with checkpoint range attrs for
-      ;; incremental runs. No-op when tracing is disabled or no span is active.
-      (when source-range-params
-        (tracing/add-span-attrs! :tasks (transforms-base.u/checkpoint-span-attrs source-range-params)))
-      (canceling/chan-start-timeout-vthread! run-id transform-timeout)
-      (let [cancel-chan (a/promise-chan)
-            ret (driver.conn/with-transform-connection
-                  ;; Route through the `:transform` JDBC pool, whose `unreturnedConnectionTimeout` will be set
-                  ;; from the `*query-timeout-ms*` binding below at pool-creation time. This keeps the default
-                  ;; pool's leak-detector at `MB_DB_QUERY_TIMEOUT_MINUTES` for all non-transform traffic.
-                  (binding [qp.pipeline/*canceled-chan*          cancel-chan
-                            driver.settings/*query-timeout-ms*   transform-timeout-ms
-                            ;; Match the query timeout so a single slow socket read (or a driver that waits for
-                            ;; the full server-side query) does not get killed before the transform's own deadline.
-                            driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
-                    (canceling/chan-start-run! run-id cancel-chan)
-                    (run-transform! cancel-chan source-range-params)))]
-        (transforms-base.u/save-watermark! (:id transform) source-range-params)
-        (transform-run/succeed-started-run! run-id)
-        ret))
-    (catch Throwable t
-      (if (:timeout (ex-data t))
-        (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
-        (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
-      (throw t))
-    (finally
-      (canceling/chan-end-run! run-id))))
+  (let [cancel-chan (a/promise-chan)]
+    ;; Register in the cancel/heartbeat registry as the FIRST action, so the run is heartbeated
+    ;; and cancelable for its entire is_active lifetime, not just once execution starts
+    (canceling/chan-start-run! run-id cancel-chan)
+    (try
+      (when (and (not (str/blank? output-schema))
+                 (not (driver/schema-exists? driver db-id output-schema)))
+        (driver/create-schema-if-needed! driver conn-spec output-schema))
+      (let [source-range-params  (transforms-base.u/get-source-range-params transform)
+            transform-timeout    (transforms.settings/transform-timeout)
+            transform-timeout-ms (u/minutes->ms transform-timeout)]
+        (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
+        ;; Enrich the active task.transform.* span with checkpoint range attrs for
+        ;; incremental runs. No-op when tracing is disabled or no span is active.
+        (when source-range-params
+          (tracing/add-span-attrs! :tasks (transforms-base.u/checkpoint-span-attrs source-range-params)))
+        (canceling/chan-start-timeout-vthread! run-id transform-timeout)
+        (let [ret (driver.conn/with-transform-connection
+                    ;; Route through the `:transform` JDBC pool, whose `unreturnedConnectionTimeout` will be set
+                    ;; from the `*query-timeout-ms*` binding below at pool-creation time. This keeps the default
+                    ;; pool's leak-detector at `MB_DB_QUERY_TIMEOUT_MINUTES` for all non-transform traffic.
+                    (binding [qp.pipeline/*canceled-chan*          cancel-chan
+                              driver.settings/*query-timeout-ms*   transform-timeout-ms
+                              ;; Match the query timeout so a single slow socket read (or a driver that waits for
+                              ;; the full server-side query) does not get killed before the transform's own deadline.
+                              driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
+                      (run-transform! cancel-chan source-range-params)))]
+          (transforms-base.u/save-watermark! (:id transform) source-range-params)
+          (transform-run/succeed-started-run! run-id)
+          ret))
+      (catch Throwable t
+        (if (:timeout (ex-data t))
+          (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
+          (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
+        (throw t))
+      (finally
+        (canceling/chan-end-run! run-id)))))
 
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."

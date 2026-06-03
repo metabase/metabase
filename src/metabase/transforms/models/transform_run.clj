@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -77,6 +78,7 @@
                                                    :transform_entity_id (:entity_id transform)
                                                    :status :started
                                                    :is_active true
+                                                   :process_uuid config/local-process-uuid
                                                    :metered_as metered-as))]
      ;; Pass user_id to the event so audit log properly attributes the run
      (events/publish-event! :event/transform-run-start
@@ -179,6 +181,46 @@
                                        :message   "Timed out by metabase"))))
     (cancel/delete-old-canceling-runs!)
     timed-out))
+
+(defn heartbeat-runs!
+  "Stamp `last_heartbeat = now` on the given still-active `run-ids`. Called every minute by the heartbeat
+  job with the run-ids this process is actively executing. No-op on an empty id list; the `is_active`
+  guard makes it a no-op for runs that have since finished."
+  [run-ids]
+  (when (seq run-ids)
+    (t2/update! :model/TransformRun
+                {:id [:in run-ids], :is_active true}
+                {:last_heartbeat (mi/now)})))
+
+(defn reap-orphaned-runs!
+  "Time out active runs whose heartbeat is older than `stale-minutes` — their owning process is presumed
+  dead (it stopped stamping heartbeats). Returns the rows that were timed out. Mirrors [[timeout-old-runs!]]
+  but keys on `last_heartbeat` rather than `start_time`, so it reaps orphans in minutes instead of waiting
+  for the wall-clock `transform-timeout`. See [[metabase.transforms.models.timeout-util/timeout-rows!]] for
+  atomicity rationale."
+  [stale-minutes]
+  (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- stale-minutes) :minute)
+        timeout-dur (timeout-util/unit->duration stale-minutes :minute)
+        detected-at (Instant/now)
+        end-time    (OffsetDateTime/ofInstant detected-at ZoneOffset/UTC)
+        reaped      (timeout-util/timeout-rows! :model/TransformRun :last_heartbeat cutoff
+                                                "Timed out: no heartbeat")]
+    (when (seq reaped)
+      (analytics/inc! :metabase-transforms/timeouts-total
+                      {:type "transform"}
+                      (count reaped))
+      (doseq [run reaped]
+        (when-let [hb (:last_heartbeat run)]
+          (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
+                              {:type "transform"}
+                              (timeout-util/detection-latency-ms hb timeout-dur detected-at)))
+        (publish-timeout-event! (assoc run
+                                       :status    :timeout
+                                       :is_active nil
+                                       :end_time  end-time
+                                       :message   "Timed out: no heartbeat"))))
+    (cancel/delete-old-canceling-runs!)
+    reaped))
 
 (defn cancel-old-canceling-runs!
   "Atomically force-cancels active runs whose cancelation requests are older than `age` `unit`. Returns the
