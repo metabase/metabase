@@ -1,5 +1,6 @@
 // TODO: consolidate this component w/ AIAnalysisContent
 
+import { useReducedMotion } from "@mantine/hooks";
 import cx from "classnames";
 import {
   type ComponentPropsWithoutRef,
@@ -24,12 +25,20 @@ import { resolveChartCardForLink } from "../MetabotChat/data-point-router";
 import S from "./AIMarkdown.module.css";
 import { InternalLink } from "./components/InternalLink";
 import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
+import animS from "./streaming/AnimatedMarkdown.module.css";
+import { MarkdownBlock } from "./streaming/MarkdownBlock";
+import { repairMarkdown } from "./streaming/repairMarkdown";
+import { splitMarkdownBlocks } from "./streaming/splitMarkdownBlocks";
+import { useSmoothText } from "./streaming/useSmoothText";
 
 type AIMarkdownProps = MarkdownProps & {
   onInternalLinkClick?: (link: string) => void;
   singleNewlinesAreParagraphs?: boolean;
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
   dataSelections?: Record<string, DataSelection | undefined>;
+  /** Animate newly-streamed text word-by-word. Only the live, in-flight message
+   * should set this; finished and historical messages render verbatim. */
+  animate?: boolean;
 };
 
 // Apply a URL-supplied column index to a target, overriding which column the
@@ -212,8 +221,19 @@ export const AIMarkdown = memo(
     dataSelections,
     children,
     singleNewlinesAreParagraphs = false,
+    animate = false,
     ...props
   }: AIMarkdownProps) => {
+    const reduceMotion = useReducedMotion();
+    const isAnimating = animate && !reduceMotion;
+
+    const { dark, unstyleLinks, disallowHeading, c, lineClamp } = props;
+    // Stable object so memoized blocks aren't invalidated every streamed token.
+    const markdownRest = useMemo(
+      () => ({ dark, unstyleLinks, disallowHeading, c, lineClamp }),
+      [dark, unstyleLinks, disallowHeading, c, lineClamp],
+    );
+
     const components = useMemo(
       () =>
         getComponents({
@@ -224,22 +244,50 @@ export const AIMarkdown = memo(
       [onInternalLinkClick, dataPointTargets, dataSelections],
     );
 
+    // Smoothing buffer releases bursty deltas word-by-word; a no-op when idle.
+    const smoothed = useSmoothText(children, isAnimating);
+
     const normalizedChildren = useMemo(
       () =>
         singleNewlinesAreParagraphs
-          ? splitMessageLinesAsParagraphs(children)
-          : children,
-      [children, singleNewlinesAreParagraphs],
+          ? splitMessageLinesAsParagraphs(smoothed)
+          : smoothed,
+      [smoothed, singleNewlinesAreParagraphs],
     );
 
+    const blocks = useMemo(
+      () =>
+        isAnimating
+          ? splitMarkdownBlocks(repairMarkdown(normalizedChildren))
+          : [],
+      [isAnimating, normalizedChildren],
+    );
+
+    // Non-animated (finished / historical) messages render exactly as before.
+    if (!isAnimating) {
+      return (
+        <Markdown
+          className={cx(S.aiMarkdown, className)}
+          components={components}
+          {...props}
+        >
+          {normalizedChildren}
+        </Markdown>
+      );
+    }
+
     return (
-      <Markdown
-        className={cx(S.aiMarkdown, className)}
-        components={components}
-        {...props}
-      >
-        {normalizedChildren}
-      </Markdown>
+      <div className={cx(S.aiMarkdown, animS.animatedBlock, className)}>
+        {blocks.map((content, index) => (
+          <MarkdownBlock
+            key={index}
+            content={content}
+            animate
+            components={components}
+            markdownRest={markdownRest}
+          />
+        ))}
+      </div>
     );
   },
 );

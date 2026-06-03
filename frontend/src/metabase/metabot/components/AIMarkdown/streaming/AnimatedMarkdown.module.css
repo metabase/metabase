@@ -1,0 +1,22 @@
+.animatedBlock [data-anim-word] {
+  display: inline;
+  animation: stream-word-blur-in 220ms ease both;
+}
+
+@keyframes stream-word-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+  }
+
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animatedBlock [data-anim-word] {
+    animation: none;
+  }
+}

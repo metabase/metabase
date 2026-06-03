@@ -131,4 +131,48 @@ describe("AIMarkdown", () => {
     );
     window.removeEventListener("metabot:data-point-mention-click", listener);
   });
+
+  describe("streaming animation", () => {
+    it("wraps each word in its own animation span when animating", async () => {
+      setup({ children: "hello world", animate: true });
+
+      // each word becomes its own element carrying the animation marker, revealed
+      // word-by-word by the smoothing buffer
+      expect(await screen.findByText("hello")).toHaveAttribute(
+        "data-anim-word",
+      );
+      expect(await screen.findByText("world")).toHaveAttribute(
+        "data-anim-word",
+      );
+    });
+
+    it("does not split or wrap words when not animating", async () => {
+      setup({ children: "hello world", animate: false });
+
+      expect(await screen.findByText("hello world")).toBeInTheDocument();
+      // words are not individually wrapped, so a single-word lookup misses
+      expect(screen.queryByText("hello")).not.toBeInTheDocument();
+    });
+
+    it("does not animate text inside code spans", async () => {
+      setup({ children: "run `the code` now", animate: true });
+
+      // prose outside the code span animates...
+      expect(await screen.findByText("now")).toHaveAttribute("data-anim-word");
+      // ...but code content stays a single node with no per-word marker
+      expect(screen.getByText("the code")).not.toHaveAttribute(
+        "data-anim-word",
+      );
+    });
+
+    it("still renders smart links while animating", async () => {
+      setup({
+        children: "[My Question](metabase://question/123)",
+        animate: true,
+      });
+
+      expect(await screen.findByText("My Question")).toBeInTheDocument();
+      expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+    });
+  });
 });

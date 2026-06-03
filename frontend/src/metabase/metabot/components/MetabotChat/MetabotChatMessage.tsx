@@ -182,6 +182,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
+  animate?: boolean;
 }
 
 export const AgentMessage = ({
@@ -199,6 +200,7 @@ export const AgentMessage = ({
   submittedFeedback,
   onInternalLinkClick,
   hideActions,
+  animate,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
@@ -214,6 +216,7 @@ export const AgentMessage = ({
             onInternalLinkClick={onInternalLinkClick}
             dataPointTargets={dataPointTargets}
             dataSelections={dataSelections}
+            animate={animate}
           >
             {m.message}
           </AIMarkdown>
@@ -531,6 +534,7 @@ export const Messages = memo(function Messages({
             }
             hideActions={next?.role === "agent" || (isDoingScience && !next)}
             onInternalLinkClick={onInternalLinkClick}
+            animate={isDoingScience && !next && message.type === "text"}
           />
         ) : (
           <UserMessage
