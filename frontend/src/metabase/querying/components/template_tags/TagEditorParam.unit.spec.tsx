@@ -8,6 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -76,6 +77,7 @@ const setup = ({
   });
 
   const setTemplateTag = jest.fn();
+  const setTemplateTagConfig = jest.fn();
   const setParameterValue = jest.fn();
 
   renderWithProviders(
@@ -84,13 +86,15 @@ const setup = ({
       database={databaseMetadata}
       databases={metadata.databasesList()}
       parameter={getTemplateTagParameter(tag)}
+      originalQuestion={getOriginalQuestion(state)}
       setTemplateTag={setTemplateTag}
+      setTemplateTagConfig={setTemplateTagConfig}
       setParameterValue={setParameterValue}
     />,
     { storeInitialState: state },
   );
 
-  return { setTemplateTag, setParameterValue };
+  return { setTemplateTag, setTemplateTagConfig, setParameterValue };
 };
 
 describe("TagEditorParam", () => {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -154,6 +154,12 @@ function TemplateTagsSidebar({
           ...parameterValues,
           [tagId]: value,
         });
+      }}
+      setTemplateTagConfig={(tag, config) => {
+        const newQuery = question
+          .legacyNativeQuery()!
+          .setTemplateTagConfig(tag, config);
+        onChangeQuery(newQuery.question().query());
       }}
       setDatasetQuery={(newQuery) => {
         const newQuestion = question.setDatasetQuery(newQuery);

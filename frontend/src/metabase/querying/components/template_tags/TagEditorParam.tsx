@@ -7,8 +7,6 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
-import { setTemplateTagConfig } from "metabase/query_builder/actions";
-import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { type DispatchFn, connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -58,15 +56,10 @@ import {
 
 interface StateProps {
   metadata: Metadata;
-  originalQuestion?: Question;
 }
 
 interface DispatchProps {
   fetchField: (fieldId: FieldId, force?: boolean) => void;
-  setTemplateTagConfig: (
-    tag: TemplateTag,
-    config: ParameterValuesConfig,
-  ) => void;
 }
 
 interface OwnProps {
@@ -79,8 +72,14 @@ interface OwnProps {
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
   databases: Database[];
+  /**
+   * The originally saved question, used to restore a tag's value-source config
+   * when its type is switched back to the original. Optional: contexts without a
+   * saved original (e.g. the standalone query editor) simply pass nothing.
+   */
+  originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig?: (
+  setTemplateTagConfig: (
     tag: TemplateTag,
     config: ParameterValuesConfig,
   ) => void;
@@ -91,14 +90,10 @@ interface OwnProps {
 function mapStateToProps(state: State) {
   return {
     metadata: getMetadata(state),
-    originalQuestion: getOriginalQuestion(state),
   };
 }
 
-const mapDispatchToProps = (
-  dispatch: DispatchFn,
-  props: OwnProps,
-): DispatchProps => {
+const mapDispatchToProps = (dispatch: DispatchFn): DispatchProps => {
   return {
     async fetchField(fieldId, force) {
       const field = await runRtkEndpoint(
@@ -116,13 +111,6 @@ const mapDispatchToProps = (
           { forceRefetch: force ?? false },
         );
       }
-    },
-    setTemplateTagConfig(tag, config) {
-      if (props.setTemplateTagConfig) {
-        props.setTemplateTagConfig(tag, config);
-        return;
-      }
-      dispatch(setTemplateTagConfig(tag, config));
     },
   };
 };
