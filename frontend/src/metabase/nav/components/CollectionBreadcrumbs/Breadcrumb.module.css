@@ -1,4 +1,6 @@
 .breadcrumb {
+  min-width: 0;
+
   &:hover {
     .content {
       color: var(--mb-color-brand);

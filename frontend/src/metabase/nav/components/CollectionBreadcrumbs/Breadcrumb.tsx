@@ -9,19 +9,39 @@ import S from "./Breadcrumb.module.css";
 interface Props {
   children: ReactNode;
   icon: IconName;
-  to: string;
+  iconSize?: number;
+  to?: string;
+  onClick?: () => void;
 }
 
-export const Breadcrumb = ({ children, icon, to }: Props) => {
-  return (
-    <Link className={S.breadcrumb} style={{ minWidth: 0 }} to={to}>
-      <Group align="center" className={S.content} gap="xs" wrap="nowrap">
-        <Icon flex="0 0 auto" name={icon} />
+export const Breadcrumb = ({
+  children,
+  icon,
+  iconSize,
+  to,
+  onClick,
+}: Props) => {
+  const content = (
+    <Group align="center" className={S.content} gap="xs" wrap="nowrap">
+      <Icon flex="0 0 auto" name={icon} size={iconSize} />
 
-        <Ellipsified fw="bold" fz="sm" lh="normal">
-          {children}
-        </Ellipsified>
-      </Group>
-    </Link>
+      <Ellipsified fw="bold" fz="sm" lh="normal" showTooltip={false}>
+        {children}
+      </Ellipsified>
+    </Group>
+  );
+
+  if (typeof to === "string") {
+    return (
+      <Link className={S.breadcrumb} to={to} onClick={onClick}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <span className={S.breadcrumb} onClick={onClick}>
+      {content}
+    </span>
   );
 };
