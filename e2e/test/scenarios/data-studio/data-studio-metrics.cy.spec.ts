@@ -417,8 +417,10 @@ describe("scenarios > data studio > library > metrics", () => {
         .findByTestId("cache-strategy-select")
         .should("have.value", "Default")
         .click();
-      // Select options render in a portal, outside the modal.
-      cy.findByRole("option", { name: /Duration/ }).click();
+      // The Select dropdown renders in a portal; wait for it to open, then pick.
+      H.selectDropdown()
+        .findByRole("option", { name: /Duration/ })
+        .click();
       H.modal().findByTestId("strategy-form-submit-button").click();
 
       cy.wait("@updateCacheConfig");
