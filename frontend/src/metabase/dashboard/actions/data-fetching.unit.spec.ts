@@ -131,7 +131,9 @@ describe("fetchDashboard", () => {
 
     await Promise.all([pageFetch, navFetch.unwrap()]);
 
-    expect(fetchMock.callHistory.calls("path:/api/dashboard/1")).toHaveLength(1);
+    expect(fetchMock.callHistory.calls("path:/api/dashboard/1")).toHaveLength(
+      1,
+    );
   });
 
   it("should not cancel an in-flight request when re-dispatched with the same parameters (#70534)", async () => {
