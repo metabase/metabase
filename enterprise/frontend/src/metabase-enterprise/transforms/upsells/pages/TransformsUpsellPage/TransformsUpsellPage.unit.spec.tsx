@@ -20,6 +20,9 @@ describe("TransformsUpsellPage", () => {
     await waitForLoadingToFinish();
 
     expect(
+      screen.queryByRole("button", { name: "Enable transforms" }),
+    ).not.toBeInTheDocument();
+    expect(
       screen.getByText(/contact a store administrator/i),
     ).toBeInTheDocument();
   });
@@ -74,6 +77,9 @@ describe("TransformsUpsellPage", () => {
     setup({ isHosted: true, isStoreUser: true, hadTransforms: true });
     await waitForLoadingToFinish();
 
+    expect(
+      screen.queryByText("1,000 free transform runs"),
+    ).not.toBeInTheDocument();
     expect(
       fetchMock.callHistory.calls(
         "path:/api/ee/cloud-add-ons/transforms-basic-metered",
