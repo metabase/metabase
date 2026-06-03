@@ -27,7 +27,10 @@ const LEAF_LABEL_MIN_AREA_SHARE = 0.03;
 // Bottom inset (px) reserved for the breadcrumb overlay while drilled in.
 // Exported so the rounded-corner clip in TreemapChart can match it (otherwise
 // the clip rounds the empty breadcrumb strip instead of the drilled tiles).
-export const DRILLED_BOTTOM_INSET = 48;
+// Sized so the gap between the chart's bottom edge and the breadcrumb pill is
+// 24px: the pill is ~32px tall and sits 8px off the container bottom
+// (TreemapBreadcrumb.module.css), so 24 + 32 + 8 = 64.
+export const DRILLED_BOTTOM_INSET = 64;
 
 // Font + padding of the group header chip (the parent labels). Exported so the
 // component's measurement pass can measure the header text at the exact style
