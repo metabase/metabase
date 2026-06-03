@@ -290,24 +290,6 @@ const TableSectionBase = ({
                   </Tooltip>
                 )}
 
-                <Tooltip label={t`Schema viewer`}>
-                  <Button
-                    component={ForwardRefLink}
-                    to={Urls.dataStudioSchemaViewer({
-                      databaseId: table.db_id,
-                      schema: table.schema,
-                      tableIds: [table.id],
-                    })}
-                    p="sm"
-                    leftSection={<Icon name="network" />}
-                    style={{
-                      flexGrow: 0,
-                      width: 40,
-                    }}
-                    aria-label={t`Schema viewer`}
-                  />
-                </Tooltip>
-
                 <Box style={{ flexGrow: 0, width: 40 }}>
                   <TableLink table={table} />
                 </Box>

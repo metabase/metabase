@@ -63,14 +63,36 @@ describe("TableSection", () => {
       });
     });
 
-    it("should not expose sync actions when the database is datawarehouse attached", () => {
+    it("should expose the schema viewer in the actions menu", async () => {
+      setup();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "More actions" }),
+      );
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Schema viewer/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not expose sync actions when the database is datawarehouse attached", async () => {
       setup({
         database: createMockDatabase({ is_attached_dwh: true }),
       });
 
-      // No sync items and (for a non-admin) no replace item, so the menu is hidden entirely.
+      await userEvent.click(
+        screen.getByRole("button", { name: "More actions" }),
+      );
+
+      // Schema viewer is always available, but the sync actions are not.
       expect(
-        screen.queryByRole("button", { name: "More actions" }),
+        await screen.findByRole("menuitem", { name: /Schema viewer/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Re-sync schema/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Re-scan field values/ }),
       ).not.toBeInTheDocument();
     });
   });

@@ -6,6 +6,7 @@ import {
   useRescanTablesFieldValuesMutation,
   useSyncTablesSchemasMutation,
 } from "metabase/api";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import {
   trackDataStudioTableFieldValuesDiscardStarted,
   trackDataStudioTableFieldsRescanStarted,
@@ -15,6 +16,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
 interface Props {
@@ -31,11 +33,6 @@ export function TableActionsMenu({ table }: Props) {
 
   const tableIds = [table.id];
   const showSyncItems = !table.db?.is_attached_dwh;
-
-  // Don't render an empty menu when there's nothing to show.
-  if (!showSyncItems && !canReplaceSources) {
-    return null;
-  }
 
   const handleSyncSchema = async () => {
     const { error } = await syncTablesSchemas({ table_ids: tableIds });
@@ -81,6 +78,18 @@ export function TableActionsMenu({ table }: Props) {
           />
         </Menu.Target>
         <Menu.Dropdown>
+          <Menu.Item
+            component={ForwardRefLink}
+            to={Urls.dataStudioSchemaViewer({
+              databaseId: table.db_id,
+              schema: table.schema,
+              tableIds,
+            })}
+            leftSection={<Icon name="network" />}
+          >
+            {t`Schema viewer`}
+          </Menu.Item>
+          {(canReplaceSources || showSyncItems) && <Menu.Divider />}
           <PLUGIN_REPLACEMENT.SourceReplacementButton>
             {({ isDisabled }) => (
               <Menu.Item
