@@ -75,8 +75,9 @@
 
 ;; Some clients probe the bare resource path instead of the resource-specific one; serve the same metadata here so
 ;; the request doesn't fall through to the SPA's HTML catch-all and trip a `JSON.parse` error (BOT-1617).
+;; Advertise the canonical path so a bare-path probe is pointed at `/api/metabase-mcp`, not the legacy alias.
 (api.macros/defendpoint :get "/oauth-protected-resource"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
   []
-  (protected-resource-metadata "/api/mcp"))
+  (protected-resource-metadata "/api/metabase-mcp"))
