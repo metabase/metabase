@@ -147,14 +147,6 @@ export const DataStudio = {
     noResults: () =>
       libraryPage().findByText("No tables, metrics, or snippets yet"),
     libraryPage,
-    metricItem: (name: string) =>
-      // The library lists items as /api/ee/library resolves; on a throttled
-      // fetch no metric row may exist for several seconds, and a freshly
-      // created metric can render after the rest. Give both the list query and
-      // the name match long timeouts so the whole chain keeps retrying.
-      cy
-        .findAllByTestId("metric-name", { timeout: 10000 })
-        .contains(name, { timeout: 10000 }),
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>
       DataStudio.Library.allTableItems().contains(name),
