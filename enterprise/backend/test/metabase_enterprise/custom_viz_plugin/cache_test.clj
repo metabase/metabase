@@ -217,7 +217,7 @@
 (deftest resolve-bundle-dev-url-takes-precedence-test
   (testing "resolve-bundle prefers dev URL over the uploaded bundle when both are present"
     (mt/with-premium-features #{:custom-viz}
-      (with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
+      (mt/with-dynamic-fn-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
         (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "precedence"
                                                         :display_name   "precedence"
                                                         :status         :active
@@ -225,8 +225,8 @@
                                                         :dev_bundle_url "http://localhost:5174"}]
           (let [dev-called? (atom false)
                 fs-called?  (atom false)]
-            (with-redefs [cache/fetch-dev-bundle (fn [_] (reset! dev-called? true) {:content "dev-js" :hash "d1"})
-                          cache/get-bundle      (fn [_] (reset! fs-called? true) {:content "fs-js" :hash "g1"})]
+            (mt/with-dynamic-fn-redefs [cache/fetch-dev-bundle (fn [_] (reset! dev-called? true) {:content "dev-js" :hash "d1"})
+                                        cache/get-bundle      (fn [_] (reset! fs-called? true) {:content "fs-js" :hash "g1"})]
               (let [result (cache/resolve-bundle {:id id})]
                 (is (true? @dev-called?) "dev bundle fetch should be called")
                 (is (false? @fs-called?) "filesystem bundle should not be called when dev URL is set")
