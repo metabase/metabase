@@ -42,6 +42,7 @@ import { MetabaseReduxProvider } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
+import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
@@ -90,6 +91,7 @@ function _init(reducers, getRoutes, callback) {
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
           <AppThemeProvider>
             <GlobalStyles />
+            <PortalContainer />
             <MetabotProvider>
               <HistoryProvider history={syncedHistory}>
                 <RouterProvider>{routes}</RouterProvider>
