@@ -526,7 +526,7 @@
 
 (defmethod date-type-expected :sqlite
   [_]
-  :type/Text)
+  :type/Date)
 
 (defmethod date-type-expected :mongo
   [_]
