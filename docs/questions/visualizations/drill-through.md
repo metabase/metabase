@@ -86,6 +86,8 @@ To drill-through a chart, click either:
 | **Zoom in**                                   | Histograms, binned charts, and maps                                                          |
 | **See this [period] by [smaller period]**     | Time series                                                                                  |
 
+On a time series or other chart with a continuous axis, click and drag across a range to filter the question to those values. This works like **Filter by this value**, but for a range of data instead of a single data point.
+
 #### Legend items
 
 Clicking the colored circle on a legend item toggles the series on or off. Clicking the label on the legend item opens the drill-through menu.
