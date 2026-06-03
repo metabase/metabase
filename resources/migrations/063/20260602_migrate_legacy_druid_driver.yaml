@@ -11,3 +11,4 @@ databaseChangeLog:
               UPDATE metabase_database
               SET engine = 'druid-jdbc'
               WHERE engine = 'druid';
+      rollback: # nothing to do
