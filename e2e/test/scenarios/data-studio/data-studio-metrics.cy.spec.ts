@@ -117,9 +117,7 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
-      .click();
+    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
 
     cy.log("Verify metric overview page displays correct data");
     H.DataStudio.Metrics.aboutPage()
@@ -151,9 +149,7 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
-      .click();
+    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
@@ -176,9 +172,7 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
-      .click();
+    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
@@ -207,9 +201,7 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
-      .click();
+    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
 
     cy.log("Verify metric is loaded before archiving");
     H.DataStudio.Metrics.aboutPage()
@@ -260,9 +252,7 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
-      .click();
+    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.aboutPage()
@@ -280,13 +270,7 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    // The library page lists items as they come back from /api/ee/library;
-    // on fetch (microtask resolution) the initial render can land before
-    // the metric we created in `createLibraryWithItems` has been indexed
-    // into the library response. Allow more time than the default 4s retry.
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric", { timeout: 10000 })
-      .click();
+    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.aboutPage()
@@ -336,9 +320,7 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.visit("/data-studio/library");
 
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
-      .click();
+    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.aboutPage()
@@ -418,30 +400,38 @@ describe("scenarios > data studio > library > metrics", () => {
 
   describe("caching", () => {
     it("should allow changing metric caching settings", () => {
+      cy.intercept("PUT", "/api/cache").as("updateCacheConfig");
+
       cy.log("Navigate to Data Studio Library");
       cy.visit("/data-studio/library");
 
       cy.log("Click on the metric from the collection view");
       H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
 
-      cy.log("Navigate to caching tab");
-      H.DataStudio.Metrics.cachingTab().click();
+      cy.log("Open the caching settings from the overflow menu");
+      H.DataStudio.Metrics.moreMenu().click();
+      H.popover().findByText("Caching").click();
 
-      cy.log("Change the setting and save");
-      cy.findByTestId("cache-strategy-select").should("have.value", "Default");
-      cy.findByTestId("cache-strategy-select").click();
+      cy.log("Change the strategy to Duration and save");
+      H.modal()
+        .findByTestId("cache-strategy-select")
+        .should("have.value", "Default")
+        .click();
+      // Select options render in a portal, outside the modal.
       cy.findByRole("option", { name: /Duration/ }).click();
-      cy.findByRole("button", { name: "Save" }).click();
-      cy.findByRole("button", { name: /Saved/ }).should("exist");
+      H.modal().findByTestId("strategy-form-submit-button").click();
 
-      // wait for the save button to disappear - that means the form is no longer dirty
-      // and navigating away won't show the confirmation modal that was causing flakes
-      cy.findByRole("button", { name: /Saved/ }).should("not.exist");
+      cy.wait("@updateCacheConfig");
 
-      cy.log("Navigate away and come back to verify the change is persisted");
-      H.DataStudio.Metrics.overviewTab().click();
-      H.DataStudio.Metrics.cachingTab().click();
-      cy.findByTestId("cache-strategy-select").should("have.value", "Duration");
+      cy.log("Saving persists the change and closes the modal");
+      H.modal().should("not.exist");
+
+      cy.log("Re-open the caching settings to verify the change is persisted");
+      H.DataStudio.Metrics.moreMenu().click();
+      H.popover().findByText("Caching").click();
+      H.modal()
+        .findByTestId("cache-strategy-select")
+        .should("have.value", "Duration");
     });
   });
 });
