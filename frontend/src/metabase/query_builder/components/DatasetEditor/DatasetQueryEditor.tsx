@@ -1,17 +1,26 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
-import { memo, useMemo, useState } from "react";
+import {
+  type ComponentProps,
+  type PropsWithChildren,
+  memo,
+  useMemo,
+  useState,
+} from "react";
+import type { ResizableBoxProps } from "react-resizable";
 
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { Box } from "metabase/ui";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 import { DatasetNotebook } from "./DatasetNotebook";
 import S from "./DatasetQueryEditor.module.css";
 
-// eslint-disable-next-line react/prop-types
-const QueryEditorContainer = ({ isActive, ...props }) => {
+const QueryEditorContainer = ({
+  isActive,
+  ...props
+}: PropsWithChildren<{ isActive: boolean }>) => {
   return (
     <Box
       className={cx(S.QueryEditorContainer, { [S.isHidden]: !isActive })}
@@ -22,14 +31,13 @@ const QueryEditorContainer = ({ isActive, ...props }) => {
 
 const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
 
-const propTypes = {
-  question: PropTypes.object.isRequired,
-  isActive: PropTypes.bool.isRequired, // if QB mode is set to "query"
+type DatasetQueryEditorProps = ComponentProps<typeof NativeQueryEditor> & {
+  isActive: boolean; // if QB mode is set to "query"
+  height: number;
   // optional: derived from a measured container, so it is undefined until
   // the container has been laid out (e.g. on first render and in jsdom).
-  availableHeight: PropTypes.number,
-  height: PropTypes.number.isRequired,
-  onSetDatabaseId: PropTypes.func,
+  availableHeight?: number;
+  onResizeStop: ResizableBoxProps["onResizeStop"];
 };
 
 function DatasetQueryEditorInner({
@@ -38,14 +46,15 @@ function DatasetQueryEditorInner({
   height,
   onSetDatabaseId,
   ...props
-}) {
+}: DatasetQueryEditorProps) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const [isResizing, setResizing] = useState(false);
 
   const resizableBoxProps = useMemo(() => {
     // Disables resizing by removing a handle in "columns" mode
-    const resizeHandles = isActive ? ["s"] : [];
+    const resizeHandles: NonNullable<ResizableBoxProps["resizeHandles"]> =
+      isActive ? ["s"] : [];
 
     // The editor can change its size in two cases:
     // 1. By manually resizing the window with a handle
@@ -57,7 +66,7 @@ function DatasetQueryEditorInner({
         ? undefined
         : SMOOTH_RESIZE_STYLE;
 
-    const resizableBoxProps = {
+    const resizableBoxProps: Partial<ResizableBoxProps> & { height: number } = {
       height,
       resizeHandles,
       onResizeStart: () => setResizing(true),
@@ -80,14 +89,18 @@ function DatasetQueryEditorInner({
         <NativeQueryEditor
           {...props}
           question={question}
-          query={question.legacyNativeQuery()} // memoized query
+          query={checkNotNull(question.legacyNativeQuery())} // memoized query
           isInitiallyOpen
-          hasTopBar={isActive}
-          hasEditingSidebar={isActive}
-          hasParametersList={false}
-          resizableBoxProps={resizableBoxProps}
           onSetDatabaseId={onSetDatabaseId}
-        />
+        >
+          {isActive && (
+            <NativeQueryEditor.TopBar>
+              <NativeQueryEditor.Sidebar />
+              <NativeQueryEditor.VisibilityToggler />
+            </NativeQueryEditor.TopBar>
+          )}
+          {isActive && <NativeQueryEditor.RunButton />}
+        </NativeQueryEditor>
       ) : (
         <DatasetNotebook
           {...props}
@@ -99,7 +112,5 @@ function DatasetQueryEditorInner({
     </QueryEditorContainer>
   );
 }
-
-DatasetQueryEditorInner.propTypes = propTypes;
 
 export const DatasetQueryEditor = memo(DatasetQueryEditorInner);
