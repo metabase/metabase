@@ -1,6 +1,8 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 
+import _ from "underscore";
+
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type {
   OnBeforeRequestHandler,
@@ -223,33 +225,54 @@ export class ApiClient extends EventEmitter<EventMap> {
       throw new Error("API bodies must be plain objects, not arrays");
     }
 
+    const bodyIsRaw =
+      options.body instanceof FormData ||
+      options.body instanceof URLSearchParams;
+
+    // Hand the middleware the whole request payload — body merged under `params`
+    // (which win on key clashes) — so handlers can fill embed URL `:tag` tokens
+    // (notably the `:token` on the guest-embed card-query rewrite) from fields
+    // that morally live in the body. The embed handlers already read these off
+    // `config.data`, so no special body channel is needed. `FormData` /
+    // `URLSearchParams` can't be merged, so they pass through untouched.
+    const paramKeys = Object.keys(options.params ?? {});
+    const middlewareData = bodyIsRaw
+      ? { ...options.params }
+      : {
+          ...(options.body as Record<string, unknown> | undefined),
+          ...options.params,
+        };
+
+    // `data` comes back holding only the leftovers: URL-tag substitution has
+    // deleted the keys it consumed (e.g. an embed `:token` lifted from the body).
     const { url, method, data, headers } = await this._resolveOptions({
       url: options.url,
       method: options.method,
       headers: options.headers,
-      data: options.params ?? {},
+      data: middlewareData,
     });
 
     let body: BodyInit | undefined = undefined;
 
-    // Leftover params (post URL-tag substitution) always go to the querystring.
-    appendQueryParameters(url, data);
-
     if (method === "GET") {
-      // GET cannot carry a body: fold body into the querystring.
-      const bodyParams = (options.body ?? {}) as Record<string, unknown>;
-      appendQueryParameters(url, bodyParams);
-    } else if (
-      options.body instanceof FormData ||
-      options.body instanceof URLSearchParams
-    ) {
-      body = options.body;
+      // GET cannot carry a body: every leftover — params and body fields alike —
+      // folds into the querystring.
+      appendQueryParameters(url, data);
+    } else if (bodyIsRaw) {
+      // Leftover params go to the querystring; the raw body passes through as-is.
+      appendQueryParameters(url, data);
+      body = options.body as BodyInit;
 
       // Let the browser set Content-Type with the multipart boundary
       // (FormData) or urlencoded charset (URLSearchParams).
       delete headers["Content-Type"];
-    } else if (options.body !== undefined) {
-      body = JSON.stringify(options.body);
+    } else {
+      // Route leftovers back to their channels: `params`-origin keys to the
+      // querystring, the rest to the JSON body.
+      appendQueryParameters(url, _.pick(data, paramKeys));
+      if (options.body !== undefined) {
+        body = JSON.stringify(_.omit(data, paramKeys));
+      }
     }
 
     return { ...options, url, method, headers, body };

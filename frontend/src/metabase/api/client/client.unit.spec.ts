@@ -156,6 +156,40 @@ describe("api", () => {
       expect(call?.options?.body).toBeFalsy();
     });
 
+    it("lets a middleware-overridden URL substitute :tag tokens from the body (guest-embed flow regression)", async () => {
+      // Regression for the guest-embed card-query flow (run-query.ts): the
+      // saved-card query is dispatched through RTK with `token` in the *body*.
+      // The embed override middleware rewrites `/api/card/:cardId/query` to
+      // `/api/embed/card/:token/query` (POST→GET), and `:token` must be filled
+      // from the body field — not just from URL params.
+      fetchMock.get("path:/api/embed/card/SOME_JWT/query", { rows: [] });
+
+      apiInstance.beforeRequestHandlers.push(async (config) => {
+        if (config.url === "/api/card/:cardId/query") {
+          return {
+            ...config,
+            method: "GET" as const,
+            url: "/api/embed/card/:token/query",
+          };
+        }
+        return config;
+      });
+
+      await apiInstance.request({
+        method: "POST",
+        url: "/api/card/:cardId/query",
+        params: { cardId: 42 },
+        body: { token: "SOME_JWT", parameters: "[]" },
+      });
+
+      const call = fetchMock.callHistory.lastCall();
+      expect(call?.url).toMatch(/\/api\/embed\/card\/SOME_JWT\/query/);
+      // The override changed the method to GET, so the leftover body field is
+      // folded into the querystring (a GET request cannot carry a body).
+      expect(call?.url).toContain("parameters=");
+      expect(call?.options?.body).toBeFalsy();
+    });
+
     it("omits params with undefined values from the querystring", async () => {
       fetchMock.get("path:/api/search", { items: [] });
 
