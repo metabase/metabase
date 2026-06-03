@@ -165,6 +165,38 @@
             (openai/parts->openai-input
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
 
+;;; ──────────────────────────────────────────────────────────────────
+;;; temperature support tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel model-supports-temperature?-test
+  (testing "non-reasoning models accept an explicit temperature"
+    (doseq [model ["gpt-4.1-mini" "gpt-4.1" "gpt-4o" "gpt-3.5-turbo"]]
+      (is (true? (#'openai/model-supports-temperature? model))
+          model)))
+  (testing "GPT-5 family and o-series reasoning models do not"
+    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07"
+                   "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
+      (is (false? (#'openai/model-supports-temperature? model))
+          model))))
+
+(deftest temperature-omitted-for-reasoning-models-test
+  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
+    (let [request-body (fn [opts]
+                         (with-redefs [self.core/sse-reducible identity
+                                       debug/capture-stream    (fn [r _] r)
+                                       http/request            (fn [req] {:body req})]
+                           (json/decode+kw (:body (openai/openai-raw
+                                                   (merge {:input [{:role :user :content "hi"}]
+                                                           :temperature 0.3}
+                                                          opts))))))]
+      (testing "temperature is sent for a non-reasoning model"
+        (is (= 0.3 (:temperature (request-body {:model "gpt-4.1-mini"})))))
+      (testing "temperature is omitted for a GPT-5 model"
+        (is (not (contains? (request-body {:model "gpt-5"}) :temperature))))
+      (testing "temperature is omitted for an o-series model"
+        (is (not (contains? (request-body {:model "o3-mini"}) :temperature)))))))
+
 (deftest openai-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
