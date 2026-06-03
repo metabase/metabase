@@ -13,6 +13,7 @@ import { createMemoryHistory } from "history";
 import { useCallback, useMemo, useState } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
+import { createPortal } from "react-dom";
 import { Route, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
@@ -287,7 +288,7 @@ export function TestWrapper({
               onUpdateWhitelabelColors={handleUpdateWhitelabelColors}
             >
               <GlobalStylesForTest />
-              <PortalContainer />
+              {createPortal(<PortalContainer />, document.body)}
 
               <MaybeKBar hasKBar={withKBar}>
                 <MaybeRouter hasRouter={withRouter} history={history}>
@@ -478,7 +479,7 @@ const ThemeProviderWrapper = ({
 }: React.PropsWithChildren) => (
   <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
     <ThemeProvider {...props}>
-      <PortalContainer />
+      {createPortal(<PortalContainer />, document.body)}
       {children}
     </ThemeProvider>
   </ThemeProviderContext.Provider>
