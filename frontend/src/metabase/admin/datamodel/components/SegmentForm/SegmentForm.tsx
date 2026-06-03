@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button/Button";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
@@ -14,7 +13,7 @@ import {
 } from "metabase/querying/segments/utils";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Alert } from "metabase/ui";
+import { Alert, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
@@ -166,7 +165,7 @@ const SegmentFormActions = ({
       <FormSubmitButton type="submit" primary={isValid} disabled={!isValid}>
         {t`Save changes`}
       </FormSubmitButton>
-      <Button as={Link} to="/admin/datamodel/segments">
+      <Button component={Link} to="/admin/datamodel/segments">
         {t`Cancel`}
       </Button>
     </div>
