@@ -10,6 +10,10 @@
 
 (set! *warn-on-reflection* true)
 
+;; Cache holds `{:site-url <string>, :provider <Provider>}`. Every endpoint baked into the provider config is
+;; derived from the Site URL (see [[build-provider-config]]), so a changed Site URL must rebuild the provider --
+;; otherwise discovery keeps advertising the stale issuer/endpoints (e.g. http:// behind a TLS-terminating proxy
+;; after the operator corrects Site URL to https://).
 (defonce ^:private provider (atom nil))
 
 (defn all-agent-scopes
@@ -45,13 +49,18 @@
   (oidc/create-provider (build-provider-config)))
 
 (defn get-provider
-  "Returns the current provider instance, creating it lazily if needed."
+  "Returns the current provider instance, (re)creating it when absent or when the Site URL has changed."
   []
-  (or @provider
-      (swap! provider (fn [p] (or p (create-provider))))))
+  (let [site-url (system/site-url)]
+    (:provider
+     (swap! provider
+            (fn [cached]
+              (if (and cached (= (:site-url cached) site-url))
+                cached
+                {:site-url site-url, :provider (create-provider)}))))))
 
 (defn reset-provider!
-  "Reset the provider atom to nil. Useful for testing."
+  "Reset the provider cache to nil. Useful for testing."
   []
   (reset! provider nil))
 
