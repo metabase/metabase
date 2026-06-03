@@ -163,6 +163,11 @@ function getRecommendedVisualizations(
     // the sankey sensibility check is quite robust, so we recommend it whenever it's sensible
     recommended.push("sankey");
   }
+  if (sensible.includes("treemap") && nonLatLongDimensionCount >= 2) {
+    // treemap shines with two-level grouping, so only recommend it for queries
+    // with at least two (non-geo) dimensions
+    recommended.push("treemap");
+  }
   return recommended;
 }
 
