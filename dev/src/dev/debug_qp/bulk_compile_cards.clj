@@ -12,18 +12,16 @@
 (defn- save-card-compilation-results
   [card-ids output-file]
   (let [pool    (Executors/newFixedThreadPool 8)
-        futures (mapv (fn [card-id]
+        futures (mapv (fn [{card-id :id db-id :database_id}]
                         (.submit pool ^Callable
                                  (fn []
                                    (try
-                                     (let [card (t2/select-one :model/Card :id card-id)
+                                     (let [card-query (t2/select-one-fn :dataset_query :model/Card card-id)
                                            {:keys [query params error]} (try
-                                                                          (-> card
-                                                                              :dataset_query
-                                                                              qp.compile/compile)
+                                                                          (qp.compile/compile card-query)
                                                                           (catch Throwable e
                                                                             {:error (ex-message e)}))]
-                                       (cond-> {:db_id   (:database_id card)
+                                       (cond-> {:db_id   db-id
                                                 :card_id card-id
                                                 :query  query
                                                 :params params}
@@ -46,13 +44,12 @@
 
 (comment
 
-  (def postgres-card-ids (map :id
-                              (t2/query {:select [:rc.id]
-                                         :from   [[:report_card :rc]]
-                                         :join   [[:metabase_database :md] [:= :rc.database_id :md.id]]
-                                         :where  [:= :md.engine "postgres"]
-                                         :order-by [[:md.id :asc] [:rc.id :asc]]
-                                         :limit  200})))
+  (def postgres-card-ids (t2/query {:select [:rc.id :rc.database_id]
+                                    :from   [[:report_card :rc]]
+                                    :join   [[:metabase_database :md] [:= :rc.database_id :md.id]]
+                                    :where  [:= :md.engine "postgres"]
+                                    :order-by [[:md.id :asc] [:rc.id :asc]]
+                                    :limit  19500}))
 
   (time
    (save-card-compilation-results postgres-card-ids "postgres_mbql5_results.jsonl")))
