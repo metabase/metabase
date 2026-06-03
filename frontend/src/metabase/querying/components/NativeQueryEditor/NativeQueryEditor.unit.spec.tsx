@@ -3,14 +3,17 @@ import {
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
+import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import { NativeQueryEditor } from "./NativeQueryEditor";
 
-jest.mock("metabase/query_builder/hooks/use-notebook-screen-size", () => ({
-  useNotebookScreenSize: jest.fn(),
-}));
+jest.mock(
+  "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size",
+  () => ({
+    useNotebookScreenSize: jest.fn(),
+  }),
+);
 
 type UseNotebookScreenSize = ReturnType<typeof useNotebookScreenSize>;
 

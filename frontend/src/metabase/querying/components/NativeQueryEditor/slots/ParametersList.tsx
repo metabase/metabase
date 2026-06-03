@@ -1,4 +1,4 @@
-import { ResponsiveParametersList } from "metabase/query_builder/components/ResponsiveParametersList";
+import { ResponsiveParametersList } from "metabase/querying/components/ResponsiveParametersList";
 import type { ParameterId } from "metabase-types/api";
 
 import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext";

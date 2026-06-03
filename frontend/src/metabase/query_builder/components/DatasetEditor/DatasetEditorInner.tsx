@@ -30,7 +30,6 @@ import {
   setDatasetEditorTab,
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
-import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import {
@@ -45,6 +44,7 @@ import {
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import { MODAL_TYPES } from "metabase/querying/constants";

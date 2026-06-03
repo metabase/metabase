@@ -10,10 +10,10 @@ import {
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase/documents/documents.slice";
-import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { createRawSeries } from "metabase/query_builder/utils";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
