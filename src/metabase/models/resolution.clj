@@ -54,8 +54,7 @@
     :model/ExplorationQueryResult            metabase.explorations.models.exploration-query-result
     :model/ExplorationQueryTimelineInterestingness metabase.explorations.models.exploration-query-timeline-interestingness
     :model/ExplorationThread                 metabase.explorations.models.exploration-thread
-    :model/ExplorationThreadDimension        metabase.explorations.models.exploration-thread-dimension
-    :model/ExplorationThreadMetric           metabase.explorations.models.exploration-thread-metric
+    :model/ExplorationThreadGroup            metabase.explorations.models.exploration-thread-group
     :model/ExplorationThreadTimeline         metabase.explorations.models.exploration-thread-timeline
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings

@@ -52,28 +52,6 @@
    (when-let [thread (t2/select-one [:model/ExplorationThread :exploration_id] :id pk)]
      (mi/can-write? :model/Exploration (:exploration_id thread)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :metrics]
-  [_model k threads]
-  (mi/instances-with-hydrated-data
-   threads k
-   #(group-by :exploration_thread_id
-              (t2/select :model/ExplorationThreadMetric
-                         :exploration_thread_id [:in (map :id threads)]
-                         {:order-by [[:position :asc] [:id :asc]]}))
-   :id
-   {:default []}))
-
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :dimensions]
-  [_model k threads]
-  (mi/instances-with-hydrated-data
-   threads k
-   #(group-by :exploration_thread_id
-              (t2/select :model/ExplorationThreadDimension
-                         :exploration_thread_id [:in (map :id threads)]
-                         {:order-by [[:position :asc] [:id :asc]]}))
-   :id
-   {:default []}))
-
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :timelines]
   [_model k threads]
   (mi/instances-with-hydrated-data

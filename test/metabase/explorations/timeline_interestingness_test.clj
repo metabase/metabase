@@ -76,9 +76,12 @@
 
 (defn- done-query!
   [thread-id card-id]
-  (let [q (first (t2/insert-returning-instances! :model/ExplorationQuery
+  (let [group-id (t2/insert-returning-pk! :model/ExplorationThreadGroup
+                                          {:exploration_thread_id thread-id :name "g"})
+        q (first (t2/insert-returning-instances! :model/ExplorationQuery
                                                  {:exploration_thread_id thread-id
                                                   :card_id               card-id
+                                                  :group_id              group-id
                                                   :dimension_id          "d1"
                                                   :dataset_query         (count-by-month-query)
                                                   :status                "done"

@@ -81,19 +81,19 @@ function dimensionToSelection(d: MetricDimension) {
 function blockToGroup(block: ExplorationBlock) {
   if (isMetricBlock(block)) {
     return {
+      name: block.metric.name,
       metrics: [metricToSelection(block.metric)],
       dimensions: block.dimensions
         .filter((d) => block.selectedDimensionIds.has(d.id))
         .map(dimensionToSelection),
-      timeline_ids: [] as number[],
     };
   }
   return {
+    name: block.dimension.display_name ?? block.dimension.id,
     metrics: block.metrics
       .filter((m) => block.selectedMetricIds.has(m.id))
       .map(metricToSelection),
     dimensions: block.groupDimensions.map(dimensionToSelection),
-    timeline_ids: [] as number[],
   };
 }
 
@@ -105,16 +105,12 @@ export function buildCreateExplorationRequest(
 ): CreateExplorationRequest {
   const trimmedPrompt = prompt.trim();
 
-  const timelineIds = timelines.map((tl) => tl.id);
-  const groups = blocks.map((block) => ({
-    ...blockToGroup(block),
-    timeline_ids: timelineIds,
-  }));
-
   return {
     name,
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
-    groups,
+    // Timelines are thread-scoped — sent once, not per group.
+    timeline_ids: timelines.map((tl) => tl.id),
+    groups: blocks.map(blockToGroup),
   };
 }
 

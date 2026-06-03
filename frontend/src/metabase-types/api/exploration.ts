@@ -47,10 +47,13 @@ export interface CreateExplorationRequest {
   name: string;
   description?: string | null;
   prompt?: string | null;
+  // Timelines are thread-scoped, not per-group.
+  timeline_ids?: TimelineId[];
   groups: {
+    // FE-supplied display name for the block (the sidebar heading).
+    name?: string | null;
     metrics: ExplorationMetricSelection[];
     dimensions: ExplorationDimensionSelection[];
-    timeline_ids?: TimelineId[];
   }[];
 }
 

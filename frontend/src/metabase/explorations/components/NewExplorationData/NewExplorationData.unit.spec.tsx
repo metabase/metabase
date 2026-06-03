@@ -227,15 +227,37 @@ describe("NewExplorationData (Research plan)", () => {
       ]);
     });
 
-    it("attaches the shared timeline_ids to every group", () => {
+    it("sends thread-scoped timeline_ids at the top level (not per group) and names each block", () => {
+      const request = buildCreateExplorationRequest(
+        "My exploration",
+        "",
+        [
+          mockMetricBlock(revenueMetric, [dimCreatedAt]),
+          mockDimensionBlock(dimPlan, [churnMetric]),
+        ],
+        [releasesTimeline, launchTimeline],
+      );
+
+      expect(request.timeline_ids).toEqual([7, 9]);
+      expect(request.groups).toHaveLength(2);
+      // groups no longer carry timeline_ids
+      for (const group of request.groups) {
+        expect(group).not.toHaveProperty("timeline_ids");
+      }
+      // metric block named by its metric; dimension block by its anchor dimension
+      expect(request.groups[0].name).toBe(revenueMetric.name);
+      expect(request.groups[1].name).toBe(dimPlan.display_name);
+    });
+
+    it("uses empty timeline_ids when none are selected", () => {
       const request = buildCreateExplorationRequest(
         "My exploration",
         "",
         [mockMetricBlock(revenueMetric, [dimCreatedAt])],
-        [releasesTimeline],
+        [],
       );
 
-      expect(request.groups[0].timeline_ids).toEqual([7]);
+      expect(request.timeline_ids).toEqual([]);
     });
 
     it("trims the prompt and falls back to null when blank", () => {

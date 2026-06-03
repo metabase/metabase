@@ -26,7 +26,6 @@
    [metabase.explorations.settings :as explorations.settings]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -76,8 +75,8 @@
 
   The `:name` is computed here but may be modified later for variants that fan out
   (and note that the mechanical planner doesn't choose any of these variants)."
-  [metric-by-id item]
-  (let [metric    (get metric-by-id (:metric_id item))
+  [metric-by-key item]
+  (let [metric    (get metric-by-key [(:group_id item) (:metric_id item)])
         appl      (get-in metric [:applicability (:dimension_id item)])
         dim       (:dim appl)
         dim-label (or (:display_name dim) (:dimension_id dim))
@@ -96,16 +95,17 @@
 (defn- insert-plan-rows!
   "Materialize each plan item into row recipes and insert them as
   `ExplorationQuery` rows. Returns the number of rows inserted."
-  [thread-id metric-by-id plan]
+  [thread-id metric-by-key plan]
   (let [rows (vec
               (for [item   plan
                     recipe (try
-                             (materialize-item metric-by-id item)
+                             (materialize-item metric-by-key item)
                              (catch Throwable e
                                (log/warnf e "Skipping plan item that failed to materialize: %s"
                                           (pr-str item))
                                []))]
                 {:exploration_thread_id thread-id
+                 :group_id              (:group_id item)
                  :card_id               (:metric_id item)
                  :segment_id            (:segment_id recipe)
                  :dimension_id          (:dimension_id item)
@@ -200,20 +200,23 @@
   "Build the planner-contract ctx the chosen planner consumes. Pure compute
   modulo the t2 selects for thread / metrics / dims."
   [thread-id]
-  (let [thread-metrics (t2/select :model/ExplorationThreadMetric
+  (let [thread-groups  (t2/select :model/ExplorationThreadGroup
                                   :exploration_thread_id thread-id
                                   {:order-by [[:position :asc] [:id :asc]]})
-        thread-dims    (t2/select :model/ExplorationThreadDimension
-                                  :exploration_thread_id thread-id
-                                  {:order-by [[:position :asc] [:id :asc]]})
-        metric-dim-ctx (qp.context/metric-and-dim-context thread-metrics thread-dims)]
+        metric-dim-ctx (qp.context/metric-and-dim-context thread-groups)
+        ;; [group-id metric-id] -> metric-context, so materialization resolves a plan
+        ;; item against the same group the planner emitted it under (a metric can live
+        ;; in several groups).
+        metric-by-key  (into {}
+                             (for [g (:groups metric-dim-ctx)
+                                   m (:metrics g)]
+                               [[(:group-id g) (:metric-id m)] m]))]
     {:thread-id      thread-id
      :thread-prompt  (thread-prompt-for thread-id)
      :metric-dim-ctx metric-dim-ctx
-     :metric-by-id   (u/index-by :metric-id (:metrics metric-dim-ctx))
+     :metric-by-key  metric-by-key
      :creator-id     (creator-id-for-thread thread-id)
-     :thread-metrics thread-metrics
-     :thread-dims    thread-dims}))
+     :thread-groups  thread-groups}))
 
 ;; ---------------------------------------------------------------------------
 ;; Public entry point — called from the worker
@@ -222,11 +225,13 @@
 (defn- run-planner!
   "Invoke the picked planner, persist rows / mark terminal as appropriate, and
   return the outcome keyword (`:ok`, `:skip-empty`, or `:failed`)."
-  [{:keys [thread-id metric-dim-ctx metric-by-id creator-id] :as ctx} picked planner-id pre]
+  [{:keys [thread-id metric-dim-ctx metric-by-key creator-id] :as ctx} picked planner-id pre]
   ;; Enforce the no-routed-databases constraint up front; both planners would
   ;; produce items but the variant builders would later fail when running queries.
   (qp.mbql/check-no-routed-databases!
-   (into {} (for [m (:metrics metric-dim-ctx)] [(:metric-id m) (:card m)])))
+   (into {} (for [g (:groups metric-dim-ctx)
+                  m (:metrics g)]
+              [(:metric-id m) (:card m)])))
   (let [{:keys [outcome plan rationale transcript final-errors]} (planner/plan! picked ctx)
         transcript-body {:outcome      outcome
                          :rationale    rationale
@@ -235,7 +240,7 @@
                          :planner      transcript}]
     (case outcome
       :ok
-      (let [n (insert-plan-rows! thread-id metric-by-id plan)]
+      (let [n (insert-plan-rows! thread-id metric-by-key plan)]
         (record-outcome! thread-id pre :ok :rows-count n :transcript transcript-body)
         (log/infof "Query plan for thread %d (%s): inserted %d ExplorationQuery rows"
                    thread-id (name planner-id) n)
@@ -269,14 +274,14 @@
     `nil`                — uncaught throwable (logged, transcript best-effort)"
   [thread-id]
   (try
-    (let [{:keys [thread-metrics thread-dims] :as ctx} (build-planner-ctx thread-id)
+    (let [{:keys [thread-groups] :as ctx} (build-planner-ctx thread-id)
           picked     (pick-planner!)
           skip?      (:skip picked)
           planner-id (when-not skip? (planner/planner-name picked))
           pre        (preamble thread-id planner-id)]
       (cond
-        (or (empty? thread-metrics) (empty? thread-dims))
-        (do (log/infof "Thread %d: no metrics or no dimensions; skipping query plan" thread-id)
+        (not-any? #(and (seq (:metrics %)) (seq (:dimensions %))) thread-groups)
+        (do (log/infof "Thread %d: no group has both a metric and a dimension; skipping query plan" thread-id)
             (record-outcome! thread-id pre :skip-empty)
             :skip-empty)
 
