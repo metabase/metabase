@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   type ScheduleChangeProp,
   SchedulePicker,
@@ -35,6 +36,7 @@ import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
+import { downloadDashboardPdf } from "./downloadDashboardPdf";
 
 interface AddEditEmailSidebarProps {
   pulse: DraftDashboardSubscription;
@@ -154,6 +156,15 @@ export const AddEditEmailSidebar = ({
             normalText={t`Send email now`}
             successText={t`Email sent`}
             disabled={!isValid}
+          />
+        </div>
+        <div className={cx(CS.py2)}>
+          <ActionButton
+            actionFn={() => downloadDashboardPdf(dashboard.id)}
+            normalText={t`Download PDF`}
+            activeText={t`Downloading…`}
+            failedText={t`Download failed`}
+            successText={t`Downloaded`}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
