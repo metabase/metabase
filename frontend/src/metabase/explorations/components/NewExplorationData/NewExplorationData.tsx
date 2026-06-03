@@ -1,6 +1,5 @@
-import { useDndContext, useDroppable } from "@dnd-kit/core";
 import cx from "classnames";
-import { type HTMLAttributes, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -11,29 +10,22 @@ import { trackExplorationCreated } from "metabase/explorations/analytics";
 import type {
   DimensionBlock,
   ExplorationBlock,
-  ExplorationDragData,
-  ExplorationNavigation,
   ExplorationSelection,
   MetricBlock,
 } from "metabase/explorations/hooks";
-import {
-  RESEARCH_PLAN_EMPTY_DROPPABLE_ID,
-  RESEARCH_PLAN_NEW_BLOCK_DROPPABLE_ID,
-  RESEARCH_PLAN_TIMELINE_DROPPABLE_ID,
-  isExplorationDropAccepted,
-  isMetricBlock,
-} from "metabase/explorations/hooks";
+import { isMetricBlock } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
 import {
-  Accordion,
   ActionIcon,
   Box,
   Button,
+  Center,
   Ellipsified,
   Group,
   Icon,
+  Menu,
   Pill,
   Stack,
   Text,
@@ -45,6 +37,7 @@ import * as LibMetric from "metabase-lib/metric/core";
 import type {
   CreateExplorationRequest,
   DimensionId,
+  IconName,
   MetricDimension,
   Timeline,
 } from "metabase-types/api";
@@ -52,10 +45,21 @@ import type {
 import { EXPLORATIONS_AGENT_ID } from "../NewExplorationChat/NewExplorationChat";
 
 import S from "./NewExplorationData.module.css";
+import { ResearchModeIntro } from "./ResearchModeIntro";
+import {
+  AddDimensionsModal,
+  AddMetricsModal,
+  AddTimelinesModal,
+} from "./modals";
+import { groupDimensionsByGroupSource } from "./utils";
+
+/** How many selected pills to show on a collapsed block before "+N". */
+const COLLAPSED_PILL_LIMIT = 3;
+
+type ActiveModal = "metrics" | "dimensions" | "events" | null;
 
 export interface NewExplorationDataProps {
   selection: ExplorationSelection;
-  navigation: ExplorationNavigation;
 }
 
 function metricToSelection(m: ExplorationMetric) {
@@ -78,12 +82,16 @@ function blockToGroup(block: ExplorationBlock) {
   if (isMetricBlock(block)) {
     return {
       metrics: [metricToSelection(block.metric)],
-      dimensions: block.dimensions.map(dimensionToSelection),
+      dimensions: block.dimensions
+        .filter((d) => block.selectedDimensionIds.has(d.id))
+        .map(dimensionToSelection),
       timeline_ids: [] as number[],
     };
   }
   return {
-    metrics: block.metrics.map(metricToSelection),
+    metrics: block.metrics
+      .filter((m) => block.selectedMetricIds.has(m.id))
+      .map(metricToSelection),
     dimensions: block.groupDimensions.map(dimensionToSelection),
     timeline_ids: [] as number[],
   };
@@ -110,26 +118,43 @@ export function buildCreateExplorationRequest(
   };
 }
 
-export function NewExplorationData({
-  selection,
-  navigation,
-}: NewExplorationDataProps) {
+export function NewExplorationData({ selection }: NewExplorationDataProps) {
   const {
     blocks,
     timelines,
     name,
     removeBlock,
-    removeDimensionFromMetricBlock,
-    removeMetricFromDimensionBlock,
+    toggleDimensionSelected,
+    toggleMetricSelected,
     toggleTimeline,
   } = selection;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
 
+  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
+  // Blocks are expanded by default; track only the ones the user collapsed.
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+
   const [createExploration, { isLoading: isStarting }] =
     useCreateExplorationMutation();
 
   const { messages } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
+
+  const isExpanded = useCallback(
+    (blockId: string) => !collapsedIds.has(blockId),
+    [collapsedIds],
+  );
+  const toggleExpanded = useCallback((blockId: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) {
+        next.delete(blockId);
+      } else {
+        next.add(blockId);
+      }
+      return next;
+    });
+  }, []);
 
   const handleStart = useCallback(async () => {
     const prompt = messages
@@ -151,7 +176,7 @@ export function NewExplorationData({
       sendToast({
         icon: "warning_triangle_filled",
         iconColor: "warning",
-        message: t`Failed to begin research`,
+        message: t`Failed to start research`,
       });
     }
   }, [
@@ -166,159 +191,331 @@ export function NewExplorationData({
 
   const canStart = blocks.length > 0;
 
-  const defaultExpandedIds = blocks.map((b) => b.id);
-
-  const handleBackgroundClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      if (navigation.activeBlockId == null) {
-        return;
-      }
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-block-id]") != null) {
-        return;
-      }
-      navigation.clearActiveBlock();
-    },
-    [navigation],
-  );
-
   return (
     <Stack
       className={S.container}
       data-testid="research-content"
       gap={0}
-      bg="background-secondary"
+      bg="background-primary"
       flex={1}
       px="sm"
       py="md"
       h="100%"
       w="100%"
-      onClick={handleBackgroundClick}
     >
       <Group justify="space-between" align="center" px="md" flex="none">
         <Title order={4} fs="1rem" lh={1.5}>{t`Research plan`}</Title>
+        <Group gap="xs">
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            leftSection={<Icon name="add" size={12} />}
+            onClick={() => setActiveModal("events")}
+          >{t`Events`}</Button>
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <Button
+                variant="subtle"
+                size="compact-sm"
+                leftSection={<Icon name="add" size={12} />}
+              >{t`Data`}</Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item onClick={() => setActiveModal("metrics")}>
+                {t`Metrics`}
+              </Menu.Item>
+              <Menu.Item onClick={() => setActiveModal("dimensions")}>
+                {t`Dimensions`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
       </Group>
+
       <Box flex={1} mih={0} p="md" style={{ overflowY: "auto" }}>
         {blocks.length === 0 ? (
-          <ResearchPlanEmptyState
-            onAddMetric={() => navigation.openBrowse("metrics")}
-            onAddDimension={() => navigation.openBrowse("dimensions")}
-          />
+          <ResearchPlanEmptyState />
         ) : (
-          <>
-            <Accordion
-              multiple
-              defaultValue={defaultExpandedIds}
-              chevronPosition="right"
-              classNames={{
-                root: S.accordionRoot,
-                item: S.accordionItem,
-                control: S.accordionControl,
-                content: S.accordionContent,
-                panel: S.accordionPanel,
-                label: S.accordionLabel,
-                chevron: S.accordionChevron,
-              }}
-            >
-              {blocks.map((block) =>
-                isMetricBlock(block) ? (
-                  <MetricBlockItem
-                    key={block.id}
-                    block={block}
-                    isActive={navigation.activeBlockId === block.id}
-                    onActivate={() =>
-                      navigation.selectBlock(block.id, "dimensions")
-                    }
-                    onRemoveBlock={() => removeBlock(block.id)}
-                    onRemoveDimension={(dimensionId) =>
-                      removeDimensionFromMetricBlock(block.id, dimensionId)
-                    }
-                  />
-                ) : (
-                  <DimensionBlockItem
-                    key={block.id}
-                    block={block}
-                    isActive={navigation.activeBlockId === block.id}
-                    onActivate={() =>
-                      navigation.selectBlock(block.id, "metrics")
-                    }
-                    onRemoveBlock={() => removeBlock(block.id)}
-                    onRemoveMetric={(metricId) =>
-                      removeMetricFromDimensionBlock(block.id, metricId)
-                    }
-                  />
-                ),
-              )}
-            </Accordion>
-            <NewBlockDropZone
-              metricBlockIds={selection.metricBlockIds}
-              dimensionBlockIds={selection.dimensionBlockIds}
-            />
-          </>
+          <Stack gap="md">
+            {blocks.map((block) =>
+              isMetricBlock(block) ? (
+                <MetricBlockItem
+                  key={block.id}
+                  block={block}
+                  expanded={isExpanded(block.id)}
+                  onToggleExpand={() => toggleExpanded(block.id)}
+                  onRemoveBlock={() => removeBlock(block.id)}
+                  onToggleDimension={(dimensionId) =>
+                    toggleDimensionSelected(block.id, dimensionId)
+                  }
+                />
+              ) : (
+                <DimensionBlockItem
+                  key={block.id}
+                  block={block}
+                  expanded={isExpanded(block.id)}
+                  onToggleExpand={() => toggleExpanded(block.id)}
+                  onRemoveBlock={() => removeBlock(block.id)}
+                  onToggleMetric={(metricId) =>
+                    toggleMetricSelected(block.id, metricId)
+                  }
+                />
+              ),
+            )}
+          </Stack>
         )}
       </Box>
+
       <SelectedTimelinesPanel
         timelines={timelines}
         onRemoveTimeline={toggleTimeline}
       />
-      <Button
-        className={S.beginButton}
-        flex="none"
-        size="sm"
-        w="100%"
-        maw="25rem"
-        mx="2rem"
-        mt="md"
-        variant="filled"
-        loading={isStarting}
-        disabled={!canStart || isStarting}
-        onClick={handleStart}
-      >{t`Begin research`}</Button>
+
+      {canStart && (
+        <Button
+          className={S.beginButton}
+          flex="none"
+          size="sm"
+          w="100%"
+          maw="25rem"
+          mx="2rem"
+          mt="md"
+          variant="filled"
+          loading={isStarting}
+          disabled={isStarting}
+          onClick={handleStart}
+        >{t`Start research`}</Button>
+      )}
+
+      <AddMetricsModal
+        opened={activeModal === "metrics"}
+        onClose={() => setActiveModal(null)}
+        selection={selection}
+      />
+      <AddDimensionsModal
+        opened={activeModal === "dimensions"}
+        onClose={() => setActiveModal(null)}
+        selection={selection}
+      />
+      <AddTimelinesModal
+        opened={activeModal === "events"}
+        onClose={() => setActiveModal(null)}
+        selection={selection}
+      />
     </Stack>
   );
 }
 
-interface NewBlockDropZoneProps {
-  metricBlockIds: Set<ExplorationMetric["id"]>;
-  dimensionBlockIds: Set<DimensionId>;
+function ResearchPlanEmptyState() {
+  return (
+    <Center h="100%">
+      <ResearchModeIntro />
+    </Center>
+  );
 }
 
-function NewBlockDropZone({
-  metricBlockIds,
-  dimensionBlockIds,
-}: NewBlockDropZoneProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: RESEARCH_PLAN_NEW_BLOCK_DROPPABLE_ID,
-  });
-  const dndContext = useDndContext();
-  const activeData = dndContext.active?.data.current as
-    | ExplorationDragData
-    | undefined;
+interface BlockShellProps {
+  iconName: IconName;
+  iconLabel: string;
+  title: string;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onRemoveBlock: () => void;
+  children: React.ReactNode;
+}
 
-  if (activeData == null || activeData.kind === "timeline") {
-    return null;
-  }
-  const wouldBeDuplicate =
-    (activeData.kind === "metric" &&
-      metricBlockIds.has(activeData.payload.id)) ||
-    (activeData.kind === "dimension" &&
-      dimensionBlockIds.has(activeData.payload.id));
-  if (wouldBeDuplicate) {
-    return null;
-  }
+function BlockShell({
+  iconName,
+  iconLabel,
+  title,
+  expanded,
+  onToggleExpand,
+  onRemoveBlock,
+  children,
+}: BlockShellProps) {
   return (
-    <Box
-      ref={setNodeRef}
-      className={cx(S.newBlockDropZone, {
-        [S.newBlockDropZoneOver]: isOver,
-      })}
-      mt="sm"
-      p="md"
-    >
-      <Text size="sm" c="text-secondary" ta="center">
-        {t`Drop here to start a new research area`}
-      </Text>
+    <Box className={S.block} data-expanded={expanded || undefined}>
+      <Group className={S.blockHeader} wrap="nowrap" gap="sm">
+        <Icon
+          name={iconName}
+          size={14}
+          c="text-secondary"
+          aria-label={iconLabel}
+        />
+        <Ellipsified flex={1} fw="bold">
+          {title}
+        </Ellipsified>
+        <Group className={S.blockActions} wrap="nowrap" gap="xs">
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            onClick={onToggleExpand}
+            aria-label={expanded ? t`Collapse` : t`Expand`}
+          >
+            <Icon name={expanded ? "chevronup" : "chevrondown"} size={14} />
+          </ActionIcon>
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            onClick={onRemoveBlock}
+            aria-label={t`Remove area`}
+          >
+            <Icon name="close" size={12} />
+          </ActionIcon>
+        </Group>
+      </Group>
+      <Box className={S.blockBody}>{children}</Box>
     </Box>
+  );
+}
+
+interface SelectedPillsProps {
+  labels: string[];
+}
+
+/** Collapsed view: plain, non-removable pills for the selected children. */
+function SelectedPills({ labels }: SelectedPillsProps) {
+  if (labels.length === 0) {
+    return (
+      <Text size="sm" c="text-secondary">
+        {t`Nothing selected`}
+      </Text>
+    );
+  }
+  const shown = labels.slice(0, COLLAPSED_PILL_LIMIT);
+  const overflow = labels.length - shown.length;
+  return (
+    <Group align="center" gap="sm" wrap="wrap">
+      {shown.map((label, index) => (
+        <PillItem key={`${label}-${index}`} label={label} />
+      ))}
+      {overflow > 0 && <PillItem label={`+${overflow}`} isOverflow />}
+    </Group>
+  );
+}
+
+interface MetricBlockItemProps {
+  block: MetricBlock;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onRemoveBlock: () => void;
+  onToggleDimension: (dimensionId: DimensionId) => void;
+}
+
+function MetricBlockItem({
+  block,
+  expanded,
+  onToggleExpand,
+  onRemoveBlock,
+  onToggleDimension,
+}: MetricBlockItemProps) {
+  const sections = useMemo(() => {
+    const out: { label: string; dimensions: MetricDimension[] }[] = [];
+    for (const row of groupDimensionsByGroupSource(block.dimensions)) {
+      if (row.type === "header") {
+        out.push({ label: row.label, dimensions: [] });
+      } else {
+        out[out.length - 1]?.dimensions.push(row.dimension);
+      }
+    }
+    return out;
+  }, [block.dimensions]);
+
+  const selectedLabels = block.dimensions
+    .filter((d) => block.selectedDimensionIds.has(d.id))
+    .map(formatDimensionLabel);
+
+  return (
+    <BlockShell
+      iconName="metric"
+      iconLabel={t`Metric`}
+      title={block.metric.name}
+      expanded={expanded}
+      onToggleExpand={onToggleExpand}
+      onRemoveBlock={onRemoveBlock}
+    >
+      {expanded ? (
+        <Stack gap="md">
+          {sections.map((section) => (
+            <Stack key={section.label} gap="xs">
+              <Text size="xs" c="text-secondary">
+                {section.label}
+              </Text>
+              <Group align="center" gap="sm" wrap="wrap">
+                {section.dimensions.map((dimension) => (
+                  <TogglePill
+                    key={dimension.id}
+                    label={dimension.display_name ?? dimension.id}
+                    selected={block.selectedDimensionIds.has(dimension.id)}
+                    onToggle={() => onToggleDimension(dimension.id)}
+                  />
+                ))}
+              </Group>
+            </Stack>
+          ))}
+        </Stack>
+      ) : (
+        <SelectedPills labels={selectedLabels} />
+      )}
+    </BlockShell>
+  );
+}
+
+interface DimensionBlockItemProps {
+  block: DimensionBlock;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onRemoveBlock: () => void;
+  onToggleMetric: (metricId: ExplorationMetric["id"]) => void;
+}
+
+function DimensionBlockItem({
+  block,
+  expanded,
+  onToggleExpand,
+  onRemoveBlock,
+  onToggleMetric,
+}: DimensionBlockItemProps) {
+  const iconName = getDimensionIcon(
+    LibMetric.fromMetricDimension(block.dimension),
+  );
+  const selectedLabels = block.metrics
+    .filter((m) => block.selectedMetricIds.has(m.id))
+    .map((m) => m.name);
+
+  return (
+    <BlockShell
+      iconName={iconName}
+      iconLabel={t`Dimension`}
+      title={formatDimensionLabel(block.dimension)}
+      expanded={expanded}
+      onToggleExpand={onToggleExpand}
+      onRemoveBlock={onRemoveBlock}
+    >
+      {expanded ? (
+        <Stack gap="xs">
+          <Text size="xs" c="text-secondary">{t`Metrics`}</Text>
+          {block.metrics.length === 0 ? (
+            <Text size="sm" c="text-secondary">
+              {t`No related metrics.`}
+            </Text>
+          ) : (
+            <Group align="center" gap="sm" wrap="wrap">
+              {block.metrics.map((metric) => (
+                <TogglePill
+                  key={metric.id}
+                  label={metric.name}
+                  selected={block.selectedMetricIds.has(metric.id)}
+                  onToggle={() => onToggleMetric(metric.id)}
+                />
+              ))}
+            </Group>
+          )}
+        </Stack>
+      ) : (
+        <SelectedPills labels={selectedLabels} />
+      )}
+    </BlockShell>
   );
 }
 
@@ -331,368 +528,71 @@ function SelectedTimelinesPanel({
   timelines,
   onRemoveTimeline,
 }: SelectedTimelinesPanelProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: RESEARCH_PLAN_TIMELINE_DROPPABLE_ID,
-  });
-  const dndContext = useDndContext();
-  const activeData = dndContext.active?.data.current as
-    | ExplorationDragData
-    | undefined;
-  const isTimelineDragInFlight = activeData?.kind === "timeline";
-
-  if (timelines.length === 0 && !isTimelineDragInFlight) {
+  if (timelines.length === 0) {
     return null;
   }
   return (
     <Box flex="none" px="md" pt="md">
-      <Text mb="xs">{t`Timelines`}</Text>
-      <Box
-        ref={setNodeRef}
-        className={cx(S.timelinePanel, {
-          [S.timelinePanelDropTarget]: isTimelineDragInFlight && !isOver,
-          [S.timelinePanelDropOver]: isTimelineDragInFlight && isOver,
-        })}
-        p="sm"
-      >
-        {timelines.length === 0 ? (
-          <Text size="sm" c="text-secondary" ta="center">
-            {t`Drop here to add this timeline`}
-          </Text>
-        ) : (
-          <Group align="flex-start" gap="sm" wrap="wrap">
-            {timelines.map((timeline) => (
-              <PillItem
-                key={timeline.id}
-                label={timeline.name}
-                onRemove={() => onRemoveTimeline(timeline)}
-              />
-            ))}
-          </Group>
-        )}
-      </Box>
+      <Text mb="xs">{t`Events`}</Text>
+      <Group align="flex-start" gap="sm" wrap="wrap">
+        {timelines.map((timeline) => (
+          <PillItem
+            key={timeline.id}
+            label={timeline.name}
+            onRemove={() => onRemoveTimeline(timeline)}
+          />
+        ))}
+      </Group>
     </Box>
   );
 }
 
-interface ResearchPlanEmptyStateProps {
-  onAddMetric: () => void;
-  onAddDimension: () => void;
-}
-
-function ResearchPlanEmptyState({
-  onAddMetric,
-  onAddDimension,
-}: ResearchPlanEmptyStateProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: RESEARCH_PLAN_EMPTY_DROPPABLE_ID,
-  });
-  const dndContext = useDndContext();
-  const activeData = dndContext.active?.data.current as
-    | ExplorationDragData
-    | undefined;
-  const isBlockDragInFlight =
-    activeData != null && activeData.kind !== "timeline";
-  return (
-    <Stack
-      ref={setNodeRef}
-      className={cx(S.emptyState, {
-        [S.emptyStateDropTarget]: isBlockDragInFlight && !isOver,
-        [S.emptyStateDropOver]: isBlockDragInFlight && isOver,
-      })}
-      p="lg"
-      gap="md"
-      align="center"
-    >
-      <Text size="md" c="text-secondary" ta="center">
-        {isBlockDragInFlight
-          ? t`Drop here to start a new research area`
-          : t`Use AI agent to pick metrics and dimensions automatically for your research, or pick them from the Data palette.`}
-      </Text>
-      <Group gap="sm">
-        <Button
-          variant="subtle"
-          size="sm"
-          leftSection={<Icon name="add" size={12} />}
-          onClick={onAddMetric}
-          aria-label={t`Add metrics`}
-        >{t`Add metric`}</Button>
-        <Button
-          variant="subtle"
-          size="sm"
-          leftSection={<Icon name="add" size={12} />}
-          onClick={onAddDimension}
-          aria-label={t`Add dimensions`}
-        >{t`Add dimension`}</Button>
-      </Group>
-    </Stack>
-  );
-}
-
-interface BlockHeaderControlsProps {
-  onRemoveBlock: () => void;
-}
-
-function BlockHeaderControls({ onRemoveBlock }: BlockHeaderControlsProps) {
-  return (
-    <Group gap="xs" wrap="nowrap" flex="none">
-      <ActionIcon
-        className={S.removeBlockButton}
-        size="sm"
-        variant="subtle"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemoveBlock();
-        }}
-        aria-label={t`Remove area`}
-      >
-        <Icon name="close" size={12} />
-      </ActionIcon>
-    </Group>
-  );
-}
-
-interface MetricBlockItemProps {
-  block: MetricBlock;
-  isActive: boolean;
-  onActivate: () => void;
-  onRemoveBlock: () => void;
-  onRemoveDimension: (dimensionId: DimensionId) => void;
-}
-
-function useBlockDroppable(blockId: string, blockKind: "metric" | "dimension") {
-  const { setNodeRef, isOver } = useDroppable({ id: blockId });
-  const dndContext = useDndContext();
-  const activeData = dndContext.active?.data.current as
-    | ExplorationDragData
-    | undefined;
-  const isActiveCompatible =
-    activeData != null && isExplorationDropAccepted(blockKind, activeData.kind);
-  return {
-    setNodeRef,
-    isOver,
-    isActiveCompatible,
-  };
-}
-
-function MetricBlockItem({
-  block,
-  isActive,
-  onActivate,
-  onRemoveBlock,
-  onRemoveDimension,
-}: MetricBlockItemProps) {
-  const { setNodeRef, isOver, isActiveCompatible } = useBlockDroppable(
-    block.id,
-    "metric",
-  );
-  return (
-    <Accordion.Item
-      ref={setNodeRef}
-      value={block.id}
-      data-droppable-active={isActiveCompatible || undefined}
-      data-block-id={block.id}
-      data-active={isActive || undefined}
-      className={cx({
-        [S.accordionItemDropOver]: isActiveCompatible && isOver,
-        [S.accordionItemDropTarget]: isActiveCompatible && !isOver,
-        [S.accordionItemActive]: isActive,
-      })}
-    >
-      <Box className={S.accordionControlRow}>
-        <Accordion.Control>
-          <Icon
-            className={S.blockEntityIcon}
-            name="metric"
-            tooltip={t`Metric`}
-            size={14}
-            aria-label={t`Metric area`}
-          />
-          <Ellipsified>{block.metric.name}</Ellipsified>
-          <Icon
-            className={S.inlineChevron}
-            name="chevrondown"
-            size={12}
-            aria-hidden
-          />
-        </Accordion.Control>
-        <UnstyledButton
-          className={S.blockHeaderSelectArea}
-          onClick={onActivate}
-          aria-pressed={isActive}
-          aria-label={t`Select research area for ${block.metric.name}`}
-        />
-        <BlockHeaderControls onRemoveBlock={onRemoveBlock} />
-      </Box>
-      <Accordion.Panel>
-        {/* Inner clickable wrapper */}
-        <Box
-          className={S.blockBody}
-          onClick={onActivate}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onActivate();
-            }
-          }}
-          aria-pressed={isActive}
-          aria-label={t`Edit research area for ${block.metric.name}`}
-        >
-          <Stack gap="xs">
-            <Text size="xs" c="text-secondary">{t`Dimensions`}</Text>
-            {block.dimensions.length === 0 ? (
-              <Text size="sm" c="text-secondary">
-                {t`No dimensions yet — add one from the Data palette.`}
-              </Text>
-            ) : (
-              <Group align="flex-start" gap="sm" wrap="wrap">
-                {block.dimensions.map((dim) => (
-                  <PillItem
-                    key={dim.id}
-                    label={formatDimensionLabel(dim)}
-                    data-interestingness={
-                      dim.dimension_interestingness || "null"
-                    }
-                    onRemove={() => onRemoveDimension(dim.id)}
-                  />
-                ))}
-              </Group>
-            )}
-          </Stack>
-        </Box>
-      </Accordion.Panel>
-    </Accordion.Item>
-  );
-}
-
-interface DimensionBlockItemProps {
-  block: DimensionBlock;
-  isActive: boolean;
-  onActivate: () => void;
-  onRemoveBlock: () => void;
-  onRemoveMetric: (metricId: ExplorationMetric["id"]) => void;
-}
-
-function DimensionBlockItem({
-  block,
-  isActive,
-  onActivate,
-  onRemoveBlock,
-  onRemoveMetric,
-}: DimensionBlockItemProps) {
-  const { setNodeRef, isOver, isActiveCompatible } = useBlockDroppable(
-    block.id,
-    "dimension",
-  );
-  const dimensionIconName = getDimensionIcon(
-    LibMetric.fromMetricDimension(block.dimension),
-  );
-  return (
-    <Accordion.Item
-      ref={setNodeRef}
-      value={block.id}
-      data-droppable-active={isActiveCompatible || undefined}
-      data-block-id={block.id}
-      data-active={isActive || undefined}
-      className={cx({
-        [S.accordionItemDropOver]: isActiveCompatible && isOver,
-        [S.accordionItemDropTarget]: isActiveCompatible && !isOver,
-        [S.accordionItemActive]: isActive,
-      })}
-    >
-      <Box className={S.accordionControlRow}>
-        <Accordion.Control>
-          <Icon
-            className={S.blockEntityIcon}
-            name={dimensionIconName}
-            tooltip={t`Dimension`}
-            size={14}
-            aria-label={t`Dimension area`}
-          />
-          <Ellipsified>{formatDimensionLabel(block.dimension)}</Ellipsified>
-          <Icon
-            className={S.inlineChevron}
-            name="chevrondown"
-            size={12}
-            aria-hidden
-          />
-        </Accordion.Control>
-        <UnstyledButton
-          className={S.blockHeaderSelectArea}
-          onClick={onActivate}
-          aria-pressed={isActive}
-          aria-label={t`Select research area for ${block.dimension.display_name ?? block.dimension.id}`}
-        />
-        <BlockHeaderControls onRemoveBlock={onRemoveBlock} />
-      </Box>
-      <Accordion.Panel>
-        <Box
-          className={S.blockBody}
-          onClick={onActivate}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onActivate();
-            }
-          }}
-          aria-pressed={isActive}
-          aria-label={t`Edit research area for ${block.dimension.display_name ?? block.dimension.id}`}
-        >
-          <Stack gap="xs">
-            <Text size="xs" c="text-secondary">{t`Metrics`}</Text>
-            {block.metrics.length === 0 ? (
-              <Text size="sm" c="text-secondary">
-                {t`No metrics yet — add one from the Data palette.`}
-              </Text>
-            ) : (
-              <Group align="flex-start" gap="sm" wrap="wrap">
-                {block.metrics.map((metric) => (
-                  <PillItem
-                    key={metric.id}
-                    label={metric.name}
-                    onRemove={() => onRemoveMetric(metric.id)}
-                  />
-                ))}
-              </Group>
-            )}
-          </Stack>
-        </Box>
-      </Accordion.Panel>
-    </Accordion.Item>
-  );
-}
-
-interface PillItemProps extends HTMLAttributes<HTMLDivElement> {
+interface PillItemProps {
   label: string;
-  onRemove: () => void;
+  isOverflow?: boolean;
+  onRemove?: () => void;
 }
 
-function PillItem({ label, onRemove, ...rest }: PillItemProps) {
+function PillItem({ label, isOverflow, onRemove }: PillItemProps) {
   return (
     <Pill
-      withRemoveButton
+      withRemoveButton={onRemove != null}
       onRemove={onRemove}
       bdrs="xl"
-      bg="background-primary"
+      bg={isOverflow ? "background-secondary" : "background-primary"}
       bd="1px solid border"
-      fw="normal"
-      pl="0.875rem"
+      fw={600}
       py="0.375rem"
       px="sm"
       maw="100%"
-      classNames={{ root: S.pill, remove: S.pillRemove }}
-      removeButtonProps={{
-        mr: 0,
-        "aria-hidden": false,
-        "aria-label": t`Remove`,
-      }}
-      {...rest}
+      classNames={{ root: S.pill, remove: S.pillRemove, label: S.pillLabel }}
+      removeButtonProps={
+        onRemove != null
+          ? { mr: 0, "aria-hidden": false, "aria-label": t`Remove` }
+          : undefined
+      }
     >
       <Ellipsified>{label}</Ellipsified>
     </Pill>
+  );
+}
+
+interface TogglePillProps {
+  label: string;
+  selected: boolean;
+  onToggle: () => void;
+}
+
+function TogglePill({ label, selected, onToggle }: TogglePillProps) {
+  return (
+    <UnstyledButton
+      className={cx(S.togglePill, { [S.togglePillSelected]: selected })}
+      onClick={onToggle}
+      aria-pressed={selected}
+    >
+      {selected && <Icon name="check" size={10} aria-hidden />}
+      <Ellipsified>{label}</Ellipsified>
+    </UnstyledButton>
   );
 }
 

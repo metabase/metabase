@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupExplorationDataEndpoint } from "__support__/server-mocks/metric";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
-  makeMockNavigation,
   makeMockSelection,
   mockDimensionBlock,
   mockMetricBlock,
@@ -57,67 +57,89 @@ function setup({
     messages: [],
   } as any);
 
+  // The Add* modals fetch this on mount even while closed.
+  setupExplorationDataEndpoint([]);
+
   const selection = makeMockSelection({ blocks, timelines });
-  const navigation = makeMockNavigation();
 
-  renderWithProviders(
-    <NewExplorationData selection={selection} navigation={navigation} />,
-  );
+  renderWithProviders(<NewExplorationData selection={selection} />);
 
-  return { selection, navigation };
+  return { selection };
 }
 
 describe("NewExplorationData (Research plan)", () => {
   describe("empty state", () => {
-    it("renders the empty-state copy + two add buttons when no blocks are selected", () => {
+    it("renders the header, the +Data / +Events affordances, and a disabled Start research CTA", () => {
       setup();
 
       expect(screen.getByText("Research plan")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Data" })).toBeInTheDocument();
       expect(
-        screen.getByText(/pick them from the Data palette/i),
+        screen.getByRole("button", { name: "Events" }),
       ).toBeInTheDocument();
-      // Header "Add metric" + empty-state "Add metric" + empty-state
-      // "Add dimension" → 3 add affordances total.
-      expect(screen.getAllByLabelText(/Add metric/i)).not.toHaveLength(0);
-      expect(screen.getByLabelText("Add dimensions")).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Begin research" }),
+        screen.getByRole("button", { name: "Start research" }),
       ).toBeDisabled();
     });
 
-    it("clicking the empty-state Add metric button opens Browse on the metrics tab", async () => {
-      const { navigation } = setup();
+    it("opens the metrics modal from the +Data menu", async () => {
+      setup();
 
-      await userEvent.click(screen.getByLabelText("Add metrics"));
+      await userEvent.click(screen.getByRole("button", { name: "Data" }));
+      await userEvent.click(screen.getByRole("menuitem", { name: "Metrics" }));
 
-      expect(navigation.openBrowse).toHaveBeenCalledWith("metrics");
-    });
-
-    it("clicking the empty-state Add dimension button opens Browse on the dimensions tab", async () => {
-      const { navigation } = setup();
-
-      await userEvent.click(screen.getByLabelText("Add dimensions"));
-
-      expect(navigation.openBrowse).toHaveBeenCalledWith("dimensions");
+      expect(
+        await screen.findByText("Add metrics to your research plan"),
+      ).toBeInTheDocument();
     });
   });
 
   describe("metric block", () => {
-    it("renders one collapsible area per metric block with the metric name in the header and its dimensions in the body", () => {
+    it("expands by default, grouping dimensions into source sections of toggle pills", () => {
       setup({
         blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
       });
 
-      // Header shows the metric name + the remove control.
       expect(screen.getByText("Revenue")).toBeInTheDocument();
       expect(screen.getByLabelText("Remove area")).toBeInTheDocument();
 
-      // Body lists the block's dimensions as pills.
-      expect(screen.getByText("Created At")).toBeInTheDocument();
-      expect(screen.getByText("Plan")).toBeInTheDocument();
+      // Expanded: dimensions render as toggle buttons (selected by default).
+      const createdAt = screen.getByRole("button", { name: "Created At" });
+      expect(createdAt).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
     });
 
-    it("clicking the area's remove button calls selection.removeBlock with this block id", async () => {
+    it("toggling a dimension pill calls toggleDimensionSelected", async () => {
+      const { selection } = setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Created At" }));
+
+      expect(selection.toggleDimensionSelected).toHaveBeenCalledWith(
+        "metric:1",
+        dimCreatedAt.id,
+      );
+    });
+
+    it("collapsing the block shows the selected dimensions as plain (non-toggle) pills", async () => {
+      setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Collapse" }));
+
+      // Plain pills are not buttons.
+      expect(
+        screen.queryByRole("button", { name: "Created At" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Created At")).toBeInTheDocument();
+    });
+
+    it("clicking the area's remove button calls selection.removeBlock", async () => {
       const { selection } = setup({
         blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
       });
@@ -126,260 +148,94 @@ describe("NewExplorationData (Research plan)", () => {
 
       expect(selection.removeBlock).toHaveBeenCalledWith("metric:1");
     });
-
-    it("clicking a dimension pill's Remove button drops it from the block", async () => {
-      const { selection } = setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
-      });
-
-      const removeButtons = screen.getAllByRole("button", { name: "Remove" });
-      await userEvent.click(removeButtons[0]);
-
-      expect(selection.removeDimensionFromMetricBlock).toHaveBeenCalledTimes(1);
-      expect(selection.removeDimensionFromMetricBlock).toHaveBeenCalledWith(
-        "metric:1",
-        dimCreatedAt.id,
-      );
-    });
-
-    it("clicking the body activates the block on the Dimensions browse tab", async () => {
-      const { navigation } = setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
-      });
-
-      // The panel itself is `role="button"` with a label so the test
-      // can target it directly. Use exact text match because the
-      // exploration name appears in multiple aria-labels.
-      await userEvent.click(
-        screen.getByRole("button", {
-          name: /Edit research area for Revenue/i,
-        }),
-      );
-
-      expect(navigation.selectBlock).toHaveBeenCalledTimes(1);
-      expect(navigation.selectBlock).toHaveBeenCalledWith(
-        "metric:1",
-        "dimensions",
-      );
-    });
-
-    it("shows an empty-body message when a metric block has no dimensions yet", () => {
-      setup({ blocks: [mockMetricBlock(revenueMetric, [])] });
-
-      expect(screen.getByText(/No dimensions yet/i)).toBeInTheDocument();
-    });
-
-    it("clicking the empty space in the header selects the block", async () => {
-      const { navigation } = setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
-      });
-
-      await userEvent.click(
-        screen.getByRole("button", {
-          name: /Select research area for Revenue/i,
-        }),
-      );
-
-      expect(navigation.selectBlock).toHaveBeenCalledTimes(1);
-      expect(navigation.selectBlock).toHaveBeenCalledWith(
-        "metric:1",
-        "dimensions",
-      );
-    });
   });
 
   describe("dimension block", () => {
-    it("renders one collapsible area per dimension block with the dimension name in the header and referencing metrics in the body", () => {
+    it("expands by default, rendering related metrics as toggle pills", () => {
       setup({
         blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
       });
 
-      expect(screen.getByText("Plan")).toBeInTheDocument();
-      expect(screen.getByText("Revenue")).toBeInTheDocument();
-      expect(screen.getByText("Churn")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Revenue" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(screen.getByRole("button", { name: "Churn" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
     });
 
-    it("clicking a metric pill's Remove button drops it from the block", async () => {
+    it("toggling a metric pill calls toggleMetricSelected", async () => {
       const { selection } = setup({
         blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
       });
 
-      const removeButtons = screen.getAllByRole("button", { name: "Remove" });
-      await userEvent.click(removeButtons[0]);
+      await userEvent.click(screen.getByRole("button", { name: "Revenue" }));
 
-      expect(selection.removeMetricFromDimensionBlock).toHaveBeenCalledTimes(1);
-      expect(selection.removeMetricFromDimensionBlock).toHaveBeenCalledWith(
+      expect(selection.toggleMetricSelected).toHaveBeenCalledWith(
         "dim:accounts.plan",
         revenueMetric.id,
       );
     });
-
-    it("clicking the body activates the block on the Metrics browse tab", async () => {
-      const { navigation } = setup({
-        blocks: [mockDimensionBlock(dimPlan, [revenueMetric])],
-      });
-
-      await userEvent.click(
-        screen.getByRole("button", {
-          name: /Edit research area for Plan/i,
-        }),
-      );
-
-      expect(navigation.selectBlock).toHaveBeenCalledTimes(1);
-      expect(navigation.selectBlock).toHaveBeenCalledWith(
-        "dim:accounts.plan",
-        "metrics",
-      );
-    });
-
-    it("clicking the empty space in the header selects the block", async () => {
-      const { navigation } = setup({
-        blocks: [mockDimensionBlock(dimPlan, [revenueMetric])],
-      });
-
-      await userEvent.click(
-        screen.getByRole("button", {
-          name: /Select research area for Plan/i,
-        }),
-      );
-
-      expect(navigation.selectBlock).toHaveBeenCalledTimes(1);
-      expect(navigation.selectBlock).toHaveBeenCalledWith(
-        "dim:accounts.plan",
-        "metrics",
-      );
-    });
   });
 
-  describe("empty-space click clears the active block", () => {
-    it("clicking on the column background calls navigation.clearActiveBlock when a block is active", async () => {
-      const { navigation } = setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
-      });
-      // Simulate "Revenue" being the active block.
-      (navigation as { activeBlockId: string | null }).activeBlockId =
-        "metric:1";
-
-      // The column's own root carries `data-testid="research-content"`
-      // and an onClick that deselects when the click target isn't
-      // inside a block. Clicking the title (inside the column, not
-      // inside any block) should clear.
-      await userEvent.click(screen.getByText("Research plan"));
-
-      expect(navigation.clearActiveBlock).toHaveBeenCalledTimes(1);
-    });
-
-    it("clicking the block itself does NOT clear the selection", async () => {
-      const { navigation } = setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
-      });
-      (navigation as { activeBlockId: string | null }).activeBlockId =
-        "metric:1";
-
-      // Click on the block body — the block's `data-block-id` is on
-      // the bubble path, so the background click handler skips
-      // clearing. (The block's own `onActivate` still fires and the
-      // navigation.selectBlock mock records the call — but we only
-      // care here that the deselect path is *not* taken.)
-      await userEvent.click(
-        screen.getByRole("button", {
-          name: /Edit research area for Revenue/i,
-        }),
-      );
-
-      expect(navigation.clearActiveBlock).not.toHaveBeenCalled();
-    });
-
-    it("is a no-op when no block is active", async () => {
-      const { navigation } = setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
-      });
-      // activeBlockId left as `null` from the default mock.
-
-      await userEvent.click(screen.getByText("Research plan"));
-
-      expect(navigation.clearActiveBlock).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("selected timelines tray", () => {
+  describe("selected events tray", () => {
     const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
 
     it("is hidden when nothing is selected", () => {
       setup();
-
-      expect(screen.queryByText("Timelines")).not.toBeInTheDocument();
+      expect(screen.queryByText("Releases")).not.toBeInTheDocument();
     });
 
-    it("stays hidden when blocks exist but no timeline is picked and no timeline drag is in flight", () => {
-      // The empty tray is a drag-only target now (mirrors NewBlockDropZone).
-      // Tests render without a DndContext, so no drag is ever in flight and
-      // the empty tray returns null even when blocks are present.
-      setup({ blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])] });
-
-      expect(screen.queryByText("Timelines")).not.toBeInTheDocument();
-    });
-
-    it("renders a removable pill per selected timeline", () => {
-      setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
-        timelines: [releasesTimeline],
-      });
+    it("renders a removable pill per selected timeline", async () => {
+      const { selection } = setup({ timelines: [releasesTimeline] });
 
       expect(screen.getByText("Releases")).toBeInTheDocument();
-    });
-
-    it("shows the tray when only timelines are selected (no blocks)", () => {
-      setup({ timelines: [releasesTimeline] });
-
-      expect(screen.getByText("Timelines")).toBeInTheDocument();
-      expect(screen.getByText("Releases")).toBeInTheDocument();
-    });
-
-    it("clicking a timeline pill's Remove button calls toggleTimeline", async () => {
-      // Block has no dimensions so the only Remove pill is the timeline's.
-      const { selection } = setup({
-        blocks: [mockMetricBlock(revenueMetric, [])],
-        timelines: [releasesTimeline],
-      });
-
       await userEvent.click(screen.getByRole("button", { name: "Remove" }));
-
-      expect(selection.toggleTimeline).toHaveBeenCalledTimes(1);
       expect(selection.toggleTimeline).toHaveBeenCalledWith(releasesTimeline);
     });
   });
 
   describe("buildCreateExplorationRequest", () => {
     const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
-    const launchTimeline = createMockTimeline({ id: 9, name: "Launches" });
+
+    it("sends only the selected dimensions of a metric block", () => {
+      const block = mockMetricBlock(
+        revenueMetric,
+        [dimCreatedAt, dimPlan],
+        new Set([dimCreatedAt.id]),
+      );
+      const request = buildCreateExplorationRequest("n", "", [block], []);
+
+      expect(request.groups[0].dimensions.map((d) => d.dimension_id)).toEqual([
+        dimCreatedAt.id,
+      ]);
+    });
+
+    it("sends only the selected metrics of a dimension block", () => {
+      const block = mockDimensionBlock(
+        dimPlan,
+        [revenueMetric, churnMetric],
+        [dimPlan],
+        new Set([churnMetric.id]),
+      );
+      const request = buildCreateExplorationRequest("n", "", [block], []);
+
+      expect(request.groups[0].metrics.map((m) => m.card_id)).toEqual([
+        churnMetric.id,
+      ]);
+    });
 
     it("attaches the shared timeline_ids to every group", () => {
       const request = buildCreateExplorationRequest(
         "My exploration",
         "",
-        [
-          mockMetricBlock(revenueMetric, [dimCreatedAt]),
-          mockDimensionBlock(dimPlan, [churnMetric]),
-        ],
-        [releasesTimeline, launchTimeline],
-      );
-
-      expect(request.groups).toHaveLength(2);
-      for (const group of request.groups) {
-        expect(group.timeline_ids).toEqual([7, 9]);
-      }
-    });
-
-    it("uses empty timeline_ids on every group when none are selected", () => {
-      const request = buildCreateExplorationRequest(
-        "My exploration",
-        "",
         [mockMetricBlock(revenueMetric, [dimCreatedAt])],
-        [],
+        [releasesTimeline],
       );
 
-      expect(request.groups[0].timeline_ids).toEqual([]);
+      expect(request.groups[0].timeline_ids).toEqual([7]);
     });
 
     it("trims the prompt and falls back to null when blank", () => {
@@ -393,7 +249,7 @@ describe("NewExplorationData (Research plan)", () => {
   });
 
   describe("mixed Research plan", () => {
-    it("renders metric and dimension blocks side by side, each with its own controls", () => {
+    it("renders metric and dimension blocks each with their own controls and enables Start research", () => {
       setup({
         blocks: [
           mockMetricBlock(revenueMetric, [dimCreatedAt]),
@@ -401,12 +257,9 @@ describe("NewExplorationData (Research plan)", () => {
         ],
       });
 
-      // Two block areas, two "Remove area" buttons.
       expect(screen.getAllByLabelText("Remove area")).toHaveLength(2);
-
-      // The Begin research button is enabled because blocks > 0.
       expect(
-        screen.getByRole("button", { name: "Begin research" }),
+        screen.getByRole("button", { name: "Start research" }),
       ).toBeEnabled();
     });
   });

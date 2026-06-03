@@ -1,1 +1,0 @@
-export { NewExplorationDataTabs } from "./NewExplorationDataTabs";

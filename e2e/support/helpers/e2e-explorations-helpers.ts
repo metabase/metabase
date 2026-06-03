@@ -28,7 +28,7 @@ export function explorationsMetabotPromptInput(): Cypress.Chainable<
 
 export function visitNewExploration(): void {
   cy.visit("/question/research");
-  cy.findByRole("button", { name: /Begin research/i }).should("be.visible");
+  cy.findByRole("button", { name: /Start research/i }).should("be.visible");
 }
 
 export interface AddMetricsAndDimensionsOptions {
@@ -37,51 +37,56 @@ export interface AddMetricsAndDimensionsOptions {
 }
 
 /**
- * Pick metrics + dimensions through the Browse tab. The right pane's
- * section "+" buttons deep-link into the matching Browse picker; each
- * checkbox commits to the exploration immediately (no modal, no Done).
- * Assumes `visitNewExploration()` registered the `@getDimensions`
- * intercept already.
+ * Pick metrics + dimensions through the "+ Data" picker. The header
+ * "Data" menu opens a modal per entity type; each row is a `Checkbox`
+ * labelled with the entity name, and an "Add" button commits the
+ * newly-checked rows. Assumes `visitNewExploration()` registered the
+ * `@getDimensions` intercept already.
  */
 export function addMetricsAndDimensions({
   metrics,
   dimensions = [],
 }: AddMetricsAndDimensionsOptions): void {
-  cy.findByRole("button", { name: "Add metrics" }).click();
+  cy.findByRole("button", { name: "Data" }).click();
+  cy.findByRole("menuitem", { name: "Metrics" }).click();
   cy.wait("@getDimensions");
   for (const name of metrics) {
     cy.findByRole("checkbox", { name }).check({ force: true });
   }
+  cy.findByRole("button", { name: "Add" }).click();
+
   if (dimensions.length > 0) {
-    cy.findByRole("button", { name: "Add dimensions" }).click();
+    cy.findByRole("button", { name: "Data" }).click();
+    cy.findByRole("menuitem", { name: "Dimensions" }).click();
     for (const name of dimensions) {
       cy.findByRole("checkbox", { name }).check({ force: true });
     }
+    cy.findByRole("button", { name: "Add" }).click();
   }
 }
 
 /**
- * Pick the named timelines (one or many) through the Browse →
- * Timelines tab. Each row is an `UnstyledButton` with `role="listitem"`
- * wrapping a `Checkbox` whose `aria-label` is the timeline name (see
- * `TimelineList.tsx`), so we drive selection through the checkbox.
+ * Pick the named timelines (one or many) through the "+ Events" modal.
+ * Each row is a `Checkbox` labelled with the timeline name; the "Add"
+ * button commits the selection.
  */
 export function addTimelinesToExploration(names: string | string[]): void {
   const list = Array.isArray(names) ? names : [names];
-  cy.findByRole("button", { name: "Add timelines" }).click();
+  cy.findByRole("button", { name: "Events" }).click();
   for (const name of list) {
     cy.findByRole("checkbox", { name }).check({ force: true });
   }
+  cy.findByRole("button", { name: "Add" }).click();
 }
 
 /**
- * Click `Begin research`, wait for the create-exploration POST,
+ * Click `Start research`, wait for the create-exploration POST,
  * and assert we navigated to the detail page. Yields the new
  * exploration's id so callers can chain detail-page assertions.
  */
 export function beginResearch(): Cypress.Chainable<number> {
   cy.intercept("POST", "/api/exploration").as("createExploration");
-  cy.findByRole("button", { name: /Begin research/i }).click();
+  cy.findByRole("button", { name: /Start research/i }).click();
   return cy.wait("@createExploration").then(({ response }) => {
     const id = response?.body?.id as number;
     expect(id, "exploration id from POST /api/exploration response").to.be.a(

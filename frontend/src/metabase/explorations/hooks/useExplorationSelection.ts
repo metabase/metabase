@@ -23,7 +23,10 @@ export interface MetricBlock {
   kind: "metric";
   id: string;
   metric: ExplorationMetric;
+  // All of the metric's dimensions (candidates), sorted by interestingness.
   dimensions: MetricDimension[];
+  // The subset the user actually wants to research.
+  selectedDimensionIds: Set<DimensionId>;
 }
 
 export interface DimensionBlock {
@@ -31,7 +34,9 @@ export interface DimensionBlock {
   id: string;
   dimension: MetricDimension;
   groupDimensions: MetricDimension[];
+  // All metrics related to the dimension (candidates).
   metrics: ExplorationMetric[];
+  selectedMetricIds: Set<ExplorationMetric["id"]>;
 }
 
 export type ExplorationBlock = MetricBlock | DimensionBlock;
@@ -83,6 +88,10 @@ export interface ExplorationSelection {
   setTimelines: Dispatch<SetStateAction<Timeline[]>>;
 
   addMetric: (metric: ExplorationMetric, context: ToggleMetricContext) => void;
+  addDimension: (
+    dimension: MetricDimension,
+    context: ToggleDimensionContext,
+  ) => void;
 
   toggleMetric: (
     metric: ExplorationMetric,
@@ -98,23 +107,12 @@ export interface ExplorationSelection {
   addTimelinesById: (timelineIds: number[]) => void;
 
   removeBlock: (blockId: string) => void;
-  removeDimensionFromMetricBlock: (
-    blockId: string,
-    dimensionId: DimensionId,
-  ) => void;
-  removeMetricFromDimensionBlock: (
+
+  // Flip whether a candidate child is selected within an existing block.
+  toggleDimensionSelected: (blockId: string, dimensionId: DimensionId) => void;
+  toggleMetricSelected: (
     blockId: string,
     metricId: ExplorationMetric["id"],
-  ) => void;
-
-  addDimensionToMetricBlock: (
-    blockId: string,
-    dimension: MetricDimension,
-  ) => void;
-
-  addMetricToDimensionBlock: (
-    blockId: string,
-    metric: ExplorationMetric,
   ) => void;
 }
 
@@ -131,18 +129,21 @@ function buildMetricBlock(
   metric: ExplorationMetric,
   dimensionsById: Map<DimensionId, MetricDimension>,
 ): MetricBlock {
-  const referencedDims = metric.dimension_ids
-    .map((id) => dimensionsById.get(id))
-    .filter((d): d is MetricDimension => d != null);
-  const hasInteresting = referencedDims.some(isInterestingDimension);
-  const dimensions = hasInteresting
-    ? referencedDims.filter(isInterestingDimension)
-    : referencedDims;
+  const referencedDims = sortDimensionsByInterestingness(
+    metric.dimension_ids
+      .map((id) => dimensionsById.get(id))
+      .filter((d): d is MetricDimension => d != null),
+  );
+  const interesting = referencedDims.filter(isInterestingDimension);
+  // Select the interesting dimensions; fall back to all so the block is
+  // never created with an empty selection (BE rejects a metric with no dims).
+  const selected = interesting.length > 0 ? interesting : referencedDims;
   return {
     kind: "metric",
     id: metricBlockId(metric.id),
     metric,
-    dimensions: sortDimensionsByInterestingness(dimensions),
+    dimensions: referencedDims,
+    selectedDimensionIds: new Set(selected.map((d) => d.id)),
   };
 }
 
@@ -167,6 +168,7 @@ function buildDimensionBlock(
     dimension,
     groupDimensions,
     metrics,
+    selectedMetricIds: new Set(metrics.map((m) => m.id)),
   };
 }
 
@@ -190,6 +192,19 @@ export function useExplorationSelection(): ExplorationSelection {
           return prevBlocks;
         }
         return [...prevBlocks, buildMetricBlock(metric, dimensionsById)];
+      });
+    },
+    [],
+  );
+
+  const addDimension = useCallback(
+    (dimension: MetricDimension, context: ToggleDimensionContext) => {
+      const id = dimensionBlockId(dimension.id);
+      setBlocks((prevBlocks) => {
+        if (prevBlocks.some((b) => b.id === id)) {
+          return prevBlocks;
+        }
+        return [...prevBlocks, buildDimensionBlock(dimension, context)];
       });
     },
     [],
@@ -253,82 +268,42 @@ export function useExplorationSelection(): ExplorationSelection {
     setBlocks((prev) => prev.filter((b) => b.id !== blockId));
   }, []);
 
-  const removeDimensionFromMetricBlock = useCallback(
+  const toggleDimensionSelected = useCallback(
     (blockId: string, dimensionId: DimensionId) => {
       setBlocks((prev) =>
         prev.map((block) => {
           if (block.id !== blockId || !isMetricBlock(block)) {
             return block;
           }
-          const nextDims = block.dimensions.filter((d) => d.id !== dimensionId);
-          return nextDims.length === block.dimensions.length
-            ? block
-            : { ...block, dimensions: nextDims };
+          const next = new Set(block.selectedDimensionIds);
+          if (next.has(dimensionId)) {
+            next.delete(dimensionId);
+          } else {
+            next.add(dimensionId);
+          }
+          return { ...block, selectedDimensionIds: next };
         }),
       );
     },
     [],
   );
 
-  const removeMetricFromDimensionBlock = useCallback(
+  const toggleMetricSelected = useCallback(
     (blockId: string, metricId: ExplorationMetric["id"]) => {
       setBlocks((prev) =>
         prev.map((block) => {
           if (block.id !== blockId || !isDimensionBlock(block)) {
             return block;
           }
-          const nextMetrics = block.metrics.filter((m) => m.id !== metricId);
-          return nextMetrics.length === block.metrics.length
-            ? block
-            : { ...block, metrics: nextMetrics };
+          const next = new Set(block.selectedMetricIds);
+          if (next.has(metricId)) {
+            next.delete(metricId);
+          } else {
+            next.add(metricId);
+          }
+          return { ...block, selectedMetricIds: next };
         }),
       );
-    },
-    [],
-  );
-
-  const addDimensionToMetricBlock = useCallback(
-    (blockId: string, dimension: MetricDimension) => {
-      setBlocks((prev) => {
-        let changed = false;
-        const next = prev.map((block) => {
-          if (block.id !== blockId || !isMetricBlock(block)) {
-            return block;
-          }
-          if (block.dimensions.some((d) => d.id === dimension.id)) {
-            return block;
-          }
-          changed = true;
-          return {
-            ...block,
-            dimensions: sortDimensionsByInterestingness([
-              ...block.dimensions,
-              dimension,
-            ]),
-          };
-        });
-        return changed ? next : prev;
-      });
-    },
-    [],
-  );
-
-  const addMetricToDimensionBlock = useCallback(
-    (blockId: string, metric: ExplorationMetric) => {
-      setBlocks((prev) => {
-        let changed = false;
-        const next = prev.map((block) => {
-          if (block.id !== blockId || !isDimensionBlock(block)) {
-            return block;
-          }
-          if (block.metrics.some((m) => m.id === metric.id)) {
-            return block;
-          }
-          changed = true;
-          return { ...block, metrics: [...block.metrics, metric] };
-        });
-        return changed ? next : prev;
-      });
     },
     [],
   );
@@ -367,7 +342,7 @@ export function useExplorationSelection(): ExplorationSelection {
         }
       } else {
         for (const metric of block.metrics) {
-          if (!seen.has(metric.id)) {
+          if (block.selectedMetricIds.has(metric.id) && !seen.has(metric.id)) {
             seen.add(metric.id);
             out.push(metric);
           }
@@ -382,7 +357,7 @@ export function useExplorationSelection(): ExplorationSelection {
     const out: MetricDimension[] = [];
     for (const block of blocks) {
       const fromBlock = isMetricBlock(block)
-        ? block.dimensions
+        ? block.dimensions.filter((d) => block.selectedDimensionIds.has(d.id))
         : block.groupDimensions;
       for (const d of fromBlock) {
         if (!seen.has(d.id)) {
@@ -409,14 +384,13 @@ export function useExplorationSelection(): ExplorationSelection {
     setBlocks,
     setTimelines,
     addMetric,
+    addDimension,
     toggleMetric,
     toggleDimension,
     toggleTimeline,
     addTimelinesById,
     removeBlock,
-    removeDimensionFromMetricBlock,
-    removeMetricFromDimensionBlock,
-    addDimensionToMetricBlock,
-    addMetricToDimensionBlock,
+    toggleDimensionSelected,
+    toggleMetricSelected,
   };
 }

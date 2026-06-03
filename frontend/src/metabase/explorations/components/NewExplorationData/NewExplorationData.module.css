@@ -1,194 +1,43 @@
 .container {
   flex-basis: max-content;
+  border-left: 1px solid var(--mb-color-border);
 }
 
-.emptyState {
-  border: 1px dashed var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
-  transition:
-    background 0.1s ease-in-out,
-    border-color 0.1s ease-in-out;
-}
-
-.emptyStateDropTarget {
-  border-color: var(--mb-color-brand);
-}
-
-.emptyStateDropOver {
-  border-color: var(--mb-color-brand) !important;
-  background: var(--mb-color-brand-lighter);
-}
-
-.newBlockDropZone {
-  border: 1px dashed var(--mb-color-brand);
-  border-radius: var(--mantine-radius-md);
+.block {
   background: var(--mb-color-background-primary);
-  transition:
-    background 0.1s ease-in-out,
-    border-color 0.1s ease-in-out;
-}
-
-.newBlockDropZoneOver {
-  border-style: solid !important;
-  background: var(--mb-color-brand-lighter) !important;
-}
-
-.timelinePanel {
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
-  background: var(--mb-color-background-primary);
-  transition:
-    background 0.1s ease-in-out,
-    border-color 0.1s ease-in-out;
 }
 
-.timelinePanelDropTarget {
-  border-color: var(--mb-color-brand);
-}
-
-.timelinePanelDropOver {
-  border-color: var(--mb-color-brand) !important;
-  background: var(--mb-color-brand-lighter) !important;
-}
-
-.accordionRoot {
-  background: transparent;
-}
-
-.accordionRoot .accordionItem {
-  background: var(--mb-color-background-primary) !important;
-  border: 1px solid var(--mb-color-border) !important;
-  border-radius: var(--mantine-radius-md) !important;
-  margin: 0 !important;
-
-  &[data-active] {
-    background: var(--mb-color-background-primary) !important;
-    border: 1px solid var(--mb-color-border) !important;
-  }
-}
-
-.accordionRoot .accordionItem + .accordionItem {
-  margin-top: 0.75rem !important;
-}
-
-.accordionItemDropTarget {
-  outline: 1px dashed var(--mb-color-brand);
-  outline-offset: -1px;
-}
-
-.accordionItemDropOver {
-  outline: 2px solid var(--mb-color-brand) !important;
-  outline-offset: -1px;
-  background: var(--mb-color-brand-lighter) !important;
-}
-
-.accordionItemActive {
-  border-color: var(--mb-color-brand) !important;
-  box-shadow: 0 0 0 1px var(--mb-color-brand);
-}
-
-.accordionRoot .accordionControl {
-  padding-inline: 0.75rem !important;
-  padding-block: 0.5rem !important;
-  background: transparent !important;
-  color: var(--mb-color-text-primary);
-
-  &:hover {
-    background: transparent !important;
-  }
-}
-
-.accordionControlRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding-right: 0.5rem;
-}
-
-.accordionControlRow .accordionControl {
-  flex: 0 1 auto;
-  width: auto !important;
-  min-width: 0;
-  padding-right: 0 !important;
-}
-
-.blockHeaderSelectArea {
-  flex: 1;
-  align-self: stretch;
-  min-width: 1rem;
-  cursor: pointer;
-}
-
-.accordionRoot .accordionLabel {
-  color: var(--mb-color-text-primary) !important;
-  font-weight: bold !important;
-  font-size: var(--mantine-font-size-md) !important;
-  line-height: 1.25rem !important;
-  padding: 0 !important;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.blockEntityIcon {
-  color: var(--mb-color-brand);
-  flex: none;
-}
-
-.accordionRoot .accordionChevron {
-  display: none !important;
-}
-
-.inlineChevron {
-  color: var(--mb-color-brand);
-  flex: none;
-  transition: transform 0.15s ease;
-}
-
-.accordionRoot .accordionControl[data-active] .inlineChevron,
-.accordionRoot .accordionControl[aria-expanded="true"] .inlineChevron {
-  transform: rotate(180deg);
-}
-
-.accordionRoot .accordionContent {
-  border-top: 1px solid var(--mb-color-border) !important;
-  padding: 0 !important;
+.blockHeader {
+  padding-inline: 0.75rem;
+  padding-block: 0.5rem;
 }
 
 .blockBody {
   padding-inline: 1rem;
   padding-block: 0.75rem;
-  cursor: pointer;
 }
 
-.accordionRoot .accordionPanel {
-  padding: 0 !important;
+/* Reveal the header controls only while hovering (or keyboard-focusing) the block. */
+.blockActions {
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
 }
 
-.headerControl {
-  font-size: var(--mantine-font-size-xs);
-  font-weight: var(--mantine-font-weight-normal);
-  color: var(--mb-color-text-secondary);
-  background: transparent;
-  border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-sm);
-  padding: 0.125rem 0.5rem;
-  cursor: pointer;
-  white-space: nowrap;
-
-  &:hover {
-    background: var(--mb-color-background-hover);
-  }
+.block:hover .blockActions,
+.block:focus-within .blockActions {
+  opacity: 1;
 }
 
-.removeBlockButton {
-  color: var(--mb-color-text-tertiary);
+/* Match the expanded toggle-pill font size so pills don't shrink when collapsed. */
+.pill {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.75rem;
+}
 
-  &:hover {
-    color: var(--mb-color-text-primary);
-    background: transparent;
-  }
+.pill .pillLabel {
+  line-height: 1rem;
 }
 
 .pill .pillRemove {
@@ -197,6 +46,33 @@
 
 .pill:hover .pillRemove {
   opacity: 1;
+}
+
+.overflowPill {
+  background: var(--mb-color-background-secondary);
+}
+
+.togglePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius-xl);
+  background: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1rem;
+
+  &:hover {
+    border-color: var(--mb-color-brand);
+  }
+}
+
+.togglePillSelected {
+  background: var(--mb-color-background-brand);
+  color: var(--mb-color-brand);
 }
 
 .beginButton {

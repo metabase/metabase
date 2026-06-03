@@ -12,7 +12,6 @@ import type {
 import type {
   DimensionBlock,
   ExplorationBlock,
-  ExplorationNavigation,
   ExplorationSelection,
   MetricBlock,
 } from "./hooks";
@@ -32,12 +31,15 @@ export interface MockSelectionOpts {
 export function mockMetricBlock(
   metric: ExplorationMetric,
   dimensions: MetricDimension[] = [],
+  selectedDimensionIds?: Set<MetricDimension["id"]>,
 ): MetricBlock {
   return {
     kind: "metric",
     id: metricBlockId(metric.id),
     metric,
     dimensions,
+    selectedDimensionIds:
+      selectedDimensionIds ?? new Set(dimensions.map((d) => d.id)),
   };
 }
 
@@ -45,6 +47,7 @@ export function mockDimensionBlock(
   dimension: MetricDimension,
   metrics: ExplorationMetric[] = [],
   groupDimensions?: MetricDimension[],
+  selectedMetricIds?: Set<ExplorationMetric["id"]>,
 ): DimensionBlock {
   return {
     kind: "dimension",
@@ -52,6 +55,7 @@ export function mockDimensionBlock(
     dimension,
     groupDimensions: groupDimensions ?? [dimension],
     metrics,
+    selectedMetricIds: selectedMetricIds ?? new Set(metrics.map((m) => m.id)),
   };
 }
 
@@ -76,7 +80,7 @@ export function makeMockSelection(
         metrics.push(block.metric);
       }
       for (const d of block.dimensions) {
-        if (!dimensionSeen.has(d.id)) {
+        if (block.selectedDimensionIds.has(d.id) && !dimensionSeen.has(d.id)) {
           dimensionSeen.add(d.id);
           dimensions.push(d);
         }
@@ -90,7 +94,7 @@ export function makeMockSelection(
         }
       }
       for (const m of block.metrics) {
-        if (!metricSeen.has(m.id)) {
+        if (block.selectedMetricIds.has(m.id) && !metricSeen.has(m.id)) {
           metricSeen.add(m.id);
           metrics.push(m);
         }
@@ -113,29 +117,14 @@ export function makeMockSelection(
     setBlocks: jest.fn(),
     setTimelines: jest.fn(),
     addMetric: jest.fn(),
+    addDimension: jest.fn(),
     toggleMetric: jest.fn(),
     toggleDimension: jest.fn(),
     toggleTimeline: jest.fn(),
     addTimelinesById: jest.fn(),
     removeBlock: jest.fn(),
-    removeDimensionFromMetricBlock: jest.fn(),
-    removeMetricFromDimensionBlock: jest.fn(),
-    addDimensionToMetricBlock: jest.fn(),
-    addMetricToDimensionBlock: jest.fn(),
-  };
-}
-
-export function makeMockNavigation(
-  overrides: Partial<ExplorationNavigation> = {},
-): ExplorationNavigation {
-  return {
-    browseTab: "metrics",
-    setBrowseTab: jest.fn(),
-    openBrowse: jest.fn(),
-    activeBlockId: null,
-    selectBlock: jest.fn(),
-    clearActiveBlock: jest.fn(),
-    ...overrides,
+    toggleDimensionSelected: jest.fn(),
+    toggleMetricSelected: jest.fn(),
   };
 }
 
