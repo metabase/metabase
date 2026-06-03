@@ -113,8 +113,8 @@ export const TREEMAP_CHART_DEFINITION: VisualizationDefinition = {
   get noun() {
     return t`treemap chart`;
   },
-  minSize: { width: 4, height: 4 },
-  defaultSize: { width: 6, height: 6 },
+  minSize: { width: 6, height: 4 },
+  defaultSize: { width: 12, height: 8 },
   disableVisualizer: true,
   hasEmptyState: true,
   isSensible: (data: DatasetData) => {
