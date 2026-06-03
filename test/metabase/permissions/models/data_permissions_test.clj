@@ -372,14 +372,10 @@
                                {table-id-1 :unrestricted
                                 table-id-2 :legacy-no-self-service}}
                               :perms/create-queries :query-builder-and-native}
-               database-id-2 {:perms/view-data
-                              {""
-                               {table-id-3 :unrestricted}}
+               database-id-2 {:perms/view-data :unrestricted
                               :perms/create-queries :no}}
               group-id-2
-              {database-id-1 {:perms/view-data
-                              {"PUBLIC"
-                               {table-id-1 :legacy-no-self-service}}}}}
+              {database-id-1 {:perms/view-data :legacy-no-self-service}}}
              (data-perms.graph/data-permissions-graph))))
 
       (testing "Additional data permissions are included when set"
@@ -407,9 +403,7 @@
                                 :perms/manage-table-metadata
                                 {"PUBLIC"
                                  {table-id-1 :yes}}}
-                 database-id-2 {:perms/view-data
-                                {""
-                                 {table-id-3 :unrestricted}}
+                 database-id-2 {:perms/view-data :unrestricted
                                 :perms/download-results
                                 {""
                                  {table-id-3 :one-million-rows}}
