@@ -208,6 +208,16 @@
      (catch Exception e
        (core/rethrow-api-error! "openai" openai-error-msg e)))))
 
+(defn- model-supports-temperature?
+  "Whether `model` accepts an explicit `temperature` parameter.
+
+  The GPT-5 family and the o-series reasoning models only support the default temperature and return a 400
+  (\"Unsupported parameter: 'temperature' is not supported with this model.\") when one is sent, so we omit it for them."
+  [model]
+  (let [model (str model)]
+    (not (or (str/starts-with? model "gpt-5")
+             (re-find #"^o\d" model)))))
+
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API."
   [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
@@ -229,7 +239,8 @@
                                                       tool_choice tool_choice
                                                       :else       "auto")
                                        :tools       all-tools)
-                    temperature (assoc :temperature temperature)
+                    (and temperature
+                         (model-supports-temperature? model)) (assoc :temperature temperature)
                     max-tokens  (assoc :max_output_tokens max-tokens))]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))
