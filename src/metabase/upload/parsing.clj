@@ -8,7 +8,8 @@
    (java.text NumberFormat ParsePosition)
    (java.time LocalDate OffsetDateTime)
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder DateTimeParseException ResolverStyle)
-   (java.util Locale)))
+   (java.util Locale)
+   (java.util.function Supplier)))
 
 (set! *warn-on-reflection* true)
 
@@ -157,24 +158,31 @@
   [s]
   (str/replace s currency-regex ""))
 
-;; These NumberFormat instances are *prototypes*: NumberFormat is not thread-safe (it keeps mutable
-;; parse state inside itself), so we never parse with them directly - concurrent uploads would
-;; corrupt each other. Each call clones the one it needs, giving every thread its own throwaway copy.
-;; Cloning is much cheaper than NumberFormat/getInstance per value because it skips the locale lookup.
+(defn- number-format-thread-local
+  "A `ThreadLocal` holding one `NumberFormat` per thread for `locale`."
+  ^ThreadLocal [^Locale locale]
+  (ThreadLocal/withInitial
+   (reify Supplier
+     (get [_] (NumberFormat/getInstance locale)))))
+
+;; NumberFormat is not thread-safe: it keeps mutable parse state inside itself, so parsing with a
+;; shared instance lets concurrent uploads corrupt each other - either throwing or silently
+;; returning the wrong number. We give each thread its own formatter per locale via ThreadLocal,
+;; so a thread reuses its copy across every cell instead of reallocating one per value.
 ;; See https://linear.app/metabase/issue/GDGT-304
-(let [us (NumberFormat/getInstance (Locale. "en" "US"))
-      de (NumberFormat/getInstance (Locale. "de" "DE"))
-      fr (NumberFormat/getInstance (Locale. "fr" "FR"))
-      ch (NumberFormat/getInstance (Locale. "de" "CH"))]
+(let [us (number-format-thread-local (Locale. "en" "US"))
+      de (number-format-thread-local (Locale. "de" "DE"))
+      fr (number-format-thread-local (Locale. "fr" "FR"))
+      ch (number-format-thread-local (Locale. "de" "CH"))]
   (defn- parse-plain-number [number-separators s]
     (let [has-parens?       (re-matches #"\(.*\)" s)
           deparenthesized-s (str/replace s #"[()]" "")
           parse-pos         (ParsePosition. 0)
           parsed-number     (case number-separators
-                              ("." ".,") (. ^NumberFormat (.clone us) parse deparenthesized-s parse-pos)
-                              ",."       (. ^NumberFormat (.clone de) parse deparenthesized-s parse-pos)
-                              ", "       (. ^NumberFormat (.clone fr) parse (str/replace deparenthesized-s \space \u00A0) parse-pos) ; \u00A0 is a non-breaking space
-                              ".’"       (. ^NumberFormat (.clone ch) parse deparenthesized-s parse-pos))]
+                              ("." ".,") (. ^NumberFormat (.get us) parse deparenthesized-s parse-pos)
+                              ",."       (. ^NumberFormat (.get de) parse deparenthesized-s parse-pos)
+                              ", "       (. ^NumberFormat (.get fr) parse (str/replace deparenthesized-s \space \u00A0) parse-pos) ; \u00A0 is a non-breaking space
+                              ".’"       (. ^NumberFormat (.get ch) parse deparenthesized-s parse-pos))]
       (let [parsed-idx (.getIndex parse-pos)]
         (when-not (= parsed-idx (count deparenthesized-s))
           (throw (ex-info "Unexpected trailing characters - this is probably not a number"
