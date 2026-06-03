@@ -15,6 +15,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Icon } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 
+import { MetabotArtifactsPopover } from "./MetabotArtifactsPopover";
 import { MetabotPanel } from "./MetabotPanel";
 
 export function MetabotLauncher() {
@@ -64,6 +65,7 @@ export function MetabotLauncher() {
       >
         {t`Ask Metabot`}
       </Button>
+      <MetabotArtifactsPopover />
       {visibleAgentId && buttonEl && (
         <MetabotPanel agentId={visibleAgentId} anchorEl={buttonEl} />
       )}

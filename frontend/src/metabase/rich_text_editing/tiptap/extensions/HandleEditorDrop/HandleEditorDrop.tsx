@@ -3,6 +3,10 @@ import { Fragment, type NodeType as PMNodeType, Slice } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 
+import { readArtifactDragData } from "metabase/metabot/components/MetabotBar/artifactDragData";
+
+import { wrapCardEmbed } from "../shared/layout";
+
 import {
   handleCardDropOnCard,
   handleCardDropToFlexContainer,
@@ -23,6 +27,12 @@ export const HandleEditorDrop = Extension.create({
         key: new PluginKey("metabaseTiptapDrop"),
         props: {
           handleDrop: (view, e, slice, moved) => {
+            // Artifacts dragged in from the Metabot popover arrive as a native
+            // drop carrying our custom MIME payload — insert them as a cardEmbed.
+            if (handleArtifactDrop(view, e)) {
+              return true;
+            }
+
             const cardEmbedInitialData = getDroppedCardEmbedNodeData(
               view,
               e,
@@ -212,6 +222,35 @@ export const HandleEditorDrop = Extension.create({
     ];
   },
 });
+
+export const handleArtifactDrop = (
+  view: EditorView,
+  event: DragEvent,
+): boolean => {
+  const artifact = readArtifactDragData(event.dataTransfer);
+  if (artifact?.model !== "card") {
+    return false;
+  }
+
+  const coordsPos = view.posAtCoords({
+    left: event.clientX,
+    top: event.clientY,
+  })?.pos;
+  const pos = coordsPos ?? view.state.selection.from;
+
+  // place the embed at the nearest top-level block boundary so a block node
+  // never lands mid-paragraph
+  const $pos = view.state.doc.resolve(pos);
+  const insertPos = $pos.depth > 0 ? $pos.after(1) : pos;
+
+  const node = view.state.schema.nodeFromJSON(
+    wrapCardEmbed({ type: "cardEmbed", attrs: { id: artifact.id } }),
+  );
+
+  view.dispatch(view.state.tr.insert(insertPos, node));
+  event.preventDefault();
+  return true;
+};
 
 const handleCardDropOnParagraph = ({
   originalPos,

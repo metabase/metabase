@@ -203,6 +203,7 @@ export type IconName =
   | "recents"
   | "revert"
   | "sankey"
+  | "shapes"
   | "share"
   | "send"
   | "settings"

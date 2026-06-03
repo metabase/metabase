@@ -1,13 +1,18 @@
-import { useCallback, useMemo } from "react";
+import { type DragEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { addCardToDashboard } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useSelector } from "metabase/redux";
+import {
+  isArtifactDrag,
+  readArtifactDragData,
+} from "metabase/metabot/components/MetabotBar/artifactDragData";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
-import { Loader } from "metabase/ui";
+import { Box, Loader } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import {
@@ -48,6 +53,34 @@ export const Grid = ({
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
+  const dispatch = useDispatch();
+
+  // Empty tabs render an empty state instead of the grid, so the grid's own
+  // artifact drop target isn't mounted — make the empty state droppable too.
+  const handleArtifactDragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (isEditing && isArtifactDrag(e.dataTransfer)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    }
+  };
+
+  const handleArtifactDrop = (e: DragEvent<HTMLDivElement>) => {
+    if (!isEditing || !dashboard) {
+      return;
+    }
+    const artifact = readArtifactDragData(e.dataTransfer);
+    if (artifact?.model === "card") {
+      e.preventDefault();
+      dispatch(
+        addCardToDashboard({
+          dashId: dashboard.id,
+          tabId: selectedTabId ?? null,
+          cardId: artifact.id,
+        }),
+      );
+    }
+  };
+
   /**
    * In the original code before (metabase#59529), we render `DashboardEmptyStateWithoutAddPrompt` directly
    * inside `PublicOrEmbeddedDashboardView` and this component doesn't need to check conditions that relies
@@ -76,31 +109,28 @@ export const Grid = ({
   }
 
   if (isEmpty) {
-    if (!dashboardHasCards) {
-      return isEditableDashboard ? (
-        <DashboardEmptyState
-          canCreateQuestions={canCreateQuestions}
-          addQuestion={handleAddQuestion}
-          isDashboardEmpty={true}
-          isEditing={isEditing}
-        />
-      ) : (
-        <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={true} />
-      );
-    }
-
-    if (dashboardHasCards && !tabHasCards) {
-      return isEditableDashboard ? (
-        <DashboardEmptyState
-          canCreateQuestions={canCreateQuestions}
-          addQuestion={handleAddQuestion}
-          isDashboardEmpty={false}
-          isEditing={isEditing}
-        />
-      ) : (
-        <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={false} />
-      );
-    }
+    const isDashboardEmpty = !dashboardHasCards;
+    return (
+      <Box
+        h="100%"
+        w="100%"
+        onDragOver={handleArtifactDragOver}
+        onDrop={handleArtifactDrop}
+      >
+        {isEditableDashboard ? (
+          <DashboardEmptyState
+            canCreateQuestions={canCreateQuestions}
+            addQuestion={handleAddQuestion}
+            isDashboardEmpty={isDashboardEmpty}
+            isEditing={isEditing}
+          />
+        ) : (
+          <DashboardEmptyStateWithoutAddPrompt
+            isDashboardEmpty={isDashboardEmpty}
+          />
+        )}
+      </Box>
+    );
   }
 
   return (

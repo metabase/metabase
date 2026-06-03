@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ComponentType, ForwardedRef } from "react";
+import type { ComponentType, DragEvent, ForwardedRef } from "react";
 import { Component, forwardRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { t } from "ttag";
@@ -19,6 +19,10 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
+import {
+  isArtifactDrag,
+  readArtifactDragData,
+} from "metabase/metabot/components/MetabotBar/artifactDragData";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -49,6 +53,7 @@ import type {
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
+  addCardToDashboard,
   fetchCardData,
   markNewCardSeen,
   removeCardFromDashboard,
@@ -113,6 +118,7 @@ const mapStateToProps = (state: State) => ({
 
 const mapDispatchToProps = {
   addUndo,
+  addCardToDashboard,
   removeCardFromDashboard,
   trashDashboardQuestion,
   showClickBehaviorSidebar,
@@ -457,6 +463,30 @@ class DashboardGridInner extends Component<
     this.setState({ isDragging: false });
   };
 
+  // Accept artifacts dragged from the Metabot popover (native HTML5 DnD, since the
+  // popover lives outside this grid's react-dnd context). Edit mode only.
+  handleArtifactDragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (this.props.isEditing && isArtifactDrag(e.dataTransfer)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    }
+  };
+
+  handleArtifactDrop = (e: DragEvent<HTMLDivElement>) => {
+    if (!this.props.isEditing) {
+      return;
+    }
+    const artifact = readArtifactDragData(e.dataTransfer);
+    if (artifact?.model === "card") {
+      e.preventDefault();
+      this.props.addCardToDashboard({
+        dashId: this.props.dashboard.id,
+        tabId: this.props.selectedTabId ?? null,
+        cardId: artifact.id,
+      });
+    }
+  };
+
   onDashCardRemove = (dc: DashboardCard) => {
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
@@ -672,6 +702,8 @@ class DashboardGridInner extends Component<
         )}
         ref={forwardedRef}
         data-testid="dashboard-grid"
+        onDragOver={this.handleArtifactDragOver}
+        onDrop={this.handleArtifactDrop}
         style={{
           "--dashboard-fixed-width": FIXED_WIDTH,
           ...style,

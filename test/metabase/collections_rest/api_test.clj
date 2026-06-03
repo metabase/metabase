@@ -840,6 +840,25 @@
                     (map #(select-keys % [:id :database_id]))
                     set)))))))
 
+(deftest collection-items-ai-generated-filter-test
+  (testing "GET /api/collection/:id/items?ai_generated=true"
+    (mt/with-temp [:model/Collection collection      {}
+                   :model/Card       {ai-id :id}     {:collection_id (u/the-id collection)
+                                                      :ai_generated  true}
+                   :model/Card       {human-id :id}  {:collection_id (u/the-id collection)
+                                                      :ai_generated  false}]
+      (let [ids (fn [& {:as params}]
+                  (->> (apply mt/user-http-request :crowberto :get 200
+                              (str "collection/" (u/the-id collection) "/items")
+                              (mapcat identity params))
+                       :data
+                       (map :id)
+                       set))]
+        (testing "without the filter both cards are returned"
+          (is (= #{ai-id human-id} (ids :models "card"))))
+        (testing "with ai_generated=true only the AI card is returned"
+          (is (= #{ai-id} (ids :models "card" :ai_generated "true"))))))))
+
 (deftest collection-items-limit-offset-test
   (testing "GET /api/collection/:id/items"
     (testing "check that limit and offset work and total comes back"

@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.autosave :as autosave]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
@@ -300,7 +301,9 @@
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE transaction commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
-    (used-tables/record-used-tables! assistant-msg-id pre-strip)))
+    (used-tables/record-used-tables! assistant-msg-id pre-strip)
+    ;; Same after-commit handoff: auto-save any adhoc_viz the turn produced as cards in the user's personal collection.
+    (autosave/record-autosaved-cards! assistant-msg-id pre-strip)))
 
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."

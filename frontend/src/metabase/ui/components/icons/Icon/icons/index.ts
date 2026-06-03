@@ -448,6 +448,8 @@ import send_component from "./send.svg?component";
 import send_source from "./send.svg?source";
 import settings_component from "./settings.svg?component";
 import settings_source from "./settings.svg?source";
+import shapes_component from "./shapes.svg?component";
+import shapes_source from "./shapes.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
@@ -1386,6 +1388,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     settings: {
       component: settings_component,
       source: settings_source,
+    },
+    shapes: {
+      component: shapes_component,
+      source: shapes_source,
     },
     share: {
       component: share_component,
