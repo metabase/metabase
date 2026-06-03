@@ -1901,12 +1901,16 @@
           (mt/user-http-request :crowberto :get 400 "/search" :archived "meow")
           (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
           ;; We do not treat client side errors as errors for our alerts.
-          (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
+          (is (= 0 (count (filter #{:metabase-search/response-error} @calls))))
+          (is (= 1 (count (filter (comp #{:metabase-search/response-results} first) @observed)))
+              "result count is not observed on error responses"))
         (testing "Unexpected server error (500)"
           (mt/with-dynamic-fn-redefs [search/search (fn [& _] (throw (Exception.)))]
             (mt/user-http-request :crowberto :get 500 "/search" :q "test")
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
-            (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
+            (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))
+            (is (= 1 (count (filter (comp #{:metabase-search/response-results} first) @observed)))
+                "result count is not observed on error responses")))))))
 
 (deftest ^:synchronized multiple-limits-test
   (when (search/supports-index?)
