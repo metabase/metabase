@@ -244,7 +244,10 @@ export const CardEmbedComponent = memo(
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const commentsPath = useCommentUrl({ childTargetId: _id });
+    const commentsPath = useCommentUrl({
+      childTargetId: _id,
+      searchParams: unresolvedCommentsCount > 0 ? undefined : { new: "true" },
+    });
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
@@ -728,7 +731,6 @@ export const CardEmbedComponent = memo(
                             handleRemoveNode={handleRemoveNode}
                             commentsPath={commentsPath}
                             hasUnsavedChanges={hasUnsavedChanges}
-                            unresolvedCommentsCount={unresolvedCommentsCount}
                           />
                         </Menu.Dropdown>
                       </Menu>

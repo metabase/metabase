@@ -23,6 +23,7 @@ interface ExplorationVisualizationHeaderProps {
   showDocumentMenu?: boolean;
   chartsForEmbed?: ExplorationChartForDocumentEmbed[];
   interestingTimelineIds?: ReadonlySet<TimelineId>;
+  locationSearch?: string;
 }
 
 export function ExplorationVisualizationHeader({
@@ -36,13 +37,8 @@ export function ExplorationVisualizationHeader({
   showDocumentMenu,
   chartsForEmbed,
   interestingTimelineIds,
+  locationSearch,
 }: ExplorationVisualizationHeaderProps) {
-  const showGroupDocumentMenu =
-    showDocumentMenu &&
-    explorationThread &&
-    chartsForEmbed &&
-    chartsForEmbed.length > 0;
-
   return (
     <Group h="2rem" justify="space-between" style={{ flexShrink: 0 }}>
       <Text fw="bold" size="lg">
@@ -63,12 +59,17 @@ export function ExplorationVisualizationHeader({
               interestingTimelineIds={interestingTimelineIds}
             />
           )}
-        {showGroupDocumentMenu && (
-          <GroupDocumentMenu
-            charts={chartsForEmbed}
-            explorationThread={explorationThread}
-          />
-        )}
+        {showDocumentMenu &&
+          explorationThread &&
+          chartsForEmbed &&
+          chartsForEmbed.length > 0 &&
+          locationSearch != null && (
+            <GroupDocumentMenu
+              charts={chartsForEmbed}
+              explorationThread={explorationThread}
+              locationSearch={locationSearch}
+            />
+          )}
       </Group>
     </Group>
   );

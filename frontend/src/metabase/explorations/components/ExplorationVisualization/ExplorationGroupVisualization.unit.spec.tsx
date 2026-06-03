@@ -136,6 +136,7 @@ function setup({
       selectedTimelineId={null}
       onSelectTimelineId={jest.fn()}
       interestingTimelineIds={interestingTimelineIds}
+      locationSearch="?timeline=1"
     />,
   );
 }

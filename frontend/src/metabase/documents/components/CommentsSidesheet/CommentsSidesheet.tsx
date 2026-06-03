@@ -1,5 +1,6 @@
 import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { push } from "react-router-redux";
 import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
@@ -8,6 +9,7 @@ import { useCreateCommentMutation, useListCommentsQuery } from "metabase/api";
 import { CommentEditor } from "metabase/comments/components";
 import { Discussions } from "metabase/comments/components/Discussions";
 import {
+  deleteNewFromSearch,
   deleteNewParamFromURLIfNeeded,
   getCommentNodeId,
   getCommentsCount,
@@ -38,10 +40,9 @@ interface Props {
   params?: {
     childTargetId: string;
   };
-  onClose: () => void;
 }
 
-export const CommentsSidesheet = ({ params, onClose }: Props) => {
+export const CommentsSidesheet = ({ params }: Props) => {
   const childTargetId = params?.childTargetId;
   const location = useLocation();
   const { openCommentSidebar, closeCommentSidebar } = useDocumentState();
@@ -77,8 +78,21 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
 
   const closeSidebar = useCallback(() => {
     closeCommentSidebar();
-    onClose();
-  }, [closeCommentSidebar, onClose]);
+    // ModalRoute's onClose method doesn't preserve search query params
+    // we need them for explorations, so manually preserve them
+    const { pathname = "", search } = location;
+    const existingCommentIndex = pathname.lastIndexOf("/comments/");
+    const nextPathname =
+      existingCommentIndex !== -1
+        ? pathname.slice(0, existingCommentIndex)
+        : pathname;
+    dispatch(
+      push({
+        pathname: nextPathname,
+        search: `?${deleteNewFromSearch(search)}`,
+      }),
+    );
+  }, [closeCommentSidebar, dispatch, location]);
 
   useEffect(() => {
     if (childTargetId == null) {
@@ -200,7 +214,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         <Title order={3}>
           {childTargetId === "all" ? t`All comments` : t`Comments about this`}
         </Title>
-        <ActionIcon onClick={closeSidebar}>
+        <ActionIcon aria-label={t`Close`} onClick={closeSidebar}>
           <Icon name="close" c="text-primary" />
         </ActionIcon>
       </Flex>

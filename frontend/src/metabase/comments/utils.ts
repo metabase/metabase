@@ -98,17 +98,20 @@ export function formatCommentDate(dateOrString: string | Date) {
   }).format(date);
 }
 
+export function deleteNewFromSearch(search: string | undefined) {
+  const searchParams = new URLSearchParams(search);
+  searchParams.delete("new");
+  return searchParams.toString();
+}
+
 export function deleteNewParamFromURLIfNeeded(
   location: LocationSensorState,
   dispatch: DispatchFn,
 ) {
-  const search = new URLSearchParams(location.search);
-
-  if (search.get("new") == null) {
-    return;
-  }
-
-  search.delete("new");
-  const newSearch = search.toString();
-  dispatch(replace({ pathname: location.pathname, search: newSearch }));
+  dispatch(
+    replace({
+      pathname: location.pathname,
+      search: deleteNewFromSearch(location.search),
+    }),
+  );
 }

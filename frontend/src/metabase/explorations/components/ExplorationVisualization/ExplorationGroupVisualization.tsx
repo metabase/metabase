@@ -33,6 +33,7 @@ interface ExplorationGroupVisualizationProps {
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
   interestingTimelineIds?: ReadonlySet<TimelineId>;
+  locationSearch: string;
 }
 
 const STACK_PANEL_HEIGHT = 64;
@@ -152,6 +153,7 @@ function ExplorationGroupVisualizationChart({
   selectedTimelineId,
   onSelectTimelineId,
   interestingTimelineIds,
+  locationSearch,
 }: ExplorationGroupVisualizationProps) {
   // One RTKQ hook per query. ESLint complains about hooks-in-a-loop;
   // safe here because the parent keys this component on `group.id`, so
@@ -223,6 +225,7 @@ function ExplorationGroupVisualizationChart({
         showDocumentMenu
         chartsForEmbed={chartsForDocumentEmbed}
         interestingTimelineIds={interestingTimelineIds}
+        locationSearch={locationSearch}
       />
       <Box
         className={S.chartGrid}
