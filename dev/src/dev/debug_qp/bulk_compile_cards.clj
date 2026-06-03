@@ -46,18 +46,18 @@
   (t2/query {:select [:rc.id :rc.database_id]
              :from   [[:report_card :rc]]
              :join   [[:metabase_database :md] [:= :rc.database_id :md.id]]
-             :where  [:= :md.engine engine]
+             :where  [:and [:= :md.engine engine] [:not= :rc.query_type "native"]]
              :order-by [[:md.id :asc] [:rc.id :asc]]
              :limit  limit}))
 
 (comment
 
-  (def h2-card-ids (get-card-ids "h2" 4500))
+  (def h2-card-ids (get-card-ids "h2" 3800))
 
   (time
    (save-card-compilation-results h2-card-ids "h2_mbql5_results.jsonl"))
 
-  (def postgres-card-ids (get-card-ids "postgres" 19500))
+  (def postgres-card-ids (get-card-ids "postgres" 16600))
 
   (time
    (save-card-compilation-results postgres-card-ids "postgres_mbql5_results.jsonl")))
