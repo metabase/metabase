@@ -70,23 +70,36 @@
   from the driver to values calculated by Lib."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
+  (let [type-overrides   [;; A driver may report a non-temporal type (e.g. SQLite's TEXT affinity) for a column Lib knows
+                          ;; is temporal, such as a date-bucketed breakout. The driver type is a storage-affinity
+                          ;; artifact, not the semantic type, so trust Lib's (concrete) type. Mirrors coercion, which
+                          ;; already maps a `:type/Text` storage type to a `:type/Date` effective type.
+                          [:type/Temporal :type/Text]]
+        driver-col       (update-keys driver-col u/->kebab-case-en)
+        driver-base-type (:base-type driver-col)
+        lib-base-type    (:base-type lib-col)
+        override?        (and lib-base-type driver-base-type
+                              (some (fn [[lib-t drv-t]]
+                                      (and (isa? lib-base-type lib-t)
+                                           (isa? driver-base-type drv-t)))
+                                    type-overrides))]
     (merge lib-col
            (m/filter-vals some? driver-col)
-           ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
-           (when (#{nil :type/*} (:base-type driver-col))
-             (when-let [lib-base-type (:base-type lib-col)]
+           ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific, or if Lib's type
+           ;; is more authoritative than the driver's storage type (see `type-overrides`)
+           (when (or override? (#{nil :type/*} driver-base-type))
+             (when lib-base-type
                {:base-type lib-base-type}))
            ;; Prefer our `:name` if it's something different that what's returned by the driver (e.g. for named
            ;; aggregations). Same for `:lib/source`
            (u/select-non-nil-keys lib-col [:name :lib/source])
            ;; whatever type comes back from the query is by definition the effective type, otherwise fall back to the
            ;; type calculated by Lib
-           {:effective-type (or (when-let [driver-base-type (:base-type driver-col)]
-                                  (when-not (= driver-base-type :type/*)
-                                    driver-base-type))
+           {:effective-type (or (when override? lib-base-type)
+                                (when (and driver-base-type (not= driver-base-type :type/*))
+                                  driver-base-type)
                                 (:effective-type lib-col)
-                                (:base-type lib-col)
+                                lib-base-type
                                 :type/*)})))
 
 (mu/defn- merge-cols :- [:sequential ::kebab-cased-map]
