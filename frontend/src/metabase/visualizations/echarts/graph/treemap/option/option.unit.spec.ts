@@ -517,6 +517,38 @@ describe("getTreemapChartOption group header", () => {
       Color(colors["Europe"]).luminosity(),
     );
   });
+
+  it("suppresses the header text (transparent) for a group whose chip is too narrow, keeping the band", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      // Group "0" measured too narrow to fit its label.
+      parentLabelLayout: { "0": false },
+      renderingContext,
+    });
+
+    expect(Color(series.data[0].upperLabel?.color).alpha()).toBe(0);
+    // The band's background tint is still set, so the chip box remains.
+    expect(series.data[0].upperLabel?.backgroundColor).toBeDefined();
+  });
+
+  it("keeps the header text for a group whose chip fits its label", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      parentLabelLayout: { "0": true },
+      renderingContext,
+    });
+
+    expect(series.data[0].upperLabel?.color).toBeUndefined();
+  });
+
+  it("keeps the header text when no parentLabelLayout is provided", () => {
+    const { series } = getTreemapChartOption({
+      tree: TWO_LEVEL_TREE,
+      renderingContext,
+    });
+
+    expect(series.data[0].upperLabel?.color).toBeUndefined();
+  });
 });
 
 describe("getTreemapChartOption leaf labels", () => {

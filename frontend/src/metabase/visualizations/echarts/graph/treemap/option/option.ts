@@ -29,6 +29,15 @@ const LEAF_LABEL_MIN_AREA_SHARE = 0.03;
 // the clip rounds the empty breadcrumb strip instead of the drilled tiles).
 export const DRILLED_BOTTOM_INSET = 48;
 
+// Font + padding of the group header chip (the parent labels). Exported so the
+// component's measurement pass can measure the header text at the exact style
+// ECharts renders it, to decide per-group whether the text fits the chip width.
+export const GROUP_HEADER_FONT_SIZE = 12;
+export const GROUP_HEADER_FONT_WEIGHT = 700;
+export const GROUP_HEADER_HEIGHT = 32;
+// Horizontal inset on each side of the header text inside the chip.
+export const GROUP_HEADER_PADDING_X = 12;
+
 export interface TreemapSeriesNode {
   id: string;
   name: string;
@@ -37,7 +46,7 @@ export interface TreemapSeriesNode {
   rowIndices: number[];
   itemStyle?: { color?: string; borderColor?: string };
   label?: { show?: boolean; width?: number };
-  upperLabel?: { backgroundColor?: string };
+  upperLabel?: { backgroundColor?: string; color?: string };
   children?: TreemapSeriesNode[];
 }
 
@@ -53,6 +62,7 @@ export function getTreemapChartOption({
   showParentLabels = true,
   showLeafLabels = true,
   labelLayout = {},
+  parentLabelLayout = {},
   renderingContext,
 }: {
   tree: TreemapTree;
@@ -77,6 +87,16 @@ export function getTreemapChartOption({
    * heuristic (used for the first paint, before any layout exists to measure).
    */
   labelLayout?: Record<string, TreemapLabelLayout>;
+  /**
+   * Per-group header-text visibility, keyed by group node id, measured from the
+   * rendered chip width (see `getTreemapParentLabelLayouts`). When a group maps
+   * to `false`, its header chip keeps its band but renders no text — the chip is
+   * too narrow to fit even a readable prefix of the label, so showing a one- or
+   * two-character truncation is worse than nothing. Wider chips keep the text and
+   * let ECharts ellipsis-truncate it. Missing ids default to showing the text
+   * (used for the first paint, before any layout exists to measure).
+   */
+  parentLabelLayout?: Record<string, boolean>;
   renderingContext: RenderingContext;
 }): {
   series: TreemapChartSeriesOption;
@@ -97,13 +117,14 @@ export function getTreemapChartOption({
   // them.
   const groupUpperLabel: NonNullable<TreemapChartSeriesOption["upperLabel"]> = {
     show: showParentLabels && !isDrilled,
-    height: 32,
+    height: GROUP_HEADER_HEIGHT,
     color: renderingContext.getColor("text-primary"),
-    fontSize: 12,
-    fontWeight: 700,
+    fontSize: GROUP_HEADER_FONT_SIZE,
+    fontWeight: GROUP_HEADER_FONT_WEIGHT,
     // Chip shape; the per-node `backgroundColor` (the group hue with opacity)
-    // is set in `toSeriesData`.
-    padding: [0, 12],
+    // is set in `toSeriesData`. A per-node `color: "transparent"` there hides the
+    // text of any chip too narrow to fit it, while keeping this band.
+    padding: [0, GROUP_HEADER_PADDING_X],
   };
 
   const levels: TreemapSeriesOption["levels"] = [
@@ -172,6 +193,7 @@ export function getTreemapChartOption({
       isDrilled,
       showLeafLabels,
       labelLayout,
+      parentLabelLayout,
       renderingContext,
     ),
     leafDepth: 2,
@@ -187,6 +209,7 @@ function toSeriesData(
   isDrilled: boolean,
   showLeafLabels: boolean,
   labelLayout: Record<string, TreemapLabelLayout>,
+  parentLabelLayout: Record<string, boolean>,
   renderingContext: RenderingContext,
 ): TreemapSeriesNode[] {
   const headerTintTarget = renderingContext.getColor("white");
@@ -229,8 +252,19 @@ function toSeriesData(
           .mix(Color(headerTintTarget), 1 - GROUP_HEADER_BG_TINT)
           .string()
       : undefined;
+    const groupId = getTreemapNodeId(rootIndex);
+    // The chip band always renders; we only suppress its text when it's been
+    // measured too narrow to fit the full label (`false`). `color: "transparent"`
+    // keeps the band (and its background) while hiding the text — better than
+    // ECharts truncating to one or two characters plus an ellipsis.
+    const upperLabel = {
+      ...(groupTint ? { backgroundColor: groupTint } : {}),
+      ...(node.children != null && parentLabelLayout[groupId] === false
+        ? { color: "transparent" }
+        : {}),
+    };
     return {
-      id: getTreemapNodeId(rootIndex),
+      id: groupId,
       name: node.displayName,
       value: node.value,
       rawName: node.rawName,
@@ -251,10 +285,8 @@ function toSeriesData(
       // Top-level nodes with children render a header chip (always shown), not
       // their own tile label, so only resolve the label for childless tiles —
       // i.e. a 1-level treemap's tiles.
-      ...(node.children == null
-        ? getLabelOverride(getTreemapNodeId(rootIndex), node.value)
-        : {}),
-      ...(groupTint ? { upperLabel: { backgroundColor: groupTint } } : {}),
+      ...(node.children == null ? getLabelOverride(groupId, node.value) : {}),
+      ...(Object.keys(upperLabel).length > 0 ? { upperLabel } : {}),
       ...(node.children
         ? {
             children: node.children.map((leaf, leafIndex) => ({

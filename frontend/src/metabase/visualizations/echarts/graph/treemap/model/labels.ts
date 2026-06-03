@@ -82,6 +82,65 @@ export function getTreemapLabelLayouts(
   return layouts;
 }
 
+/**
+ * Below this many characters a truncated header reads as noise rather than a
+ * label, so the chip shows no text at all. A header is kept (and left to ECharts'
+ * normal ellipsis truncation) as long as at least this many leading characters
+ * of the label fit the chip width.
+ */
+export const MIN_HEADER_VISIBLE_CHARS = 3;
+
+export interface TreemapParentLabelLayoutConfig {
+  /** Rendered width (px) of the header text, measured at the chip's font style. */
+  measureTextWidth: (text: string) => number;
+  /** Resolves a group node id ("0", "1", …) to its header text. */
+  getLabel: (id: string) => string | undefined;
+  /** Horizontal inset on each side of the text (matches `upperLabel.padding`). */
+  padding: number;
+  /**
+   * Fewest leading characters of the label that must fit for the text to show.
+   * Defaults to `MIN_HEADER_VISIBLE_CHARS`.
+   */
+  minVisibleChars?: number;
+}
+
+/**
+ * Per-group decision of whether the header chip should render its text, keyed by
+ * group node id. The chip band itself always stays (it's part of the layout).
+ * The text is kept — and left to ECharts' normal ellipsis truncation — as long
+ * as at least `minVisibleChars` leading characters fit the chip width; below
+ * that the chip is too narrow for even a readable truncation, so the text is
+ * dropped rather than shown as one or two characters plus an ellipsis. Leaf
+ * nodes are ignored (they render their own `label`, handled by
+ * `getTreemapLabelLayouts`).
+ */
+export function getTreemapParentLabelLayouts(
+  nodes: TreemapLayoutNode[],
+  {
+    measureTextWidth,
+    getLabel,
+    padding,
+    minVisibleChars = MIN_HEADER_VISIBLE_CHARS,
+  }: TreemapParentLabelLayoutConfig,
+): Record<string, boolean> {
+  const showText: Record<string, boolean> = {};
+  for (const node of nodes) {
+    if (node.isLeaf) {
+      continue;
+    }
+    const label = getLabel(node.id);
+    if (label == null) {
+      continue;
+    }
+    const available = node.rect.width - padding * 2;
+    // Require only a readable prefix to fit, not the whole label — ECharts
+    // truncates the rest with an ellipsis.
+    const minReadable = label.slice(0, minVisibleChars);
+    showText[node.id] = measureTextWidth(minReadable) <= available;
+  }
+  return showText;
+}
+
 /** A treemap tile's rendered rectangle (pixels, relative to the chart canvas). */
 export interface TreemapRect {
   x: number;

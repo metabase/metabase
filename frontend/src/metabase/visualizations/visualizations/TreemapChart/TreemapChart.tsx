@@ -20,9 +20,13 @@ import {
   MIN_LABEL_TILE_WIDTH,
   getTreemapLabelLayouts,
   getTreemapLayoutNodes,
+  getTreemapParentLabelLayouts,
 } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import {
   DRILLED_BOTTOM_INSET,
+  GROUP_HEADER_FONT_SIZE,
+  GROUP_HEADER_FONT_WEIGHT,
+  GROUP_HEADER_PADDING_X,
   getTreemapChartOption,
 } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
@@ -87,6 +91,13 @@ export const TreemapChart = ({
   const [labelLayout, setLabelLayout] = useState<
     Record<string, TreemapLabelLayout>
   >({});
+  // Per-group header-text visibility, keyed by group node id, measured the same
+  // way as `labelLayout` (second pass): a group whose header chip is too narrow
+  // for its full label maps to `false`, suppressing the text while keeping the
+  // chip band. Empty until the first `finished`; missing ids default to showing.
+  const [parentLabelLayout, setParentLabelLayout] = useState<
+    Record<string, boolean>
+  >({});
   const handleViewRootChange = useCallback((id: string | null) => {
     viewRootIdRef.current = id;
     setViewRootId(id);
@@ -126,6 +137,7 @@ export const TreemapChart = ({
         (settings["treemap.show_parent_labels"] ?? true) && fitsParentLabels,
       showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
       labelLayout,
+      parentLabelLayout,
       renderingContext,
     });
     const formatters = getTreemapFormatters(treemapColumns, settings);
@@ -146,6 +158,7 @@ export const TreemapChart = ({
     settings,
     viewRootId,
     labelLayout,
+    parentLabelLayout,
     renderingContext,
     fitsParentLabels,
   ]);
@@ -188,7 +201,25 @@ export const TreemapChart = ({
       padding: LABEL_PADDING,
     });
     setLabelLayout((prev) => (_.isEqual(prev, nextLayout) ? prev : nextLayout));
-  }, []);
+
+    // Parent (group) header chips: a group node id is "0", "1", … — the index
+    // into the top-level tree. Measure each header's text at the chip's font
+    // style; if it doesn't fit the chip width, suppress the text (keep the band).
+    const tree = chartData?.tree;
+    const nextParentLayout = getTreemapParentLabelLayouts(nodes, {
+      getLabel: (id) => tree?.[Number(id)]?.displayName,
+      measureTextWidth: (text) =>
+        renderingContext.measureText(text, {
+          size: GROUP_HEADER_FONT_SIZE,
+          family: renderingContext.fontFamily,
+          weight: GROUP_HEADER_FONT_WEIGHT,
+        }),
+      padding: GROUP_HEADER_PADDING_X,
+    });
+    setParentLabelLayout((prev) =>
+      _.isEqual(prev, nextParentLayout) ? prev : nextParentLayout,
+    );
+  }, [chartData, renderingContext]);
 
   const allEventHandlers = useMemo(
     () => [
@@ -204,6 +235,7 @@ export const TreemapChart = ({
   useEffect(() => {
     handleViewRootChange(null);
     setLabelLayout({});
+    setParentLabelLayout({});
   }, [chartData, handleViewRootChange]);
 
   // `setOption` (run by the renderer when `option` changes) always renders at
