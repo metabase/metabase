@@ -25,7 +25,9 @@
   (let [document-id->timestamp (update-vals (group-by :id document-id-timestamps)
                                             (fn [xs] (apply t/max (map :timestamp xs))))]
     (try
-      (cluster-lock/with-cluster-lock document-statistics-lock
+      ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
+      ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
+      (cluster-lock/with-cluster-lock {:lock document-statistics-lock :retry-transient? true}
         ;; use `t2/table-name` to avoid triggering `after-update` hooks and creating a revision
         (t2/update! (t2/table-name :model/Document)
                     :id [:in (keys document-id->timestamp)]
