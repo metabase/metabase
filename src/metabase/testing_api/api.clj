@@ -16,15 +16,18 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.permissions.core :as perms]
+   [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.task.search-index :as task.search-index]
+   [metabase.sync.core :as sync]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
@@ -144,6 +147,45 @@
   (restore-snapshot! snapshot-name)
   (search/sync-from-restored-db!)
   nil)
+
+;;;; H2 SAMPLE DATABASE (E2E only)
+
+(def ^:private h2-sample-database-filename "sample-database.db.mv.db")
+
+(def ^:private h2-sample-database-name "Sample Database (H2)")
+
+(defn- extract-h2-sample-database!
+  "Copy the bundled H2 sample database to the plugins dir and return its H2 `:details` map. Mirrors the
+  pre-SQLite extraction logic from `metabase.sample-data.impl`."
+  []
+  (u.files/with-open-path-to-resource [resource-path h2-sample-database-filename]
+    (let [dest-path (u.files/append-to-path (plugins/plugins-dir) h2-sample-database-filename)]
+      (u.files/copy-file! resource-path dest-path)
+      {:db (-> (str "file:" dest-path)
+               (str/replace #"\.mv\.db$" "")        ; H2 db name omits the .mv.db suffix
+               codec/url-decode
+               (str ";USER=GUEST;PASSWORD=guest"))})))
+
+(api.macros/defendpoint :post "/add-h2-sample-database"
+  :- [:map [:id ms/PositiveInt]]
+  "Add the bundled H2 sample database as a second, non-sample data warehouse so E2E tests can exercise
+  H2-specific sample-data behavior alongside the canonical SQLite Sample Database. Returns the new database id.
+
+  The caller supplies an explicit, high `id` (the e2e `H2_SAMPLE_DB_ID` constant). We insert it explicitly
+  rather than letting it auto-increment so the next auto-generated database id stays low (2) — the qa-db
+  snapshots derive from the default snapshot and rely on the first database they add being id 2
+  (`WRITABLE_DB_ID`). Inserting an explicit value does not advance H2's IDENTITY generator."
+  [_route-params
+   _query-params
+   {:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [db (first (t2/insert-returning-instances! :model/Database
+                                                  :id        id
+                                                  :name      h2-sample-database-name
+                                                  :details   (extract-h2-sample-database!)
+                                                  :engine    :h2
+                                                  :is_sample false))]
+    (sync/sync-database! db)
+    {:id (:id db)}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

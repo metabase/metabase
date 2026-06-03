@@ -77,6 +77,7 @@ const configs = [
       "frontend/src/cljs_release/**",
       "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
+      "e2e/support/cypress_sample_database_h2.js",
       "e2e/support/cypress_sample_instance_data.js",
       "e2e/support/assets/**",
       "e2e/embedding-sdk-host-apps/**",

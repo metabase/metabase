@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import type {
   Database,
   DatabaseId,
@@ -48,4 +48,15 @@ export function withDatabase(
 
 export function withSampleDatabase(callback: (database: DatabaseMap) => void) {
   return withDatabase(SAMPLE_DB_ID, callback);
+}
+
+/**
+ * Resolve table/field metadata for the H2-backed copy of the sample data (id 2 in the default
+ * snapshot). Use in tests that are coupled to H2-specific sample-data behavior. Tests that don't
+ * care about the engine should keep using {@link withSampleDatabase} (SQLite, the default).
+ */
+export function withH2SampleDatabase(
+  callback: (database: DatabaseMap) => void,
+) {
+  return withDatabase(H2_SAMPLE_DB_ID, callback);
 }
