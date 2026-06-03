@@ -104,7 +104,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "openai" "openrouter"})
+  #{"anthropic" "openai" "openrouter" "bedrock"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -120,6 +120,7 @@
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
   managed `metabase` provider uses the proxied `provider/model` form."
   {"anthropic"                       default-anthropic-llm-metabot-model
+   "bedrock"                         "anthropic.claude-sonnet-4-20250514-v1:0"
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -240,6 +241,15 @@
     "anthropic"  (llm.settings/llm-anthropic-api-key)
     "openai"     (llm.settings/llm-openai-api-key)
     "openrouter" (llm.settings/llm-openrouter-api-key)
+    "bedrock"    (case (llm.settings/llm-bedrock-auth-type)
+                   "api-key" (llm.settings/llm-bedrock-api-key)
+                   ;; For IAM-based auth types, the access key ID is the relevant credential
+                   ("iam-credentials" "session-token") (llm.settings/llm-bedrock-access-key-id)
+                   ;; For IAM role (auto), no user-provided key needed — always "configured"
+                   "iam-role" "iam-role-auto"
+                   ;; Default fallback
+                   (or (llm.settings/llm-bedrock-api-key)
+                       (llm.settings/llm-bedrock-access-key-id)))
     nil))
 
 (defn- llm-provider-configured?

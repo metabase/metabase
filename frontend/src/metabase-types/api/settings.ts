@@ -534,6 +534,13 @@ interface SettingsManagerSettings {
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-api-base-url"?: string | null;
   "llm-openrouter-api-key"?: string | null;
+  "llm-bedrock-api-key"?: string | null;
+  "llm-bedrock-access-key-id"?: string | null;
+  "llm-bedrock-secret-access-key"?: string | null;
+  "llm-bedrock-session-token"?: string | null;
+  "llm-bedrock-auth-type"?: string | null;
+  "llm-bedrock-role-arn"?: string | null;
+  "llm-bedrock-region"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -757,6 +764,13 @@ export interface EnterpriseSettings extends Settings {
   "llm-openai-model"?: string;
   "llm-metabot-configured?"?: boolean | null;
   "llm-openrouter-api-key"?: string | null;
+  "llm-bedrock-api-key"?: string | null;
+  "llm-bedrock-access-key-id"?: string | null;
+  "llm-bedrock-secret-access-key"?: string | null;
+  "llm-bedrock-session-token"?: string | null;
+  "llm-bedrock-auth-type"?: string | null;
+  "llm-bedrock-role-arn"?: string | null;
+  "llm-bedrock-region"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;

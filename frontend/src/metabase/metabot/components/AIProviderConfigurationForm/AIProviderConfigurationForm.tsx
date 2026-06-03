@@ -14,6 +14,7 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import {
+  skipToken,
   useGetMetabotSettingsQuery,
   useUpdateMetabotSettingsMutation,
   useUpdateSettingsMutation,
@@ -29,10 +30,12 @@ import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
+  Alert,
   Button,
   type ComboboxItem,
   Flex,
   Group,
+  SegmentedControl,
   Select,
   Stack,
   Text,
@@ -159,6 +162,12 @@ export function AIProviderConfigurationForm({
     isModal ? undefined : connectedProvider,
   );
 
+  const connectedProviderSettingsQuery = useGetMetabotSettingsQuery(
+    connectedProvider && connectedProvider !== "metabase"
+      ? { provider: connectedProvider }
+      : skipToken,
+  );
+
   const isCurrentConfigured = connectedProvider === provider && isConfigured;
 
   useEffect(() => {
@@ -175,6 +184,8 @@ export function AIProviderConfigurationForm({
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-bedrock-api-key",
+    "llm-bedrock-access-key-id",
   ] as const);
 
   const disconnectProvider = useCallback(async () => {
@@ -199,6 +210,15 @@ export function AIProviderConfigurationForm({
       if (!apiKeySetting?.is_env_setting) {
         settingsToClear[apiKeySettingKey] = null;
       }
+    }
+
+    if (connectedProvider === "bedrock") {
+      settingsToClear["llm-bedrock-api-key"] = null;
+      settingsToClear["llm-bedrock-secret-access-key"] = null;
+      settingsToClear["llm-bedrock-session-token"] = null;
+      settingsToClear["llm-bedrock-auth-type"] = null;
+      settingsToClear["llm-bedrock-role-arn"] = null;
+      settingsToClear["llm-bedrock-region"] = null;
     }
 
     try {
@@ -340,6 +360,16 @@ export function AIProviderConfigurationForm({
               connectedModel={connectedModel}
               isCurrentConfigured={isCurrentConfigured}
               isEnvSetting={isEnvSetting}
+              savedBedrockRegion={
+                connectedProviderSettingsQuery.currentData?.[
+                  "bedrock-region"
+                ] ?? undefined
+              }
+              savedBedrockAuthType={
+                connectedProviderSettingsQuery.currentData?.[
+                  "bedrock-auth-type"
+                ] ?? undefined
+              }
             />
           ))
           .with(P.nullish, () => null)
@@ -401,20 +431,76 @@ export function AIProviderConfigurationForm({
   );
 }
 
+type BedrockAuthType =
+  | "api-key"
+  | "iam-credentials"
+  | "session-token"
+  | "iam-role";
+
+const BEDROCK_REGIONS = [
+  // US
+  { value: "us-east-1", label: "US East (N. Virginia)" },
+  { value: "us-east-2", label: "US East (Ohio)" },
+  { value: "us-west-1", label: "US West (N. California)" },
+  { value: "us-west-2", label: "US West (Oregon)" },
+  // Canada
+  { value: "ca-central-1", label: "Canada (Central)" },
+  // South America
+  { value: "sa-east-1", label: "South America (São Paulo)" },
+  // Europe
+  { value: "eu-west-1", label: "EU (Ireland)" },
+  { value: "eu-west-2", label: "EU (London)" },
+  { value: "eu-west-3", label: "EU (Paris)" },
+  { value: "eu-central-1", label: "EU (Frankfurt)" },
+  { value: "eu-central-2", label: "EU (Zurich)" },
+  { value: "eu-north-1", label: "EU (Stockholm)" },
+  // Asia Pacific
+  { value: "ap-south-1", label: "Asia Pacific (Mumbai)" },
+  { value: "ap-southeast-1", label: "Asia Pacific (Singapore)" },
+  { value: "ap-southeast-2", label: "Asia Pacific (Sydney)" },
+  { value: "ap-northeast-1", label: "Asia Pacific (Tokyo)" },
+  { value: "ap-northeast-2", label: "Asia Pacific (Seoul)" },
+  // Middle East
+  { value: "me-south-1", label: "Middle East (Bahrain)" },
+  { value: "me-central-1", label: "Middle East (UAE)" },
+  // Africa
+  { value: "af-south-1", label: "Africa (Cape Town)" },
+  // GovCloud
+  { value: "us-gov-west-1", label: "AWS GovCloud (US-West)" },
+];
+
 const ProviderCredentialsFields = ({
   selectedProvider,
   connectedModel,
   isCurrentConfigured,
   isEnvSetting,
+  savedBedrockRegion,
+  savedBedrockAuthType,
 }: {
   selectedProvider: Exclude<MetabotProvider, "metabase">;
   connectedModel: string | undefined;
   isCurrentConfigured: boolean;
   isEnvSetting: boolean;
+  savedBedrockRegion?: string;
+  savedBedrockAuthType?: string;
 }) => {
   const [model, setModel] = useState<string | undefined>(connectedModel);
   const [apiKeyLocalValue, setApiKeyLocalValue] = useState<string | null>(null);
   const [sendToast] = useToast();
+
+  // Bedrock-specific local state
+  const isBedrock = selectedProvider === "bedrock";
+  const [bedrockSecretKey, setBedrockSecretKey] = useState<string | null>(null);
+  const [bedrockAuthType, setBedrockAuthType] = useState<BedrockAuthType>(
+    (savedBedrockAuthType as BedrockAuthType) || "api-key",
+  );
+  const [bedrockRegion, setBedrockRegion] = useState<string>(
+    savedBedrockRegion || "us-east-1",
+  );
+  const [bedrockSessionToken, setBedrockSessionToken] = useState<string | null>(
+    null,
+  );
+  const [bedrockRoleArn, setBedrockRoleArn] = useState<string | null>(null);
 
   useEffect(() => {
     setModel(connectedModel);
@@ -424,17 +510,34 @@ const ProviderCredentialsFields = ({
     useUpdateMetabotSettingsMutation();
 
   const onConnect = async () => {
-    await updateMetabotSettings({
-      provider: selectedProvider,
-      "api-key": apiKeyLocalValue || null,
-    }).unwrap();
+    if (isBedrock) {
+      await updateMetabotSettings({
+        provider: selectedProvider,
+        "api-key": apiKeyLocalValue || null,
+        "secret-key": bedrockSecretKey || null,
+        region: bedrockRegion,
+        "auth-type": bedrockAuthType,
+        "session-token":
+          bedrockAuthType === "session-token" ? bedrockSessionToken : null,
+        "role-arn": bedrockAuthType === "iam-role" ? bedrockRoleArn : null,
+      }).unwrap();
+    } else {
+      await updateMetabotSettings({
+        provider: selectedProvider,
+        "api-key": apiKeyLocalValue || null,
+      }).unwrap();
+    }
 
     setApiKeyLocalValue(null);
+    setBedrockSecretKey(null);
   };
 
   const hasDirtyApiKey = apiKeyLocalValue !== null;
+  const hasDirtyBedrockFields = isBedrock && bedrockSecretKey !== null;
   const connectHandler =
-    !isCurrentConfigured || hasDirtyApiKey ? onConnect : null;
+    !isCurrentConfigured || hasDirtyApiKey || hasDirtyBedrockFields
+      ? onConnect
+      : null;
 
   const { isMutating } = useAIProviderConfigurationContext(connectHandler);
 
@@ -442,15 +545,28 @@ const ProviderCredentialsFields = ({
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-bedrock-api-key",
+    "llm-bedrock-access-key-id",
   ] as const);
 
   const selectedApiKeySetting =
     providerApiKeyDetails[API_KEY_SETTING_BY_PROVIDER[selectedProvider]];
+  const bedrockAccessKeySetting =
+    providerApiKeyDetails["llm-bedrock-access-key-id"];
   const selectedApiKeyValue = String(selectedApiKeySetting?.value ?? "");
   const apiKeyEnvSettingName = selectedApiKeySetting?.is_env_setting
     ? selectedApiKeySetting.env_name
     : undefined;
-  const needsApiKey = !hasConfiguredSettingValue(selectedApiKeySetting);
+  // For bedrock with IAM/session-token auth, check the access key setting instead of the API key
+  const effectiveKeySetting =
+    selectedProvider === "bedrock" &&
+    (bedrockAuthType === "iam-credentials" ||
+      bedrockAuthType === "session-token")
+      ? bedrockAccessKeySetting
+      : selectedApiKeySetting;
+  const needsApiKey =
+    bedrockAuthType !== "iam-role" &&
+    !hasConfiguredSettingValue(effectiveKeySetting);
 
   const metabotSettingsQuery = useGetMetabotSettingsQuery(
     {
@@ -476,6 +592,7 @@ const ProviderCredentialsFields = ({
 
   useEffect(() => {
     setApiKeyLocalValue(null);
+    setBedrockSecretKey(null);
   }, [selectedProvider, selectedApiKeySetting?.value]);
 
   const handleApiKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -504,32 +621,129 @@ const ProviderCredentialsFields = ({
 
   return (
     <>
-      <TextInput
-        key={selectedProvider}
-        label={t`API key`}
-        type="password"
-        description={
-          <ExternalLink
-            key={selectedProviderDetails.value}
-            href={selectedProviderDetails.apiKey.addKeyUrl}
-          >
-            {c("{0} is the name of an AI provider")
-              .t`Get or manage keys in ${selectedProviderDetails.label}`}
-          </ExternalLink>
-        }
-        placeholder={
-          selectedProviderDetails.apiKey?.placeholder ?? t`Enter your API key`
-        }
-        value={displayApiKeyValue}
-        error={apiKeyError}
-        onChange={handleApiKeyChange}
-        disabled={isMutating || isEnvSetting || !!apiKeyEnvSettingName}
-        w="100%"
-      />
+      {isBedrock && (
+        <>
+          <Text fw={500} size="sm">{t`Authentication type`}</Text>
+          <SegmentedControl
+            value={bedrockAuthType}
+            onChange={(value) => setBedrockAuthType(value as BedrockAuthType)}
+            disabled={isMutating || isEnvSetting}
+            data={[
+              { value: "api-key", label: t`API Key` },
+              { value: "iam-credentials", label: t`IAM Credentials` },
+              { value: "session-token", label: t`Session Token` },
+              { value: "iam-role", label: t`IAM Role (auto)` },
+            ]}
+          />
+        </>
+      )}
 
-      {apiKeyEnvSettingName ? (
-        <SetByEnvVar varName={apiKeyEnvSettingName} />
-      ) : null}
+      {isBedrock && bedrockAuthType === "iam-role" ? (
+        <>
+          <Alert color="info" title={t`Automatic credential resolution`}>
+            {t`Credentials will be fetched automatically from the EC2/ECS instance metadata service (IMDS). Optionally provide a Role ARN for STS AssumeRole.`}
+          </Alert>
+          <TextInput
+            label={t`Role ARN (optional)`}
+            placeholder="arn:aws:iam::123456789012:role/BedrockAccess"
+            value={bedrockRoleArn ?? ""}
+            onChange={(e) => setBedrockRoleArn(e.target.value)}
+            disabled={isMutating || isEnvSetting}
+            w="100%"
+          />
+        </>
+      ) : isBedrock && bedrockAuthType === "api-key" ? (
+        <>
+          <TextInput
+            key={`${selectedProvider}-api-key`}
+            label={t`Bedrock API Key`}
+            type="password"
+            description={
+              <ExternalLink
+                key={selectedProviderDetails.value}
+                href="https://console.aws.amazon.com/bedrock/home#/api-keys"
+              >
+                {t`Generate a Bedrock API key in the AWS Console`}
+              </ExternalLink>
+            }
+            placeholder={t`Enter your Bedrock API key`}
+            value={displayApiKeyValue}
+            error={apiKeyError}
+            onChange={handleApiKeyChange}
+            disabled={isMutating || isEnvSetting || !!apiKeyEnvSettingName}
+            w="100%"
+          />
+
+          {apiKeyEnvSettingName ? (
+            <SetByEnvVar varName={apiKeyEnvSettingName} />
+          ) : null}
+        </>
+      ) : (
+        <>
+          <TextInput
+            key={selectedProvider}
+            label={isBedrock ? t`Access Key ID` : t`API key`}
+            type="password"
+            description={
+              <ExternalLink
+                key={selectedProviderDetails.value}
+                href={selectedProviderDetails.apiKey.addKeyUrl}
+              >
+                {c("{0} is the name of an AI provider")
+                  .t`Get or manage keys in ${selectedProviderDetails.label}`}
+              </ExternalLink>
+            }
+            placeholder={
+              selectedProviderDetails.apiKey?.placeholder ??
+              t`Enter your API key`
+            }
+            value={displayApiKeyValue}
+            error={apiKeyError}
+            onChange={handleApiKeyChange}
+            disabled={isMutating || isEnvSetting || !!apiKeyEnvSettingName}
+            w="100%"
+          />
+
+          {apiKeyEnvSettingName ? (
+            <SetByEnvVar varName={apiKeyEnvSettingName} />
+          ) : null}
+
+          {isBedrock && (
+            <TextInput
+              label={t`Secret Access Key`}
+              type="password"
+              placeholder={t`Enter your AWS secret access key`}
+              value={bedrockSecretKey ?? ""}
+              onChange={(e) => setBedrockSecretKey(e.target.value)}
+              disabled={isMutating || isEnvSetting}
+              w="100%"
+            />
+          )}
+
+          {isBedrock && bedrockAuthType === "session-token" && (
+            <TextInput
+              label={t`Session Token`}
+              type="password"
+              placeholder={t`Enter your AWS session token`}
+              value={bedrockSessionToken ?? ""}
+              onChange={(e) => setBedrockSessionToken(e.target.value)}
+              disabled={isMutating || isEnvSetting}
+              w="100%"
+            />
+          )}
+        </>
+      )}
+
+      {isBedrock && (
+        <Select
+          label={t`Region`}
+          data={BEDROCK_REGIONS}
+          value={bedrockRegion}
+          onChange={(value) => setBedrockRegion(value ?? "us-east-1")}
+          disabled={isMutating || isEnvSetting}
+          searchable
+        />
+      )}
 
       {!needsApiKey && !apiKeyError && (
         <Select

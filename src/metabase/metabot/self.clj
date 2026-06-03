@@ -14,6 +14,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
@@ -31,6 +32,7 @@
     "anthropic"  claude/claude
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "bedrock"    bedrock/bedrock
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
@@ -40,6 +42,7 @@
     "anthropic"  claude/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "bedrock"    bedrock/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 

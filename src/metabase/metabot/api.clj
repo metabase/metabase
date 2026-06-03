@@ -12,6 +12,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
@@ -301,20 +302,30 @@
   [:map
    [:value [:maybe :string]]
    [:api-key-error {:optional true} [:maybe :string]]
-   [:models [:sequential llm-model-response-schema]]])
+   [:models [:sequential llm-model-response-schema]]
+   ;; Bedrock-specific settings echoed back for frontend state hydration
+   [:bedrock-region {:optional true} [:maybe :string]]
+   [:bedrock-auth-type {:optional true} [:maybe :string]]])
 
 (def ^:private metabot-settings-request-schema
   [:map
    [:provider metabot-provider-schema]
    [:model {:optional true} [:maybe :string]]
-   [:api-key {:optional true} [:maybe :string]]])
+   [:api-key {:optional true} [:maybe :string]]
+   ;; Bedrock-specific fields
+   [:secret-key {:optional true} [:maybe :string]]
+   [:region {:optional true} [:maybe :string]]
+   [:auth-type {:optional true} [:maybe [:enum "api-key" "iam-credentials" "session-token" "iam-role"]]]
+   [:session-token {:optional true} [:maybe :string]]
+   [:role-arn {:optional true} [:maybe :string]]])
 
 (defn- provider-api-key-setting-key
   [provider]
   (case provider
     "anthropic"  :llm-anthropic-api-key
     "openai"     :llm-openai-api-key
-    "openrouter" :llm-openrouter-api-key))
+    "openrouter" :llm-openrouter-api-key
+    "bedrock"    :llm-bedrock-access-key-id))
 
 (defn- non-blank-string
   [value]
@@ -426,9 +437,12 @@
   ([provider]
    (settings-response provider nil))
   ([provider api-key-override]
-   (merge
-    {:value (metabot.settings/llm-metabot-provider)}
-    (provider-models-response provider api-key-override))))
+   (cond-> (merge
+            {:value (metabot.settings/llm-metabot-provider)}
+            (provider-models-response provider api-key-override))
+     (= provider "bedrock")
+     (assoc :bedrock-region    (llm.settings/llm-bedrock-region)
+            :bedrock-auth-type (llm.settings/llm-bedrock-auth-type)))))
 
 (defn- current-provider
   []
@@ -462,7 +476,8 @@
    _query-params
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
-  (let [{:keys [provider api-key] request-model :model} body
+  (let [{:keys [provider api-key secret-key region auth-type session-token role-arn]
+         request-model :model} body
         current-provider (current-setting-provider)
         provider-changed? (not= current-provider provider)
         model (cond
@@ -475,10 +490,30 @@
 
                 :else
                 nil)
+        ;; Save Bedrock-specific settings BEFORE calling settings-response,
+        ;; so list-models uses the correct auth type and credentials.
+        _ (when (= provider "bedrock")
+            (when (contains? body :auth-type)
+              (setting/set! :llm-bedrock-auth-type (or (non-blank-string auth-type) "api-key")))
+            (when (contains? body :secret-key)
+              (setting/set! :llm-bedrock-secret-access-key (non-blank-string secret-key)))
+            (when (contains? body :region)
+              (setting/set! :llm-bedrock-region (or (non-blank-string region) "us-east-1")))
+            (when (contains? body :session-token)
+              (setting/set! :llm-bedrock-session-token (non-blank-string session-token)))
+            (when (contains? body :role-arn)
+              (setting/set! :llm-bedrock-role-arn (non-blank-string role-arn)))
+            ;; Save Bedrock API key BEFORE settings-response so list-models can use it
+            (if (= auth-type "api-key")
+              (when (contains? body :api-key)
+                (setting/set! :llm-bedrock-api-key (non-blank-string api-key)))
+              (when (contains? body :api-key)
+                (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))))
+        ;; For non-bedrock providers, save api-key before settings-response too
+        _ (when (and (not= provider "bedrock") (contains? body :api-key))
+            (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
         response (-> (settings-response provider api-key)
                      throw-api-key-error!)]
-    (when (contains? body :api-key)
-      (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
     (when model
       (setting/set! :llm-metabot-provider (str provider "/" model)))
     (assoc response :value (metabot.settings/llm-metabot-provider))))

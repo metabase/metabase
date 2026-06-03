@@ -83,6 +83,23 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  bedrock: {
+    value: "bedrock/anthropic.claude-sonnet-4-20250514-v1:0",
+    models: [
+      {
+        id: "anthropic.claude-sonnet-4-20250514-v1:0",
+        display_name: "Claude Sonnet 4",
+        group: "Anthropic",
+      },
+      {
+        id: "anthropic.claude-haiku-4-5-20251001-v1:0",
+        display_name: "Claude Haiku 4.5",
+        group: "Anthropic",
+      },
+    ],
+    "bedrock-region": "us-east-1",
+    "bedrock-auth-type": "api-key",
+  },
 };
 
 type MetabotUsageQuota = {
@@ -100,7 +117,9 @@ type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
   | "llm-openai-api-key"
-  | "llm-openrouter-api-key";
+  | "llm-openrouter-api-key"
+  | "llm-bedrock-api-key"
+  | "llm-bedrock-access-key-id";
 
 type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
 type MetabotSettingsUpdateBody = {
@@ -182,6 +201,7 @@ async function setup({
     anthropic: "**********45",
     openai: null,
     openrouter: null,
+    bedrock: null,
     ...apiKeyValues,
   };
 
@@ -232,6 +252,14 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-bedrock-api-key": createMockSettingDefinition({
+      key: "llm-bedrock-api-key",
+      value: mergedApiKeyValues.bedrock ?? undefined,
+    }),
+    "llm-bedrock-access-key-id": createMockSettingDefinition({
+      key: "llm-bedrock-access-key-id",
+      value: undefined,
     }),
   };
 
@@ -312,7 +340,9 @@ async function setup({
           ? "llm-anthropic-api-key"
           : body.provider === "openai"
             ? "llm-openai-api-key"
-            : "llm-openrouter-api-key";
+            : body.provider === "bedrock"
+              ? "llm-bedrock-api-key"
+              : "llm-openrouter-api-key";
       const maskedApiKey = body["api-key"]
         ? `**********${String(body["api-key"]).slice(-2)}`
         : undefined;
@@ -1683,6 +1713,237 @@ describe("AIProviderSettingsSection", () => {
             (toast) => toast.message === "Unable to save provider settings.",
           ),
       ).toBe(true);
+    });
+  });
+
+  describe("Amazon Bedrock provider", () => {
+    it("shows Amazon Bedrock as selectable (not Coming soon) in the provider dropdown", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await userEvent.click(screen.getByLabelText("Provider"));
+
+      const bedrockOption = await screen.findByRole("option", {
+        name: "Amazon Bedrock",
+      });
+      expect(bedrockOption).toBeInTheDocument();
+      expect(bedrockOption).not.toHaveAttribute("data-combobox-disabled");
+    });
+
+    it("shows the auth type segmented control when Bedrock is selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+
+      expect(screen.getByText("API Key")).toBeInTheDocument();
+      expect(screen.getByText("IAM Credentials")).toBeInTheDocument();
+      expect(screen.getByText("Session Token")).toBeInTheDocument();
+      expect(screen.getByText("IAM Role (auto)")).toBeInTheDocument();
+    });
+
+    it("shows the Bedrock API Key field when api-key auth type is selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+
+      expect(screen.getByLabelText("Bedrock API Key")).toBeInTheDocument();
+    });
+
+    it("shows the region selector when Bedrock is selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+
+      expect(screen.getByLabelText("Region")).toBeInTheDocument();
+    });
+
+    it("shows connected state for a saved Bedrock provider", async () => {
+      await setup({
+        savedProviderValue: "bedrock/anthropic.claude-sonnet-4-20250514-v1:0",
+        isConfigured: true,
+        apiKeyValues: { bedrock: "**********ey" },
+      });
+
+      expect(
+        await screen.findByText("Connected to Amazon Bedrock"),
+      ).toBeInTheDocument();
+    });
+
+    it("sends bedrock-specific fields in the connect request", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "bedrock/anthropic.claude-sonnet-4-20250514-v1:0",
+          models: DEFAULT_RESPONSES.bedrock.models,
+        },
+      });
+
+      await selectProvider("Amazon Bedrock");
+
+      const apiKeyInput = screen.getByLabelText("Bedrock API Key");
+      await userEvent.type(apiKeyInput, "test-bedrock-key");
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        const putCalls = fetchMock.callHistory
+          .calls("path:/api/metabot/settings")
+          .filter(
+            (call) =>
+              call.request?.method === "PUT" || call.options?.method === "PUT",
+          );
+        expect(putCalls.length).toBeGreaterThan(0);
+      });
+
+      const putCall = fetchMock.callHistory
+        .calls("path:/api/metabot/settings")
+        .find(
+          (call) =>
+            call.request?.method === "PUT" || call.options?.method === "PUT",
+        );
+
+      const body = JSON.parse(String(putCall?.options?.body ?? "{}"));
+      expect(body.provider).toBe("bedrock");
+      expect(body["api-key"]).toBe("test-bedrock-key");
+      expect(body.region).toBe("us-east-1");
+      expect(body["auth-type"]).toBe("api-key");
+    });
+
+    it("shows the IAM Role fields and hides the API key field when IAM Role auth is selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+      await userEvent.click(screen.getByText("IAM Role (auto)"));
+
+      expect(
+        screen.getByText(/Credentials will be fetched automatically/),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Role ARN (optional)")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Bedrock API Key"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the access key and secret key fields when IAM Credentials auth is selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+      await userEvent.click(screen.getByText("IAM Credentials"));
+
+      expect(screen.getByLabelText("Access Key ID")).toBeInTheDocument();
+      expect(screen.getByLabelText("Secret Access Key")).toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Enter your AWS session token"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the session token field when Session Token auth is selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+      await userEvent.click(screen.getByText("Session Token"));
+
+      expect(screen.getByLabelText("Access Key ID")).toBeInTheDocument();
+      expect(screen.getByLabelText("Secret Access Key")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("Enter your AWS session token"),
+      ).toBeInTheDocument();
+    });
+
+    it("sends IAM Role auth fields in the connect request", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "bedrock/anthropic.claude-sonnet-4-20250514-v1:0",
+          models: DEFAULT_RESPONSES.bedrock.models,
+        },
+      });
+
+      await selectProvider("Amazon Bedrock");
+      await userEvent.click(screen.getByText("IAM Role (auto)"));
+
+      await userEvent.type(
+        screen.getByLabelText("Role ARN (optional)"),
+        "arn:aws:iam::123456789012:role/BedrockAccess",
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        const putCalls = fetchMock.callHistory
+          .calls("path:/api/metabot/settings")
+          .filter(
+            (call) =>
+              call.request?.method === "PUT" || call.options?.method === "PUT",
+          );
+        expect(putCalls.length).toBeGreaterThan(0);
+      });
+
+      const putCall = fetchMock.callHistory
+        .calls("path:/api/metabot/settings")
+        .find(
+          (call) =>
+            call.request?.method === "PUT" || call.options?.method === "PUT",
+        );
+
+      const body = JSON.parse(String(putCall?.options?.body ?? "{}"));
+      expect(body.provider).toBe("bedrock");
+      expect(body["auth-type"]).toBe("iam-role");
+      expect(body["role-arn"]).toBe(
+        "arn:aws:iam::123456789012:role/BedrockAccess",
+      );
+      expect(body["api-key"]).toBeNull();
+    });
+
+    it("sends Session Token auth fields in the connect request", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "bedrock/anthropic.claude-sonnet-4-20250514-v1:0",
+          models: DEFAULT_RESPONSES.bedrock.models,
+        },
+      });
+
+      await selectProvider("Amazon Bedrock");
+      await userEvent.click(screen.getByText("Session Token"));
+
+      await userEvent.type(screen.getByLabelText("Access Key ID"), "AKIATEST");
+      await userEvent.type(
+        screen.getByLabelText("Secret Access Key"),
+        "secret-value",
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText("Enter your AWS session token"),
+        "session-token-value",
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        const putCalls = fetchMock.callHistory
+          .calls("path:/api/metabot/settings")
+          .filter(
+            (call) =>
+              call.request?.method === "PUT" || call.options?.method === "PUT",
+          );
+        expect(putCalls.length).toBeGreaterThan(0);
+      });
+
+      const putCall = fetchMock.callHistory
+        .calls("path:/api/metabot/settings")
+        .find(
+          (call) =>
+            call.request?.method === "PUT" || call.options?.method === "PUT",
+        );
+
+      const body = JSON.parse(String(putCall?.options?.body ?? "{}"));
+      expect(body.provider).toBe("bedrock");
+      expect(body["auth-type"]).toBe("session-token");
+      expect(body["api-key"]).toBe("AKIATEST");
+      expect(body["secret-key"]).toBe("secret-value");
+      expect(body["session-token"]).toBe("session-token-value");
     });
   });
 });

@@ -190,7 +190,8 @@ export type MetabotProvider =
   | "metabase"
   | "anthropic"
   | "openai"
-  | "openrouter";
+  | "openrouter"
+  | "bedrock";
 
 export interface MetabotSettingsResponse {
   value: string | null;
@@ -200,12 +201,21 @@ export interface MetabotSettingsResponse {
     display_name: string;
     group?: string | null;
   }[];
+  // Bedrock-specific settings echoed from server
+  "bedrock-region"?: string | null;
+  "bedrock-auth-type"?: string | null;
 }
 
 export interface UpdateMetabotSettingsRequest {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
+  // Bedrock-specific fields
+  "secret-key"?: string | null;
+  region?: string | null;
+  "auth-type"?: "api-key" | "iam-credentials" | "session-token" | "iam-role" | null;
+  "session-token"?: string | null;
+  "role-arn"?: string | null;
 }
 
 /* Metabot - Suggested Prompts */

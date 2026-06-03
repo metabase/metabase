@@ -120,6 +120,67 @@
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
+;;; ------------------------------------------------- Bedrock ---------------------------------------------------
+
+(defsetting llm-bedrock-api-key
+  (deferred-tru "The Bedrock API Key (Bearer token). When set, uses simple Bearer auth instead of SigV4 signing.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-access-key-id
+  (deferred-tru "The AWS Access Key ID for Amazon Bedrock.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-secret-access-key
+  (deferred-tru "The AWS Secret Access Key for Amazon Bedrock.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-session-token
+  (deferred-tru "The AWS Session Token for Amazon Bedrock (optional, for temporary credentials).")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-auth-type
+  (deferred-tru "The authentication type for Amazon Bedrock: api-key, iam-credentials, session-token, or iam-role.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "api-key"
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-role-arn
+  (deferred-tru "The AWS IAM Role ARN for Amazon Bedrock (optional, for STS AssumeRole).")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-region
+  (deferred-tru "The AWS region for Amazon Bedrock (e.g. us-east-1).")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "us-east-1"
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-model
+  (deferred-tru "The Amazon Bedrock model ID.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "anthropic.claude-sonnet-4-20250514-v1:0"
+  :export?     false
+  :doc         false)
+
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url
