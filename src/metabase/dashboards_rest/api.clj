@@ -11,6 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.render.core :as channel.render]
    [metabase.collections-rest.api :as api.collection]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
@@ -630,6 +631,27 @@
           dashboard (get-dashboard resolved-id)]
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:id/pdf" :- :any
+  "Render Dashboard with ID to a PDF (server-side, the same way dashboard subscriptions render
+  charts) and stream it back as a file download."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   _request
+   respond
+   raise]
+  (try
+    (api/read-check :model/Dashboard id)
+    (let [pdf-bytes (channel.render/render-dashboard-to-pdf id api/*current-user-id* [])]
+      (respond {:status  200
+                :headers {"Content-Type"        "application/pdf"
+                          "Content-Disposition" (format "attachment; filename=\"dashboard-%d.pdf\"" id)}
+                :body    (java.io.ByteArrayInputStream. pdf-bytes)}))
+    (catch Throwable e
+      (raise e))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
