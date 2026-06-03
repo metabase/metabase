@@ -72,7 +72,7 @@ function createTimelineWithSentinelEvent(
           timeline_id: timelineId,
           name: `${name} event`,
           icon,
-          timestamp: "2020-01-01T00:00:00Z",
+          timestamp: "2026-01-01T00:00:00Z",
           time_matters: false,
           timezone: "UTC",
         })
@@ -100,6 +100,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
+    cy.task("stopMockLlmServer");
   });
 
   it("renders the empty research-mode landing with a disabled CTA", () => {
@@ -330,6 +331,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
+    cy.task("stopMockLlmServer");
   });
 
   it("auto-populates metrics + dimensions + name from agent tool calls, then Begin research succeeds", () => {
@@ -430,6 +432,7 @@ describe("scenarios > explorations > detail page", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
+    cy.task("stopMockLlmServer");
   });
 
   it("auto-selects a sidebar entity on first load and toggles via ArrowRight/ArrowLeft", () => {
@@ -692,55 +695,66 @@ describe("scenarios > explorations > detail page", () => {
   });
 
   it("adds a chart to the Scratchpad document via the Add to document button and lands on the document", () => {
-    H.createExplorationViaApi({ name: "Chart add fixture" }).then((id) => {
-      H.visitExploration(id);
+    createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
+      H.createExplorationViaApi({
+        name: "Chart add fixture",
+        timelineIds: [timelineId],
+      }).then((id) => {
+        H.visitExploration(id);
 
-      // Wait until the BE finishes a query so the chart page
-      // renders the `Add to document` button.
-      cy.findAllByLabelText("Ready", { timeout: 30000 })
-        .first()
-        .should("be.visible");
+        cy.findByRole("treeitem", { name: /By Created At/i }).click();
 
-      cy.intercept("POST", "/api/exploration/thread/*/documents/*/append").as(
-        "appendChart",
-      );
-      cy.findByLabelText("Add to document").click();
+        cy.log("timeline should be visible in the viz");
+        cy.findAllByTestId("visualization-root")
+          .first()
+          .within(() => {
+            H.echartsIcon("star").should("be.visible");
+          });
 
-      // The detail page shows one entry per visible SeriesGroup —
-      // even on this no-segment fixture the BE planner usually
-      // emits more than one group per leaf (default + temporal /
-      // top-N variants), so the doc menu enters the chart-picker
-      // stage first. Pick the first listed chart, then `Scratchpad`.
-      cy.findByText("Pick a chart").should("be.visible");
-      cy.findAllByRole("menuitem").first().click();
+        cy.intercept("POST", "/api/exploration/thread/*/documents/*/append").as(
+          "appendChart",
+        );
+        cy.findByLabelText("Add to document").click();
 
-      cy.findByText("Add to").should("be.visible");
-      // Mantine renders the leftSection icon's `aria-label` ("document
-      // icon") into the menuitem's accessible name (it becomes
-      // "document icon Scratchpad"), so we match by regex on the doc name.
-      cy.findByRole("menuitem", { name: /Scratchpad/ }).click();
-      cy.wait("@appendChart").then(({ request, response }) => {
-        expect(response?.statusCode).to.eq(200);
-        // The append endpoint always takes the array form. The
-        // picked SeriesGroup's `queryIds` is the full set of
-        // source queries (the BE then materialises one composite
-        // ephemeral card via `composite/combine`). Length is 1 for
-        // a single-query group, N for a multi-series cartesian or
-        // heat-map — we only guard that the FE sends the array
-        // shape and not the legacy singular `exploration_query_id`.
-        const ids = request.body.exploration_query_ids as number[];
-        expect(ids).to.be.an("array");
-        expect(ids.length).to.be.at.least(1);
+        // The detail page shows one entry per visible SeriesGroup —
+        // even on this no-segment fixture the BE planner usually
+        // emits more than one group per leaf (default + temporal /
+        // top-N variants), so the doc menu enters the chart-picker
+        // stage first. Pick the first listed chart, then `Scratchpad`.
+        cy.findByText("Pick a chart").should("be.visible");
+        cy.findAllByRole("menuitem").first().click();
+
+        cy.findByText("Add to").should("be.visible");
+        // Mantine renders the leftSection icon's `aria-label` ("document
+        // icon") into the menuitem's accessible name (it becomes
+        // "document icon Scratchpad"), so we match by regex on the doc name.
+        cy.findByRole("menuitem", { name: /Scratchpad/ }).click();
+        cy.wait("@appendChart").then(({ request, response }) => {
+          expect(response?.statusCode).to.eq(200);
+          // The append endpoint always takes the array form. The
+          // picked SeriesGroup's `queryIds` is the full set of
+          // source queries (the BE then materialises one composite
+          // ephemeral card via `composite/combine`). Length is 1 for
+          // a single-query group, N for a multi-series cartesian or
+          // heat-map — we only guard that the FE sends the array
+          // shape and not the legacy singular `exploration_query_id`.
+          const ids = request.body.exploration_query_ids as number[];
+          expect(ids).to.be.an("array");
+          expect(ids.length).to.be.at.least(1);
+        });
+
+        // Toast renders with a link whose text is the doc name.
+        cy.findByText("Added to").should("be.visible");
+        cy.findByRole("link", { name: "Scratchpad" }).click();
+
+        // Detail page renders with exactly one composite-ephemeral
+        // card embed (not N per-query embeds).
+        cy.url().should("include", `/question/research/${id}/document/`);
+        cy.findAllByTestId("document-card-embed").should("have.length", 1);
+
+        cy.log("timeline should be visible in the document");
+        H.echartsIcon("star").should("be.visible");
       });
-
-      // Toast renders with a link whose text is the doc name.
-      cy.findByText("Added to").should("be.visible");
-      cy.findByRole("link", { name: "Scratchpad" }).click();
-
-      // Detail page renders with exactly one composite-ephemeral
-      // card embed (not N per-query embeds).
-      cy.url().should("include", `/question/research/${id}/document/`);
-      cy.findAllByTestId("document-card-embed").should("have.length", 1);
     });
   });
 
@@ -992,6 +1006,7 @@ describe("scenarios > explorations > collection placement + archive", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
+    cy.task("stopMockLlmServer");
   });
 
   it("places a newly-created exploration in the creator's personal collection and lets the user move it to trash from there", () => {

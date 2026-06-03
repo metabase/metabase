@@ -15,7 +15,6 @@ import type {
   ExplorationThread,
   SingleSeries,
   Timeline,
-  TimelineEvent,
   TimelineId,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
@@ -33,7 +32,6 @@ interface ExplorationGroupVisualizationProps {
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
-  timelineEvents: TimelineEvent[];
   interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
@@ -153,7 +151,6 @@ function ExplorationGroupVisualizationChart({
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
-  timelineEvents,
   interestingTimelineIds,
 }: ExplorationGroupVisualizationProps) {
   // One RTKQ hook per query. ESLint complains about hooks-in-a-loop;
@@ -192,12 +189,13 @@ function ExplorationGroupVisualizationChart({
         queries,
         datasets: filteredDatasets,
         queryColors,
+        selectedTimelineId,
       });
       // datasets is reconstructed every render but its identity-stable
       // entries make this safe; including the array directly would cause
       // an unstable dep warning.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [queries, queryColors, ...datasets]);
+    }, [queries, queryColors, selectedTimelineId, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
     return seriesGroups?.some((group) => group.isTimeseries);
@@ -236,7 +234,6 @@ function ExplorationGroupVisualizationChart({
             <ExplorationCartesianChart
               key={series[0].card.id}
               series={series}
-              timelineEvents={timelineEvents}
               stackCount={stackCount}
               label={chartLabel}
             />
@@ -263,14 +260,12 @@ function ExplorationGroupVisualizationChart({
 
 interface ExplorationCartesianChartProps {
   series: SingleSeries[];
-  timelineEvents: TimelineEvent[];
   stackCount?: number;
   label?: string;
 }
 
 function ExplorationCartesianChart({
   series,
-  timelineEvents,
   stackCount,
   label,
 }: ExplorationCartesianChartProps) {
@@ -285,11 +280,7 @@ function ExplorationCartesianChart({
     >
       {label && <Text size="lg">{label}</Text>}
       <Box flex={1} mih={0}>
-        <Visualization
-          rawSeries={series}
-          timelineEvents={timelineEvents}
-          className={S.chart}
-        />
+        <Visualization rawSeries={series} className={S.chart} />
       </Box>
     </Stack>
   );

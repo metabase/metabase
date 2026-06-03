@@ -135,7 +135,6 @@ function setup({
       availableTimelines={availableTimelines}
       selectedTimelineId={null}
       onSelectTimelineId={jest.fn()}
-      timelineEvents={[]}
       interestingTimelineIds={interestingTimelineIds}
     />,
   );
