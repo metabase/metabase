@@ -119,7 +119,7 @@ describe("scenarios > admin > people", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("0 members");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("A group is only as good as its members.");
+      cy.findByText("Add members to get started.");
     });
 
     it(
