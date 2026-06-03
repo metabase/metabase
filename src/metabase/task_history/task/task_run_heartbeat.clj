@@ -7,12 +7,11 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -44,20 +43,16 @@
    2. started_at is older than max run duration (stuck run)
    Returns the set of run IDs that were marked as orphaned."
   []
-  (let [heartbeat-cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- orphan-threshold-hours) :hour)
-        duration-cutoff  (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- max-run-duration-hours) :hour)
-        where-clause     {:where [:and
-                                  [:= :status "started"]
-                                  [:or
-                                   [:< :updated_at heartbeat-cutoff]
-                                   [:< :started_at duration-cutoff]]]}
-        orphaned-run-ids (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs"
-                           {:db/statement (tracing/best-effort-sanitize-sql (assoc where-clause :select [:id] :from [:task_run]))}
-                           (t2/select-fn-set :id :model/TaskRun where-clause))]
+  (let [orphaned         (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs" {}
+                           (rt/reap-rows! {:model        :model/TaskRun
+                                           :active       [:status :started]
+                                           :stale-column :updated_at
+                                           :age          orphan-threshold-hours
+                                           :unit         :hour
+                                           :terminal     {:status :abandoned :ended_at (mi/now)}
+                                           :also-stale   [:< :started_at (rt/cutoff max-run-duration-hours :hour)]}))
+        orphaned-run-ids (into #{} (map :id) orphaned)]
     (when (seq orphaned-run-ids)
-      (t2/update! :model/TaskRun {:id [:in orphaned-run-ids]}
-                  {:status   :abandoned
-                   :ended_at (mi/now)})
       (log/infof "Marked %d abandoned task runs" (count orphaned-run-ids)))
     orphaned-run-ids))
 

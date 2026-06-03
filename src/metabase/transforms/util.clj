@@ -117,8 +117,7 @@
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (let [cancel-chan (a/promise-chan)]
-    ;; Register in the cancel/heartbeat registry as the FIRST action, so the run is heartbeated
-    ;; and cancelable for its entire is_active lifetime, not just once execution starts
+    ;; Register first so the run is heartbeated and cancelable for its whole is_active lifetime.
     (canceling/chan-start-run! run-id cancel-chan)
     (try
       (when (and (not (str/blank? output-schema))

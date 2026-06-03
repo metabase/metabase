@@ -3,13 +3,13 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
-   [metabase.transforms.models.timeout-util :as timeout-util]
+   [metabase.run-tracking.core :as rt]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -158,13 +158,20 @@
 
 (defn timeout-old-runs!
   "Time out all active runs older than the specified age. Returns the rows that were timed out.
-  See [[metabase.transforms.models.timeout-util/timeout-rows!]] for atomicity rationale."
+  See [[metabase.run-tracking.core/reap-rows!]] for atomicity rationale."
   [age unit]
-  (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
-        timeout-dur (timeout-util/unit->duration age unit)
+  (let [timeout-dur (rt/unit->duration age unit)
         detected-at (Instant/now)
         end-time    (OffsetDateTime/ofInstant detected-at ZoneOffset/UTC)
-        timed-out   (timeout-util/timeout-rows! :model/TransformRun :start_time cutoff)]
+        timed-out   (rt/reap-rows! {:model        :model/TransformRun
+                                    :active       [:is_active true]
+                                    :stale-column :start_time
+                                    :age          age
+                                    :unit         unit
+                                    :terminal     {:status    :timeout
+                                                   :end_time  :%now
+                                                   :is_active nil
+                                                   :message   "Timed out by metabase"}})]
     (when (seq timed-out)
       (analytics/inc! :metabase-transforms/timeouts-total
                       {:type "transform"}
@@ -173,7 +180,7 @@
         (when-let [start (:start_time run)]
           (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
                               {:type "transform"}
-                              (timeout-util/detection-latency-ms start timeout-dur detected-at)))
+                              (rt/detection-latency-ms start timeout-dur detected-at)))
         (publish-timeout-event! (assoc run
                                        :status    :timeout
                                        :is_active nil
@@ -183,28 +190,26 @@
     timed-out))
 
 (defn heartbeat-runs!
-  "Stamp `last_heartbeat = now` on the given still-active `run-ids`. Called every minute by the heartbeat
-  job with the run-ids this process is actively executing. No-op on an empty id list; the `is_active`
-  guard makes it a no-op for runs that have since finished."
+  "Stamp `last_heartbeat = now` on the given still-active `run-ids`."
   [run-ids]
-  (when (seq run-ids)
-    (t2/update! :model/TransformRun
-                {:id [:in run-ids], :is_active true}
-                {:last_heartbeat (mi/now)})))
+  (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat run-ids))
 
 (defn reap-orphaned-runs!
-  "Time out active runs whose heartbeat is older than `stale-minutes` — their owning process is presumed
-  dead (it stopped stamping heartbeats). Returns the rows that were timed out. Mirrors [[timeout-old-runs!]]
-  but keys on `last_heartbeat` rather than `start_time`, so it reaps orphans in minutes instead of waiting
-  for the wall-clock `transform-timeout`. See [[metabase.transforms.models.timeout-util/timeout-rows!]] for
-  atomicity rationale."
+  "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is
+  presumed dead). Returns the rows that were timed out."
   [stale-minutes]
-  (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- stale-minutes) :minute)
-        timeout-dur (timeout-util/unit->duration stale-minutes :minute)
+  (let [timeout-dur (rt/unit->duration stale-minutes :minute)
         detected-at (Instant/now)
         end-time    (OffsetDateTime/ofInstant detected-at ZoneOffset/UTC)
-        reaped      (timeout-util/timeout-rows! :model/TransformRun :last_heartbeat cutoff
-                                                "Timed out: no heartbeat")]
+        reaped      (rt/reap-rows! {:model        :model/TransformRun
+                                    :active       [:is_active true]
+                                    :stale-column :last_heartbeat
+                                    :age          stale-minutes
+                                    :unit         :minute
+                                    :terminal     {:status    :timeout
+                                                   :end_time  :%now
+                                                   :is_active nil
+                                                   :message   "Timed out: no heartbeat"}})]
     (when (seq reaped)
       (analytics/inc! :metabase-transforms/timeouts-total
                       {:type "transform"}
@@ -213,7 +218,7 @@
         (when-let [hb (:last_heartbeat run)]
           (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
                               {:type "transform"}
-                              (timeout-util/detection-latency-ms hb timeout-dur detected-at)))
+                              (rt/detection-latency-ms hb timeout-dur detected-at)))
         (publish-timeout-event! (assoc run
                                        :status    :timeout
                                        :is_active nil

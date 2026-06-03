@@ -30,16 +30,12 @@
 (set! *warn-on-reflection* true)
 
 (defonce ^:private
-  ^{:doc "Set of job-run ids whose coordinator (`run-transforms!`) is alive on THIS process. Heartbeated
-  every minute so an orphaned job run (process died mid-job) is reaped on the same fast cadence as its
-  child transform runs, rather than lingering until the 240-minute wall-clock backstop."}
+  ^{:doc "Set of job-run ids whose coordinator (`run-transforms!`) is alive on this process."}
   active-job-runs
   (atom #{}))
 
 (defn send-heartbeat!
-  "Bump `updated_at` on the job runs whose coordinator is alive on this process. Called by the heartbeat
-  job every minute; when this process dies these stamps stop and [[transforms.job-run/reap-orphaned-runs!]]
-  reaps the run."
+  "Bump `updated_at` on the job runs whose coordinator is alive on this process."
   []
   (transforms.job-run/heartbeat-runs! (seq @active-job-runs)))
 
@@ -255,9 +251,7 @@
                         plan))]
     (when start-promise (deliver start-promise :started))
     (try
-      ;; Register as the first action inside the try so the `finally` always deregisters — no leak if
-      ;; dispatch! throws. The brief window before this (start-run! → here) is covered by the job run's
-      ;; insert-time `updated_at`, just like the transform-run setup window.
+      ;; Register first so the `finally` always deregisters, even if dispatch! throws.
       (swap! active-job-runs conj run-id)
       (vreset! state (dispatch! @state))
       (while (busy? @state)
@@ -473,8 +467,7 @@
 (def ^:private transform-job-heartbeat-stale-minutes 5)
 
 (defn- reap-and-notify-orphaned-runs!
-  "Reap job runs whose coordinator process died (stale heartbeat) and notify admins for each cron run we
-  reaped, mirroring [[timeout-and-notify-old-runs!]]'s cron-only notification behavior."
+  "Reap job runs whose coordinator process died (stale heartbeat) and notify admins for each reaped cron run."
   []
   (let [reaped (transforms.job-run/reap-orphaned-runs! transform-job-heartbeat-stale-minutes)]
     (when (seq reaped)
@@ -487,9 +480,7 @@
           (log/error t "Error notifying of reaped transform job run" (pr-str job_id)))))))
 
 (defn- transform-job-run-heartbeat! []
-  ;; Two responsibilities, parallel to the transform-run heartbeat in metabase.transforms.canceling:
-  ;;   1. Stamp updated_at on the job runs THIS process is coordinating (so they aren't reaped while alive).
-  ;;   2. Reap job runs whose heartbeat has gone stale (their coordinator process died).
+  ;; Heartbeat the job runs this process is coordinating, then reap any whose heartbeat has gone stale.
   (tracing/with-span :tasks "task.transform.job-heartbeat" {}
     (send-heartbeat!)
     (reap-and-notify-orphaned-runs!)))

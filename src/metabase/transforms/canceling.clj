@@ -51,9 +51,7 @@
     true))
 
 (defn send-heartbeat!
-  "Stamp a heartbeat on every run this instance is actively executing — i.e. the run-ids currently registered
-  in `connections` (between `chan-start-run!` and `chan-end-run!`). When this process dies these stamps
-  stop, so the run's heartbeat goes stale and [[transform-run/reap-orphaned-runs!]] reaps it."
+  "Stamp a heartbeat on every run this instance is actively executing (those registered in `connections`)."
   []
   (transform-run/heartbeat-runs! (keys @connections)))
 
@@ -158,9 +156,7 @@
 (def ^:private transform-heartbeat-stale-minutes 5)
 
 (defn- transform-run-heartbeat! [_ctx]
-  ;; Two responsibilities, mirroring metabase.task-history.task.task-run-heartbeat:
-  ;;   1. Stamp a heartbeat on the runs THIS process is executing (so they aren't reaped while alive).
-  ;;   2. Reap runs whose heartbeat has gone stale (their owning process died).
+  ;; Heartbeat the runs this process is executing, then reap any whose heartbeat has gone stale.
   (tracing/with-span :tasks "task.transform.heartbeat" {}
     (send-heartbeat!)
     (when-let [reaped (not-empty (transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes))]
