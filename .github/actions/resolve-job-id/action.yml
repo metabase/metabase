@@ -1,9 +1,17 @@
 name: Resolve current job id
 description: >
-  Resolve this job's GitHub workflow_jobs.id via the Actions API and export it
-  as JOB_ID (and JOB_HTML_URL) to $GITHUB_ENV, so any later step can read the
-  numeric job id without making its own API call. Best-effort: warns and
-  proceeds on failure so it can never break the run.
+  Resolve this job's numeric GitHub job id and export it as JOB_ID (and
+  JOB_HTML_URL) to $GITHUB_ENV, so any later step can read it without making
+  its own API call. Best-effort: warns and proceeds on failure so it can never
+  break the run.
+
+inputs:
+  job-display-name:
+    description: >
+      The leaf displayName of the calling job, used to find this job among all
+      jobs in the run (e.g. "e2e-tests-<name>-<edition>"). Must match the job's
+      `name:` exactly.
+    required: true
 
 runs:
   using: composite
@@ -11,38 +19,46 @@ runs:
     - name: Resolve JOB_ID
       shell: bash
       env:
-        GH_TOKEN: ${{ github.token }}
-        RUNNER_NAME: ${{ runner.name }}
+        JOB_DISPLAY_NAME: ${{ inputs.job-display-name }}
       run: |
-        # GitHub doesn't expose the current job's numeric id, so we look it up
-        # from the Actions API. A runner runs exactly one job at a time, so
-        # filtering by runner_name within (run_id, run_attempt) is unique.
-        # max_by(.started_at) handles the rare case of a runner sequentially
-        # running multiple jobs in the same attempt — we want the latest.
+        # GitHub doesn't expose the current job's numeric id. The Actions web
+        # backend's job_groups_batch endpoint returns *every* job in the run in
+        # a single response, so we match our own leaf job by its (unique)
+        # displayName and read its numeric id. Why this over the REST jobs API:
+        #   - One request, no pagination — the REST endpoint caps at 100 jobs
+        #     per page and a full run has ~185, so the old single-page lookup
+        #     silently missed shards past page 1 (DEV-2117).
+        #   - Not counted against the REST rate-limit budget that ~70 e2e shards
+        #     would otherwise hammer; needs no auth on a public repo.
+        #   - displayName is unique per shard (the chunk index is baked into the
+        #     matrix name), so we don't need runner_name — which only populates
+        #     after runner pickup; the job is in this response from dispatch.
         set +e
-        api_url="/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100"
-        jq_filter="[.jobs[] | select(.runner_name == \"$RUNNER_NAME\")] | max_by(.started_at) | \"\(.id) \(.html_url)\""
+        url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/job_groups_batch?attempt=$GITHUB_RUN_ATTEMPT&batch=0&size=400"
+        # Flatten every group's jobs (groups are nested for reusable workflows),
+        # pick the one whose displayName is ours, emit "<id> <href>".
+        jq_filter='[.. | .jobs? // empty | .[] | select(.displayName == env.JOB_DISPLAY_NAME)] | .[0] | select(. != null) | "\(.id) \(.href)"'
 
-        # The Actions jobs API is eventually consistent: after a runner picks
-        # up a job, it can take a few seconds for runner_name to appear in the
-        # response. Retry briefly to absorb that.
         out=""
         for attempt in 1 2 3 4 5; do
-          out=$(gh api "$api_url" --jq "$jq_filter" 2>/dev/null)
-          if [ -n "$out" ] && [ "$out" != "null null" ]; then
+          resp=$(curl -sf -H "Accept: application/json" "$url" 2>/dev/null)
+          if [ -n "$resp" ]; then
+            out=$(jq -r "$jq_filter" <<<"$resp" 2>/dev/null)
+          fi
+          if [ -n "$out" ] && [ "$out" != "null" ]; then
             break
           fi
           out=""
-          echo "Attempt $attempt: job not yet visible in Actions API; retrying..."
+          echo "Attempt $attempt: job '$JOB_DISPLAY_NAME' not yet visible; retrying..."
           sleep 3
         done
 
         if [ -n "$out" ]; then
-          read -r job_id job_url <<<"$out"
+          read -r job_id job_path <<<"$out"
           echo "JOB_ID=$job_id" >> "$GITHUB_ENV"
-          echo "JOB_HTML_URL=$job_url" >> "$GITHUB_ENV"
-          echo "Resolved JOB_ID=$job_id (runner=$RUNNER_NAME)"
+          echo "JOB_HTML_URL=$GITHUB_SERVER_URL$job_path" >> "$GITHUB_ENV"
+          echo "Resolved JOB_ID=$job_id ($JOB_DISPLAY_NAME)"
         else
-          echo "::warning::Could not resolve current job id after 5 attempts (runner=$RUNNER_NAME)"
+          echo "::warning::Could not resolve job id for '$JOB_DISPLAY_NAME' after 5 attempts"
         fi
         exit 0
