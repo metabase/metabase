@@ -49,6 +49,8 @@ type Result = {
   rewrites: Rewrite[];
 };
 
+console.error("fix-junit-hooks: parsing arguments");
+
 const program = new Command();
 program
   .name("fix-junit-hooks")
@@ -71,6 +73,10 @@ program
 
 const [inDir, outDir = inDir] = program.processedArgs as [string, string?];
 const { dryRun = false, include: includes } = program.opts<Options>();
+
+console.error(
+  `fix-junit-hooks: start (in=${inDir}, out=${outDir}, dryRun=${dryRun}, includes=[${includes.join(", ")}])`,
+);
 
 if (!statSync(inDir).isDirectory()) {
   console.error(`error: <input-dir> must be a directory, got ${inDir}`);
@@ -226,11 +232,17 @@ const files = readdirSync(inDir)
   .filter((f) => f.endsWith(".xml"))
   .sort();
 
+console.error(`fix-junit-hooks: found ${files.length} XML file(s)`);
+
 let totalScanned = 0;
 let totalRewritten = 0;
 for (const f of files) {
   const inP = join(inDir, f);
   const outP = inDir === outDir ? inP : join(outDir, f);
+  // Log before processing so a hang points at the exact culprit file.
+  console.error(
+    `fix-junit-hooks: processing ${f} (${statSync(inP).size} bytes)`,
+  );
   const r = processFile(inP, outP);
   console.error(summarize(inP, r));
   totalScanned += r.scanned;
