@@ -79,7 +79,7 @@ export default function ErrorOverview(props: Record<string, unknown>) {
 
     await Promise.all(
       checkedCardIds.map((member) =>
-        fetchDataOrError(runCardQuery({ cardId: member }).unwrap()),
+        fetchDataOrError(runCardQuery({ cardId: Number(member) }).unwrap()),
       ),
     );
     setRowChecked({});
