@@ -238,6 +238,39 @@ export const getSwitchBranchOption = () => {
   return popover().findByRole("option", { name: /Switch branch/ });
 };
 
+// Mantine combobox options can drop a synthetic `.click()` if the dropdown's
+// state machine isn't fully wired yet (e.g. right after the menu opens — the
+// dropdown is visible but the option's handler isn't attached). `realClick`
+// dispatches native mouse events that Mantine processes reliably, and we then
+// verify the menu closed; if not, re-click once with a synthetic click.
+//
+// We detect "menu still open" by looking for the main-menu options
+// (Pull/Push/Switch branch) — neither "any popover visible" nor the controls'
+// `data-expanded` attribute distinguishes the main menu from follow-up popovers
+// like the branch picker that opens after clicking "Switch branch".
+const MAIN_MENU_OPTION_RE = /Pull changes|Push changes|Switch branch/;
+const clickGitSyncOption = (
+  getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
+) => {
+  getOption().should("not.be.disabled").realClick();
+  cy.get("body").then(($body) => {
+    const mainMenuStillOpen =
+      $body
+        .find('[role="option"]:visible')
+        .filter((_, el) => MAIN_MENU_OPTION_RE.test(el.textContent || ""))
+        .length > 0;
+    if (mainMenuStillOpen) {
+      cy.log("git-sync menu didn't close — re-clicking option");
+      getOption().click();
+    }
+  });
+};
+
+export const clickPullOption = () => clickGitSyncOption(getPullOption);
+export const clickPushOption = () => clickGitSyncOption(getPushOption);
+export const clickSwitchBranchOption = () =>
+  clickGitSyncOption(getSwitchBranchOption);
+
 // Enable tenants feature for testing
 export const enableTenants = () => {
   cy.request("PUT", "/api/setting/use-tenants", { value: true });

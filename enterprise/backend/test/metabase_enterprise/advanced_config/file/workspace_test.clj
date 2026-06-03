@@ -16,16 +16,20 @@
 
 (use-fixtures :each
   (fn [thunk]
-    ;; Default to `:workspaces` enabled for tests in this ns — most exercise
-    ;; `apply-workspace-section!` which calls `set-instance-workspace!` (gated on
-    ;; `:workspaces`, see GHY-3685). Tests that need the feature *absent* override
-    ;; with their own `mt/with-premium-features` block.
+    ;; Several tests drive a `:workspace` section through `initialize!`, which
+    ;; requires the `:workspaces` feature; default it on here. Tests that assert
+    ;; the feature's *absence* override with their own `mt/with-premium-features`.
+    ;; Also save/restore the boot-lock atom so the boot-lock tests below can't
+    ;; leak a flipped lock into the rest of the suite.
     (mt/with-premium-features #{:workspaces}
       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-        (try
-          (thunk)
-          (finally
-            (ws/clear-instance-workspace!)))))))
+        (let [lock-atom @#'ws/locked-by-config?*
+              prior     @lock-atom]
+          (try
+            (thunk)
+            (finally
+              (ws/clear-instance-workspace!)
+              (reset! lock-atom prior))))))))
 
 (defn- load-fixture-by-driver [driver]
   (-> (str "metabase_enterprise/workspaces/resources/workspace_config_" (name driver) ".yml")
@@ -296,3 +300,52 @@
                 (advanced-config.file.workspace/apply-workspace-section! section)
                 (is (= (:output expectations) (ws/db-workspace-namespace db-id))
                     (str driver " setting output matches fixture"))))))))))
+
+;;; ----------------------------------------- boot lock wiring ----------------------------------------
+;;;
+;;; `boot-initialize!` is the sole boot entry point. When it parses a
+;;; `config.yml` containing a `:workspace` section, it flips the in-memory
+;;; `workspace-locked-by-config?*` atom. Runtime callers of `initialize!` (the
+;;; `POST /api/ee/advanced-config` path) and direct callers of
+;;; `apply-workspace-section!` do NOT flip the lock — the boot wrapper is the
+;;; only thing that does.
+
+(defn- lock-atom [] @#'ws/locked-by-config?*)
+
+(deftest boot-initialize!-sets-the-lock-when-config-has-workspace-test
+  (testing "boot-initialize!, given a parsed config.yml with a :workspace section, flips the lock"
+    (mt/with-empty-h2-app-db!
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+          (reset! (lock-atom) false)
+          (with-redefs [advanced-config.file/config-from-disk
+                        (constantly {:version 1
+                                     :config  {:workspace (workspace-section "ws-test-db")}})]
+            (advanced-config.file/boot-initialize!))
+          (is (true? (ws/workspace-locked-by-config?))))))))
+
+(deftest boot-initialize!-does-not-set-the-lock-when-config-has-no-workspace-test
+  (testing "boot-initialize! with no :workspace section in the config leaves the lock false"
+    (mt/with-empty-h2-app-db!
+      (reset! (lock-atom) false)
+      (with-redefs [advanced-config.file/config-from-disk
+                    (constantly {:version 1
+                                 :config  {:settings {}}})]
+        (advanced-config.file/boot-initialize!))
+      (is (false? (ws/workspace-locked-by-config?))))))
+
+(deftest boot-initialize!-no-config-file-does-not-set-the-lock-test
+  (testing "boot-initialize! when no config.yml is present (config-from-disk returns nil) leaves the lock false"
+    (mt/with-empty-h2-app-db!
+      (reset! (lock-atom) false)
+      (with-redefs [advanced-config.file/config-from-disk (constantly nil)]
+        (advanced-config.file/boot-initialize!))
+      (is (false? (ws/workspace-locked-by-config?))))))
+
+(deftest apply-workspace-section!-direct-call-does-not-set-the-lock-test
+  (testing "calling apply-workspace-section! directly (the runtime / test path) does NOT flip the lock"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+        (reset! (lock-atom) false)
+        (advanced-config.file.workspace/apply-workspace-section! (workspace-section "ws-test-db"))
+        (is (false? (ws/workspace-locked-by-config?)))))))

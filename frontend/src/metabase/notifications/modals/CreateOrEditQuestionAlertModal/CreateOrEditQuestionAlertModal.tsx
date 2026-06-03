@@ -28,7 +28,11 @@ import {
 } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { canAccessSettings, getUser } from "metabase/selectors/user";
+import {
+  canAccessSettings,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -43,6 +47,7 @@ import {
 import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  AdminNotification,
   CreateAlertNotificationRequest,
   Notification,
   NotificationCardSendCondition,
@@ -50,6 +55,7 @@ import type {
   NotificationHandler,
   ScheduleType,
   UpdateAlertNotificationRequest,
+  UserId,
 } from "metabase-types/api";
 
 import { ChannelSetupModal } from "../ChannelSetupModal";
@@ -57,6 +63,7 @@ import { NotificationChannelsPicker } from "../components/NotificationChannelsPi
 
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
 import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { NotificationOwner } from "./components/NotificationOwner/NotificationOwner";
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
@@ -93,6 +100,7 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
 
 type CreateOrEditQuestionAlertModalWithQuestionProps = {
   onClose: () => void;
+  skipUrlUpdate?: boolean;
 } & (
   | {
       editingNotification?: undefined;
@@ -100,7 +108,7 @@ type CreateOrEditQuestionAlertModalWithQuestionProps = {
       onAlertUpdated?: () => void;
     }
   | {
-      editingNotification: Notification;
+      editingNotification: Notification | AdminNotification;
       onAlertUpdated: () => void;
       onAlertCreated?: () => void;
     }
@@ -116,6 +124,7 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
   onAlertCreated,
   onAlertUpdated,
   onClose,
+  skipUrlUpdate,
 }: CreateOrEditQuestionAlertModalWithQuestionProps) => {
   const question = useSelector(getQuestion);
 
@@ -126,6 +135,7 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
         editingNotification={editingNotification}
         onAlertUpdated={onAlertUpdated}
         onClose={onClose}
+        skipUrlUpdate={skipUrlUpdate}
       />
     );
   } else {
@@ -134,6 +144,7 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
         question={question}
         onAlertCreated={onAlertCreated}
         onClose={onClose}
+        skipUrlUpdate={skipUrlUpdate}
       />
     );
   }
@@ -145,11 +156,13 @@ export const CreateOrEditQuestionAlertModal = ({
   onAlertUpdated,
   onClose,
   question,
+  skipUrlUpdate,
 }: CreateOrEditQuestionAlertModalProps) => {
   const dispatch = useDispatch();
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
@@ -211,6 +224,12 @@ export const CreateOrEditQuestionAlertModal = ({
     userCanAccessSettings,
   ]);
 
+  const handleOwnerChange = (creatorId: UserId) => {
+    if (notification) {
+      setNotification({ ...notification, creator_id: creatorId });
+    }
+  };
+
   const onCreateOrEditAlert = async () => {
     if (notification) {
       let result;
@@ -252,7 +271,9 @@ export const CreateOrEditQuestionAlertModal = ({
         onAlertCreated();
       }
 
-      await dispatch(updateUrl(question, { dirty: false }));
+      if (!skipUrlUpdate) {
+        await dispatch(updateUrl(question, { dirty: false }));
+      }
     }
   };
 
@@ -399,6 +420,15 @@ export const CreateOrEditQuestionAlertModal = ({
                   ? t`You're only allowed to email alerts to addresses ending in ${domains}`
                   : t`You're only allowed to email alerts to allowed domains`
               }
+            />
+          </AlertModalSettingsBlock>
+        )}
+
+        {isEditMode && isAdmin && editingNotification && (
+          <AlertModalSettingsBlock title={t`Who owns this alert?`}>
+            <NotificationOwner
+              editingNotification={editingNotification}
+              onChange={handleOwnerChange}
             />
           </AlertModalSettingsBlock>
         )}

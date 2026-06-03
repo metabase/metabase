@@ -7,6 +7,7 @@ import type {
   TaskRun,
   TaskRunDateFilterOption,
   TaskRunEntityType,
+  TaskRunStartedAtParam,
   TaskRunStatus,
   TaskRunType,
   TaskStatus,
@@ -104,6 +105,18 @@ export const guardTaskRunStatus = (value: string): value is TaskRunStatus =>
   (
     ["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[]
   ).includes(value as TaskRunStatus);
+
+export const toBackendStartedAt = (
+  value: TaskRunDateFilterOption | null,
+  includeToday: boolean,
+): TaskRunStartedAtParam | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  // A trailing "~" makes the date range open-ended on the upper bound,
+  // extending it through today so the current day's runs are included.
+  return includeToday ? `${value}~` : value;
+};
 
 export const guardTaskRunStartedAtRange = (
   value: string,

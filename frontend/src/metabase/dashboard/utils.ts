@@ -15,6 +15,7 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -324,8 +325,7 @@ const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
   return (
     queryResults.length > 0 &&
     queryResults.every(
-      (queryResult) =>
-        "data" in queryResult && queryResult.data.rows.length > 0,
+      (queryResult) => "data" in queryResult && !hasNoResults(queryResult.data),
     )
   );
 };
