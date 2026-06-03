@@ -277,6 +277,7 @@ describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
       queries,
       datasets,
       queryColors: {},
+      selectedTimelineId: null,
     }).chartsForDocumentEmbed;
   }
 
@@ -348,6 +349,38 @@ describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
     expect(charts).toHaveLength(4);
     expect(charts.map((c) => c.queryIds)).toEqual([[10, 11], [20], [21], [30]]);
   });
+
+  it("omits timeline viz settings on cartesian embeds when no timeline is selected", () => {
+    const charts = getChartsForDocumentEmbed(
+      [
+        makeQuery({ id: 1, name: "Q1", dimension_id: "dim-1" }),
+        makeQuery({ id: 2, name: "Q2", dimension_id: "dim-1" }),
+      ],
+      [tsDataset, tsDataset],
+    );
+
+    expect(charts).toHaveLength(1);
+    expect(
+      charts[0].visualization_settings["timeline.selected_timeline_ids"],
+    ).toBeUndefined();
+  });
+
+  it("includes selected timeline ids on cartesian embeds", () => {
+    const charts = buildSeriesGroups({
+      queries: [
+        makeQuery({ id: 1, name: "Q1", dimension_id: "dim-1" }),
+        makeQuery({ id: 2, name: "Q2", dimension_id: "dim-1" }),
+      ],
+      datasets: [tsDataset, tsDataset],
+      queryColors: {},
+      selectedTimelineId: 42,
+    }).chartsForDocumentEmbed;
+
+    expect(charts).toHaveLength(1);
+    expect(
+      charts[0].visualization_settings["timeline.selected_timeline_ids"],
+    ).toEqual([42]);
+  });
 });
 
 describe("buildSeries (display selection)", () => {
@@ -368,6 +401,7 @@ describe("buildSeries (display selection)", () => {
     return buildSeries({
       queriesWithDatasets: group,
       queryColors,
+      selectedTimelineId: null,
     });
   }
 
@@ -486,6 +520,7 @@ describe("buildSeries (display selection)", () => {
     const group = buildSeries({
       queriesWithDatasets: queries.map((q) => ({ ...q, dataset: categorical })),
       queryColors,
+      selectedTimelineId: null,
     });
     expect(group.series[0].card.display).toBe("table");
   });
@@ -508,6 +543,7 @@ describe("buildSeries (display selection)", () => {
         { ...makeQuery({ id: 2 }), dataset },
       ],
       queryColors,
+      selectedTimelineId: null,
     });
     const ramp1 = group.series[0].card.visualization_settings["map.colors"];
     const ramp2 = group.series[1].card.visualization_settings["map.colors"];
@@ -541,6 +577,7 @@ describe("buildSeriesGroups", () => {
       queries,
       datasets,
       queryColors: {},
+      selectedTimelineId: null,
     });
     expect(seriesGroups).toHaveLength(2);
   });
@@ -570,6 +607,7 @@ describe("buildSeriesGroups", () => {
       queries,
       datasets: [tsDataset, tsDataset, tsDataset],
       queryColors: {},
+      selectedTimelineId: null,
     });
     expect(layoutStrategy).toBe("two-small-charts-down");
   });
@@ -602,6 +640,7 @@ describe("buildSeriesGroups", () => {
       queries,
       datasets: [tsDataset, timeFacetDataset],
       queryColors: {},
+      selectedTimelineId: null,
     });
     expect(
       seriesGroups[0].series[0].card.visualization_settings[

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useGetExplorationDataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type {
   ExplorationNavigation,
   ExplorationSelection,
@@ -117,6 +118,7 @@ export function BrowseMetricsPanel({
                   addMetricToDimensionBlock(activeDimensionBlock.id, metric);
                 }
               } else {
+                trackExplorationPlanEdited("manual", "metrics");
                 toggleMetric(metric, { dimensionsById });
               }
             }}

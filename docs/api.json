@@ -2080,15 +2080,28 @@
       "metabase-enterprise.erd.impl.erd-node" : {
         "type" : "object",
         "properties" : {
-          "db_id" : {
-            "type" : "integer"
+          "owner" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-owner"
           },
-          "description" : {
+          "visibility_type" : {
             "oneOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
             } ]
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "type" : "integer"
           },
           "display_name" : {
             "type" : "string"
@@ -2099,21 +2112,15 @@
               "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-field"
             }
           },
-          "name" : {
-            "type" : "string"
+          "db_id" : {
+            "type" : "integer"
           },
-          "owner" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-owner"
-          },
-          "schema" : {
+          "description" : {
             "oneOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
             } ]
-          },
-          "table_id" : {
-            "type" : "integer"
           }
         },
         "required" : [ "table_id", "name", "display_name", "db_id", "fields" ]
@@ -6869,7 +6876,7 @@
         },
         "minItems" : 1
       },
-      "metabase.legacy-mbql.schema.MBQLQuery" : {
+      "metabase.legacy-mbql.schema.MBQLInnerQuery" : {
         "allOf" : [ {
           "type" : "object",
           "properties" : {
@@ -6924,28 +6931,6 @@
           "properties" : { }
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.RemoveFieldRefsFromFieldsAlreadyInBreakout"
-        }, {
-          "allOf" : [ ]
-        } ]
-      },
-      "metabase.legacy-mbql.schema.NativeQuery" : {
-        "description" : "Schema for a valid, normalized native [inner] query.",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "collection" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "query" : { },
-            "template-tags" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagMap"
-            }
-          },
-          "required" : [ "query" ]
         }, {
           "allOf" : [ ]
         } ]
@@ -7121,10 +7106,10 @@
               } ]
             },
             "query" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLQuery"
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLInnerQuery"
             },
             "native" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeQuery"
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TopLevelNativeInnerQuery"
             },
             "info" : {
               "description" : "Used when recording info about this run in the QueryExecution log; things like context query was\n  ran in and User who ran it.",
@@ -7188,10 +7173,15 @@
       "metabase.legacy-mbql.schema.RemoveFieldRefsFromFieldsAlreadyInBreakout" : { },
       "metabase.legacy-mbql.schema.SourceQuery" : {
         "description" : "Schema for a valid value for a `:source-query`.",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeSourceQuery"
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : { }
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLQuery"
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeSourceQuery"
+          }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLInnerQuery"
+          } ]
         } ]
       },
       "metabase.legacy-mbql.schema.SourceTable" : {
@@ -7335,6 +7325,28 @@
         "description" : "Valid unit for time bucketing.",
         "type" : "string",
         "enum" : [ "hour", "second", "default", "hour-of-day", "millisecond", "minute-of-hour", "minute" ]
+      },
+      "metabase.legacy-mbql.schema.TopLevelNativeInnerQuery" : {
+        "description" : "Schema for a valid, normalized native [inner] query.",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "collection" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "query" : { },
+            "template-tags" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagMap"
+            }
+          },
+          "required" : [ "query" ]
+        }, {
+          "allOf" : [ ]
+        } ]
       },
       "metabase.legacy-mbql.schema.UnnamedAggregation" : {
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.AnyMBQLClause"
@@ -10150,13 +10162,6 @@
           "mode-fraction" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "skewness" : {
-            "oneOf" : [ {
-              "type" : "number"
             }, {
               "type" : "null"
             } ]
@@ -25177,7 +25182,7 @@
       "post" : {
         "operationId" : "post-api-ee-custom-viz-plugin",
         "summary" : "POST /api/ee/custom-viz-plugin",
-        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle, plus any whitelisted assets under\n  `dist/assets/`. The plugin's `identifier` is taken from the manifest's `name`\n  field.",
+        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle. The only static asset served from the bundle\n  is the manifest `icon` (under `dist/assets/`); plugins do not ship arbitrary\n  assets. The plugin's `identifier` is taken from the manifest's `name` field.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -25766,7 +25771,7 @@
       "get" : {
         "operationId" : "get-api-ee-custom-viz-plugin-id-asset",
         "summary" : "GET /api/ee/custom-viz-plugin/{id}/asset",
-        "description" : "Serve a static image asset from the plugin's bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match an entry in the manifest's `assets` whitelist.\n   Only image files are served.\n   In dev mode, proxies from the dev base URL if set.",
+        "description" : "Serve the plugin's icon image from its bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match the manifest `icon`. Only the icon is served — plugins do not\n   ship arbitrary assets.\n   In dev mode, proxies from the dev base URL if set.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -29033,6 +29038,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "branch_missing" : {
+                      "type" : "boolean"
+                    },
                     "cached" : {
                       "type" : "boolean"
                     },
@@ -44608,12 +44616,27 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "type" : "array",
-                "items" : {
-                  "description" : "value must be an integer greater than zero.",
-                  "type" : "integer",
-                  "minimum" : 1
-                }
+                "anyOf" : [ {
+                  "type" : "array",
+                  "items" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "field_order" : {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "field_order" ]
+                } ]
               }
             }
           }

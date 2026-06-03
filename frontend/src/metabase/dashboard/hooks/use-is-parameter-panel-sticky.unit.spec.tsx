@@ -51,6 +51,7 @@ describe("useIsParameterPanelSticky", () => {
       disconnect = mockDisconnect;
       root: Element | null = null;
       rootMargin: string = "";
+      scrollMargin: string = "";
       thresholds: ReadonlyArray<number> = [];
       takeRecords(): IntersectionObserverEntry[] {
         return [];

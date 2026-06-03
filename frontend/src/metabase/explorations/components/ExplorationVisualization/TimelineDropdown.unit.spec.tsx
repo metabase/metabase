@@ -24,6 +24,7 @@ function setup({
   const onSelectTimelineId = jest.fn();
   renderWithProviders(
     <TimelineDropdown
+      explorationId={1}
       availableTimelines={timelines}
       selectedTimelineId={selectedTimelineId}
       onSelectTimelineId={onSelectTimelineId}

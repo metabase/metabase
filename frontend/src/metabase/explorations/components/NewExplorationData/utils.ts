@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { MetricDimension } from "metabase-types/api";
+import type { ExplorationDimensionGroup, MetricDimension } from "metabase-types/api";
 
 export type DimensionGroupSourceKey = string | null;
 
@@ -79,4 +79,30 @@ export function groupDimensionsByGroupSource(
     }
   }
   return rows;
+}
+
+// `/api/exploration/dimensions` matches metrics by name OR dimension, then
+// returns *every* dimension of each matching metric — so a dimension search
+// drags along the metric's other dimensions. Re-filter client-side.
+export function filterDimensionGroupsBySearch(
+  groups: ExplorationDimensionGroup[],
+  query: string,
+): ExplorationDimensionGroup[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (normalizedQuery === "") {
+    return groups;
+  }
+
+  const matches = (value: string | null | undefined) =>
+    value != null && value.toLowerCase().includes(normalizedQuery);
+
+  return groups.filter(
+    (group) =>
+      matches(group.name) ||
+      group.dimensions.some(
+        (dimension) =>
+          matches(dimension.display_name) ||
+          matches(dimension.group?.display_name),
+      ),
+  );
 }

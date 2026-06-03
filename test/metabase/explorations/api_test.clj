@@ -385,37 +385,35 @@
     (mt/with-temp [:model/User u {:email "strip@example.com"}
                    :model/Card metric {:type          :metric
                                        :creator_id    (:id u)
-                                       :dataset_query {:database 1
-                                                       :type     :query
-                                                       :query    {:source-table 1
-                                                                  :aggregation  [[:count]]
-                                                                  :breakout     [[:field 2 {:temporal-unit :month}]]}}}]
-      (let [body {:name       "no time pls"
-                  :metrics    [{:card_id            (:id metric)
-                                :dimension_mappings [{:dimension_id "d1"
-                                                      :table_id     1
-                                                      :target       ["field" {} 1]}]}]
-                  :dimensions [{:dimension_id "d1" :display_name "Region"}]}
+                                       :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)) (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month)))))}]
+      (let [dim-fid  (mt/id :products :category)
+            temp-fid (mt/id :products :created_at)
+            body     {:name       "no time pls"
+                      :metrics    [{:card_id            (:id metric)
+                                    :dimension_mappings [{:dimension_id "d1"
+                                                          :table_id     (mt/id :products)
+                                                          :target       ["field" {} dim-fid]}]}]
+                      :dimensions [{:dimension_id "d1" :display_name "Region"}]}
             resp (create-exploration! u body)
-            q    (-> resp :threads first :queries first)
-            mp   (lib-be/application-database-metadata-provider 1)
+            q    (->> resp :threads first :queries (filter #(= "default" (:query_type %))) first)
+            mp   (lib-be/application-database-metadata-provider (mt/id))
             qry  (lib/query mp (:dataset_query q))
             bos  (lib/breakouts qry)
             ids  (set (filter int? (tree-seq coll? seq (first bos))))]
         (is (= 1 (count bos))
             "metric's default temporal breakout is stripped before the chosen one is added")
-        (is (contains? ids 1)
-            "the surviving breakout points at the chosen dim's target (field 1)")
-        (is (not (contains? ids 2))
-            "the metric's original temporal breakout (field 2) is gone")))))
+        (is (contains? ids dim-fid)
+            "the surviving breakout points at the chosen dim's target")
+        (is (not (contains? ids temp-fid))
+            "the metric's original temporal breakout (created_at) is gone")))))
 
 (deftest exploration-create-materializes-metric-x-dimension-matrix-test
   (testing "POST / creates one ExplorationQuery per (metric, dimension) pair"
     (mt/with-temp [:model/User u {:email "matrix@example.com"}
                    :model/Card m1 (valid-metric-card (:id u))
                    :model/Card m2 (valid-metric-card (:id u))]
-      (let [mapping  [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}
-                      {:dimension_id "d2" :table_id 1 :target ["field" {} 2]}]
+      (let [mapping  [{:dimension_id "d1" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+                      {:dimension_id "d2" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]
             body     {:name "matrix"
                       :metrics [{:card_id (:id m1) :dimension_mappings mapping}
                                 {:card_id (:id m2) :dimension_mappings mapping}]
@@ -568,9 +566,11 @@
 (deftest exploration-create-time-facet-skipped-without-default-breakout-test
   (testing "POST / categorical dim but metric has no default temporal breakout → no time-facet"
     (mt/with-temp [:model/User u {:email "no-default-breakout@example.com"}
-                   :model/Card metric (venues-metric-card (:id u))]
+                   :model/Card metric {:type          :metric
+                                       :creator_id    (:id u)
+                                       :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)))))}]
       (let [mapping [{:dimension_id "cat"
-                      :table_id     (mt/id :venues)
+                      :table_id     (mt/id :products)
                       :target       ["field" {} (mt/id :products :category)]}]
             body    {:name       "no-facet"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
@@ -690,10 +690,10 @@
                    :model/Card signups (valid-metric-card (:id u))]
       (let [body {:name "applicability"
                   :metrics [{:card_id (:id revenue)
-                             :dimension_mappings [{:dimension_id "plan"   :table_id 1 :target ["field" {} 1]}]}
+                             :dimension_mappings [{:dimension_id "plan"   :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}]}
                             {:card_id (:id signups)
-                             :dimension_mappings [{:dimension_id "plan"   :table_id 1 :target ["field" {} 2]}
-                                                  {:dimension_id "channel" :table_id 1 :target ["field" {} 3]}]}]
+                             :dimension_mappings [{:dimension_id "plan"   :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+                                                  {:dimension_id "channel" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
                   :dimensions [{:dimension_id "plan"} {:dimension_id "channel"}]}
             resp     (create-exploration! u body)
             all-queries (-> resp :threads first :queries)
@@ -715,8 +715,8 @@
                    :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")]
       (let [body {:name "naming"
                   :metrics    [{:card_id (:id revenue)
-                                :dimension_mappings [{:dimension_id "country" :table_id 1 :target ["field" {} 1]}
-                                                     {:dimension_id "no-name" :table_id 1 :target ["field" {} 2]}]}]
+                                :dimension_mappings [{:dimension_id "country" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
+                                                     {:dimension_id "no-name" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
                   :dimensions [{:dimension_id "country" :display_name "Country"}
                                {:dimension_id "no-name"}]}
             resp     (create-exploration! u body)
@@ -1045,6 +1045,7 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
         (let [sr-id  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                        :exploration_query_id qid)
               doc-id (-> (mt/user-http-request u :get 200 (str "exploration/thread/" tid "/documents"))
@@ -1939,66 +1940,70 @@
 
 (deftest thread-cancel-sets-timestamps-and-flips-pending-test
   (testing "POST /thread/:id/cancel stamps canceled_at + completed_at and bulk-flips pending EQs"
-    (let [{:keys [thread-id eq-ids]} (minimal-cancel-fixture! (mt/user->id :rasta) 3)
-          resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
-      (is (= thread-id (:id resp)))
-      (is (some? (:canceled_at resp)))
-      (is (some? (:completed_at resp)))
-      (let [thread (t2/select-one :model/ExplorationThread :id thread-id)]
-        (is (some? (:canceled_at thread)))
-        (is (some? (:completed_at thread))))
-      (is (every? #(= "canceled" %)
-                  (map :status (t2/select :model/ExplorationQuery :id [:in eq-ids])))
-          "all pending EQs are flipped to canceled"))))
+    (mt/with-model-cleanup [:model/ExplorationQuery :model/ExplorationThread :model/Exploration :model/Card]
+      (let [{:keys [thread-id eq-ids]} (minimal-cancel-fixture! (mt/user->id :rasta) 3)
+            resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
+        (is (= thread-id (:id resp)))
+        (is (some? (:canceled_at resp)))
+        (is (some? (:completed_at resp)))
+        (let [thread (t2/select-one :model/ExplorationThread :id thread-id)]
+          (is (some? (:canceled_at thread)))
+          (is (some? (:completed_at thread))))
+        (is (every? #(= "canceled" %)
+                    (map :status (t2/select :model/ExplorationQuery :id [:in eq-ids])))
+            "all pending EQs are flipped to canceled")))))
 
 (deftest thread-cancel-idempotent-on-already-canceled-test
   (testing "cancelling an already-canceled thread is a 200 no-op that returns the existing timestamps"
-    (let [{:keys [thread-id]} (minimal-cancel-fixture! (mt/user->id :rasta) 1)
-          first-resp  (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))
-          second-resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
-      (is (= (:canceled_at first-resp) (:canceled_at second-resp))
-          "second cancel must not overwrite the original canceled_at — the CAS WHERE clause matched 0 rows"))))
+    (mt/with-model-cleanup [:model/ExplorationQuery :model/ExplorationThread :model/Exploration :model/Card]
+      (let [{:keys [thread-id]} (minimal-cancel-fixture! (mt/user->id :rasta) 1)
+            first-resp  (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))
+            second-resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
+        (is (= (:canceled_at first-resp) (:canceled_at second-resp))
+            "second cancel must not overwrite the original canceled_at — the CAS WHERE clause matched 0 rows")))))
 
 (deftest thread-cancel-idempotent-on-completed-test
   (testing "cancelling a thread whose completed_at is already set (natural finish) is a 200 no-op
             that leaves canceled_at NULL"
-    (let [{:keys [thread-id]} (minimal-cancel-fixture! (mt/user->id :rasta) 1)
-          _    (t2/update! :model/ExplorationThread thread-id
-                           {:completed_at (t/offset-date-time)})
-          resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
-      (is (nil? (:canceled_at resp))
-          "naturally-completed thread keeps canceled_at NULL — cancel was a no-op")
-      (is (some? (:completed_at resp))
-          "completed_at is still set from the natural finish"))))
+    (mt/with-model-cleanup [:model/ExplorationQuery :model/ExplorationThread :model/Exploration :model/Card]
+      (let [{:keys [thread-id]} (minimal-cancel-fixture! (mt/user->id :rasta) 1)
+            _    (t2/update! :model/ExplorationThread thread-id
+                             {:completed_at (t/offset-date-time)})
+            resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
+        (is (nil? (:canceled_at resp))
+            "naturally-completed thread keeps canceled_at NULL — cancel was a no-op")
+        (is (some? (:completed_at resp))
+            "completed_at is still set from the natural finish")))))
 
 (deftest thread-cancel-requires-write-perm-test
   (testing "cancel requires write perm on the parent exploration's collection"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection coll {:name "cancel-restricted"}]
-        (let [card        (first (t2/insert-returning-instances! :model/Card
-                                                                 {:name          "cancel-perm-fixture"
-                                                                  :type          :metric
-                                                                  :creator_id    (mt/user->id :crowberto)
-                                                                  :database_id   (mt/id)
-                                                                  :display       "table"
-                                                                  :visualization_settings {}
-                                                                  :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}))
-              exploration (first (t2/insert-returning-instances! :model/Exploration
-                                                                 {:name          "cancel-perm-fixture"
-                                                                  :creator_id    (mt/user->id :crowberto)
-                                                                  :collection_id (:id coll)}))
-              thread      (first (t2/insert-returning-instances! :model/ExplorationThread
-                                                                 {:exploration_id (:id exploration)
-                                                                  :position       0
-                                                                  :started_at     (t/offset-date-time)}))]
-          (t2/insert! :model/ExplorationQuery
-                      {:exploration_thread_id (:id thread)
-                       :card_id               (:id card)
-                       :dimension_id          "d1"
-                       :dataset_query         (:dataset_query card)
-                       :status                "pending"
-                       :position              0})
-          ;; Non-admin groups have no root perms (via the wrapper); the fresh Collection grants none.
-          ;; :rasta (member of All Users only) gets 403; admin :crowberto bypasses collection perms.
-          (mt/user-http-request :rasta :post 403 (str "exploration/thread/" (:id thread) "/cancel"))
-          (mt/user-http-request :crowberto :post 200 (str "exploration/thread/" (:id thread) "/cancel")))))))
+        (mt/with-model-cleanup [:model/ExplorationQuery :model/ExplorationThread :model/Exploration :model/Card]
+          (let [card        (first (t2/insert-returning-instances! :model/Card
+                                                                   {:name          "cancel-perm-fixture"
+                                                                    :type          :metric
+                                                                    :creator_id    (mt/user->id :crowberto)
+                                                                    :database_id   (mt/id)
+                                                                    :display       "table"
+                                                                    :visualization_settings {}
+                                                                    :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}))
+                exploration (first (t2/insert-returning-instances! :model/Exploration
+                                                                   {:name          "cancel-perm-fixture"
+                                                                    :creator_id    (mt/user->id :crowberto)
+                                                                    :collection_id (:id coll)}))
+                thread      (first (t2/insert-returning-instances! :model/ExplorationThread
+                                                                   {:exploration_id (:id exploration)
+                                                                    :position       0
+                                                                    :started_at     (t/offset-date-time)}))]
+            (t2/insert! :model/ExplorationQuery
+                        {:exploration_thread_id (:id thread)
+                         :card_id               (:id card)
+                         :dimension_id          "d1"
+                         :dataset_query         (:dataset_query card)
+                         :status                "pending"
+                         :position              0})
+            ;; Non-admin groups have no root perms (via the wrapper); the fresh Collection grants none.
+            ;; :rasta (member of All Users only) gets 403; admin :crowberto bypasses collection perms.
+            (mt/user-http-request :rasta :post 403 (str "exploration/thread/" (:id thread) "/cancel"))
+            (mt/user-http-request :crowberto :post 200 (str "exploration/thread/" (:id thread) "/cancel"))))))))

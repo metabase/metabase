@@ -134,7 +134,7 @@ describe("TransformSettingsSection", () => {
     it("makes Incremental transformation switch disabled", () => {
       expect(
         screen.getByRole("switch", {
-          name: /Only process new and changed data/,
+          name: /Only process new data/,
         }),
       ).toBeDisabled();
     });

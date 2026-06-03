@@ -130,7 +130,7 @@ function getFlowGraphMemoKey(data: ErdResponse): string {
             `${f.id}:${f.name}:${f.display_name}:${f.database_type}:${f.base_type}:${f.effective_type ?? ""}:${f.semantic_type ?? ""}:${f.fk_target_field_id ?? ""}:${f.fk_target_table_id ?? ""}`,
         )
         .join("|");
-      return `${node.table_id}:${node.name}:${node.display_name}:${node.description ?? ""}:${getOwnerKey(node.owner)}:${node.schema ?? ""}:${fieldKey}`;
+      return `${node.table_id}:${node.name}:${node.display_name}:${node.description ?? ""}:${getOwnerKey(node.owner)}:${node.schema ?? ""}:${node.visibility_type ?? ""}:${fieldKey}`;
     })
     .sort()
     .join(";");

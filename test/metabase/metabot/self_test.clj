@@ -15,11 +15,14 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [ring.adapter.jetty :as jetty]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;;; provider resolution tests
 

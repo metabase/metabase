@@ -187,18 +187,24 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           className={S.gridLabelInput}
         />
 
-        <TransformLink table={table} />
+        {table.data_source === "metabase-transform" && (
+          <TransformLink table={table} />
+        )}
       </div>
     </TableSectionGroup>
   );
 }
 function TransformLink({ table }: { table: Table }) {
   const { transform } = table;
-  const shouldShowTransform =
-    transform !== undefined && table.data_source === "metabase-transform";
 
-  if (!shouldShowTransform) {
-    return null;
+  if (!transform) {
+    return (
+      <Box
+        c="error"
+        className={S.transformLink}
+        fz="sm"
+      >{t`Transform does not exist anymore`}</Box>
+    );
   }
 
   return (

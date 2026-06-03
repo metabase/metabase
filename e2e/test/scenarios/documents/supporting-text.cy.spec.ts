@@ -2,6 +2,7 @@ import {
   DOCUMENT_WITH_SUPPORTING_TEXT,
   DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
   DOCUMENT_WITH_TWO_CARDS,
+  DOCUMENT_WITH_TWO_LIGHTWEIGHT_CARDS,
 } from "e2e/support/document-initial-data";
 
 const { H } = cy;
@@ -15,7 +16,7 @@ describe("documents supporting text", () => {
   it("should add supporting text to a standalone cardEmbed", () => {
     H.createDocument({
       name: "Supporting Text Test Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
+      document: DOCUMENT_WITH_TWO_LIGHTWEIGHT_CARDS,
       collection_id: null,
       alias: "document",
       idAlias: "documentId",
@@ -24,9 +25,9 @@ describe("documents supporting text", () => {
     H.visitDocument("@documentId");
 
     // Wait for cards to load
-    H.getDocumentCard("Orders")
+    H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
       .should("be.visible")
-      .findByTestId("table-root")
+      .findByTestId("visualization-root")
       .should("exist");
 
     // Verify no supporting text or flexContainer exists initially
@@ -36,7 +37,7 @@ describe("documents supporting text", () => {
     H.documentContent().find('[data-type="flexContainer"]').should("not.exist");
 
     // Open the card menu and click "Add supporting text"
-    H.openDocumentCardMenu("Orders");
+    H.openDocumentCardMenu("Orders, Count, Grouped by Created At (year)");
     H.popover().findByText("Add supporting text").click();
 
     // Verify a flexContainer was created
@@ -61,7 +62,9 @@ describe("documents supporting text", () => {
       });
 
     // Verify the card is still there
-    H.getDocumentCard("Orders").should("exist");
+    H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
+      "exist",
+    );
   });
 
   it("should add supporting text to a cardEmbed in a flexContainer", () => {

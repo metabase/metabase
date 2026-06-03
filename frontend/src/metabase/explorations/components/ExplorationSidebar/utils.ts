@@ -46,6 +46,7 @@ export interface ExplorationTreeDocument {
   id: DocumentId;
   status: ExplorationQueryStatus;
   parent_id: string;
+  isAiSummary: boolean;
 }
 
 export type ExplorationTreeItem =
@@ -241,6 +242,7 @@ function getExplorationDocumentTree(
           id: document.id,
           status: getExplorationDocumentStatus(document.id, thread),
           parent_id: "documents",
+          isAiSummary: document.id === aiSummaryId,
         },
       };
     });

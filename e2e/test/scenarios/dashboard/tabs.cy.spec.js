@@ -572,7 +572,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.wait("@firstTabQuery").then((r) => {
       firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
+        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (first tab query)
       });
       secondQuestion().then((r) => {
         expect(r.view_count).to.equal(1); // 1 (previously)
@@ -584,7 +584,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@secondTabQuery").then((r) => {
       firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 3 (previously)
+        expect(r.view_count).to.equal(2); // 2 (previously)
       });
       secondQuestion().then((r) => {
         expect(r.view_count).to.equal(2); // 1 (previously) + 1 (second tab query)

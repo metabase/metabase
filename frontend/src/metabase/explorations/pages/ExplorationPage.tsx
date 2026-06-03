@@ -20,11 +20,11 @@ import type {
   ExplorationQueryGroupId,
   ExplorationThread,
   Timeline,
-  TimelineEvent,
   TimelineId,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
+import { trackExplorationAISummaryOpened } from "../analytics";
 import {
   ExplorationDocument as ExplorationDocumentComponent,
   type ExplorationDocumentWithIsAiSummary,
@@ -237,8 +237,10 @@ export function ExplorationPage({
           ? {}
           : {
               actionLabel: t`View`,
-              action: () =>
-                setSelectedEntityId({ type: "document", id: autoDoc.id }),
+              action: () => {
+                trackExplorationAISummaryOpened(exploration.id);
+                setSelectedEntityId({ type: "document", id: autoDoc.id });
+              },
             }),
       });
     }
@@ -319,16 +321,6 @@ export function ExplorationPage({
     }
     return getMostInterestingTimelineId(selectedQueries, availableTimelineIds);
   }, [selectedGroup, location.query, selectedQueries, availableTimelineIds]);
-
-  const timelineEvents: TimelineEvent[] = useMemo(() => {
-    if (selectedTimelineId == null) {
-      return [];
-    }
-    return (
-      availableTimelines.find((timeline) => timeline.id === selectedTimelineId)
-        ?.events ?? []
-    );
-  }, [availableTimelines, selectedTimelineId]);
 
   const handleSelectTimelineId = useCallback(
     (timelineId: TimelineId | null) => {
@@ -411,13 +403,13 @@ export function ExplorationPage({
           // the lifetime of a single mount; remounting on group switch
           // guarantees that.
           key={selectedGroup.group.id}
+          explorationId={exploration.id}
           group={selectedGroup.group}
           queries={selectedGroup.queries}
           explorationThread={selectedGroup.thread}
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={handleSelectTimelineId}
-          timelineEvents={timelineEvents}
           interestingTimelineIds={interestingTimelineIds}
         />
       )}

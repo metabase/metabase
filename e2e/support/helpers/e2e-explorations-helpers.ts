@@ -3,10 +3,21 @@ import type { StaticResponse } from "cypress/types/net-stubbing";
 import { updateSetting } from "./api";
 import { activateToken } from "./e2e-token-helpers";
 
+const MOCK_LLM_PORT = 6125;
+const MOCK_LLM_RESPONSE = "Hello from Explorations!";
+
 export function enableExplorations(): void {
   activateToken("pro-self-hosted");
   updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
   updateSetting("metabot-enabled?", true);
+  cy.task("startMockLlmServer", {
+    port: MOCK_LLM_PORT,
+    responseText: MOCK_LLM_RESPONSE,
+  });
+  updateSetting(
+    "llm-anthropic-api-base-url",
+    `http://localhost:${MOCK_LLM_PORT}`,
+  );
 }
 
 export function explorationsMetabotPromptInput(): Cypress.Chainable<

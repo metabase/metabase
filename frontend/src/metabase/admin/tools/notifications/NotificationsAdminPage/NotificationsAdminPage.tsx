@@ -35,6 +35,12 @@ import { NotificationsFilters } from "../NotificationsFilters";
 import { NotificationsSearchInput } from "../NotificationsSearchInput";
 import { NotificationsTable } from "../NotificationsTable";
 import { NotificationsTabs } from "../NotificationsTabs";
+import {
+  trackAlertsManagementAlertOpened,
+  trackAlertsManagementAlertsDeleted,
+  trackAlertsManagementOwnerChanged,
+  trackAlertsManagementSearchPerformed,
+} from "../analytics";
 
 import {
   DEFAULT_SORT_COLUMN,
@@ -180,7 +186,15 @@ export const NotificationsAdminPage = ({
   }, [notifications]);
 
   const handleRowClick = (id: NotificationId) => {
+    trackAlertsManagementAlertOpened(id, "table_row");
     dispatch(push(Urls.adminToolsNotificationDetail(id)));
+  };
+
+  const handleSearchChange = (query: string) => {
+    if (query !== "") {
+      trackAlertsManagementSearchPerformed();
+    }
+    patchUrlState({ query, page: 0 });
   };
 
   const handleSidebarClose = () => {
@@ -188,13 +202,17 @@ export const NotificationsAdminPage = ({
   };
 
   const deleteNotifications = useCallback(
-    async (notificationIds: NotificationId[]) => {
+    async (
+      notificationIds: NotificationId[],
+      triggeredFrom: "bulk_action_bar" | "detail_sidebar",
+    ) => {
       const count = notificationIds.length;
       try {
         await bulkAction({
           notification_ids: notificationIds,
           action: "archive",
         }).unwrap();
+        trackAlertsManagementAlertsDeleted(triggeredFrom, "success", count);
         dispatch(
           addUndo({
             message:
@@ -209,6 +227,7 @@ export const NotificationsAdminPage = ({
           dispatch(push(Urls.adminToolsNotifications()));
         }
       } catch {
+        trackAlertsManagementAlertsDeleted(triggeredFrom, "failure", count);
         dispatch(
           addUndo({
             icon: "warning",
@@ -229,7 +248,10 @@ export const NotificationsAdminPage = ({
       confirmButtonProps: { color: "danger" },
       size: "md",
       onConfirm: () =>
-        deleteNotifications(selectedNotifications.map((n) => n.id)),
+        deleteNotifications(
+          selectedNotifications.map((n) => n.id),
+          "bulk_action_bar",
+        ),
     });
   }, [deleteNotifications, selectedNotifications, showConfirm]);
 
@@ -240,7 +262,7 @@ export const NotificationsAdminPage = ({
         message: t`Recipients will stop receiving this alert.`,
         confirmButtonText: t`Delete`,
         confirmButtonProps: { color: "danger" },
-        onConfirm: () => deleteNotifications([id]),
+        onConfirm: () => deleteNotifications([id], "detail_sidebar"),
       });
     },
     [deleteNotifications, showConfirm],
@@ -255,6 +277,7 @@ export const NotificationsAdminPage = ({
           action: "change-creator",
           creator_id: creatorId,
         }).unwrap();
+        trackAlertsManagementOwnerChanged("success", count);
         dispatch(
           addUndo({
             message:
@@ -266,6 +289,7 @@ export const NotificationsAdminPage = ({
         clearSelected();
         setIsChangeOwnerOpened(false);
       } catch {
+        trackAlertsManagementOwnerChanged("failure", count);
         dispatch(
           addUndo({
             icon: "warning",
@@ -327,7 +351,7 @@ export const NotificationsAdminPage = ({
         <NotificationsSearchInput
           value={urlState.query}
           isLoading={isFetching}
-          onChange={(query) => patchUrlState({ query, page: 0 })}
+          onChange={handleSearchChange}
         />
         <NotificationsFilters state={urlState} onChange={patchUrlState} />
       </Flex>

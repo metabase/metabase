@@ -365,36 +365,39 @@ export function waitForSyncToFinish({
 
   cy.wait(SYNC_RETRY_DELAY_MS);
 
-  cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
-    if (!body.tables.length) {
-      return waitForSyncToFinish({
-        iteration: ++iteration,
-        dbId,
-        tableName,
-        tableAlias,
-      });
-    } else if (tableName) {
-      const table = body.tables.find(
-        (table) =>
-          table.name === tableName && table.initial_sync_status === "complete",
-      );
-
-      if (!table) {
+  return cy
+    .request("GET", `/api/database/${dbId}/metadata`)
+    .then(({ body }) => {
+      if (!body.tables.length) {
         return waitForSyncToFinish({
           iteration: ++iteration,
           dbId,
           tableName,
           tableAlias,
         });
-      }
+      } else if (tableName) {
+        const table = body.tables.find(
+          (table) =>
+            table.name === tableName &&
+            table.initial_sync_status === "complete",
+        );
 
-      if (tableAlias) {
-        cy.wrap(table).as(tableAlias);
-      }
+        if (!table) {
+          return waitForSyncToFinish({
+            iteration: ++iteration,
+            dbId,
+            tableName,
+            tableAlias,
+          });
+        }
 
-      return null;
-    }
-  });
+        if (tableAlias) {
+          cy.wrap(table).as(tableAlias);
+        }
+
+        return null;
+      }
+    });
 }
 
 export function resyncDatabase({
@@ -405,7 +408,7 @@ export function resyncDatabase({
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
-  waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
+  return waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
 }
 
 export function addSqliteDatabase(displayName = "sqlite") {

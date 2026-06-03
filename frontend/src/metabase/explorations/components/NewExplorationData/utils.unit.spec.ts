@@ -1,6 +1,13 @@
+import type {
+  ExplorationDimensionGroup,
+  MetricDimension,
+} from "metabase-types/api";
 import { createMockMetricDimension } from "metabase-types/api/mocks/metric";
 
-import { groupDimensionsByGroupSource } from "./utils";
+import {
+  filterDimensionGroupsBySearch,
+  groupDimensionsByGroupSource,
+} from "./utils";
 
 const dimOrdersCreatedAt = createMockMetricDimension({
   id: "orders.created_at",
@@ -131,5 +138,62 @@ describe("groupDimensionsByGroupSource", () => {
       .filter((r) => r.type === "header")
       .map((r) => (r.type === "header" ? r.label : ""));
     expect(headers).toEqual(["Orders", "Accounts"]);
+  });
+});
+
+describe("filterDimensionGroupsBySearch", () => {
+  function makeGroup(
+    name: string,
+    dimensions: MetricDimension[] = [],
+  ): ExplorationDimensionGroup {
+    return { name, dimension_interestingness: null, dimensions };
+  }
+
+  const country = makeGroup("Country", [
+    createMockMetricDimension({ id: "g1", display_name: "Country" }),
+  ]);
+  const plan = makeGroup("Plan", [
+    createMockMetricDimension({ id: "g2", display_name: "Plan" }),
+  ]);
+
+  it("returns every group untouched for an empty / whitespace query", () => {
+    const groups = [country, plan];
+    expect(filterDimensionGroupsBySearch(groups, "")).toBe(groups);
+    expect(filterDimensionGroupsBySearch(groups, "   ")).toBe(groups);
+  });
+
+  it("keeps only groups whose name matches the query (case-insensitive)", () => {
+    expect(filterDimensionGroupsBySearch([country, plan], "COUN")).toEqual([
+      country,
+    ]);
+  });
+
+  it("matches on a contained dimension's display name even when the group name doesn't", () => {
+    const orders = makeGroup("Orders", [
+      createMockMetricDimension({ id: "d1", display_name: "Quantity" }),
+      createMockMetricDimension({ id: "d2", display_name: "Created At" }),
+    ]);
+
+    expect(filterDimensionGroupsBySearch([orders, plan], "created")).toEqual([
+      orders,
+    ]);
+  });
+
+  it("matches on a dimension's source-group display name", () => {
+    const sourced = makeGroup("Total", [
+      createMockMetricDimension({
+        id: "s1",
+        display_name: "Total",
+        group: { id: "grp", type: "main", display_name: "Products" },
+      }),
+    ]);
+
+    expect(filterDimensionGroupsBySearch([sourced, plan], "produc")).toEqual([
+      sourced,
+    ]);
+  });
+
+  it("returns [] when nothing matches", () => {
+    expect(filterDimensionGroupsBySearch([country, plan], "zzz")).toEqual([]);
   });
 });

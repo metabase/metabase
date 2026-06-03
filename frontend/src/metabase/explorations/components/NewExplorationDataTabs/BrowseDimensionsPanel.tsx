@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useGetExplorationDataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type {
   ExplorationNavigation,
   ExplorationSelection,
@@ -19,6 +20,7 @@ import type {
 } from "metabase-types/api";
 
 import { DimensionList } from "../NewExplorationData/DimensionList";
+import { filterDimensionGroupsBySearch } from "../NewExplorationData/utils";
 
 import S from "./NewExplorationLeftTabs.module.css";
 
@@ -59,8 +61,12 @@ export function BrowseDimensionsPanel({
   }, [navigation.activeBlockId, blocks]);
 
   const allGroups = useMemo<ExplorationDimensionGroup[]>(
-    () => response?.dimension_groups ?? [],
-    [response],
+    () =>
+      filterDimensionGroupsBySearch(
+        response?.dimension_groups ?? [],
+        debouncedSearch,
+      ),
+    [response, debouncedSearch],
   );
 
   const visibleGroups = useMemo(() => {
@@ -157,6 +163,7 @@ export function BrowseDimensionsPanel({
                   addDimensionToMetricBlock(activeMetricBlock.id, dimension);
                 }
               } else {
+                trackExplorationPlanEdited("manual", "dimensions");
                 toggleDimension(dimension, {
                   group: groupByRowId.get(dimension.id) ?? null,
                   metricsByDimension,

@@ -57,7 +57,7 @@ export const TopBar = forwardRef<HTMLDivElement, PropsWithChildren>(
 
     const leftActions: ReactNode[] = [];
     const rightActions: ReactNode[] = [];
-    Children.forEach(children, (child) => {
+    Children.toArray(children).forEach((child) => {
       if (isValidElement(child) && child.type === ParametersList) {
         leftActions.push(child);
       } else {

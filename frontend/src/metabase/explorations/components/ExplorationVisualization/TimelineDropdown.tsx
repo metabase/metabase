@@ -1,18 +1,20 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import { trackExplorationTimelineChanged } from "metabase/explorations/analytics";
 import {
   getAdjacentById,
   shouldIgnoreKeyboardEvent,
 } from "metabase/explorations/utils";
 import { Group, Icon, Select, Text } from "metabase/ui";
-import type { Timeline, TimelineId } from "metabase-types/api";
+import type { ExplorationId, Timeline, TimelineId } from "metabase-types/api";
 
 import { PotentiallyInterestingMarker } from "../PotentiallyInterestingMarker";
 
 import S from "./TimelineDropdown.module.css";
 
 interface TimelineDropdownProps {
+  explorationId: ExplorationId;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
@@ -20,6 +22,7 @@ interface TimelineDropdownProps {
 }
 
 export function TimelineDropdown({
+  explorationId,
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
@@ -40,13 +43,19 @@ export function TimelineDropdown({
         direction,
       );
       if (nextTimeline != null && nextTimeline.id !== selectedTimelineId) {
+        trackExplorationTimelineChanged(explorationId, "keyboard");
         onSelectTimelineId(nextTimeline.id);
         event.preventDefault();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [availableTimelines, selectedTimelineId, onSelectTimelineId]);
+  }, [
+    availableTimelines,
+    explorationId,
+    selectedTimelineId,
+    onSelectTimelineId,
+  ]);
 
   return (
     <Select<string | null>
@@ -56,9 +65,10 @@ export function TimelineDropdown({
         label: timeline.name,
       }))}
       value={selectedTimelineId == null ? null : String(selectedTimelineId)}
-      onChange={(value) =>
-        onSelectTimelineId(value == null ? null : Number(value))
-      }
+      onChange={(value) => {
+        trackExplorationTimelineChanged(explorationId, "click");
+        onSelectTimelineId(value == null ? null : Number(value));
+      }}
       placeholder={t`Select timeline`}
       clearable
       w="16rem"

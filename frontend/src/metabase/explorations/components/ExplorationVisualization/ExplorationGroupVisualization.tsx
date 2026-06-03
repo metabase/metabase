@@ -9,12 +9,12 @@ import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import type {
+  ExplorationId,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationThread,
   SingleSeries,
   Timeline,
-  TimelineEvent,
   TimelineId,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
@@ -25,13 +25,13 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
 import { buildSeriesGroups } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
+  explorationId: ExplorationId;
   group: ExplorationQueryGroup;
   queries: ExplorationQuery[];
   explorationThread: ExplorationThread;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
-  timelineEvents: TimelineEvent[];
   interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
@@ -144,13 +144,13 @@ function ExplorationGroupVisualizationBody(
 }
 
 function ExplorationGroupVisualizationChart({
+  explorationId,
   group,
   queries,
   explorationThread,
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
-  timelineEvents,
   interestingTimelineIds,
 }: ExplorationGroupVisualizationProps) {
   // One RTKQ hook per query. ESLint complains about hooks-in-a-loop;
@@ -189,12 +189,13 @@ function ExplorationGroupVisualizationChart({
         queries,
         datasets: filteredDatasets,
         queryColors,
+        selectedTimelineId,
       });
       // datasets is reconstructed every render but its identity-stable
       // entries make this safe; including the array directly would cause
       // an unstable dep warning.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [queries, queryColors, ...datasets]);
+    }, [queries, queryColors, selectedTimelineId, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
     return seriesGroups?.some((group) => group.isTimeseries);
@@ -213,6 +214,7 @@ function ExplorationGroupVisualizationChart({
     <>
       <ExplorationVisualizationHeader
         name={groupName}
+        explorationId={explorationId}
         explorationThread={explorationThread}
         availableTimelines={availableTimelines}
         selectedTimelineId={selectedTimelineId}
@@ -232,7 +234,6 @@ function ExplorationGroupVisualizationChart({
             <ExplorationCartesianChart
               key={series[0].card.id}
               series={series}
-              timelineEvents={timelineEvents}
               stackCount={stackCount}
               label={chartLabel}
             />
@@ -259,14 +260,12 @@ function ExplorationGroupVisualizationChart({
 
 interface ExplorationCartesianChartProps {
   series: SingleSeries[];
-  timelineEvents: TimelineEvent[];
   stackCount?: number;
   label?: string;
 }
 
 function ExplorationCartesianChart({
   series,
-  timelineEvents,
   stackCount,
   label,
 }: ExplorationCartesianChartProps) {
@@ -281,11 +280,7 @@ function ExplorationCartesianChart({
     >
       {label && <Text size="lg">{label}</Text>}
       <Box flex={1} mih={0}>
-        <Visualization
-          rawSeries={series}
-          timelineEvents={timelineEvents}
-          className={S.chart}
-        />
+        <Visualization rawSeries={series} className={S.chart} />
       </Box>
     </Stack>
   );

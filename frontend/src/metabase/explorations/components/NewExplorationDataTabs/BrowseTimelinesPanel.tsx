@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { Box, Icon, Stack, TextInput } from "metabase/ui";
 
@@ -57,7 +58,10 @@ export function BrowseTimelinesPanel({ selection }: BrowseTimelinesPanelProps) {
           <TimelineList
             timelines={filteredTimelines}
             selectedIds={selectedIds}
-            onToggle={toggleTimeline}
+            onToggle={(timeline) => {
+              trackExplorationPlanEdited("manual", "timelines");
+              toggleTimeline(timeline);
+            }}
           />
         </LoadingAndErrorWrapper>
       </Box>

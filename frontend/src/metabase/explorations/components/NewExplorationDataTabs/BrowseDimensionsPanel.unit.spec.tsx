@@ -230,24 +230,22 @@ describe("BrowseDimensionsPanel", () => {
     );
   });
 
-  it("filters the dimension list down to the matching metric's dimensions", async () => {
+  it("applies FE-side search to drop dimensions the BE dragged along", async () => {
     setup();
 
     await screen.findByText("Customer size");
 
-    // The search hits the metric query — typing a metric name narrows
-    // the list to that metric's dimensions ("Churn rate" uses Plan +
-    // Country, so "Customer size" from the revenue metric drops out).
     await userEvent.type(
       screen.getByPlaceholderText("Search for a dimension"),
-      "churn",
+      "plan",
     );
 
+    // The refetch shows a loading spinner that hides the whole list
     await waitFor(
       () => {
-        expect(screen.queryByText("Customer size")).not.toBeInTheDocument();
         expect(screen.getByText("Plan")).toBeInTheDocument();
-        expect(screen.getByText("Country")).toBeInTheDocument();
+        expect(screen.queryByText("Customer size")).not.toBeInTheDocument();
+        expect(screen.queryByText("Country")).not.toBeInTheDocument();
       },
       { timeout: 3000 },
     );

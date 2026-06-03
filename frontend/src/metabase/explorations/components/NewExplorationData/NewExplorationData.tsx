@@ -7,6 +7,7 @@ import { t } from "ttag";
 import { useCreateExplorationMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { getDimensionIcon } from "metabase/common/utils/columns";
+import { trackExplorationCreated } from "metabase/explorations/analytics";
 import type {
   DimensionBlock,
   ExplorationBlock,
@@ -143,6 +144,7 @@ export function NewExplorationData({
     );
     try {
       const exploration = await createExploration(request).unwrap();
+      trackExplorationCreated(exploration.id);
       dispatch(push(Urls.exploration(exploration.id)));
     } catch (error) {
       console.error(error);
