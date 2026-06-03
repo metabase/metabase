@@ -4,6 +4,7 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.api :as explorations.api]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration-query-result :as eqr]
@@ -634,6 +635,79 @@
         (is (= 1 (count (:threads resp))))
         (is (zero? (count (-> resp :threads first :metrics))))
         (is (zero? (count (-> resp :threads first :queries))))))))
+
+(deftest exploration-restart-reruns-existing-thread-test
+  (testing "POST /:id/restart re-runs the exploration's existing thread in place, keeping selections"
+    (mt/with-temp [:model/User u {:email "restart@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))
+                   :model/Timeline tl {:creator_id (:id u)}]
+      (let [body      {:name         "Why is revenue down"
+                       :prompt       "break down by region"
+                       :metrics      [{:card_id (:id metric)
+                                       :dimension_mappings [{:dimension_id "d1"
+                                                             :table_id (mt/id :venues)
+                                                             :target ["field" {} (mt/id :venues :price)]}]}]
+                       :dimensions   [{:dimension_id "d1" :display_name "Price"
+                                       :effective_type "type/Number"}]
+                       :timeline_ids [(:id tl)]}
+            created   (create-exploration! u body)
+            expl-id   (:id created)
+            thread    (-> created :threads first)
+            orig-tid  (:id thread)]
+        (is (pos? (count (:queries thread))) "the first run materialized queries")
+        ;; Simulate a finished run so we can prove restart clears the terminal-state gates.
+        (t2/update! :model/ExplorationThread orig-tid
+                    {:query_plan_started_at (t/offset-date-time)
+                     :analysis_started_at   (t/offset-date-time)
+                     :completed_at          (t/offset-date-time)})
+        (let [resp     (mt/user-http-request u :post 200 (format "exploration/%d/restart" expl-id))
+              threads  (:threads resp)
+              rerun    (first threads)]
+          (is (= 1 (count threads)) "restart does NOT add a thread")
+          (is (= orig-tid (:id rerun)) "it re-runs the same thread")
+          (is (some? (:started_at rerun)) "started_at re-stamped so the planner re-claims it")
+          (is (nil? (:query_plan_started_at rerun)) "plan-claim gate cleared")
+          (is (nil? (:analysis_started_at rerun)) "analysis-claim gate cleared")
+          (is (nil? (:completed_at rerun)) "completion gate cleared")
+          (is (empty? (:queries rerun)) "previously generated queries are wiped")
+          (testing "selections are preserved"
+            (is (= 1 (count (:metrics rerun))))
+            (is (= "d1" (-> rerun :dimensions first :dimension_id)))
+            (is (= 1 (count (:dimensions rerun))))
+            (is (= 1 (count (:timelines rerun)))))
+          (testing "the planner regenerates queries for the same thread"
+            (query-plan/generate-query-plan! orig-tid)
+            (let [hydrated (mt/user-http-request u :get 200 (format "exploration/%d" expl-id))
+                  planned  (-> hydrated :threads first)]
+              (is (= orig-tid (:id planned)))
+              (is (pos? (count (:queries planned)))))))))))
+
+(deftest exploration-restart-resets-ai-summary-doc-test
+  (testing "POST /:id/restart swaps the AI Summary doc back to the Analysis-underway placeholder"
+    (with-ai-summary-available
+      (mt/with-temp [:model/User u {:email "rs-summary@example.com"}]
+        (let [created (mt/user-http-request u :post 200 "exploration" {:name "x"})
+              expl-id (:id created)
+              doc-id  (-> created :threads first :ai_summary_document_id)]
+          (is (some? doc-id) "an AI Summary placeholder doc is created up-front")
+          ;; Simulate a finished run: overwrite the placeholder with a real summary.
+          (t2/update! :model/Document doc-id
+                      {:document {:type "doc"
+                                  :content [{:type "paragraph"
+                                             :content [{:type "text" :text "Old summary"}]}]}})
+          (mt/user-http-request u :post 200 (format "exploration/%d/restart" expl-id))
+          (is (= (ai-summary/placeholder-pm-doc)
+                 (t2/select-one-fn :document :model/Document :id doc-id))
+              "the doc body is reset to the placeholder"))))))
+
+(deftest exploration-restart-permissions-test
+  (testing "Only a user with write access can restart an exploration"
+    (mt/with-temp [:model/User owner {:email "rs-owner@example.com"}
+                   :model/User other {:email "rs-other@example.com"}]
+      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration" {:name "private"})]
+        (mt/user-http-request other :post 403 (format "exploration/%d/restart" eid))
+        (let [resp (mt/user-http-request owner :post 200 (format "exploration/%d/restart" eid))]
+          (is (= 1 (count (:threads resp))) "still a single thread after restart"))))))
 
 (deftest exploration-get-permissions-test
   (testing "Only the creator (or a superuser) can GET an exploration"
