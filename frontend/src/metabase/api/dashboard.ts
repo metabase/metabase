@@ -1,3 +1,5 @@
+import { defaultSerializeQueryArgs } from "@reduxjs/toolkit/query/react";
+
 import { PLUGIN_API } from "metabase/plugins";
 import { DashboardSchema, QueryMetadataSchema } from "metabase/schema";
 import type {
@@ -73,11 +75,20 @@ export const dashboardApi = Api.injectEndpoints({
         onQueryStarted: hydrateMetadataStore([DashboardSchema]),
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
-        query: ({ id, ignore_error }) => ({
+        query: ({ id, ignore_error, dashboard_load_id }) => ({
           method: "GET",
           url: `/api/dashboard/${id}`,
+          params: dashboard_load_id ? { dashboard_load_id } : undefined,
           noEvent: ignore_error,
         }),
+        // `dashboard_load_id` is a per-load correlation id, not part of the
+        // resource identity — exclude it from the cache key so the dashboard
+        // page (which passes one) shares a cache entry, and a single request,
+        // with callers that don't (e.g. the nav sidebar's useGetDashboardQuery).
+        serializeQueryArgs: ({
+          queryArgs: { dashboard_load_id: _dashboard_load_id, ...queryArgs },
+          ...rest
+        }) => defaultSerializeQueryArgs({ queryArgs, ...rest }),
         providesTags: (dashboard) =>
           dashboard ? provideDashboardTags(dashboard) : [],
         onQueryStarted: hydrateMetadataStore(DashboardSchema),

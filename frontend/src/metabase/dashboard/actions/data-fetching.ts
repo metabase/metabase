@@ -793,19 +793,33 @@ export const fetchDashboard = createAsyncThunk(
         result = expandInlineDashboard(dashId);
         dashId = result.id = String(dashId);
       } else {
-        const [response] = await Promise.all([
-          DashboardApi.get(
-            { dashId: dashId, dashboard_load_id: dashboardLoadId },
-            { signal: fetchDashboardCancellation.signal },
-          ),
-          runRtkEndpoint(
+        // dashboard_load_id`is excluded from the cache key, so the requests dedupe
+        // `forceRefetch: clearCache` preserves the fresh-load default.
+        const dashboardRequest = dispatch(
+          dashboardApi.endpoints.getDashboard.initiate(
             { id: dashId, dashboard_load_id: dashboardLoadId },
-            dispatch,
-            dashboardApi.endpoints.getDashboardQueryMetadata,
-            { forceRefetch: false },
+            { forceRefetch: clearCache },
           ),
-        ]);
-        result = response;
+        );
+        // Preserve the abort-previous-fetch behavior (metabase#35959): when a
+        // newer fetchDashboard aborts the shared controller, abort this request.
+        fetchDashboardCancellation.signal.addEventListener("abort", () =>
+          dashboardRequest.abort(),
+        );
+        try {
+          const [response] = await Promise.all([
+            dashboardRequest.unwrap(),
+            runRtkEndpoint(
+              { id: dashId, dashboard_load_id: dashboardLoadId },
+              dispatch,
+              dashboardApi.endpoints.getDashboardQueryMetadata,
+              { forceRefetch: false },
+            ),
+          ]);
+          result = response;
+        } finally {
+          dashboardRequest.unsubscribe?.();
+        }
       }
 
       fetchDashboardCancellation = null;

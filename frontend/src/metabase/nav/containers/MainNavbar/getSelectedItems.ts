@@ -1,8 +1,7 @@
 import { coerceCollectionId } from "metabase/collections/utils";
-import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
-import type { Collection } from "metabase-types/api";
+import type { Collection, Dashboard } from "metabase-types/api";
 
 import type { SelectedItem } from "./types";
 
@@ -13,7 +12,7 @@ type Opts = {
     pageId?: string;
   };
   question?: Question;
-  dashboard?: StoreDashboard;
+  dashboard?: Dashboard;
   collection?: Collection;
 };
 
@@ -64,7 +63,7 @@ export function isMetricPath(pathname: string): boolean {
   return pathname.startsWith("/metric");
 }
 
-function isDashboardPath(pathname: string): boolean {
+export function isDashboardPath(pathname: string): boolean {
   return (
     pathname.startsWith("/dashboard") &&
     // `/${resource}/entity/${entity_id}` paths should only do a redirect, without triggering any other logic

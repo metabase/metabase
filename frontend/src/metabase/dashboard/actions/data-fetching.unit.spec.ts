@@ -7,7 +7,7 @@ import {
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { Api } from "metabase/api";
+import { Api, dashboardApi } from "metabase/api";
 import type { DashboardState, State } from "metabase/redux/store";
 import {
   createMockDashboardState,
@@ -114,6 +114,24 @@ describe("fetchDashboard", () => {
         },
       },
     });
+  });
+
+  it("shares a single dashboard request with useGetDashboardQuery callers (no double fetch)", async () => {
+    const store = setup({ dashboards: [createMockDashboard({ id: 1 })] });
+
+    // Simulate the dashboard page and the nav sidebar loading concurrently:
+    // the page passes a dashboard_load_id, the sidebar (useGetDashboardQuery)
+    // does not. They should dedupe onto one GET /api/dashboard/1.
+    const pageFetch = store.dispatch(
+      fetchDashboard({ dashId: 1, queryParams: {}, options: {} }),
+    );
+    const navFetch = store.dispatch(
+      dashboardApi.endpoints.getDashboard.initiate({ id: 1 }),
+    );
+
+    await Promise.all([pageFetch, navFetch.unwrap()]);
+
+    expect(fetchMock.callHistory.calls("path:/api/dashboard/1")).toHaveLength(1);
   });
 
   it("should not cancel an in-flight request when re-dispatched with the same parameters (#70534)", async () => {
