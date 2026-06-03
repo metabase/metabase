@@ -239,7 +239,6 @@ let totalRewritten = 0;
 for (const f of files) {
   const inP = join(inDir, f);
   const outP = inDir === outDir ? inP : join(outDir, f);
-  // Log before processing so a hang points at the exact culprit file.
   console.error(
     `fix-junit-hooks: processing ${f} (${statSync(inP).size} bytes)`,
   );
