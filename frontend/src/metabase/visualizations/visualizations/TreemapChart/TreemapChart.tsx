@@ -47,6 +47,12 @@ import {
 // width is the rendered tile width minus this on both sides.
 const LABEL_PADDING = TREEMAP_CHART_STYLE.nodeLabels.position[0];
 
+// Below this dashboard-grid size the group header chips are too cramped to be
+// legible, so parent labels are hidden regardless of the setting. Only enforced
+// when `gridSize` is present (dashboard/document); the query builder is unbounded.
+const PARENT_LABEL_MIN_GRID_WIDTH = 12;
+const PARENT_LABEL_MIN_GRID_HEIGHT = 8;
+
 export const TreemapChart = ({
   rawSeries,
   settings,
@@ -54,6 +60,7 @@ export const TreemapChart = ({
   onVisualizationClick,
   isDashboard,
   isDocument,
+  gridSize,
 }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -98,6 +105,14 @@ export const TreemapChart = ({
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
+  // Cards smaller than 12×8 grid cells can't fit legible group headers, so hide
+  // parent labels there even when the setting is on. Unbounded contexts (the
+  // query builder) have no `gridSize` and are never restricted.
+  const fitsParentLabels =
+    gridSize == null ||
+    (gridSize.width >= PARENT_LABEL_MIN_GRID_WIDTH &&
+      gridSize.height >= PARENT_LABEL_MIN_GRID_HEIGHT);
+
   const option = useMemo(() => {
     if (!chartData) {
       return null;
@@ -107,7 +122,8 @@ export const TreemapChart = ({
       tree,
       colors,
       isDrilled: viewRootId != null,
-      showParentLabels: settings["treemap.show_parent_labels"] ?? true,
+      showParentLabels:
+        (settings["treemap.show_parent_labels"] ?? true) && fitsParentLabels,
       showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
       labelLayout,
       renderingContext,
@@ -125,7 +141,14 @@ export const TreemapChart = ({
         treemapColumns.grouping.column.display_name,
       ),
     };
-  }, [chartData, settings, viewRootId, labelLayout, renderingContext]);
+  }, [
+    chartData,
+    settings,
+    viewRootId,
+    labelLayout,
+    renderingContext,
+    fitsParentLabels,
+  ]);
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
