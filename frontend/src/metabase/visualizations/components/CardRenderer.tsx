@@ -1,24 +1,38 @@
-/* eslint-disable react/prop-types */
-import PropTypes from "prop-types";
+import type { CSSProperties, ForwardedRef } from "react";
 import { Component, forwardRef } from "react";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
+import type { Series } from "metabase-types/api";
 
-class CardRendererInner extends Component {
-  static propTypes = {
-    className: PropTypes.string,
-    series: PropTypes.array.isRequired,
-    renderer: PropTypes.func.isRequired,
-    onRenderError: PropTypes.func.isRequired,
-    isEditing: PropTypes.bool,
-    isDashboard: PropTypes.bool,
+export type CardRendererProps = {
+  className?: string;
+  style?: CSSProperties;
+  series: Series;
+  renderer: (
+    element: HTMLElement,
+    props: CardRendererProps,
+  ) => (() => void) | void;
+  onRenderError: (error: unknown) => void;
+  isEditing?: boolean;
+  isDashboard?: boolean;
+};
+
+type ExplicitSizeState = {
+  width: number | null;
+  height: number | null;
+};
+
+type CardRendererInnerProps = CardRendererProps &
+  ExplicitSizeState & {
+    forwardedRef?: ForwardedRef<HTMLDivElement>;
   };
 
-  containerRef = null;
+class CardRendererInner extends Component<CardRendererInnerProps> {
+  containerRef: HTMLDivElement | null = null;
+  _deregister: (() => void) | void = undefined;
 
-  shouldComponentUpdate(nextProps) {
-    // a chart only needs re-rendering when the result itself changes OR the chart type is different
+  shouldComponentUpdate(nextProps: CardRendererInnerProps) {
     const sameSize =
       this.props.width === nextProps.width &&
       this.props.height === nextProps.height;
@@ -40,9 +54,8 @@ class CardRendererInner extends Component {
 
   _deregisterChart() {
     if (this._deregister) {
-      // Prevents memory leak
       this._deregister();
-      delete this._deregister;
+      this._deregister = undefined;
     }
   }
 
@@ -57,23 +70,22 @@ class CardRendererInner extends Component {
       return;
     }
 
-    // deregister previous chart:
     this._deregisterChart();
 
-    // reset the DOM:
     while (parent.firstChild) {
       parent.removeChild(parent.firstChild);
     }
 
-    // create a new container element
     const element = document.createElement("div");
     parent.appendChild(element);
 
     try {
       this._deregister = this.props.renderer(element, this.props);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      this.props.onRenderError(err.message || err);
+      this.props.onRenderError(
+        err instanceof Error ? err.message : (err ?? undefined),
+      );
     }
   }
 
@@ -85,11 +97,12 @@ class CardRendererInner extends Component {
         ref={(element) => {
           this.containerRef = element;
 
-          if (this.props.forwardedRef) {
-            if (typeof this.props.forwardedRef === "function") {
-              this.props.forwardedRef(element);
+          const fwd = this.props.forwardedRef;
+          if (fwd) {
+            if (typeof fwd === "function") {
+              fwd(element);
             } else {
-              this.props.forwardedRef.current = element;
+              fwd.current = element;
             }
           }
         }}
@@ -98,13 +111,14 @@ class CardRendererInner extends Component {
   }
 }
 
-const CardRendererWithRef = forwardRef(
-  function _CardRendererWithRef(props, ref) {
-    return <CardRendererInner {...props} forwardedRef={ref} />;
-  },
-);
+const CardRendererWithRef = forwardRef<
+  HTMLDivElement,
+  CardRendererProps & ExplicitSizeState
+>(function _CardRendererWithRef(props, ref) {
+  return <CardRendererInner {...props} forwardedRef={ref} />;
+});
 
-export const CardRenderer = ExplicitSize({
+export const CardRenderer = ExplicitSize<CardRendererProps>({
   wrapped: true,
   // Avoid using debounce when isDashboard=true because there should not be any initial delay when rendering cards
   refreshMode: (props) => (props.isDashboard ? "debounceLeading" : "throttle"),

@@ -3,6 +3,14 @@ import {
   getLegendTitles,
   getMapUrl,
 } from "metabase/visualizations/components/ChoroplethMap";
+import type { ColumnSettings } from "metabase/visualizations/types";
+
+const currencyColumnSettings: ColumnSettings = {
+  column: { base_type: "type/Float" },
+  number_style: "currency",
+  currency: "USD",
+  currency_style: "symbol",
+};
 
 describe("getLegendTitles", () => {
   it("should not format short values compactly", () => {
@@ -11,14 +19,8 @@ describe("getLegendTitles", () => {
       [1.32, 1.48],
       [9, 12, 13],
     ];
-    const columnSettings = {
-      column: { base_type: "type/Float" },
-      number_style: "currency",
-      currency: "USD",
-      currency_style: "symbol",
-    };
 
-    const titles = getLegendTitles(groups, columnSettings);
+    const titles = getLegendTitles(groups, currencyColumnSettings);
 
     expect(titles).toEqual(["$1.12 - $1.25", "$1.32 - $1.48", "$9.00 +"]);
   });
@@ -29,14 +31,8 @@ describe("getLegendTitles", () => {
       [2000.32, 2200, 2500.48],
       [11000, 12000, 13000],
     ];
-    const columnSettings = {
-      column: { base_type: "type/Float" },
-      number_style: "currency",
-      currency: "USD",
-      currency_style: "symbol",
-    };
 
-    const titles = getLegendTitles(groups, columnSettings);
+    const titles = getLegendTitles(groups, currencyColumnSettings);
 
     expect(titles).toEqual(["$1.0k - $1.2k", "$2.0k - $2.5k", "$11.0k +"]);
   });
@@ -47,10 +43,14 @@ describe("getLegendTitles", () => {
         await mockIsEmbeddingSdk();
       });
 
-      const setup = ({ sdkMetabaseInstanceUrl }) => {
+      const setup = ({
+        sdkMetabaseInstanceUrl,
+      }: {
+        sdkMetabaseInstanceUrl: string;
+      }) => {
         return getMapUrl(
           { builtin: true, url: "api/geojson/world.json" },
-          { isSdk: true, sdkMetabaseInstanceUrl },
+          { sdkMetabaseInstanceUrl },
         );
       };
 
@@ -84,9 +84,10 @@ describe("getLegendTitles", () => {
         const url = getMapUrl(
           { builtin: false },
           {
-            isSdk: true,
             sdkMetabaseInstanceUrl: "http://mb-instance.example.com",
-            settings: { "map.region": "f3b71a29-5e4b-4d6c-8a1f-9c0e2d3a4b5c" },
+            settings: {
+              "map.region": "f3b71a29-5e4b-4d6c-8a1f-9c0e2d3a4b5c",
+            },
           },
         );
 
