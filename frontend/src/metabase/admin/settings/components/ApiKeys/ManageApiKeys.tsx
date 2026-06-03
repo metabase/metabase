@@ -2,11 +2,12 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg";
+import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useListApiKeysQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
+  ActionIcon,
   Box,
   Button,
   Card,
@@ -14,14 +15,12 @@ import {
   Ellipsified,
   Group,
   Icon,
-  Image,
   Menu,
   Stack,
   Text,
   Title,
   TreeTable,
   type TreeTableColumnDef,
-  UnstyledButton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -44,7 +43,9 @@ function EmptyState() {
   return (
     <Center mih="20rem" data-testid="empty-table-warning">
       <Stack align="center" gap="sm">
-        <Image src={ApiKeysEmptyIllustration} alt="" w={96} h={96} />
+        <Box c="text-primary" lh={0}>
+          <ApiKeysEmptyIllustration aria-hidden />
+        </Box>
         <Text
           c="text-tertiary"
           size="sm"
@@ -67,9 +68,9 @@ function ApiKeyActionsMenu({
   return (
     <Menu shadow="md" position="bottom-end">
       <Menu.Target>
-        <UnstyledButton aria-label={t`API key actions`}>
-          <Icon c="text-secondary" name="ellipsis" />
-        </UnstyledButton>
+        <ActionIcon variant="subtle" aria-label={t`API key actions`}>
+          <Icon name="ellipsis" />
+        </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
@@ -151,7 +152,7 @@ function useApiKeyColumns({
       {
         id: "actions",
         header: "",
-        width: 56,
+        width: 64,
         enableSorting: false,
         cell: ({ row }) => (
           <ApiKeyActionsMenu

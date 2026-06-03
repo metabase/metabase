@@ -150,7 +150,8 @@ export const EditApiKeyModal = ({
                   label={t`API Key`}
                   styles={{
                     input: {
-                      color: `black !important`,
+                      // override the disabled-gray so the masked key stays readable in both themes
+                      color: "var(--mb-color-text-primary) !important",
                       fontFamily: fontFamilyMonospace as string,
                     },
                   }}

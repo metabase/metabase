@@ -30,7 +30,7 @@ export const SecretKeyModal = ({
           input: {
             height: "auto",
             minHeight: "auto",
-            padding: "0.5rem 1rem",
+            padding: "0.5rem 2.5rem 0.5rem 1rem",
             border: "none",
             borderRadius: "0.5rem",
             lineHeight: "1.25rem",
