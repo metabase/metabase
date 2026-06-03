@@ -103,8 +103,11 @@ function _PulsesListSidebar({
             <PulseCard
               aria-label="Pulse Card"
               key={pulse.id}
-              flat
               canEdit={canEdit}
+              p={0}
+              radius="md"
+              shadow="none"
+              withBorder
               onClick={() =>
                 canEdit &&
                 editPulse(pulse, pulse.channels[0].channel_type as ChannelType)

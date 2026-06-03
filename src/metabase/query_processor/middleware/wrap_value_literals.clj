@@ -3,7 +3,6 @@
   information; parses datetime string literals when appropriate."
   (:refer-clojure :exclude [select-keys])
   (:require
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -21,6 +20,8 @@
    [metabase.util.performance :refer [select-keys]])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (mu/defn- value :- :mbql.clause/value
   [info :- :map v]
@@ -185,31 +186,25 @@
   (let [t (parse-temporal-string-literal-to-class s OffsetTime)]
     (lib/time t target-unit)))
 
-(defmethod parse-temporal-string-literal :type/DateTime
-  [_effective-type s target-unit]
-  (let [t (parse-temporal-string-literal-to-class s LocalDateTime)]
-    (lib/absolute-datetime t target-unit)))
-
-(defn- date-literal-string? [s]
-  (not (str/includes? s "T")))
-
-(defmethod parse-temporal-string-literal :type/DateTimeWithTZ
-  [_effective-type s target-unit]
-  (let [t (parse-temporal-string-literal-to-class s OffsetDateTime)
+(defn- parse-datetime-string-literal [s target-unit klass]
+  (let [t (parse-temporal-string-literal-to-class s klass)
         target-unit (if (and (= target-unit :default)
-                             (date-literal-string? s))
+                             (try (LocalDate/parse s) true (catch Exception _ false)))
                       :day
                       target-unit)]
     (lib/absolute-datetime t target-unit)))
 
+(defmethod parse-temporal-string-literal :type/DateTime
+  [_effective-type s target-unit]
+  (parse-datetime-string-literal s target-unit LocalDateTime))
+
+(defmethod parse-temporal-string-literal :type/DateTimeWithTZ
+  [_effective-type s target-unit]
+  (parse-datetime-string-literal s target-unit OffsetDateTime))
+
 (defmethod parse-temporal-string-literal :type/DateTimeWithZoneID
   [_effective-type s target-unit]
-  (let [target-unit (if (and (= target-unit :default)
-                             (date-literal-string? s))
-                      :day
-                      target-unit)
-        t           (parse-temporal-string-literal-to-class s ZonedDateTime)]
-    (lib/absolute-datetime t target-unit)))
+  (parse-datetime-string-literal s target-unit ZonedDateTime))
 
 (defmethod add-type-info String
   [s {:keys [unit], :as col} & {:keys [parse-datetime-strings?]

@@ -164,6 +164,12 @@ const elements = [
       mode: "full",
     }),
   ),
+  createElement({
+    type: "app",
+    name: "nav",
+    pattern: "frontend/src/metabase/app/nav/**",
+    enforceOutgoing: true,
+  }),
   // catch-all for unmoduled files - must be last
   createElement({
     type: "shared",
