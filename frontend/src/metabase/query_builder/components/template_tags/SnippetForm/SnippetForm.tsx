@@ -113,7 +113,7 @@ function SnippetFormInner({
                   variant="subtle"
                   onClick={onArchive}
                 >
-                  {t`Archive333`}
+                  {t`Archive`}
                 </Button>
               )}
               <FormErrorMessage inline />
