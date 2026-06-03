@@ -218,7 +218,7 @@
                                                       :else       "auto")
                                        :tools       all-tools)
                     temperature (assoc :temperature temperature)
-                    max-tokens  (assoc :max_tokens max-tokens))]
+                    max-tokens  (assoc :max_output_tokens max-tokens))]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))
             auth     (core/resolve-auth "openai" "OpenAI"
