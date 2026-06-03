@@ -120,6 +120,47 @@
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
+;;; -------------------------------------------------- Bedrock --------------------------------------------------
+
+(defsetting llm-bedrock-access-key-id
+  (deferred-tru "The AWS Access Key ID for Bedrock.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-secret-access-key
+  (deferred-tru "The AWS Secret Access Key for Bedrock.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-region
+  (deferred-tru "The AWS region for Bedrock (e.g. us-east-1).")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "us-east-1"
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-session-token
+  (deferred-tru "The AWS Session Token for Bedrock (optional, for temporary credentials).")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false)
+
+(defsetting llm-bedrock-configured?
+  "Whether the required AWS Bedrock credentials are configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(and (some? (llm-bedrock-access-key-id))
+                    (some? (llm-bedrock-secret-access-key)))
+  :doc        false)
+
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url

@@ -97,7 +97,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "openai" "openrouter"})
+  #{"anthropic" "bedrock" "openai" "openrouter"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -112,7 +112,8 @@
 
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
   managed `metabase` provider uses the proxied `provider/model` form."
-  {"anthropic"                       default-anthropic-llm-metabot-model
+  {"anthropic"                            default-anthropic-llm-metabot-model
+   "bedrock"                              "global.anthropic.claude-haiku-4-5-20251001-v1:0"
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -227,10 +228,11 @@
                 (not (str/blank? token)))))
 
 (defn configured-provider-api-key
-  "Returns the configured API key for the given provider, or nil if unrecognized."
+  "Returns the configured API key (or access key ID for Bedrock) for the given provider, or nil if unrecognized."
   [provider]
   (case provider
     "anthropic"  (llm.settings/llm-anthropic-api-key)
+    "bedrock"    (llm.settings/llm-bedrock-access-key-id)
     "openai"     (llm.settings/llm-openai-api-key)
     "openrouter" (llm.settings/llm-openrouter-api-key)
     nil))
