@@ -349,7 +349,7 @@
 
 ;; Source of truth for the route aliases — keep in sync with the route-map in
 ;; [[metabase.api-routes.routes]] and resource-metadata endpoints in [[metabase.oauth-server.api.metadata]].
-(def endpoint-paths
+(def ^:private endpoint-paths
   "URL paths that serve the MCP endpoint, relative to site-url.
    `/api/metabase-mcp` is canonical (the advertised URL); `/api/mcp` is a legacy alias kept for
    back-compat with existing clients."
