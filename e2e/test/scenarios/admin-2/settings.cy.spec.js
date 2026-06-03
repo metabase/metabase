@@ -1284,7 +1284,7 @@ describe("admin > settings > nav", () => {
     cy.findByTestId("admin-layout-sidebar")
       .findByText(/api keys/i)
       .click();
-    cy.findByTestId("admin-layout-content").findByText(/No API keys here yet/i);
+    cy.findByTestId("admin-layout-content").findByText(/No API keys yet/i);
     cy.url().should("include", "/admin/settings/authentication/api-keys");
   });
 });
