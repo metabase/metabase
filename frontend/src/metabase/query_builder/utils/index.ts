@@ -8,7 +8,7 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, Field, NormalizedField, Series } from "metabase-types/api";
+import type { Card, Field, NormalizedField } from "metabase-types/api";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -144,29 +144,6 @@ export const isNavigationAllowed = ({
   }
 
   return true;
-};
-
-export const createRawSeries = (options: {
-  card: Card;
-  queryResult: any;
-  datasetQuery?: any;
-}): Series => {
-  const { card, queryResult, datasetQuery } = options;
-
-  // we want to provide the visualization with a card containing the latest
-  // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
-  // BUT the last executed "dataset_query" (to ensure data matches the query)
-  return (
-    queryResult && [
-      {
-        ...queryResult,
-        card: {
-          ...card,
-          ...(datasetQuery && { dataset_query: datasetQuery }),
-        },
-      },
-    ]
-  );
 };
 
 const WRITABLE_MBQL_COLUMN_PROPERTIES = [
