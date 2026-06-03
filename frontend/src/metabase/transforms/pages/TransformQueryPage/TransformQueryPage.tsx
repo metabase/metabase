@@ -50,7 +50,7 @@ import { useSourceState } from "../../hooks/use-source-state";
 import { isCompleteSource } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
-import { isRemovingIncrementalTableTag } from "./utils";
+import { isMissingIncrementalTableTag } from "./utils";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -204,7 +204,7 @@ function TransformQueryPageBody({
     // Editing the SQL of an existing incremental transform to drop the table variable
     // would leave it in a broken state (and the backend rejects it). Warn first, and on
     // confirmation turn off incremental processing as part of the save.
-    if (isRemovingIncrementalTableTag(transform, source, metadata)) {
+    if (isMissingIncrementalTableTag(transform, source, metadata)) {
       openTurnOffIncremental();
       return;
     }

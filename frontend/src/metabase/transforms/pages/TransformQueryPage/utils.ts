@@ -12,7 +12,7 @@ import type { DraftTransformSource, Transform } from "metabase-types/api";
  * injected into. Removing it leaves the transform in a broken state, so we warn the user
  * and offer to turn off incremental processing instead.
  */
-export function isRemovingIncrementalTableTag(
+export function isMissingIncrementalTableTag(
   transform: Transform,
   source: DraftTransformSource,
   metadata: Metadata,
