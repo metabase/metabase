@@ -217,10 +217,11 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.url().should("include", "/data-studio/library");
 
     cy.log("Verify metric is removed from collection view");
-    // The archive already redirected us to the library, so re-visiting is
-    // redundant. Anchor on a stable item (the published Orders table) so the
-    // absence check can't pass against a list that hasn't rendered yet, and
-    // keep retrying for the async re-index to drop the metric.
+    // The post-archive redirect lands on a "/data-studio/library" URL but not
+    // the library landing, so navigate there explicitly. Anchor on a stable
+    // item (the published Orders table) so the absence check can't pass against
+    // a list that hasn't rendered yet, and keep retrying for the async re-index.
+    H.DataStudio.Library.visit();
     H.DataStudio.Library.tableItem("Orders").should("be.visible");
     H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric", { timeout: 10000 })
