@@ -97,6 +97,7 @@ type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
   | "llm-openai-api-key"
+  | "llm-openai-api-base-url"
   | "llm-openrouter-api-key";
 
 type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
@@ -225,6 +226,10 @@ async function setup({
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
       value: mergedApiKeyValues.openai ?? undefined,
+    }),
+    "llm-openai-api-base-url": createMockSettingDefinition({
+      key: "llm-openai-api-base-url",
+      value: undefined,
     }),
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
@@ -468,22 +473,112 @@ describe("MetabotSetup", () => {
     expect(anthropicOption).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  it("shows Coming soon for non-Anthropic providers and disables them", async () => {
+  it("shows OpenAI as selectable in the provider dropdown", async () => {
     await setup({ savedProviderValue: null, isConfigured: false });
 
     await userEvent.click(screen.getByLabelText("Provider"));
 
-    const openaiOption = await screen.findByRole("option", {
-      name: /OpenAI/,
-    });
-    expect(openaiOption).toHaveAttribute("data-combobox-disabled");
+    const openaiOption = await screen.findByRole("option", { name: /OpenAI/ });
+    expect(openaiOption).toBeInTheDocument();
+    expect(openaiOption).not.toHaveAttribute("data-combobox-disabled");
+  });
+
+  it("shows Coming soon for OpenRouter and disables it", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
 
     const openrouterOption = await screen.findByRole("option", {
       name: /OpenRouter/,
     });
     expect(openrouterOption).toHaveAttribute("data-combobox-disabled");
 
-    expect(screen.getAllByText("Coming soon")).toHaveLength(2);
+    expect(screen.getAllByText("Coming soon")).toHaveLength(1);
+  });
+
+  it("shows the Base URL field when OpenAI is selected", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "OpenAI" }),
+    );
+
+    expect(await screen.findByLabelText("API key")).toBeInTheDocument();
+    expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+  });
+
+  it("does not show the Base URL field for Anthropic", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Anthropic" }),
+    );
+
+    expect(await screen.findByLabelText("API key")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Base URL")).not.toBeInTheDocument();
+  });
+
+  it("saves base URL and API key on connect for OpenAI", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { openai: null },
+    });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "OpenAI" }),
+    );
+
+    await userEvent.type(
+      await screen.findByLabelText("API key"),
+      "sk-proj-test",
+    );
+    await userEvent.clear(screen.getByLabelText("Base URL"));
+    await userEvent.type(
+      screen.getByLabelText("Base URL"),
+      "https://my-azure.openai.azure.com",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting", { method: "PUT" }),
+      ).toBe(true);
+    });
+
+    const settingRequest = fetchMock.callHistory.calls("path:/api/setting", {
+      method: "PUT",
+    })[0];
+    expect(settingRequest?.options?.body).toContain("llm-openai-api-base-url");
+    expect(settingRequest?.options?.body).toContain(
+      "https://my-azure.openai.azure.com",
+    );
+  });
+
+  it("enables Connect when only the base URL changes for a configured OpenAI provider", async () => {
+    await setup({
+      savedProviderValue: "openai/gpt-4.1-mini",
+      isConfigured: true,
+      apiKeyValues: { openai: "**********54" },
+    });
+
+    await screen.findByLabelText("API key");
+    expect(
+      screen.getByRole("button", { name: "Disconnect" }),
+    ).toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Base URL"));
+    await userEvent.type(
+      screen.getByLabelText("Base URL"),
+      "https://new-endpoint.openai.azure.com",
+    );
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
   });
 
   it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {
