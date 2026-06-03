@@ -241,12 +241,9 @@
           (nil? index-row)
           {:type :missing-from-index :details {:active-table active}}
 
-          (not (contains? (set (:models search-ctx)) model))
-          ;; `:models` matches the key the `:models` filter clause (and the semantic engine) would emit, so the
-          ;; `:excluded-by` vocabulary stays consistent; `:applicable-models` shows what was actually searched.
-          {:type    :filtered
-           :details {:excluded-by :models :applicable-models (set (:models search-ctx))}}
-
+          ;; `first-excluding-layer` probes the permission layers (collection/table) before the structural filter
+          ;; clauses (including `:models`), so an access denial is reported ahead of any query filter — the
+          ;; perms-first invariant from `search.engine/diagnose`.
           :else
           (if-let [layer (first-excluding-layer search-ctx model id)]
             {:type :filtered :details {:excluded-by layer}}

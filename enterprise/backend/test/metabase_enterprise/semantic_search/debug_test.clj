@@ -33,3 +33,16 @@
           (testing "absent from the index is missing-from-index"
             (is (=? {:type :missing-from-index}
                     (diagnose-row! (assoc all :search-string "puppy") "card" Integer/MAX_VALUE)))))))))
+
+(deftest ^:synchronized semantic-not-permitted-test
+  (testing "permissions are checked before structural filters, so an unreadable row reports :permissions even when
+            a structural filter would also drop it"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db! {:mode :mock-indexed}
+        (let [{card-id :id coll-id :collection_id} (t2/select-one [:model/Card :id :collection_id]
+                                                                  :name "Dog Training Guide")]
+          (mt/with-non-admin-groups-no-collection-perms (t2/select-one :model/Collection :id coll-id)
+            (mt/with-test-user :rasta
+              ;; :models ["dashboard"] would also exclude this card structurally; permission denial must win.
+              (is (=? {:type :filtered :details {:excluded-by :permissions}}
+                      (diagnose-row! {:models ["dashboard"] :search-string "puppy"} "card" card-id))))))))))
