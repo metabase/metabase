@@ -1,14 +1,19 @@
 ---
 title: Drill-through
+summary: Click on charts, column headers, and table cells to filter, zoom in, see underlying records, and break out by time, location, or category.
 ---
 
 # Drill-through
 
 Drill-through lets you explore data in your Metabase by clicking a chart, a column header, or a table cell. Each click opens a menu with options like **Filter by this value**, **See these records**, **Break out by**, and **Zoom in**. Selecting one of these options generates a new query and visualizes the result.
 
+![Drill-through menu](../images/drill-through-menu.png)
+
 ## How drill-through works
 
 Every drill-through action creates a new query and visualizes the result. Metabase takes the original query and modifies it based on what you click. Switch to the editor to see and edit the new query.
+
+For example, say a bar chart shows order counts summarized by product category and month. Click the April bar in the Widgets series, then select **See these orders**. Metabase creates a new question that filters the orders to Widgets in April.
 
 Some things to keep in mind:
 
@@ -36,6 +41,8 @@ To drill-through a table, click either:
 
 #### Column headers
 
+![Drill-through column header menu](../images/drill-through-column-header-menu.png)
+
 | Option                                              | When it appears                                                          |
 | --------------------------------------------------- | ------------------------------------------------------------------------ |
 | **Filter by this column**                           | Any column                                                               |
@@ -49,15 +56,15 @@ To drill-through a table, click either:
 
 #### Table cells
 
-| Option                                        | When it appears                                       |
-| --------------------------------------------- | ----------------------------------------------------- |
-| **Filter by this value**                      | Any column except primary keys and foreign keys       |
-| **View details**                              | Rows that have a primary key                          |
-| **View this [related record]**                | Foreign key values                                    |
-| **View these [related rows]**                 | Foreign key values                                    |
-| **View these records**                        | Aggregated values                                     |
-| **Break out by [time / location / category]** | Aggregated values                                     |
-| **Automatic insights**                        | Summarized queries, when X-rays are enabled           |
+| Option                                        | When it appears                                                                              |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Filter by this value**                      | Any column except primary keys and foreign keys                                              |
+| **View details**                              | Rows that have a primary key                                                                 |
+| **View this [related record]**                | Foreign key values                                                                           |
+| **View these [related rows]**                 | Foreign key values                                                                           |
+| **View these records**                        | Aggregated values                                                                            |
+| **Break out by [time / location / category]** | Aggregated values                                                                            |
+| **Automatic insights**                        | Summarized queries, when [X-rays](../../exploration-and-organization/x-rays.md) are enabled  |
 
 ### Charts
 
@@ -66,30 +73,32 @@ To drill-through a chart, click either:
 * Data points
 * Legend items
 
-> Pivot tables behave like charts. Pivot cells offer the same options as data points.
+> [Pivoted tables](./table.md#pivoted-tables) behave like charts. Cells in pivoted tables offer the same options as data points. This is different from the [pivot table visualization](./pivot-table.md), which offers a smaller subset of drill-through options.
 
 #### Data points
 
-| Option                                        | When it appears                                       |
-| --------------------------------------------- | ----------------------------------------------------- |
-| **Filter by this value**                      | Any column except primary keys and foreign keys       |
-| **View these records**                        | Aggregated values                                     |
-| **Break out by [time / location / category]** | Aggregated values                                     |
-| **Automatic insights**                        | Summarized queries, when X-rays are enabled           |
-| **Zoom in**                                   | Histograms, binned charts, and maps                   |
-| **See this [period] by [smaller period]**     | Time series                                           |
+| Option                                        | When it appears                                                                              |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Filter by this value**                      | Any column except primary keys and foreign keys                                              |
+| **View these records**                        | Aggregated values                                                                            |
+| **Break out by [time / location / category]** | Aggregated values                                                                            |
+| **Automatic insights**                        | Summarized queries, when [X-rays](../../exploration-and-organization/x-rays.md) are enabled  |
+| **Zoom in**                                   | Histograms, binned charts, and maps                                                          |
+| **See this [period] by [smaller period]**     | Time series                                                                                  |
 
 #### Legend items
 
-Clicking a legend item drills through the entire series, not just one data point. For example, clicking **View these records** on a legend item shows all the rows for that series across the whole chart.
+Clicking the colored circle on a legend item toggles the series on or off. Clicking the label on the legend item opens the drill-through menu.
 
-| Option                                        | When it appears                                       |
-| --------------------------------------------- | ----------------------------------------------------- |
-| **View these records**                        | Aggregated values                                     |
-| **Break out by [time / location / category]** | Aggregated values                                     |
-| **Automatic insights**                        | Summarized queries, when X-rays are enabled           |
-| **Zoom in**                                   | Histograms, binned charts, and maps                   |
-| **See this [period] by [smaller period]**     | Time series                                           |
+Drill-through on a legend item applies to the entire series, not just one data point. For example, clicking **View these records** on a legend item shows all the rows for that series across the whole chart.
+
+| Option                                        | When it appears                                                                              |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **View these records**                        | Aggregated values                                                                            |
+| **Break out by [time / location / category]** | Aggregated values                                                                            |
+| **Automatic insights**                        | Summarized queries, when [X-rays](../../exploration-and-organization/x-rays.md) are enabled  |
+| **Zoom in**                                   | Histograms, binned charts, and maps                                                          |
+| **See this [period] by [smaller period]**     | Time series                                                                                  |
 
 ## Drill-through and native SQL
 
@@ -105,7 +114,7 @@ When you write a query with the native SQL editor, Metabase runs your query but 
 
 > To use drill-through on a native SQL question, you must save the question.
 
-For more information, see [](#drill-through-types).
+For more information, see [drill-through types](#drill-through-types).
 
 ### Make native SQL questions interactive
 
@@ -127,12 +136,12 @@ Drill-through actions can only reach data that the transform's table contains.
 
 Drill-through behavior depends on the [embedding type](../../embedding/start.md), because drill-through requires a Metabase user with query permissions.
 
-| Embedding type                       | Drill-through                                          |
-| ------------------------------------ | ------------------------------------------------------ |
-| **Modular embedding**                | Full drill-through, scoped to the user's permissions   |
-| **Guest embeds**                     | No drill-through                                       |
-| **Full app embedding**               | Full drill-through                                     |
-| **Public embeds**                    | No drill-through                                       |
+| Embedding type                      | Drill-through                                         |
+| ----------------------------------- | ----------------------------------------------------- |
+| **Authenticated modular embedding** | Full drill-through, scoped to the user's permissions  |
+| **Guest modular embeds**            | No drill-through                                      |
+| **Full app embedding**              | Full drill-through                                    |
+| **Public embeds**                   | No drill-through                                      |
 
 To turn off drill-through in modular embedding, use the **Allow people to drill through on data points** setting when you create the embed. In a dashboard, override drill-through on a single card with [custom click behavior](../../dashboards/interactive.md).
 
