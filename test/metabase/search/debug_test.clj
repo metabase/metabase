@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
@@ -87,7 +88,28 @@
           (mt/with-non-admin-groups-no-collection-perms coll
             (mt/with-test-user :rasta
               (is (=? {:type :not-permitted :details {:excluded-by :collection-permissions}}
-                      (diagnose {:search-string "quarterly"} "card" card-id))))))))))
+                      (diagnose {:search-string "quarterly"} "card" card-id))))))))
+    (testing "A denial from the post-query permission check wins over an overlapping structural filter"
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection coll {:name "Read Only"}
+                       :model/Card {card-id :id} {:name          "Quarterly Revenue"
+                                                  :collection_id (:id coll)
+                                                  :creator_id    (mt/user->id :crowberto)
+                                                  :archived      true}]
+          (search/reindex! {:async? false :in-place? true})
+          (mt/with-non-admin-groups-no-collection-perms coll
+            (mt/with-temp [:model/PermissionsGroup           group {}
+                           :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
+                                                                :group_id (:id group)}]
+              (perms/grant-collection-read-permissions! group (:id coll))
+              (mt/with-test-user :rasta
+                ;; the archived search needs write perms (rasta is read-only) and `:created-by` also excludes the
+                ;; row structurally; the access denial must win.
+                (is (=? {:type :not-permitted :details {:excluded-by :permissions}}
+                        (diagnose {:search-string "quarterly"
+                                   :archived      true
+                                   :created-by    #{(mt/user->id :rasta)}}
+                                  "card" card-id)))))))))))
 
 (deftest ^:synchronized not-matching-test
   (when (search/supports-index?)

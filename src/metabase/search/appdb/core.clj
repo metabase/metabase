@@ -241,14 +241,15 @@
           (nil? index-row)
           {:type :missing-from-index :details {:active-table active}}
 
-          ;; `first-excluding-layer` probes the permission layers (collection/table) before the structural filter
-          ;; clauses (including `:models`), so an access denial is reported ahead of any query filter — the
-          ;; perms-first invariant from `search.engine/diagnose`.
+          ;; Perms-first invariant from `search.engine/diagnose`: an access denial is reported ahead of any query
+          ;; filter. The post-query permission check runs first since it can deny rows the SQL layers admit
+          ;; (archived-write, table query perms, …); inside `first-excluding-layer` the SQL permission layers
+          ;; (collection/table) likewise precede the structural filter clauses (including `:models`).
           :else
-          (if-let [layer (first-excluding-layer search-ctx model id)]
-            {:type :filtered :details {:excluded-by layer}}
-            (if-not (search.impl/check-result-permissions search-ctx (rehydrate {} [] index-row))
-              {:type :filtered :details {:excluded-by :permissions}}
+          (if-not (search.impl/check-result-permissions search-ctx (rehydrate {} [] index-row))
+            {:type :filtered :details {:excluded-by :permissions}}
+            (if-let [layer (first-excluding-layer search-ctx model id)]
+              {:type :filtered :details {:excluded-by layer}}
               (let [search-string (:search-string search-ctx)]
                 (if (and (not (str/blank? search-string))
                          (not (row-present? (->> (base-filtered-query search-ctx search-string [:model_id])
