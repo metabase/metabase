@@ -29,7 +29,7 @@ export function MetabotNavPane() {
         />
         <AdminNavItem
           disabled={!areAiFeaturesEnabled}
-          icon="list"
+          icon="search"
           label={t`Search prompts`}
           path="/admin/metabot/search-prompts"
         />

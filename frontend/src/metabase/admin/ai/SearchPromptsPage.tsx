@@ -37,8 +37,8 @@ type ModalState =
 export function SearchPromptsPage() {
   return (
     <SettingsPageWrapper title={t`Search prompts`}>
-      <SearchPromptSection type="sources" heading={t`Sources`} />
       <SearchPromptSection type="canonical" heading={t`Canonical entity`} />
+      <SearchPromptSection type="sources" heading={t`Sources`} />
     </SettingsPageWrapper>
   );
 }
@@ -97,6 +97,7 @@ function SearchPromptSection({
         </Text>
         <Button
           variant="filled"
+          size="sm"
           leftSection={<Icon name="add" />}
           onClick={() => setModal({ kind: "create" })}
         >

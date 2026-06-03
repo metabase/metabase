@@ -47,6 +47,7 @@ export function SearchPromptModal({
   onClose: () => void;
 }) {
   const isEditing = searchPrompt != null;
+  const isCanonical = type === "canonical";
   const [sendToast] = useToast();
 
   const [prompt, setPrompt] = useState(searchPrompt?.prompt ?? "");
@@ -62,10 +63,13 @@ export function SearchPromptModal({
     useUpdateSearchPromptMutation();
 
   const handlePickEntity = (item: OmniPickerItem) => {
+    const picked = { model: item.model, id: item.id, name: item.name };
     setEntities((current) =>
-      current.some((e) => e.model === item.model && e.id === item.id)
-        ? current
-        : [...current, { model: item.model, id: item.id, name: item.name }],
+      isCanonical
+        ? [picked]
+        : current.some((e) => e.model === item.model && e.id === item.id)
+          ? current
+          : [...current, picked],
     );
     setIsPickerOpen(false);
   };
@@ -105,7 +109,8 @@ export function SearchPromptModal({
   };
 
   const isSubmitting = isCreating || isUpdating;
-  const canSubmit = prompt.trim().length > 0 && !isSubmitting;
+  const canSubmit =
+    prompt.trim().length > 0 && entities.length > 0 && !isSubmitting;
 
   return (
     <>
@@ -128,19 +133,30 @@ export function SearchPromptModal({
           />
 
           <Box>
-            <Text fw="bold" mb="xs">{t`Entities`}</Text>
+            <Text fw="bold" mb="xs">
+              {isCanonical ? t`Entity` : t`Entities`}
+            </Text>
             <SearchPromptEntityList
               entities={entities}
               onRemove={handleRemoveEntity}
             />
-            <Button
-              variant="subtle"
-              leftSection={<Icon name="add" />}
-              mt="sm"
-              onClick={() => setIsPickerOpen(true)}
-            >
-              {t`Add entity`}
-            </Button>
+            {!(isCanonical && entities.length > 0) && (
+              <Button
+                variant="subtle"
+                leftSection={<Icon name="add" />}
+                mt="sm"
+                onClick={() => setIsPickerOpen(true)}
+              >
+                {isCanonical ? t`Choose entity` : t`Add entity`}
+              </Button>
+            )}
+            {entities.length === 0 && (
+              <Text size="sm" c="text-tertiary" mt="xs">
+                {isCanonical
+                  ? t`Choose an entity to save this prompt.`
+                  : t`Add at least one entity to save this prompt.`}
+              </Text>
+            )}
           </Box>
 
           <Switch
