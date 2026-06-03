@@ -12,7 +12,8 @@
 
 ;; TODO (Chris 2026-06-02) -- reconciliation notes; revisit together:
 ;;   - Rename column `prompt` -> `search_prompt` (clearer, matches the tool/embedding vocabulary).
-;;     Needs a follow-up migration since v62.2026-06-02T00:00:00 is already applied.
+;;     v63.2026-06-02T00:00:00 is still unreleased, so this can be folded into that changeset rather
+;;     than needing a follow-up migration.
 ;;   - Rename model `:model/SearchPromptEntity` -> `:model/SearchPromptEntities` (plural, like the table).
 ;;   - entities is a bare JSON array of {model, id, name?} with `type` (canonical/sources) as a sibling
 ;;     column. We should wrap the array in a map (e.g. {:type ... :entities [...] :version 1}) in future
