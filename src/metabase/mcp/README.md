@@ -11,15 +11,18 @@ scoped to the connecting user's permissions.
 The MCP server is available at:
 
 ```
-https://{your-metabase.example.com}/api/mcp
+https://{your-metabase.example.com}/api/metabase-mcp
 ```
+
+The legacy `/api/mcp` path still works as an alias for existing clients, but `/api/metabase-mcp` is the
+canonical URL to advertise.
 
 ## Connecting a client
 
-Point any MCP-compatible client at the `/api/mcp` endpoint. For example, with Claude Code:
+Point any MCP-compatible client at the `/api/metabase-mcp` endpoint. For example, with Claude Code:
 
 ```sh
-claude mcp add metabase https://{your-metabase.example.com}/api/mcp --transport streamable-http
+claude mcp add metabase https://{your-metabase.example.com}/api/metabase-mcp --transport streamable-http
 ```
 
 For Claude Desktop, create a [custom connector](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
@@ -28,7 +31,7 @@ using the same URL.
 For Cursor, open **Settings > MCP** and add a new server with the type set to `streamable-http` and the URL:
 
 ```
-https://{your-metabase.example.com}/api/mcp
+https://{your-metabase.example.com}/api/metabase-mcp
 ```
 
 ## Authentication
@@ -65,7 +68,7 @@ Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 OAuth protected resource metadata is available at:
 
 ```
-/.well-known/oauth-protected-resource/api/mcp
+/.well-known/oauth-protected-resource/api/metabase-mcp
 ```
 
 By default our consent screen grants access to all scopes without the opportunity to customize.
@@ -136,7 +139,7 @@ The implementation lives in these files:
 
 ```
 MCP client
-  → POST /api/mcp (JSON-RPC)
+  → POST /api/metabase-mcp (JSON-RPC)
   → Origin + session validation
   → Auth: OAuth bearer token or browser session
   → Scope check against requested tool
