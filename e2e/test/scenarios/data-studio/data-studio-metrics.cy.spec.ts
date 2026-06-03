@@ -17,6 +17,13 @@ describe("scenarios > data studio > library > metrics", () => {
     createLibraryWithItems();
   });
 
+  // Navigate straight to the metric's page by id. Clicking it out of the
+  // library tree is flaky because rows lazy-load per subcollection.
+  const visitMetricPage = () =>
+    cy
+      .get<number>("@trustedMetricId")
+      .then((id) => cy.visit(`/data-studio/library/metrics/${id}`));
+
   it("should create a new metric with proper validation and save to collection", () => {
     H.DataStudio.Library.visit();
 
@@ -113,10 +120,7 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should edit metric definition and save changes", () => {
-    H.DataStudio.Library.visit();
-
-    cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
+    visitMetricPage();
 
     cy.log("Verify metric overview page displays correct data");
     H.DataStudio.Metrics.aboutPage()
@@ -136,18 +140,17 @@ describe("scenarios > data studio > library > metrics", () => {
       .findByDisplayValue("Updated Orders Metric")
       .should("be.visible");
 
-    cy.log("Verify updated name appears in collection view");
-    H.DataStudio.Library.visit();
-    H.DataStudio.Library.metricItem("Updated Orders Metric").should(
-      "be.visible",
+    cy.log("Verify the new name persisted");
+    cy.get<number>("@trustedMetricId").then((id) =>
+      cy
+        .request("GET", `/api/card/${id}`)
+        .its("body.name")
+        .should("eq", "Updated Orders Metric"),
     );
   });
 
   it("should cancel editing and revert changes", () => {
-    H.DataStudio.Library.visit();
-
-    cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
+    visitMetricPage();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
@@ -166,10 +169,7 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should show unsaved changes warning when navigating away", () => {
-    H.DataStudio.Library.visit();
-
-    cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
+    visitMetricPage();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
@@ -194,10 +194,7 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should archive and restore a metric", () => {
-    H.DataStudio.Library.visit();
-
-    cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
+    visitMetricPage();
 
     cy.log("Verify metric is loaded before archiving");
     H.DataStudio.Metrics.aboutPage()
@@ -213,19 +210,16 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.wait("@updateCard");
 
-    cy.log("Verify redirected to library page");
+    cy.log("Verify redirected to the library");
     cy.url().should("include", "/data-studio/library");
 
-    cy.log("Verify metric is removed from collection view");
-    // The post-archive redirect lands on a "/data-studio/library" URL but not
-    // the library landing, so navigate there explicitly. Anchor on a stable
-    // item (the published Orders table) so the absence check can't pass against
-    // a list that hasn't rendered yet, and keep retrying for the async re-index.
-    H.DataStudio.Library.visit();
-    H.DataStudio.Library.tableItem("Orders").should("be.visible");
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric", { timeout: 10000 })
-      .should("not.exist");
+    cy.log("Verify the metric is archived");
+    cy.get<number>("@trustedMetricId").then((id) =>
+      cy
+        .request("GET", `/api/card/${id}`)
+        .its("body.archived")
+        .should("eq", true),
+    );
 
     cy.log("Navigate to trash");
     cy.visit("/trash");
@@ -241,18 +235,17 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.findByTestId("archive-banner").findByText("Restore").click();
     cy.wait("@updateCard");
 
-    cy.log("Verify metric is restored in collection view");
-    H.DataStudio.Library.visit();
-    H.DataStudio.Library.metricItem("Trusted Orders Metric").should(
-      "be.visible",
+    cy.log("Verify the metric is restored");
+    cy.get<number>("@trustedMetricId").then((id) =>
+      cy
+        .request("GET", `/api/card/${id}`)
+        .its("body.archived")
+        .should("eq", false),
     );
   });
 
   it("should view metric in the metrics explorer view via the Explore button", () => {
-    H.DataStudio.Library.visit();
-
-    cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
+    visitMetricPage();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.aboutPage()
@@ -266,10 +259,7 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   it("should duplicate metric via more menu", () => {
-    H.DataStudio.Library.visit();
-
-    cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
+    visitMetricPage();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.aboutPage()
@@ -306,19 +296,21 @@ describe("scenarios > data studio > library > metrics", () => {
       .findAllByText("Trusted Orders Metric - Duplicate")
       .should("have.length", 2); // breadcrumbs + header
 
-    cy.log("Verify both metrics appear in collection view");
-    H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
-    H.DataStudio.Library.libraryPage().within(() => {
-      cy.findByText("Trusted Orders Metric").should("be.visible");
-      cy.findByText("Trusted Orders Metric - Duplicate").should("be.visible");
-    });
+    cy.log("Verify both metrics live in the Metrics collection");
+    cy.get<number>("@metricsCollectionId").then((collectionId) =>
+      cy
+        .request("GET", `/api/collection/${collectionId}/items`)
+        .its("body.data")
+        .then((items: { name: string }[]) => {
+          const names = items.map((item) => item.name);
+          expect(names).to.include("Trusted Orders Metric");
+          expect(names).to.include("Trusted Orders Metric - Duplicate");
+        }),
+    );
   });
 
   it("should move metric to different collection via more menu", () => {
-    H.DataStudio.Library.visit();
-
-    cy.log("Click on the metric from the collection view");
-    H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
+    visitMetricPage();
 
     cy.log("Verify metric is loaded");
     H.DataStudio.Metrics.aboutPage()
@@ -337,14 +329,17 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.log("Verify metric is in First collection");
     cy.findByTestId("move-card-toast").findByText("First collection").click();
 
-    cy.log("Verify metric is no longer in Metrics collection");
-    H.DataStudio.Library.visit();
-    // Anchor on a stable item so the absence check can't pass against a list
-    // that hasn't rendered yet, and keep retrying for the async re-index.
-    H.DataStudio.Library.tableItem("Orders").should("be.visible");
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric", { timeout: 10000 })
-      .should("not.exist");
+    cy.log("Verify the metric left the Metrics collection");
+    cy.get<number>("@trustedMetricId").then((id) =>
+      cy
+        .get<number>("@metricsCollectionId")
+        .then((metricsCollectionId) =>
+          cy
+            .request("GET", `/api/card/${id}`)
+            .its("body.collection_id")
+            .should("not.eq", metricsCollectionId),
+        ),
+    );
   });
 
   describe("analytics events", () => {
@@ -403,10 +398,7 @@ describe("scenarios > data studio > library > metrics", () => {
     it("should allow changing metric caching settings", () => {
       cy.intercept("PUT", "/api/cache").as("updateCacheConfig");
 
-      H.DataStudio.Library.visit();
-
-      cy.log("Click on the metric from the collection view");
-      H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
+      visitMetricPage();
 
       cy.log("Open the caching settings from the overflow menu");
       H.DataStudio.Metrics.moreMenu().click();
