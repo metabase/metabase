@@ -31,7 +31,7 @@ function ArchiveCollectionModalInner({
       model="collection"
       // Archivable collections always have a numeric id; special collections
       // (e.g. "root") are not archivable and only the analytics id is affected.
-      modelId={typeof collection.id === "number" ? collection.id : 0}
+      modelId={typeof collection.id === "number" ? collection.id : null}
       onClose={onClose}
       onArchive={handleArchive}
     />
