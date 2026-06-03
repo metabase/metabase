@@ -6,8 +6,12 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
 
-import { getTreemapChartColumns, getTreemapData } from "./data";
-import type { TreemapChartColumns } from "./types";
+import {
+  getTreemapChartColumns,
+  getTreemapData,
+  getTreemapNodePath,
+} from "./data";
+import type { TreemapChartColumns, TreemapTree } from "./types";
 
 const columns: DatasetColumn[] = [
   createMockColumn({
@@ -404,5 +408,38 @@ describe("getTreemapData (2-level)", () => {
       0, 2, 3,
     ]);
     expect(result.find((n) => n.rawName === "B")?.rowIndices).toEqual([1]);
+  });
+});
+
+describe("getTreemapNodePath", () => {
+  const tree: TreemapTree = [
+    {
+      rawName: "West",
+      displayName: "West",
+      value: 30,
+      rowIndices: [],
+      children: [
+        { rawName: "US", displayName: "US", value: 20, rowIndices: [] },
+        { rawName: "CA", displayName: "CA", value: 10, rowIndices: [] },
+      ],
+    },
+    { rawName: "East", displayName: "East", value: 5, rowIndices: [] },
+  ];
+
+  it("resolves a top-level node id to a single-node path", () => {
+    expect(getTreemapNodePath(tree, "1")).toEqual([tree[1]]);
+  });
+
+  it("resolves a leaf id to the grouping → leaf path", () => {
+    expect(getTreemapNodePath(tree, "0-1")).toEqual([
+      tree[0],
+      tree[0].children?.[1],
+    ]);
+  });
+
+  it("returns null for an out-of-range segment", () => {
+    expect(getTreemapNodePath(tree, "5")).toBeNull();
+    expect(getTreemapNodePath(tree, "0-9")).toBeNull();
+    expect(getTreemapNodePath(tree, "1-0")).toBeNull(); // East has no children
   });
 });

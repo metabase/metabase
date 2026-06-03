@@ -92,6 +92,34 @@ export function getTreemapData(
   return Array.from(rootByKey.values());
 }
 
+/**
+ * Resolve a path-encoded series node id (the ids set in `option.ts`: "0",
+ * "0-1") to the chain of tree nodes along that path:
+ * `"0"` → `[tree[0]]`, `"0-1"` → `[tree[0], tree[0].children[1]]`. The first
+ * element is always the top-level grouping node; the last is the clicked node.
+ * Returns `null` if any path segment is out of range. Used to build a
+ * drill-through `ClickObject` from a clicked tile (see `TreemapChart/events.ts`).
+ */
+export function getTreemapNodePath(
+  tree: TreemapTree,
+  id: string,
+): TreemapNode[] | null {
+  const path: TreemapNode[] = [];
+  let nodes: TreemapTree | undefined = tree;
+  for (const segment of id.split("-")) {
+    const index = Number(segment);
+    const node: TreemapNode | undefined = Number.isInteger(index)
+      ? nodes?.[index]
+      : undefined;
+    if (node == null) {
+      return null;
+    }
+    path.push(node);
+    nodes = node.children;
+  }
+  return path;
+}
+
 function getOrCreateNode(
   map: Map<RowValue, TreemapNode>,
   rawName: RowValue,

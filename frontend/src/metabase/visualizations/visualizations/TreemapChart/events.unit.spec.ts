@@ -1,16 +1,114 @@
 import type { EChartsType } from "echarts/core";
 
 import type { TreemapRect } from "metabase/visualizations/echarts/graph/treemap/model/labels";
+import type {
+  TreemapChartColumns,
+  TreemapTree,
+} from "metabase/visualizations/echarts/graph/treemap/model/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { RawSeries } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockNativeCard,
+} from "metabase-types/api/mocks/card";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks/dataset";
 
 import {
   TREEMAP_HOVER_OVERLAY_FILL,
   type TreemapHoverOverlay,
   type TreemapHoverOverlayRef,
   dispatchTreemapViewRoot,
+  getTreemapClickData,
   getTreemapDrillTargetNodeId,
   getTreemapEventHandlers,
   hideTreemapHoverOverlay,
 } from "./events";
+
+const groupingCol = createMockColumn({
+  name: "Region",
+  display_name: "Region",
+  base_type: "type/Text",
+});
+const subGroupingCol = createMockColumn({
+  name: "Country",
+  display_name: "Country",
+  base_type: "type/Text",
+});
+const valueCol = createMockColumn({
+  name: "Sales",
+  display_name: "Sales",
+  base_type: "type/Number",
+  semantic_type: "type/Number",
+});
+
+const cols1 = [groupingCol, valueCol];
+const cols2 = [groupingCol, subGroupingCol, valueCol];
+
+const treemapColumns1: TreemapChartColumns = {
+  grouping: { index: 0, column: groupingCol },
+  value: { index: 1, column: valueCol },
+};
+const treemapColumns2: TreemapChartColumns = {
+  grouping: { index: 0, column: groupingCol },
+  subGrouping: { index: 1, column: subGroupingCol },
+  value: { index: 2, column: valueCol },
+};
+
+// One root, two leaves.
+const tree2: TreemapTree = [
+  {
+    rawName: "West",
+    displayName: "West",
+    value: 30,
+    rowIndices: [0, 1],
+    children: [
+      { rawName: "US", displayName: "US", value: 20, rowIndices: [0] },
+      { rawName: "CA", displayName: "CA", value: 10, rowIndices: [1] },
+    ],
+  },
+];
+// Two roots, no children.
+const tree1: TreemapTree = [
+  { rawName: "West", displayName: "West", value: 30, rowIndices: [0] },
+  { rawName: "East", displayName: "East", value: 15, rowIndices: [1] },
+];
+
+const settings = {} as ComputedVisualizationSettings;
+
+const rawSeries1 = [
+  {
+    card: createMockCard(),
+    data: createMockDatasetData({
+      cols: cols1,
+      rows: [
+        ["West", 30],
+        ["East", 15],
+      ],
+    }),
+  },
+] as RawSeries;
+const rawSeries2 = [
+  {
+    card: createMockCard(),
+    data: createMockDatasetData({
+      cols: cols2,
+      rows: [
+        ["West", "US", 20],
+        ["West", "CA", 10],
+      ],
+    }),
+  },
+] as RawSeries;
+
+// A click event carrying the path-encoded node id plus the nested DOM event
+// that `getTreemapClickData` forwards onto the `ClickObject`.
+function makeClickEvent(id: unknown) {
+  const domEvent = {} as MouseEvent;
+  return { data: { id }, event: { event: domEvent } };
+}
 
 function makeChartRef(overrides: Record<string, unknown> = {}) {
   const dispatchAction = jest.fn();
@@ -70,33 +168,93 @@ describe("getTreemapEventHandlers", () => {
     hasChildren: true,
     isDrilled: false,
     onDrillToGroup: jest.fn(),
+    tree: tree2,
+    treemapColumns: treemapColumns2,
+    rawSeries: rawSeries2,
+    settings,
+    onVisualizationClick: jest.fn(),
   };
 
-  it("has no click handler for a 1-level treemap (no drill)", () => {
+  it("drills DOWN (zoom) at the overview when there is sub-grouping", () => {
+    const onDrillToGroup = jest.fn();
+    const onVisualizationClick = jest.fn();
     const handlers = getTreemapEventHandlers({
       ...baseArgs,
-      hasChildren: false,
+      onDrillToGroup,
+      onVisualizationClick,
     });
-    expect(handlers.find((h) => h.eventName === "click")).toBeUndefined();
-  });
-
-  it("reports the clicked node's grouping as the drill target", () => {
-    const onDrillToGroup = jest.fn();
-    const handlers = getTreemapEventHandlers({ ...baseArgs, onDrillToGroup });
 
     const clickHandler = handlers.find((h) => h.eventName === "click");
     expect(clickHandler).toBeDefined();
 
-    clickHandler?.handler({ data: { id: "1-4" } });
+    clickHandler?.handler(makeClickEvent("1-4"));
     expect(onDrillToGroup).toHaveBeenLastCalledWith("1");
 
-    clickHandler?.handler({ data: { id: "0" } });
+    clickHandler?.handler(makeClickEvent("0"));
     expect(onDrillToGroup).toHaveBeenLastCalledWith("0");
+
+    // Overview clicks zoom, they never drill through.
+    expect(onVisualizationClick).not.toHaveBeenCalled();
+  });
+
+  it("drills THROUGH on a 1-level node click (no zoom exists)", () => {
+    const onDrillToGroup = jest.fn();
+    const onVisualizationClick = jest.fn();
+    const handlers = getTreemapEventHandlers({
+      ...baseArgs,
+      hasChildren: false,
+      tree: tree1,
+      treemapColumns: treemapColumns1,
+      rawSeries: rawSeries1,
+      onDrillToGroup,
+      onVisualizationClick,
+    });
+
+    handlers.find((h) => h.eventName === "click")?.handler(makeClickEvent("1"));
+
+    expect(onDrillToGroup).not.toHaveBeenCalled();
+    expect(onVisualizationClick).toHaveBeenCalledTimes(1);
+    const clickData = onVisualizationClick.mock.calls[0][0];
+    expect(clickData.value).toBe(15);
+    expect(clickData.column).toBe(valueCol);
+    expect(clickData.dimensions).toEqual([
+      { column: groupingCol, value: "East" },
+    ]);
+  });
+
+  it("drills THROUGH on a leaf click while drilled into a group (2-level)", () => {
+    const onDrillToGroup = jest.fn();
+    const onVisualizationClick = jest.fn();
+    const handlers = getTreemapEventHandlers({
+      ...baseArgs,
+      isDrilled: true,
+      onDrillToGroup,
+      onVisualizationClick,
+    });
+
+    handlers
+      .find((h) => h.eventName === "click")
+      ?.handler(makeClickEvent("0-1"));
+
+    expect(onDrillToGroup).not.toHaveBeenCalled();
+    expect(onVisualizationClick).toHaveBeenCalledTimes(1);
+    const clickData = onVisualizationClick.mock.calls[0][0];
+    expect(clickData.value).toBe(10);
+    expect(clickData.column).toBe(valueCol);
+    expect(clickData.dimensions).toEqual([
+      { column: groupingCol, value: "West" },
+      { column: subGroupingCol, value: "CA" },
+    ]);
   });
 
   it("ignores clicks without a string node id (background)", () => {
     const onDrillToGroup = jest.fn();
-    const handlers = getTreemapEventHandlers({ ...baseArgs, onDrillToGroup });
+    const onVisualizationClick = jest.fn();
+    const handlers = getTreemapEventHandlers({
+      ...baseArgs,
+      onDrillToGroup,
+      onVisualizationClick,
+    });
     const clickHandler = handlers.find((h) => h.eventName === "click");
 
     clickHandler?.handler({ data: undefined });
@@ -104,6 +262,7 @@ describe("getTreemapEventHandlers", () => {
     clickHandler?.handler({ data: { id: 5 } });
 
     expect(onDrillToGroup).not.toHaveBeenCalled();
+    expect(onVisualizationClick).not.toHaveBeenCalled();
   });
 
   it("wires hover overlay handlers both at the overview and while drilled", () => {
@@ -226,6 +385,56 @@ describe("getTreemapEventHandlers", () => {
 
     expect(remove).toHaveBeenCalledWith(overlay);
     expect(overlayRef.current).toBeNull();
+  });
+});
+
+describe("getTreemapClickData", () => {
+  it("returns null when the node id doesn't resolve to a tree node", () => {
+    expect(
+      getTreemapClickData({
+        tree: tree2,
+        id: "9-9",
+        treemapColumns: treemapColumns2,
+        rawSeries: rawSeries2,
+        settings,
+        event: makeClickEvent("9-9") as never,
+      }),
+    ).toBeNull();
+  });
+
+  it("omits dimensions for a native card (no field refs to filter on)", () => {
+    const nativeRawSeries = [
+      { card: createMockNativeCard(), data: rawSeries2[0].data },
+    ] as RawSeries;
+
+    const clickData = getTreemapClickData({
+      tree: tree2,
+      id: "0-1",
+      treemapColumns: treemapColumns2,
+      rawSeries: nativeRawSeries,
+      settings,
+      event: makeClickEvent("0-1") as never,
+    });
+
+    expect(clickData?.dimensions).toBeUndefined();
+    expect(clickData?.value).toBe(10);
+  });
+
+  it("populates data with the clicked node's column values", () => {
+    const clickData = getTreemapClickData({
+      tree: tree2,
+      id: "0-1",
+      treemapColumns: treemapColumns2,
+      rawSeries: rawSeries2,
+      settings,
+      event: makeClickEvent("0-1") as never,
+    });
+
+    expect(clickData?.data).toEqual([
+      { col: groupingCol, value: "West", key: "Region" },
+      { col: subGroupingCol, value: "CA", key: "Country" },
+      { col: valueCol, value: 10, key: "Sales" },
+    ]);
   });
 });
 

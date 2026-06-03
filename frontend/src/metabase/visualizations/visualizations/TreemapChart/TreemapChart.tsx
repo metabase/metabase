@@ -51,6 +51,7 @@ export const TreemapChart = ({
   rawSeries,
   settings,
   fontFamily,
+  onVisualizationClick,
 }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -131,13 +132,18 @@ export const TreemapChart = ({
   const hasChildren = Boolean(
     chartData?.tree.some((node) => node.children != null),
   );
-  const { eventHandlers } = useChartEvents(
+  const { eventHandlers } = useChartEvents({
     chartRef,
     overlayRef,
     hasChildren,
-    viewRootId != null,
-    handleViewRootChange,
-  );
+    isDrilled: viewRootId != null,
+    onDrillToGroup: handleViewRootChange,
+    tree: chartData?.tree ?? [],
+    treemapColumns: chartData?.treemapColumns ?? null,
+    rawSeries: rawSeriesWithRemappings,
+    settings,
+    onVisualizationClick,
+  });
 
   // Second pass of the label layout: after ECharts finishes laying out (or
   // re-laying out on drill/resize), read each tile's rendered size and recompute
