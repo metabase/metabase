@@ -19,6 +19,7 @@
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.tracing :as mbt]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -222,6 +223,24 @@
                                                                           (some? iteration) (assoc "step" iteration))}))
          part)))
 
+(defn- timed-llm-source
+  "Wrap the raw provider stream so the wall-clock spent consuming it — the actual
+  API request, from request start to provider-stream exhaustion — is reported via
+  [[mbt/*llm-request-timing*]] when bound. The `finally` fires once the source is
+  exhausted, before the fused `tool-executor-xf` completion arity blocks on tool
+  results, so the reported duration excludes tool execution."
+  [src]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (let [start-unix (mbt/now-unix-nano)
+            start-mono (System/nanoTime)]
+        (try
+          (reduce rf init src)
+          (finally
+            (when-let [t mbt/*llm-request-timing*]
+              (reset! t {:started-unix-nano start-unix
+                         :duration-nanos    (- (System/nanoTime) start-mono)}))))))))
+
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
@@ -297,7 +316,7 @@
                                               (report-aisdk-errors-xf tracking-opts)
                                               (report-token-usage-xf tracking-opts)
                                               (report-tool-usage-xf tracking-opts))
-                                        (stream-fn streaming-opts)))]
+                                        (timed-llm-source (stream-fn streaming-opts))))]
          (reify clojure.lang.IReduceInit
            (reduce [_ rf init]
              (with-span :info {:name       :metabot.agent/call-llm

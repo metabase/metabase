@@ -8,6 +8,7 @@
   (:require
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
+   [metabase.metabot.models.metabot-trace-span]
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.permissions.core :as perms]
@@ -216,9 +217,19 @@
                                     [:metabot_feedback.user_id :asc]]})]
     (t2/hydrate rows :user)))
 
+(defn- fetch-conversation-spans
+  "Return all OpenTelemetry-style trace spans recorded for `conversation-id`,
+   ordered by start time. The frontend rebuilds the per-turn span tree from
+   `parent_span_id` and groups by `trace_id`."
+  [conversation-id]
+  (t2/select :model/MetabotTraceSpan
+             :conversation_id conversation-id
+             {:order-by [[:started_at :asc] [:id :asc]]}))
+
 (defn fetch-conversation-detail
   "Fetch a conversation with its user info, the frontend-ready flattened
-   chat messages, the queries the bot generated, and any user-submitted feedback.
+   chat messages, the queries the bot generated, any user-submitted feedback,
+   and the recorded trace spans.
    404s via `api/check-404` if no conversation matches `conversation-id`."
   [conversation-id]
   (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
@@ -248,4 +259,5 @@
        :embedding_path       (:embedding_path conversation)
        :user_agent           (:user_agent conversation)
        :sanitized_user_agent (:sanitized_user_agent conversation)
-       :feedback             (fetch-conversation-feedback conversation-id)})))
+       :feedback             (fetch-conversation-feedback conversation-id)
+       :spans                (fetch-conversation-spans conversation-id)})))

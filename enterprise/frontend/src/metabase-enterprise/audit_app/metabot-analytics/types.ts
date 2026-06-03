@@ -85,6 +85,37 @@ export type ConversationFeedback = MetabotFeedback & {
   external_id: string | null;
 };
 
+export type TraceSpanKind = "server" | "client" | "internal";
+export type TraceSpanStatus = "unset" | "ok" | "error";
+
+export type TraceSpanEvent = {
+  name: string;
+  time_unix_nano: number;
+  attributes?: Record<string, unknown>;
+};
+
+/**
+ * One OpenTelemetry-style span recorded during a Metabot turn. Spans form a
+ * per-turn tree (one `trace_id` per assistant turn) via `parent_span_id`.
+ * `started_at`/`ended_at` are nanoseconds since the Unix epoch; `attributes`
+ * carry OTel GenAI semantic-convention keys plus `metabase.metabot.*` extensions.
+ */
+export type TraceSpan = {
+  id: number;
+  trace_id: string;
+  span_id: string;
+  parent_span_id: string | null;
+  message_id: number | null;
+  name: string;
+  kind: TraceSpanKind | null;
+  status: TraceSpanStatus | null;
+  status_message: string | null;
+  started_at: number;
+  ended_at: number | null;
+  attributes: Record<string, unknown> | null;
+  events: TraceSpanEvent[] | null;
+};
+
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;
@@ -105,6 +136,7 @@ export type ConversationDetail = {
   user_agent: string | null;
   sanitized_user_agent: string | null;
   feedback: ConversationFeedback[];
+  spans: TraceSpan[];
 };
 
 export const DATA_COMPLEXITY_CATALOG_IDS = [

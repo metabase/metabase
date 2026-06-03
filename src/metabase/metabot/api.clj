@@ -28,6 +28,8 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tracing :as mbt]
+   [metabase.metabot.tracing.semconv :as semconv]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -103,72 +105,82 @@
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
-      (let [parts-atom (atom [])
-            canceled?  (volatile! false)
-            ;; Captures throwables that escape the agent loop's own `catch Exception`
-            ;; (e.g. setup-phase throws before the reducible is constructed, `Error`
-            ;; subclasses, or failures from the agent's recovery `rf` write). Without
-            ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
-            ;; from a clean success.
-            thrown     (volatile! nil)
-            ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
-            xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
-                                                       :external-id external-id}))
-            writer-rf  (streaming-writer-rf os canceled-chan canceled?)]
-        (try
-          (when title
-            (writer-rf nil (self.core/format-data-line (metabot.streaming/conversation-title-part title))))
-          (when-not @canceled?
-            (transduce xf
-                       writer-rf
-                       (agent/run-agent-loop
-                        (cond-> {:messages      messages
-                                 :state         state
-                                 :metabot-id    metabot-id
-                                 :profile-id    (keyword profile-id)
-                                 :model         model
-                                 :context       enriched-context
-                                 :tracking-opts {:session-id conversation-id}}
-                          debug?      (assoc :debug? true)
-                          database-id (assoc :database-id database-id)))))
-          (catch org.eclipse.jetty.io.EofException _
-            (vreset! canceled? true)
-            (log/debug "Client disconnected during native agent streaming"))
-          (catch Throwable t
-            ;; `Throwable` (not `Exception`) so `Error` subclasses (OOM, etc.) still
-            ;; get captured into the row before they propagate. Don't re-throw: the
-            ;; HTTP 202 has already been committed and `streaming-response` will close
-            ;; the socket cleanly when this body fn returns. The error is fully
-            ;; captured in the row via the `finally` below and in the log here.
-            (vreset! thrown t)
-            (log/error t "Native agent stream failed"
-                       {:conversation-id conversation-id
-                        :assistant-msg-id assistant-msg-id
-                        :external-id     external-id}))
-          (finally
-            (try
-              (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
-                    aborted?       @canceled?
-                    thrown-ex      @thrown
-                    ;; Precedence: aborted > thrown > streamed `:error`.
-                    ;;   - aborted: client is gone, no point recording why — they can't see it.
-                    ;;   - thrown:  more authoritative than any partial streamed error.
-                    ;;   - streamed: today's behavior for adapter/tool errors.
-                    error-data     (cond
-                                     aborted? nil
-                                     thrown-ex (metabot.persistence/throwable->error-payload thrown-ex)
-                                     :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
-                (metabot.persistence/finalize-assistant-turn!
-                 conversation-id assistant-msg-id combined-parts
-                 :profile-id profile-id
-                 :finished?  (not aborted?)
-                 :error      error-data))
-              (catch Exception e
-                (log/error e "Failed to finalize assistant turn"
-                           {:conversation-id  conversation-id
-                            :assistant-msg-id assistant-msg-id
-                            :external-id      external-id})))))))))
+      (mbt/with-trace
+        (let [parts-atom (atom [])
+              canceled?  (volatile! false)
+              ;; Captures throwables that escape the agent loop's own `catch Exception`
+              ;; (e.g. setup-phase throws before the reducible is constructed, `Error`
+              ;; subclasses, or failures from the agent's recovery `rf` write). Without
+              ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
+              ;; from a clean success.
+              thrown     (volatile! nil)
+              ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
+              xf         (comp (u/tee-xf parts-atom)
+                               (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
+                                                         :external-id external-id}))
+              writer-rf  (streaming-writer-rf os canceled-chan canceled?)]
+          (try
+            (when title
+              (writer-rf nil (self.core/format-data-line (metabot.streaming/conversation-title-part title))))
+            (when-not @canceled?
+              (mbt/with-span {:name  "metabot.request"
+                              :kind  :server
+                              :attrs (cond-> {semconv/conversation-id conversation-id
+                                              semconv/profile-id       profile-id
+                                              semconv/context          enriched-context}
+                                       model (assoc semconv/gen-ai-request-model model
+                                                    semconv/gen-ai-system (provider-util/provider-and-model->provider model)))}
+                (transduce xf
+                           writer-rf
+                           (agent/run-agent-loop
+                            (cond-> {:messages      messages
+                                     :state         state
+                                     :metabot-id    metabot-id
+                                     :profile-id    (keyword profile-id)
+                                     :model         model
+                                     :context       enriched-context
+                                     :tracking-opts {:session-id conversation-id}}
+                              debug?      (assoc :debug? true)
+                              database-id (assoc :database-id database-id))))))
+            (catch org.eclipse.jetty.io.EofException _
+              (vreset! canceled? true)
+              (log/debug "Client disconnected during native agent streaming"))
+            (catch Throwable t
+              ;; `Throwable` (not `Exception`) so `Error` subclasses (OOM, etc.) still
+              ;; get captured into the row before they propagate. Don't re-throw: the
+              ;; HTTP 202 has already been committed and `streaming-response` will close
+              ;; the socket cleanly when this body fn returns. The error is fully
+              ;; captured in the row via the `finally` below and in the log here.
+              (vreset! thrown t)
+              (log/error t "Native agent stream failed"
+                         {:conversation-id conversation-id
+                          :assistant-msg-id assistant-msg-id
+                          :external-id     external-id}))
+            (finally
+              (try
+                (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
+                      aborted?       @canceled?
+                      thrown-ex      @thrown
+                      ;; Precedence: aborted > thrown > streamed `:error`.
+                      ;;   - aborted: client is gone, no point recording why — they can't see it.
+                      ;;   - thrown:  more authoritative than any partial streamed error.
+                      ;;   - streamed: today's behavior for adapter/tool errors.
+                      error-data     (cond
+                                       aborted? nil
+                                       thrown-ex (metabot.persistence/throwable->error-payload thrown-ex)
+                                       :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
+                  (metabot.persistence/finalize-assistant-turn!
+                   conversation-id assistant-msg-id combined-parts
+                   :profile-id profile-id
+                   :finished?  (not aborted?)
+                   :error      error-data)
+                  ;; Persist trace spans collected during this turn (no-op when disabled).
+                  (mbt/persist-spans! conversation-id assistant-msg-id))
+                (catch Exception e
+                  (log/error e "Failed to finalize assistant turn"
+                             {:conversation-id  conversation-id
+                              :assistant-msg-id assistant-msg-id
+                              :external-id      external-id}))))))))))
 
 (defn- check-model-override-enabled!
   [model]

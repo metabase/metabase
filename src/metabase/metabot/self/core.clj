@@ -5,6 +5,8 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.tracing :as mbt]
+   [metabase.metabot.tracing.semconv :as semconv]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -430,32 +432,41 @@
   (with-span :info {:name         :metabot.agent/run-tool
                     :tool-name    tool-name
                     :tool-call-id tool-call-id}
-    (let [start-ms (u/start-timer)
-          assoc-ms (fn [duration-ms]
-                     (fn [chunk]
-                       (cond-> chunk
-                         (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-          results  (try
-                     (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                           arguments (or (coerce-stringified-json arguments) {})
-                           decode    (tool-decode-fn tool)
-                           arguments (cond-> arguments decode decode)]
-                       (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
-                       (let [tool-fn (tool-call-fn tool)
-                             result  (tool-fn arguments)]
-                         (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-                         (collect-tool-result tool-call-id tool-name result)))
-                     (catch Exception e
-                       (if (:agent-error? (ex-data e))
-                         (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                         (log/warn e "Tool execution failed" {:tool-name tool-name}))
-                       [{:type         :tool-output-available
-                         :toolCallId   tool-call-id
-                         :toolName     tool-name
-                         :error        {:message (concise-tool-error e)
-                                        :type    (str (type e))}}]))]
-      (mapv (assoc-ms (u/since-ms start-ms))
-            results))))
+    ;; Trace span for usage-analytics review. Records the tool INPUT only — tool
+    ;; output is deliberately never captured here.
+    (mbt/with-span {:name  (str "execute_tool " tool-name)
+                    :kind  :internal
+                    :attrs {semconv/gen-ai-operation-name "execute_tool"
+                            semconv/gen-ai-tool-name       tool-name
+                            semconv/gen-ai-tool-call-id    tool-call-id}}
+      (let [start-ms (u/start-timer)
+            assoc-ms (fn [duration-ms]
+                       (fn [chunk]
+                         (cond-> chunk
+                           (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
+            results  (try
+                       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                             arguments (or (coerce-stringified-json arguments) {})
+                             decode    (tool-decode-fn tool)
+                             arguments (cond-> arguments decode decode)]
+                         (mbt/add-attrs! {semconv/tool-input arguments})
+                         (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
+                         (let [tool-fn (tool-call-fn tool)
+                               result  (tool-fn arguments)]
+                           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
+                           (collect-tool-result tool-call-id tool-name result)))
+                       (catch Exception e
+                         (if (:agent-error? (ex-data e))
+                           (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
+                           (log/warn e "Tool execution failed" {:tool-name tool-name}))
+                         (mbt/set-status! :error (concise-tool-error e))
+                         [{:type         :tool-output-available
+                           :toolCallId   tool-call-id
+                           :toolName     tool-name
+                           :error        {:message (concise-tool-error e)
+                                          :type    (str (type e))}}]))]
+        (mapv (assoc-ms (u/since-ms start-ms))
+              results)))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.

@@ -49,6 +49,21 @@
                 created-at (assoc :created_at created-at)
                 updated-at (assoc :updated_at updated-at))))
 
+(defn- insert-span!
+  [{:keys [conversation-id message-id trace-id span-id parent-span-id name kind started-at ended-at attributes]}]
+  (t2/insert! :model/MetabotTraceSpan
+              (cond-> {:conversation_id conversation-id
+                       :message_id      message-id
+                       :trace_id        trace-id
+                       :span_id         span-id
+                       :name            name
+                       :kind            kind
+                       :status          :ok
+                       :started_at      started-at
+                       :ended_at        ended-at}
+                parent-span-id (assoc :parent_span_id parent-span-id)
+                attributes     (assoc :attributes attributes))))
+
 (defn- offset-date-time
   [s]
   (java.time.OffsetDateTime/parse s))
@@ -407,6 +422,47 @@
             (let [{:keys [role type externalId]} (last (:chat_messages response))]
               (is (= ["agent" "text"] [role type]))
               (is (string? externalId))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
+
+(deftest get-conversation-detail-spans-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id returns recorded trace spans"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)
+            jan-1           (offset-date-time "2026-01-01T00:00:00Z")
+            trace-id        (apply str (repeat 32 "a"))]
+        (try
+          (insert-conversation! {:conversation-id conversation-id
+                                 :user-id         user-id
+                                 :created-at      jan-1})
+          (let [msg-id (insert-message! {:conversation-id conversation-id
+                                         :created-at      jan-1
+                                         :role            "assistant"
+                                         :profile-id      "sql"
+                                         :total-tokens    8
+                                         :data            [{:type "text" :text "hi"}]})]
+            (insert-span! {:conversation-id conversation-id :message-id msg-id
+                           :trace-id trace-id :span-id "1111111111111111"
+                           :name "metabot.request" :kind :server
+                           :started-at 1000 :ended-at 5000})
+            (insert-span! {:conversation-id conversation-id :message-id msg-id
+                           :trace-id trace-id :span-id "2222222222222222"
+                           :parent-span-id "1111111111111111"
+                           :name "execute_tool search" :kind :internal
+                           :started-at 2000 :ended-at 3000
+                           :attributes {"metabase.metabot.tool.input" {:q "orders"}}}))
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" conversation-id))
+                spans    (:spans response)
+                by-name  (into {} (map (juxt :name identity)) spans)]
+            (is (= 2 (count spans)))
+            (is (= "metabot.request" (:name (first spans)))
+                "spans are ordered by start time")
+            (let [tool (get by-name "execute_tool search")]
+              (is (= "1111111111111111" (:parent_span_id tool)))
+              (is (= {:q "orders"}
+                     (get-in tool [:attributes (keyword "metabase.metabot.tool.input")])))))
           (finally
             (delete-conversations! [conversation-id])))))))
 

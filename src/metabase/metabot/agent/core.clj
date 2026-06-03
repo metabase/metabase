@@ -17,6 +17,8 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tracing :as mbt]
+   [metabase.metabot.tracing.semconv :as semconv]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -528,51 +530,79 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
-          max-iter           (:max-iterations profile 10)
-          tracking-opts      (assoc tracking-opts :iteration iteration)
-          memory             @memory-atom
-          parts-atom         (atom [])
-          link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
-          xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
-                                   (u/tee-xf parts-atom))
-          ;; We use `reduce` instead of `transduce` because rf is the outer reducing
-          ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
-          ;; arity emits a finish message — that must only fire once, at the end of the
-          ;; entire agent loop, not after every iteration.
-          result'            (reduce (xf rf) result llm-call)
-          parts              @parts-atom]
-      ;; Sync link registry back to memory after streaming completes
-      (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
-      ;; Capture response for debug log
-      (when *debug-log*
-        (debug-log! {:iteration iteration
-                     :phase     :response
-                     :text      (collect-text-from-parts parts)
-                     :tools     (summarize-tool-ios parts)
-                     :all-parts parts}))
-      (log/debug "Iteration" {:n iteration :parts-count (count parts)})
-      (if (empty? parts)
-        (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
-        (do
-          (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
-          (swap! memory-atom update-memory parts)
-          (cond
-            (reduced? result')
-            (assoc loop-state :status :reduced :result @result')
+    ;; The loop counter is 1-based; expose steps 0-based in the trace so the
+    ;; first iteration reads as `metabot.step 0`.
+    (mbt/with-span {:name  (str "metabot.step " (dec iteration))
+                    :kind  :internal
+                    :attrs {semconv/iteration (dec iteration)}}
+      (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+            max-iter           (:max-iterations profile 10)
+            tracking-opts      (assoc tracking-opts :iteration iteration)
+            memory             @memory-atom
+            parts-atom         (atom [])
+            link-registry-atom (atom (get-in memory [:state :link-registry] {}))
+            llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
+            xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
+                                     (u/tee-xf parts-atom))
+            ;; We use `reduce` instead of `transduce` because rf is the outer reducing
+            ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
+            ;; arity emits a finish message — that must only fire once, at the end of the
+            ;; entire agent loop, not after every iteration.
+            ;; The reduce runs directly under `metabot.step N`. The LLM API request
+            ;; is timed out-of-band by the streaming layer (via *llm-request-timing*)
+            ;; and recorded afterward as a sibling `/completions` span, so tool
+            ;; execution — interleaved in this same reduction — is not counted in it,
+            ;; and `execute_tool` spans parent to the step rather than to it.
+            llm-timing         (atom nil)
+            record-completions!
+            (fn [status msg]
+              (mbt/record-timed-span!
+               (merge {:name           (str "/completions " (:model profile))
+                       :kind           :client
+                       :status         status
+                       :status-message msg
+                       :attrs          (merge (mbt/chat-attrs (:model profile))
+                                              (mbt/chat-usage-attrs @parts-atom))}
+                      @llm-timing)))
+            result'            (binding [mbt/*llm-request-timing* llm-timing]
+                                 (try
+                                   (let [r (reduce (xf rf) result llm-call)]
+                                     (record-completions! :ok nil)
+                                     r)
+                                   (catch Throwable t
+                                     (record-completions! :error (ex-message t))
+                                     (throw t))))
+            parts              @parts-atom]
+        ;; Sync link registry back to memory after streaming completes
+        (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
+        ;; Capture response for debug log
+        (when *debug-log*
+          (debug-log! {:iteration iteration
+                       :phase     :response
+                       :text      (collect-text-from-parts parts)
+                       :tools     (summarize-tool-ios parts)
+                       :all-parts parts}))
+        (log/debug "Iteration" {:n iteration :parts-count (count parts)})
+        (if (empty? parts)
+          (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
+          (do
+            (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
+            (swap! memory-atom update-memory parts)
+            (cond
+              (reduced? result')
+              (assoc loop-state :status :reduced :result @result')
 
-            (should-continue? iteration max-iter parts)
-            (assoc loop-state :result result' :iteration (inc iteration))
+              (should-continue? iteration max-iter parts)
+              (assoc loop-state :result result' :iteration (inc iteration))
 
-            :else
-            (do (log/info "Agent loop complete"
-                          {:iterations iteration
-                           ;; TODO: decide if we want this reason to float up to frontend
-                           :reason     (finish-reason iteration max-iter parts)})
-                (assoc loop-state
-                       :status :done
-                       :result (rf result' (final-state-part @memory-atom))))))))))
+              :else
+              (do (log/info "Agent loop complete"
+                            {:iterations iteration
+                             ;; TODO: decide if we want this reason to float up to frontend
+                             :reason     (finish-reason iteration max-iter parts)})
+                  (assoc loop-state
+                         :status :done
+                         :result (rf result' (final-state-part @memory-atom)))))))))))
 
 ;;; Public API
 

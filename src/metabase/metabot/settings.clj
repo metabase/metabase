@@ -24,6 +24,14 @@
                     (setting/get-value-of-type :boolean :metabot-enabled?))
   :export?    true)
 
+(defsetting metabot-trace-spans-enabled
+  (deferred-tru "Whether to record OpenTelemetry-style trace spans for Metabot turns, for review in usage analytics.")
+  :type       :boolean
+  :default    true
+  :visibility :internal
+  :export?    false
+  :doc        false)
+
 (defsetting metabot-name
   (deferred-tru "The display name for Metabot.")
   :type       :string

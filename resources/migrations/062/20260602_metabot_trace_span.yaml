@@ -1,0 +1,169 @@
+## OpenTelemetry-style trace spans for Metabot requests. One trace per assistant turn;
+## spans capture request / step (agent-loop iteration) / LLM completion / tool-call timing
+## and OTel GenAI semantic-convention attributes. See metabase.metabot.tracing.
+
+databaseChangeLog:
+  - changeSet:
+      id: v62.2026-06-02T12:00:00
+      author: sloan
+      comment: metabot_trace_span table
+      changes:
+        - createTable:
+            tableName: metabot_trace_span
+            remarks: OpenTelemetry-style trace spans for a Metabot turn. One trace (trace_id) per assistant turn; spans form a tree via parent_span_id.
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Auto-incrementing primary key
+              - column:
+                  name: conversation_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                  remarks: FK to the metabot_conversation this trace belongs to
+              - column:
+                  name: message_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: FK to the assistant metabot_message (turn) this trace covers
+              - column:
+                  name: trace_id
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+                  remarks: OpenTelemetry trace id (one per turn), 32 hex chars
+              - column:
+                  name: span_id
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+                  remarks: OpenTelemetry span id, 16 hex chars
+              - column:
+                  name: parent_span_id
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+                  remarks: Parent span id; null for the root (request) span
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                  remarks: 'Span name, e.g. metabot.request, metabot.step 0, chat <model>, execute_tool <name>'
+              - column:
+                  name: kind
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+                  remarks: 'OpenTelemetry span kind: SERVER, CLIENT, or INTERNAL'
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+                  remarks: 'OpenTelemetry span status: UNSET, OK, or ERROR'
+              - column:
+                  name: status_message
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: Error message when status is ERROR
+              - column:
+                  name: started_at
+                  type: bigint
+                  constraints:
+                    nullable: false
+                  remarks: Span start time in nanoseconds since the Unix epoch
+              - column:
+                  name: ended_at
+                  type: bigint
+                  constraints:
+                    nullable: true
+                  remarks: Span end time in nanoseconds since the Unix epoch
+              - column:
+                  name: attributes
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: JSON-encoded span attributes (OTel GenAI semantic conventions + metabase.metabot.* keys)
+              - column:
+                  name: events
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: JSON-encoded array of span events ({name, time_unix_nano, attributes})
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: When this span row was recorded
+
+  - changeSet:
+      id: v62.2026-06-02T12:00:01
+      author: sloan
+      comment: FK from metabot_trace_span.conversation_id to metabot_conversation
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_trace_span
+            baseColumnNames: conversation_id
+            constraintName: fk_metabot_trace_span_conversation_id
+            referencedTableName: metabot_conversation
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.2026-06-02T12:00:02
+      author: sloan
+      comment: FK from metabot_trace_span.message_id to metabot_message
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_trace_span
+            baseColumnNames: message_id
+            constraintName: fk_metabot_trace_span_message_id
+            referencedTableName: metabot_message
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v62.2026-06-02T12:00:03
+      author: sloan
+      comment: Index on metabot_trace_span.conversation_id
+      changes:
+        - createIndex:
+            tableName: metabot_trace_span
+            indexName: idx_metabot_trace_span_conversation_id
+            columns:
+              - column:
+                  name: conversation_id
+
+  - changeSet:
+      id: v62.2026-06-02T12:00:04
+      author: sloan
+      comment: Index on metabot_trace_span.message_id
+      changes:
+        - createIndex:
+            tableName: metabot_trace_span
+            indexName: idx_metabot_trace_span_message_id
+            columns:
+              - column:
+                  name: message_id
+
+  - changeSet:
+      id: v62.2026-06-02T12:00:05
+      author: sloan
+      comment: Index on metabot_trace_span.trace_id
+      changes:
+        - createIndex:
+            tableName: metabot_trace_span
+            indexName: idx_metabot_trace_span_trace_id
+            columns:
+              - column:
+                  name: trace_id

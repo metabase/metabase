@@ -1,0 +1,24 @@
+.chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.detail {
+  width: 100%;
+  max-height: 32rem;
+  overflow-y: auto;
+}
+
+.close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 12rem;
+  overflow-y: auto;
+}

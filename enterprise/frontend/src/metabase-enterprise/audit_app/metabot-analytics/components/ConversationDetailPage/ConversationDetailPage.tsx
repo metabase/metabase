@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
@@ -16,6 +16,11 @@ import {
   getDataPointTargetsFromState,
 } from "metabase/metabot/components/MetabotChat/data-point-mentions";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
+import {
+  destroyAgent,
+  getActiveMetabotAgentIds,
+  hydrateChatConversation,
+} from "metabase/metabot/state";
 import type {
   MetabotAgentId,
   MetabotAgentTextChatMessage,
@@ -23,7 +28,7 @@ import type {
 } from "metabase/metabot/state/types";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -47,11 +52,14 @@ import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { useGetMetabotConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
+import { ConversationTrace } from "../ConversationTrace/ConversationTrace";
 
 import { ConversationHeader } from "./ConversationHeader";
 
 export function ConversationDetailPage({ params }: WithRouterProps) {
   const convoId = params.convoId;
+  const dispatch = useDispatch();
+  const activeAgentIds = useSelector(getActiveMetabotAgentIds);
 
   const {
     data: conversation,
@@ -61,13 +69,49 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     refetchOnMountOrArgChange: true,
   });
 
+  const isSlack =
+    conversation?.profile_id === "slackbot" ||
+    conversation?.profile_id === "slack";
+
   const chatMessages = useMemo(() => {
     return normalizeFetchedChatMessages(conversation?.chat_messages ?? [], {
-      isSlack:
-        conversation?.profile_id === "slackbot" ||
-        conversation?.profile_id === "slack",
+      isSlack,
     });
-  }, [conversation]);
+  }, [conversation, isSlack]);
+
+  // Synthesized for read-only analytics rendering.
+  const agentId: MetabotAgentId | null = conversation
+    ? `chat_${conversation.conversation_id}`
+    : null;
+  const agentExists = !!agentId && activeAgentIds.includes(agentId);
+
+  // The read-only chat components read Metabot selectors keyed by `agentId`,
+  // which throw when no conversation is registered. Hydrate a snapshot into the
+  // Metabot store (mirroring MetabotPage) so those selectors resolve; the empty
+  // history/state keep the rendering inert. Torn down on unmount.
+  useEffect(() => {
+    if (!agentId || !conversation || agentExists) {
+      return;
+    }
+    dispatch(
+      hydrateChatConversation({
+        agentId,
+        conversationId: conversation.conversation_id,
+        title: null,
+        messages: chatMessages,
+        history: [],
+        state: {},
+      }),
+    );
+  }, [dispatch, agentId, agentExists, conversation, chatMessages]);
+
+  useEffect(() => {
+    return () => {
+      if (agentId) {
+        dispatch(destroyAgent({ agentId }));
+      }
+    };
+  }, [dispatch, agentId]);
 
   if (isLoading || error) {
     return (
@@ -77,7 +121,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     );
   }
 
-  if (!conversation) {
+  if (!conversation || !agentId) {
     return null;
   }
 
@@ -88,12 +132,9 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     query_count,
     queries,
     feedback,
+    spans,
   } = conversation;
 
-  // Synthesized for read-only analytics rendering. The chat components require
-  // an agentId, but selectors return undefined for an unknown id, so interactive
-  // affordances stay inert.
-  const agentId: MetabotAgentId = `chat_${conversation.conversation_id}`;
   const dataPointTargets = getDataPointTargetsFromState(conversation.state);
 
   return (
@@ -111,7 +152,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           <StatCard label={t`Searches`} value={formatNumber(search_count)} />
         </SimpleGrid>
 
-        {feedback.length > 0 && (
+        {agentExists && feedback.length > 0 && (
           <Stack gap="md">
             <Title order={3}>{t`Feedback`}</Title>
             <Stack gap="sm">
@@ -128,6 +169,8 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           </Stack>
         )}
 
+        {spans.length > 0 && <ConversationTrace spans={spans} />}
+
         <Stack gap="md">
           <Flex align="baseline" justify="space-between">
             <Title order={3}>{t`Conversation`}</Title>
@@ -138,14 +181,20 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
             )}
           </Flex>
           <Card withBorder shadow="none" p="xl">
-            <Messages
-              agentId={agentId}
-              messages={chatMessages}
-              isDoingScience={false}
-              debug
-              readonly
-              dataPointTargets={dataPointTargets}
-            />
+            {agentExists ? (
+              <Messages
+                agentId={agentId}
+                messages={chatMessages}
+                isDoingScience={false}
+                debug
+                readonly
+                dataPointTargets={dataPointTargets}
+              />
+            ) : (
+              <Flex justify="center" align="center" mih={120}>
+                <Loader />
+              </Flex>
+            )}
           </Card>
         </Stack>
 

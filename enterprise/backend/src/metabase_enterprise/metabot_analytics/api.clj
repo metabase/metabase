@@ -97,6 +97,26 @@
    [:created_at        ms/TemporalInstant]
    [:updated_at        ms/TemporalInstant]])
 
+(def ^:private TraceSpan
+  "Schema for one OpenTelemetry-style trace span recorded during a turn. Spans
+   form a per-turn tree (one `trace_id` per assistant turn) via `parent_span_id`.
+   `attributes` carry OTel GenAI semantic-convention keys plus `metabase.metabot.*`
+   extensions; `started_at`/`ended_at` are nanoseconds since the Unix epoch."
+  [:map
+   [:id             ms/PositiveInt]
+   [:trace_id       :string]
+   [:span_id        :string]
+   [:parent_span_id [:maybe :string]]
+   [:message_id     [:maybe ms/PositiveInt]]
+   [:name           :string]
+   [:kind           [:maybe :keyword]]
+   [:status         [:maybe :keyword]]
+   [:status_message [:maybe :string]]
+   [:started_at     :int]
+   [:ended_at       [:maybe :int]]
+   [:attributes     [:maybe [:map-of :keyword :any]]]
+   [:events         [:maybe [:sequential :map]]]])
+
 (def ^:private ConversationDetail
   "Schema for full conversation detail response."
   [:map
@@ -118,7 +138,8 @@
    [:embedding_path       [:maybe :string]]
    [:user_agent           [:maybe :string]]
    [:sanitized_user_agent [:maybe :string]]
-   [:feedback             [:sequential ConversationFeedback]]])
+   [:feedback             [:sequential ConversationFeedback]]
+   [:spans                [:sequential TraceSpan]]])
 
 (def ^:private ListConversationsResponse
   "Response schema for `GET /conversations`."
