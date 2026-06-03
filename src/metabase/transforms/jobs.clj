@@ -29,6 +29,20 @@
 
 (set! *warn-on-reflection* true)
 
+(defonce ^:private
+  ^{:doc "Set of job-run ids whose coordinator (`run-transforms!`) is alive on THIS process. Heartbeated
+  every minute so an orphaned job run (process died mid-job) is reaped on the same fast cadence as its
+  child transform runs, rather than lingering until the 240-minute wall-clock backstop."}
+  active-job-runs
+  (atom #{}))
+
+(defn send-heartbeat!
+  "Bump `updated_at` on the job runs whose coordinator is alive on this process. Called by the heartbeat
+  job every minute; when this process dies these stamps stop and [[transforms.job-run/reap-orphaned-runs!]]
+  reaps the run."
+  []
+  (transforms.job-run/heartbeat-runs! (seq @active-job-runs)))
+
 (defn- next-transform [ordering transforms-by-id complete]
   (-> (transforms-base.ordering/available-transforms ordering #{} complete)
       first
@@ -241,6 +255,10 @@
                         plan))]
     (when start-promise (deliver start-promise :started))
     (try
+      ;; Register as the first action inside the try so the `finally` always deregisters — no leak if
+      ;; dispatch! throws. The brief window before this (start-run! → here) is covered by the job run's
+      ;; insert-time `updated_at`, just like the transform-run setup window.
+      (swap! active-job-runs conj run-id)
       (vreset! state (dispatch! @state))
       (while (busy? @state)
         (let [completion (.take completions)
@@ -263,6 +281,7 @@
                                        (update :failures conj (dissoc completion ::status)))))))
           (vreset! state (dispatch! @state))))
       (finally
+        (swap! active-job-runs disj run-id)
         ;; shutdownNow (not shutdown): on the happy path the in-flight set is already drained, so
         ;; this is equivalent to shutdown; on an abnormal exit (e.g. an interrupted take) it also
         ;; interrupts any workers still running against a run that has already been failed.
@@ -448,3 +467,52 @@
 (defmethod task/init! ::TimeoutJob [_]
   (log/info "Scheduling transform job timeout.")
   (start-job!))
+
+(def ^:private heartbeat-job-key "metabase.transforms.jobs.heartbeat-job")
+
+(def ^:private transform-job-heartbeat-stale-minutes 5)
+
+(defn- reap-and-notify-orphaned-runs!
+  "Reap job runs whose coordinator process died (stale heartbeat) and notify admins for each cron run we
+  reaped, mirroring [[timeout-and-notify-old-runs!]]'s cron-only notification behavior."
+  []
+  (let [reaped (transforms.job-run/reap-orphaned-runs! transform-job-heartbeat-stale-minutes)]
+    (when (seq reaped)
+      (log/infof "Reaped %d orphaned transform job run(s) with stale heartbeats." (count reaped)))
+    (doseq [{:keys [job_id run_method message]} reaped
+            :when (= run_method :cron)]
+      (try
+        (notify-job-failure job_id (or message "Timed out: no heartbeat"))
+        (catch Throwable t
+          (log/error t "Error notifying of reaped transform job run" (pr-str job_id)))))))
+
+(defn- transform-job-run-heartbeat! []
+  ;; Two responsibilities, parallel to the transform-run heartbeat in metabase.transforms.canceling:
+  ;;   1. Stamp updated_at on the job runs THIS process is coordinating (so they aren't reaped while alive).
+  ;;   2. Reap job runs whose heartbeat has gone stale (their coordinator process died).
+  (tracing/with-span :tasks "task.transform.job-heartbeat" {}
+    (send-heartbeat!)
+    (reap-and-notify-orphaned-runs!)))
+
+(task/defjob  ^{:doc "Heartbeat active transform job runs owned by this process and reap orphaned ones"
+                org.quartz.DisallowConcurrentExecution true}
+  TransformJobRunHeartbeat [_ctx]
+  (transform-job-run-heartbeat!))
+
+(defn- start-heartbeat-job! []
+  (when (not (task/job-exists? heartbeat-job-key))
+    (let [job     (jobs/build
+                   (jobs/of-type TransformJobRunHeartbeat)
+                   (jobs/with-identity (jobs/key heartbeat-job-key)))
+          trigger (triggers/build
+                   (triggers/with-identity (triggers/key heartbeat-job-key))
+                   (triggers/start-now)
+                   (triggers/with-schedule
+                    (calendar-interval/schedule
+                     (calendar-interval/with-interval-in-minutes 1)
+                     (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
+      (task/schedule-task! job trigger))))
+
+(defmethod task/init! ::TransformJobRunHeartbeat [_]
+  (log/info "Scheduling transform job run heartbeat task.")
+  (start-heartbeat-job!))

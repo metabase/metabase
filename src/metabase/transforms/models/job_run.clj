@@ -100,6 +100,37 @@
                               (timeout-util/detection-latency-ms updated-at timeout-dur detected-at)))))
     timed-out))
 
+(defn heartbeat-runs!
+  "Bump `updated_at = now` on the given still-active job-run-ids. Called every minute by the heartbeat job
+  with the run-ids whose coordinator is alive on this process. No-op on an empty id list; the `is_active`
+  guard makes it a no-op for runs that have since finished."
+  [run-ids]
+  (when (seq run-ids)
+    (t2/update! :model/TransformJobRun
+                {:id [:in run-ids], :is_active true}
+                {:updated_at :%now})))
+
+(defn reap-orphaned-runs!
+  "Time out active job runs whose `updated_at` is older than `stale-minutes` — their coordinator process is
+  presumed dead (it stopped heartbeating). Returns the rows that were timed out so callers can notify.
+  Mirrors [[timeout-old-runs!]] but on the short heartbeat threshold and with a distinguishing message."
+  [stale-minutes]
+  (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- stale-minutes) :minute)
+        timeout-dur (timeout-util/unit->duration stale-minutes :minute)
+        detected-at (Instant/now)
+        timed-out   (timeout-util/timeout-rows! :model/TransformJobRun :updated_at cutoff
+                                                "Timed out: no heartbeat")]
+    (when (seq timed-out)
+      (analytics/inc! :metabase-transforms/timeouts-total
+                      {:type "job"}
+                      (count timed-out))
+      (doseq [run timed-out]
+        (when-let [updated-at (:updated_at run)]
+          (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
+                              {:type "job"}
+                              (timeout-util/detection-latency-ms updated-at timeout-dur detected-at)))))
+    timed-out))
+
 (defn running-run-for-job-id
   "Return a single active job run or nil."
   [id]

@@ -10,6 +10,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.canceling :as canceling]
+   [metabase.transforms.jobs :as jobs]
+   [metabase.transforms.models.job-run :as job-run]
    [metabase.transforms.models.transform-run :as transform-run]
    [toucan2.core :as t2])
   (:import
@@ -27,6 +29,12 @@
 
 (defn- recently-beaten? [run-id]
   (.isAfter (heartbeat run-id) (minutes-ago 1)))
+
+(defn- job-updated-at ^OffsetDateTime [run-id]
+  (t2/select-one-fn :updated_at :model/TransformJobRun :id run-id))
+
+(defn- job-recently-beaten? [run-id]
+  (.isAfter (job-updated-at run-id) (minutes-ago 1)))
 
 (deftest heartbeat-runs!-test
   (mt/with-premium-features #{:transforms-basic}
@@ -117,3 +125,78 @@
           (is (= config/local-process-uuid
                  (t2/select-one-fn :process_uuid :model/TransformRun :id run-id)))
           (is (some? (heartbeat run-id)) "last_heartbeat is populated by the column default"))))))
+
+;;; ------------------------------------------- Job-run heartbeat -------------------------------------------
+
+(deftest job-heartbeat-runs!-test
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-temp [:model/TransformJob    {job-id :id}   {:name "hb-job" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobRun {beat-id :id}  {:job_id     job-id
+                                                          :status     :started
+                                                          :is_active  true
+                                                          :run_method :manual
+                                                          :updated_at (minutes-ago 10)}
+                   :model/TransformJobRun {other-id :id} {:job_id     job-id
+                                                          :status     :started
+                                                          :is_active  true
+                                                          :run_method :manual
+                                                          :updated_at (minutes-ago 10)}
+                   :model/TransformJobRun {done-id :id}  {:job_id     job-id
+                                                          :status     :succeeded
+                                                          :is_active  nil
+                                                          :run_method :manual
+                                                          :updated_at (minutes-ago 10)}]
+      (job-run/heartbeat-runs! [beat-id done-id])
+      (testing "only the passed run that is still active gets a fresh heartbeat"
+        (is (job-recently-beaten? beat-id))
+        (is (not (job-recently-beaten? other-id)) "a run not in the id list is left to go stale"))
+      (testing "an inactive run is not stamped even when passed (is_active guard)"
+        (is (not (job-recently-beaten? done-id))))
+      (testing "empty id list is a no-op"
+        (is (nil? (job-run/heartbeat-runs! [])))))))
+
+(deftest job-send-heartbeat!-beats-registered-test
+  (testing "jobs/send-heartbeat! beats exactly the job runs registered as coordinated by this process"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/TransformJob    {job-id :id}          {:name "hb-job" :schedule "0 0 * * * ? *"}
+                     :model/TransformJobRun {registered-id :id}   {:job_id     job-id
+                                                                   :status     :started
+                                                                   :is_active  true
+                                                                   :run_method :manual
+                                                                   :updated_at (minutes-ago 10)}
+                     :model/TransformJobRun {unregistered-id :id} {:job_id     job-id
+                                                                   :status     :started
+                                                                   :is_active  true
+                                                                   :run_method :manual
+                                                                   :updated_at (minutes-ago 10)}]
+        (swap! @#'jobs/active-job-runs conj registered-id)
+        (try
+          (jobs/send-heartbeat!)
+          (is (job-recently-beaten? registered-id) "the registered (coordinated) run is heartbeated")
+          (is (not (job-recently-beaten? unregistered-id)) "a run not coordinated here is left to go stale")
+          (finally
+            (swap! @#'jobs/active-job-runs disj registered-id)))))))
+
+(deftest job-reap-orphaned-runs!-test
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-prometheus-system! [_ _system]
+      (mt/with-temp [:model/TransformJob    {job-id :id}   {:name "hb-job" :schedule "0 0 * * * ? *"}
+                     :model/TransformJobRun {stale-id :id} {:job_id     job-id
+                                                            :status     :started
+                                                            :is_active  true
+                                                            :run_method :manual
+                                                            :updated_at (minutes-ago 10)}
+                     :model/TransformJobRun {fresh-id :id} {:job_id     job-id
+                                                            :status     :started
+                                                            :is_active  true
+                                                            :run_method :manual
+                                                            :updated_at (minutes-ago 1)}]
+        (testing "reaps only the job run whose heartbeat is older than the threshold"
+          (let [reaped (job-run/reap-orphaned-runs! 5)]
+            (is (= [stale-id] (mapv :id reaped)))
+            (is (= :timeout (t2/select-one-fn :status :model/TransformJobRun :id stale-id)))
+            (is (= :started (t2/select-one-fn :status :model/TransformJobRun :id fresh-id)))
+            (is (= "Timed out: no heartbeat"
+                   (t2/select-one-fn :message :model/TransformJobRun :id stale-id)))))
+        (testing "a second sweep finds nothing (row already inactive)"
+          (is (empty? (job-run/reap-orphaned-runs! 5))))))))
