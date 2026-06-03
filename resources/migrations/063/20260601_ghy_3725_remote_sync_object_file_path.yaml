@@ -3,7 +3,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: v62.2026-06-01T00:00:00
+      id: v63.2026-06-01T00:00:00
       author: ericnormand
       comment: Add remote_sync_object.file_path to record each entity's last-exported serialized path, so incremental export can resolve old paths for renames and deletes
       preConditions:

@@ -16,6 +16,9 @@
     (into {} (map (juxt :path :content) new-files))
     "written-files-version")
 
+  (apply-changes! [_ _message _upserts _delete-paths]
+    "written-files-version")
+
   (version [_]
     "mock-version"))
 
@@ -104,6 +107,9 @@
                       (write-files! [_ _message files]
                         (reset! written-files files)
                         nil)
+                      (apply-changes! [_ _message upserts _delete-paths]
+                        (reset! written-files upserts)
+                        nil)
                       (version [_]
                         "mock-version"))
           wrapped-snap (source/->WrappingSnapshot mock-snap [#"collections/.*"])
@@ -127,6 +133,9 @@
                       (write-files! [_ _message files]
                         (reset! written-files files)
                         nil)
+                      (apply-changes! [_ _message upserts _delete-paths]
+                        (reset! written-files upserts)
+                        nil)
                       (version [_]
                         "mock-version"))
           wrapped-snap (source/->WrappingSnapshot mock-snap [#"collections/.*" #"dashboards/.*"])
@@ -148,6 +157,8 @@
                           (read-file [_this _path]
                             nil)
                           (write-files! [_this _message _files]
+                            nil)
+                          (apply-changes! [_this _message _upserts _delete-paths]
                             nil)
                           (version [_this]
                             nil))

@@ -26,6 +26,10 @@
       (reset! written-files {:message message :files realized-files}))
     "mock-written-version")
 
+  (apply-changes! [_ message upserts _delete-paths]
+    (reset! written-files {:message message :files (vec upserts)})
+    "mock-written-version")
+
   (version [_]
     "mock-version"))
 

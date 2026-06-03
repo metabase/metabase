@@ -11,8 +11,18 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :each rs.test/clean-remote-sync-state)
+
+(defn- venues-query []
+  {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}})
+
+(defn- card-source-query [card-id]
+  {:database (mt/id) :type :query :query {:source-table (str "card__" card-id)}})
 
 (defn- new-task! []
   (t2/delete! :model/RemoteSyncTask)
@@ -273,7 +283,7 @@
     (mt/with-temp [:model/Collection {c-id :id}   {:name "Synced" :is_remote_synced true :location "/"}
                    :model/Collection {ext-id :id} {:name "External" :is_remote_synced false :location "/"}
                    :model/Card {y-id :id} {:name "Outside Card" :collection_id ext-id
-                                           :database_id (mt/id) :dataset_query (mt/mbql-query venues)}]
+                                           :database_id (mt/id) :dataset_query (venues-query)}]
       (t2/delete! :model/RemoteSyncObject)
       (seed-synced-row! "Collection" c-id)
       (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
@@ -287,11 +297,11 @@
     (with-cross-scope-setup!
       (fn [{:keys [mock c-id y-id y-eid]}]
         (mt/with-temp [:model/Card {x-id :id} {:name "Synced Card" :collection_id c-id
-                                               :database_id (mt/id) :dataset_query (mt/mbql-query venues)}]
+                                               :database_id (mt/id) :dataset_query (venues-query)}]
           (seed-synced-row! "Card" x-id)
           (impl/export! (source.p/snapshot mock) (new-task!) "add x") ; X now in repo (full), Y still not
           ;; Edit X to reference the external card Y, then export the single in-place change.
-          (t2/update! :model/Card x-id {:dataset_query (mt/mbql-query nil {:source-table (str "card__" y-id)})})
+          (t2/update! :model/Card x-id {:dataset_query (card-source-query y-id)})
           (set-status! "Card" x-id "update")
           (let [task (new-task!)]
             (impl/export! (source.p/snapshot mock) task "reference Y")
@@ -306,7 +316,7 @@
       (fn [{:keys [mock c-id y-id y-eid]}]
         (mt/with-temp [:model/Card {x-id :id} {:name "New Synced Card" :collection_id c-id
                                                :database_id (mt/id)
-                                               :dataset_query (mt/mbql-query nil {:source-table (str "card__" y-id)})}]
+                                               :dataset_query (card-source-query y-id)}]
           (seed-synced-row! "Card" x-id)
           (set-status! "Card" x-id "create")
           (let [task (new-task!)]
@@ -323,10 +333,10 @@
       (mt/with-temp [:model/Collection {c-id :id} {:name "C" :is_remote_synced true :location "/"}
                      :model/Collection {d-id :id} {:name "D" :is_remote_synced true :location "/"}
                      :model/Card {y-id :id} {:name "Synced Dep" :collection_id d-id
-                                             :database_id (mt/id) :dataset_query (mt/mbql-query venues)}
+                                             :database_id (mt/id) :dataset_query (venues-query)}
                      :model/Card {x-id :id} {:name "Referencing Card" :collection_id c-id
                                              :database_id (mt/id)
-                                             :dataset_query (mt/mbql-query nil {:source-table (str "card__" y-id)})}]
+                                             :dataset_query (card-source-query y-id)}]
         (t2/delete! :model/RemoteSyncObject)
         (seed-synced-row! "Collection" c-id)
         (seed-synced-row! "Collection" d-id)

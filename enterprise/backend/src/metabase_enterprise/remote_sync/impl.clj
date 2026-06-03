@@ -481,6 +481,26 @@
         (t2/update! :model/RemoteSyncObject :model_type model-type :model_id id
                     {:file_path path})))))
 
+(defn- path-top-level-dir [^String path]
+  (let [i (str/index-of path "/")]
+    (if i (subs path 0 i) path)))
+
+(defn- disabled-content-dirs
+  "Top-level repo directories whose content is disabled by the current settings. A full export removes
+  leftover files in these dirs via `write-files!` reconciliation; the incremental path preserves every
+  untouched file and can't, so it must fall back when such files are still present."
+  []
+  (cond-> #{}
+    (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
+    (not (settings/library-is-remote-synced?)) (conj "snippets")))
+
+(defn- needs-full-reconcile?
+  "True if the repo still contains files for content types that are currently disabled — those must be
+  cleaned up by a full export, so the incremental fast-path can't be used."
+  [snapshot]
+  (when-let [dir-set (not-empty (disabled-content-dirs))]
+    (boolean (some #(contains? dir-set (path-top-level-dir %)) (source.p/list-files snapshot)))))
+
 (defn export!
   "Exports remote-synced collections to a remote source repository.
 
@@ -510,7 +530,8 @@
         (analytics/inc! :metabase-remote-sync/exports)
         (serdes/with-cache
           (let [dirty-rows (remote-sync.object/dirty-rows)
-                plan       (when (seq dirty-rows) (incremental-plan snapshot dirty-rows))]
+                plan       (when (and (seq dirty-rows) (not (needs-full-reconcile? snapshot)))
+                             (incremental-plan snapshot dirty-rows))]
             (if plan
               ;; Incremental fast-path: write only the changed entities and delete only the removed
               ;; ones, preserving every other file. Avoids re-serializing the entire synced set.
