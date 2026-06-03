@@ -200,6 +200,8 @@ export function getTreemapChartOption({
       renderingContext,
     ),
     leafDepth: 2,
+    visibleMin: 25 * 25,
+    childrenVisibleMin: 25 * 25,
     ...(hasChildren ? { levels } : {}),
   };
 
