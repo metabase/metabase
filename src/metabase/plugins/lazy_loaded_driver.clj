@@ -96,7 +96,7 @@
                (empty? connection-props))
       (log/warn (u/format-color :red "Warning: plugin manifest for %s does not include connection properties" driver)))
     ;; ok, now add implementations for the so-called "non-trivial" driver multimethods
-    (doseq [[^MultiFn multifn, f]
+    (doseq [[^MultiFn multifn f]
             {driver/initialize!           (make-initialize! driver add-to-classpath! init-steps)
              driver/display-name          (when display-name (constantly display-name))
              driver/contact-info          (constantly contact-info)
