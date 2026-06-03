@@ -22,6 +22,7 @@
   variant-builder dispatch."
   []
   [:map
+   [:group_id     pos-int?]
    [:metric_id    pos-int?]
    [:dimension_id :string]
    [:variant      :string]
@@ -59,11 +60,10 @@
 
       {:thread-id          long
        :thread-prompt      string|nil
-       :metric-dim-ctx     <output of qp.context/metric-and-dim-context>
-       :metric-by-id       {metric-id metric-context-map}
+       :metric-dim-ctx     <output of qp.context/metric-and-dim-context — keyed by :groups>
+       :metric-by-key      {[group-id metric-id] metric-context-map}
        :creator-id         long|nil
-       :thread-metrics     [ExplorationThreadMetric ...]
-       :thread-dims        [ExplorationThreadDimension ...]}
+       :thread-groups      [ExplorationThreadGroup ...]}
 
     Returns a map matching `result-schema`. The orchestrator handles
     materialization, transcript persistence, and failure-doc writing — every

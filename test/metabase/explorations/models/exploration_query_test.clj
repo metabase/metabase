@@ -19,13 +19,16 @@
                                                             (lib/aggregate (lib/count))))}
                    :model/Exploration e {}
                    :model/ExplorationThread th {:exploration_id (:id e)}
+                   :model/ExplorationThreadGroup g {:exploration_thread_id (:id th) :name "g"}
                    :model/ExplorationQuery q-seg  {:exploration_thread_id (:id th)
                                                    :card_id    (:id metric)
+                                                   :group_id   (:id g)
                                                    :dimension_id "d1"
                                                    :segment_id (:id s)
                                                    :position   0}
                    :model/ExplorationQuery q-bare {:exploration_thread_id (:id th)
                                                    :card_id    (:id metric)
+                                                   :group_id   (:id g)
                                                    :dimension_id "d1"
                                                    :position   1}]
       (let [hyd (t2/hydrate (t2/select :model/ExplorationQuery

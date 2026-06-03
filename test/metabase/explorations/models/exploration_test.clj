@@ -131,18 +131,20 @@
                  :model/Card metric {:type :metric :creator_id (:id u)}
                  :model/Exploration e {:name "x" :creator_id (:id u)}
                  :model/ExplorationThread t {:exploration_id (:id e)}
-                 :model/ExplorationThreadMetric m {:exploration_thread_id (:id t)
-                                                   :card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1"
-                                                                         :table_id 1
-                                                                         :target ["field" {} 1]}]}
+                 :model/ExplorationThreadGroup m {:exploration_thread_id (:id t)
+                                                  :name    "Group"
+                                                  :metrics [{:card_id (:id metric)
+                                                             :dimension_mappings [{:dimension_id "d1"
+                                                                                   :table_id 1
+                                                                                   :target ["field" {} 1]}]}]}
                  :model/ExplorationQuery q {:exploration_thread_id (:id t)
                                             :card_id (:id metric)
                                             :dimension_id "d1"
+                                            :group_id (:id m)
                                             :dataset_query {:database 1 :type :query}}]
-    (testing "ExplorationThreadMetric.dimension_mappings round-trips through JSON"
-      (let [reread (t2/select-one :model/ExplorationThreadMetric :id (:id m))]
-        (is (= "d1" (-> reread :dimension_mappings first :dimension_id)))))
+    (testing "ExplorationThreadGroup.metrics dimension_mappings round-trips through JSON"
+      (let [reread (t2/select-one :model/ExplorationThreadGroup :id (:id m))]
+        (is (= "d1" (-> reread :metrics first :dimension_mappings first :dimension_id)))))
     (testing "ExplorationQuery transforms"
       (let [reread (t2/select-one :model/ExplorationQuery :id (:id q))]
         (is (= "d1" (:dimension_id reread)))

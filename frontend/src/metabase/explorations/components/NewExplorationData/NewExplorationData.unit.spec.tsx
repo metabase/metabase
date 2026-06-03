@@ -354,7 +354,7 @@ describe("NewExplorationData (Research plan)", () => {
     const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
     const launchTimeline = createMockTimeline({ id: 9, name: "Launches" });
 
-    it("attaches the shared timeline_ids to every group", () => {
+    it("sends thread-scoped timeline_ids at the top level (not per group) and names each block", () => {
       const request = buildCreateExplorationRequest(
         "My exploration",
         "",
@@ -365,13 +365,18 @@ describe("NewExplorationData (Research plan)", () => {
         [releasesTimeline, launchTimeline],
       );
 
+      expect(request.timeline_ids).toEqual([7, 9]);
       expect(request.groups).toHaveLength(2);
+      // groups no longer carry timeline_ids
       for (const group of request.groups) {
-        expect(group.timeline_ids).toEqual([7, 9]);
+        expect(group).not.toHaveProperty("timeline_ids");
       }
+      // metric block named by its metric; dimension block by its anchor dimension
+      expect(request.groups[0].name).toBe(revenueMetric.name);
+      expect(request.groups[1].name).toBe(dimPlan.display_name);
     });
 
-    it("uses empty timeline_ids on every group when none are selected", () => {
+    it("uses empty timeline_ids when none are selected", () => {
       const request = buildCreateExplorationRequest(
         "My exploration",
         "",
@@ -379,7 +384,7 @@ describe("NewExplorationData (Research plan)", () => {
         [],
       );
 
-      expect(request.groups[0].timeline_ids).toEqual([]);
+      expect(request.timeline_ids).toEqual([]);
     });
 
     it("trims the prompt and falls back to null when blank", () => {

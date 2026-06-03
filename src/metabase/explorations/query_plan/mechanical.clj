@@ -154,27 +154,28 @@
                  (concat base patterns facet top-n-other)))))
 
 (defn- run-plan!
-  "Walk the metric × dim matrix and emit plan items per `items-for-pair`.
-  Wrapped by `MechanicalPlanner` below — only consults `:metric-dim-ctx`;
-  the thread prompt is ignored because the strategy is purely structural."
+  "Walk each group's metric × dim matrix and emit plan items per `items-for-pair`,
+  stamping every item with its group's id. Metrics are only crossed with dimensions
+  that co-occur in the same group (the group-scoped `:applicability` enforces this).
+  Wrapped by `MechanicalPlanner` below — only consults `:metric-dim-ctx`; the thread
+  prompt is ignored because the strategy is purely structural."
   [{:keys [metric-dim-ctx]}]
-  (let [{:keys [metrics]} metric-dim-ctx
+  (let [{:keys [groups]} metric-dim-ctx
         items (vec
-               (mapcat
-                (fn [metric]
-                  (mapcat (fn [[_ {:keys [dim]}]]
-                            (items-for-pair metric dim))
-                          (:applicability metric)))
-                metrics))]
+               (for [group           groups
+                     metric          (:metrics group)
+                     [_ {:keys [dim]}] (:applicability metric)
+                     item            (items-for-pair metric dim)]
+                 (assoc item :group_id (:group-id group))))]
     (if (empty? items)
       {:outcome    :skip-not-applicable
-       :transcript {:reason    "no applicable (metric, dimension) pairs"
-                    :n-metrics (count metrics)}}
+       :transcript {:reason   "no applicable (metric, dimension) pairs"
+                    :n-groups (count groups)}}
       {:outcome    :ok
        :plan       items
        :transcript {:strategy  "mechanical"
                     :n-items   (count items)
-                    :n-metrics (count metrics)}})))
+                    :n-groups  (count groups)}})))
 
 (defrecord MechanicalPlanner []
   planner/QueryPlanner

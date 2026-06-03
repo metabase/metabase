@@ -44,10 +44,12 @@
      :items
      {:type "object"
       :properties
-      {:metric_id    {:type        "integer"
-                      :description "metric_id from the METRICS list"}
+      {:group_id     {:type        "integer"
+                      :description "group_id of the group this chart belongs to. metric_id and dimension_id must BOTH come from this same group — never cross metrics and dimensions across groups."}
+       :metric_id    {:type        "integer"
+                      :description "metric_id from this group's METRICS list"}
        :dimension_id {:type        "string"
-                      :description "dimension_id from the DIMENSIONS list; must be in this metric's applicable_dimensions"}
+                      :description "dimension_id from this group's DIMENSIONS list; must be in this metric's applicable_dimensions within the group"}
        :variant      {:enum        (vec (sort qp.variants/known-variants))
                       :description "Variant builder to apply"}
        :params       {:type "object"
@@ -67,7 +69,7 @@
                                                :description "Optional. For per-value-time-series, name a temporal dimension from the DIMENSIONS list to break the metric out by — overrides the metric's default temporal breakout. Use to bucket by a different time grain than the metric's own, or to enable the variant when the metric has no default temporal breakout. Must be applicable to the metric (in its applicable_dimension_ids) AND be a temporal dim."}}
                       :additionalProperties false}
        :rationale    {:type "string" :description "One sentence on why this chart"}}
-      :required ["metric_id" "dimension_id" "variant" "rationale"]
+      :required ["group_id" "metric_id" "dimension_id" "variant" "rationale"]
       :additionalProperties false}
      :minItems    (:min-items plan-bounds)
      :maxItems    (:max-items plan-bounds)
@@ -134,17 +136,20 @@
                    " resolves on this metric (dim_id=" (pr-str dimension_id) ")")})))
 
 (defn- validate-item
-  [metric-by-id idx {:keys [metric_id dimension_id variant params rationale]}]
-  (let [metric (get metric-by-id metric_id)
+  [metric-by-key group-ids idx {:keys [group_id metric_id dimension_id variant params rationale]}]
+  (let [metric (get metric-by-key [group_id metric_id])
         appl   (some-> metric :applicability (get dimension_id))
         dim    (some-> appl :dim)
         errors (cond-> []
-                 (nil? metric)
-                 (conj (str "item[" idx "].metric_id=" metric_id " is not in the chosen metrics"))
+                 (not (contains? group-ids group_id))
+                 (conj (str "item[" idx "].group_id=" group_id " is not a declared group"))
+
+                 (and (contains? group-ids group_id) (nil? metric))
+                 (conj (str "item[" idx "].metric_id=" metric_id " is not in group " group_id))
 
                  (and metric (nil? appl))
                  (conj (str "item[" idx "].dimension_id=" (pr-str dimension_id)
-                            " has no resolvable target on metric M" metric_id))
+                            " has no resolvable target on metric M" metric_id " in group " group_id))
 
                  (not (contains? qp.variants/known-variants variant))
                  (conj (str "item[" idx "].variant=" (pr-str variant) " is not a known variant"))
@@ -200,8 +205,11 @@
       errors)))
 
 (defn- validate-plan
-  "Accumulate ALL errors so a repair retry can fix everything in one pass."
-  [metric-by-id {:keys [plan rationale] :as value}]
+  "Accumulate ALL errors so a repair retry can fix everything in one pass.
+  `group-by-id` is `{group-id <group-context>}` (the output of
+  `metric-and-dim-context` indexed by `:group-id`); each item is resolved
+  against its own group so metrics never cross group boundaries."
+  [group-by-id {:keys [plan rationale] :as value}]
   (cond
     (not (map? value))
     ["plan response must be an object with `plan` and `rationale`"]
@@ -210,10 +218,17 @@
     ["`plan` must be an array of plan items"]
 
     :else
-    (let [item-errors (mapcat #(apply validate-item metric-by-id %)
+    (let [group-ids     (set (keys group-by-id))
+          metric-by-key (into {}
+                              (for [[gid g] group-by-id
+                                    m       (:metrics g)]
+                                [[gid (:metric-id m)] m]))
+          item-errors (mapcat #(apply validate-item metric-by-key group-ids %)
                               (map-indexed vector plan))
+          ;; group_id is part of the dup key: the SAME (metric, dim, variant) is a
+          ;; legitimate distinct chart in two different groups.
           dup-keys    (->> plan
-                           (map (fn [i] [(:metric_id i) (:dimension_id i) (:variant i) (:params i)]))
+                           (map (fn [i] [(:group_id i) (:metric_id i) (:dimension_id i) (:variant i) (:params i)]))
                            frequencies
                            (filter (fn [[_ n]] (> n 1)))
                            (map (fn [[k _]] k))
@@ -239,9 +254,10 @@
     (let [{:keys [plan rationale]} (update-keys response keyword)]
       {:plan      (some->> plan
                            (mapv (fn [item]
-                                   (let [{:keys [metric_id dimension_id variant params rationale]}
+                                   (let [{:keys [group_id metric_id dimension_id variant params rationale]}
                                          (update-keys item keyword)]
-                                     {:metric_id    metric_id
+                                     {:group_id     group_id
+                                      :metric_id    metric_id
                                       :dimension_id dimension_id
                                       :variant      variant
                                       :params       (or params {})
@@ -279,17 +295,18 @@
      :thread-prompt  thread-prompt})))
 
 (defn- call-llm
-  [{:keys [thread-id creator-id metric-by-id]} rendered-prompt]
-  (request/with-current-user creator-id
-    (ai.common/run-with-repair
-     {:thread-id      thread-id
-      :phase-name     "query-plan"
-      :llm-config     llm-config
-      :prompt         rendered-prompt
-      :schema         plan-schema
-      :extract-fn     extract-plan
-      :validate-fn    (partial validate-plan metric-by-id)
-      :repair-builder repair-prompt})))
+  [{:keys [thread-id creator-id metric-dim-ctx]} rendered-prompt]
+  (let [group-by-id (into {} (map (juxt :group-id identity)) (:groups metric-dim-ctx))]
+    (request/with-current-user creator-id
+      (ai.common/run-with-repair
+       {:thread-id      thread-id
+        :phase-name     "query-plan"
+        :llm-config     llm-config
+        :prompt         rendered-prompt
+        :schema         plan-schema
+        :extract-fn     extract-plan
+        :validate-fn    (partial validate-plan group-by-id)
+        :repair-builder repair-prompt}))))
 
 (defn- run-plan!
   "Render the planning prompt, call the LLM with `run-with-repair`, validate,

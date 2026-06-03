@@ -43,9 +43,15 @@
 
 (defn- plan!
   "Convenience: dispatch the mechanical planner through its protocol on a
-  single-metric context."
+  single metric wrapped in a single group (group-id 1)."
   [metric]
-  (planner/plan! qp.mech/planner {:metric-dim-ctx {:metrics [metric]}}))
+  (planner/plan! qp.mech/planner {:metric-dim-ctx {:groups [{:group-id 1 :metrics [metric]}]}}))
+
+(defn- plan-groups!
+  "Dispatch the mechanical planner over explicit group contexts —
+  each `{:group-id _ :metrics [metric-ctx ...]}`."
+  [groups]
+  (planner/plan! qp.mech/planner {:metric-dim-ctx {:groups groups}}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Tests
@@ -165,6 +171,34 @@
     (let [r (plan! (metric-with-dims 1 {"d" (datetime-dim "d")}))]
       (is (= 3 (count (:plan r))))
       (is (every? #(nil? (get-in % [:params :segment_id])) (:plan r))))))
+
+(deftest group-id-stamped-test
+  (testing "every emitted item carries its group's id"
+    (let [r (plan! (metric-with-dims 1 {"d" (datetime-dim "d")}))]
+      (is (= :ok (:outcome r)))
+      (is (seq (:plan r)))
+      (is (every? #(= 1 (:group_id %)) (:plan r))))))
+
+(deftest within-group-scoping-test
+  (testing "each group's items reference only that group's metric + dim — no cross-group pairs"
+    (let [groups [{:group-id 1 :metrics [(metric-with-dims 10 {"d1" (text-dim "d1" 10)})]}
+                  {:group-id 2 :metrics [(metric-with-dims 20 {"d2" (text-dim "d2" 10)})]}]
+          r        (plan-groups! groups)
+          by-group (group-by :group_id (:plan r))]
+      (is (= :ok (:outcome r)))
+      (is (= #{[10 "d1"]} (set (map (juxt :metric_id :dimension_id) (by-group 1)))))
+      (is (= #{[20 "d2"]} (set (map (juxt :metric_id :dimension_id) (by-group 2))))))))
+
+(deftest duplicate-pair-across-groups-test
+  (testing "the same (metric, dim) in two groups yields one item per group"
+    (let [groups [{:group-id 1 :metrics [(metric-with-dims 7 {"d1" (text-dim "d1" 10)})]}
+                  {:group-id 2 :metrics [(metric-with-dims 7 {"d1" (text-dim "d1" 10)})]}]
+          r        (plan-groups! groups)
+          by-group (group-by :group_id (:plan r))]
+      (is (= #{1 2} (set (keys by-group))) "items emitted in both groups")
+      (is (= 1 (count (by-group 1))))
+      (is (= 1 (count (by-group 2))))
+      (is (every? #(and (= 7 (:metric_id %)) (= "d1" (:dimension_id %))) (:plan r))))))
 
 (deftest no-rationale-noise-test
   (testing "Mechanical items don't carry rationale strings — the variant + dim type
