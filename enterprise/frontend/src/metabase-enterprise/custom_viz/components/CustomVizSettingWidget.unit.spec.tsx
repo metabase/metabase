@@ -104,7 +104,7 @@ describe("CustomVizSettingWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("calls unmount on teardown", () => {
+  it("properly tears down the widget", () => {
     const { unmount } = setup({});
 
     expect(
