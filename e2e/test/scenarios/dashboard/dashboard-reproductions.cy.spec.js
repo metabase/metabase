@@ -363,7 +363,6 @@ describe("issue 16559", () => {
       H.visitDashboard(response.body.id);
     });
 
-    cy.intercept("GET", "/api/collection/tree?*").as("getCollections");
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/dashboard/*?dashboard_load_id=*").as(
@@ -460,7 +459,7 @@ describe("issue 16559", () => {
     H.entityPickerModal().within(() => {
       cy.findByText("First collection").click();
       cy.button("Move").click();
-      cy.wait(["@saveDashboard", "@getCollections"]);
+      cy.wait(["@saveDashboard"]);
     });
 
     H.openDashboardInfoSidebar().within(() => {

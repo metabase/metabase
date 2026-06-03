@@ -5,6 +5,8 @@ import { skipToken, useListTaskRunEntitiesQuery } from "metabase/api";
 import { Loader, Select, type SelectProps, Tooltip } from "metabase/ui";
 import type { TaskRunDateFilterOption, TaskRunType } from "metabase-types/api";
 
+import { toBackendStartedAt } from "../../utils";
+
 import type { EntityValue } from "./types";
 import {
   convertEntitiesToSelectOptions,
@@ -18,6 +20,7 @@ type TaskRunEntityPickerProps = Omit<
 > & {
   runType: TaskRunType | null;
   startedAt: TaskRunDateFilterOption | null;
+  includeToday: boolean;
   value: EntityValue | null;
   onChange: (value: EntityValue | null) => void;
 };
@@ -25,16 +28,18 @@ type TaskRunEntityPickerProps = Omit<
 export const TaskRunEntityPicker = ({
   runType,
   startedAt,
+  includeToday,
   value,
   onChange,
   ...props
 }: TaskRunEntityPickerProps) => {
-  const hasAllRequiredParams = runType && startedAt;
+  const effectiveStartedAt = toBackendStartedAt(startedAt, includeToday);
+  const hasAllRequiredParams = runType && effectiveStartedAt;
   const { data: entities, isLoading } = useListTaskRunEntitiesQuery(
     hasAllRequiredParams
       ? {
           "run-type": runType,
-          "started-at": startedAt,
+          "started-at": effectiveStartedAt,
         }
       : skipToken,
   );

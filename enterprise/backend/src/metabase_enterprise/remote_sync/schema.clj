@@ -148,7 +148,8 @@
    [:has_changes :boolean]
    [:remote_version [:maybe :string]]
    [:local_version [:maybe :string]]
-   [:cached :boolean]])
+   [:cached :boolean]
+   [:branch_missing {:optional true} :boolean]])
 
 (def TestConnectionResponse
   "Schema for POST /test-connection response."

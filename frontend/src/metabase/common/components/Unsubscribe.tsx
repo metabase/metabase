@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
@@ -15,7 +14,7 @@ import {
   NotificationUnsubscribeApi,
   PulseUnsubscribeApi,
 } from "metabase/services";
-import { Center, Stack, Text } from "metabase/ui";
+import { Button, Center, Stack, Text } from "metabase/ui";
 
 import {
   CheckmarkIcon,
@@ -143,7 +142,7 @@ function SuccessfulRequestWrapper({
       <Text fw={700} c="text-secondary" mb="0.75rem" ta="center">
         {text}
       </Text>
-      <Button primary onClick={action}>
+      <Button variant="filled" onClick={action}>
         {buttonText}
       </Button>
     </Stack>

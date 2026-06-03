@@ -174,6 +174,91 @@ describe("issue UXW-3160", () => {
   });
 });
 
+describe("issue 69904", () => {
+  const TRANSFORM_TARGET_TABLE = "deleted_transform_table";
+
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
+  });
+
+  it("should not crash the app when opening table created by a deleted transform (metabase#69904)", () => {
+    H.createAndRunSqlTransform({
+      name: "Transform to delete",
+      sourceQuery: "SELECT 1 AS answer",
+      targetTable: TRANSFORM_TARGET_TABLE,
+      targetSchema: "public",
+    }).then(({ transformId }) => {
+      cy.request("DELETE", `/api/transform/${transformId}`);
+
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: TRANSFORM_TARGET_TABLE,
+      }).then((tableId) => {
+        H.DataModel.visitDataStudio({
+          databaseId: WRITABLE_DB_ID,
+          schemaId: `${WRITABLE_DB_ID}:public`,
+          tableId,
+        });
+      });
+
+      H.DataModel.TableSection.get()
+        .findByText("Transform does not exist anymore")
+        .should("be.visible");
+    });
+  });
+});
+
+describe("issue GDGT-2429", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
+  });
+
+  function startNewSqlTransform() {
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("SQL query").click();
+    H.popover().findByText("Writable Postgres12").click();
+    H.NativeEditor.type("SELECT 42", { allowFastSet: true }).blur();
+  }
+
+  function openSaveModal() {
+    getQueryEditor().button("Save").click();
+    H.modal().findByText("Save your transform").should("be.visible");
+  }
+
+  it("should warn about unsaved changes when navigating away while the save modal is open (metabase#GDGT-2429)", () => {
+    cy.intercept("POST", "/api/transform").as("createTransform");
+
+    startNewSqlTransform();
+    openSaveModal();
+
+    cy.log("navigating away while the save modal is open should warn");
+    cy.go("back");
+    H.leaveConfirmationModal().should("be.visible");
+
+    cy.log("pressing Esc should close the warning, not the saving modal");
+    cy.realPress("Escape");
+    H.leaveConfirmationModal().should("not.exist");
+    H.modal().findByText("Save your transform").should("be.visible");
+
+    cy.log("saving the transform should allow navigating away without warning");
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("GDGT-2429 transform");
+      cy.button("Save").click();
+    });
+    cy.wait("@createTransform");
+
+    cy.go("back");
+    H.leaveConfirmationModal().should("not.exist");
+  });
+});
+
 function visitTransformListPage() {
   return cy.visit("/data-studio/transforms");
 }

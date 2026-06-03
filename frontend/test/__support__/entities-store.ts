@@ -2,7 +2,6 @@ import type { Middleware, Reducer } from "@reduxjs/toolkit";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 
 import { reducer as entitiesReducer } from "metabase/redux/entities";
-import { requestsReducer } from "metabase/redux/requests";
 import type { State } from "metabase/redux/store";
 
 /**
@@ -18,7 +17,6 @@ export function getStore(
 ) {
   const reducer = combineReducers({
     entities: entitiesReducer,
-    requests: requestsReducer,
     ...reducers,
   }) as unknown as Reducer<State>;
 

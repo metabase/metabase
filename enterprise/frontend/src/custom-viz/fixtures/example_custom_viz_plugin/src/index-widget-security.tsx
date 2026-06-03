@@ -3,6 +3,20 @@ import type { CreateCustomVisualization } from "../../../src/types/viz";
 import { Visualization } from "./Visualization";
 import { Settings } from "./types";
 
+// A custom React component used as a setting widget. It renders a forbidden
+// element (`<form>`) — rendering it makes React call
+// `document.createElement("form")`. When the widget is a component, the host
+// wraps it into a sandboxed mount, so the near-membrane sandbox must block the
+// element the same way it does for the visualization component itself — the
+// SDK's PluginErrorBoundary then reports the failure.
+function ForbiddenSettingWidget() {
+  return (
+    <form>
+      <input />
+    </form>
+  );
+}
+
 const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
   locale,
@@ -33,6 +47,14 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
             },
             placeholder: "Set threshold",
           };
+        },
+      }),
+      customWidget: defineSetting({
+        id: "customWidget",
+        title: "Custom widget",
+        widget: ForbiddenSettingWidget,
+        getDefault() {
+          return null;
         },
       }),
     },
