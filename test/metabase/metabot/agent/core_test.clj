@@ -7,6 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -115,6 +116,31 @@
                                     :context    {}})))]
             ;; Should get error message
             (is (some #(= :error (:type %)) result))))))))
+
+(deftest enrichment-memoized-per-turn-test
+  (testing "the agent holds context enrichment behind a delay, so it is computed
+            once per turn and reused across every loop iteration rather than re-run
+            (it was DB/metadata-heavy and ran twice per step before)"
+    (mt/as-admin
+      (let [calls (atom 0)]
+        ;; Tight redef window — no LLM call, no loop — so the counter can only
+        ;; observe this test's own derefs.
+        (with-redefs [user-context/enrich-context-for-template (fn [_] (swap! calls inc) {:current_time "t"})]
+          (let [agent            (#'agent/init-agent {:messages   [{:role :user :content "hi"}]
+                                                      :state      {}
+                                                      :profile-id :embedding_next
+                                                      :context    {}})
+                enriched-context (:enriched-context agent)]
+            (is (delay? enriched-context)
+                "enrichment is deferred so it isn't recomputed per step")
+            (is (zero? @calls)
+                "enrichment is lazy — not run at agent init")
+            ;; Each loop iteration derefs the shared delay; it must only enrich once.
+            (is (= {:current_time "t"} @enriched-context))
+            @enriched-context
+            @enriched-context
+            (is (= 1 @calls)
+                "enrichment runs exactly once regardless of how many steps deref it")))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj

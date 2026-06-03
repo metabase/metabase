@@ -8,7 +8,6 @@
   (:require
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
-   [metabase.metabot.agent.user-context :as user-context]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -136,16 +135,16 @@
        (filter #(#{:text :tool-input :tool-output} (:type %)))))
 
 (defn- messages-with-injected-context
-  "Returns messages from memory and injects context into the most recent one."
-  [context memory]
+  "Returns messages from memory and injects the already-enriched context into the
+  most recent one."
+  [enriched-context memory]
   (let [all-messages (memory/get-input-messages memory)
         [input-messages [most-recent-message]] (split-at (dec (count all-messages))  all-messages)]
     (if-not (and (= :user (-> most-recent-message :role))
                  (< 0 (count all-messages)))
       all-messages
-      (let [enriched-context (user-context/enrich-context-for-template context)]
-        (conj (vec input-messages)
-              (update most-recent-message :content (partial prompts/inject-context enriched-context)))))))
+      (conj (vec input-messages)
+            (update most-recent-message :content (partial prompts/inject-context enriched-context))))))
 
 (defn build-message-history
   "Build the conversation history as a flat sequence of AISDK parts.
@@ -158,9 +157,12 @@
   - `{:type :tool-input, :id ..., :function ..., :arguments ...}` for tool calls
   - `{:type :tool-output, :id ..., :result ...}` for tool results
 
-  Each LLM adapter converts this to its own wire format."
-  [context memory]
-  (let [input-messages (messages-with-injected-context context memory)
+  Each LLM adapter converts this to its own wire format.
+
+  `enriched-context` is the result of [[user-context/enrich-context-for-template]],
+  computed once per turn and passed in (it is identical across iterations)."
+  [enriched-context memory]
+  (let [input-messages (messages-with-injected-context enriched-context memory)
         steps          (memory/get-steps memory)
         input-parts    (mapcat input-message->parts input-messages)
         step-parts     (mapcat step->parts steps)
@@ -179,13 +181,12 @@
   "Build system message with templated prompt and enriched context.
 
   Parameters:
-  - context: Context map from API (with user_is_viewing, user_recently_viewed, etc.)
+  - enriched-context: result of [[user-context/enrich-context-for-template]],
+    computed once per turn and passed in (it is identical across iterations)
   - profile: Profile map with :prompt-template key
   - tools: Tool registry map (name -> var)
 
   Returns message map with {:role \"system\" :content \"...\"}."
-  [context profile tools]
-  (let [enriched-context (user-context/enrich-context-for-template context)
-        content          (prompts/build-system-message-content profile enriched-context tools)]
-    {:role    "system"
-     :content content}))
+  [enriched-context profile tools]
+  {:role    "system"
+   :content (prompts/build-system-message-content profile enriched-context tools)})

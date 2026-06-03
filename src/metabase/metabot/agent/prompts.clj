@@ -187,8 +187,9 @@
    (for [[tool-name tool-def] tools
          :let [fname  (or (:prompt tool-def)
                           (str tool-name ".md"))
-               prompt (some-> (io/resource (str "metabot/prompts/tools/" fname))
-                              slurp)]
+               ;; Cached so the static prompt files aren't re-slurped every
+               ;; agent-loop iteration (see get-cached-tool-prompt).
+               prompt (get-cached-tool-prompt fname)]
          :when prompt]
      {:tool_name tool-name
       :instructions prompt})))

@@ -5,7 +5,21 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.test :as mt]))
+
+;; `messages/build-message-history` / `messages/build-system-message` now take an
+;; already-enriched context (enrichment is hoisted out and memoized once per turn
+;; in the agent loop). These helpers enrich the raw test context first, mirroring
+;; production, so the existing tests can keep passing raw context maps.
+
+(defn- build-message-history
+  [context memory]
+  (messages/build-message-history (user-context/enrich-context-for-template context) memory))
+
+(defn- build-system-message
+  [context profile tools]
+  (messages/build-system-message (user-context/enrich-context-for-template context) profile tools))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; input-message->parts
@@ -79,7 +93,7 @@
 (deftest ^:parallel build-message-history-test
   (testing "builds history from user messages only"
     (is (=? [{:role :user :content #(str/ends-with? % "Hello")}]
-            (messages/build-message-history
+            (build-message-history
              {}
              (memory/initialize [{:role :user :content "Hello"}] {}))))))
 
@@ -87,7 +101,7 @@
   (testing "includes assistant text from input"
     (is (=? [{:role :user :content "Hello"}
              {:type :text :text "Hi there"}]
-            (messages/build-message-history
+            (build-message-history
              {}
              (memory/initialize [{:role :user :content "Hello"}
                                  {:role :assistant :content "Hi there"}] {}))))))
@@ -96,7 +110,7 @@
   (testing "includes step parts from memory"
     (is (=? [{:role :user :content #(str/ends-with? % "Hello")}
              {:type :text :text "Response text"}]
-            (messages/build-message-history
+            (build-message-history
              {}
              (-> (memory/initialize [{:role :user :content "Hello"}] {})
                  (memory/add-step [{:type :text :text "Response text"}])))))))
@@ -105,7 +119,7 @@
   (testing "includes tool calls from steps"
     (is (=? [{:role :user :content #(str/ends-with? % "Search for revenue")}
              {:type :tool-input :id "t1" :function "search" :arguments {:query "revenue"}}]
-            (messages/build-message-history
+            (build-message-history
              {}
              (-> (memory/initialize [{:role :user :content "Search for revenue"}] {})
                  (memory/add-step [{:type      :tool-input
@@ -118,7 +132,7 @@
     (is (=? [{:role :user :content #(str/ends-with? % "Search")}
              {:type :tool-input :id "t1" :function "search"}
              {:type :tool-output :id "t1"}]
-            (messages/build-message-history
+            (build-message-history
              {}
              (-> (memory/initialize [{:role :user :content "Search"}] {})
                  (memory/add-step [{:type :tool-input :id "t1" :function "search" :arguments {:query "test"}}])
@@ -130,7 +144,7 @@
              {:type :tool-input :id "t1"}
              {:type :tool-output :id "t1"}
              {:type :text :text "Found results"}]
-            (messages/build-message-history
+            (build-message-history
              {}
              (-> (memory/initialize [{:role :user :content "Hello"}] {})
                  (memory/add-step [{:type :tool-input :id "t1" :function "search" :arguments {}}])
@@ -141,7 +155,7 @@
   (testing "filters out non-message parts from steps"
     (is (=? [{:role :user :content #(str/ends-with? % "Hello")}
              {:type :text :text "Response"}]
-            (messages/build-message-history
+            (build-message-history
              {}
              (-> (memory/initialize [{:role :user :content "Hello"}] {})
                  (memory/add-step [{:type :start :messageId "m1"}
@@ -155,7 +169,7 @@
              {:type :text :text "I'll search for that."}
              {:type :tool-input :id "t1" :function "search"}
              {:type :tool-output :id "t1"}]
-            (messages/build-message-history
+            (build-message-history
              {}
              (memory/initialize [{:role :user :content "Hello"}
                                  {:role :assistant :content "I'll search for that."}
@@ -175,7 +189,7 @@
 (deftest ^:parallel context-injection-basic-test
   (testing "injects <context> block into the last user message"
     (let [content (last-user-content
-                   (messages/build-message-history
+                   (build-message-history
                     {}
                     (memory/initialize [{:role :user :content "Hello"}] {})))]
       (is (str/starts-with? content "<context>"))
@@ -185,7 +199,7 @@
 
 (deftest ^:parallel context-injection-skips-non-user-last-message-test
   (testing "does not inject when last message is not :user"
-    (let [parts (messages/build-message-history
+    (let [parts (build-message-history
                  {}
                  (memory/initialize [{:role :user :content "Hello"}
                                      {:role :assistant :content "Reply"}] {}))]
@@ -193,7 +207,7 @@
 
 (deftest ^:parallel context-injection-targets-last-user-only-test
   (testing "injects into last user message only, not earlier ones"
-    (let [parts (messages/build-message-history
+    (let [parts (build-message-history
                  {}
                  (memory/initialize [{:role :user :content "First"}
                                      {:role :assistant :content "Reply"}
@@ -205,7 +219,7 @@
 
 (deftest ^:parallel context-injection-does-not-affect-assistant-parts-test
   (testing "context injection does not affect non-user parts"
-    (let [parts (messages/build-message-history
+    (let [parts (build-message-history
                  {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
                  (-> (memory/initialize [{:role :user :content "Hello"}] {})
                      (memory/add-step [{:type :text :text "Response"}])))]
@@ -214,13 +228,13 @@
 (deftest ^:parallel context-injection-first-day-of-week-test
   (testing "includes first_day_of_week from context"
     (let [content (last-user-content
-                   (messages/build-message-history
+                   (build-message-history
                     {:first_day_of_week "Monday"}
                     (memory/initialize [{:role :user :content "Hi"}] {})))]
       (is (str/includes? content "Monday"))))
   (testing "default first_day_of_week is Sunday"
     (let [content (last-user-content
-                   (messages/build-message-history
+                   (build-message-history
                     {}
                     (memory/initialize [{:role :user :content "Hi"}] {})))]
       (is (str/includes? content "Sunday")))))
@@ -228,7 +242,7 @@
 (deftest ^:parallel context-injection-viewing-dashboard-test
   (testing "includes viewing context when user is viewing a dashboard"
     (let [content (last-user-content
-                   (messages/build-message-history
+                   (build-message-history
                     {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
                     (memory/initialize [{:role :user :content "Hi"}] {})))]
       (is (str/includes? content "Sales")))))
@@ -256,7 +270,7 @@
                                       :buffers [{:id "qb", :source {:language "sql", :database_id 2}, :cursor {:line 0, :column 0}}],
                                       :id "f4f07783-9276-403f-af5f-b9e7bd96fc88"}]}
           content (last-user-content
-                   (messages/build-message-history
+                   (build-message-history
                     context
                     (memory/initialize [{:role :user :content "Fix my query"}] {})))]
       (is (str/includes? content "SQL editor"))
@@ -270,15 +284,15 @@
     (let [profile {:prompt-template "internal.selmer"
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:role "system" :content #"(?s).*Metabot.*"}
-              (messages/build-system-message {} profile {})))))
+              (build-system-message {} profile {})))))
   (testing "includes viewing context when provided"
     (let [context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales Dashboard"}]}
           profile {:prompt-template "internal.selmer"
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:content #(not (str/blank? %))}
-              (messages/build-system-message context profile {})))))
+              (build-system-message context profile {})))))
   (testing "handles empty context gracefully"
     (let [profile {:prompt-template "internal.selmer"
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:content #(not (str/blank? %))}
-              (messages/build-system-message {} profile {}))))))
+              (build-system-message {} profile {}))))))

@@ -224,18 +224,21 @@
          part)))
 
 (defn- timed-llm-source
-  "Wrap the raw provider stream so the wall-clock spent consuming it — the actual
-  API request, from request start to provider-stream exhaustion — is reported via
-  [[mbt/*llm-request-timing*]] when bound. The `finally` fires once the source is
-  exhausted, before the fused `tool-executor-xf` completion arity blocks on tool
-  results, so the reported duration excludes tool execution."
-  [src]
+  "Time the full provider API request and report it via [[mbt/*llm-request-timing*]]
+  when bound. `source-thunk` produces the raw provider stream — crucially, invoking
+  it issues the HTTP request and blocks until the response begins (often the model's
+  time-to-first-token), so the timer must start *before* calling it, not when the
+  response body is first consumed. The window therefore covers request send +
+  wait-for-first-token + streaming. The `finally` fires once the stream is exhausted,
+  before the fused `tool-executor-xf` completion arity blocks on tool results, so the
+  reported duration excludes tool execution."
+  [source-thunk]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
       (let [start-unix (mbt/now-unix-nano)
             start-mono (System/nanoTime)]
         (try
-          (reduce rf init src)
+          (reduce rf init (source-thunk))
           (finally
             (when-let [t mbt/*llm-request-timing*]
               (reset! t {:started-unix-nano start-unix
@@ -316,7 +319,7 @@
                                               (report-aisdk-errors-xf tracking-opts)
                                               (report-token-usage-xf tracking-opts)
                                               (report-tool-usage-xf tracking-opts))
-                                        (timed-llm-source (stream-fn streaming-opts))))]
+                                        (timed-llm-source #(stream-fn streaming-opts))))]
          (reify clojure.lang.IReduceInit
            (reduce [_ rf init]
              (with-span :info {:name       :metabot.agent/call-llm

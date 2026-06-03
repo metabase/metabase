@@ -12,6 +12,7 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
@@ -230,11 +231,25 @@
 
   Builds AISDK parts from memory and passes them to the adapter which converts
   them to its native wire format."
-  [memory context profile tools iteration tracking-opts link-registry-atom]
-  (let [model        (:model profile)
-        system-msg   (messages/build-system-message context profile tools)
-        input-parts  (-> (messages/build-message-history context memory)
-                         (invert-links @link-registry-atom))
+  [agent memory iteration tracking-opts link-registry-atom]
+  (let [{:keys [profile tools enriched-context system-message]} agent
+        model        (:model profile)
+        ;; Prompt prep is synchronous work that runs before the LLM request; the
+        ;; spans attribute the otherwise-empty gap before `/completions`. The
+        ;; enriched context and rendered system message are memoized once per turn
+        ;; (see `init-agent`), so on every step after the first their spans are
+        ;; ~0 and only `build_message_history` (which must rebuild as memory grows)
+        ;; does real work.
+        [system-msg input-parts]
+        (mbt/with-span {:name "prepare_request" :kind :internal}
+          (let [_           (mbt/with-span {:name "enrich_context" :kind :internal}
+                              @enriched-context)
+                system-msg  (mbt/with-span {:name "build_system_message" :kind :internal}
+                              @system-message)
+                input-parts (mbt/with-span {:name "build_message_history" :kind :internal}
+                              (-> (messages/build-message-history @enriched-context memory)
+                                  (invert-links @link-registry-atom)))]
+            [system-msg input-parts]))
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
@@ -469,7 +484,14 @@
                          (memory/load-todos-from-state seeded)
                          (memory/load-link-registry-from-state seeded))
         memory-atom  (atom memory)
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id database-id)]
+        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id database-id)
+        ;; Context enrichment (DB/metadata-heavy) and the rendered system message
+        ;; depend only on context/profile/tools, which are constant across the
+        ;; turn's iterations. Compute each once and reuse it every step (see
+        ;; `call-llm`). Only the message history must be rebuilt per step, since
+        ;; memory grows as the agent takes tool steps.
+        enriched-context (delay (user-context/enrich-context-for-template context))
+        system-message   (delay (messages/build-system-message @enriched-context profile tools))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
@@ -477,6 +499,8 @@
     {:profile       profile
      :tools         tools
      :context       context
+     :enriched-context enriched-context
+     :system-message   system-message
      :memory-atom   memory-atom
      :tracking-opts (merge {:profile-id profile-id
                             :request-id (str (random-uuid))
@@ -535,13 +559,13 @@
     (mbt/with-span {:name  (str "metabot.step " (dec iteration))
                     :kind  :internal
                     :attrs {semconv/iteration (dec iteration)}}
-      (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+      (let [{:keys [profile memory-atom tracking-opts]} agent
             max-iter           (:max-iterations profile 10)
             tracking-opts      (assoc tracking-opts :iteration iteration)
             memory             @memory-atom
             parts-atom         (atom [])
             link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-            llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
+            llm-call           (call-llm agent memory iteration tracking-opts link-registry-atom)
             xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                      (u/tee-xf parts-atom))
             ;; We use `reduce` instead of `transduce` because rf is the outer reducing
