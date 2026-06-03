@@ -114,7 +114,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
   it("should edit metric definition and save changes", function () {
     cy.log("Navigate to Data Studio Library");
-    cy.visit("/data-studio/library");
+    H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
@@ -138,7 +138,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .should("be.visible");
 
     cy.log("Verify updated name appears in collection view");
-    cy.visit("/data-studio/library");
+    H.DataStudio.Library.visit();
     H.DataStudio.Library.metricItem("Updated Orders Metric").should(
       "be.visible",
     );
@@ -146,7 +146,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
   it("should cancel editing and revert changes", () => {
     cy.log("Navigate to Data Studio Library");
-    cy.visit("/data-studio/library");
+    H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
@@ -169,7 +169,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
   it("should show unsaved changes warning when navigating away", () => {
     cy.log("Navigate to Data Studio Library");
-    cy.visit("/data-studio/library");
+    H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
@@ -198,7 +198,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
   it("should archive and restore a metric", () => {
     cy.log("Navigate to Data Studio Library");
-    cy.visit("/data-studio/library");
+    H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
@@ -221,9 +221,13 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.url().should("include", "/data-studio/library");
 
     cy.log("Verify metric is removed from collection view");
-    cy.visit("/data-studio/library");
+    // The archive already redirected us to the library, so re-visiting is
+    // redundant. Anchor on a stable item (the published Orders table) so the
+    // absence check can't pass against a list that hasn't rendered yet, and
+    // keep retrying for the async re-index to drop the metric.
+    H.DataStudio.Library.tableItem("Orders").should("be.visible");
     H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
+      .findByText("Trusted Orders Metric", { timeout: 10000 })
       .should("not.exist");
 
     cy.log("Navigate to trash");
@@ -241,15 +245,15 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.wait("@updateCard");
 
     cy.log("Verify metric is restored in collection view");
-    cy.visit("/data-studio/library");
-    H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
-      .should("be.visible");
+    H.DataStudio.Library.visit();
+    H.DataStudio.Library.metricItem("Trusted Orders Metric").should(
+      "be.visible",
+    );
   });
 
   it("should view metric in the metrics explorer view via the Explore button", () => {
     cy.log("Navigate to Data Studio Library");
-    cy.visit("/data-studio/library");
+    H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
@@ -267,7 +271,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
   it("should duplicate metric via more menu", () => {
     cy.log("Navigate to Data Studio Library");
-    cy.visit("/data-studio/library");
+    H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
@@ -317,7 +321,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
   it("should move metric to different collection via more menu", () => {
     cy.log("Navigate to Data Studio Library");
-    cy.visit("/data-studio/library");
+    H.DataStudio.Library.visit();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
@@ -340,9 +344,12 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.findByTestId("move-card-toast").findByText("First collection").click();
 
     cy.log("Verify metric is no longer in Metrics collection");
-    cy.visit("/data-studio/library");
+    H.DataStudio.Library.visit();
+    // Anchor on a stable item so the absence check can't pass against a list
+    // that hasn't rendered yet, and keep retrying for the async re-index.
+    H.DataStudio.Library.tableItem("Orders").should("be.visible");
     H.DataStudio.Library.libraryPage()
-      .findByText("Trusted Orders Metric")
+      .findByText("Trusted Orders Metric", { timeout: 10000 })
       .should("not.exist");
   });
 
@@ -403,7 +410,7 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.intercept("PUT", "/api/cache").as("updateCacheConfig");
 
       cy.log("Navigate to Data Studio Library");
-      cy.visit("/data-studio/library");
+      H.DataStudio.Library.visit();
 
       cy.log("Click on the metric from the collection view");
       H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
