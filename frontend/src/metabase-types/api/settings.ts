@@ -370,6 +370,7 @@ export const tokenFeatures = [
   "table_data_editing",
   "remote_sync",
   "dependencies",
+  "schema-viewer",
   "semantic_search",
   "transforms-python",
   "transforms-basic",
@@ -547,6 +548,8 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "csp-img-allowed-hosts": string;
+  "csp-img-enabled": boolean;
   "ai-features-enabled?": boolean;
   "agent-api-enabled?": boolean;
   "analytics-uuid": string;

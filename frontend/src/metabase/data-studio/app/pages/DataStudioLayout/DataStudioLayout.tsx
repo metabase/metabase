@@ -15,10 +15,7 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import {
-  canAccessTransforms as canAccessTransformsSelector,
-  getTransformsFeatureAvailable,
-} from "metabase/transforms/selectors";
+import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import {
   ActionIcon,
   Box,
@@ -101,8 +98,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
+  const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
-  const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
 
   const currentTab = getCurrentTab(pathname);
 
@@ -145,11 +142,12 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           )}
           <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
+            label={t`Schema viewer`}
+            icon="network"
+            to={Urls.dataStudioSchemaViewer()}
+            isSelected={currentTab === "schema-viewer"}
             showLabel={isNavbarOpened}
+            isGated={!hasSchemaViewerFeature}
           />
           <DataStudioTab
             label={t`Dependency graph`}
@@ -174,7 +172,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               to={Urls.transformList()}
               isSelected={currentTab === "transforms"}
               showLabel={isNavbarOpened}
-              isGated={!hasTransformsFeature}
               rightSection={
                 hasTransformDirtyChanges &&
                 PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
@@ -183,6 +180,13 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               }
             />
           )}
+          <DataStudioTab
+            label={t`Glossary`}
+            icon="glossary"
+            to={Urls.dataStudioGlossary()}
+            isSelected={currentTab === "glossary"}
+            showLabel={isNavbarOpened}
+          />
         </Stack>
         <Stack gap="0.75rem">
           {hasRemoteSyncFeature ? (

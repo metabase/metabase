@@ -250,9 +250,9 @@ describe("MetricToolbar", () => {
       expect(
         await screen.findByRole("dialog", { name: /Caching/i }),
       ).toBeInTheDocument();
-      expect(
-        await screen.findByRole("radio", { name: /^Default$/i }),
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId("cache-strategy-select")).toHaveValue(
+        "Default",
+      );
     });
   });
 

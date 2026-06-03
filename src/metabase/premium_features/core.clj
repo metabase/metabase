@@ -28,6 +28,9 @@
   has-any-features?
   has-feature?
   log-enabled?
+  query-transforms-enabled?
+  python-transforms-enabled?
+  any-transforms-enabled?
   max-users-allowed
   meters
   plan-alias
@@ -62,6 +65,7 @@
   enable-metabase-ai-managed?
   enable-metabot-v3?
   enable-dependencies?
+  enable-schema-viewer?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?

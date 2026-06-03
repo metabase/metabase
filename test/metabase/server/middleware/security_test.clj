@@ -544,3 +544,82 @@
               "Cross-Origin-Resource-Policy should be in the response")
           (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"]))
               "Cross-Origin-Embedder-Policy should be in the response"))))))
+
+(deftest csp-header-img-src-tests
+  (testing "img-src defaults to permissive wildcard, data, self when csp-img-enabled is false"
+    (mt/with-temporary-setting-values [csp-img-enabled false
+                                       csp-img-allowed-hosts "example.com"]
+      (is (= "img-src * 'self' data:" (csp-directive "img-src")))))
+  (testing "with csp-img-enabled, img-src is restricted to 'self' and data: by default"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts ""]
+      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+  (testing "nil csp-img-allowed-hosts behaves like empty input"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts nil]
+      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+  (testing "csp-img-allowed-hosts widens img-src (with wildcard expansion)"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"]
+      (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com"
+             (csp-directive "img-src"))))))
+
+(deftest csp-header-font-src-tests
+  (testing "font-src is restricted to 'self' and data: when no custom fonts are configured"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files nil]
+        (is (= "font-src 'self' data:" (csp-directive "font-src"))))))
+  (testing "font-src dynamically includes the origin of each custom font file"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files [{:src "https://fonts.example.com/a.woff2" :fontFormat "woff2" :fontWeight 400}
+                                                                 {:src "https://fonts.example.com/b.woff2" :fontFormat "woff2" :fontWeight 700}
+                                                                 {:src "https://cdn.other.com:8443/c.ttf" :fontFormat "ttf" :fontWeight 400}]]
+        (is (= "font-src 'self' data: https://fonts.example.com https://cdn.other.com:8443"
+               (csp-directive "font-src"))
+            "duplicate origins are de-duplicated and ports preserved"))))
+  (testing "font-src keeps IPv6 hosts bracketed"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files [{:src "https://[2001:db8::1]:8443/c.ttf" :fontFormat "ttf" :fontWeight 400}]]
+        (is (= "font-src 'self' data: https://[2001:db8::1]:8443"
+               (csp-directive "font-src"))))))
+  (testing "malformed / relative / missing font srcs are skipped without error"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files [{:src "/relative/font.woff"}
+                                                                 {:src nil}
+                                                                 {:fontWeight 400}
+                                                                 {:src "https://ok.example.com/d.woff2"}]]
+        (is (= "font-src 'self' data: https://ok.example.com"
+               (csp-directive "font-src")))))))
+
+(deftest csp-header-dev-asset-host-tests
+  (testing "in dev, the webpack dev server origin is allowed for img-src and font-src (assets like logos load from there)"
+    (mt/with-temporary-setting-values [csp-img-enabled true]
+      (with-redefs [config/is-dev? true]
+        (is (str/includes? (csp-directive "img-src") @#'mw.security/frontend-address))
+        (is (str/includes? (csp-directive "font-src") @#'mw.security/frontend-address)))))
+  (testing "in prod the dev server origin is not added"
+    (mt/with-temporary-setting-values [csp-img-enabled true]
+      (with-redefs [config/is-dev? false]
+        (is (= "img-src 'self' data:" (csp-directive "img-src")))
+        (is (= "font-src 'self' data:" (csp-directive "font-src")))))))
+
+(deftest ^:parallel parse-allowed-resource-hosts-test
+  (testing "parses like the iframe parser, seeded with the always-allowed resource hosts"
+    (is (= (concat @#'mw.security/always-allowed-resource-hosts
+                   ["mysite.com" "*.mysite.com" "http://localhost:8000" "cdn.deep.example.com"])
+           (mw.security/parse-allowed-resource-hosts "mysite.com, http://localhost:8000, cdn.deep.example.com"))))
+  (testing "empty / blank input yields just the seed hosts"
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts nil)))
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts "")))
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts "   "))))
+  (testing "invalid hosts are dropped"
+    (is (= @#'mw.security/always-allowed-resource-hosts
+           (mw.security/parse-allowed-resource-hosts "asdf/wasd/:8000 */localhost:*")))))
+
+(deftest csp-img-enabled-setter-oss-test
+  (testing "csp-img-enabled can be turned on/off freely when no enterprise custom-viz setter is loaded"
+    (mt/with-temporary-setting-values [csp-img-enabled false]
+      (server.settings/csp-img-enabled! true)
+      (is (true? (server.settings/csp-img-enabled)))
+      (server.settings/csp-img-enabled! false)
+      (is (false? (server.settings/csp-img-enabled))))))
