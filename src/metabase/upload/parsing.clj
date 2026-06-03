@@ -8,8 +8,7 @@
    (java.text NumberFormat ParsePosition)
    (java.time LocalDate OffsetDateTime)
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder DateTimeParseException ResolverStyle)
-   (java.util Locale)
-   (java.util.function Supplier)))
+   (java.util Locale)))
 
 (set! *warn-on-reflection* true)
 
@@ -162,8 +161,7 @@
   "A `ThreadLocal` holding one `NumberFormat` per thread for `locale`."
   ^ThreadLocal [^Locale locale]
   (ThreadLocal/withInitial
-   (reify Supplier
-     (get [_] (NumberFormat/getInstance locale)))))
+   #(NumberFormat/getInstance locale)))
 
 ;; NumberFormat is not thread-safe: it keeps mutable parse state inside itself, so parsing with a
 ;; shared instance lets concurrent uploads corrupt each other - either throwing or silently
