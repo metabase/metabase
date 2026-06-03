@@ -5,9 +5,9 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { useLazyGetCardQueryQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { fetchDataOrError } from "metabase/dashboard/utils";
-import { CardApi } from "metabase/services";
 
 import AuditParameters from "../audit_app/components/AuditParameters";
 import AuditTable from "../audit_app/containers/AuditTable";
@@ -42,6 +42,7 @@ const CARD_ID_COL = 0;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ErrorOverview(props: Record<string, unknown>) {
+  const [runCardQuery] = useLazyGetCardQueryQuery();
   const reloadRef = useRef<(() => void) | null>(null);
   // TODO: use isReloading to display a loading overlay
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -77,9 +78,8 @@ export default function ErrorOverview(props: Record<string, unknown>) {
     );
 
     await Promise.all(
-      checkedCardIds.map(
-        async (member) =>
-          await fetchDataOrError(CardApi.query({ cardId: member })),
+      checkedCardIds.map((member) =>
+        fetchDataOrError(runCardQuery({ cardId: member }).unwrap()),
       ),
     );
     setRowChecked({});

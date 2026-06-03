@@ -167,18 +167,6 @@
   [conn :- (lib.schema.common/instance-of-class Connection)]
   (= (connection-flavor conn) "MariaDB"))
 
-(defn- partial-revokes-enabled?
-  [driver db]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   db
-   nil
-   (fn [^java.sql.Connection conn]
-     (let [stmt (.prepareStatement conn "SHOW VARIABLES LIKE 'partial_revokes';")
-           rset (.executeQuery stmt)]
-       (when (.next rset)
-         (= "ON" (.getString rset 2)))))))
-
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
   ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
@@ -188,12 +176,7 @@
 (defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
-       (mysql? db)
-       (not (try
-              (partial-revokes-enabled? driver db)
-              (catch Exception e
-                (log/warn e "Failed to check table writable")
-                false)))))
+       (mysql? db)))
 
 (defmethod driver/database-supports? [:mysql :regex/lookaheads-and-lookbehinds]
   [driver _feat db]
@@ -463,6 +446,12 @@
 (defmethod sql.qp/->honeysql [:mysql :text]
   [driver [_ value]]
   (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
+
+;; MySQL/MariaDB `CAST` does not accept `TEXT` as a target type — the string cast target is
+;; `CHAR`.
+(defmethod sql.qp/->honeysql [:mysql ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "char"]))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
@@ -1081,6 +1070,11 @@
   [grant]
   (condp re-find grant
     #"^GRANT PROXY ON "
+    nil
+    ;; Under `partial_revokes`, `SHOW GRANTS` emits `REVOKE ... ON ... FROM ...` lines. We ignore them and rely on the
+    ;; GRANT lines alone, which yields an optimistic view of privileges (a table revoked from may still look writable).
+    ;; In that case the edit fails at runtime rather than every table being treated as uneditable.
+    #"^REVOKE "
     nil
     #"^GRANT (.+) ON FUNCTION "
     nil
