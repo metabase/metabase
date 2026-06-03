@@ -598,35 +598,33 @@
                                          {:type "available" :full-incremental-run "false"}))))
       (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
                                          {:type "processed" :full-incremental-run "false"})))))
-    (testing "Unreliable driver (`:transforms/accurate-rows-affected` false) on the CTAS path recovers rows-processed by counting the target table"
-      ;; `with-redefs-fn` (not `with-dynamic-fn-redefs`) — the latter chokes on `#'`-prefixed
-      ;; bindings, which we need to access the private `count-target-rows`.
+    (testing "Unreliable driver (`:transforms/accurate-rows-affected` false) on the CTAS path emits nothing — neither rows-available nor rows-processed, since the driver's full-rebuild count is untrustworthy"
       (defmethod driver/database-supports? [:h2 :transforms/accurate-rows-affected] [_ _ _] false)
       (try
         (analytics/clear! :metabase-transforms/incremental-rows)
-        (with-redefs-fn {#'transforms.u/count-target-rows (constantly 999)}
-          #(run-cancelable-with-mocks!
-            {:id 1 :target {:type "table-incremental" :schema "x" :name "tgt"} :last_checkpoint_value nil}
-            {:checkpoint-filter-field-id 42 :rows-available 1000}
-            {:rows-affected 0}))
-        (is (== 999 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+        (run-cancelable-with-mocks!
+         {:id 1 :target {:type "table-incremental" :schema "x" :name "tgt"} :last_checkpoint_value nil}
+         {:checkpoint-filter-field-id 42 :rows-available 1000}
+         {:rows-affected 0})
+        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                           {:type "available" :full-incremental-run "true"})))
+            "rows-available is suppressed for an unreliable driver's full-rebuild run")
+        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
                                            {:type "processed" :full-incremental-run "true"})))
-            "CTAS fallback recorded count-target-rows (999), not the driver's misleading 0")
+            "rows-processed is suppressed — the driver's full-rebuild count is untrustworthy")
         (finally
           (remove-method driver/database-supports? [:h2 :transforms/accurate-rows-affected]))))
-    (testing "Unreliable driver on the INSERT path trusts the driver count (COUNT(*) would overcount cumulatively)"
+    (testing "Unreliable driver on the INSERT path still emits the driver count (rows-affected is accurate on the cumulative-target INSERT path even when CTAS counts are not)"
       (defmethod driver/database-supports? [:h2 :transforms/accurate-rows-affected] [_ _ _] false)
       (try
         (analytics/clear! :metabase-transforms/incremental-rows)
-        (with-redefs-fn {#'transforms.u/count-target-rows
-                         (fn [& _] (throw (ex-info "count-target-rows should not be invoked on the INSERT path" {})))}
-          #(run-cancelable-with-mocks!
-            {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
-            {:checkpoint-filter-field-id 42 :rows-available 500}
-            {:rows-affected 120}))
+        (run-cancelable-with-mocks!
+         {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+         {:checkpoint-filter-field-id 42 :rows-available 500}
+         {:rows-affected 120})
         (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
                                            {:type "processed" :full-incremental-run "false"})))
-            "INSERT path recorded the driver's count (120); fallback is skipped because COUNT(*) on a cumulative target would overcount")
+            "INSERT path records the driver's count (120); it stays accurate on unreliable-CTAS drivers")
         (finally
           (remove-method driver/database-supports? [:h2 :transforms/accurate-rows-affected]))))
     (testing "A throw from the emission helper must NOT escape into the outer try/catch — the run already succeeded"

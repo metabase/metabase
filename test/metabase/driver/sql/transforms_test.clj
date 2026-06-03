@@ -209,8 +209,9 @@
 
 (deftest run-transform!-ctas-rows-affected-reflects-rows-written-test
   ;; Characterizes the CTAS row count per driver. BigQuery and Redshift are excluded — they
-  ;; declare `:transforms/accurate-rows-affected false` and the transforms layer falls back to
-  ;; `COUNT(*)`. New failing driver → add the feature override + add it to this exclusion.
+  ;; declare `:transforms/accurate-rows-affected false`, so the transforms layer skips emitting
+  ;; efficiency metrics for their full-rebuild runs rather than trust the bogus count. New failing
+  ;; driver → add the feature override + add it to this exclusion.
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
                          :bigquery-cloud-sdk :redshift)

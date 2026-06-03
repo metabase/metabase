@@ -12,10 +12,8 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -110,15 +108,6 @@
                         e))
         (throw e)))))
 
-(defn- count-target-rows
-  "Rows-processed fallback for the CTAS path on drivers where
-  `:transforms/accurate-rows-affected` is false. Costs one aggregate query per full-rebuild run."
-  [driver db-id {:keys [schema name]}]
-  (let [[sql] (sql.qp/format-honeysql driver {:select [:%count.*]
-                                              :from   [(keyword schema name)]})]
-    (-> (qp/process-query {:database db-id :type :native :native {:query sql}})
-        :data :rows ffirst long)))
-
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling.
 
@@ -134,12 +123,22 @@
       (driver/create-schema-if-needed! driver conn-spec output-schema))
     (let [source-range-params  (transforms-base.u/get-source-range-params transform)
           transform-timeout    (transforms.settings/transform-timeout)
-          transform-timeout-ms (u/minutes->ms transform-timeout)]
+          transform-timeout-ms (u/minutes->ms transform-timeout)
+          full-incremental?    (transforms-base.u/full-incremental-run? transform)
+          ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
+          ;; rows-affected count can be trusted. On drivers that declare
+          ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus
+          ;; count, so we skip emitting efficiency metrics for those runs entirely. The INSERT path's
+          ;; count is accurate even on those drivers.
+          reliable-row-count?  (or (driver.u/supports? driver :transforms/accurate-rows-affected
+                                                       {:lib/type :metadata/database :id db-id})
+                                   (not full-incremental?))]
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
       (when-let [{:keys [rows-available] :as srp} source-range-params]
         (tracing/add-span-attrs! :tasks
                                  (cond-> (transforms-base.u/checkpoint-span-attrs srp)
-                                   (some? rows-available) (assoc :transform/rows-available rows-available))))
+                                   (and reliable-row-count? rows-available)
+                                   (assoc :transform/rows-available rows-available))))
       (canceling/chan-start-timeout-vthread! run-id transform-timeout)
       (let [cancel-chan (a/promise-chan)
             ret (driver.conn/with-transform-connection
@@ -157,17 +156,10 @@
         (transform-run/succeed-started-run! run-id)
         ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
         ;; fail-started-run! after succeed-started-run! has already fired.
-        (when-some [rows-available (:rows-available source-range-params)]
+        (when reliable-row-count?
           (try
-            (let [full-incremental? (transforms-base.u/full-incremental-run? transform)
-                  ;; Fallback is CTAS-only: on the INSERT path the target is cumulative, so a
-                  ;; `COUNT(*)` would overcount the delta.
-                  rows-processed    (if (or (driver.u/supports? driver :transforms/accurate-rows-affected
-                                                                {:lib/type :metadata/database :id db-id})
-                                            (not full-incremental?))
-                                      (:rows-affected (:result ret))
-                                      (count-target-rows driver db-id (:target transform)))]
-              (when-some [rp rows-processed]
+            (when-some [rows-available (:rows-available source-range-params)]
+              (when-some [rp (:rows-affected (:result ret))]
                 (tracing/add-span-attrs! :tasks {:transform/rows-processed rp})
                 (transforms.instrumentation/record-incremental-rows!
                  rows-available
