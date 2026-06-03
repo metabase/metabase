@@ -273,18 +273,39 @@ describe("fetchDashboard", () => {
 });
 
 /**
- * Creates a mock dispatch/getState pair that executes thunks but skips the
- * Redux store, avoiding the Immer/icepick incompatibility in dashcardData
- * reducer when multiple fulfilled actions arrive.
+ * Creates a dispatch/getState pair that runs thunks against the mock dashboard
+ * `state` but routes RTK Query lifecycle actions to a real (api-only) store, so
+ * the RTK-backed dashcard query endpoints execute. The dashboard `dashcardData`
+ * reducer is intentionally bypassed: it uses icepick `assocIn`, which crashes
+ * under Immer when many fulfilled actions arrive at once (the case these
+ * concurrency tests provoke).
  */
-function createMockDispatch(getState: () => Partial<State>) {
-  const dispatch = (action: unknown): unknown => {
+function createMockDispatch(getMockState: () => Partial<State>) {
+  const apiStore = getStore({ [Api.reducerPath]: Api.reducer }, {}, [
+    Api.middleware,
+  ]);
+
+  const getState = (): Partial<State> => ({
+    ...getMockState(),
+    [Api.reducerPath]: apiStore.getState()[Api.reducerPath],
+  });
+
+  const dispatch = (action: any): any => {
     if (typeof action === "function") {
       return action(dispatch, getState);
     }
+    // RTK Query lifecycle actions need the real api store + middleware; other
+    // (dashboard) plain actions don't affect what these tests assert.
+    if (
+      typeof action?.type === "string" &&
+      action.type.startsWith(`${Api.reducerPath}/`)
+    ) {
+      return apiStore.dispatch(action);
+    }
     return Promise.resolve(action);
   };
-  return dispatch;
+
+  return { dispatch, getState };
 }
 
 function setupConcurrencyTest(dashboardId: number, cardCount: number) {
@@ -332,8 +353,7 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
     settings: createMockSettingsState(),
   };
 
-  const getState = () => state;
-  const dispatch = createMockDispatch(getState);
+  const { dispatch, getState } = createMockDispatch(() => state);
 
   return { dispatch, getState, getMaxConcurrent: () => maxConcurrent };
 }
@@ -422,8 +442,7 @@ describe("fetchDashboardCardData", () => {
       settings: createMockSettingsState(),
     };
 
-    const getState = () => state;
-    const dispatch = createMockDispatch(getState);
+    const { dispatch, getState } = createMockDispatch(() => state);
 
     // Start loading Tab 1 (slow query)
     const tab1Fetch = fetchDashboardCardData()(

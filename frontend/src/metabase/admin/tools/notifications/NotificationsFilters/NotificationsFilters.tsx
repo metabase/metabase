@@ -29,6 +29,7 @@ import {
   getChannelIconName,
   getChannelLabel,
 } from "../NotificationsAdminPage/utils";
+import { trackAlertsManagementFiltersApplied } from "../analytics";
 
 import { hasActiveFilters, stateToDraft } from "./utils";
 
@@ -51,6 +52,7 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
   }, [opened, state]);
 
   const handleApply = () => {
+    trackAlertsManagementFiltersApplied();
     onChange({
       channel: draft.channel,
       creator_active: draft.creator_active,

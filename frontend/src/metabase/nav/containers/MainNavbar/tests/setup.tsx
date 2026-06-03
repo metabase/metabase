@@ -21,7 +21,7 @@ import {
 } from "__support__/ui";
 import type { ModelResult } from "metabase/browse/models";
 import { ROOT_COLLECTION } from "metabase/collections/constants";
-import type { DashboardState } from "metabase/redux/store";
+import type { DashboardState, StoreDashboard } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockQueryBuilderState,
@@ -36,7 +36,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import MainNavbar from "../MainNavbar";
+import { MainNavbar } from "../MainNavbar";
 
 export type SetupOpts = {
   pathname?: string;
@@ -172,12 +172,14 @@ export async function setup({
   let dashboardId: DashboardId | null = null;
   const dashboardsForState: DashboardState["dashboards"] = {};
   const dashboardsForEntities: Dashboard[] = [];
+  let storeDashboard: StoreDashboard | undefined;
   if (openDashboard) {
     dashboardId = openDashboard.id;
-    dashboardsForState[openDashboard.id] = {
+    storeDashboard = {
       ...openDashboard,
       dashcards: openDashboard.dashcards.map((c) => c.id),
     };
+    dashboardsForState[openDashboard.id] = storeDashboard;
     dashboardsForEntities.push(openDashboard);
   }
 
@@ -218,7 +220,9 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      component={(props) => <MainNavbar {...props} isOpen />}
+      component={(props) => (
+        <MainNavbar {...props} isOpen dashboard={storeDashboard} />
+      )}
     />,
     {
       storeInitialState,
