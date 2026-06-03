@@ -2561,7 +2561,7 @@ describe("sandbox", () => {
     );
   });
 
-  it.only("sandboxes React component setting widgets", () => {
+  it("sandboxes React component setting widgets", () => {
     H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
 
     H.createQuestion(
