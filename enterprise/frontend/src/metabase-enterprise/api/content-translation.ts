@@ -33,8 +33,7 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
           return {
             method: "POST",
             url: contentTranslationEndpoints.uploadDictionary,
-            body: { formData },
-            formData: true,
+            body: formData,
             fetch: true,
           };
         },

@@ -530,14 +530,14 @@ export function DashCardVisualization({
 
   return (
     <div
-      className={cx(CS.flexFull, CS.fullHeight, {
+      className={cx(S.VisualizationContainer, CS.flexFull, CS.fullHeight, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
       ref={containerRef}
     >
       <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
         <Visualization
-          className={cx(CS.flexFull, {
+          className={cx(S.Visualization, CS.flexFull, {
             [CS.overflowAuto]: visualizationOverlay,
             [CS.overflowHidden]: !visualizationOverlay,
           })}

@@ -3,11 +3,10 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { Card } from "metabase/common/components/Card";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Card, Flex, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
@@ -127,17 +126,15 @@ export const BillingInfoTable = ({
   return (
     <>
       <SettingHeader id="billing" title={t`Billing`} />
-      <Box mt="md">
-        <Card flat>
-          {billingInfo.content?.map((lineItem, index, arr) => (
-            <BillingInfoRow
-              key={lineItem.name}
-              lineItem={lineItem}
-              extraPadding={arr.length === index + 1}
-            />
-          ))}
-        </Card>
-      </Box>
+      <Card mt="md" p={0} radius="md" shadow="none" withBorder>
+        {billingInfo.content?.map((lineItem, index, arr) => (
+          <BillingInfoRow
+            key={lineItem.name}
+            lineItem={lineItem}
+            extraPadding={arr.length === index + 1}
+          />
+        ))}
+      </Card>
       {airgap_enabled && <StillNeedHelp />}
     </>
   );

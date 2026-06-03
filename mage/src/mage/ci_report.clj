@@ -168,7 +168,7 @@
    Format: 2026-02-06T02:38:25.1443042Z <content>
    Strips the timestamp plus one trailing space, preserves remaining indentation."
   [line]
-  (str/replace line #"^\d{4}-\d{2}-\d{2}T[\d:.]+Z " ""))
+  (str/replace line #"^\d{4}-\d{2}-\d{2}T[\d:.]+Z ?" ""))
 
 (defn- parse-trunk-report
   "Extract test failure info from Trunk test report section in logs"
@@ -184,6 +184,8 @@
         lines (str/split-lines clean-logs)
         ;; Find the test report section - look for 📚 emoji specifically
         in-report? (atom false)
+        ;; Previous non-blank line in the report; the test name precedes its ⤷ link
+        prev (atom nil)
         results (atom [])]
     (doseq [line lines]
       ;; Start at "📚 Test Report" (the emoji version, not config text)
@@ -209,19 +211,24 @@
                 match (re-find #"\d+\s+tests?\s+failed.*" line)]
             (when match
               (swap! results conj {:type :failed-count :text (str/trim match)})))
-          ;; Package name with 📦
+          ;; Package/group name with 📦 - keep everything after the emoji
+          ;; (works for Clojure `metabase.foo-test` and Cypress group names alike)
           (str/includes? line "📦")
-          (when-let [pkg (re-find #"metabase[\w.-]+-test" line)]
-            (swap! results conj {:type :package :text pkg}))
-          ;; Test name (namespace-test/test-name) - must have a slash
-          (and (re-find #"metabase[\w.-]+-test/" line)
-               (not (str/includes? line "📦")))  ;; Not the package line
-          (when-let [test-name (re-find #"metabase[\w.-]+-test/[\w-]+" line)]
-            (swap! results conj {:type :test-name :text test-name}))
-          ;; Trunk link
+          (when-let [idx (str/index-of line "📦")]
+            ;; 📦 is a surrogate pair (2 Java chars)
+            (swap! results conj {:type :package :text (str/trim (subs line (+ idx 2)))}))
+          ;; Trunk link - the test name is the previous non-blank line
           (str/includes? line "trunk.io")
-          (when-let [link (re-find #"https://app\.trunk\.io/[^\s]+" line)]
-            (swap! results conj {:type :trunk-link :text link})))))
+          (do
+            (when (and @prev (seq (str/trim @prev)))
+              (swap! results conj {:type :test-name :text (str/trim @prev)}))
+            (when-let [link (re-find #"https://app\.trunk\.io/[^\s]+" line)]
+              (swap! results conj {:type :trunk-link :text link})))
+          ;; "…and N more failures in this group"
+          (re-find #"and \d+ more failures" line)
+          (swap! results conj {:type :more :text (str/trim line)})))
+      (when (seq (str/trim line))
+        (reset! prev line)))
     @results))
 
 (defn- format-trunk-report
@@ -236,6 +243,7 @@
                   :package (str "📦 " text)
                   :test-name (str "  ❌ " text)
                   :trunk-link (str "     ⤷ " text)
+                  :more (str "  " text)
                   :quarantine text  ;; Already has ⚠️ from the logs
                   text)))
          (str/join "\n"))))
@@ -300,6 +308,56 @@
     ;; Don't forget the last block
     (when (and @in-block? (#{:fail :error} @block-type) (seq @current-block))
       (swap! blocks conj {:type @block-type :lines @current-block}))
+    @blocks))
+
+(defn- extract-cypress-failures
+  "Extract Cypress (E2E) failure blocks from logs.
+   Cypress prints failures as numbered blocks:
+     1) suite > nested > test title:
+          AssertionError: ...
+           at fn (path/to/spec.cy.spec.js:123:4)
+   A block starts at a `  N) ` line and runs until the next numbered failure,
+   a results/screenshot/video separator, the passing/failing summary, or a
+   spec/run separator rule."
+  [logs]
+  (let [clean-logs (strip-ansi logs)
+        lines (->> (str/split-lines clean-logs)
+                   (map strip-timestamp))
+        current-block (atom [])
+        blocks (atom [])
+        in-block? (atom false)
+        end-block! (fn []
+                     (when @in-block?
+                       ;; drop trailing blank lines
+                       (let [trimmed (vec (reverse (drop-while (comp str/blank? str)
+                                                               (reverse @current-block))))]
+                         (when (seq trimmed)
+                           (swap! blocks conj {:type :cypress :lines trimmed}))))
+                     (reset! current-block [])
+                     (reset! in-block? false))]
+    (doseq [line lines]
+      (cond
+        ;; Start of a numbered Cypress failure block
+        (re-find #"^\s+\d+\)\s" line)
+        (do
+          (end-block!)
+          (reset! current-block [line])
+          (reset! in-block? true))
+
+        ;; Boundaries that close a failure block
+        (and @in-block?
+             (or (re-find #"^\s*\(Results\)" line)
+                 (re-find #"^\s*\(Screenshots\)" line)
+                 (re-find #"^\s*\(Video\)" line)
+                 (re-find #"^\s*\d+\s+passing" line)
+                 (re-find #"^\s*={5,}\s*$" line)
+                 (re-find #"^\s*─{5,}\s*$" line)
+                 (str/includes? line "Run Finished")))
+        (end-block!)
+
+        @in-block?
+        (swap! current-block conj line)))
+    (end-block!)
     @blocks))
 
 (defn- format-failure-blocks
@@ -425,8 +483,10 @@
               job-logs (get logs-by-job-id job-id)]
           (if job-logs
             (if detailed?
-              ;; Detailed mode: show full FAIL/ERROR blocks
-              (let [blocks (extract-failure-blocks job-logs)
+              ;; Detailed mode: show full FAIL/ERROR blocks (Clojure) and
+              ;; numbered failure blocks (Cypress E2E)
+              (let [blocks (concat (extract-failure-blocks job-logs)
+                                   (extract-cypress-failures job-logs))
                     formatted (format-failure-blocks blocks)]
                 (if (seq formatted)
                   (do (println "**Test Failures:**")

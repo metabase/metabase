@@ -55,3 +55,13 @@ export const NativeQueryEditor = ({
     </div>
   );
 };
+
+// The composition sub-components are rendered as children of the mocked editor,
+// which ignores its children. They only need to be valid components so consumers
+// using the composition API keep working under the mock.
+const Noop = () => null;
+NativeQueryEditor.TopBar = Noop;
+NativeQueryEditor.Sidebar = Noop;
+NativeQueryEditor.ParametersList = Noop;
+NativeQueryEditor.VisibilityToggler = Noop;
+NativeQueryEditor.RunButton = Noop;

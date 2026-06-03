@@ -2002,6 +2002,454 @@
         },
         "required" : [ "id", "analyzed_entity_type", "analyzed_entity_id", "error_type" ]
       },
+      "metabase-enterprise.erd.impl.erd-edge" : {
+        "type" : "object",
+        "properties" : {
+          "relationship" : {
+            "type" : "string",
+            "enum" : [ "one-to-one", "many-to-one" ]
+          },
+          "source_field_id" : {
+            "type" : "integer"
+          },
+          "source_table_id" : {
+            "type" : "integer"
+          },
+          "target_field_id" : {
+            "type" : "integer"
+          },
+          "target_table_id" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "source_table_id", "source_field_id", "target_table_id", "target_field_id", "relationship" ]
+      },
+      "metabase-enterprise.erd.impl.erd-field" : {
+        "type" : "object",
+        "properties" : {
+          "base_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "semantic_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "fk_target_table_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "effective_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_type" : {
+            "type" : "string"
+          },
+          "fk_target_field_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "display_name", "database_type" ]
+      },
+      "metabase-enterprise.erd.impl.erd-node" : {
+        "type" : "object",
+        "properties" : {
+          "db_id" : {
+            "type" : "integer"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-field"
+            }
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "owner" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-owner"
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table_id" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "table_id", "name", "display_name", "db_id", "fields" ]
+      },
+      "metabase-enterprise.erd.impl.erd-owner" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "email" : {
+              "type" : "string"
+            },
+            "first_name" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "id" : {
+              "type" : "integer"
+            },
+            "last_name" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "required" : [ "email" ]
+        }, {
+          "type" : "null"
+        } ]
+      },
+      "metabase-enterprise.erd.impl.erd-request" : {
+        "type" : "object",
+        "properties" : {
+          "database-id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table-ids" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "database-id" ]
+      },
+      "metabase-enterprise.erd.impl.erd-response" : {
+        "type" : "object",
+        "properties" : {
+          "edges" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-edge"
+            }
+          },
+          "nodes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-node"
+            }
+          }
+        },
+        "required" : [ "nodes", "edges" ]
+      },
+      "metabase-enterprise.notification-admin.api.bulk-response" : {
+        "type" : "object",
+        "properties" : {
+          "updated" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "updated" ]
+      },
+      "metabase-enterprise.notification-admin.api.channel-entry" : {
+        "description" : "One channel delivery attempt within a tick.",
+        "type" : "object",
+        "properties" : {
+          "channel_type" : {
+            "type" : "string"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
+          }
+        },
+        "required" : [ "channel_type", "status", "error" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.notification-admin.api.detail-response" : {
+        "type" : "object",
+        "properties" : {
+          "last_check" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "payload_type" : {
+            "type" : "string"
+          },
+          "payload_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "send_history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.tick-send-entry"
+            }
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "check_history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
+            }
+          },
+          "last_send" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "creator_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send", "check_history", "send_history" ]
+      },
+      "metabase-enterprise.notification-admin.api.list-response" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.list-row"
+            }
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "data", "total", "limit", "offset" ]
+      },
+      "metabase-enterprise.notification-admin.api.list-row" : {
+        "type" : "object",
+        "properties" : {
+          "last_check" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "payload_type" : {
+            "type" : "string"
+          },
+          "payload_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last_send" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "creator_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send" ]
+      },
+      "metabase-enterprise.notification-admin.api.run-status" : {
+        "type" : "string",
+        "enum" : [ "failing", "successful" ]
+      },
+      "metabase-enterprise.notification-admin.api.run-summary" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
+          }
+        },
+        "required" : [ "at", "error", "status" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.notification-admin.api.sort-column" : {
+        "type" : "string",
+        "enum" : [ "id", "last_send", "last_check", "card_name", "creator_name", "updated_at" ]
+      },
+      "metabase-enterprise.notification-admin.api.sort-direction" : {
+        "type" : "string",
+        "enum" : [ "asc", "desc" ]
+      },
+      "metabase-enterprise.notification-admin.api.tick-send-entry" : {
+        "description" : "One tick's worth of sends, rolled up across all channels that fired in that tick.",
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "channels" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.channel-entry"
+            }
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
+          }
+        },
+        "required" : [ "at", "status", "error", "channels" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.permission-debug.impl.group-id" : {
         "type" : "integer"
       },
@@ -20919,19 +21367,20 @@
       "get" : {
         "operationId" : "get-api-database",
         "summary" : "GET /api/database",
-        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
+        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
         "parameters" : [ {
           "in" : "query",
           "name" : "include",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "const" : "tables"
+              "type" : "string",
+              "enum" : [ "tables", "schemas" ]
             }, {
               "type" : "null"
             } ]
           },
-          "description" : "include must be either empty or the value 'tables'"
+          "description" : "include must be either empty, 'tables', or 'schemas'"
         }, {
           "in" : "query",
           "name" : "include_analytics",
@@ -24728,7 +25177,7 @@
       "post" : {
         "operationId" : "post-api-ee-custom-viz-plugin",
         "summary" : "POST /api/ee/custom-viz-plugin",
-        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle, plus any whitelisted assets under\n  `dist/assets/`. The plugin's `identifier` is taken from the manifest's `name`\n  field.",
+        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle. The only static asset served from the bundle\n  is the manifest `icon` (under `dist/assets/`); plugins do not ship arbitrary\n  assets. The plugin's `identifier` is taken from the manifest's `name` field.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -25317,7 +25766,7 @@
       "get" : {
         "operationId" : "get-api-ee-custom-viz-plugin-id-asset",
         "summary" : "GET /api/ee/custom-viz-plugin/{id}/asset",
-        "description" : "Serve a static image asset from the plugin's bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match an entry in the manifest's `assets` whitelist.\n   Only image files are served.\n   In dev mode, proxies from the dev base URL if set.",
+        "description" : "Serve the plugin's icon image from its bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match the manifest `icon`. Only the icon is served — plugins do not\n   ship arbitrary assets.\n   In dev mode, proxies from the dev base URL if set.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -26935,6 +27384,33 @@
         "tags" : [ "/api/ee/embedding-hub" ]
       }
     },
+    "/api/ee/erd" : {
+      "get" : {
+        "operationId" : "get-api-ee-erd",
+        "summary" : "GET /api/ee/erd",
+        "description" : "Return an Entity Relationship Diagram (ERD) for tables and their FK relationships.\n  When `table-ids` is provided, those tables are the focal points (and must belong to `database-id`).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/erd" ]
+      }
+    },
     "/api/ee/gsheets/connection" : {
       "post" : {
         "operationId" : "post-api-ee-gsheets-connection",
@@ -27813,6 +28289,236 @@
         "tags" : [ "/api/ee/metabot" ]
       }
     },
+    "/api/ee/notifications" : {
+      "get" : {
+        "operationId" : "get-api-ee-notifications",
+        "summary" : "GET /api/ee/notifications",
+        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification's card (`successful` = latest channel-send succeeded; `failing` = latest\n  channel-send failed). The Failing tab uses `?last_send_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "active",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "creator_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "creator_active",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "creatorless",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "card_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "recipient_email",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "channel",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string",
+                "minLength" : 1
+              }, {
+                "type" : "array",
+                "items" : {
+                  "type" : "string",
+                  "minLength" : 1
+                }
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_send_status",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : true,
+          "schema" : {
+            "default" : "last_send",
+            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.sort-column"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : true,
+          "schema" : {
+            "default" : "desc",
+            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.sort-direction"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.list-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/notifications" ]
+      }
+    },
+    "/api/ee/notifications/bulk" : {
+      "post" : {
+        "operationId" : "post-api-ee-notifications-bulk",
+        "summary" : "POST /api/ee/notifications/bulk",
+        "description" : "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes\n  through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz\n  triggers. Recipient emails and `:event/notification-update` audit events are\n  published via the shared [[notification-api/publish-notification-update!]] helper so this\n  endpoint's side-effect contract can't drift from `PUT /api/notification/:id`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.bulk-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "action" : {
+                    "type" : "string",
+                    "enum" : [ "archive", "change-creator" ]
+                  },
+                  "creator_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "notification_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "minItems" : 1
+                  }
+                },
+                "required" : [ "notification_ids", "action" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/notifications" ]
+      }
+    },
+    "/api/ee/notifications/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-notifications-id",
+        "summary" : "GET /api/ee/notifications/{id}",
+        "description" : "Get a single card-type notification with last_check, last_send, check_history (up to 10\n  most-recent terminal alert-type TaskRuns) and send_history (up to 10 most-recent channel-send\n  delivery attempts). 404 if the notification doesn't exist or isn't a card-type notification.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.detail-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/notifications" ]
+      }
+    },
     "/api/ee/permission_debug" : {
       "get" : {
         "operationId" : "get-api-ee-permission_debug",
@@ -28327,6 +29033,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "branch_missing" : {
+                      "type" : "boolean"
+                    },
                     "cached" : {
                       "type" : "boolean"
                     },
@@ -31378,7 +32087,7 @@
       "get" : {
         "operationId" : "get-api-ee-workspace-instance-current",
         "summary" : "GET /api/ee/workspace-instance/current",
-        "description" : "Read-only summary of the workspace loaded on this instance, wrapped in a\n  `{:data ...}` envelope.\n\n  Reads from the `instance-workspace` setting populated at boot by the `:workspace`\n  section of `config.yml`, or at runtime by `POST /current`. `:data` is `null`\n  when no workspace was loaded — i.e. this is a manager-only instance, or no\n  `config.yml` was present at boot and `POST /current` hasn't been called.\n  The envelope avoids an empty JSON body for the `nil` case.",
+        "description" : "Read-only summary of the workspace loaded on this instance, wrapped in a\n  `{:data ...}` envelope.\n\n  Reads from the `instance-workspace` setting populated at boot by the `:workspace`\n  section of `config.yml`, or at runtime by `POST /current`. `:data` is `null`\n  when no workspace was loaded — i.e. this is a manager-only instance, or no\n  `config.yml` was present at boot and `POST /current` hasn't been called.\n  The envelope avoids an empty JSON body for the `nil` case.\n\n  The workspace's `can_write` flag is `false` when it was set by deployment\n  config (`config.yml` or `MB_INSTANCE_WORKSPACE`); `POST`/`DELETE` are rejected\n  in that case.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -31392,6 +32101,9 @@
                       "oneOf" : [ {
                         "type" : "object",
                         "properties" : {
+                          "can_write" : {
+                            "type" : "boolean"
+                          },
                           "databases" : {
                             "type" : "object",
                             "additionalProperties" : {
@@ -31431,7 +32143,7 @@
                             "minLength" : 1
                           }
                         },
-                        "required" : [ "name", "databases" ]
+                        "required" : [ "name", "databases", "can_write" ]
                       }, {
                         "type" : "null"
                       } ]
@@ -31454,7 +32166,7 @@
       "post" : {
         "operationId" : "post-api-ee-workspace-instance-current",
         "summary" : "POST /api/ee/workspace-instance/current",
-        "description" : "Install a workspace config on this instance at runtime. Accepts the same shape\n  `GET /current` returns and persists it via the `instance-workspace` setting so\n  it survives restarts. Use this on a running instance to enter workspace mode\n  without restarting from `config.yml`.",
+        "description" : "Install a workspace config on this instance at runtime. Accepts the same shape\n  `GET /current` returns and persists it via the `instance-workspace` setting so\n  it survives restarts. Use this on a running instance to enter workspace mode\n  without restarting from `config.yml`.\n\n  Returns 400 if the workspace was set by deployment config (`config.yml` or\n  `MB_INSTANCE_WORKSPACE`) and so is read-only.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -31464,6 +32176,9 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "databases" : {
                       "type" : "object",
                       "additionalProperties" : {
@@ -31503,7 +32218,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "name", "databases" ]
+                  "required" : [ "name", "databases", "can_write" ]
                 }
               }
             }
@@ -31529,7 +32244,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-workspace-instance-current",
         "summary" : "DELETE /api/ee/workspace-instance/current",
-        "description" : "Clear the workspace config on this instance. After this returns, the instance\n  is no longer in workspace mode and `GET /current` returns `nil`. Also drops\n  every `TableRemapping` row, since stale mappings from the prior workspace\n  would otherwise keep rewriting queries on the now-unmanaged databases.",
+        "description" : "Clear the workspace config on this instance. After this returns, the instance\n  is no longer in workspace mode and `GET /current` returns `nil`. Also drops\n  every `TableRemapping` row, since stale mappings from the prior workspace\n  would otherwise keep rewriting queries on the now-unmanaged databases.\n\n  Returns 400 if the workspace was set by deployment config (`config.yml` or\n  `MB_INSTANCE_WORKSPACE`) and so is read-only.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -38308,7 +39023,7 @@
       "put" : {
         "operationId" : "put-api-notification-id",
         "summary" : "PUT /api/notification/{id}",
-        "description" : "Update a notification, can also update its subscriptions, handlers.\n  Return the updated notification.",
+        "description" : "Update a notification, can also update its subscriptions, handlers.\n  Return the updated notification.\n\n  `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'\n  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;\n  the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -43896,12 +44611,27 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "type" : "array",
-                "items" : {
-                  "description" : "value must be an integer greater than zero.",
-                  "type" : "integer",
-                  "minimum" : 1
-                }
+                "anyOf" : [ {
+                  "type" : "array",
+                  "items" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "field_order" : {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "field_order" ]
+                } ]
               }
             }
           }

@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import { DatabaseInfo } from "../../../../components/DatabaseInfo";
-import { useDeleteDatabase } from "../../../../hooks";
+import { DeleteDatabaseModal } from "../DeleteDatabaseModal";
 import { UpdateDatabaseModal } from "../UpdateDatabaseModal";
 
 export type DatabaseItemProps = {
@@ -24,8 +24,10 @@ export function DatabaseItem({
   workspaceDatabase,
   database,
 }: DatabaseItemProps) {
-  const [opened, { open, close }] = useDisclosure(false);
-  const { handleDelete, modalContent } = useDeleteDatabase({ database });
+  const [editOpened, { open: openEdit, close: closeEdit }] =
+    useDisclosure(false);
+  const [deleteOpened, { open: openDelete, close: closeDelete }] =
+    useDisclosure(false);
   const supportsSchemas = database != null && hasFeature(database, "schemas");
 
   return (
@@ -52,12 +54,12 @@ export function DatabaseItem({
             {supportsSchemas && (
               <Menu.Item
                 leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
-                onClick={open}
+                onClick={openEdit}
               >{t`Edit`}</Menu.Item>
             )}
             <Menu.Item
               leftSection={<FixedSizeIcon name="trash" aria-hidden />}
-              onClick={() => handleDelete(workspace, workspaceDatabase)}
+              onClick={openDelete}
             >{t`Remove`}</Menu.Item>
           </Menu.Dropdown>
         </Menu>
@@ -67,12 +69,19 @@ export function DatabaseItem({
           workspace={workspace}
           workspaceDatabase={workspaceDatabase}
           database={database}
-          opened={opened}
-          onUpdate={close}
-          onClose={close}
+          opened={editOpened}
+          onUpdate={closeEdit}
+          onClose={closeEdit}
         />
       )}
-      {modalContent}
+      <DeleteDatabaseModal
+        workspace={workspace}
+        workspaceDatabase={workspaceDatabase}
+        database={database}
+        opened={deleteOpened}
+        onDelete={closeDelete}
+        onClose={closeDelete}
+      />
     </Card>
   );
 }

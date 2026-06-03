@@ -22,13 +22,6 @@ export type CreateCustomVisualizationProps<
   defineSetting: ReturnType<CreateDefineSetting<TSettings>>;
 
   /**
-   * Returns a URL for a static asset declared in the plugin manifest.
-   * Use this to reference images and other static files from your plugin.
-   * @example getAssetUrl("icon.svg")
-   */
-  getAssetUrl: (assetPath: string) => string;
-
-  /**
    * Locale to render visualization with (e.g. "de", "ja", "en").
    */
   locale: string;
