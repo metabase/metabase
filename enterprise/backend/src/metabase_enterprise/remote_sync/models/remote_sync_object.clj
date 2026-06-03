@@ -33,10 +33,10 @@
 
 (defn dirty-rows
   "Returns the raw RemoteSyncObject rows that are not yet synced (status != 'synced'),
-   excluding disabled model types (e.g. transforms when transform sync is off).
+  excluding disabled model types (e.g. transforms when transform sync is off).
 
-   Unlike `dirty-objects`, this returns the rows verbatim (including :id, :model_type,
-   :model_id, :status) for use by the incremental export fast-path."
+  Unlike `dirty-objects`, this returns the rows verbatim (including :id, :model_type,
+  :model_id, :status) for use by the incremental export fast-path."
   []
   (let [excluded (spec/excluded-model-types)]
     (if (empty? excluded)
