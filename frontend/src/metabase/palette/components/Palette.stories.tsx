@@ -111,11 +111,13 @@ export const Recents = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    const canvas = within(canvasElement);
+    try {
+      const canvas = within(canvasElement);
 
-    await canvas.findByRole("option", { name: "Recents" });
-
-    asyncCallback();
+      await canvas.findByRole("option", { name: "Recents" });
+    } finally {
+      asyncCallback();
+    }
   },
 };
 
@@ -124,21 +126,23 @@ export const Search = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    const canvas = within(canvasElement);
+    try {
+      const canvas = within(canvasElement);
 
-    await userEvent.type(
-      await canvas.findByPlaceholderText(/Search for anything/),
-      "ord",
-    );
+      await userEvent.type(
+        await canvas.findByPlaceholderText(/Search for anything/),
+        "ord",
+      );
 
-    await canvas.findByRole("option", { name: "Results" });
+      await canvas.findByRole("option", { name: "Results" });
 
-    // Wait for the result to all show up because "Results" will be
-    // present when the search query is still loading
-    await expect(
-      await canvas.findByText("Product breakdown"),
-    ).toBeInTheDocument();
-
-    asyncCallback();
+      // Wait for the result to all show up because "Results" will be
+      // present when the search query is still loading
+      await expect(
+        await canvas.findByText("Product breakdown"),
+      ).toBeInTheDocument();
+    } finally {
+      asyncCallback();
+    }
   },
 };
