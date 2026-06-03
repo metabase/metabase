@@ -1,4 +1,7 @@
-import { screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import { screen, waitFor } from "__support__/ui";
 import {
   createMockDatabase,
   createMockSegment,
@@ -20,12 +23,56 @@ describe("TableSection", () => {
     );
   });
 
-  it("should not render sync settings button when the database is datawarehouse attached", () => {
-    setup({
-      database: createMockDatabase({ is_attached_dwh: true }),
+  describe("actions menu", () => {
+    it("should expose the sync actions in the actions menu", async () => {
+      setup();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "More actions" }),
+      );
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Re-sync schema/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /Re-scan field values/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /Discard cached field values/ }),
+      ).toBeInTheDocument();
     });
 
-    expect(screen.queryByText("Sync settings")).not.toBeInTheDocument();
+    it("should trigger a field values rescan from the actions menu", async () => {
+      const table = createMockTable();
+      setup({ table });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "More actions" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Re-scan field values/ }),
+      );
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(
+            "path:/api/data-studio/table/rescan-values",
+            { method: "POST" },
+          ),
+        ).toHaveLength(1);
+      });
+    });
+
+    it("should not expose sync actions when the database is datawarehouse attached", () => {
+      setup({
+        database: createMockDatabase({ is_attached_dwh: true }),
+      });
+
+      // No sync items and (for a non-admin) no replace item, so the menu is hidden entirely.
+      expect(
+        screen.queryByRole("button", { name: "More actions" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("tabs", () => {
