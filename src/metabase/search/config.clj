@@ -253,6 +253,13 @@
   "Schema for searchable models"
   (into [:enum] all-models))
 
+(def vector-search-strategies
+  "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
+  so the OSS search API param and the EE semantic-search setting validation share one definition.
+  Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
+  separate `case` (with an `:hnsw` default) and must be updated by hand when adding a strategy."
+  [:hnsw :brute-force])
+
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
   [:map {:closed true}
@@ -274,6 +281,9 @@
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
+   ;; Semantic-engine vector-search strategy (:hnsw or :brute-force). When absent, the engine uses its
+   ;; configured default setting.
+   [:vector-search-strategy {:optional true} [:maybe keyword?]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;
