@@ -426,9 +426,8 @@
                                  (:id thing))]
                      (if tid
                        (lib/with-join-source-fields a-join (get cols-by-tid tid))
-                       ;; Non-Table source (e.g. Card): leave alone. Chain-filter doesn't produce these today, but if
-                       ;; a future caller did, projecting by table-id wouldn't be meaningful — leave the join's
-                       ;; existing `:fields` untouched rather than silently dropping them.
+                       ;; Non-Table source (e.g. Card): leave alone — projecting by table-id isn't meaningful and
+                       ;; dropping the existing `:fields` would re-expose the original bug.
                        a-join)))
                  joins)))))))
 
@@ -505,7 +504,7 @@
         schema.metadata-queries/add-required-filters-if-needed
         ;; Runs LAST so it picks up joined-table field refs injected by middleware above (e.g. BigQuery partition
         ;; filters). Without an explicit projection here the join's inner stage gets expanded to every column on the
-        ;; joined Table by add-implicit-clauses, OOM'ing on wide fact tables (#74154).
+        ;; joined Table by add-implicit-clauses, OOM'ing on wide fact tables.
         tighten-join-projections)))
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------

@@ -587,7 +587,7 @@
               :has_more_values false}
              (chain-filter-search venues.category_id {venues.price 4} "zzzzz"))))))
 
-;;; ------------ Structural invariant: tight inner-stage :fields per join (#74154) ------------
+;;; ------------ Structural invariant: tight inner-stage :fields per join ------------
 ;;;
 ;;; Two failure modes the invariant rules out:
 ;;;
@@ -596,25 +596,30 @@
 ;;;     wrong/missing values.
 ;;;
 ;;;   - OVER-projection — the inner :fields contains a column nothing references. SQL
-;;;     compiles fine and values are correct, but we're materializing columns we don't need
-;;;     — the OOM root cause behind #74154.
+;;;     compiles fine and values are correct, but we're materializing columns we don't need,
+;;;     which on wide tables is enough to OOM the engine.
 
 (defn- referenced-field-ids-by-join-alias
-  "Return `{alias #{field-id ...}}` — for every `[:field {:join-alias A} id]` ref in `query`, bucket by `A`. Refs
-  without a `:join-alias` (source-table refs, refs inside a join's own inner stage) don't contribute. This is the
-  actual contract: the inner stage of a join projects exactly what the rest of the query reaches through that join's
-  alias."
+  "Return `{alias #{field-id ...}}` — for every `[:field {:join-alias A} id]` ref in `query`'s outer stage (including
+  refs in each outer-stage join's `:conditions` and outer `:fields`), bucket by `A`. Does NOT recurse into joins'
+  inner stages or any nested query — aliases are stage-scoped, so merging refs across scopes would silently
+  mis-attribute fields to the wrong join."
   [query]
-  (let [acc (volatile! (transient {}))]
-    (lib.walk/walk-clauses
-     query
-     (fn [_query _path-type _path clause]
-       (when (lib.util/clause-of-type? clause :field)
-         (let [[_ opts id] clause
-               alias (:join-alias opts)]
-           (when (and alias (pos-int? id))
-             (vswap! acc assoc! alias (conj (get @acc alias #{}) id)))))
-       nil))
+  (let [acc       (volatile! (transient {}))
+        collect   (fn [clause]
+                    (when (lib.util/clause-of-type? clause :field)
+                      (let [[_ opts id] clause
+                            alias       (:join-alias opts)]
+                        (when (and alias (pos-int? id))
+                          (vswap! acc assoc! alias (conj (get @acc alias #{}) id)))))
+                    nil)
+        top-stage (lib.util/query-stage query -1)]
+    (lib.walk/walk-clauses-in-stage top-stage collect)
+    (doseq [a-join (lib/joins query)]
+      (run! #(lib.walk/walk-clause % collect) (lib/join-conditions a-join))
+      (let [outer-fields (lib/join-fields a-join)]
+        (when (sequential? outer-fields)
+          (run! #(lib.walk/walk-clause % collect) outer-fields))))
     (persistent! @acc)))
 
 (defn- inner-projection-by-join-alias

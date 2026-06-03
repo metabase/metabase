@@ -796,11 +796,12 @@
     stage-number :- :int]
    (lib.join/joins a-query stage-number)))
 
-(mu/defn joined-thing
+(mu/defn joined-thing :- [:maybe ::lib.join/joinable]
   "Return metadata about the origin of `a-join` (the joined Table or Card).
 
   **Code Health:** Healthy. This is a core API."
-  [metadata-providerable a-join]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   a-join                :- ::lib.join.util/partial-join]
   (lib.join/joined-thing metadata-providerable a-join))
 
 ;;; ### Join Strategies
