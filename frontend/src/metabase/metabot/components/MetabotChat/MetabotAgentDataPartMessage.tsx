@@ -33,7 +33,17 @@ import {
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
-import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Badge,
+  Box,
+  Collapse,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type {
   TableSelectionMention,
   VisualizationRenderErrorContext,
@@ -49,6 +59,7 @@ import type {
 import {
   CodeEditTablePills,
   NavigateToTablePills,
+  pathHasDataSources,
 } from "./MetabotAgentDataSourcePills";
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
@@ -126,6 +137,7 @@ export const AgentDataPartMessage = ({
         value={part.value}
         debug={debug}
         dataPointTargets={dataPointTargets}
+        messageId={readonly ? undefined : message.externalId}
       />
     ))
     .with({ part: { type: "static_viz" } }, ({ part }) =>
@@ -141,16 +153,14 @@ const EmbeddedAdhocViz = ({
   value,
   debug,
   dataPointTargets,
+  messageId,
 }: {
   agentId: MetabotAgentId;
   value: AdhocVizValue;
   debug: boolean;
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+  messageId?: string;
 }) => {
-  const sourcePills = (
-    <NavigateToTablePills path={value.link} messageId={undefined} />
-  );
-
   return (
     <Stack gap="md">
       {debug && <DataPartJsonCard type="adhoc_viz" value={value} />}
@@ -159,8 +169,8 @@ const EmbeddedAdhocViz = ({
         path={value.link}
         title={value.title}
         dataPointTargets={dataPointTargets}
+        messageId={messageId}
       />
-      {sourcePills}
     </Stack>
   );
 };
@@ -191,11 +201,13 @@ const EmbeddedQuestionCard = ({
   title,
   dataPointTargets,
   autoHighlightTarget,
+  messageId,
 }: {
   agentId: MetabotAgentId;
   path: string;
   title?: string;
   dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+  messageId?: string;
   // When set, this card was rendered on demand to surface a data point whose
   // source chart wasn't on screen. Once its result loads it highlights this
   // target automatically.
@@ -243,6 +255,13 @@ const EmbeddedQuestionCard = ({
     ClickObject[] | null
   >(null);
   const [isHighlightingSelection, setIsHighlightingSelection] = useState(false);
+  const [isSourcesExpanded, setIsSourcesExpanded] = useState(false);
+  const [hasExpandedSources, setHasExpandedSources] = useState(false);
+  const hasDataSources = useMemo(() => pathHasDataSources(path), [path]);
+  const toggleSources = useCallback(() => {
+    setIsSourcesExpanded((expanded) => !expanded);
+    setHasExpandedSources(true);
+  }, []);
   const { questionHash, questionName, questionKey } = useMemo(() => {
     // Computed from the raw path so the card can be matched to a chart link in
     // the reply text even if its query fails to deserialize/execute.
@@ -670,7 +689,41 @@ const EmbeddedQuestionCard = ({
             {questionName}
           </Text>
         )}
+        {hasDataSources && (
+          <Tooltip label={t`View data sources used`}>
+            <ActionIcon
+              variant="subtle"
+              size="sm"
+              aria-expanded={isSourcesExpanded}
+              aria-label={
+                isSourcesExpanded
+                  ? t`Collapse data sources`
+                  : t`Expand data sources`
+              }
+              onClick={toggleSources}
+            >
+              <Icon
+                name="database"
+                size={14}
+                c={isSourcesExpanded ? "brand" : "text-secondary"}
+              />
+            </ActionIcon>
+          </Tooltip>
+        )}
       </Flex>
+      {hasDataSources && (
+        <Collapse in={isSourcesExpanded}>
+          {hasExpandedSources && (
+            <Box className={Styles.navigateToQuestionSources}>
+              <NavigateToTablePills
+                path={path}
+                messageId={messageId}
+                chromeless
+              />
+            </Box>
+          )}
+        </Collapse>
+      )}
       {questionHash ? (
         <AdHocQuestionLoader questionHash={questionHash}>
           {({ question, loading: isLoadingQuestion, error: questionError }) => {

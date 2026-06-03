@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { useState } from "react";
 import { Route } from "react-router";
 
@@ -14,6 +15,7 @@ import type {
   MetabotAgentChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { AgentMessage, Messages } from "./MetabotChatMessage";
 import type { DataPointMentionTarget } from "./data-point-mentions";
@@ -253,6 +255,70 @@ describe("AgentMessage", () => {
     expect(screen.getByText("Revenue by month")).toBeInTheDocument();
     expect(screen.getByTestId("embedded-question")).toBeInTheDocument();
     expect(screen.queryByText("Open in fullscreen")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Expand data sources" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("expands the question card's data sources from the header toggle", async () => {
+    fetchMock.get(
+      "path:/api/table/2",
+      createMockTable({
+        id: 2,
+        db_id: 1,
+        name: "ORDERS",
+        display_name: "Orders",
+      }),
+    );
+    fetchMock.get(
+      "path:/api/database/1",
+      createMockDatabase({ id: 1, name: "Sample Database" }),
+    );
+
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: { "source-table": 2 },
+      },
+    } as any);
+
+    setup({
+      id: "msg",
+      externalId: "external-msg",
+      role: "agent",
+      type: "data_part",
+      part: {
+        type: "adhoc_viz",
+        version: 1,
+        value: {
+          query: { type: "query", database: 1, query: { "source-table": 2 } },
+          link: `/question#${cardHash}`,
+          title: "Revenue by month",
+          display: "bar",
+        },
+      },
+    } as any);
+
+    expect(screen.getByText("Revenue by month")).toBeInTheDocument();
+
+    const toggle = screen.getByRole("button", { name: "Expand data sources" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("link", { name: "Orders" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(toggle);
+
+    expect(
+      await screen.findByRole("link", { name: "Orders" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Collapse data sources" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByLabelText("Source is correct")).toBeInTheDocument();
   });
 
   it("mentions clicked chart values and makes them available to Metabot", async () => {

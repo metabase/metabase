@@ -73,7 +73,7 @@ const isNativeDatasetQuery = (
 ): datasetQuery is NativeDatasetQuery =>
   "type" in datasetQuery && datasetQuery.type === "native";
 
-const decodeQueryFromPath = (path: string): DecodedQuery => {
+export const decodeQueryFromPath = (path: string): DecodedQuery => {
   try {
     const datasetQuery = deserializeCardFromQuery(path).dataset_query;
     if (!datasetQuery) {
@@ -110,6 +110,21 @@ const decodeQueryFromPath = (path: string): DecodedQuery => {
   } catch {
     return { kind: "none" };
   }
+};
+
+export const pathHasDataSources = (path: string): boolean => {
+  const decoded = decodeQueryFromPath(path);
+  if (decoded.kind === "none") {
+    return false;
+  }
+  if (decoded.kind === "mbql") {
+    return (
+      decoded.tableIds.length > 0 ||
+      decoded.cardIds.length > 0 ||
+      decoded.fieldIds.length > 0
+    );
+  }
+  return true;
 };
 
 const SourceItem = ({
@@ -484,16 +499,33 @@ const SourceDataSection = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+const SourceListWrapper = ({
+  chromeless,
+  children,
+}: {
+  chromeless?: boolean;
+  children: React.ReactNode;
+}) =>
+  chromeless ? (
+    <Flex direction="column" w="100%">
+      {children}
+    </Flex>
+  ) : (
+    <SourceDataSection>{children}</SourceDataSection>
+  );
+
 const MbqlSourcesRow = ({
   tableIds,
   cardIds,
   fieldIds,
   messageId,
+  chromeless,
 }: {
   tableIds: number[];
   cardIds: number[];
   fieldIds: number[];
   messageId?: string;
+  chromeless?: boolean;
 }) => {
   const {
     data: fieldTableIdsResponse,
@@ -510,14 +542,14 @@ const MbqlSourcesRow = ({
     );
 
     return (
-      <SourceDataSection>
+      <SourceListWrapper chromeless={chromeless}>
         {Array.from({ length: skeletonCount }, (_, index) => (
           <SourceItemSkeleton
             key={`source-skeleton-${index}`}
             hasFeedback={Boolean(messageId)}
           />
         ))}
-      </SourceDataSection>
+      </SourceListWrapper>
     );
   }
 
@@ -530,14 +562,14 @@ const MbqlSourcesRow = ({
   );
 
   return (
-    <SourceDataSection>
+    <SourceListWrapper chromeless={chromeless}>
       {allTableIds.map((id) => (
         <TableSourceRow key={`t-${id}`} id={id} messageId={messageId} />
       ))}
       {cardIds.map((id) => (
         <CardPill id={id} key={id} messageId={messageId} />
       ))}
-    </SourceDataSection>
+    </SourceListWrapper>
   );
 };
 
@@ -546,11 +578,13 @@ const NativeSourcesRow = ({
   messageId,
   sql,
   templateTags,
+  chromeless,
 }: {
   databaseId: number;
   messageId?: string;
   sql: string;
   templateTags?: TemplateTags;
+  chromeless?: boolean;
 }) => {
   const { data, isLoading } = useExtractSourcesQuery({
     database_id: databaseId,
@@ -563,9 +597,9 @@ const NativeSourcesRow = ({
 
   if (isLoading) {
     return (
-      <SourceDataSection>
+      <SourceListWrapper chromeless={chromeless}>
         <SourceItemSkeleton hasFeedback={Boolean(messageId)} />
-      </SourceDataSection>
+      </SourceListWrapper>
     );
   }
 
@@ -574,7 +608,7 @@ const NativeSourcesRow = ({
   }
 
   return (
-    <SourceDataSection>
+    <SourceListWrapper chromeless={chromeless}>
       {tables.map((table) => {
         const label = table.display_name || table.name;
         const databaseName = database?.name;
@@ -602,16 +636,18 @@ const NativeSourcesRow = ({
       {cardIds.map((id) => (
         <CardPill id={id} key={`c-${id}`} messageId={messageId} />
       ))}
-    </SourceDataSection>
+    </SourceListWrapper>
   );
 };
 
 export const NavigateToTablePills = ({
   messageId,
   path,
+  chromeless,
 }: {
   messageId?: string;
   path: string;
+  chromeless?: boolean;
 }) => {
   const decoded = useMemo(() => decodeQueryFromPath(path), [path]);
 
@@ -626,6 +662,7 @@ export const NavigateToTablePills = ({
         messageId={messageId}
         sql={decoded.sql}
         templateTags={decoded.templateTags}
+        chromeless={chromeless}
       />
     );
   }
@@ -644,6 +681,7 @@ export const NavigateToTablePills = ({
       cardIds={decoded.cardIds}
       fieldIds={decoded.fieldIds}
       messageId={messageId}
+      chromeless={chromeless}
     />
   );
 };

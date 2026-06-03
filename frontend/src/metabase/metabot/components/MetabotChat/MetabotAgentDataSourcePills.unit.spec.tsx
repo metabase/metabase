@@ -247,6 +247,23 @@ describe("MetabotAgentDataSourcePills", () => {
     ).toHaveLength(1);
   });
 
+  it("omits the data sources header when rendered chromeless", async () => {
+    setupTableEndpoints(ORDERS_TABLE);
+
+    renderWithProviders(
+      <NavigateToTablePills
+        messageId="message-chromeless"
+        path={createMbqlPath({ "source-table": ORDERS_TABLE.id })}
+        chromeless
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Orders" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Data sources used")).not.toBeInTheDocument();
+  });
+
   it("parses native SQL queries and requests extracted sources", async () => {
     const sql = "SELECT * FROM ORDERS";
     setupNativeEndpoints();

@@ -126,6 +126,7 @@
 .navigateToQuestionHeader {
   min-height: 2.75rem;
   padding: 0.5rem 0.75rem 0.5rem 0.75rem;
+  background: var(--mb-color-white);
 }
 
 .navigateToQuestionTitleLink {
@@ -139,8 +140,16 @@
   }
 }
 
+.navigateToQuestionSources {
+  background: var(--mb-color-background-secondary);
+  max-height: 11rem;
+  overflow: auto;
+  border-top: 1px solid var(--mb-color-border);
+}
+
 .navigateToQuestionVisualization {
   height: 24rem;
+  background: var(--mb-color-white);
   border-top: 1px solid var(--mb-color-border);
 
   @media screen and (max-width: 40em) {
