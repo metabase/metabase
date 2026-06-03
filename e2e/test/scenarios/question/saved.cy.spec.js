@@ -189,6 +189,7 @@ describe("scenarios > question > saved", () => {
 
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
+    cy.intercept("POST", "/api/revision/revert").as("revertRevision");
 
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.questionInfoButton().click();
@@ -204,6 +205,13 @@ describe("scenarios > question > saved", () => {
       cy.findByText(/added a description/i);
 
       cy.findByTestId("question-revert-button").click();
+      // The revert mutation invalidates the revision list. On fetch
+      // (microtask resolution) clicking the History tab before that
+      // invalidation lands shows the pre-revert entries — the new
+      // "reverted to an earlier version" row is then never found within
+      // Cypress's default 4s. Wait for the revert request before
+      // re-entering History.
+      cy.wait("@revertRevision");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i);

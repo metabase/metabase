@@ -120,11 +120,10 @@ export const tableApi = Api.injectEndpoints({
       Table,
       UpdateTableFieldsOrderRequest
     >({
-      query: ({ id, ...body }) => ({
+      query: ({ id, field_order }) => ({
         method: "PUT",
         url: `/api/table/${id}/fields/order`,
-        body,
-        bodyParamName: "field_order",
+        body: { field_order },
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
@@ -173,9 +172,7 @@ export const tableApi = Api.injectEndpoints({
       query: ({ tableId, formData }) => ({
         method: "POST",
         url: `/api/table/${tableId}/append-csv`,
-        body: { formData },
-        formData: true,
-        fetch: true,
+        body: formData,
       }),
       invalidatesTags: (_, error, { tableId }) =>
         invalidateTags(error, [
@@ -192,9 +189,7 @@ export const tableApi = Api.injectEndpoints({
       query: ({ tableId, formData }) => ({
         method: "POST",
         url: `/api/table/${tableId}/replace-csv`,
-        body: { formData },
-        formData: true,
-        fetch: true,
+        body: formData,
       }),
       invalidatesTags: (_, error, { tableId }) =>
         invalidateTags(error, [

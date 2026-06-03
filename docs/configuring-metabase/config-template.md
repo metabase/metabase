@@ -112,6 +112,8 @@ config:
     can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
+    csp-img-allowed-hosts: ''
+    csp-img-enabled: false
     csv-field-separator: ','
     custom-formatting: {}
     custom-geojson: null
@@ -129,6 +131,7 @@ config:
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
+    email-max-recipients-per-message: 50
     email-max-recipients-per-second: null
     email-reply-to: null
     email-smtp-host: null
@@ -240,6 +243,7 @@ config:
     remote-sync-auto-import-rate: 5
     remote-sync-branch: null
     remote-sync-check-changes-cache-ttl-seconds: 60
+    remote-sync-git-timeout-seconds: 60
     remote-sync-task-time-limit-ms: 300000
     remote-sync-token: null
     remote-sync-transforms: false

@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupDatabasesEndpoints,
   setupDeleteWorkspaceDatabaseEndpoint,
+  setupGetWorkspaceEndpoint,
   setupUpdateWorkspaceDatabaseEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -39,6 +40,7 @@ function setup() {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupUpdateWorkspaceDatabaseEndpoint(WORKSPACE, TEST_DATABASE.id);
   setupDeleteWorkspaceDatabaseEndpoint(WORKSPACE, TEST_DATABASE.id);
+  setupGetWorkspaceEndpoint(WORKSPACE);
 
   renderWithProviders(
     <DatabaseItem

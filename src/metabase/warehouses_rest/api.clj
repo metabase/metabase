@@ -452,6 +452,14 @@
   [fields]
   (remove #(= :sensitive (:visibility_type %)) fields))
 
+(defn- apply-sandbox-column-filter
+  "Remove from each table in `tables` the fields that the current user's column-restricting sandbox hides.
+  No-op for OSS and for users with no sandbox on a given table."
+  [tables]
+  (let [fields-by-table (into {} (map (juxt :id :fields)) tables)
+        filtered        (schema.table/batch-filter-sandboxed-fields fields-by-table)]
+    (mapv (fn [t] (assoc t :fields (get filtered (:id t) (:fields t)))) tables)))
+
 (defn- get-database-hydrate-include
   "If URL param `?include=` was passed to `GET /api/database/:id`, hydrate the Database appropriately."
   [db include]
@@ -466,7 +474,9 @@
                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
                             true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
-                            (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
+                            (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))
+                            ; filter columns the user's column-restricting sandbox hides
+                            (= include "tables.fields") apply-sandbox-column-filter))))))
 
 (mu/defn- check-database-exists
   ([id] (check-database-exists id {}))
@@ -615,7 +625,12 @@
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
              (check-db-data-model-perms db)
-             db)]
+             db)
+        ;; Filter out columns hidden by the current user's column-restricting sandbox source card. No-op for
+        ;; non-sandboxed users.
+        db (if skip-fields?
+             db
+             (update db :tables apply-sandbox-column-filter))]
     (-> db
         (update :tables (if include-hidden?
                           identity
@@ -1510,7 +1525,7 @@
                             can-query?          (filter mi/can-query?)
                             can-write-metadata? (filter mi/can-write?))
          hydration-keys   (cond-> []
-                            (premium-features/has-feature? :transforms-basic)   (conj :transform)
+                            (premium-features/any-transforms-enabled?)   (conj :transform)
                             include-measures? (conj :measures))]
      (if (seq hydration-keys)
        (apply t2/hydrate filtered-tables hydration-keys)
