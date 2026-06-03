@@ -18,7 +18,7 @@ By default, Metabase will automatically provision a domain name for your Metabas
 
 ## Add a custom domain to your Metabase
 
-To add a custom domain to your Metabase, use the following steps:
+To add a custom domain to your Metabase:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Navigate to **Instances**.
@@ -40,13 +40,13 @@ To add a custom domain to your Metabase, use the following steps:
 
    > Enter this record where you manage your DNS records, not in the Metabase Store
 
-8. If you already set up SSO (like SAML or LDAP) for your Metabase, update the return URL in your identity provider configuration to include the new custom domain.
+8. If you've already set up SSO (like SAML or LDAP) for your Metabase, update the return URL in your identity provider configuration to include the new custom domain.
 
 You may need to wait for the CNAME to update (this delay is specific to how DNS works, not something Metabase has control over). Metabase takes care of the rest, making sure that:
 
-- The URL directs users to your Metabase
-- Your domain has SSL certificates set up to serve your instance over HTTPS to the new domain
-- Your [metabase.com/cloud/login](https://www.metabase.com/cloud/login) works as expected
+- The URL directs users to your Metabase.
+- Your domain has SSL certificates set up to serve your instance over HTTPS to the new domain.
+- Your [metabase.com/cloud/login](https://www.metabase.com/cloud/login) works as expected.
 
 You'll still be able to access your original, automatically provisioned domain (e.g., `yourcompany.metabaseapp.com`), so existing embedded links should continue to work.
 
@@ -57,7 +57,7 @@ You'll still be able to access your original, automatically provisioned domain (
 
 ## Change the name of your Metabase (your DNS alias)
 
-To change your DNS alias, use the following steps:
+To change your DNS alias:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Navigate to **Instances**.

@@ -37,7 +37,7 @@ With basic transforms, you can:
 
 - **Metabase Cloud**: Basic transform functionality on Metabase Cloud - Starter, Pro, or Enterprise - comes with an additional small fee per successful transform run, see [Pricing](https://www.metabase.com/pricing).
 
-  Only people logged in with an email of a [Metabase Store admins](../../cloud/accounts-and-billing.md#add-managers) (not just Metabase _instance_ admins) can enable basic transforms. To enable Basic transforms on Metabase Cloud, see [Enable transforms](./transforms-overview.md#enable-transforms).
+    Only people logged in with an email of a [Metabase Store admin](../../cloud/accounts-and-billing.md#add-managers) (not just Metabase _instance_ admins) can [enable basic transforms](./transforms-overview.md#enable-transforms).
 
 ### Cancel basic transforms
 

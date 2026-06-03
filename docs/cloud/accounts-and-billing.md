@@ -14,7 +14,7 @@ Managing billing and accounts in the Metabase Store.
 
 ## Upgrade to Pro (or downgrade to Starter)
 
-To switch your plan, use the following steps:
+To switch your plan:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. In the **Instances** section, select the instance you want to change.
@@ -24,7 +24,7 @@ To switch your plan, use the following steps:
 
 ## Add managers
 
-To invite users to manage your Metabase Store account, use the following steps:
+To invite users to manage your Metabase Store account:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Navigate to **Settings**.
@@ -36,24 +36,25 @@ To invite users to manage your Metabase Store account, use the following steps:
 
 ## Add contacts to receive billing or technical notifications
 
-To add contacts who receive billing or technical notifications, use the following steps:
+To add contacts who receive billing or technical notifications:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Navigate to **Settings**.
 3. Find the **Contacts** section.
 4. In the **Add contacts** field, enter the email address of each contact you want to add.
-5. In the **Email type** drop-down, choose between **All**, **Billing**, and **Technical**.
-6. Metabase sends each contact an email notifying them that they've been added to your contact list.
+5. In the **Email type** dropdown, choose between **All**, **Billing**, and **Technical**.
+6. Click **Add**.
+7. Metabase sends each contact an email notifying them that they've been added to your contact list.
 
 ## Cancel a subscription or trial
 
-To cancel a Starter or Pro plan, use the following steps:
+To cancel a Starter or Pro plan:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Navigate to **Instances**.
 3. In the instance you want to cancel, click **Settings**.
 4. Click **Cancel subscription and delete instance**. If you have an Enterprise plan, [contact support](https://www.metabase.com/help-premium).
-5. Optionally, enter a cancellation reason and click **Share feedback**, or click **Skip**.
+5. Optional: let us know why you're cancelling so we can improve Metabase. Click **Share feedback**, or click **Skip**.
 6. To confirm, click **Yes, cancel**.
 
 ## Update payment information
@@ -68,7 +69,7 @@ If your Metabase was suspended due to a failed payment, the Store will automatic
 
 ## Switch to annual billing
 
-To switch to annual billing, use the following steps:
+To switch to annual billing:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Navigate to **Instances**.

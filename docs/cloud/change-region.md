@@ -25,7 +25,7 @@ If you're using a [custom domain](./custom-domain.md), that region change could 
 
 ## Select a region
 
-To change which region your Metabase is hosted in, use the following steps:
+To change which region your Metabase is hosted in:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Navigate to **Instances**.
