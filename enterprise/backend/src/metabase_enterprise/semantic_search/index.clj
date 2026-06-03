@@ -637,7 +637,7 @@
         base-query {:with [[:vector_candidates hnsw-query]]
                     :select (into common-search-columns
                                   [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                                   [:distance :semantic_score]])
+                                   [:distance :semantic_distance]])
                     :from [:vector_candidates]
                     :where [:<= :distance max-cosine-distance]
                     :order-by [[:semantic_rank :asc]]}]
@@ -723,7 +723,7 @@
                     :select (into
                              (mapv hybrid-select common-search-columns)
                              [[:v.semantic_rank :semantic_rank]
-                              [:v.semantic_score :semantic_score]
+                              [:v.semantic_distance :semantic_distance]
                               [:t.keyword_rank :keyword_rank]])
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
@@ -744,7 +744,7 @@
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
         full-query {:with all-ctes
-                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :semantic_score :keyword_rank]
+                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :semantic_distance :keyword_rank]
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
