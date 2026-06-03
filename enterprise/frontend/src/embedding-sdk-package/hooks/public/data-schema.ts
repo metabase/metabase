@@ -28,13 +28,42 @@ export type QuestionSchema = {
 
 export type MetricDimensionSchema = SchemaColumn & {
   id: string | number;
+  tableId?: number;
   fieldId?: number;
+};
+
+export type FieldSchema = SchemaColumn & {
+  id: string | number;
+  fieldId?: number;
+};
+
+export type SegmentSchema<TTableId extends number = number> = {
+  kind: "segment";
+  id: number;
+  tableId: TTableId;
+};
+
+export type MeasureSchema<TTableId extends number = number> = {
+  kind: "measure";
+  id: number;
+  tableId: TTableId;
+  columns: readonly SchemaColumn[];
+};
+
+export type TableSchema = {
+  id: number;
+  databaseId: number;
+  columns?: readonly SchemaColumn[];
+  fields?: Record<string, FieldSchema>;
+  segments?: Record<string, SegmentSchema>;
+  measures?: Record<string, MeasureSchema>;
 };
 
 export type MetricSchema = {
   id: number;
   columns: readonly SchemaColumn[];
-  dimensions?: readonly MetricDimensionSchema[];
+  mappedTableIds?: readonly number[];
+  dimensions?: Record<string, MetricDimensionSchema>;
 };
 
 export type SchemaValue<TColumn extends SchemaColumn> =

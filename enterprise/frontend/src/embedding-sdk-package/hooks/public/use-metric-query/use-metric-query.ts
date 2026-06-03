@@ -19,6 +19,8 @@ import type {
 } from "../data-schema";
 import { getSchemaId, mapRowsToObjects } from "../data-schema";
 
+type Values<T> = T[keyof T];
+
 type MetricFilterOperator =
   | "="
   | "!="
@@ -38,9 +40,13 @@ type MetricFilterOperator =
   | "time-interval";
 
 type MetricDimensionName<TMetric> = TMetric extends {
-  dimensions: readonly MetricDimensionSchema[];
+  dimensions: infer TDimensions;
 }
-  ? TMetric["dimensions"][number]["name"]
+  ? NonNullable<TDimensions> extends readonly MetricDimensionSchema[]
+    ? NonNullable<TDimensions>[number]["name"]
+    : Values<NonNullable<TDimensions>> extends MetricDimensionSchema
+      ? Values<NonNullable<TDimensions>>["name"]
+      : string
   : string;
 
 export type MetricFilter<TMetric = unknown> = {
@@ -280,11 +286,23 @@ function getDimensionId(
     return dimension.id;
   }
 
-  const schemaDimension = metric?.dimensions?.find(
+  const schemaDimension = getMetricDimensions(metric).find(
     (candidate) => candidate.name === dimension,
   );
 
   return schemaDimension?.id ?? dimension;
+}
+
+function getMetricDimensions(
+  metric: MetricSchema | null,
+): MetricDimensionSchema[] {
+  if (!metric?.dimensions) {
+    return [];
+  }
+
+  return Array.isArray(metric.dimensions)
+    ? [...metric.dimensions]
+    : Object.values(metric.dimensions);
 }
 
 function normalizeFilterOperator(operator: MetricFilterOperator) {
