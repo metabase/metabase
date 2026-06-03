@@ -304,16 +304,25 @@
    [:api-key-error {:optional true} [:maybe :string]]
    [:models [:sequential llm-model-response-schema]]])
 
+(def ^:private bedrock-credentials-schema
+  [:map
+   [:access-key-id     {:optional true} [:maybe :string]]
+   [:secret-access-key {:optional true} [:maybe :string]]
+   [:region            {:optional true} [:maybe :string]]
+   [:session-token     {:optional true} [:maybe :string]]])
+
 (def ^:private metabot-settings-request-schema
   [:map
-   [:provider metabot-provider-schema]
-   [:model {:optional true} [:maybe :string]]
-   [:api-key {:optional true} [:maybe :string]]])
+   [:provider    metabot-provider-schema]
+   [:model       {:optional true} [:maybe :string]]
+   [:api-key     {:optional true} [:maybe :string]]
+   [:credentials {:optional true} [:maybe bedrock-credentials-schema]]])
 
 (defn- provider-api-key-setting-key
   [provider]
   (case provider
     "anthropic"  :llm-anthropic-api-key
+    "bedrock"    :llm-bedrock-access-key-id
     "openai"     :llm-openai-api-key
     "openrouter" :llm-openrouter-api-key))
 
@@ -456,6 +465,17 @@
   (perms/check-has-application-permission :setting)
   (settings-response (or provider (current-provider))))
 
+;; doh
+(defn- save-bedrock-credentials!
+  [{:keys [access-key-id secret-access-key region session-token]}]
+  (when access-key-id
+    (setting/set! :llm-bedrock-access-key-id (non-blank-string access-key-id)))
+  (when secret-access-key
+    (setting/set! :llm-bedrock-secret-access-key (non-blank-string secret-access-key)))
+  (when region
+    (setting/set! :llm-bedrock-region (non-blank-string region)))
+  (setting/set! :llm-bedrock-session-token (non-blank-string session-token)))
+
 (api.macros/defendpoint :put "/settings"
   :- metabot-settings-response-schema
   "Update the Metabot provider API key and/or model setting and return the refreshed settings payload."
@@ -463,26 +483,29 @@
    _query-params
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
-  (let [{:keys [provider api-key] request-model :model} body
-        current-provider (current-setting-provider)
+  (let [{:keys [provider api-key credentials] request-model :model} body
+        current-provider  (current-setting-provider)
         provider-changed? (not= current-provider provider)
-        model (cond
-                (non-blank-string request-model)
-                (effective-provider-model provider request-model)
+        model             (cond
+                            (non-blank-string request-model)
+                            (effective-provider-model provider request-model)
 
-                provider-changed?
-                (or (effective-provider-model provider request-model)
-                    (metabot.settings/default-model-for-provider provider))
+                            provider-changed?
+                            (or (effective-provider-model provider request-model)
+                                (metabot.settings/default-model-for-provider provider))
 
-                :else
-                nil)
-        response (-> (settings-response provider api-key)
-                     throw-api-key-error!)]
-    (when (contains? body :api-key)
-      (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
-    (when model
-      (setting/set! :llm-metabot-provider (str provider "/" model)))
-    (assoc response :value (metabot.settings/llm-metabot-provider))))
+                            :else
+                            nil)]
+    ;; Bedrock credentials are saved before validation so list-models can use them.
+    (when (and (= provider "bedrock") credentials)
+      (save-bedrock-credentials! credentials))
+    (let [response (-> (settings-response provider api-key)
+                       throw-api-key-error!)]
+      (when (and (not= provider "bedrock") (contains? body :api-key))
+        (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
+      (when model
+        (setting/set! :llm-metabot-provider (str provider "/" model)))
+      (assoc response :value (metabot.settings/llm-metabot-provider)))))
 
 ;;;; search prompt entities
 
