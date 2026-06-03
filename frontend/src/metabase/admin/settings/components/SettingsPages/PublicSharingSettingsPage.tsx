@@ -24,6 +24,14 @@ export function PublicSharingSettingsPage() {
           title={t`Enable Public Sharing`}
           inputType="boolean"
         />
+        {publicSharingEnabled && (
+          <AdminSettingInput
+            name="show-public-link-admin-prompt"
+            title={t`Show "ask your admin" prompt`}
+            description={t`When enabled, non-admin users without a public link see a prompt to ask an admin to create one. This does not change who can create public links.`}
+            inputType="boolean"
+          />
+        )}
       </SettingsSection>
       {publicSharingEnabled && (
         <>

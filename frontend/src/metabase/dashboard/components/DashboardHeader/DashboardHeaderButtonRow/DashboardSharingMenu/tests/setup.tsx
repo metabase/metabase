@@ -35,6 +35,7 @@ const FakeSidebar = () => {
 type SettingsProps = {
   isEmbeddingEnabled?: boolean;
   isPublicSharingEnabled?: boolean;
+  showPublicLinkAdminPrompt?: boolean;
   isEmailSetup?: boolean;
   isSlackSetup?: boolean;
   isAdmin?: boolean;
@@ -46,6 +47,7 @@ type SettingsProps = {
 const setupState = ({
   isEmbeddingEnabled = false,
   isPublicSharingEnabled = false,
+  showPublicLinkAdminPrompt = true,
   isEmailSetup = false,
   isSlackSetup = false,
   isAdmin = false,
@@ -67,6 +69,7 @@ const setupState = ({
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
     "enable-public-sharing": isPublicSharingEnabled,
+    "show-public-link-admin-prompt": showPublicLinkAdminPrompt,
     "enable-embedding-static": isEmbeddingEnabled,
     "email-configured?": isEmailSetup,
     "slack-token-valid?": isSlackSetup,
@@ -90,6 +93,7 @@ const setupState = ({
 
 export function setupDashboardSharingMenu({
   isPublicSharingEnabled = false,
+  showPublicLinkAdminPrompt = true,
   isEmbeddingEnabled = false,
   isEmailSetup = false,
   isSlackSetup = false,
@@ -116,6 +120,7 @@ export function setupDashboardSharingMenu({
 
   const state = setupState({
     isPublicSharingEnabled,
+    showPublicLinkAdminPrompt,
     isEmbeddingEnabled,
     isEmailSetup,
     isSlackSetup,

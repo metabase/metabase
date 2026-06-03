@@ -270,6 +270,7 @@ export const createMockSettings = (
   "query-caching-min-ttl": 60,
   "enable-password-login": true,
   "enable-public-sharing": false,
+  "show-public-link-admin-prompt": true,
   "enable-xrays": false,
   engines: createMockEngines(),
   "example-dashboard-id": 1,

@@ -150,6 +150,22 @@ describe("DashboardSharingMenu", () => {
           screen.getByText("Ask your admin to create a public link"),
         ).toBeInTheDocument();
       });
+
+      it("should not show the ask admin prompt when the admin prompt setting is disabled", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: false,
+          isPublicSharingEnabled: true,
+          hasPublicLink: false,
+          showPublicLinkAdminPrompt: false,
+        });
+        await openMenu();
+        expect(
+          screen.queryByText("Ask your admin to create a public link"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByTestId("dashboard-export-pdf-button"),
+        ).toBeInTheDocument();
+      });
     });
   });
 

@@ -37,6 +37,7 @@ const FakeSidebar = () => {
 type SettingsProps = {
   isEmbeddingEnabled?: boolean;
   isPublicSharingEnabled?: boolean;
+  showPublicLinkAdminPrompt?: boolean;
   isEmailSetup?: boolean;
   isSlackSetup?: boolean;
   isAdmin?: boolean;
@@ -48,6 +49,7 @@ type SettingsProps = {
 const setupState = ({
   isEmbeddingEnabled = false,
   isPublicSharingEnabled = false,
+  showPublicLinkAdminPrompt = true,
   isEmailSetup = false,
   isSlackSetup = false,
   isAdmin = false,
@@ -69,6 +71,7 @@ const setupState = ({
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
     "enable-public-sharing": isPublicSharingEnabled,
+    "show-public-link-admin-prompt": showPublicLinkAdminPrompt,
     "enable-embedding-static": isEmbeddingEnabled,
     "email-configured?": isEmailSetup,
     "slack-token-valid?": isSlackSetup,
@@ -94,6 +97,7 @@ const setupState = ({
 
 export async function setupQuestionSharingMenu({
   isPublicSharingEnabled = false,
+  showPublicLinkAdminPrompt = true,
   isEmbeddingEnabled = false,
   isEmailSetup = false,
   isSlackSetup = false,
@@ -103,10 +107,12 @@ export async function setupQuestionSharingMenu({
   hasPublicLink = false,
   question: questionOverrides = {},
   alerts = [],
+  expectSharingButton = true,
 }: {
   question?: Partial<Card>;
   hasPublicLink?: boolean;
   alerts?: Notification[];
+  expectSharingButton?: boolean;
 } & SettingsProps) {
   const card = createMockCard({
     name: "My Cool Question",
@@ -116,6 +122,7 @@ export async function setupQuestionSharingMenu({
 
   const state = setupState({
     isPublicSharingEnabled,
+    showPublicLinkAdminPrompt,
     isEmbeddingEnabled,
     isEmailSetup,
     isSlackSetup,
@@ -155,7 +162,7 @@ export async function setupQuestionSharingMenu({
   // only wait when the button is expected to appear.
   const isModel = questionOverrides.type === "model";
   const isArchived = questionOverrides.archived === true;
-  if (!isModel && !isArchived) {
+  if (!isModel && !isArchived && expectSharingButton) {
     await screen.findByTestId("sharing-menu-button");
   }
 }

@@ -15,6 +15,7 @@ export function PublicLinkMenuItem({
   onClick: () => void;
 }) {
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  const showPublicLinkAdminPrompt = useSetting("show-public-link-admin-prompt");
   const isAdmin = useSelector(getUserIsAdmin);
 
   if (isAdmin) {
@@ -56,6 +57,10 @@ export function PublicLinkMenuItem({
         )}
       </Menu.Item>
     );
+  }
+
+  if (!hasPublicLink && !showPublicLinkAdminPrompt) {
+    return null;
   }
 
   return (

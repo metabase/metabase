@@ -35,6 +35,7 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
   const isModel = question.type() === "model";
   const isArchived = question.isArchived();
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  const showPublicLinkAdminPrompt = useSetting("show-public-link-admin-prompt");
   const isAdmin = useSelector(getUserIsAdmin);
   const collection = question.collection();
   const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
@@ -64,6 +65,10 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
     (!isPublicSharingEnabled || !hasPublicLink) &&
     !canManageSubscriptions
   ) {
+    if (!showPublicLinkAdminPrompt) {
+      return null;
+    }
+
     return (
       <SharingButton
         tooltip={t`Ask your admin to create a public link`}
@@ -87,6 +92,13 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
         />
       </Flex>
     );
+  }
+
+  const hasSharingMenuItems =
+    isAdmin || hasPublicLink || showPublicLinkAdminPrompt;
+
+  if (!hasSharingMenuItems) {
+    return null;
   }
 
   return (

@@ -75,6 +75,21 @@ describe("QuestionSharingMenu > Enterprise", () => {
           "Ask your admin to create a public link",
         );
       });
+
+      it("should not show the sharing button when the admin prompt setting is disabled", async () => {
+        setupQuestionSharingMenu({
+          isPublicSharingEnabled: true,
+          canManageSubscriptions: false,
+          hasPublicLink: false,
+          showPublicLinkAdminPrompt: false,
+          isEnterprise: true,
+          expectSharingButton: false,
+        });
+
+        expect(
+          screen.queryByTestId("sharing-menu-button"),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 

@@ -463,6 +463,7 @@ interface InstanceSettings {
   "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
+  "show-public-link-admin-prompt": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!

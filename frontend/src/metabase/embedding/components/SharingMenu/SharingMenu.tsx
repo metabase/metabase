@@ -13,6 +13,10 @@ export function SharingMenu({
 }) {
   const hasNoChildren = !children || !React.Children.count(children);
 
+  if (hasNoChildren) {
+    return null;
+  }
+
   return (
     <Menu withinPortal position="bottom-end">
       <Menu.Target>
@@ -21,7 +25,6 @@ export function SharingMenu({
           data-testid="sharing-menu-button"
           tooltipLabel={tooltip ?? t`Sharing`}
           aria-label={tooltip ?? t`Sharing`}
-          disabled={hasNoChildren}
         />
       </Menu.Target>
       <Menu.Dropdown data-testid="sharing-menu">{children}</Menu.Dropdown>

@@ -128,6 +128,22 @@ describe("QuestionSharingMenu", () => {
           screen.getByText("Ask your admin to create a public link"),
         ).toBeInTheDocument();
       });
+
+      it("should not show the sharing button when the admin prompt setting is disabled and there is no public link", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: false,
+          isPublicSharingEnabled: true,
+          hasPublicLink: false,
+          showPublicLinkAdminPrompt: false,
+          expectSharingButton: false,
+        });
+        expect(
+          screen.queryByTestId("sharing-menu-button"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Ask your admin to create a public link"),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 
