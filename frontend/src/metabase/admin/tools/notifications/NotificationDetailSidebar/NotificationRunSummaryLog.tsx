@@ -17,6 +17,7 @@ export const NotificationRunSummaryLog = ({
   runs,
   isLoading,
   cardId,
+  onViewAllClick,
 }: NotificationRunSummaryLogProps) => {
   const viewAllUrl = Urls.adminToolsTasksRunsFor({
     runType: "alert",
@@ -91,6 +92,7 @@ export const NotificationRunSummaryLog = ({
           fz="md"
           lh="1rem"
           fw="bold"
+          onClick={onViewAllClick}
         >
           {t`View all`}
         </Anchor>

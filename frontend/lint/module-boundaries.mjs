@@ -99,6 +99,7 @@ const elements = [
   createElement({ type: "shared", name: "models" }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "palette" }),
+  createElement({ type: "shared", name: "parameters" }),
   createElement({ type: "shared", name: "pulse" }),
   createElement({ type: "shared", name: "querying", enforceOutgoing: false }),
   createElement({ type: "shared", name: "questions" }),
@@ -163,6 +164,12 @@ const elements = [
       mode: "full",
     }),
   ),
+  createElement({
+    type: "app",
+    name: "nav",
+    pattern: "frontend/src/metabase/app/nav/**",
+    enforceOutgoing: true,
+  }),
   // catch-all for unmoduled files - must be last
   createElement({
     type: "shared",
