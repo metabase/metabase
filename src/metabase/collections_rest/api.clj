@@ -326,7 +326,7 @@
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
   #{"all" "is_pinned" "is_not_pinned"})
 
-(def ^:private valid-sort-columns #{"name" "last_edited_at" "last_edited_by" "model" "description"})
+(def ^:private valid-sort-columns #{"name" "last_edited_at" "last_edited_by" "model" "description" "created_at"})
 (def ^:private valid-sort-directions #{"asc" "desc"})
 (defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
 
@@ -533,6 +533,7 @@
   (-> {:select    (cond->
                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                     :dashboard_id
+                    [:c.created_at :created_at]
                     :last_used_at
                     :c.collection_id
                     :c.archived_directly
@@ -992,7 +993,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :collection_type :type [:archived :boolean] [:last_used_at :timestamp] [:is_remote_synced :boolean] :namespace
+   :collection_type :type [:archived :boolean] [:last_used_at :timestamp] [:created_at :timestamp] [:is_remote_synced :boolean] :namespace
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -1077,6 +1078,17 @@
                                       :postgres [:last_edit_last_name :desc-nulls-last]
                                       :h2       nil)
                                     [:last_edit_first_name :desc]
+                                    [:%lower.name :asc]]
+           [:created-at :asc]      [(if (= db-type :mysql)
+                                      [:%isnull.created_at]
+                                      [:created_at :nulls-last])
+                                    [:created_at :asc]
+                                    [:%lower.name :asc]]
+           [:created-at :desc]     [(case db-type
+                                      :mysql    [:%isnull.created_at]
+                                      :postgres [:created_at :desc-nulls-last]
+                                      :h2       nil)
+                                    [:created_at :desc]
                                     [:%lower.name :asc]]
            [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
            [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]

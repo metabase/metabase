@@ -143,6 +143,7 @@ export interface CollectionItem {
   is_shared_tenant_collection?: boolean;
   is_tenant_dashboard?: boolean;
   is_remote_synced?: boolean;
+  created_at?: string;
 }
 
 export interface CollectionListQuery {
@@ -165,7 +166,8 @@ export type ListCollectionItemsSortColumn =
   | "description"
   | "last_edited_at"
   | "last_edited_by"
-  | "model";
+  | "model"
+  | "created_at";
 
 export type ListCollectionItemsRequest = {
   id: CollectionId;

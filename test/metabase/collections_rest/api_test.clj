@@ -1481,6 +1481,46 @@
                                                    :sort-direction :desc
                                                    :official-collections-first? true} :postgres))))))
 
+(deftest ^:parallel children-sort-clause-created-at-test
+  (testing "Sorting by created-at"
+    (testing "ascending"
+      (is (= [[:authority_level :asc :nulls-last]
+              [:type :asc :nulls-first]
+              [:created_at :nulls-last]
+              [:created_at :asc]
+              [:%lower.name :asc]
+              [:id :asc]]
+             (api.collection/children-sort-clause {:sort-column :created-at
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))
+      (is (= [[:authority_level :asc :nulls-last]
+              [:type :asc :nulls-first]
+              [:%isnull.created_at]
+              [:created_at :asc]
+              [:%lower.name :asc]
+              [:id :asc]]
+             (api.collection/children-sort-clause {:sort-column :created-at
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :mysql))))
+    (testing "descending"
+      (is (= [[:authority_level :asc :nulls-last]
+              [:type :asc :nulls-first]
+              [:created_at :desc-nulls-last]
+              [:created_at :desc]
+              [:%lower.name :asc]
+              [:id :asc]]
+             (api.collection/children-sort-clause {:sort-column :created-at
+                                                   :sort-direction :desc
+                                                   :official-collections-first? true} :postgres)))
+      (is (= [[:authority_level :asc :nulls-last]
+              [:type :asc :nulls-first]
+              [:created_at :desc]
+              [:%lower.name :asc]
+              [:id :asc]]
+             (api.collection/children-sort-clause {:sort-column :created-at
+                                                   :sort-direction :desc
+                                                   :official-collections-first? true} :h2))))))
+
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
     ;; EE behavior is tested

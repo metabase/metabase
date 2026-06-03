@@ -99,7 +99,13 @@ export function MetabotArtifactsPopover() {
 
   const { data, isLoading, isError } = useListCollectionItemsQuery(
     personalCollectionId != null
-      ? { id: personalCollectionId, models: ["card"], ai_generated: true }
+      ? {
+          id: personalCollectionId,
+          models: ["card"],
+          ai_generated: true,
+          sort_column: "created_at",
+          sort_direction: "desc",
+        }
       : skipToken,
     { skip: !opened },
   );
