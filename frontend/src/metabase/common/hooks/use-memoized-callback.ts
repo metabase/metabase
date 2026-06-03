@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-type MapLike<K, V> = Map<K, V> | WeakMap<object & K, V>;
+type MapLike<K, V> = Map<K, V> | WeakMap<WeakKey, V>;
 
 function getWithFallback<K, V>(
   map: MapLike<K, V>,
