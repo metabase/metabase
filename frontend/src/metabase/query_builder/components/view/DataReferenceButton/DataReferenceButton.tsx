@@ -1,8 +1,6 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { toggleDataReference } from "metabase/query_builder/actions";
-import { useDispatch } from "metabase/redux";
 import { Box, Icon, Tooltip } from "metabase/ui";
 
 import DataReferenceButtonS from "./DataReferenceButton.module.css";
@@ -20,16 +18,6 @@ export const DataReferenceButton = ({
   size,
   onClick,
 }: DataReferenceButtonProps) => {
-  const dispatch = useDispatch();
-
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-    } else {
-      dispatch(toggleDataReference());
-    }
-  };
-
   return (
     <Tooltip label={t`Learn about your data`}>
       <Box
@@ -40,7 +28,7 @@ export const DataReferenceButton = ({
           [DataReferenceButtonS.isSelected]: isShowingDataReference,
         })}
       >
-        <Icon name="reference" size={size} onClick={handleClick} />
+        <Icon name="reference" size={size} onClick={onClick} />
       </Box>
     </Tooltip>
   );
