@@ -2,7 +2,6 @@ import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { Card } from "metabase/common/components/Card";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { Label } from "metabase/common/components/type/Label";
 import { Subhead } from "metabase/common/components/type/Subhead";
@@ -11,7 +10,7 @@ import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { getActivePulseParameters } from "metabase/pulse";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { Button, Card, Flex, Icon, Tooltip } from "metabase/ui";
 import { conjunct, formatTimeWithUnit } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
 import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
@@ -104,8 +103,11 @@ function _PulsesListSidebar({
             <Card
               aria-label="Pulse Card"
               key={pulse.id}
-              flat
               className={cx(S.pulseCard, { [S.pulseCardEditable]: canEdit })}
+              p={0}
+              radius="md"
+              shadow="none"
+              withBorder
               onClick={() =>
                 canEdit &&
                 editPulse(pulse, pulse.channels[0].channel_type as ChannelType)

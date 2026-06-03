@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEffectOnce } from "react-use";
 
+import { runQuestionQuery } from "metabase/querying/run-query";
 import { useDispatch } from "metabase/redux";
-import { runQuestionQuery } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 

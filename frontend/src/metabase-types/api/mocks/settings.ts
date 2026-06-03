@@ -175,6 +175,8 @@ export const createMockSettings = (
   "custom-viz-enabled": false,
   "custom-viz-plugin-dev-mode-enabled": false,
   "allowed-iframe-hosts": "*",
+  "csp-img-allowed-hosts": "",
+  "csp-img-enabled": false,
   "anon-tracking-enabled": false,
   "metaplow-tracking-enabled": false,
   "metaplow-url": null,

@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.metadata :as lib.metadata]
@@ -187,13 +188,32 @@
         (setting/with-database db
           (f query))))))
 
+(defn- schedule-query-timeout-cancel!
+  "Schedule a put of `::timeout` to `canceled-chan` after `*query-timeout-ms*`. Driver execution wires this channel
+  to `Statement.cancel()` (see [[metabase.driver.sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement!]]),
+  which for MySQL/MariaDB issues `KILL QUERY` on a side connection — so this is the cross-driver path that actually
+  stops a running query on the server when the timeout fires. `done-ch` closes when the query completes, releasing
+  the go-block early. The timer never reads from `canceled-chan`, since callers (notably tests) may bind a regular
+  channel where `alts!`/`<!` would consume the cancel signal away from the driver's listener."
+  [canceled-chan done-ch]
+  (let [timeout-ms (long driver.settings/*query-timeout-ms*)]
+    (a/go
+      (let [timeout-ch (a/timeout timeout-ms)
+            [_ port]   (a/alts! [done-ch timeout-ch])]
+        (when (identical? port timeout-ch)
+          (log/warnf "Query exceeded timeout of %d ms; canceling" timeout-ms)
+          (a/put! canceled-chan ::timeout))))))
+
 (mu/defn- do-with-canceled-chan :- fn?
   [f :- [:=> [:cat ::qp.schema/any-query] :any]]
   (fn [query]
-    (if qp.pipeline/*canceled-chan*
-      (f query)
-      (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-        (f query)))))
+    (let [done-ch (a/promise-chan)]
+      (try
+        (binding [qp.pipeline/*canceled-chan* (or qp.pipeline/*canceled-chan* (a/promise-chan))]
+          (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan* done-ch)
+          (f query))
+        (finally
+          (a/put! done-ch ::query-finished))))))
 
 (def ^:private setup-middleware
   "Setup middleware has the signature

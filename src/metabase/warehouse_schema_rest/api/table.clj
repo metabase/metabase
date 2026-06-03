@@ -118,7 +118,7 @@
                                                   [:= :d.to_entity_type "table"]]}]))
         query      {:where where, :order-by [[:name :asc]]}
         hydrations (cond-> [:db]
-                     (premium-features/has-feature? :transforms-basic) (conj :transform))]
+                     (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
@@ -428,8 +428,12 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   field-order :- [:sequential ms/PositiveInt]]
-  (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order))
+   ;; Accept either a bare sequential (legacy) or a wrapped {:field_order [...]} body.
+   body :- [:or
+            [:sequential ms/PositiveInt]
+            [:map [:field_order [:sequential ms/PositiveInt]]]]]
+  (let [field-order (if (map? body) (:field_order body) body)]
+    (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order)))
   {:success true})
 
 (mu/defn- update-csv!
