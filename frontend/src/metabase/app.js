@@ -25,6 +25,7 @@ import "metabase/utils/csp";
 
 import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
+import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
@@ -91,7 +92,7 @@ function _init(reducers, getRoutes, callback) {
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
           <AppThemeProvider>
             <GlobalStyles />
-            <PortalContainer />
+            {createPortal(<PortalContainer />, document.body)}
             <MetabotProvider>
               <HistoryProvider history={syncedHistory}>
                 <RouterProvider>{routes}</RouterProvider>
