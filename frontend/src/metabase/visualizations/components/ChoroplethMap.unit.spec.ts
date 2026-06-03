@@ -5,6 +5,8 @@ import {
   getSelectedFeatureKeyFromClicked,
 } from "metabase/visualizations/components/ChoroplethMap";
 import type { ColumnSettings } from "metabase/visualizations/types";
+import type { ClickObject } from "metabase-lib";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 const currencyColumnSettings: ColumnSettings = {
   column: { base_type: "type/Float" },
@@ -101,16 +103,22 @@ describe("getLegendTitles", () => {
 });
 
 describe("getSelectedFeatureKeyFromClicked", () => {
-  const stateColumn = { name: "STATE", display_name: "State" };
+  const stateColumn = createMockColumn({
+    name: "STATE",
+    display_name: "State",
+  });
   const rows = [
     ["Texas", 100],
     ["California", 200],
   ];
 
-  const setup = (clicked) =>
+  const setup = (clicked: ClickObject) =>
     getSelectedFeatureKeyFromClicked({
       clicked,
-      cols: [stateColumn, { name: "COUNT", display_name: "Count" }],
+      cols: [
+        stateColumn,
+        createMockColumn({ name: "COUNT", display_name: "Count" }),
+      ],
       rows,
       dimensionName: "STATE",
       region: "us_states",
@@ -121,7 +129,10 @@ describe("getSelectedFeatureKeyFromClicked", () => {
       setup({
         dimensions: [{ column: stateColumn, value: "Texas" }],
         origin: {
-          cols: [stateColumn, { name: "OTHER", display_name: "Other" }],
+          cols: [
+            stateColumn,
+            createMockColumn({ name: "OTHER", display_name: "Other" }),
+          ],
           row: ["Texas", "value from a different result shape"],
         },
       }),
@@ -133,8 +144,11 @@ describe("getSelectedFeatureKeyFromClicked", () => {
       setup({
         origin: {
           cols: [
-            { name: "OTHER", display_name: "Other" },
-            { name: "STATE_FROM_TARGET", display_name: "State" },
+            createMockColumn({ name: "OTHER", display_name: "Other" }),
+            createMockColumn({
+              name: "STATE_FROM_TARGET",
+              display_name: "State",
+            }),
           ],
           row: ["ignored", "California"],
         },

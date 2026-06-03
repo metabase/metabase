@@ -16,6 +16,8 @@ export type CardRendererProps = {
   onRenderError: (error: unknown) => void;
   isEditing?: boolean;
   isDashboard?: boolean;
+  selectedFeatureKey?: string | null;
+  selectedFeatureViaMention?: boolean;
 };
 
 type ExplicitSizeState = {

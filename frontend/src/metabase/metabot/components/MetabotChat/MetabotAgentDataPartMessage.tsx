@@ -207,7 +207,9 @@ const EmbeddedQuestionCard = ({
   const metabotRequestId = useSelector((state) =>
     getMetabotRequestId(state, agentId),
   );
-  const isDoingScience = useSelector((state) => getIsProcessing(state, agentId));
+  const isDoingScience = useSelector((state) =>
+    getIsProcessing(state, agentId),
+  );
   // Read the latest targets from a ref so the click handlers can stay stable
   // (depending on the prop would re-create them and re-render the chart).
   const dataPointTargetsRef = useRef(dataPointTargets);

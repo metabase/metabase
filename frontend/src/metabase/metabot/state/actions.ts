@@ -751,7 +751,7 @@ export const forkConversation = createAsyncThunk<
     if (getMetabotState(state).overlayAgentId === agentId) {
       dispatch(setOverlayAgentId({ agentId: null }));
     }
-    dispatch(push(`/chat/${conversationId}`));
+    dispatch(push(`/chat/${conversationId}`) as any);
 
     return { agentId: newAgentId };
   },

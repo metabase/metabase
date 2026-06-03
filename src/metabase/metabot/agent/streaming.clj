@@ -20,6 +20,7 @@
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def conversation-title-type "AI-SDK data type for the conversation's display title." "conversation_title")
+(def navigate-to-type "AI-SDK data type for navigating the client to a URL." "navigate_to")
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -133,6 +134,15 @@
    :data-type conversation-title-type
    :version 1
    :data title})
+
+(defn navigate-to-part
+  "Create a NAVIGATE_TO data part for streaming.
+  `url` is the destination the client should navigate to (e.g. a /question# URL)."
+  [url]
+  {:type :data
+   :data-type navigate-to-type
+   :version 1
+   :data {:url url}})
 
 ;;; Stream Processing Transducers
 

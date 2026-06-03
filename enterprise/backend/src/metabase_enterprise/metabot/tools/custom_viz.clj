@@ -14,6 +14,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise-schema]]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -36,7 +37,7 @@
 (defn- slugify
   [s]
   (let [cleaned   (-> (or (non-blank s) "custom-viz")
-                      str/lower-case
+                      u/lower-case-en
                       (str/replace #"^custom:" "")
                       (str/replace #"[^a-z0-9]+" "-")
                       (str/replace #"^-+|-+$" ""))

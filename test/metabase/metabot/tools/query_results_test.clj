@@ -40,7 +40,6 @@
           (is (str/starts-with? (:question_url source) "/question#")))
         (is (< (str/index-of output "<query_execution")
                (str/index-of output "</result>"))))))
-
   (testing "resolves chart-backed queries from memory"
     (with-redefs [query-results/execute-query (fn [query]
                                                 (is (= {:database 1 :type :query} query))
@@ -75,7 +74,6 @@
 (deftest representative-indices-test
   (testing "returns every index when at or below the target"
     (is (= [0 1 2] (#'query-results/representative-indices [1.0 2.0 3.0] 10))))
-
   (testing "down-samples while always keeping first, last, and ascending order"
     (let [values (mapv double (range 500))
           idxs   (#'query-results/representative-indices values 20)]
@@ -83,12 +81,10 @@
       (is (contains? (set idxs) 0))
       (is (contains? (set idxs) 499))
       (is (= idxs (sort idxs)))))
-
   (testing "captures a statistical outlier spike"
     (let [values (assoc (mapv double (range 500)) 137 1.0e9)
           idxs   (#'query-results/representative-indices values 20)]
       (is (contains? (set idxs) 137))))
-
   (testing "still samples when the value column is non-numeric"
     (let [idxs (#'query-results/representative-indices (vec (repeat 500 nil)) 20)]
       (is (<= (count idxs) 20))
@@ -103,7 +99,6 @@
                    :rows           (mapv vector (range 100))}]
       (is (= summary (#'query-results/sample-summary summary)))
       (is (not (:sampled? (#'query-results/sample-summary summary))))))
-
   (testing "down-samples larger results to a representative subset of real rows"
     (let [n       1000
           ;; col0 = index, col1 = value with a spike outlier at row 500
@@ -148,7 +143,6 @@
       (is (re-find #"metabase://data-point/[0-9a-f-]{36}/1" xml))
       ;; the column-index legend lets the LLM target the other (Day) column
       (is (str/includes? xml "Columns (0-based): 0=Day, 1=V"))))
-
   (testing "small results show all rows"
     (let [summary {:status         :completed
                    :row_count      2

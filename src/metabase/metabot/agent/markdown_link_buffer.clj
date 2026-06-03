@@ -149,13 +149,13 @@
        (fn
          ([] (rf))
          ([result]
-         ;; Flush any remaining buffered content
+          ;; Flush any remaining buffered content
           (let [flushed (flush-state @state)]
             (if (seq flushed)
               (rf (rf result {:type :text :text flushed}))
               (rf result))))
          ([result part]
-         ;; Accumulate state from tool outputs
+          ;; Accumulate state from tool outputs
           (when (= (:type part) :tool-output)
             (when-let [structured (get-structured-output (:result part))]
               (let [{:keys [query-id query chart-id]} structured]
@@ -167,9 +167,9 @@
                   (vswap! charts assoc chart-id structured))
                 (when-let [new-data-points (:data-points structured)]
                   (vswap! data-points merge new-data-points))))
-           ;; Update state with new context
+            ;; Update state with new context
             (vswap! state with-context @queries @charts @data-points link-registry-atom))
-         ;; Process text parts through link buffer
+          ;; Process text parts through link buffer
           (if (= (:type part) :text)
             (let [[new-state processed-text] (step @state (:text part))]
               (vreset! state new-state)

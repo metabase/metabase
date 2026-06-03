@@ -72,7 +72,6 @@
                       {:agent-error? true
                        :query-id query-id
                        :available-queries (keys queries-state)})))
-
     ;; Create the chart and generate a renderable ad-hoc question URL.
     (let [chart-id (str (random-uuid))
           chart-name (or (not-empty (some-> title str/trim))

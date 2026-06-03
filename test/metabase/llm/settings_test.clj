@@ -34,13 +34,11 @@
       (mt/discard-setting-changes [llm-google-api-key]
         (llm.settings/llm-google-api-key! "  AIzaSyABC123  ")
         (is (= "AIzaSyABC123" (llm.settings/llm-google-api-key))))))
-
   (testing "rejects keys without AIza prefix"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid Google API key format"
          (llm.settings/llm-google-api-key! "invalid-key"))))
-
   (testing "empty/nil clears the setting"
     (mt/with-temp-env-var-value! [mb-llm-google-api-key nil]
       (mt/discard-setting-changes [llm-google-api-key]

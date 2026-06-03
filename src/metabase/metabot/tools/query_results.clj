@@ -64,7 +64,7 @@
   [query]
   (when (map? query)
     (cond-> query
-      (:lib/type query) lib/->legacy-MBQL)))
+      (:lib/type query) #_{:clj-kondo/ignore [:discouraged-var]} lib/->legacy-MBQL)))
 
 (defn- prepare-query
   "Prepare `query` for execution over the standard userland row window — the same default

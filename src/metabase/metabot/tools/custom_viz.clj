@@ -7,6 +7,7 @@
 (set! *warn-on-reflection* true)
 
 (def create-custom-visualization-schema
+  "Malli schema for the arguments to the create_custom_visualization tool."
   [:map {:closed true}
    [:query_id
     {:description "The query id whose results should be rendered with this reusable custom visualization."}

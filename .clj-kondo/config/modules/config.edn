@@ -2900,7 +2900,9 @@
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
+           metabase-enterprise.custom-viz-plugin.cache
            metabase-enterprise.custom-viz-plugin.init
+           metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
            metabase-enterprise.custom-viz-plugin.settings}
    :uses #{api
            config
@@ -3144,6 +3146,7 @@
               mcp
               metabot}
    :uses    #{api
+              events
               lib-be
               metabot
               models
@@ -3152,6 +3155,7 @@
               settings
               task
               util
+              enterprise/custom-viz-plugin
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/AiUsageLog

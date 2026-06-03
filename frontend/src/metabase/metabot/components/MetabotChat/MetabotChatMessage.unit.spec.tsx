@@ -132,56 +132,56 @@ jest.mock("metabase/querying/components/QueryVisualization", () => ({
 
     return (
       <>
-      <button
-        data-testid="embedded-question"
-        data-clicked={clicked ? "true" : "false"}
-        data-clicked-via-mention={clickedViaMention ? "true" : "false"}
-        onClick={() =>
-          handleVisualizationClick?.({
-            value: 123,
-            column: {
-              name: "REVENUE",
-              display_name: "Revenue",
-              base_type: "type/Float",
-            },
-            dimensions: [
-              {
-                value: "2026-01-01",
-                column: {
-                  name: "CREATED_AT",
-                  display_name: "Created At",
-                  base_type: "type/DateTime",
-                },
+        <button
+          data-testid="embedded-question"
+          data-clicked={clicked ? "true" : "false"}
+          data-clicked-via-mention={clickedViaMention ? "true" : "false"}
+          onClick={() =>
+            handleVisualizationClick?.({
+              value: 123,
+              column: {
+                name: "REVENUE",
+                display_name: "Revenue",
+                base_type: "type/Float",
               },
-            ],
-            origin: {
-              cols: [
+              dimensions: [
                 {
-                  name: "CREATED_AT",
-                  display_name: "Created At",
-                  base_type: "type/DateTime",
-                },
-                {
-                  name: "REVENUE",
-                  display_name: "Revenue",
-                  base_type: "type/Float",
+                  value: "2026-01-01",
+                  column: {
+                    name: "CREATED_AT",
+                    display_name: "Created At",
+                    base_type: "type/DateTime",
+                  },
                 },
               ],
-              row: ["2026-01-01", 123],
-            },
-          })
-        }
-      />
-      <button
-        data-testid="embedded-question-error"
-        onClick={() =>
-          onVisualizationRenderError?.(
-            new Error("[plugin 4] blocked createElement: input"),
-            { phase: "render", display: "custom:broken-viz" },
-          )
-        }
-      />
-    </>
+              origin: {
+                cols: [
+                  {
+                    name: "CREATED_AT",
+                    display_name: "Created At",
+                    base_type: "type/DateTime",
+                  },
+                  {
+                    name: "REVENUE",
+                    display_name: "Revenue",
+                    base_type: "type/Float",
+                  },
+                ],
+                row: ["2026-01-01", 123],
+              },
+            })
+          }
+        />
+        <button
+          data-testid="embedded-question-error"
+          onClick={() =>
+            onVisualizationRenderError?.(
+              new Error("[plugin 4] blocked createElement: input"),
+              { phase: "render", display: "custom:broken-viz" },
+            )
+          }
+        />
+      </>
     );
   },
 }));
@@ -656,7 +656,9 @@ describe("AgentMessage", () => {
     expect(payload.message).toContain(
       "Custom visualization render feedback: failed.",
     );
-    expect(payload.message).toContain("[plugin 4] blocked createElement: input");
+    expect(payload.message).toContain(
+      "[plugin 4] blocked createElement: input",
+    );
     expect(payload).toMatchObject({
       type: "text",
       hidden: true,
