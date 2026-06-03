@@ -53,6 +53,7 @@ export const TreemapChart = ({
   fontFamily,
   onVisualizationClick,
   isDashboard,
+  isDocument,
 }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -203,6 +204,10 @@ export const TreemapChart = ({
 
   useCloseTooltipOnScroll(chartRef);
 
+  // Dashboard cards and document embeds are tighter than the question builder, so
+  // use a smaller, uniform padding there.
+  const isCompact = isDashboard || isDocument;
+
   const colorsCss = useInjectSeriesColorsClasses(
     useMemo(() => Object.values(chartData?.colors ?? {}), [chartData]),
   );
@@ -223,8 +228,8 @@ export const TreemapChart = ({
           "--treemap-bottom-inset": `${viewRootId != null ? DRILLED_BOTTOM_INSET : 0}px`,
         } as CSSProperties
       }
-      py={isDashboard ? 24 : 48}
-      px={isDashboard ? 24 : 96}
+      py={isCompact ? 24 : 48}
+      px={isCompact ? 24 : 96}
       w="100%"
       h="100%"
     >
