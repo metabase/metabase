@@ -9,7 +9,8 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,6 +91,30 @@
                 :usage {:promptTokens     pos-int?
                         :completionTokens pos-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
+
+(deftest ^:parallel openai-reasoning-items-are-ignored-test
+  (testing "reasoning output items (emitted by GPT-5 / o-series models) are skipped without breaking the stream"
+    (let [base      (fixture "openai-text"
+                             {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
+          ;; GPT-5 reasoning models emit a reasoning output item before the text message item
+          reasoning [{:type "response.output_item.added" :item {:type "reasoning" :id "rs_1"}}
+                     {:type "response.output_item.done"  :item {:type "reasoning" :id "rs_1"}}]
+          ;; splice the reasoning events in right after response.created
+          patched   (into [] (mapcat (fn [chunk]
+                                       (if (= (:type chunk) "response.created")
+                                         (cons chunk reasoning)
+                                         [chunk])))
+                          base)]
+      (testing "no reasoning artifacts leak into the translated chunk types"
+        (is (=? [{:type :start} {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
+                (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) patched))))
+      (testing "full pipeline still produces text + usage"
+        (is (=? [{:type :start}
+                 {:type :text :text string?}
+                 {:type  :usage
+                  :usage {:promptTokens     pos-int?
+                          :completionTokens pos-int?}}]
+                (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Usage normalization tests
