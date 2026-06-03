@@ -1,6 +1,4 @@
-import { updateQuestion } from "metabase/query_builder/actions/core";
 import { ResponsiveParametersList } from "metabase/query_builder/components/ResponsiveParametersList";
-import { useDispatch } from "metabase/redux";
 import type { ParameterId } from "metabase-types/api";
 
 import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext";
@@ -10,8 +8,8 @@ import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext
  * bar. Renders nothing when the consumer did not provide `setParameterValue`.
  */
 export function ParametersList() {
-  const { question, query, setParameterValue } = useNativeQueryEditorContext();
-  const dispatch = useDispatch();
+  const { question, query, setDatasetQuery, setParameterValue } =
+    useNativeQueryEditorContext();
 
   if (!setParameterValue) {
     return null;
@@ -21,8 +19,7 @@ export function ParametersList() {
     parameterId: ParameterId,
     parameterIndex: number,
   ) => {
-    const newQuery = query.setParameterIndex(parameterId, parameterIndex);
-    dispatch(updateQuestion(question.setDatasetQuery(newQuery.datasetQuery())));
+    setDatasetQuery(query.setParameterIndex(parameterId, parameterIndex));
   };
 
   return (
