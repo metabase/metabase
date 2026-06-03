@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
@@ -117,18 +117,12 @@ export const GroupDetail = ({
   return (
     <SettingsSection>
       <AdminPaneLayout
-        title={
-          <Fragment>
-            {getGroupNameLocalized(group ?? {})}
-            <Box component="span" c="text-tertiary" ms="sm">
-              {ngettext(
-                msgid`${group.members.length} member`,
-                `${group.members.length} members`,
-                group.members.length,
-              )}
-            </Box>
-          </Fragment>
-        }
+        title={getGroupNameLocalized(group ?? {})}
+        description={ngettext(
+          msgid`${group.members.length} member`,
+          `${group.members.length} members`,
+          group.members.length,
+        )}
         titleActions={
           canEditMembership(group) && (
             <Button
@@ -164,7 +158,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isDefaultGroup(group)) {
     return (
-      <Box maw="38rem" px="1rem">
+      <Box maw="38rem" mb="md">
         <Text>
           {t`All users belong to the ${getGroupNameLocalized(
             group,
@@ -177,7 +171,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isAdminGroup(group)) {
     return (
-      <Box maw="38rem" px="1rem">
+      <Box maw="38rem" mb="md">
         <Text>
           {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
         settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
