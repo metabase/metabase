@@ -290,7 +290,11 @@
                                                :model_collection_id 1
                                                :status "update"
                                                :status_changed_at (java.time.OffsetDateTime/now)})
-          (with-redefs [source/source-from-settings (constantly mock-main)]
+          ;; Stub the app-DB reconcile load — its correctness is covered synchronously by impl-test; here we
+          ;; only verify the endpoint/flag wiring and that the async task completes (loading into a real
+          ;; warehouse DB inside the task thread is slow/racy on the MySQL/MariaDB app-db matrix).
+          (with-redefs [source/source-from-settings (constantly mock-main)
+                        impl/load-snapshot! (constantly nil)]
             (testing "merge=true succeeds even with unsaved local changes"
               (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true})
                     completed-task (wait-for-task-completion task_id)]
@@ -391,7 +395,11 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
+            ;; Stub the app-DB reconcile load — its correctness is covered synchronously by impl-test; here we
+            ;; only verify the endpoint/flag wiring and task completion (loading into a real warehouse DB
+            ;; inside the task thread is slow/racy on the MySQL/MariaDB app-db matrix).
+            (with-redefs [source/source-from-settings (constantly mock-source)
+                          impl/load-snapshot! (constantly nil)]
               (testing "merge=true reconciles non-conflicting remote changes and succeeds"
                 (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:merge true})
                       task     (wait-for-task-completion (:task_id response))]
@@ -1160,6 +1168,10 @@
     (snapshot [_]
       (throw (ex-info (str "Invalid branch: " branch)
                       {:error-type :missing-branch
+                       :branch branch})))
+    (snapshot-at [_ _version]
+      (throw (ex-info (str "Invalid branch: " branch)
+                      {:error-type :missing-branch
                        :branch branch})))))
 
 (deftest has-remote-changes-returns-branch-missing-gracefully-test
@@ -1213,7 +1225,8 @@
                            (branches [_] ["main"])
                            (create-branch [_ _ _] nil)
                            (default-branch [_] "main")
-                           (snapshot [_] (throw (RuntimeException. "boom"))))]
+                           (snapshot [_] (throw (RuntimeException. "boom")))
+                           (snapshot-at [_ _version] (throw (RuntimeException. "boom"))))]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"

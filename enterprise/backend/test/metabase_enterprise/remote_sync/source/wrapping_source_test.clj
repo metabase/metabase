@@ -31,6 +31,9 @@
     "main")
 
   (snapshot [_]
+    (->MockSourceSnapshot files))
+
+  (snapshot-at [_ _version]
     (->MockSourceSnapshot files)))
 
 (deftest wrapping-source-list-files-single-filter-test
