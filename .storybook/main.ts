@@ -1,3 +1,5 @@
+import path from "path";
+
 import type { StorybookConfig } from "@storybook/react-webpack5";
 const appConfig = require("../rspack.main.config.js");
 const webpack = require("webpack");
@@ -43,6 +45,9 @@ const config: StorybookConfig = {
   },
   typescript: {
     reactDocgen: "react-docgen-typescript",
+    reactDocgenTypescriptOptions: {
+      tsconfigPath: path.resolve(__dirname, "../tsconfig.json"),
+    },
   },
 
   webpackFinal: (config) => {
