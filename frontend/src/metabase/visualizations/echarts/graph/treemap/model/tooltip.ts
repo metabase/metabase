@@ -68,7 +68,11 @@ export function getTreemapTooltipModel(
   const { header, siblings, focusedNode } = context;
   const total = siblings.reduce((sum, node) => sum + node.value, 0);
 
-  const rows: EChartsTooltipRow[] = siblings.map((node) => {
+  // Order rows by the chosen measure, largest first, so the tooltip ranks the
+  // groups/sub-groups by magnitude regardless of the tree's source-row order.
+  const sortedSiblings = [...siblings].sort((a, b) => b.value - a.value);
+
+  const rows: EChartsTooltipRow[] = sortedSiblings.map((node) => {
     const color = getColor(node);
     return {
       isFocused: node === focusedNode,

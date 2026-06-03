@@ -96,23 +96,67 @@ describe("getTreemapTooltipModel", () => {
   const getColor = (node: TreemapNode) =>
     ({ Phones: "#aaaaaa", Tablets: "#bbbbbb" })[node.displayName];
 
-  it("builds one row per sibling with name, formatted value, and percent of total", () => {
+  it("builds one row per sibling with name, formatted value, and percent of total, sorted by value descending", () => {
     const context = getTreemapTooltipContext(TWO_LEVEL, "0", null, "Category")!;
     const model = getTreemapTooltipModel(context, getColor, formatValue);
 
     expect(model.header).toBe("Category");
     expect(model.rows).toHaveLength(2);
+    // Rows are ordered by the measure, largest first — Tablets ($70) before
+    // Phones ($30) — regardless of the tree's source order. The hovered group
+    // (Phones) stays flagged as focused wherever it lands.
     expect(model.rows[0]).toMatchObject({
+      name: "Tablets",
+      isFocused: false,
+      markerColorClass: getMarkerColorClass("#bbbbbb"),
+      values: ["$70", formatPercent(0.7)],
+    });
+    expect(model.rows[1]).toMatchObject({
       name: "Phones",
       isFocused: true,
       markerColorClass: getMarkerColorClass("#aaaaaa"),
       values: ["$30", formatPercent(0.3)],
     });
-    expect(model.rows[1]).toMatchObject({
-      name: "Tablets",
-      isFocused: false,
-      values: ["$70", formatPercent(0.7)],
-    });
+  });
+
+  it("sorts the sub-group breakdown by value descending when drilled in", () => {
+    const tree: TreemapTree = [
+      {
+        rawName: "Phones",
+        displayName: "Phones",
+        value: 60,
+        rowIndices: [0, 1, 2],
+        children: [
+          {
+            rawName: "Pixel",
+            displayName: "Pixel",
+            value: 10,
+            rowIndices: [0],
+          },
+          {
+            rawName: "iPhone",
+            displayName: "iPhone",
+            value: 35,
+            rowIndices: [1],
+          },
+          {
+            rawName: "Galaxy",
+            displayName: "Galaxy",
+            value: 15,
+            rowIndices: [2],
+          },
+        ],
+      },
+    ];
+    // Drilled into group "0" (Phones), hovering its first sub-group.
+    const context = getTreemapTooltipContext(tree, "0-0", "0")!;
+    const model = getTreemapTooltipModel(context, () => undefined, formatValue);
+
+    expect(model.rows.map((row) => row.name)).toEqual([
+      "iPhone",
+      "Galaxy",
+      "Pixel",
+    ]);
   });
 
   it("adds a Total footer when there is more than one sibling", () => {
