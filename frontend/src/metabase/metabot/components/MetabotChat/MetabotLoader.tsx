@@ -76,6 +76,15 @@ export const METABOT_TOOL_MASKS = {
   ],
 } as const satisfies Record<string, MetabotLoaderMask>;
 
+export const METABOT_EMPTY_MASK = [
+  [0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0],
+] as const satisfies MetabotLoaderMask;
+
 const getMaskRows = (mask: MetabotLoaderMask) => mask.length;
 const getMaskCols = (mask: MetabotLoaderMask) =>
   Math.max(...mask.map((row) => row.length));

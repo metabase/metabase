@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
@@ -59,6 +60,12 @@ export type SetupOpts = {
   hasEmbeddingFeature?: boolean;
   applicationName?: string;
   activeUsersCount?: number;
+  /**
+   * The sidebar is split into Chats / App / Data Studio tabs. Most tests assert
+   * on the main-app sections (collections, browse, …) which live under "App", so
+   * we select that tab by default. Pass `false` to keep the route-derived tab.
+   */
+  selectAppTab?: boolean;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -99,6 +106,7 @@ export async function setup({
   hasWhitelabelToken,
   hasEmbeddingFeature,
   applicationName = "Metabase",
+  selectAppTab = true,
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -240,6 +248,16 @@ export async function setup({
       withKBar: true,
     },
   );
+
+  // The sidebar is now split into Chats / App / Data Studio tabs. These tests
+  // assert on the main-app sections (collections, browse, bookmarks, …), which
+  // live under the "App" tab — select it before waiting for content to load.
+  if (selectAppTab) {
+    const appTab = screen.queryByTestId("navbar-tab-app");
+    if (appTab) {
+      await userEvent.click(appTab);
+    }
+  }
 
   await waitForLoaderToBeRemoved();
   await waitForLoaderToBeRemoved(); // tests will fail without the 2nd call

@@ -51,6 +51,7 @@
     (is (contains? tools "search"))
     (is (contains? tools "edit_chart"))
     (is (contains? tools "create_chart"))
+    (is (contains? tools "list_visualization_types"))
     (is (contains? tools "create_custom_visualization"))
     (is (contains? tools "create_dashboard_subscription"))))
 
@@ -76,6 +77,7 @@
     (is (contains? tools "construct_notebook_query"))
     (is (contains? tools "execute_notebook_query_silently"))
     (is (contains? tools "create_chart"))
+    (is (contains? tools "list_visualization_types"))
     (is (contains? tools "create_custom_visualization"))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
@@ -181,11 +183,17 @@
                       {:reasoning "inspect all rows"
                        :query     query-input})]
           (is (= query-input @query-captured))
-          (is (nil? (:data-parts result)))
+          (is (nil? (:data-parts result))
+              "stays silent -- no visualization data part is emitted")
           (is (str/includes? (:output result) "<query_execution status=\"completed\""))
           (is (str/includes? (:output result) "Showing all 1 rows"))
-          (is (str/includes? (:output result) "[Ada](metabase://data-point/"))
-          (is (not (contains? (:structured-output result) :query))))))))
+          (is (str/includes? (:output result) "Ada"))
+          (is (not (re-find #"metabase://data-point/[0-9a-f-]{36}" (:output result))))
+          (is (str/includes? (:output result) "Do not use metabase://data-point links"))
+          (testing "registers the query in state so it can be rendered later without showing a table"
+            (is (= "q-1" (:query-id (:structured-output result))))
+            (is (= {:database 1} (:query (:structured-output result))))
+            (is (str/includes? (:output result) "<query-id>q-1</query-id>"))))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"

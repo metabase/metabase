@@ -33,6 +33,23 @@
   outline-offset: 2px;
 }
 
+/* Fixed-size slot so the instance name doesn't shift when the main-app and
+   Data Studio logos (different aspect ratios) swap on tab switches. */
+.logoBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.logoImage {
+  display: block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
 .instanceButton {
   min-width: 0;
   max-width: 100%;

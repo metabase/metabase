@@ -1,0 +1,34 @@
+.root {
+  position: relative;
+}
+
+/*
+ * Full-bleed dot field behind the block. It breaks out of the centered message
+ * column to the full scroll-container width using the same container-query unit
+ * (cqi) the thinking field uses, so all dot fields share one continuous width.
+ */
+.field {
+  --bleed: var(--metabot-thinking-field-bleed, 0px);
+
+  position: absolute;
+  top: 0;
+  left: calc(50% - 50cqi - var(--bleed));
+  width: calc(100cqi + var(--bleed) * 2);
+  /* Bleed downward (= BLEED_Y in MetabotRevealBlock) so the dots reach into the
+   * gap to the next block and the lattice stays continuous across blocks. */
+  height: calc(100% + 40px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Content always renders above the dot field. */
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field {
+    display: none;
+  }
+}

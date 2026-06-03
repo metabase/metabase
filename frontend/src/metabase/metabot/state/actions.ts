@@ -67,6 +67,9 @@ export const {
   setProfileOverride,
   setSelectedDatabaseId,
   setPrompt,
+  enqueueMessage,
+  removeQueuedMessage,
+  prioritizeQueuedMessage,
   setConversationTitle,
   rememberDataPointTarget,
   focusPromptInput,
@@ -509,6 +512,9 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "static_viz" }, (part) => {
                 pushDataPart({ type: "data_part", part });
               })
+              .with({ type: "automagic_dashboard" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
               .with({ type: "conversation_title" }, (part) => {
                 dispatch(setConversationTitle({ agentId, title: part.value }));
               })
@@ -770,8 +776,13 @@ export const resetConversation = createAsyncThunk(
 export const discardConversationIfEmpty = createAsyncThunk(
   "metabase/metabot/discardConversationIfEmpty",
   ({ agentId }: { agentId: MetabotAgentId }, { dispatch, getState }) => {
-    const convo = getMetabotState(getState()).conversations[agentId];
+    const state = getState();
+    const convo = getMetabotState(state).conversations[agentId];
+    const pathname = getLocation(state).pathname ?? "";
     if (convo && convo.messages.length === 0 && !convo.isProcessing) {
+      if (pathname === `/chat/${convo.conversationId}`) {
+        return;
+      }
       dispatch(destroyAgent({ agentId }));
     }
   },

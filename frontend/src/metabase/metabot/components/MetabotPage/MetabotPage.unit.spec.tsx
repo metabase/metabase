@@ -7,7 +7,7 @@ import {
   setupMetabotListModelsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
   useGetMetabotChatConversationQuery,
   useGetSuggestedMetabotPromptsQuery,
@@ -53,6 +53,8 @@ type SetupOptions = {
   initialRoute?: string;
   seedAgentId?: string;
   seedMessages?: any[];
+  seedQueuedMessages?: { id: string; message: string }[];
+  isProcessing?: boolean;
   conversationQuery?: ConversationQueryState;
 };
 
@@ -63,6 +65,8 @@ function setup({
   initialRoute = "/",
   seedAgentId,
   seedMessages = [],
+  seedQueuedMessages = [],
+  isProcessing = false,
   conversationQuery = { isLoading: true },
 }: SetupOptions = {}) {
   jest.mocked(useUserMetabotPermissions).mockReturnValue({
@@ -97,9 +101,10 @@ function setup({
       conversationId: seedAgentId.replace("chat_", ""),
       prompt: "",
       promptFocusToken: 0,
-      isProcessing: false,
+      isProcessing,
       title: "Seed chat",
       messages: seedMessages,
+      queuedMessages: seedQueuedMessages,
       visible: false,
       inBar: false,
       history: [],
@@ -339,5 +344,112 @@ describe("MetabotPage at /chat/:conversationId", () => {
       "u1",
       "a1",
     ]);
+  });
+});
+
+describe("MetabotPage queued messages", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const seededConvo = (over: Partial<SetupOptions> = {}): SetupOptions => ({
+    initialRoute: "/chat/live-id",
+    seedAgentId: "chat_live-id",
+    seedMessages: [{ id: "m1", role: "user", type: "text", message: "hi" }],
+    conversationQuery: { isLoading: true },
+    ...over,
+  });
+
+  it("submits every queued message in order once the agent is free", async () => {
+    setup(
+      seededConvo({
+        isProcessing: false,
+        seedQueuedMessages: [
+          { id: "q1", message: "first" },
+          { id: "q2", message: "second" },
+          { id: "q3", message: "third" },
+        ],
+      }),
+    );
+
+    // Regression test for the queue stalling after a single message: the whole
+    // queue must drain, not just the head.
+    await waitFor(() => expect(submitInputThunkSpy).toHaveBeenCalledTimes(3));
+    expect(
+      submitInputThunkSpy.mock.calls.map((call) => call[0].message),
+    ).toEqual(["first", "second", "third"]);
+  });
+
+  it("keeps queued messages parked while the agent is still processing", () => {
+    setup(
+      seededConvo({
+        isProcessing: true,
+        seedQueuedMessages: [{ id: "q1", message: "later" }],
+      }),
+    );
+
+    expect(submitInputThunkSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId("metabot-queued-message")).toHaveTextContent(
+      "later",
+    );
+  });
+
+  it("renders a compact row with steer, remove and an edit overflow action", async () => {
+    setup(
+      seededConvo({
+        isProcessing: true,
+        seedQueuedMessages: [{ id: "q1", message: "queued one" }],
+      }),
+    );
+
+    const row = screen.getByTestId("metabot-queued-message");
+    expect(within(row).getByText("queued one")).toBeInTheDocument();
+    expect(
+      within(row).getByRole("button", { name: /Steer/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(row).getByRole("button", { name: "Remove queued message" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(row).getByRole("button", {
+        name: "More actions for queued message",
+      }),
+    );
+    expect(await screen.findByText("Edit")).toBeInTheDocument();
+  });
+});
+
+describe("MetabotPage send / stop button", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const processingConvo = (): SetupOptions => ({
+    initialRoute: "/chat/live-id",
+    seedAgentId: "chat_live-id",
+    seedMessages: [{ id: "m1", role: "user", type: "text", message: "hi" }],
+    isProcessing: true,
+    conversationQuery: { isLoading: true },
+  });
+
+  it("shows only the stop button while processing with an empty prompt", () => {
+    setup(processingConvo());
+
+    expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-send-message"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("swaps to the send button while processing once the prompt has text", async () => {
+    setup(processingConvo());
+
+    await userEvent.type(getPromptEditor(), "follow up question");
+
+    expect(screen.getByTestId("metabot-send-message")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-stop-response"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,7 +1,14 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { forwardRef, memo, useCallback, useMemo, useState } from "react";
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -38,6 +45,8 @@ import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import Styles from "./MetabotChat.module.css";
+import { MetabotRevealBlock } from "./MetabotDotField/MetabotRevealBlock";
+import type { RevealContentKind } from "./MetabotDotField/reveal-timeline";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 import type {
   DataPointMentionTarget,
@@ -51,6 +60,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "code_edit" }, () => true)
     .with({ type: "adhoc_viz" }, () => true)
     .with({ type: "static_viz" }, () => false)
+    .with({ type: "automagic_dashboard" }, () => true)
     .exhaustive();
 
 const isUserVisibleDataPartMessage = (
@@ -182,8 +192,25 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
+  /** Animate newly-streamed markdown text word-by-word. */
   animate?: boolean;
+  /** When true, this block plays the "reserve then reveal" dot-field intro. */
+  revealAnimate?: boolean;
 }
+
+// Text and adhoc-viz charts get the reserve-then-reveal treatment; charts use
+// the slightly longer timeline (they get a draw beat). Other block types render
+// without it.
+const getRevealKind = (
+  message: MetabotAgentChatMessage,
+): RevealContentKind | null =>
+  match(message)
+    .with({ type: "text" }, () => "text" as const)
+    .with(
+      { type: "data_part", part: { type: "adhoc_viz" } },
+      () => "chart" as const,
+    )
+    .otherwise(() => null);
 
 export const AgentMessage = ({
   agentId,
@@ -201,45 +228,53 @@ export const AgentMessage = ({
   onInternalLinkClick,
   hideActions,
   animate,
+  revealAnimate,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
   const canGiveFeedback = !!(setFeedbackMessage && messageId);
   const clipboard = useClipboard({ timeout: 2000 });
 
+  const revealKind = getRevealKind(message);
+  const content = match(message)
+    .with({ type: "text" }, (m) => (
+      <AIMarkdown
+        className={Styles.message}
+        onInternalLinkClick={onInternalLinkClick}
+        dataPointTargets={dataPointTargets}
+        dataSelections={dataSelections}
+        animate={animate}
+      >
+        {m.message}
+      </AIMarkdown>
+    ))
+    .with({ type: "data_part" }, (m) => (
+      <AgentDataPartMessage
+        agentId={agentId}
+        message={m}
+        debug={debug}
+        readonly={readonly}
+        dataPointTargets={dataPointTargets}
+      />
+    ))
+    .with({ type: "tool_call" }, (m) => <AgentToolCallMessage message={m} />)
+    .with({ type: "turn_aborted" }, (m) => (
+      <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
+    ))
+    .with({ type: "turn_errored" }, (m) => (
+      <AgentErroredTurnAlert message={m} debug={debug} />
+    ))
+    .exhaustive();
+
   return (
     <MessageContainer chatRole={message.role} {...props}>
-      {match(message)
-        .with({ type: "text" }, (m) => (
-          <AIMarkdown
-            className={Styles.message}
-            onInternalLinkClick={onInternalLinkClick}
-            dataPointTargets={dataPointTargets}
-            dataSelections={dataSelections}
-            animate={animate}
-          >
-            {m.message}
-          </AIMarkdown>
-        ))
-        .with({ type: "data_part" }, (m) => (
-          <AgentDataPartMessage
-            agentId={agentId}
-            message={m}
-            debug={debug}
-            readonly={readonly}
-            dataPointTargets={dataPointTargets}
-          />
-        ))
-        .with({ type: "tool_call" }, (m) => (
-          <AgentToolCallMessage message={m} />
-        ))
-        .with({ type: "turn_aborted" }, (m) => (
-          <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
-        ))
-        .with({ type: "turn_errored" }, (m) => (
-          <AgentErroredTurnAlert message={m} debug={debug} />
-        ))
-        .exhaustive()}
+      {revealAnimate && revealKind ? (
+        <MetabotRevealBlock kind={revealKind} animate>
+          {content}
+        </MetabotRevealBlock>
+      ) : (
+        content
+      )}
       {!hideActions && (
         <Flex className={Styles.messageActions}>
           <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
@@ -495,6 +530,19 @@ export const Messages = memo(function Messages({
     }
   };
 
+  // Remember which messages first appeared mid-turn so only freshly streamed
+  // blocks play the reserve-then-reveal intro; historical/persisted messages
+  // (first seen when not generating) render instantly. The decision is latched
+  // per id, so streaming re-renders don't restart or cancel the reveal.
+  const revealStateRef = useRef<Map<string, boolean>>(new Map());
+  const shouldRevealMessage = (id: string) => {
+    const seen = revealStateRef.current;
+    if (!seen.has(id)) {
+      seen.set(id, isDoingScience);
+    }
+    return seen.get(id) ?? false;
+  };
+
   const getAgentReplyCopyText = useCallback(
     (messageId: string) => {
       const allMessages = getFullAgentReply(messages, messageId);
@@ -535,6 +583,7 @@ export const Messages = memo(function Messages({
             hideActions={next?.role === "agent" || (isDoingScience && !next)}
             onInternalLinkClick={onInternalLinkClick}
             animate={isDoingScience && !next && message.type === "text"}
+            revealAnimate={shouldRevealMessage(message.id)}
           />
         ) : (
           <UserMessage

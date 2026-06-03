@@ -83,65 +83,62 @@ export const AppSwitcher = ({
 
   const currentApp = useGetCurrentApp();
 
+  // Within the app (main / Data Studio) the Chats / App / Data Studio sidebar
+  // tabs handle navigation, so this menu only offers a standalone Admin link.
+  // Admin settings has no sidebar tabs, so when we're in Admin we restore the
+  // full picker (Main app / Data Studio / Admin) as the way back out.
   const appsSection = useMemo(() => {
     const showAdminSettingsItem = adminItems?.length > 0;
 
-    if (!canAccessDataStudio && !showAdminSettingsItem) {
+    if (!showAdminSettingsItem) {
       return null;
     }
 
-    const items: React.ReactNode[] = [
-      <Menu.Item
-        key="main-app-link"
-        component={ForwardRefLink}
-        to="/"
-        leftSection={
-          <Icon
-            name="dashboard"
-            {...(currentApp === "main" ? CURRENT_APP_ICON_OVERRIDES : null)}
-          />
-        }
-      >
-        {t`Main app`}
-      </Menu.Item>,
-    ];
+    const isInAdmin = currentApp === "admin";
 
-    if (canAccessDataStudio) {
+    const items: ReactNode[] = [];
+
+    if (isInAdmin) {
       items.push(
         <Menu.Item
-          key="data-studio-app-link"
+          key="main-app-link"
           component={ForwardRefLink}
-          to={Urls.dataStudio()}
-          onAuxClick={trackDataStudioOpened}
-          onClickCapture={trackDataStudioOpened}
-          leftSection={
-            <Icon
-              name="table"
-              {...(currentApp === "data-studio"
-                ? CURRENT_APP_ICON_OVERRIDES
-                : null)}
-            />
-          }
+          to="/"
+          leftSection={<Icon name="dashboard" />}
         >
-          {t`Data studio`}
+          {t`Main app`}
         </Menu.Item>,
       );
+
+      if (canAccessDataStudio) {
+        items.push(
+          <Menu.Item
+            key="data-studio-app-link"
+            component={ForwardRefLink}
+            to={Urls.dataStudio()}
+            onAuxClick={trackDataStudioOpened}
+            onClickCapture={trackDataStudioOpened}
+            leftSection={<Icon name="table" />}
+          >
+            {t`Data studio`}
+          </Menu.Item>,
+        );
+      }
     }
-    if (showAdminSettingsItem) {
-      items.push(
-        <Menu.Item
-          key="admin-app-link"
-          component={ForwardRefLink}
-          to={"/admin"}
-          leftSection={
-            <Icon
-              name="io"
-              {...(currentApp === "admin" ? CURRENT_APP_ICON_OVERRIDES : null)}
-            />
-          }
-        >{t`Admin`}</Menu.Item>,
-      );
-    }
+
+    items.push(
+      <Menu.Item
+        key="admin-app-link"
+        component={ForwardRefLink}
+        to={"/admin"}
+        leftSection={
+          <Icon
+            name="io"
+            {...(isInAdmin ? CURRENT_APP_ICON_OVERRIDES : null)}
+          />
+        }
+      >{t`Admin`}</Menu.Item>,
+    );
 
     return (
       <>
@@ -149,7 +146,7 @@ export const AppSwitcher = ({
         <Box px="md">{items}</Box>
       </>
     );
-  }, [canAccessDataStudio, adminItems, currentApp]);
+  }, [adminItems, currentApp, canAccessDataStudio]);
 
   // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
   const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;

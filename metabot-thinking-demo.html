@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Metabot thinking → content reveal animation</title>
+    <style>
+      :root {
+        /* Metabase light-theme colors (from base-colors.ts) */
+        --brand: hsl(208, 72%, 60%);
+        --brand-soft: hsla(208, 72%, 60%, 0.55);
+        --bg-secondary: hsl(240, 11%, 98%);
+        --bg-primary: #ffffff;
+        --user-bubble: hsl(240, 4%, 95%);
+        --text-primary: hsla(204, 66%, 8%, 0.84);
+        --text-secondary: hsla(204, 66%, 8%, 0.62);
+        --text-faint: hsla(204, 66%, 8%, 0.45);
+        --border: hsl(195, 6%, 87%);
+        --mono: ui-monospace, "SF Mono", "Menlo", "Consolas", monospace;
+        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--text-primary);
+        background: #e9edf1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        padding: 24px 16px 48px;
+        min-height: 100vh;
+      }
+
+      /* ---------- Dev controls ---------- */
+      .controls {
+        width: min(100%, 1040px);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 16px;
+        padding: 12px 16px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 13px;
+      }
+      .controls button {
+        font: inherit;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: #fff;
+        cursor: pointer;
+      }
+      .controls button.primary {
+        background: var(--brand);
+        border-color: var(--brand);
+        color: #fff;
+      }
+      .controls .group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .controls label {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+      }
+      .controls input[type="range"] {
+        width: 280px;
+      }
+      .controls .time {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text-secondary);
+        min-width: 92px;
+      }
+      .phase-label {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--brand);
+        min-width: 130px;
+      }
+
+      /* ---------- Chat panel ---------- */
+      .panel {
+        position: relative;
+        width: min(100%, 1040px);
+        height: 760px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 18px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        font-weight: 700;
+        font-size: 15px;
+        flex: 0 0 auto;
+      }
+      .header .chevron {
+        color: var(--text-secondary);
+        font-size: 13px;
+      }
+      .scroll {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        padding: 8px 0 0;
+      }
+      .user-row {
+        display: flex;
+        justify-content: flex-end;
+        padding: 12px 32px 8px;
+      }
+      .user-bubble {
+        background: var(--user-bubble);
+        color: var(--text-primary);
+        font-size: 14px;
+        padding: 9px 16px;
+        border-radius: 16px;
+      }
+
+      /* ---------- Agent region (canvas + content + thinking) ---------- */
+      .agent-region {
+        position: relative;
+        width: 100%;
+        min-height: 560px;
+      }
+      .dots {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .content-layer {
+        position: absolute;
+        top: 0;
+        left: 32px;
+        right: 24px;
+        max-width: 880px;
+        /* text/chart always render above the dot field */
+        z-index: 1;
+      }
+      .intro {
+        font-size: 13.5px;
+        line-height: 1.55;
+        color: var(--text-primary);
+      }
+      .intro p {
+        margin: 0 0 8px;
+      }
+      .chart-wrap {
+        margin-top: 6px;
+      }
+      .chart-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 2px 6px;
+      }
+      svg.chart {
+        display: block;
+        width: 100%;
+        height: 260px;
+        overflow: visible;
+      }
+      /* chart sub-layers; opacity is driven from JS */
+      .chart-chrome text {
+        font-family: var(--sans);
+        fill: var(--text-secondary);
+      }
+      .axis-line {
+        stroke: var(--border);
+        stroke-width: 1;
+      }
+      .grid-line {
+        stroke: var(--border);
+        stroke-width: 1;
+        stroke-dasharray: 2 4;
+        opacity: 0.7;
+      }
+      .series-line {
+        fill: none;
+        stroke: var(--brand);
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .marker {
+        fill: var(--bg-secondary);
+        stroke: var(--brand);
+        stroke-width: 1.4;
+      }
+      .bar {
+        fill: var(--brand);
+        opacity: 0.85;
+      }
+
+      /* ---------- Thinking row (M loader + pill) ---------- */
+      .thinking-row {
+        position: absolute;
+        top: 0;
+        left: 32px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        will-change: transform;
+        z-index: 2;
+      }
+      .loader {
+        display: grid;
+        grid-template-columns: repeat(5, 10px);
+        grid-template-rows: repeat(4, 10px);
+        place-items: center;
+      }
+      .loader .ld {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--brand);
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+      .pill {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text-primary);
+        background: var(--bg-secondary);
+        padding: 3px 10px;
+        border-radius: 6px;
+        white-space: pre;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <div class="group">
+        <button id="btn-play" class="primary">▶ Play</button>
+        <button id="btn-restart">↺ Restart</button>
+      </div>
+      <div class="group">
+        <input id="scrub" type="range" min="0" max="1000" value="0" step="1" />
+        <span class="time" id="time">0 ms</span>
+      </div>
+      <div class="phase-label" id="phase">idle</div>
+      <div class="group">
+        <span>Content:</span>
+        <label><input type="radio" name="chart" value="line" checked />Line</label>
+        <label><input type="radio" name="chart" value="bar" />Bar</label>
+        <label><input type="radio" name="chart" value="none" />Text only</label>
+      </div>
+      <label class="group"
+        ><input type="checkbox" id="continue" checked />Keep generating</label
+      >
+    </div>
+
+    <div class="panel">
+      <div class="header">
+        <span>Inquiry About Order Status</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="scroll">
+        <div class="user-row">
+          <div class="user-bubble">any info on orders?</div>
+        </div>
+        <div class="agent-region" id="agent">
+          <canvas class="dots" id="dots"></canvas>
+          <div class="content-layer" id="content">
+            <div class="intro" id="intro">
+              <p>
+                I'll take a look at the Orders + People model that you recently
+                viewed to give you a quick overview.
+              </p>
+              <p>Let me show you orders over time as a quick overview.</p>
+            </div>
+            <div class="chart-wrap" id="chartWrap">
+              <div class="chart-title" id="chartTitle">Orders per month</div>
+              <svg class="chart" id="chart" preserveAspectRatio="none"></svg>
+            </div>
+          </div>
+          <div class="thinking-row" id="thinking">
+            <div class="loader" id="loader"></div>
+            <div class="pill" id="pill">Thinking...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ====================================================================
+      //  Metabot "thinking → content reveal" animation prototype
+      //
+      //  Everything is a pure function of one clock `t` (ms) via render(t),
+      //  so the animation is frame-perfectly seekable for testing. play()
+      //  just feeds wall-clock time into render(); seek() feeds an exact t.
+      // ====================================================================
+
+      const P = 10; // dot pitch (px) — the whole lattice is built on this
+      const BRAND = "80, 158, 227"; // rgb of hsl(208,72%,60%) for canvas alpha
+      const DOT_BASE_ALPHA = 0.26; // peak opacity of a faint field dot
+
+      // ---- small math helpers ----
+      const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+      const smooth = (x) => {
+        x = clamp01(x);
+        return x * x * (3 - 2 * x);
+      };
+      const lerp = (a, b, t) => a + (b - a) * t;
+      // ---- easings ----
+      const easeOutCubic = (x) => {
+        x = clamp01(x);
+        return 1 - Math.pow(1 - x, 3);
+      };
+      const easeInOutCubic = (x) => {
+        x = clamp01(x);
+        return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+      };
+      const easeOutBack = (x) => {
+        x = clamp01(x);
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+      };
+      const easeInOutSine = (x) => -(Math.cos(Math.PI * clamp01(x)) - 1) / 2;
+      // normalized progress of clock `tc` through a [start,end] segment
+      const seg = (tc, s) => (s[1] > s[0] ? (tc - s[0]) / (s[1] - s[0]) : 0);
+      // seeded PRNG so per-dot "randomness" is stable across seeks
+      function mulberry32(seed) {
+        return function () {
+          seed |= 0;
+          seed = (seed + 0x6d2b79f5) | 0;
+          let z = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          z = (z + Math.imul(z ^ (z >>> 7), 61 | z)) ^ z;
+          return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      // ---- M-mark mask (same glyph the real loader uses) ----
+      // prettier-ignore
+      const LOGO = [
+        [1, 0, 0, 0, 1],
+        [1, 1, 0, 1, 1],
+        [1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 1],
+      ];
+
+      // ---- layout constants (in agent-region local px) ----
+      const IDLE_Y = 20; // thinking row top while idle (≈ 2 rows down)
+      const RESERVE_H = { line: 360, bar: 360, none: 90 }; // reserved content height
+      const CONTENT_TOP = 6; // where the content column begins
+
+      // ---- timelines per content type (ms) ----
+      //  reserve : thinking block slides down, dots fill the opened space
+      //  draw    : chart line/bars draw over the dots (fast, eased)
+      //  reveal  : text + chrome fade IN — fast, lands early
+      //  dotsFade: dots fade OUT — starts with the reveal but finishes later,
+      //            so the text is already in while the dots gently dissolve
+      const TL = {
+        line: {
+          reserve: [0, 340],
+          draw: [430, 1110],
+          reveal: [1010, 1310],
+          dotsFade: [1010, 1720],
+          duration: 1780,
+        },
+        bar: {
+          reserve: [0, 340],
+          draw: [430, 1030],
+          reveal: [940, 1240],
+          dotsFade: [940, 1650],
+          duration: 1710,
+        },
+        none: {
+          reserve: [0, 300],
+          draw: [0, 0],
+          reveal: [400, 680],
+          dotsFade: [400, 1080],
+          duration: 1140,
+        },
+      };
+
+      const PHASES = [
+        ["reserve", "reserve"],
+        ["draw", "draw chart"],
+        ["dotsFade", "dots fading out"],
+        ["reveal", "text fading in"],
+      ];
+
+      // ====================================================================
+      //  Chart data + DOM
+      // ====================================================================
+      const els = {
+        agent: document.getElementById("agent"),
+        canvas: document.getElementById("dots"),
+        content: document.getElementById("content"),
+        intro: document.getElementById("intro"),
+        chartWrap: document.getElementById("chartWrap"),
+        chartTitle: document.getElementById("chartTitle"),
+        chart: document.getElementById("chart"),
+        thinking: document.getElementById("thinking"),
+        loader: document.getElementById("loader"),
+        pill: document.getElementById("pill"),
+        scrub: document.getElementById("scrub"),
+        time: document.getElementById("time"),
+        phase: document.getElementById("phase"),
+        btnPlay: document.getElementById("btn-play"),
+        btnRestart: document.getElementById("btn-restart"),
+        continue: document.getElementById("continue"),
+      };
+      const ctx = els.canvas.getContext("2d");
+
+      // build M loader dots
+      const loaderDots = [];
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 5; c++) {
+          const d = document.createElement("span");
+          d.className = "ld";
+          d.dataset.lit = LOGO[r][c];
+          d.dataset.i = r + c;
+          els.loader.appendChild(d);
+          loaderDots.push(d);
+        }
+      }
+
+      // generate a rising-then-dipping monthly series (matches the mock shape)
+      const N = 46;
+      const series = (() => {
+        const rnd = mulberry32(99);
+        const pts = [];
+        let v = 6;
+        for (let i = 0; i < N; i++) {
+          const tnorm = i / (N - 1);
+          // logistic-ish rise to ~560, plateau, then a sharp final drop
+          const base = 560 / (1 + Math.exp(-9 * (tnorm - 0.4)));
+          const noise = (rnd() - 0.5) * 70 * (0.4 + tnorm);
+          v = base + noise;
+          if (i >= N - 2) v = lerp(540, 340, (i - (N - 3)) / 2); // end drop
+          pts.push(Math.max(2, v));
+        }
+        return pts;
+      })();
+      const SERIES_MAX = 600;
+
+      // SVG geometry (viewBox space; preserveAspectRatio=none stretches X)
+      const VB_W = 880;
+      const VB_H = 260;
+      const M_L = 64,
+        M_R = 24,
+        M_T = 14,
+        M_B = 40;
+      const plotW = VB_W - M_L - M_R;
+      const plotH = VB_H - M_T - M_B;
+      const xAt = (i) => M_L + (plotW * i) / (N - 1);
+      const yAt = (val) => M_T + plotH * (1 - val / SERIES_MAX);
+
+      const SVGNS = "http://www.w3.org/2000/svg";
+      const mk = (tag, attrs) => {
+        const e = document.createElementNS(SVGNS, tag);
+        for (const k in attrs) e.setAttribute(k, attrs[k]);
+        return e;
+      };
+      els.chart.setAttribute("viewBox", `0 0 ${VB_W} ${VB_H}`);
+
+      // --- build chrome group (axes / grid / labels) ---
+      const gChrome = mk("g", { class: "chart-chrome" });
+      // y grid + labels
+      for (let g = 0; g <= 6; g++) {
+        const val = (SERIES_MAX / 6) * g;
+        const y = yAt(val);
+        gChrome.appendChild(
+          mk("line", { class: "grid-line", x1: M_L, y1: y, x2: VB_W - M_R, y2: y }),
+        );
+        const lbl = mk("text", {
+          x: M_L - 10,
+          y: y + 3,
+          "text-anchor": "end",
+          "font-size": 10,
+        });
+        lbl.textContent = Math.round(val);
+        gChrome.appendChild(lbl);
+      }
+      // x axis line
+      gChrome.appendChild(
+        mk("line", {
+          class: "axis-line",
+          x1: M_L,
+          y1: yAt(0),
+          x2: VB_W - M_R,
+          y2: yAt(0),
+        }),
+      );
+      // x labels (years)
+      const xticks = [2, 14, 26, 38];
+      const xlabels = ["January 2026", "January 2027", "January 2028", "January 2029"];
+      xticks.forEach((i, k) => {
+        const t = mk("text", {
+          x: xAt(i),
+          y: VB_H - 22,
+          "text-anchor": "middle",
+          "font-size": 10,
+        });
+        t.textContent = xlabels[k];
+        gChrome.appendChild(t);
+      });
+      // axis titles
+      const xTitle = mk("text", {
+        x: M_L + plotW / 2,
+        y: VB_H - 6,
+        "text-anchor": "middle",
+        "font-size": 10,
+      });
+      xTitle.textContent = "Created At: Month";
+      gChrome.appendChild(xTitle);
+      const yTitle = mk("text", {
+        x: 14,
+        y: M_T + plotH / 2,
+        "text-anchor": "middle",
+        "font-size": 10,
+        transform: `rotate(-90 14 ${M_T + plotH / 2})`,
+      });
+      yTitle.textContent = "Count";
+      gChrome.appendChild(yTitle);
+
+      // --- series line + markers ---
+      const linePath = mk("path", { class: "series-line" });
+      let dPath = `M ${xAt(0)} ${yAt(series[0])}`;
+      for (let i = 1; i < N; i++) dPath += ` L ${xAt(i)} ${yAt(series[i])}`;
+      linePath.setAttribute("d", dPath);
+
+      const gMarkers = mk("g", {});
+      const markerEls = [];
+      for (let i = 0; i < N; i++) {
+        const c = mk("circle", { class: "marker", cx: xAt(i), cy: yAt(series[i]), r: 2.6 });
+        gMarkers.appendChild(c);
+        markerEls.push(c);
+      }
+
+      // --- bars (alternative content) ---
+      const gBars = mk("g", {});
+      const barEls = [];
+      const barW = (plotW / N) * 0.62;
+      for (let i = 0; i < N; i++) {
+        const fullH = plotH * (series[i] / SERIES_MAX);
+        const r = mk("rect", {
+          class: "bar",
+          x: xAt(i) - barW / 2,
+          width: barW,
+          y: yAt(0),
+          height: 0,
+        });
+        gBars.appendChild(r);
+        barEls.push({ el: r, fullH });
+      }
+
+      els.chart.appendChild(gChrome);
+      els.chart.appendChild(gBars);
+      els.chart.appendChild(linePath);
+      els.chart.appendChild(gMarkers);
+
+      const lineLen = linePath.getTotalLength();
+      linePath.style.strokeDasharray = lineLen;
+
+      // ====================================================================
+      //  Canvas dot-field
+      //
+      //  Fixed lattice: dot centers live at (P/2 + col*P, P/2 + row*P) and
+      //  NEVER move — only per-dot alpha changes — so the grid can never be
+      //  "disturbed". The thinking block's rest positions are multiples of P
+      //  so its M-dots land exactly on this lattice.
+      // ====================================================================
+      let grid = { cols: 0, rows: 0, w: 0, h: 0, noise: null, dpr: 1 };
+
+      function sizeCanvas() {
+        const rect = els.agent.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = Math.round(rect.width);
+        const h = Math.round(rect.height);
+        els.canvas.width = w * dpr;
+        els.canvas.height = h * dpr;
+        const cols = Math.ceil(w / P);
+        const rows = Math.ceil(h / P);
+        const noise = new Float32Array(cols * rows);
+        const rnd = mulberry32(1234);
+        for (let i = 0; i < noise.length; i++) noise[i] = rnd();
+        grid = { cols, rows, w, h, noise, dpr };
+      }
+
+      // vertical visibility profile relative to the thinking row.
+      //  - above the thinking row  → solid (this is the content field)
+      //  - a few rows at the very top fade in (soft top edge)
+      //  - below the thinking row  → fades out over ~7 rows (the "thinking band")
+      function profileV(y, thinkingY) {
+        const top = smooth(y / (3.2 * P)); // soft top edge
+        const d = y - thinkingY;
+        const below = d <= 0 ? 1 : 1 - smooth(d / (7 * P));
+        return top * below;
+      }
+
+      // how "protected" a dot is from the random fade-out (1 = keep forever).
+      // Dots within ~2 rows above the thinking row and the whole band below it
+      // are kept, so the thinking block always retains its dot halo.
+      function keepFactor(y, thinkingY) {
+        const d = y - thinkingY; // >0 below
+        return smooth((d + 4 * P) / (2 * P));
+      }
+
+      // `thinkingFade` (0..1) dissolves the thinking band too — used when the
+      // turn is finished (not "keep generating"), so nothing is left behind.
+      function drawDots(thinkingY, fadeP, thinkingFade) {
+        const { cols, rows, w, h, noise, dpr } = grid;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = `rgb(${BRAND})`;
+
+        // Bucket dots by (normalized) alpha so each bucket fills in one path.
+        // Bucket b represents normalized alpha (b+0.5)/BUCKETS, scaled by the
+        // peak field alpha when we actually paint.
+        const BUCKETS = 12;
+        const paths = Array.from({ length: BUCKETS }, () => []);
+        for (let row = 0; row < rows; row++) {
+          const y = P / 2 + row * P;
+          const pv = profileV(y, thinkingY);
+          if (pv <= 0.002) continue;
+          // when finishing, the band loses its protection so it dissolves too
+          const keep = keepFactor(y, thinkingY) * (1 - thinkingFade);
+          for (let col = 0; col < cols; col++) {
+            const n = noise[row * cols + col];
+            // staggered random fade-out: low-noise dots vanish first
+            const fo = smooth((fadeP - n * 0.55) / 0.45);
+            const fadeMul = 1 - (1 - keep) * fo;
+            const aNorm = pv * fadeMul; // 0..1
+            if (aNorm <= 0.05) continue;
+            const b = Math.min(BUCKETS - 1, (aNorm * BUCKETS) | 0);
+            paths[b].push(P / 2 + col * P, y);
+          }
+        }
+        for (let b = 0; b < BUCKETS; b++) {
+          const arr = paths[b];
+          if (!arr.length) continue;
+          ctx.globalAlpha = DOT_BASE_ALPHA * ((b + 0.5) / BUCKETS);
+          ctx.beginPath();
+          for (let k = 0; k < arr.length; k += 2) {
+            const x = arr[k];
+            const y = arr[k + 1];
+            ctx.moveTo(x + 1.15, y);
+            ctx.arc(x, y, 1.15, 0, Math.PI * 2);
+          }
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // ====================================================================
+      //  Master render — pure function of clock t (ms)
+      // ====================================================================
+      let chartType = "line";
+      let DURATION = TL.line.duration;
+
+      function activePhase(tc, tl) {
+        let label = "idle";
+        for (const [key, name] of PHASES) {
+          const s = tl[key];
+          if (s && tc >= s[0] && tc < s[1]) label = name;
+        }
+        if (tc >= tl.dotsFade[1]) label = "done";
+        return label;
+      }
+
+      function render(t) {
+        const tl = TL[chartType];
+        const hasChart = chartType !== "none";
+        const tc = Math.min(t, tl.duration); // choreography clock (clamped)
+
+        const reserveP = easeInOutCubic(seg(tc, tl.reserve));
+        const drawRaw = hasChart ? seg(tc, tl.draw) : 0;
+        const drawP = easeOutCubic(drawRaw);
+        // text/chrome fade IN quickly; the dots fade OUT more slowly. They
+        // start together, but the text lands well before the dots finish.
+        const revealRaw = seg(tc, tl.reveal);
+        const revealP = easeOutCubic(revealRaw);
+        const fadeP = clamp01(seg(tc, tl.dotsFade));
+
+        const reservedH = RESERVE_H[chartType];
+        const thinkingY = IDLE_Y + reserveP * reservedH;
+
+        // when the turn is finished (not "keep generating") the thinking block
+        // and its dot halo dissolve along with the field
+        const keepGen = els.continue.checked;
+        const thinkingFade = keepGen ? 0 : fadeP;
+
+        // --- dot field ---
+        drawDots(thinkingY, fadeP, thinkingFade);
+
+        // --- thinking row position + M pulse (pulse uses unclamped t so it
+        //     keeps breathing after the timeline finishes) ---
+        els.thinking.style.transform = `translateY(${thinkingY}px)`;
+        els.thinking.style.opacity = 1 - thinkingFade;
+        for (const d of loaderDots) {
+          const i = +d.dataset.i;
+          const lit = d.dataset.lit === "1";
+          const s = 0.7 + 0.48 * (0.5 + 0.5 * Math.sin((t / 1700) * 2 * Math.PI - i * 0.5));
+          d.style.transform = `scale(${s})`;
+          d.style.opacity = lit ? 0.9 : 0;
+        }
+        const nDots = Math.floor((t / 380) % 4);
+        els.pill.textContent = "Thinking" + ".".repeat(nDots) + " ".repeat(3 - nDots);
+
+        // --- content column (always layered above the dots) ---
+        els.content.style.opacity = drawRaw > 0 || revealRaw > 0 ? 1 : 0;
+        els.intro.style.opacity = revealP;
+        els.chartTitle.style.opacity = revealP;
+        els.chartWrap.style.display = hasChart ? "" : "none";
+        gChrome.style.opacity = revealP;
+
+        if (hasChart && chartType === "line") {
+          gBars.style.display = "none";
+          linePath.style.display = "";
+          gMarkers.style.display = "";
+          linePath.style.strokeDashoffset = lineLen * (1 - drawP);
+          for (let i = 0; i < N; i++) {
+            const fi = i / (N - 1);
+            // marker pops a hair before the line tip reaches it (each point
+            // "spawns", then the line connects to it) with a little back-ease
+            const appear = clamp01((drawP - fi + 0.02) / 0.06);
+            const c = markerEls[i];
+            c.style.opacity = smooth(appear);
+            const sc = 0.1 + 0.9 * easeOutBack(appear);
+            c.setAttribute("transform", `translate(${xAt(i)} ${yAt(series[i])}) scale(${sc}) translate(${-xAt(i)} ${-yAt(series[i])})`);
+          }
+        } else if (hasChart && chartType === "bar") {
+          linePath.style.display = "none";
+          gMarkers.style.display = "none";
+          gBars.style.display = "";
+          for (let i = 0; i < N; i++) {
+            const fi = i / (N - 1);
+            // bars rise from the bottom mostly together, with a slight
+            // left-to-right lead so the whole silhouette grows at once
+            const grow = easeOutCubic((drawRaw - fi * 0.12) / 0.88);
+            const { el, fullH } = barEls[i];
+            const hh = fullH * grow;
+            el.setAttribute("height", hh);
+            el.setAttribute("y", yAt(0) - hh);
+          }
+        }
+
+        // --- dev HUD ---
+        els.time.textContent = `${Math.round(t)} ms`;
+        els.phase.textContent = activePhase(tc, tl);
+        if (!scrubbing) els.scrub.value = Math.round((t / DURATION) * 1000);
+      }
+
+      // ====================================================================
+      //  Clock / controls
+      // ====================================================================
+      let playing = false;
+      let rafId = null;
+      let clock = 0; // single source of truth for animation time (ms)
+      let lastTs = null;
+      let scrubbing = false;
+
+      function frame(ts) {
+        if (lastTs == null) lastTs = ts;
+        clock += ts - lastTs;
+        lastTs = ts;
+        const tl = TL[chartType];
+        // when finished and not "keep generating", stop cleanly at the end;
+        // otherwise keep ticking so the M keeps pulsing in the final state
+        if (clock >= tl.duration && !els.continue.checked) {
+          clock = tl.duration;
+          render(clock);
+          halt();
+          return;
+        }
+        render(clock); // render clamps choreography internally, pulse uses raw clock
+        rafId = requestAnimationFrame(frame);
+      }
+
+      function halt() {
+        playing = false;
+        els.btnPlay.textContent = "▶ Play";
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = null;
+        lastTs = null;
+      }
+      function play() {
+        if (playing) return;
+        // clicking play at/after the end replays from the start
+        if (clock >= TL[chartType].duration) clock = 0;
+        playing = true;
+        els.btnPlay.textContent = "❚❚ Pause";
+        lastTs = null;
+        rafId = requestAnimationFrame(frame);
+      }
+      function pause() {
+        halt();
+      }
+      function seek(t) {
+        halt();
+        clock = Math.max(0, Math.min(t, DURATION));
+        render(clock);
+      }
+      function restart() {
+        halt();
+        clock = 0;
+        render(0);
+      }
+
+      function setChart(type) {
+        halt();
+        chartType = type;
+        DURATION = TL[type].duration;
+        clock = 0;
+        render(0);
+      }
+
+      els.btnPlay.addEventListener("click", () => (playing ? pause() : play()));
+      els.btnRestart.addEventListener("click", () => {
+        restart();
+        play();
+      });
+      els.scrub.addEventListener("input", () => {
+        scrubbing = true;
+        seek((els.scrub.value / 1000) * DURATION);
+      });
+      els.scrub.addEventListener("change", () => (scrubbing = false));
+      document.querySelectorAll('input[name="chart"]').forEach((r) =>
+        r.addEventListener("change", (e) => setChart(e.target.value)),
+      );
+      els.continue.addEventListener("change", () => {});
+
+      window.addEventListener("resize", () => {
+        sizeCanvas();
+        render(clock);
+      });
+
+      // expose a deterministic test API
+      window.__anim = {
+        seek,
+        play,
+        pause,
+        restart,
+        setChart,
+        setContinue: (v) => (els.continue.checked = v),
+        get duration() {
+          return DURATION;
+        },
+        get time() {
+          return clock;
+        },
+        timeline: () => TL[chartType],
+      };
+
+      // boot
+      sizeCanvas();
+      render(0);
+    </script>
+  </body>
+</html>

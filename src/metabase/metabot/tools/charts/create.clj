@@ -103,6 +103,9 @@
                           "execute_notebook_query_silently) when you need an exact count, ranking, or aggregate the "
                           "sample cannot give; do it without asking permission first and do not produce a final "
                           "answer until it returns.\n"
+                          "Use silent follow-up results as plain-text evidence only. Do not use data-point links "
+                          "for values that only came from execute_notebook_query_silently because those results "
+                          "are not visible to the user.\n"
                           "When mentioning a specific value from the chart, use the matching metabase://data-point URL "
                           "from the linked result value, and choose natural link text for your answer.\n"
                           "Reference the chart using: [" chart-name "](" (format-chart-link chart-id) ").")})))

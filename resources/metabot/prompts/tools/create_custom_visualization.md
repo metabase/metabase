@@ -1,21 +1,28 @@
-Create a reusable custom visualization plugin and apply it to a query.
+Apply a reusable custom visualization plugin to a query, creating a new plugin only when needed.
 
-Use this tool when the user asks for a visualization that cannot be built with Metabase's built-in chart types, such as bespoke controls, custom drawing, cards, ratings, timelines, diagrams, or interactive widgets. The plugin you create must be a reusable visualization type, not a one-off chart tied to one table, metric, or dataset.
+Use this tool when the user asks for a visualization that cannot be built with Metabase's built-in chart types, such as bespoke controls, custom drawing, cards, ratings, timelines, diagrams, or interactive widgets, or when `list_visualization_types` shows an existing reusable custom visualization that matches the request. The plugin you create must be a reusable visualization type, not a one-off chart tied to one table, metric, or dataset.
 
 Workflow:
 
-- First create or construct a query that returns the data the custom visualization needs.
-- Then call this tool with the query_id from that query.
+- First call `list_visualization_types` before choosing a chart implementation. If a built-in visualization fits the user request, use `create_chart` instead of this tool. If an existing custom visualization fits the reusable pattern, reuse it by calling this tool with `query_id` and `identifier`, omitting `factory_js`, `display_name`, and `description`.
+- Fetch the data the visualization needs with `execute_notebook_query_silently`, NOT `construct_notebook_query` or `create_chart`. The custom visualization IS the user-facing output, so the intermediate query result must not be shown to the user as its own table or chart. `execute_notebook_query_silently` runs the query without rendering anything and returns a `<query-id>` you can reuse. Do not cite values from this silent result with `metabase://data-point` links; wait until the custom visualization is rendered, then only link values that are visible there.
+- Then call this tool with that `query_id`. Do not run `construct_notebook_query`/`create_chart` first just to obtain a query — that displays an extra table to the user before the custom visualization appears.
+- Only provide new `factory_js` when neither a built-in visualization nor an existing custom visualization fits the request.
 - Provide `factory_js` as a JavaScript expression, not a module. Do not include imports or exports.
 - Render with plain DOM APIs. Do not use React, JSX, npm packages, network requests, localStorage, or global CSS.
 - The frontend will report custom visualization render feedback after it tries the generated plugin. If you receive a "Custom visualization render feedback: failed" message, call this tool again for the same query/user intent with corrected `factory_js`.
 - The custom-viz sandbox blocks dangerous DOM operations and tags. Do not create `input`, `form`, `a`, `script`, `iframe`, `object`, `embed`, `link`, `meta`, `base`, `frame`, `map`, `area`, `style`, `video`, `audio`, `source`, `track`, `use`, `image`, `feImage`, or `foreignObject` elements, and do not set `javascript:` URLs or inline `on*` attributes.
 - Use `button`, `div`, `span`, and SVG primitives for controls and drawing. For inputs/segmented controls, make button-like controls instead of real form elements.
-- The factory function receives `{ defineSetting, getAssetUrl, locale }` and must return an object with `id`, `getName`, `checkRenderable`, optional `settings`, and `mount`.
-- `mount(container, initialProps)` must render into `container` and return `{ update(nextProps), unmount() }`.
-- Read data from `props.series[0].data.cols` and `props.series[0].data.rows`.
+- The factory function receives exactly `{ defineSetting, locale }`. There is no `getAssetUrl` or any other helper — do not reference one. It must return an object with `id`, `getName`, `checkRenderable`, optional `settings`, and `mount`.
+- `mount(container, initialProps)` must render into `container` and return `{ update(nextProps), unmount() }`. `mount` is called once; `update` is called on every later change (new data, resize, settings); `unmount` must clean up.
+- The props passed to `mount`/`update` are `{ width, height, series, settings, colorScheme, onClick, onHover }`. `width`/`height` are pixel numbers (may be `null` before the first measure — render nothing until both are set). `colorScheme` is `"light"` or `"dark"`. Call `onClick(clickObject)` / `onHover(hoverObject)` for interactivity, or ignore them.
+- Size the first render for the Metabot inline visualization slot: about `850px` wide by `384px` tall on desktop, and about the viewport width by `288px` tall on narrow/mobile screens. Expanded/fullscreen views can be larger, so always use the actual `props.width` and `props.height` when laying out. Do not create a fixed 700px+ tall root, reserve empty lower space, or assume the chart can grow vertically; make dense layouts (calendar heatmaps, timelines, maps) fit inside the supplied height with compact labels, legends, scrolling, or pagination as needed.
+- Read data from `props.series[0].data.cols` (column metadata: each has `name`, `display_name`, `base_type`, `semantic_type`, `effective_type`) and `props.series[0].data.rows` (array of value arrays, one per row, column order matching `cols`).
+- Helpers are available on `globalThis.__METABASE_VIZ_API__`: `formatValue(value, { column })` returns a display string for a cell, `measureText(text, { size, family, weight })` returns `{ width, height }`, `measureTextWidth`/`measureTextHeight` return numbers, and `columnTypes` has predicates such as `isNumeric(col)`, `isDate(col)`, `isString(col)`, `isLatitude(col)`, `isLongitude(col)`. Prefer these over reinventing formatting or type detection.
+- `settings` entries created with `defineSetting` must use one of these `widget` values only: `input`, `number`, `radio`, `select`, `toggle`, `segmentedControl`, `color`, `multiselect`, `field`, `fields`. Any other widget name is rejected.
 - Keep state such as selected page/month inside the mounted visualization closure, and re-render on button clicks and updates.
 - Use `visualization_settings` for query-specific constants the plugin should receive as `props.settings`, such as thresholds, labels, units, field-role overrides, and display options.
+- The generated `factory_js` is validated on the server (it is parsed and run through the full `factory → checkRenderable → mount → update → unmount` lifecycle) before the visualization is shown. If validation fails, the tool returns the JavaScript error instead of creating the visualization; read the error, fix `factory_js`, and call the tool again. Keep `factory_js` reasonably compact so the tool call is not truncated.
 
 Reusable plugin requirements:
 

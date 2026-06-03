@@ -306,7 +306,9 @@
                     (add-tools-cache-breakpoint all-tools)
                     all-tools)
         req       (cond-> {:model         model
-                           :max_tokens    (or max-tokens 4096)
+                           ;; Fallback only — agent callers pass an explicit :max-tokens. 4096 truncates
+                           ;; large tool-call arguments (e.g. a custom-viz factory_js), so default higher.
+                           :max_tokens    (or max-tokens 8192)
                            :stream        true
                            :cache_control {:type "ephemeral"}
                            :messages      messages}

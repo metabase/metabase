@@ -22,7 +22,6 @@ import type { AppErrorDescriptor, State } from "metabase/redux/store";
 import {
   getErrorPage,
   getIsAdminApp,
-  getIsDataStudioApp,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -55,7 +54,6 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
-  isDataStudioApp: boolean;
   bannerMessageDescriptor?: string;
   isNavBarEnabled: boolean;
 }
@@ -77,7 +75,6 @@ const mapStateToProps = (
 ): AppStateProps => ({
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
-  isDataStudioApp: getIsDataStudioApp(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
 
@@ -88,12 +85,14 @@ const mapDispatchToProps: AppDispatchProps = {
 function App({
   errorPage,
   isAdminApp,
-  isDataStudioApp,
   isNavBarEnabled,
   children,
   onError,
 }: AppProps) {
-  const showAppChrome = !isAdminApp && !isDataStudioApp;
+  // The Metabot chrome (launcher + expandable chat overlay) wraps the main app
+  // and Data Studio alike, so both render inside the AppContentShell. Admin
+  // keeps its own full-bleed chrome.
+  const showAppChrome = !isAdminApp;
 
   const applicationName = useSelector(getApplicationName);
 

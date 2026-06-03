@@ -1,0 +1,46 @@
+.tabBar {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  margin: var(--mantine-spacing-xs) var(--mantine-spacing-sm) 0;
+  background-color: var(--mb-color-background-secondary);
+  border-radius: var(--mantine-radius-md);
+}
+
+.tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 6px;
+  border: none;
+  border-radius: var(--mantine-radius-sm);
+  background: transparent;
+  color: var(--mb-color-text-secondary);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--mb-color-text-primary);
+}
+
+.tabSelected {
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.icon {
+  flex: 0 0 auto;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

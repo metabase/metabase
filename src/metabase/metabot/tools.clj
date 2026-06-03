@@ -90,6 +90,7 @@
  [tools.create-dashboard-subscription
   slackbot-create-dashboard-subscription-tool]
  [tools.custom-viz
+  list-visualization-types-tool
   create-custom-visualization-tool])
 
 (def query-generation-tool-names

@@ -273,14 +273,16 @@
 (defn- data-point-link-instructions
   "Tell the LLM how to reference any cell — not just the value column — using the
   metabase://data-point/{id}/{column_index} scheme. The value column is already linked with its
-  index, so the model can reuse a row's id with another column's index to link names, categories,
-  dates, etc."
+  index, so the model can reuse a row's id with another column's index to link visible names,
+  categories, dates, etc."
   [result_columns]
   (str "Linked result values contain metabase://data-point URLs. Each row's value column is linked as "
        "metabase://data-point/{id}/{column_index}, where column_index is 0-based. To reference ANY "
        "other value in the same row — a name, category, date, or any cell — reuse that row's {id} with "
        "the target column's index instead. Columns (0-based): " (column-index-legend result_columns) ". "
-       "Link every specific value you mention, and choose natural link text for your answer.\n"))
+       "Use these links only for data that is shown in the conversation as a chart or query result; "
+       "never use data-point links from silent, agent-only query results. Link every visible specific "
+       "value you mention, and choose natural link text for your answer.\n"))
 
 (defn- data-point-link-rows
   ([summary]
@@ -338,14 +340,19 @@
 ;;; ---------------------------------------- XML formatting ----------------------------------------
 
 (defn- sampled-execution-note
-  [rows-returned total-row-count]
+  [rows-returned total-row-count linkable?]
   (str "Showing a representative sample of " rows-returned " rows out of " total-row-count " total. "
        "The sample includes the minimum, the maximum, notable outliers, and evenly spaced rows so the "
-       "overall trend stays visible. Every sampled row is a real data point on the chart the user is "
-       "viewing, so you may reference these values — including the minimum and maximum — and link them "
-       "with their metabase://data-point URLs. Rows between the sampled points are not shown; if you "
-       "need an exact count, ranking, or other aggregate over the full result, run a follow-up "
-       "aggregate query (for notebook queries, use execute_notebook_query_silently).\n"))
+       "overall trend stays visible. "
+       (if linkable?
+         (str "Every sampled row is a real data point on the chart or query result the user is viewing, "
+              "so you may reference these values — including the minimum and maximum — and link them "
+              "with their metabase://data-point URLs. ")
+         (str "This sample is from a silent, agent-only query result that is not visible to the user, "
+              "so cite sampled values as plain text only and do not link them. "))
+       "Rows between the sampled points are not shown; if you need an exact count, ranking, or other "
+       "aggregate over the full result, run a follow-up aggregate query (for notebook queries, use "
+       "execute_notebook_query_silently).\n"))
 
 (defn- execution-summary->xml
   [{:keys [status error row_count running_time sampled? total-row-count] :as summary} data-point-links reference]
@@ -367,7 +374,7 @@
                 " reference_id=\"" (llm-rep/escape-xml (:id reference)) "\""))
          ">\n"
          (if sampled?
-           (sampled-execution-note (count (:rows summary)) (or total-row-count row_count))
+           (sampled-execution-note (count (:rows summary)) (or total-row-count row_count) (seq data-point-links))
            (str "Showing all " (count (:rows summary)) " rows from executing the generated query.\n"))
          (when reference
            (str "Full result reference: [" (:type reference) " " (:id reference) "](" (:url reference) ").\n"))
@@ -400,14 +407,10 @@
     result))
 
 (defn format-untruncated-execution-result
-  "Format a query execution summary for an agent-only (silent) tool result. `query`, when supplied, is
-  the executed query used to tag each data point with a renderable source so the chat can re-render
-  this silently-run query on demand (its chart is never created in the conversation)."
+  "Format a query execution summary for an agent-only (silent) tool result.
+   Silent results are not visible in the conversation, so values are returned as plain text rather than
+   data-point links."
   ([summary]
    (format-untruncated-execution-result summary nil))
-  ([summary query]
-   (let [source           (data-point-source nil query)
-         data-point-links (data-point-link-rows summary source)]
-     (cond-> {:output (execution-summary->xml summary data-point-links nil)}
-       (seq data-point-links)
-       (assoc :structured-output {:data-points (data-point-state data-point-links)})))))
+  ([summary _query]
+   {:output (execution-summary->xml summary nil nil)}))

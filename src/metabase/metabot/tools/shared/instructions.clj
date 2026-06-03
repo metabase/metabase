@@ -15,7 +15,9 @@
        "metabase://data-point URLs. Only run a follow-up query when you need an exact count, "
        "ranking, or aggregate the sample cannot give (for notebook queries, use "
        "execute_notebook_query_silently with the needed follow-up program so no chart is created); "
-       "do it without asking permission first and do not produce a final answer until it returns."))
+       "do it without asking permission first and do not produce a final answer until it returns. "
+       "Use silent follow-up results as plain-text evidence only; do not use metabase://data-point "
+       "links for values that are only present in silent, agent-only results."))
 
 (def distribution-guidance
   "Shared guidance to keep narration faithful to the whole result instead of only the top rows. When
@@ -81,7 +83,7 @@ The assistant needs to:
        distribution-guidance " "
        sampled-execution-guidance " "
        "Do not merely say the chart was created.\n"
-       "When you mention a specific value from the chart, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer.\n"
+       "When you mention a specific value from the chart, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer. Do not use data-point links for values that only came from silent, agent-only query results.\n"
        "Present link to user using: [Chart](metabase://chart/" chart-id ")\n"
        "Replace 'Chart' with a meaningful description of what the chart shows."))
 
@@ -100,7 +102,7 @@ Reference items using: [name](metabase://type/id)")
        "- Proactively mention one concrete observation from the data, such as a trend, outlier, or notable category\n"
        "- " distribution-guidance "\n"
        "- " sampled-execution-guidance "\n"
-       "- When mentioning a specific value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer\n"
+       "- When mentioning a specific visible value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer. Do not use data-point links for values that only came from silent, agent-only query results\n"
        "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
        "so the user can open it themselves\n"
        "- Consider whether to create a chart or graph when that better matches the user's intent\n"
@@ -112,7 +114,7 @@ Reference items using: [name](metabase://type/id)")
   [query-id]
   (str "The updated query is shown in the result data above.\n\n"
        "If a <query_execution> block is present, use it to inspect the executed query data and mention one concrete observation from the results. " distribution-guidance " " sampled-execution-guidance "\n\n"
-       "When mentioning a specific value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer.\n\n"
+       "When mentioning a specific visible value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer. Do not use data-point links for values that only came from silent, agent-only query results.\n\n"
        "After you have edited the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool again\n\n"
@@ -127,7 +129,7 @@ Reference items using: [name](metabase://type/id)")
   [query-id]
   (str "The updated query is shown in the result data above.\n\n"
        "If a <query_execution> block is present, use it to inspect the executed query data and mention one concrete observation from the results. " distribution-guidance " " sampled-execution-guidance "\n\n"
-       "When mentioning a specific value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer.\n\n"
+       "When mentioning a specific visible value from the result, use the matching metabase://data-point URL from <query_execution>, and choose natural link text for your answer. Do not use data-point links for values that only came from silent, agent-only query results.\n\n"
        "After you have replaced the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool or edit_sql_query again\n\n"

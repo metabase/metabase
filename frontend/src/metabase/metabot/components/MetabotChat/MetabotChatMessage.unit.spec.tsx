@@ -28,9 +28,21 @@ let mockPrompt = "";
 let mockQuestionDisplay = "bar";
 let mockChatContextProvider: (() => Promise<unknown>) | undefined;
 const mockQueryVisualizationRender = jest.fn();
+let mockXrayDashboard: any;
+let mockXrayDashboardIsLoading = false;
+let mockXrayDashboardError: unknown = null;
+
+jest.mock("metabase/api", () => ({
+  ...jest.requireActual("metabase/api"),
+  useGetXrayDashboardQuery: () => ({
+    data: mockXrayDashboard,
+    isLoading: mockXrayDashboardIsLoading,
+    error: mockXrayDashboardError,
+  }),
+}));
 
 jest.mock("metabase/metabot", () => ({
-  useMetabotContext: () => ({}),
+  useMetabotContext: () => ({ getChatContext: async () => ({}) }),
   useRegisterMetabotContextProvider: (provider: () => Promise<unknown>) => {
     mockChatContextProvider = provider;
   },
@@ -215,6 +227,9 @@ describe("AgentMessage", () => {
     mockQueryVisualizationRender.mockClear();
     mockSubmitInput.mockClear();
     mockChatContextProvider = undefined;
+    mockXrayDashboard = undefined;
+    mockXrayDashboardIsLoading = false;
+    mockXrayDashboardError = null;
     jest
       .spyOn(crypto, "randomUUID")
       .mockReturnValue("f10cfc50-2a0b-4c67-a064-7585d17974c7");
@@ -319,6 +334,74 @@ describe("AgentMessage", () => {
       screen.getByRole("button", { name: "Collapse data sources" }),
     ).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByLabelText("Source is correct")).toBeInTheDocument();
+  });
+
+  it("renders generated dashboard cards without a duplicate dashboard title", () => {
+    mockXrayDashboard = {
+      name: "Orders",
+      dashcards: Array.from({ length: 8 }, (_, index) => ({
+        id: index + 1,
+        card: {
+          id: index + 1,
+          name: `Generated card ${index + 1}`,
+          display: "bar",
+          dataset_query: {
+            type: "query",
+            database: 1,
+            query: {},
+          },
+          visualization_settings: {},
+        },
+      })),
+    };
+
+    renderWithProviders(
+      <Route
+        path="/"
+        component={() => (
+          <AgentMessage
+            agentId="omnibot"
+            debug={false}
+            readonly={false}
+            hideActions
+            setFeedbackMessage={() => {}}
+            submittedFeedback={undefined}
+            getCopyText={() => ""}
+            message={{
+              id: "dashboard",
+              role: "agent",
+              type: "data_part",
+              part: {
+                type: "automagic_dashboard",
+                version: 1,
+                value: {
+                  url: "/auto/dashboard/table/1",
+                  title: "Orders",
+                },
+              },
+            }}
+          />
+        )}
+      />,
+      { withRouter: true, initialRoute: "/" },
+    );
+
+    const dashboard = screen.getByTestId("metabot-automagic-dashboard");
+    expect(
+      within(dashboard).queryByRole("link", { name: "Orders" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dashboard).getAllByTestId("metabot-generated-question"),
+    ).toHaveLength(6);
+
+    const fullDashboardLink = within(dashboard).getByRole("link", {
+      name: "See full dashboard (2 more)",
+    });
+    expect(fullDashboardLink).toHaveAttribute("target", "_blank");
+    expect(fullDashboardLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("/auto/dashboard/table/1"),
+    );
   });
 
   it("mentions clicked chart values and makes them available to Metabot", async () => {

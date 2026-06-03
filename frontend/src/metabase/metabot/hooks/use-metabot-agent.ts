@@ -11,6 +11,7 @@ import {
   type MetabotPromptSubmissionResult,
   type MetabotUserChatMessage,
   cancelInflightAgentRequests,
+  enqueueMessage as enqueueMessageAction,
   focusPromptInput as focusPromptInputAction,
   forkConversation as forkConversationAction,
   getActiveToolCalls,
@@ -26,7 +27,10 @@ import {
   getMetabotVisible,
   getModelOverride,
   getPrompt,
+  getQueuedMessages,
   getSelectedDatabaseId,
+  prioritizeQueuedMessage as prioritizeQueuedMessageAction,
+  removeQueuedMessage as removeQueuedMessageAction,
   resetConversation as resetConversationAction,
   retryPrompt,
   setModelOverride as setModelOverrideAction,
@@ -49,6 +53,10 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   const focusPromptInput = useCallback(
     () => dispatch(focusPromptInputAction({ agentId })),
     [dispatch, agentId],
+  );
+
+  const queuedMessages = useSelector((state) =>
+    getQueuedMessages(state, agentId),
   );
 
   const metabotRequestId = useSelector((state) =>
@@ -152,6 +160,62 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     ],
   );
 
+  // Stash a prompt the user submitted while the agent is busy. It waits in the
+  // queue and is auto-submitted by the view once the agent is free.
+  const queueMessage = useCallback(
+    (message: string) => {
+      const trimmed = message.trim();
+      if (trimmed === "") {
+        return;
+      }
+      dispatch(enqueueMessageAction({ agentId, message: trimmed }));
+      setPrompt("");
+    },
+    [dispatch, agentId, setPrompt],
+  );
+
+  const removeQueuedMessage = useCallback(
+    (messageId: string) =>
+      dispatch(removeQueuedMessageAction({ agentId, id: messageId })),
+    [dispatch, agentId],
+  );
+
+  // Move a queued message to the front so it's the next one to be sent.
+  const prioritizeQueuedMessage = useCallback(
+    (messageId: string) =>
+      dispatch(prioritizeQueuedMessageAction({ agentId, id: messageId })),
+    [dispatch, agentId],
+  );
+
+  // Pop a queued message off the queue and send it. Returns the submission
+  // promise (or undefined if it's already gone) so callers can chain off it.
+  const submitQueuedMessage = useCallback(
+    (messageId: string) => {
+      const queued = queuedMessages.find((m) => m.id === messageId);
+      if (!queued) {
+        return undefined;
+      }
+      dispatch(removeQueuedMessageAction({ agentId, id: messageId }));
+      return submitInput(queued.message, { preventOpenSidebar: true });
+    },
+    [queuedMessages, dispatch, agentId, submitInput],
+  );
+
+  // Pull a queued message back into the prompt input for editing, removing it
+  // from the queue.
+  const editQueuedMessage = useCallback(
+    (messageId: string) => {
+      const queued = queuedMessages.find((m) => m.id === messageId);
+      if (!queued) {
+        return;
+      }
+      dispatch(removeQueuedMessageAction({ agentId, id: messageId }));
+      setPrompt(queued.message);
+      focusPromptInput();
+    },
+    [queuedMessages, dispatch, agentId, setPrompt, focusPromptInput],
+  );
+
   const retryMessage = useCallback(
     async (messageId: string) => {
       const context = await getChatContext();
@@ -206,6 +270,12 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     setSelectedDatabaseId,
     resetConversation,
     submitInput,
+    queuedMessages,
+    queueMessage,
+    submitQueuedMessage,
+    editQueuedMessage,
+    removeQueuedMessage,
+    prioritizeQueuedMessage,
     retryMessage,
     forkMessage,
     cancelRequest,

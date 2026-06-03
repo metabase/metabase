@@ -1,8 +1,7 @@
 /*
- * The response area while Metabot is thinking: a field of barely-visible brand
- * dots that fades out toward the bottom. The dot pitch is shared with the
- * loader (via --mb-dot-pitch) so the logo's lit dots align to this lattice. It
- * breaks out of the centered message column to the full scroll container.
+ * The response area while Metabot is thinking. The turn-level canvas paints the
+ * dot field behind it; this wrapper only owns the loader/content positioning.
+ * The dot pitch is shared with the loader via --mb-dot-pitch.
  */
 .field {
   --mb-dot-pitch: 10px;
@@ -15,14 +14,6 @@
   --mb-dot-content-padding: var(--metabot-thinking-content-padding, 0px);
   --mb-dot-tool-inset-x: calc(var(--mb-dot-pitch) * 2);
   --mb-dot-tool-inset-y: calc(var(--mb-dot-pitch) * 2);
-  --mb-dot-content-offset: max(
-    0px,
-    calc((var(--mb-dot-field-width) - var(--mb-dot-content-max-width)) / 2)
-  );
-  --mb-dot-grid-origin-x: calc(
-    var(--mb-dot-content-offset) + var(--mb-dot-content-padding) +
-      var(--mb-dot-tool-inset-x)
-  );
 
   position: relative;
   width: var(--mb-dot-field-width);
@@ -32,26 +23,8 @@
   will-change: transform;
 }
 
-/*
- * The field box is full-bleed; the background is phase-shifted to the content
- * column so the lit "M" dots land on this faint lattice while aligning with
- * the input box.
- */
-.field::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(
-    circle at center,
-    var(--mb-color-brand) 0 1px,
-    transparent 1.5px
-  );
-  background-size: var(--mb-dot-pitch) var(--mb-dot-pitch);
-  background-position: var(--mb-dot-grid-origin-x) var(--mb-dot-tool-inset-y);
-  opacity: 0.2;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0 20%, transparent 92%);
-  mask-image: linear-gradient(to bottom, #000 0 20%, transparent 92%);
-  pointer-events: none;
+.fieldExiting {
+  overflow: hidden;
 }
 
 .content {
@@ -87,6 +60,10 @@
 }
 
 .toolCallRowEnded .toolCallText {
+  color: var(--mb-color-text-secondary);
+}
+
+.toolCallRowExiting .toolCallText {
   color: var(--mb-color-text-secondary);
 }
 

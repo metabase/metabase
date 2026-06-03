@@ -12,6 +12,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { DataStudioNavSection } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/DataStudioNavSection";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
@@ -208,9 +209,12 @@ export const setup = ({
     <Route
       path="/"
       component={() => (
-        <DataStudioLayout>
-          <div data-testid="content">{"Content"}</div>
-        </DataStudioLayout>
+        <>
+          <DataStudioNavSection onItemSelect={() => undefined} />
+          <DataStudioLayout>
+            <div data-testid="content">{"Content"}</div>
+          </DataStudioLayout>
+        </>
       )}
     />,
     {

@@ -3,6 +3,7 @@ import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { Link } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
@@ -17,9 +18,10 @@ import { trackAppNewButtonClicked } from "./analytics";
 
 type Props = {
   onItemSelect: () => void;
+  isDataStudio?: boolean;
 };
 
-export function NavbarTopRow({ onItemSelect }: Props) {
+export function NavbarTopRow({ onItemSelect, isDataStudio = false }: Props) {
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
   const { query } = useKBar();
 
@@ -53,7 +55,18 @@ export function NavbarTopRow({ onItemSelect }: Props) {
           aria-label={t`Home`}
           data-testid="main-logo-link"
         >
-          <LogoIcon height={28} />
+          <span className={S.logoBox}>
+            {isDataStudio ? (
+              <img
+                className={S.logoImage}
+                src={DataStudioLogo}
+                alt={t`Data Studio`}
+                height={28}
+              />
+            ) : (
+              <LogoIcon height={28} />
+            )}
+          </span>
         </Link>
         <AppSwitcher
           menuPosition="bottom-start"

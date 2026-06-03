@@ -27,10 +27,8 @@ const REGULAR_ITEMS = [
   "Help",
   "Sign out",
 ];
-const ADMIN_ITEMS = [...REGULAR_ITEMS, "Main app", "Admin"];
+const ADMIN_ITEMS = [...REGULAR_ITEMS, "Admin"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
-
-const WITH_DATA_STUDIO = [...ADMIN_ITEMS, "Data studio"];
 
 const adminNavItem = {
   name: `People`,
@@ -136,6 +134,11 @@ describe("ProfileLink", () => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
 
+      // Inside the app the sidebar tabs handle navigation, so the menu only
+      // exposes a standalone Admin link — no Main app / Data studio picker.
+      expect(screen.queryByText("Main app")).not.toBeInTheDocument();
+      expect(screen.queryByText("Data studio")).not.toBeInTheDocument();
+
       expect(
         await within(screen.getByTestId("app-switcher-target")).findByRole(
           "img",
@@ -146,22 +149,31 @@ describe("ProfileLink", () => {
   });
 
   describe("current app", () => {
-    it("should update it's apps section as you navigate", async () => {
+    it("highlights the admin app when on an admin route", async () => {
       await setup({ isAdmin: true });
-
-      await assertActiveApp("main");
 
       await userEvent.click(await getAdminMenuItem());
       await openProfileLink();
-      await waitFor(() => assertActiveApp("admin"));
 
-      await userEvent.click(await getDataStudioMenuItem());
-      await openProfileLink();
-      await assertActiveApp("data-studio");
+      expect(
+        await within(await getAdminMenuItem()).findByRole("img", {
+          name: /check_filled/i,
+        }),
+      ).toBeInTheDocument();
+    });
 
-      await userEvent.click(await getMainAppMenuItem());
+    it("restores Main app and Data studio links inside admin (the way back out)", async () => {
+      await setup({ isAdmin: true });
+
+      await userEvent.click(await getAdminMenuItem());
       await openProfileLink();
-      await assertActiveApp("main");
+
+      expect(
+        await screen.findByRole("menuitem", { name: /main app/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /data studio/i }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -179,16 +191,6 @@ describe("ProfileLink", () => {
       await setupHosted({ isAdmin: true });
 
       HOSTED_ITEMS.forEach((title) => {
-        expect(screen.getByText(title)).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe("with data studio", () => {
-    it("should show data studio app when apropriate", async () => {
-      await setup({ isAdmin: true });
-
-      WITH_DATA_STUDIO.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
     });
@@ -305,27 +307,5 @@ const openProfileLink = async () => {
 const openHelpSubmenu = async () =>
   await userEvent.click(await screen.findByRole("menuitem", { name: "Help" }));
 
-const assertActiveApp = async (current: "main" | "admin" | "data-studio") => {
-  expect(
-    await within(await getMainAppMenuItem()).findByRole("img", {
-      name: current === "main" ? /check_filled/i : /dashboard/i,
-    }),
-  ).toBeInTheDocument();
-  expect(
-    await within(await getAdminMenuItem()).findByRole("img", {
-      name: current === "admin" ? /check_filled/i : /io/i,
-    }),
-  ).toBeInTheDocument();
-  expect(
-    await within(await getDataStudioMenuItem()).findByRole("img", {
-      name: current === "data-studio" ? /check_filled/i : /table/i,
-    }),
-  ).toBeInTheDocument();
-};
-
-const getMainAppMenuItem = () =>
-  screen.findByRole("menuitem", { name: /main app/i });
 const getAdminMenuItem = () =>
   screen.findByRole("menuitem", { name: /admin/i });
-const getDataStudioMenuItem = () =>
-  screen.findByRole("menuitem", { name: /data studio/i });

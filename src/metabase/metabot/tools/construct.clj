@@ -363,15 +363,25 @@
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
 (defn- silent-execution-output
-  [execution-output]
+  [execution-output query-id]
   (te/lines
    "<result>"
    execution-output
+   (when query-id (format "<query-id>%s</query-id>" query-id))
    "</result>"
    "<instructions>"
    "Use these query results to answer the user. Do not create or mention a chart link for this silent inspection query."
-   "If the results are a representative sample, you may cite the sampled values — including the minimum and maximum — but use a follow-up aggregate query for any exact count, ranking, or total that requires the full result."
-   "When mentioning a specific value from the result, use the matching metabase://data-point URL from the linked result value and choose natural link text for your answer."
+   (when query-id
+     (str "This data was fetched silently and is not shown to the user. To render it — for example as a "
+          "custom visualization — pass query_id \"" query-id "\" to the rendering tool instead of "
+          "constructing or re-running the query (which would show the user an intermediate table)."))
+   (str "If the results are a representative sample, you may cite the sampled values — including the "
+        "minimum and maximum — but use a follow-up aggregate query for any exact count, ranking, or "
+        "total that requires the full result.")
+   (str "Do not use metabase://data-point links for values from this silent result; those links would "
+        "point to data the user cannot see. If a value needs to be clickable or highlighted, first render "
+        "it in a user-visible chart, query result, or custom visualization, then link the value from that "
+        "visible result.")
    "</instructions>"))
 
 ;;; ---------------------------------------- Main tool ----------------------------------------
@@ -387,10 +397,16 @@
       (if-let [executable (:query structured)]
         (let [{:keys [output structured-output]} (query-results/format-untruncated-execution-result
                                                   (query-results/execute-query executable)
-                                                  executable)]
-          (cond-> {:output (silent-execution-output output)
-                   :instructions "Use these query results to answer the user. No chart or visualization was created."}
-            structured-output (assoc :structured-output structured-output)))
+                                                  executable)
+              query-id (:query-id structured)]
+          {:output       (silent-execution-output output query-id)
+           :instructions (str "Use these query results to answer the user, but do not add "
+                              "metabase://data-point links to values from this silent result. "
+                              "No chart or visualization was created.")
+           ;; Register the query in agent state (query-id + query) so it can be rendered later —
+           ;; e.g. by create_custom_visualization — without re-querying or showing the user an
+           ;; intermediate table/chart. No :chart-id is emitted, so no chart is registered or shown.
+           :structured-output (assoc structured-output :query-id query-id :query executable)})
         {:output "Failed to execute notebook query: no executable query was constructed."}))
     (catch Exception e
       (log/error e "Failed to silently execute notebook query")
@@ -441,6 +457,7 @@
                  (str "- " instructions/distribution-guidance)
                  "- When <query_execution> is marked sampled=\"true\", it is a representative sample of the chart's own rows (minimum, maximum, outliers, and evenly spaced trend points). Every sampled row is a real point on the user's chart, so you may cite the sampled values — including the minimum and maximum — and link them"
                  "- Only run execute_notebook_query_silently when you need an exact count, ranking, or aggregate that the sample cannot give. When you do, do it without asking permission first and do not produce a final answer until it returns"
+                 "- Use silent follow-up results as plain-text evidence only. Do not use metabase://data-point links for values that only came from execute_notebook_query_silently because those results are not visible to the user"
                  "- When mentioning a specific value from the chart, use the matching metabase://data-point URL from the linked result value, and choose natural link text for your answer"
                  (str "- Always provide a direct link using: `" link "`")
                  "- If creating multiple charts, present all chart links"))

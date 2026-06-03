@@ -5,7 +5,9 @@ import { t } from "ttag";
 import type { MetabotToolCall } from "metabase/metabot/state";
 import { Box, Flex, Text } from "metabase/ui";
 
+import { REVEAL_TIMELINES } from "./MetabotDotField/reveal-timeline";
 import {
+  METABOT_EMPTY_MASK,
   METABOT_LOGO_MASK,
   METABOT_TOOL_MASKS,
   MetabotLoader,
@@ -36,6 +38,7 @@ const getToolMask = (toolName: string) =>
   TOOL_MASK_BY_NAME[toolName] ?? METABOT_TOOL_MASKS.tool;
 
 const POSITION_ANIMATION_MS = 260;
+export const METABOT_THINKING_EXIT_MS = REVEAL_TIMELINES.text.duration;
 
 type LayoutPosition = {
   left: number;
@@ -72,10 +75,6 @@ const useAnimatedPosition = () => {
     const deltaX = previousPosition.left - nextPosition.left;
     const deltaY = previousPosition.top - nextPosition.top;
     if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) {
-      return;
-    }
-
-    if (isAnimatingRef.current) {
       return;
     }
 
@@ -169,11 +168,13 @@ const TypewriterText = ({
 const ToolCallRow = ({
   toolCall,
   dataTestId,
+  isExiting,
 }: {
   toolCall: MetabotToolCall;
   dataTestId: string;
+  isExiting: boolean;
 }) => {
-  const label = toolCall.message ?? t`Thinking...`;
+  const label = isExiting ? "" : (toolCall.message ?? t`Thinking...`);
 
   return (
     <Flex
@@ -181,14 +182,17 @@ const ToolCallRow = ({
       className={cx(
         S.toolCallRow,
         toolCall.status === "ended" && S.toolCallRowEnded,
+        isExiting && S.toolCallRowExiting,
       )}
       data-tool-call-status={toolCall.status}
     >
       <MetabotLoader
         aria-label={label}
+        aria-hidden={isExiting || undefined}
         className={S.toolCallIcon}
         data-testid={dataTestId}
-        mask={getToolMask(toolCall.name)}
+        data-metabot-loader-state={isExiting ? "exiting" : "active"}
+        mask={isExiting ? METABOT_EMPTY_MASK : getToolMask(toolCall.name)}
       />
       <TypewriterText className={S.toolCallText} text={label} />
     </Flex>
@@ -197,8 +201,12 @@ const ToolCallRow = ({
 
 export const MetabotThinking = ({
   toolCalls,
+  isExiting = false,
+  onExitComplete,
 }: {
   toolCalls: MetabotToolCall[];
+  isExiting?: boolean;
+  onExitComplete?: () => void;
 }) => {
   const latestToolCall = toolCalls[toolCalls.length - 1] ?? {
     id: "thinking",
@@ -206,14 +214,44 @@ export const MetabotThinking = ({
     message: undefined,
     status: "started" as const,
   };
+  const previousToolCallRef = useRef<MetabotToolCall>(latestToolCall);
+  if (!isExiting) {
+    previousToolCallRef.current = latestToolCall;
+  }
+  const visibleToolCall = isExiting
+    ? previousToolCallRef.current
+    : latestToolCall;
   const fieldRef = useAnimatedPosition();
 
+  useEffect(() => {
+    if (!isExiting) {
+      return;
+    }
+    const prefersReducedMotion =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+    if (prefersReducedMotion) {
+      onExitComplete?.();
+      return;
+    }
+    const timeout = window.setTimeout(
+      () => onExitComplete?.(),
+      METABOT_THINKING_EXIT_MS,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [isExiting, onExitComplete]);
+
   return (
-    <Box ref={fieldRef} className={S.field} mt="md">
+    <Box
+      ref={fieldRef}
+      className={cx(S.field, isExiting && S.fieldExiting)}
+      mt="xl"
+      data-metabot-thinking-state={isExiting ? "exiting" : "active"}
+    >
       <Box className={S.content}>
         <ToolCallRow
-          toolCall={latestToolCall}
+          toolCall={visibleToolCall}
           dataTestId="metabot-response-loader"
+          isExiting={isExiting}
         />
       </Box>
     </Box>

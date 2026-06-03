@@ -91,6 +91,7 @@
                                    "- " instructions/distribution-guidance "\n"
                                    "- Only mention maxima, minima, rankings, or counts when <query_execution> is not truncated, or after running a follow-up query that computes them against the full result\n"
                                    "- If <query_execution> says results were omitted and the user needs an answer from the data, your next step MUST be a follow-up tool call without asking permission first. For notebook queries, use execute_notebook_query_silently with the needed follow-up program so no chart is created. Do not produce a final answer until it returns\n"
+                                   "- Use silent follow-up results as plain-text evidence only. Do not use metabase://data-point links for values that only came from execute_notebook_query_silently because those results are not visible to the user\n"
                                    "- When mentioning a specific value from the chart, use the matching metabase://data-point URL from the linked result value, and choose natural link text for your answer\n"
                                    "- Always provide a direct link using: [" chart-name "]("
                                    (format-chart-link (:chart_id new-chart-data))

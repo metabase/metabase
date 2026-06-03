@@ -442,7 +442,19 @@ const datumMatchesClickedDimensions = (
   clicked: ClickObject,
   seriesModel: SeriesModel,
 ) => {
-  const dimensions = clicked.dimensions ?? [];
+  const clickedColumnAsDimension =
+    clicked.column != null &&
+    clicked.value !== undefined &&
+    !isSameColumn(clicked.column, seriesModel.column) &&
+    !(clicked.dimensions ?? []).some((dimension) =>
+      isSameColumn(dimension.column, clicked.column),
+    )
+      ? [{ column: clicked.column, value: clicked.value }]
+      : [];
+  const dimensions = [
+    ...clickedColumnAsDimension,
+    ...(clicked.dimensions ?? []),
+  ];
   // In a pivoted breakout dataset there is one data key per breakout value for the
   // same column (e.g. CATEGORY:Gadget, CATEGORY:Widget, ...), so resolving the
   // breakout dimension here would compare against an arbitrary series' value. The
@@ -480,15 +492,52 @@ const datumMatchesClickedDimensions = (
   return dimensions.length === 0 || matchedDimensionsCount > 0;
 };
 
+const clickedColumnMatchesRenderedSeries = (
+  chartModel: BaseCartesianChartModel,
+  clicked: ClickObject,
+) =>
+  clicked.column != null &&
+  chartModel.seriesModels.some(
+    (seriesModel) =>
+      seriesModel.visible && isSameColumn(seriesModel.column, clicked.column),
+  );
+
+const getClickedValueForColumn = (
+  clicked: ClickObject,
+  column: DatasetColumn | null | undefined,
+) => {
+  if (!column) {
+    return undefined;
+  }
+
+  if (clicked.column != null && isSameColumn(clicked.column, column)) {
+    return clicked.value;
+  }
+
+  const originColumnIndex = clicked.origin?.cols.findIndex((originColumn) =>
+    isSameColumn(originColumn, column),
+  );
+  if (originColumnIndex != null && originColumnIndex >= 0) {
+    return clicked.origin?.row[originColumnIndex];
+  }
+
+  return clicked.data?.find(({ col }) => isSameColumn(col, column))?.value;
+};
+
 const seriesMatchesClicked = (
   seriesModel: SeriesModel,
   clicked: ClickObject,
+  clickedColumnIsRenderedSeries: boolean,
 ) => {
   if (clicked.cardId != null && seriesModel.cardId !== clicked.cardId) {
     return false;
   }
 
-  if (clicked.column && !isSameColumn(seriesModel.column, clicked.column)) {
+  if (
+    clickedColumnIsRenderedSeries &&
+    clicked.column != null &&
+    !isSameColumn(seriesModel.column, clicked.column)
+  ) {
     return false;
   }
 
@@ -496,11 +545,11 @@ const seriesMatchesClicked = (
     const breakoutDimension = clicked.dimensions?.find((dimension) =>
       isSameColumn(dimension.column, seriesModel.breakoutColumn),
     );
+    const breakoutValue =
+      breakoutDimension?.value ??
+      getClickedValueForColumn(clicked, seriesModel.breakoutColumn);
 
-    return isSameClickValue(
-      breakoutDimension?.value,
-      seriesModel.breakoutValue,
-    );
+    return isSameClickValue(breakoutValue, seriesModel.breakoutValue);
   }
 
   return true;
@@ -514,15 +563,24 @@ export const getClickedDataPoint = (
     return null;
   }
 
+  const clickedColumnIsRenderedSeries = clickedColumnMatchesRenderedSeries(
+    chartModel,
+    clicked,
+  );
+
   for (const [seriesIndex, seriesModel] of chartModel.seriesModels.entries()) {
-    if (!seriesModel.visible || !seriesMatchesClicked(seriesModel, clicked)) {
+    if (
+      !seriesModel.visible ||
+      !seriesMatchesClicked(seriesModel, clicked, clickedColumnIsRenderedSeries)
+    ) {
       continue;
     }
 
+    const clickedValue = getClickedValueForColumn(clicked, seriesModel.column);
     const datumIndex = chartModel.dataset.findIndex((datum) => {
-      if (clicked.value !== undefined) {
+      if (clickedValue !== undefined) {
         const datumValue = datum[seriesModel.dataKey];
-        if (!isSameClickValue(datumValue, clicked.value)) {
+        if (!isSameClickValue(datumValue, clickedValue)) {
           return false;
         }
       }

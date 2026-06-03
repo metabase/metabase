@@ -80,7 +80,9 @@
                        :state      {}
                        :profile-id :sql
                        :context    {}}))
-            (is (= {:tool-choice "required"} @captured)))))
+            (is (= {:max-tokens  16384
+                    :tool-choice "required"}
+                   @captured)))))
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]

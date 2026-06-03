@@ -226,6 +226,15 @@
                               (update links-key links/invert-slack-links registry-map)))))
           parts)))
 
+(def ^:private default-max-tokens
+  "Per-turn output-token ceiling for agent LLM calls. The provider default
+  (Anthropic's 4096) truncates large tool calls — most painfully a custom-viz
+  `factory_js`, where a truncated argument stream becomes invalid JSON, falls back
+  to `_raw_arguments`, fails schema validation, and sends the agent into a
+  re-emit loop. The agent's default model (Claude Sonnet 4.6) comfortably allows
+  this; profiles may override with their own `:max-tokens`."
+  16384)
+
 (defn- call-llm
   "Call the LLM and stream processed parts.
 
@@ -250,7 +259,7 @@
                               (-> (messages/build-message-history @enriched-context memory)
                                   (invert-links @link-registry-atom)))]
             [system-msg input-parts]))
-        llm-opts     (cond-> {}
+        llm-opts     (cond-> {:max-tokens (:max-tokens profile default-max-tokens)}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
       (debug-log! {:iteration iteration

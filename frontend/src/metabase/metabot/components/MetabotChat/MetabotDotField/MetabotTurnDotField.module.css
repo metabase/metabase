@@ -1,0 +1,23 @@
+/*
+ * One dot field for the whole agent turn, painted behind the streamed content.
+ * Full-bleed (breaks out of the centered message column to the scroll-container
+ * width via the container query unit) and sat behind the messages so text/charts
+ * render on top.
+ */
+.canvas {
+  --bleed: var(--metabot-thinking-field-bleed, 0px);
+
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 50cqi - var(--bleed));
+  width: calc(100cqi + var(--bleed) * 2);
+  z-index: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas {
+    display: none;
+  }
+}

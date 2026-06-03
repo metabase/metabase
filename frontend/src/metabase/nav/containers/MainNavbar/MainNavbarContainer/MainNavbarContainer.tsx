@@ -32,8 +32,6 @@ import {
 import * as Urls from "metabase/urls";
 import type { Collection, User } from "metabase-types/api";
 
-import { NavbarErrorView } from "../NavbarErrorView";
-import { NavbarLoadingView } from "../NavbarLoadingView";
 import type { MainNavbarProps, SelectedItem } from "../types";
 
 import { MainNavbarView } from "./MainNavbarView";
@@ -196,20 +194,15 @@ function MainNavbarContainer({
     return null;
   }, [modal, closeModal, onChangeLocation]);
 
-  if (error || databasesError) {
-    return <NavbarErrorView />;
-  }
-
-  if (isLoading || isLoadingDatabases) {
-    return <NavbarLoadingView />;
-  }
-
   return (
     <>
       <MainNavbarView
         {...props}
         bookmarks={bookmarks}
         isOpen={isOpen}
+        pathname={location.pathname}
+        isLoading={isLoading || isLoadingDatabases}
+        hasError={Boolean(error || databasesError)}
         collections={collectionTree}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}

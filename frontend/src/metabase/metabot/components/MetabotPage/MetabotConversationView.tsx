@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { isRejected } from "@reduxjs/toolkit";
 import cx from "classnames";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -14,6 +14,7 @@ import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProv
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotDatabaseSelect } from "metabase/metabot/components/MetabotChat/MetabotDatabaseSelect";
+import { MetabotTurnDotField } from "metabase/metabot/components/MetabotChat/MetabotDotField/MetabotTurnDotField";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
 import { getDataPointTargetsFromState } from "metabase/metabot/components/MetabotChat/data-point-mentions";
@@ -30,8 +31,10 @@ import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
   Box,
+  Button,
   Flex,
   Icon,
+  Menu,
   Paper,
   Stack,
   Text,
@@ -96,6 +99,12 @@ export const MetabotConversationView = ({
     prompt,
     setPrompt,
     submitInput,
+    queueMessage,
+    queuedMessages,
+    submitQueuedMessage,
+    editQueuedMessage,
+    removeQueuedMessage,
+    prioritizeQueuedMessage,
     retryMessage,
     forkMessage,
     cancelRequest,
@@ -107,7 +116,18 @@ export const MetabotConversationView = ({
   } = useMetabotAgent(agentId);
 
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
+  // Guards against submitting more than one queued message at a time. This must
+  // be a ref (not state): submitting a message dispatches `removeQueuedMessage`,
+  // which — via react-redux's useSyncExternalStore — forces a *synchronous*
+  // re-render before a `setState` guard would have committed. A ref flips
+  // synchronously, so that re-render's effect run sees the guard already set and
+  // bails instead of submitting (and thereby wiping) the rest of the queue.
+  const isSubmittingQueuedMessageRef = useRef(false);
+  // Bumped after each queued submission settles to reliably re-run the drain
+  // effect — clearing the ref alone wouldn't trigger a re-render.
+  const [queueDrainTick, setQueueDrainTick] = useState(0);
   const [hasError, setHasError] = useState(false);
+  const [isThinkingMounted, setIsThinkingMounted] = useState(isDoingScience);
   const [title] = useState(getTitleText);
   const [
     isAiProviderConfigurationModalOpen,
@@ -119,13 +139,31 @@ export const MetabotConversationView = ({
 
   const hasMessages = messages.length > 0;
   const showConversation =
-    hasMessages || isDoingScience || alwaysShowConversation;
+    hasMessages ||
+    isDoingScience ||
+    isThinkingMounted ||
+    alwaysShowConversation;
   const showHeader = hasMessages || alwaysShowConversation;
   const isFading = isNewConversation && isDoingScience;
 
   const { scrollContainerRef, fillerRef } = useScrollManager(showConversation);
   const conversationContainerRef = useRef<HTMLDivElement>(null);
   const bottomInputRef = useRef<HTMLDivElement>(null);
+
+  useEffect(
+    function showThinkingRow() {
+      if (isDoingScience) {
+        setIsThinkingMounted(true);
+      }
+    },
+    [isDoingScience],
+  );
+
+  const handleThinkingExitComplete = useCallback(() => {
+    if (!isDoingScience) {
+      setIsThinkingMounted(false);
+    }
+  }, [isDoingScience]);
 
   useEffect(
     function measureBottomInput() {
@@ -163,12 +201,47 @@ export const MetabotConversationView = ({
   });
   const suggestedPrompts = suggestedPromptsReq.currentData?.prompts;
 
+  useEffect(
+    function sendNextQueuedMessage() {
+      if (
+        isDoingScience ||
+        isSubmittingQueuedMessageRef.current ||
+        queuedMessages.length === 0
+      ) {
+        return;
+      }
+
+      // Send queued messages strictly one at a time: take the head, and don't
+      // touch the rest until this one's agent turn has fully settled. The ref is
+      // set synchronously so any same-tick re-render bails here rather than
+      // submitting the next message while this one is still in flight (which
+      // would drop it — submitInput no-ops while the agent is busy).
+      isSubmittingQueuedMessageRef.current = true;
+      const settle = () => {
+        isSubmittingQueuedMessageRef.current = false;
+        setQueueDrainTick((tick) => tick + 1);
+      };
+      const submission = submitQueuedMessage(queuedMessages[0].id);
+      if (!submission) {
+        settle();
+        return;
+      }
+      submission.finally(settle);
+    },
+    [isDoingScience, queueDrainTick, queuedMessages, submitQueuedMessage],
+  );
+
   const handleSubmitPrompt = async (text: string) => {
     setHasError(false);
 
-    const action = await submitInput(text, { preventOpenSidebar: true });
+    if (isDoingScience) {
+      queueMessage(text);
+      return;
+    }
 
+    const submission = submitInput(text, { preventOpenSidebar: true });
     onAfterSubmit?.();
+    const action = await submission;
 
     if (isRejected(action)) {
       setHasError(true);
@@ -185,16 +258,21 @@ export const MetabotConversationView = ({
 
   const handleEditorSubmit = () => handleSubmitPrompt(prompt);
 
-  const inputDisabled = prompt.trim().length === 0 || isDoingScience;
+  const handleSendQueuedMessageNow = (messageId: string) => {
+    if (isDoingScience) {
+      prioritizeQueuedMessage(messageId);
+      cancelRequest();
+      return;
+    }
+
+    submitQueuedMessage(messageId);
+  };
+
+  const inputDisabled = prompt.trim().length === 0;
 
   const promptInput = useMemo(
     () => (
-      <Paper
-        className={cx(
-          S.inputContainer,
-          showConversation && isDoingScience && S.inputContainerLoading,
-        )}
-      >
+      <Paper className={S.inputContainer}>
         <Box className={S.editorWrapper}>
           {!canUseNlq ? (
             <AIProviderConfigurationNotice
@@ -208,7 +286,7 @@ export const MetabotConversationView = ({
               ref={promptInputRef}
               value={prompt}
               autoFocus
-              disabled={isDoingScience}
+              disabled={false}
               placeholder={t`Ask about your data, and type @ to mention an item`}
               onChange={setPrompt}
               onSubmit={handleEditorSubmit}
@@ -224,7 +302,6 @@ export const MetabotConversationView = ({
             <MetabotDatabaseSelect
               value={selectedDatabaseId}
               onChange={setSelectedDatabaseId}
-              disabled={isDoingScience}
             />
           </Box>
           {hasError ? (
@@ -234,23 +311,34 @@ export const MetabotConversationView = ({
           ) : null}
           <Flex align="center" gap="sm">
             <MetabotModelSelector
-              disabled={isDoingScience}
               dropdownPosition="top"
               modelOverride={modelOverride}
               onModelOverrideChange={setModelOverride}
             />
-            <ActionIcon
-              className={S.sendButton}
-              variant="filled"
-              size="2rem"
-              disabled={!canUseNlq || inputDisabled}
-              loading={isDoingScience}
-              onClick={handleEditorSubmit}
-              data-testid="metabot-send-message"
-              aria-label={t`Send`}
-            >
-              <Icon name="arrow_up" />
-            </ActionIcon>
+            {isDoingScience && inputDisabled ? (
+              <ActionIcon
+                className={S.stopButton}
+                variant="outline"
+                size="2rem"
+                onClick={cancelRequest}
+                data-testid="metabot-stop-response"
+                aria-label={t`Stop response`}
+              >
+                <Icon name="stop" />
+              </ActionIcon>
+            ) : (
+              <ActionIcon
+                className={S.sendButton}
+                variant="filled"
+                size="2rem"
+                disabled={!canUseNlq || inputDisabled}
+                onClick={handleEditorSubmit}
+                data-testid="metabot-send-message"
+                aria-label={t`Send`}
+              >
+                <Icon name="arrow_up" />
+              </ActionIcon>
+            )}
           </Flex>
         </Box>
       </Paper>
@@ -269,9 +357,77 @@ export const MetabotConversationView = ({
       setModelOverride,
       setPrompt,
       setSelectedDatabaseId,
-      showConversation,
     ],
   );
+
+  const queuedMessagesNode =
+    queuedMessages.length > 0 ? (
+      <Box className={S.queuedMessages} data-testid="metabot-queued-messages">
+        {queuedMessages.map((queuedMessage) => (
+          <Flex
+            key={queuedMessage.id}
+            className={S.queuedMessage}
+            align="center"
+            gap="sm"
+            data-testid="metabot-queued-message"
+          >
+            <Icon
+              name="clock"
+              size={14}
+              c="text-secondary"
+              className={S.queuedMessageIcon}
+            />
+            <Text
+              fz="sm"
+              c="text-primary"
+              truncate
+              className={S.queuedMessageText}
+            >
+              {queuedMessage.message}
+            </Text>
+            <Button
+              className={S.queuedMessageSteer}
+              size="compact-xs"
+              variant="subtle"
+              color="text-secondary"
+              leftSection={<Icon name="enter_or_return" size={12} />}
+              onClick={() => handleSendQueuedMessageNow(queuedMessage.id)}
+            >
+              {isDoingScience ? t`Steer` : t`Send`}
+            </Button>
+            <Tooltip label={t`Remove`} position="top">
+              <ActionIcon
+                size="sm"
+                c="text-secondary"
+                aria-label={t`Remove queued message`}
+                onClick={() => removeQueuedMessage(queuedMessage.id)}
+              >
+                <Icon name="trash" size={14} />
+              </ActionIcon>
+            </Tooltip>
+            <Menu position="top-end">
+              <Menu.Target>
+                <ActionIcon
+                  size="sm"
+                  c="text-secondary"
+                  aria-label={t`More actions for queued message`}
+                >
+                  <Icon name="ellipsis" size={14} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<Icon name="pencil" />}
+                  onClick={() => editQueuedMessage(queuedMessage.id)}
+                >
+                  {t`Edit`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Flex>
+        ))}
+      </Box>
+    ) : null;
 
   return (
     <Box className={S.page}>
@@ -331,6 +487,7 @@ export const MetabotConversationView = ({
             data-testid="metabot-chat-messages"
           >
             <Box className={S.messages}>
+              <MetabotTurnDotField className={S.turnDotField} />
               <Messages
                 agentId={agentId}
                 messages={messages}
@@ -340,8 +497,12 @@ export const MetabotConversationView = ({
                 debug={debugMode}
                 dataPointTargets={getDataPointTargetsFromState(requestState)}
               />
-              {isDoingScience && (
-                <MetabotThinking toolCalls={activeToolCalls} />
+              {isThinkingMounted && (
+                <MetabotThinking
+                  toolCalls={activeToolCalls}
+                  isExiting={!isDoingScience}
+                  onExitComplete={handleThinkingExitComplete}
+                />
               )}
               <div
                 ref={fillerRef}
@@ -356,6 +517,7 @@ export const MetabotConversationView = ({
             </Box>
           </Box>
           <Box ref={bottomInputRef} className={S.bottomInputContainer}>
+            {queuedMessagesNode}
             {promptInput}
             <Text
               fz="sm"
@@ -377,6 +539,7 @@ export const MetabotConversationView = ({
           </Box>
 
           <Stack gap="lg" className={S.inputWrapper}>
+            {queuedMessagesNode}
             {promptInput}
 
             <Box
@@ -391,7 +554,6 @@ export const MetabotConversationView = ({
                         key={index}
                         className={S.promptSuggestion}
                         onClick={() => handleSubmitPrompt(suggestedPrompt)}
-                        disabled={isDoingScience}
                       >
                         <Text>{suggestedPrompt}</Text>
                       </UnstyledButton>

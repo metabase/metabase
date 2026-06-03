@@ -157,6 +157,30 @@
   }
 }
 
+.embeddedAutomagicDashboardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mantine-spacing-md);
+}
+
+.embeddedAutomagicDashboardGrid .navigateToQuestionVisualization {
+  height: 14rem;
+}
+
+@media screen and (max-width: 40em) {
+  .embeddedAutomagicDashboardGrid .navigateToQuestionVisualization {
+    height: 12rem;
+  }
+}
+
+/* The messages container is a `container-type: inline-size` context, so this
+ * lays the dashboard's charts out two-up once the chat is wide enough. */
+@container (min-width: 32rem) {
+  .embeddedAutomagicDashboardGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .agentPartActions {
   opacity: 0;
   transition: opacity 150ms linear;

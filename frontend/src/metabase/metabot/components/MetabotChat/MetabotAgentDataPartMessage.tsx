@@ -4,12 +4,19 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import type { AdhocVizValue } from "metabase/api/ai-streaming/schemas";
+import { useGetXrayDashboardQuery } from "metabase/api";
+import type {
+  AdhocVizValue,
+  AutomagicDashboardValue,
+} from "metabase/api/ai-streaming/schemas";
 import { AdHocQuestionLoader } from "metabase/common/components/AdHocQuestionLoader";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
-import { deserializeCardFromQuery } from "metabase/common/utils/card";
+import {
+  deserializeCardFromQuery,
+  serializeCardForUrl,
+} from "metabase/common/utils/card";
 import {
   useMetabotContext,
   useRegisterMetabotContextProvider,
@@ -37,9 +44,11 @@ import {
   ActionIcon,
   Badge,
   Box,
+  Button,
   Collapse,
   Flex,
   Icon,
+  Loader,
   Stack,
   Text,
   Tooltip,
@@ -51,6 +60,8 @@ import type {
 import type { ClickObject } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  Card,
+  DashboardCard,
   Dataset,
   MetabotAdhocQueryInfo,
   MetabotCodeEdit,
@@ -143,6 +154,14 @@ export const AgentDataPartMessage = ({
     .with({ part: { type: "static_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
     )
+    .with({ part: { type: "automagic_dashboard" } }, ({ part }) => (
+      <EmbeddedAutomagicDashboard
+        agentId={agentId}
+        value={part.value}
+        debug={debug}
+        dataPointTargets={dataPointTargets}
+      />
+    ))
     .exhaustive((msg: unknown) => {
       console.warn("AgentDataPartMessage received an unexpected value:", msg);
       return null;
@@ -171,6 +190,103 @@ const EmbeddedAdhocViz = ({
         dataPointTargets={dataPointTargets}
         messageId={messageId}
       />
+    </Stack>
+  );
+};
+
+// Cap how many of an auto-generated dashboard's charts we render inline. Each
+// one runs its own query, so we show a manageable prefix and link to the full
+// dashboard for the rest.
+const MAX_AUTOMAGIC_DASHBOARD_CARDS = 6;
+
+const hasRunnableCard = (
+  dc: DashboardCard,
+): dc is DashboardCard & { card: Card } =>
+  dc.card != null &&
+  "dataset_query" in dc.card &&
+  dc.card.dataset_query != null;
+
+// Renders an auto-generated (X-ray) dashboard inline as a stack of its charts.
+// We fetch the transient dashboard, then reuse the same self-contained
+// `EmbeddedQuestionCard` used for ad-hoc charts for each of its cards. This
+// avoids mounting the dashboard engine (which owns a single global Redux slice
+// and can't coexist with another open dashboard or a second inline embed).
+const EmbeddedAutomagicDashboard = ({
+  agentId,
+  value,
+  debug,
+  dataPointTargets,
+}: {
+  agentId: MetabotAgentId;
+  value: AutomagicDashboardValue;
+  debug: boolean;
+  dataPointTargets?: Record<string, DataPointMentionTarget | undefined>;
+}) => {
+  const subPath = useMemo(
+    () => value.url.replace(/^\/auto\/dashboard\//, "").replace(/^\/+/, ""),
+    [value.url],
+  );
+  const {
+    data: dashboard,
+    isLoading,
+    error,
+  } = useGetXrayDashboardQuery(subPath);
+
+  const questionCards = useMemo(
+    () => (dashboard?.dashcards ?? []).filter(hasRunnableCard),
+    [dashboard],
+  );
+  const shownCards = questionCards.slice(0, MAX_AUTOMAGIC_DASHBOARD_CARDS);
+  const hiddenCount = questionCards.length - shownCards.length;
+
+  return (
+    <Stack gap="sm" data-testid="metabot-automagic-dashboard">
+      {debug && <DataPartJsonCard type="automagic_dashboard" value={value} />}
+      {isLoading ? (
+        <Flex h="6rem" align="center" justify="center">
+          <Loader size="sm" />
+        </Flex>
+      ) : error || !dashboard ? (
+        <Flex h="6rem" align="center" justify="center">
+          <Text c="text-secondary" size="sm">
+            {t`Could not load the generated dashboard.`}
+          </Text>
+        </Flex>
+      ) : shownCards.length === 0 ? (
+        <Flex h="6rem" align="center" justify="center">
+          <Text c="text-secondary" size="sm">
+            {t`This dashboard has no charts to show.`}
+          </Text>
+        </Flex>
+      ) : (
+        <>
+          <Box className={Styles.embeddedAutomagicDashboardGrid}>
+            {shownCards.map((dc) => (
+              <EmbeddedQuestionCard
+                key={dc.id}
+                agentId={agentId}
+                path={`/question#${serializeCardForUrl(dc.card)}`}
+                title={dc.card.name}
+                dataPointTargets={dataPointTargets}
+              />
+            ))}
+          </Box>
+          <Flex justify="center">
+            <Button
+              component={ForwardRefLink}
+              to={value.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="default"
+              size="compact-sm"
+            >
+              {hiddenCount > 0
+                ? t`See full dashboard (${hiddenCount} more)`
+                : t`See full dashboard`}
+            </Button>
+          </Flex>
+        </>
+      )}
     </Stack>
   );
 };
@@ -241,6 +357,11 @@ const EmbeddedQuestionCard = ({
   const cardRef = useRef<HTMLDivElement>(null);
   const questionRef = useRef<Question | null>(null);
   const resultRef = useRef<Dataset | null>(null);
+  const loadedVisualizationRef = useRef<{
+    question: Question;
+    result: Dataset;
+    rawSeries: unknown;
+  } | null>(null);
   const [pendingRenderFeedback, setPendingRenderFeedback] = useState<
     string | null
   >(null);
@@ -738,21 +859,38 @@ const EmbeddedQuestionCard = ({
             return (
               <QuestionResultLoader question={question} collectionPreview>
                 {({ result, rawSeries, loading: isLoadingResult, error }) => {
-                  questionRef.current = question;
-                  resultRef.current = result;
+                  if (result) {
+                    loadedVisualizationRef.current = {
+                      question,
+                      result,
+                      rawSeries,
+                    };
+                  }
+                  const loadedVisualization = loadedVisualizationRef.current;
+                  const visualizationQuestion =
+                    loadedVisualization?.question ?? question;
+                  const visualizationResult =
+                    loadedVisualization?.result ?? result;
+                  const visualizationRawSeries =
+                    loadedVisualization?.rawSeries ?? rawSeries;
+                  const isVisualizationRunning =
+                    !loadedVisualization && (isLoadingResult || result == null);
+
+                  questionRef.current = visualizationQuestion;
+                  resultRef.current = visualizationResult;
 
                   return (
                     <Box className={Styles.navigateToQuestionVisualization}>
-                      {error ? (
+                      {error && !loadedVisualization ? (
                         <NavigateToQuestionError />
                       ) : (
                         <MemoizedQueryVisualization
-                          question={question}
-                          result={result}
-                          rawSeries={rawSeries}
+                          question={visualizationQuestion}
+                          result={visualizationResult}
+                          rawSeries={visualizationRawSeries}
                           queryBuilderMode="view"
                           isRunnable={false}
-                          isRunning={isLoadingResult || result == null}
+                          isRunning={isVisualizationRunning}
                           isDirty={false}
                           isResultDirty={false}
                           maxTableRows={10}

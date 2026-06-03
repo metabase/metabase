@@ -3,10 +3,14 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as custom-viz.cache]
+   [metabase-enterprise.custom-viz-plugin.js-validate :as js-validate]
+   [metabase-enterprise.custom-viz-plugin.manifest :as custom-viz.manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.tmpl :as te]
@@ -47,6 +51,13 @@
 (defn- plugin-identifier
   [identifier display-name]
   (slugify (or (non-blank identifier) display-name)))
+
+(defn- existing-identifier
+  [identifier]
+  (some-> identifier
+          non-blank
+          (str/replace #"(?i)^custom:" "")
+          non-blank))
 
 (defn- stringify-map-keys
   [value]
@@ -104,9 +115,10 @@
                 :dependencies {"@metabase/custom-viz" "^1.0.0"}}))
 
 (defn- manifest-json
-  [identifier]
-  (json/encode {:name identifier
-                :metabase {:version ""}}))
+  [identifier description]
+  (json/encode (cond-> {:name identifier
+                        :metabase {:version ""}}
+                 (non-blank description) (assoc :description description))))
 
 (defn- readme
   [{:keys [display-name description]}]
@@ -121,7 +133,7 @@
 (defn- repo-files
   [{:keys [identifier display-name description factory-js]}]
   [["package.json" (package-json identifier)]
-   ["metabase-plugin.json" (manifest-json identifier)]
+   ["metabase-plugin.json" (manifest-json identifier description)]
    ["README.md" (readme {:display-name display-name :description description})]
    ["src/index.js" (source-index-js factory-js)]
    ["dist/index.js" (plugin-bundle-js factory-js)]])
@@ -196,7 +208,7 @@
            :manifest     manifest}
     dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
 
-(defn- visualization-settings
+(defn- custom-viz-visualization-settings
   [settings plugin]
   (assoc (stringify-map-keys (or settings {}))
          "custom_viz.plugin" (stringify-map-keys (plugin-runtime-info plugin))))
@@ -210,6 +222,113 @@
                        :query-id query-id
                        :available-queries (keys (shared/current-queries-state))}))))
 
+;;; ------------------------------------------------ Visualization catalog ------------------------------------------------
+
+(defn- dev-only-plugin?
+  [plugin]
+  (nil? (:bundle_hash plugin)))
+
+(defn- visible-plugin?
+  [dev-mode? plugin]
+  (and (= :active (:status plugin))
+       (:enabled plugin)
+       (custom-viz.manifest/compatible? plugin)
+       (not (and (not dev-mode?) (dev-only-plugin? plugin)))))
+
+(defn- plugin-description
+  [{:keys [manifest]}]
+  (or (non-blank (:description manifest))
+      "No description provided."))
+
+(defn- plugin->visualization-type
+  [{:keys [identifier display_name] :as plugin}]
+  {:source      :custom
+   :identifier  identifier
+   :name        display_name
+   :description (plugin-description plugin)})
+
+(defn- active-custom-visualization-types
+  []
+  (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)]
+    (->> (custom-viz-plugin/select-non-blob :status :active
+                                            :enabled true
+                                            {:order-by [[:display_name :asc]]})
+         (filter (partial visible-plugin? dev-mode?))
+         (mapv plugin->visualization-type))))
+
+(defenterprise-schema list-visualization-types-tool :- :map
+  "List built-in and reusable custom visualization types available to the agent."
+  :feature :none
+  [_args :- [:map {:closed true}]]
+  (let [built-in (tools.custom-viz/built-in-types)
+        custom   (active-custom-visualization-types)]
+    {:output (tools.custom-viz/format-visualization-types-output {:built-in built-in :custom custom})
+     :structured-output {:built-in-visualizations built-in
+                         :custom-visualizations   custom}}))
+
+;;; ------------------------------------------------ Validation ------------------------------------------------
+
+(defn- col->sample-meta
+  "Convert a Lib result column to the custom-viz `Column` shape a plugin sees in
+   `props.series[0].data.cols`."
+  [col]
+  {:name           (:name col)
+   :display_name   (or (:display-name col) (:name col))
+   :base_type      (some-> (:base-type col) u/qualified-name)
+   :effective_type (some-> (:effective-type col) u/qualified-name)
+   :semantic_type  (some-> (:semantic-type col) u/qualified-name)
+   :source         "fields"})
+
+(defn- sample-value
+  "A type-appropriate placeholder value for `col` in sample row `i`, so a plugin's
+   `checkRenderable`/`mount` runs against realistically-typed data."
+  [col i]
+  (let [t    (str (:base_type col) "|" (:semantic_type col) "|" (:effective_type col))
+        has? (fn [re] (boolean (re-find re t)))]
+    (cond
+      (has? #"Latitude")                   (+ 37.5 (* i 0.4))
+      (has? #"Longitude")                  (- -122.0 (* i 0.4))
+      (has? #"Integer|BigInteger")         (* (inc i) 10)
+      (has? #"Float|Decimal|Number")       (+ 12.5 (* i 7.25))
+      (has? #"Boolean")                    (even? i)
+      (has? #"Date|Time|Temporal|Instant") (format "2024-%02d-15T08:30:00Z" (inc (mod i 12)))
+      :else                                (str (or (:display_name col) "Item") " " (inc i)))))
+
+(defn- query->sample
+  "Build a `{:series :settings}` dataset for validation from the real query's
+   result columns (resolved via Lib, no query execution). Falls back to a generic
+   shape when the columns can't be resolved (e.g. an unrunnable native query)."
+  [query settings]
+  (or (try
+        (let [mp   (lib-be/application-database-metadata-provider (:database query))
+              cols (mapv col->sample-meta (lib/returned-columns (lib/query mp query)))]
+          (when (seq cols)
+            {:series   [{:data {:cols cols
+                                :rows (vec (for [i (range 5)] (mapv #(sample-value % i) cols)))}}]
+             :settings (or settings {})}))
+        (catch Exception e
+          (log/debug e "custom-viz validation: could not derive query columns; using generic sample")
+          nil))
+      (js-validate/generic-sample settings)))
+
+(defn- validate-factory-js!
+  "Run the generated bundle through the headless validation harness before it is
+   persisted. Throws an agent error describing the failure if the plugin is
+   malformed, so the agent repairs `factory_js` instead of shipping a broken
+   visualization that only fails in the browser."
+  [factory-js query settings]
+  (let [result (js-validate/run-validation (plugin-bundle-js factory-js)
+                                           (query->sample query settings))]
+    (when-not (:ok result)
+      (throw (ex-info (str "The generated custom visualization failed validation and was not saved. "
+                           (:error result)
+                           " Fix factory_js and call create_custom_visualization again for the same query_id.")
+                      {:agent-error? true :stage (:stage result)})))
+    (when-let [renderable-error (:renderable-error result)]
+      (log/debugf "custom-viz validation: checkRenderable threw on sample data (non-fatal): %s"
+                  renderable-error))
+    result))
+
 (defn- output
   [{:keys [chart-id query-id identifier display-name repository-path]}]
   (te/lines
@@ -218,62 +337,112 @@
    (format "<name>%s</name>" display-name)
    (format "<query-id>%s</query-id>" query-id)
    (format "<display>custom:%s</display>" identifier)
-   (format "<repository-path>%s</repository-path>" repository-path)
+   (when repository-path
+     (format "<repository-path>%s</repository-path>" repository-path))
    "</custom-visualization>"
    "</result>"
    "<instructions>"
-   "Custom visualization created and applied successfully. The user is now viewing it in the chat."
+   "Custom visualization applied successfully. The user is now viewing it in the chat."
    (str "Reference it using: [Custom visualization](metabase://chart/" chart-id ")")
    "</instructions>"))
 
+(defn- render-custom-viz-result
+  [{:keys [query-id query identifier display-name description repository-path plugin visualization-settings]}]
+  (let [display      (str "custom:" identifier)
+        chart-id     (str (random-uuid))
+        question-url (links/pseudo-card->link
+                      {:type "question"
+                       :name display-name
+                       :dataset_query query
+                       :display display
+                       :displayIsLocked true
+                       :visualization_settings (custom-viz-visualization-settings visualization-settings plugin)})
+        structured   (cond-> {:result-type :custom-visualization
+                              :custom-viz-plugin-id (:id plugin)
+                              :identifier identifier
+                              :display-name display-name
+                              :description description
+                              :repository-path repository-path
+                              :query-id query-id
+                              :query query
+                              :chart-id chart-id
+                              :chart-type display
+                              :chart-link (str "metabase://chart/" chart-id)}
+                       (nil? repository-path) (dissoc :repository-path))]
+    {:output (output {:chart-id chart-id
+                      :query-id query-id
+                      :identifier identifier
+                      :display-name display-name
+                      :repository-path repository-path})
+     :structured-output structured
+     ;; Render the custom visualization inline in the chat (same embed path as
+     ;; charts) instead of navigating the user to a separate question page.
+     :data-parts [(streaming/adhoc-viz-part {:query   query
+                                             :link    question-url
+                                             :title   display-name
+                                             :display display})]}))
+
+(defn- reusable-plugin!
+  [identifier]
+  (let [plugin (or (custom-viz-plugin/select-one-non-blob :identifier identifier)
+                   (throw (ex-info (str "Custom visualization not found with identifier: " identifier
+                                        ". Call list_visualization_types before creating a new visualization type.")
+                                   {:agent-error? true :identifier identifier})))]
+    (when-not (visible-plugin? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled) plugin)
+      (throw (ex-info (str "Custom visualization " identifier " is not available for reuse. Call "
+                           "list_visualization_types before choosing an existing visualization.")
+                      {:agent-error? true :identifier identifier})))
+    plugin))
+
 (defenterprise-schema create-custom-visualization-tool :- :map
-  "Create or update a custom visualization plugin and render a query with it."
+  "Create, update, or reuse a custom visualization plugin and render a query with it."
   :feature :none
   [{:keys [query_id display_name identifier description factory_js visualization_settings]}
    :- tools.custom-viz/create-custom-visualization-schema]
   (try
-    (api/check-superuser)
     (premium-features/assert-has-feature :custom-viz "Custom visualizations")
-    (when-not (non-blank factory_js)
-      (throw (ex-info "factory_js must not be blank" {:agent-error? true})))
-    (let [identifier      (plugin-identifier identifier display_name)
-          display-name    (or (non-blank display_name) identifier)
-          query           (query-for-id query_id)
-          files           (repo-files {:identifier identifier
+    (let [query (query-for-id query_id)]
+      (if-let [factory-js (non-blank factory_js)]
+        (do
+          (api/check-superuser)
+          (when-not (non-blank display_name)
+            (throw (ex-info "display_name is required when creating or updating a custom visualization."
+                            {:agent-error? true})))
+          (when-not (non-blank description)
+            (throw (ex-info "description is required when creating or updating a custom visualization."
+                            {:agent-error? true})))
+          (let [identifier      (plugin-identifier identifier display_name)
+                display-name    (non-blank display_name)
+                _               (validate-factory-js! factory-js query visualization_settings)
+                files           (repo-files {:identifier identifier
+                                             :display-name display-name
+                                             :description description
+                                             :factory-js factory-js})
+                repository-path (write-repo! identifier files)
+                bundle-bytes    (make-tgz-bytes files)
+                plugin          (do
+                                  (custom-viz.settings/custom-viz-enabled! true)
+                                  (upsert-plugin! identifier display-name bundle-bytes))]
+            (render-custom-viz-result {:query-id query_id
+                                       :query query
+                                       :identifier identifier
                                        :display-name display-name
                                        :description description
-                                       :factory-js factory_js})
-          repository-path (write-repo! identifier files)
-          bundle-bytes    (make-tgz-bytes files)
-          plugin          (do
-                            (custom-viz.settings/custom-viz-enabled! true)
-                            (upsert-plugin! identifier display-name bundle-bytes))
-          display         (str "custom:" identifier)
-          chart-id        (str (random-uuid))
-          question-url    (links/pseudo-card->link
-                           {:type "question"
-                            :name display-name
-                            :dataset_query query
-                            :display display
-                            :displayIsLocked true
-                            :visualization_settings (visualization-settings visualization_settings plugin)})
-          structured      {:result-type :custom-visualization
-                           :custom-viz-plugin-id (:id plugin)
-                           :identifier identifier
-                           :display-name display-name
-                           :repository-path repository-path
-                           :query-id query_id
-                           :query query
-                           :chart-id chart-id
-                           :chart-type display
-                           :chart-link (str "metabase://chart/" chart-id)}]
-      {:output (output {:chart-id chart-id
-                        :query-id query_id
-                        :identifier identifier
-                        :display-name display-name
-                        :repository-path repository-path})
-       :structured-output structured
-       :data-parts [(streaming/navigate-to-part question-url)]})
+                                       :repository-path repository-path
+                                       :plugin plugin
+                                       :visualization-settings visualization_settings})))
+        (let [identifier (existing-identifier identifier)]
+          (when-not identifier
+            (throw (ex-info "identifier is required when reusing a custom visualization without factory_js."
+                            {:agent-error? true})))
+          (let [plugin (reusable-plugin! identifier)]
+            (render-custom-viz-result {:query-id query_id
+                                       :query query
+                                       :identifier identifier
+                                       :display-name (:display_name plugin)
+                                       :description (plugin-description plugin)
+                                       :plugin plugin
+                                       :visualization-settings visualization_settings})))))
     (catch Exception e
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}

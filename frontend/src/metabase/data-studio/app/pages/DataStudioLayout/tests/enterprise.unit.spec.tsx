@@ -47,8 +47,8 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const gitSettingsButton = screen.getByLabelText("Set up remote sync");
-      await userEvent.click(gitSettingsButton);
+      const gitSettingsRow = screen.getByLabelText("Set up remote sync");
+      await userEvent.click(within(gitSettingsRow).getByRole("button"));
 
       await waitFor(() => {
         expect(
@@ -65,8 +65,8 @@ describe("DataStudioLayout", () => {
       });
 
       // Open the modal
-      const gitSettingsButton = screen.getByLabelText("Set up remote sync");
-      await userEvent.click(gitSettingsButton);
+      const gitSettingsRow = screen.getByLabelText("Set up remote sync");
+      await userEvent.click(within(gitSettingsRow).getByRole("button"));
 
       await waitFor(() => {
         expect(
@@ -110,11 +110,10 @@ describe("DataStudioLayout", () => {
       expect(screen.getByText("Library")).toBeInTheDocument();
     });
 
-    it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
+    it("should render GitSyncAppBarControls for remote-sync instances", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
-        isNavbarOpened: true,
       });
 
       await waitFor(() => {
@@ -122,20 +121,6 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
-    });
-
-    it("should not render GitSyncAppBarControls when sidebar is collapsed", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: false,
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      expect(screen.queryByTestId("git-sync-controls")).not.toBeInTheDocument();
     });
 
     it("should render content area", async () => {
@@ -211,7 +196,10 @@ describe("DataStudioLayout", () => {
       setup({ ...DEFAULT_EE_SETTINGS, isAdmin: true });
 
       const tab = await screen.findByLabelText("Workspaces");
-      expect(tab).toHaveAttribute("href", Urls.workspaces());
+      expect(within(tab).getByRole("link")).toHaveAttribute(
+        "href",
+        Urls.workspaces(),
+      );
     });
 
     it("non-admin with manage-workspaces permission sees the tab linking to the workspaces index", async () => {
@@ -222,7 +210,10 @@ describe("DataStudioLayout", () => {
       });
 
       const tab = await screen.findByLabelText("Workspaces");
-      expect(tab).toHaveAttribute("href", Urls.workspaces());
+      expect(within(tab).getByRole("link")).toHaveAttribute(
+        "href",
+        Urls.workspaces(),
+      );
     });
 
     it("non-admin without manage-workspaces permission does not see the tab", async () => {

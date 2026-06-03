@@ -122,21 +122,23 @@
 
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.
-  Falls back to returning the raw string wrapped in a map when parsing fails,
-  e.g. when the LLM produces malformed JSON in tool call arguments."
+  Falls back to a compact sentinel map when parsing fails — e.g. when the LLM
+  produced malformed JSON, or (most commonly) when the response hit the output
+  token limit and the argument stream was truncated mid-JSON. `run-tool` detects
+  the sentinel and returns an actionable error to the agent. We deliberately do
+  *not* echo the (potentially huge, truncated) raw text back into the
+  conversation — that just balloons the next request and confuses the model."
   [chunks]
   (let [raw (->> (map :inputTextDelta chunks)
                  (str/join ""))]
     (try
       (json/decode+kw raw)
       (catch Exception e
-        (log/warn "Failed to parse tool arguments as JSON, passing raw string"
+        (log/warn "Failed to parse tool arguments as JSON; likely truncated by the output token limit"
                   {:tool    (:toolName (first chunks))
                    :error   (.getMessage e)
                    :raw-len (count raw)})
-        ;; Return a map with a sentinel key so the tool sees an error via schema validation
-        ;; rather than a cryptic JSON parse stacktrace.
-        {:_raw_arguments raw}))))
+        {:_raw_arguments true :_raw_length (count raw)}))))
 
 (defn- aisdk-chunks->part [[chunk :as chunks]]
   (case (:type chunk)
@@ -447,6 +449,12 @@
             results  (try
                        (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
                              arguments (or (coerce-stringified-json arguments) {})
+                             _         (when (and (map? arguments) (:_raw_arguments arguments))
+                                         (throw (ex-info (str "Your tool call could not be parsed as valid JSON — it was most "
+                                                              "likely truncated because the response was too long. Re-send the "
+                                                              "tool call with complete, valid JSON. If an argument holds a large "
+                                                              "code string (such as factory_js), keep it as compact as possible.")
+                                                         {:agent-error? true})))
                              decode    (tool-decode-fn tool)
                              arguments (cond-> arguments decode decode)]
                          (mbt/add-attrs! {semconv/tool-input arguments})

@@ -40,7 +40,9 @@ export const PaneHeader = ({
   tabs,
   actions,
   breadcrumbs,
-  showAppSwitcher = true,
+  // The unified sidebar now owns app navigation, so the in-header app switcher
+  // is off by default (it stays available for the standalone metrics viewer).
+  showAppSwitcher = false,
   ...rest
 }: PaneHeaderProps) => {
   return (
@@ -48,9 +50,11 @@ export const PaneHeader = ({
       <Flex mb="lg" mt="md" w="100%" h="xl">
         {breadcrumbs}
 
-        <Group ml="auto" gap="md" className={S.ButtonGroup}>
-          {showAppSwitcher && <AppSwitcher />}
-        </Group>
+        {showAppSwitcher && (
+          <Group ml="auto" gap="md" className={S.ButtonGroup}>
+            <AppSwitcher />
+          </Group>
+        )}
       </Flex>
       <Group
         className={className}

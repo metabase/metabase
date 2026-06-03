@@ -55,6 +55,19 @@ export const automagicDashboardsApi = Api.injectEndpoints({
           dispatch(updateMetadata(data, QueryMetadataSchema)),
         ),
     }),
+    // Fetch a transient X-ray dashboard by the sub-path of an `/auto/dashboard/...`
+    // URL (e.g. `table/1`). Used by Metabot to render an auto-generated dashboard
+    // inline in the chat as a stack of its cards.
+    getXrayDashboard: builder.query<Dashboard, string>({
+      query: (subPath) => ({
+        method: "GET",
+        url: `/api/automagic-dashboards/${subPath}`,
+      }),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, QueryMetadataSchema)),
+        ),
+    }),
   }),
 });
 
@@ -62,4 +75,5 @@ export const {
   useGetXrayDashboardQueryMetadataQuery,
   useListDatabaseXraysQuery,
   useLazyGetXrayDashboardForModelQuery,
+  useGetXrayDashboardQuery,
 } = automagicDashboardsApi;

@@ -90,6 +90,13 @@ export type MetabotAgentChatMessage =
 
 export type MetabotUserChatMessage = MetabotUserTextChatMessage;
 
+// A prompt the user submitted while the agent was still busy. It waits in the
+// conversation's queue and is auto-submitted once the agent is free.
+export type MetabotQueuedMessage = {
+  id: string;
+  message: string;
+};
+
 export type MetabotDebugChatMessage = MetabotDebugToolCallMessage;
 
 export type MetabotChatMessage =
@@ -123,6 +130,7 @@ export interface MetabotConverstationState {
   isProcessing: boolean;
   hasUnreadResponse: boolean;
   messages: MetabotChatMessage[];
+  queuedMessages: MetabotQueuedMessage[];
   visible: boolean;
   inBar: boolean;
   history: MetabotHistory;

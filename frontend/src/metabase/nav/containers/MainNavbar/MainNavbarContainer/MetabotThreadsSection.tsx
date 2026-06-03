@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListMetabotChatConversationsQuery } from "metabase/api/metabot";
-import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import {
   type ActiveChatConversation,
@@ -15,13 +14,17 @@ import {
 } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { ActionIcon, Box, Icon, Loader, Text, Tooltip } from "metabase/ui";
-
 import {
-  PaddedSidebarLink,
-  SidebarHeading,
-  SidebarSection,
-} from "../MainNavbar.styled";
+  ActionIcon,
+  Box,
+  Flex,
+  Icon,
+  Loader,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+
+import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 
 const NEW_CHAT_URL = "/";
 const RECENT_CONVERSATIONS_LIMIT = 25;
@@ -219,79 +222,67 @@ export function MetabotThreadsSection({ onItemSelect }: Props) {
   };
 
   return (
-    <SidebarSection>
+    <Box role="section" aria-label={t`Metabot`} mt="sm" pl="md" pr="6px">
       <ErrorBoundary>
-        <CollapseSection
-          header={<SidebarHeading>{t`Metabot`}</SidebarHeading>}
-          initialState="expanded"
-          iconPosition="right"
-          iconSize={8}
-          rightAction={
-            <Tooltip label={t`New chat`}>
-              <ActionIcon
-                aria-label={t`New chat`}
-                color="text-secondary"
-                onClick={handleNewChat}
-              >
-                <Icon name="add" />
-              </ActionIcon>
-            </Tooltip>
-          }
-          role="section"
-          aria-label={t`Metabot`}
-        >
-          <Box
-            data-testid="metabot-threads-section"
-            mah="40vh"
-            style={{ overflowY: "auto" }}
-          >
-            {isLoading && rows.length === 0 ? (
-              <Box pl="12px" py="xs">
-                <Loader size="xs" />
-              </Box>
-            ) : rows.length === 0 ? (
-              <Text pl="12px" py="xs" c="text-secondary" fz="sm">
-                {t`No chats yet`}
-              </Text>
-            ) : (
-              rows.map((row) => {
-                const url = `/chat/${row.conversationId}`;
-                const label = row.title ?? row.summary ?? t`Untitled chat`;
-                return (
-                  <PaddedSidebarLink
-                    key={row.conversationId}
-                    icon="comment"
-                    url={url}
-                    isSelected={row.conversationId === activeConversationId}
-                    onClick={onItemSelect}
-                    aria-label={label}
-                    right={
-                      row.isProcessing ? (
-                        <Loader size="xs" data-testid="metabot-thread-loader" />
-                      ) : row.hasUnreadResponse ||
-                        unreadConversationIds.has(row.conversationId) ? (
-                        <Box
-                          aria-hidden
-                          data-testid="metabot-thread-unread-dot"
-                          style={{
-                            backgroundColor: "var(--mb-color-brand)",
-                            borderRadius: "50%",
-                            flex: "0 0 auto",
-                            height: UNREAD_DOT_SIZE,
-                            width: UNREAD_DOT_SIZE,
-                          }}
-                        />
-                      ) : undefined
-                    }
-                  >
-                    {label}
-                  </PaddedSidebarLink>
-                );
-              })
-            )}
-          </Box>
-        </CollapseSection>
+        <Flex align="center" justify="space-between" mb="xs">
+          <SidebarHeading>{t`Metabot`}</SidebarHeading>
+          <Tooltip label={t`New chat`}>
+            <ActionIcon
+              aria-label={t`New chat`}
+              color="text-secondary"
+              onClick={handleNewChat}
+            >
+              <Icon name="add" />
+            </ActionIcon>
+          </Tooltip>
+        </Flex>
+        <Box data-testid="metabot-threads-section">
+          {isLoading && rows.length === 0 ? (
+            <Box pl="12px" py="xs">
+              <Loader size="xs" />
+            </Box>
+          ) : rows.length === 0 ? (
+            <Text pl="12px" py="xs" c="text-secondary" fz="sm">
+              {t`No chats yet`}
+            </Text>
+          ) : (
+            rows.map((row) => {
+              const url = `/chat/${row.conversationId}`;
+              const label = row.title ?? row.summary ?? t`Untitled chat`;
+              return (
+                <PaddedSidebarLink
+                  key={row.conversationId}
+                  icon="comment"
+                  url={url}
+                  isSelected={row.conversationId === activeConversationId}
+                  onClick={onItemSelect}
+                  aria-label={label}
+                  right={
+                    row.isProcessing ? (
+                      <Loader size="xs" data-testid="metabot-thread-loader" />
+                    ) : row.hasUnreadResponse ||
+                      unreadConversationIds.has(row.conversationId) ? (
+                      <Box
+                        aria-hidden
+                        data-testid="metabot-thread-unread-dot"
+                        style={{
+                          backgroundColor: "var(--mb-color-brand)",
+                          borderRadius: "50%",
+                          flex: "0 0 auto",
+                          height: UNREAD_DOT_SIZE,
+                          width: UNREAD_DOT_SIZE,
+                        }}
+                      />
+                    ) : undefined
+                  }
+                >
+                  {label}
+                </PaddedSidebarLink>
+              );
+            })
+          )}
+        </Box>
       </ErrorBoundary>
-    </SidebarSection>
+    </Box>
   );
 }

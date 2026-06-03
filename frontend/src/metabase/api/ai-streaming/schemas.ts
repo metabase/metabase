@@ -19,6 +19,7 @@ export const knownDataPartTypes = [
   "transform_suggestion",
   "adhoc_viz",
   "static_viz",
+  "automagic_dashboard",
   "conversation_title",
 ];
 
@@ -33,6 +34,13 @@ export type StaticVizValue = {
   entity_id: number;
 };
 
+export type AutomagicDashboardValue = {
+  // An `/auto/dashboard/...` path the client renders inline as an X-ray
+  // dashboard embed.
+  url: string;
+  title?: string;
+};
+
 export type KnownDataPart =
   | { type: "state"; version: 1; value: Record<string, any> }
   | { type: "todo_list"; version: 1; value: MetabotTodoItem[] }
@@ -40,6 +48,11 @@ export type KnownDataPart =
   | { type: "code_edit"; version: 1; value: MetabotCodeEdit }
   | { type: "adhoc_viz"; version: 1; value: AdhocVizValue }
   | { type: "static_viz"; version: 1; value: StaticVizValue }
+  | {
+      type: "automagic_dashboard";
+      version: 1;
+      value: AutomagicDashboardValue;
+    }
   | { type: "conversation_title"; version: 1; value: string };
 
 export const toolCallPartSchema = Yup.object({

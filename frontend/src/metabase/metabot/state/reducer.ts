@@ -265,6 +265,32 @@ export const metabot = createSlice({
         state.prompt = action.payload.prompt;
       },
     ),
+    enqueueMessage: convoReducer(
+      (state, action: ConvoPayloadAction<{ message: string }>) => {
+        state.queuedMessages.push({
+          id: createMessageId(),
+          message: action.payload.message,
+        });
+      },
+    ),
+    removeQueuedMessage: convoReducer(
+      (state, action: ConvoPayloadAction<{ id: string }>) => {
+        state.queuedMessages = state.queuedMessages.filter(
+          (queued) => queued.id !== action.payload.id,
+        );
+      },
+    ),
+    prioritizeQueuedMessage: convoReducer(
+      (state, action: ConvoPayloadAction<{ id: string }>) => {
+        const index = state.queuedMessages.findIndex(
+          (queued) => queued.id === action.payload.id,
+        );
+        if (index > 0) {
+          const [queued] = state.queuedMessages.splice(index, 1);
+          state.queuedMessages.unshift(queued);
+        }
+      },
+    ),
     setConversationTitle: convoReducer(
       (state, action: ConvoPayloadAction<{ title: string }>) => {
         state.title = action.payload.title;

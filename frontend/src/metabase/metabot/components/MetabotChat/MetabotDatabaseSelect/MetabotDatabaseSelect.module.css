@@ -29,6 +29,14 @@
   color: var(--mb-color-text-tertiary);
 }
 
+/*
+  The Select theme paints a gray box behind disabled sections, which breaks the
+  transparent pill while Metabot is responding. Keep sections transparent.
+*/
+[data-disabled] .section {
+  background-color: transparent;
+}
+
 .dropdown {
   min-width: 14rem;
 }

@@ -390,6 +390,58 @@ describe("getClickedDataPoint", () => {
     });
   });
 
+  it("matches the rendered series when a clicked mention targets a dimension column", () => {
+    const stateColumn = createMockColumn({
+      name: "STATE",
+      display_name: "State",
+      source: "breakout",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+    });
+    const stateDimensionModel: DimensionModel = {
+      column: stateColumn,
+      columnIndex: 0,
+      columnByCardId: { [CARD_ID]: stateColumn },
+    };
+    const revenueColumn = createMockColumn({
+      name: "REVENUE",
+      display_name: "Revenue",
+      source: "aggregation",
+      base_type: "type/Float",
+      effective_type: "type/Float",
+    });
+    const revenueKey = `${CARD_ID}:REVENUE`;
+    const seriesModel = createMockSeriesModel({
+      dataKey: revenueKey,
+      column: revenueColumn,
+      cardId: CARD_ID,
+    });
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel: stateDimensionModel,
+      seriesModels: [seriesModel],
+      dataset: [
+        { [X_AXIS_DATA_KEY]: "California", [revenueKey]: 8000 },
+        { [X_AXIS_DATA_KEY]: "Texas", [revenueKey]: 8000 },
+      ],
+      columnByDataKey: { [revenueKey]: revenueColumn },
+    });
+    const clicked: ClickObject = {
+      cardId: CARD_ID,
+      value: "Texas",
+      column: stateColumn,
+      dimensions: [{ column: revenueColumn, value: 8000 }],
+      origin: {
+        cols: [stateColumn, revenueColumn],
+        row: ["Texas", 8000],
+      },
+    };
+
+    expect(getClickedDataPoint(chartModel, clicked)).toEqual({
+      seriesIndex: 0,
+      datumIndex: 1,
+    });
+  });
+
   it("matches breakout series by breakout dimension", () => {
     const sumKeyAffiliate = `${CARD_ID}:sum:Affiliate`;
     const sumKeyDirect = `${CARD_ID}:sum:Direct`;

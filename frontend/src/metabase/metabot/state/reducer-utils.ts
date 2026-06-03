@@ -69,6 +69,7 @@ export const createConversation = (
     isProcessing: false,
     hasUnreadResponse: false,
     messages: [],
+    queuedMessages: [],
     visible: false,
     inBar: false,
     history: [],

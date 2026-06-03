@@ -300,17 +300,18 @@
   exponential backoff, matching the Python ai-service retry behavior."
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
-  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
+  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice max-tokens]}]
    (if-let [limit-msg (usage/check-usage-limits!)]
      (reify clojure.lang.IReduceInit
        (reduce [_ rf init]
          (rf init {:type :error :error {:message limit-msg :error-code "ai_usage_limit_reached"}})))
      (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
        (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
-                                :tool-choice tool-choice :ai-proxy? ai-proxy?})
+                                :tool-choice tool-choice :max-tokens max-tokens :ai-proxy? ai-proxy?})
        (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
              streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
                               system-msg        (assoc :system system-msg)
+                              max-tokens        (assoc :max-tokens max-tokens)
                               (and (seq tools)
                                    tool-choice) (assoc :tool_choice tool-choice))
              make-source    (fn []

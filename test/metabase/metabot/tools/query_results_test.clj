@@ -26,6 +26,7 @@
         (is (str/includes? output "metabase://data-point/{id}/{column_index}"))
         (is (str/includes? output "Columns (0-based): 0=Name"))
         (is (str/includes? output "choose natural link text"))
+        (is (str/includes? output "never use data-point links from silent, agent-only query results"))
         (is (not (str/includes? output "<data_point_links")))
         (is (not (str/includes? output "Markdown Mention")))
         (is (= ["name"]
@@ -52,24 +53,28 @@
                     {:state {:charts {"chart-1" {:queries [{:database 1 :type :query}]}}}})]
         (is (str/includes? (:output result) "<query_execution status=\"completed\""))))))
 
-(deftest format-untruncated-execution-result-source-test
-  (testing "silent execution tags data points with a renderable source from the query"
+(deftest format-untruncated-execution-result-test
+  (testing "silent execution returns plain values without hidden data-point links"
     (let [summary {:status         :completed
                    :result_columns [{:name "name" :display_name "Name" :type :type/Text}]
                    :rows           [["Ada"]]}
-          target  (-> (query-results/format-untruncated-execution-result
-                       summary {:database 1 :type :query})
-                      :structured-output :data-points vals first)]
-      (is (str/starts-with? (-> target :source :question_url) "/question#"))
-      ;; silent queries have no chart/query reference, only a renderable url
-      (is (nil? (-> target :source :type))))
-    (testing "without a query there is no source"
-      (let [summary {:status         :completed
-                     :result_columns [{:name "name" :display_name "Name" :type :type/Text}]
-                     :rows           [["Ada"]]}
-            target  (-> (query-results/format-untruncated-execution-result summary)
-                        :structured-output :data-points vals first)]
-        (is (nil? (:source target)))))))
+          result  (query-results/format-untruncated-execution-result
+                   summary {:database 1 :type :query})]
+      (is (str/includes? (:output result) "<query_execution status=\"completed\""))
+      (is (str/includes? (:output result) "Ada"))
+      (is (not (str/includes? (:output result) "metabase://data-point")))
+      (is (nil? (:structured-output result)))))
+  (testing "sampled silent execution does not describe values as visible chart points"
+    (let [summary {:status          :completed
+                   :row_count       1000
+                   :sampled?        true
+                   :total-row-count 1000
+                   :result_columns  [{:name "name" :display_name "Name" :type :type/Text}]
+                   :rows            [["Ada"]]}
+          result  (query-results/format-untruncated-execution-result summary)]
+      (is (str/includes? (:output result) "silent, agent-only query result"))
+      (is (str/includes? (:output result) "plain text only"))
+      (is (not (str/includes? (:output result) "metabase://data-point"))))))
 
 (deftest representative-indices-test
   (testing "returns every index when at or below the target"
