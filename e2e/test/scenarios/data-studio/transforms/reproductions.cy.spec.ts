@@ -222,7 +222,7 @@ describe("issue GDGT-2429", () => {
   });
 });
 
-describe("issue GDGT-2365", { tags: ["@external", "@python"] }, () => {
+describe("issue 73290", { tags: ["@external", "@python"] }, () => {
   const DB_NAME = "Writable Postgres12";
 
   beforeEach(() => {
