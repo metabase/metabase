@@ -1,7 +1,9 @@
 import cx from "classnames";
+import type { WidgetMount } from "custom-viz";
 import type { CSSProperties, ComponentType } from "react";
 
 import FormS from "metabase/css/components/form.module.css";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
 
 import { Root } from "./ChartSettingsWidget.styled";
@@ -11,7 +13,7 @@ type Props = {
   description?: string;
   hint?: string;
   hidden?: boolean;
-  widget?: string | ComponentType<{ id: string }>;
+  widget?: string | ComponentType<{ id: string }> | WidgetMount;
   inline?: boolean;
   props?: Record<string, unknown>;
   variant?: "default" | "form-field";
@@ -71,7 +73,15 @@ const ChartSettingsWidget = ({
           {description}
         </Box>
       )}
-      {Widget && <Widget {...extraWidgetProps} {...props} />}
+      {Widget &&
+        (PLUGIN_CUSTOM_VIZ.isWidgetMount(Widget) ? (
+          <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
+            mount={Widget}
+            widgetProps={{ ...extraWidgetProps, ...props }}
+          />
+        ) : (
+          <Widget {...extraWidgetProps} {...props} />
+        ))}
     </Root>
   );
 };

@@ -131,6 +131,7 @@ config:
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
+    email-max-recipients-per-message: 50
     email-max-recipients-per-second: null
     email-reply-to: null
     email-smtp-host: null

@@ -3,9 +3,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
@@ -19,6 +21,63 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
+
+(defn- vector-search-sql
+  "Format the private vector subquery for `strategy` against a stub index, returning the SQL string."
+  [strategy]
+  (let [index   {:table-name "idx_tbl"}
+        ctx     (cond-> {:search-string "pasta" :archived? false}
+                  strategy (assoc :vector-search-strategy strategy))
+        embedding [0.1 0.2 0.3]]
+    (first (sql/format (#'semantic.index/semantic-search-query index embedding ctx) :quoted true))))
+
+(deftest semantic-search-query-strategy-test
+  (testing ":brute-force applies the non-vector filters inside a MATERIALIZED CTE (filter-first, exact)"
+    (let [sql (vector-search-sql :brute-force)]
+      (is (str/includes? sql "AS MATERIALIZED"))
+      ;; filter lives inside the CTE, alongside the distance computation
+      (is (re-find #"AS MATERIALIZED \(SELECT.*\"archived\" = FALSE.*\)" sql))
+      ;; the distance expression appears once -- it is computed and stored in the materialized CTE, and the
+      ;; outer query reads that column rather than recomputing it
+      (is (= 1 (count (re-seq #"embedding <=>" sql))))
+      ;; no pure-vector ORDER BY ... LIMIT that would trigger the HNSW index
+      (is (not (re-find #"ORDER BY embedding <=>[^)]*LIMIT" sql)))))
+  (testing ":hnsw does a pure vector search in the inner CTE then post-filters (approximate)"
+    (let [sql (vector-search-sql :hnsw)]
+      (is (not (str/includes? sql "MATERIALIZED")))
+      (is (re-find #"ORDER BY embedding <=>" sql))
+      ;; the filter is applied in the outer query, after the candidate set is chosen
+      (is (str/includes? sql "\"archived\" = FALSE"))))
+  (testing "no explicit strategy falls back to the configured default setting"
+    (is (= (vector-search-sql (semantic.settings/semantic-search-vector-strategy))
+           (vector-search-sql nil)))))
+
+(defn- flattened-vector-candidates-cte
+  "Build the brute-force/hnsw hybrid query, flatten it the way `scored-search-query` does, and return the
+  hoisted `:vector_candidates` CTE binding (e.g. `[:vector_candidates <query> :materialized]`)."
+  [strategy]
+  (let [index  {:table-name "idx_tbl"}
+        ctx    {:search-string "pasta" :archived? false :vector-search-strategy strategy}
+        hybrid (#'semantic.index/hybrid-search-query index [0.1 0.2 0.3] ctx)
+        {:keys [ctes]} (#'semantic.index/flatten-ctes hybrid)]
+    (first (filter #(= :vector_candidates (first %)) ctes))))
+
+(deftest flatten-ctes-preserves-materialized-test
+  (testing "the :materialized opt survives CTE hoisting (the path every real query takes via scored-search-query)"
+    ;; A regression that dropped the opt would change only the query plan, not the results, so the
+    ;; results-based end-to-end tests can't catch it -- assert on the hoisted binding directly.
+    (is (= :materialized (last (flattened-vector-candidates-cte :brute-force)))))
+  (testing ":hnsw hoists a plain CTE binding with no opts"
+    (is (= 2 (count (flattened-vector-candidates-cte :hnsw))))))
+
+(deftest semantic-search-vector-strategy-setting-test
+  (testing "the setting rejects an unknown strategy"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid vector-search strategy"
+                          (semantic.settings/semantic-search-vector-strategy! :nonsense))))
+  (testing "valid strategies round-trip"
+    (doseq [strategy [:hnsw :brute-force]]
+      (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
+        (is (= strategy (semantic.settings/semantic-search-vector-strategy)))))))
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}

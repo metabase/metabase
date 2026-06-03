@@ -67,19 +67,18 @@ runs:
 
         cd e2e/test/scenarios/
 
-        SERVICES="\
-          $([ ${{ inputs.postgres }} = true ] && echo 'postgres-sample') \
-          $([ ${{ inputs.mysql }} = true ] && echo 'mysql-sample') \
-          $([ ${{ inputs.mongo }} = true ] && echo 'mongo-sample') \
-          $([ ${{ inputs.maildev }} = true ] && echo 'maildev') \
-          $([ ${{ inputs.maildev }} = true ] && echo 'maildev-ssl') \
-          $([ ${{ inputs.openldap }} = true ] && echo 'ldap') \
-          $([ ${{ inputs.webhook }} = true ] && echo 'webhook-tester') \
-          $([ ${{ inputs.snowplow }} = true ] && echo 'snowplow-micro')"
+        SERVICES=()
+        [ "${{ inputs.postgres }}" = true ] && SERVICES+=(postgres-sample)
+        [ "${{ inputs.mysql }}" = true ] && SERVICES+=(mysql-sample)
+        [ "${{ inputs.mongo }}" = true ] && SERVICES+=(mongo-sample)
+        [ "${{ inputs.maildev }}" = true ] && SERVICES+=(maildev maildev-ssl)
+        [ "${{ inputs.openldap }}" = true ] && SERVICES+=(ldap)
+        [ "${{ inputs.webhook }}" = true ] && SERVICES+=(webhook-tester)
+        [ "${{ inputs.snowplow }}" = true ] && SERVICES+=(snowplow-micro)
 
         for attempt in 1 2 3; do
           echo "Docker compose up attempt $attempt of 3..."
-          if docker compose up $SERVICES -d; then
+          if docker compose up "${SERVICES[@]}" -d; then
             echo "Docker compose up succeeded on attempt $attempt"
             break
           fi
