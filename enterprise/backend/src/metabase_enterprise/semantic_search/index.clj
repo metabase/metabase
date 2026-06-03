@@ -273,21 +273,34 @@
   (mod (.toEpochSecond (t/offset-date-time)) 10000000))
 
 (defn model-table-name
-  "Returns a default table name for a model. If the table name would exceed the 63 byte postgres limit, a hashed name is preferred."
-  [embedding-model]
+  "Returns a default table name for a model + embedding-text version. If the table name would exceed
+  the 63 byte postgres limit, a hashed name is preferred. The `_v<n>` suffix encodes the
+  embedding-text version so that changing the embedded-document representation yields a distinct
+  table (and thus a distinct index identity)."
+  [embedding-model embedding-text-version]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
-        ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
+        ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions "_v" embedding-text-version)]
     (hash-identifier-if-exceeds-pg-limit ideal-table-name)))
 
+(defn current-embedding-text-version
+  "The embedded-document text version of the running code (see
+  [[metabase.search.core/embeddable-text-version]]). Part of the index identity."
+  []
+  search/embeddable-text-version)
+
 (defn default-index
-  "Returns the default index spec for a model."
-  [embedding-model & {:keys [table-name]}]
-  (let [table-name (or table-name (model-table-name embedding-model))]
-    {:embedding-model embedding-model
-     :table-name table-name
-     :version 4}))
+  "Returns the default index spec for a model. `:embedding-text-version` defaults to the current
+  [[metabase.search.core/embeddable-text-version]] and is part of the index identity, so changing
+  the embedded-document representation yields a distinct index/table."
+  [embedding-model & {:keys [table-name embedding-text-version]
+                      :or   {embedding-text-version (current-embedding-text-version)}}]
+  (let [table-name (or table-name (model-table-name embedding-model embedding-text-version))]
+    {:embedding-model        embedding-model
+     :table-name             table-name
+     :version                4
+     :embedding-text-version embedding-text-version}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]

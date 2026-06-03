@@ -32,6 +32,10 @@
     [:vector_dimensions :int :not-null]
     [:table_name :text :not-null :unique]
     [:index_version :int :not-null]
+    ;; Version of the embedded-document text representation (see
+    ;; metabase.search.core/embeddable-text-version). Part of the index identity: a bump yields a
+    ;; distinct index that is built and swapped in by the indexer (see find-compatible-index!).
+    [:embedding_text_version :int :not-null]
     [:index_created_at :timestamp-with-time-zone :not-null]
     [:indexer_last_poll :timestamp-with-time-zone :null]
     [:indexer_last_seen :timestamp-with-time-zone :null]
@@ -43,7 +47,12 @@
    [[:id :bigint [:primary-key]] ;; not auto-inc, only one row - still useful to ensure only one row when inserting.
     [:version :text :not-null]
     [:active_id :int :null]
-    [:active_updated_at :timestamp-with-time-zone :null]]
+    [:active_updated_at :timestamp-with-time-zone :null]
+    ;; Index currently being backfilled in the background (blue-green rebuild). While set, the
+    ;; indexer drives this index to completion alongside the active one, then atomically swaps it
+    ;; into `active_id` (see indexer/swap-active!). Null in steady state.
+    [:building_id :int :null]
+    [:building_updated_at :timestamp-with-time-zone :null]]
 
    :gate
    [[:id :text :not-null :primary-key]
@@ -120,7 +129,9 @@
          (sql.helpers/values [{:id                0
                                :version           version
                                :active_id         nil
-                               :active_updated_at nil}])
+                               :active_updated_at nil
+                               :building_id       nil
+                               :building_updated_at nil}])
          (sql.helpers/on-conflict :id)
          (sql.helpers/do-nothing)
          (sql/format :quoted true)))
@@ -194,12 +205,14 @@
                            model_name
                            vector_dimensions
                            table_name
-                           index_version]}]
-  {:embedding-model  {:provider          provider
-                      :model-name        model_name
-                      :vector-dimensions vector_dimensions}
-   :table-name       table_name
-   :version          index_version})
+                           index_version
+                           embedding_text_version]}]
+  {:embedding-model        {:provider          provider
+                            :model-name        model_name
+                            :vector-dimensions vector_dimensions}
+   :table-name             table_name
+   :version                index_version
+   :embedding-text-version embedding_text_version})
 
 (defn- index-table-exists? [pgvector index]
   (semantic.util/table-exists? pgvector (:table-name index)))
@@ -208,6 +221,25 @@
   [pgvector index-metadata]
   (and (semantic.util/table-exists? pgvector (:metadata-table-name index-metadata))
        (semantic.util/table-exists? pgvector (:control-table-name index-metadata))))
+
+(defn- get-index-state-by-control-column
+  "Returns the index state pointed at by the control table's `control-column` (e.g. `:active_id`
+  or `:building_id`), or nil if that column is null. Shape: `{:index ... :metadata-row ...}`."
+  [pgvector index-metadata control-column]
+  (when (control-and-metadata-tables-exist? pgvector index-metadata)
+    (let [{:keys [metadata-table-name
+                  control-table-name]}
+          index-metadata
+          ;; Returns nil if the control column is null (no index pointed at).
+          row-sql (-> {:select [:m.*]
+                       :from   [[(keyword control-table-name)  :c]]
+                       :join   [[(keyword metadata-table-name) :m]
+                                [:= :m.id (keyword "c" (name control-column))]]}
+                      (sql/format :quoted true))
+          row     (jdbc/execute-one! pgvector row-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      (when row
+        {:index        (row->index row)
+         :metadata-row row}))))
 
 (defn get-active-index-state
   "Returns the currently active index configuration, or nil if none active.
@@ -218,19 +250,13 @@
   - :metadata-row
      The metadata record for this index, as returned by next.jdbc. Keys are unqualified."
   [pgvector index-metadata]
-  (when (control-and-metadata-tables-exist? pgvector index-metadata)
-    (let [{:keys [metadata-table-name
-                  control-table-name]}
-          index-metadata
-          ;; Returns nil if no active index is set (active_id is null).
-          active-row-sql      (-> {:select [:m.*]
-                                   :from   [[(keyword control-table-name)  :c]]
-                                   :join   [[(keyword metadata-table-name) :m] [:= :m.id :c.active_id]]}
-                                  (sql/format :quoted true))
-          active-row          (jdbc/execute-one! pgvector active-row-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-      (when active-row
-        {:index (row->index active-row)
-         :metadata-row active-row}))))
+  (get-index-state-by-control-column pgvector index-metadata :active_id))
+
+(defn get-building-index-state
+  "Returns the index currently being backfilled in the background (blue-green rebuild), or nil if
+  none. Same shape as [[get-active-index-state]]."
+  [pgvector index-metadata]
+  (get-index-state-by-control-column pgvector index-metadata :building_id))
 
 (defn activate-index!
   "Sets the specified index as active by updating the control table. The index-id is the `id` column value for
@@ -247,6 +273,41 @@
     (jdbc/execute! pgvector activation-sql)
     nil))
 
+(defn set-building-index!
+  "Marks `index-id` as the index being backfilled in the background (blue-green rebuild). Pass nil
+  to clear. The indexer drives this index to completion and then calls [[swap-active!]]."
+  [pgvector index-metadata index-id]
+  (assert (or (nil? index-id) (nat-int? index-id)) "expected an integer id or nil (hint do not pass the index map!)")
+  (let [{:keys [control-table-name]} index-metadata
+        sql (-> {:update (keyword control-table-name)
+                 :set    {:building_id         index-id
+                          :building_updated_at [:now]}}
+                (sql/format :quoted true))]
+    (jdbc/execute! pgvector sql)
+    nil))
+
+(defn clear-building-index!
+  "Clears the building-index pointer (no-op if already clear)."
+  [pgvector index-metadata]
+  (set-building-index! pgvector index-metadata nil))
+
+(defn swap-active!
+  "Atomically promotes the building index to active: sets `active_id := building_id` and clears
+  `building_id`, in a single UPDATE so concurrent searches (which read `active_id`) see a clean
+  switch. No-op when there is no building index. Returns the promoted index id, or nil."
+  [pgvector index-metadata]
+  (let [{:keys [control-table-name]} index-metadata
+        sql (-> {:update    (keyword control-table-name)
+                 :set       {:active_id           :building_id
+                             :active_updated_at   [:now]
+                             :building_id         nil
+                             :building_updated_at nil}
+                 :where     [:!= :building_id nil]
+                 :returning [:active_id]}
+                (sql/format :quoted true))
+        {:keys [active_id]} (jdbc/execute-one! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    active_id))
+
 (defn find-compatible-index!
   "Locates a compatible existing index for the given embedding model.
 
@@ -258,54 +319,63 @@
   - :index-table-exists whether the table named by the `:index` actually exists in the database
   - :active             whether this index is currently active
 
-  Returns nil if no compatible index is found."
-  [pgvector index-metadata embedding-model]
-  (let [{:keys [metadata-table-name
-                control-table-name]}
-        index-metadata
+  Returns nil if no compatible index is found.
 
-        {:keys [provider
-                model-name
-                vector-dimensions]}
-        embedding-model
+  `embedding-text-version` is part of the index identity: an index built with a different
+  embedded-document representation is NOT considered compatible, so a version bump forces a
+  fresh index to be built (and blue-green swapped in). Defaults to the running code's
+  [[semantic.index/current-embedding-text-version]] when omitted."
+  ([pgvector index-metadata embedding-model]
+   (find-compatible-index! pgvector index-metadata embedding-model
+                           (semantic.index/current-embedding-text-version)))
+  ([pgvector index-metadata embedding-model embedding-text-version]
+   (let [{:keys [metadata-table-name
+                 control-table-name]}
+         index-metadata
 
-        model-rows-sql (-> {:select [:m.* [[:coalesce [:= :c.active_id :m.id] false] :is_active]]
-                            :from   [[(keyword control-table-name) :c]
-                                     [(keyword metadata-table-name) :m]]
-                            :where  [:and
-                                     [:= :provider provider]
-                                     [:= :model_name model-name]
-                                     [:= :vector_dimensions vector-dimensions]]
-                            :order-by [[:index_created_at :desc]]}
-                           (sql/format :quoted true))
-        model-rows     (jdbc/execute! pgvector model-rows-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+         {:keys [provider
+                 model-name
+                 vector-dimensions]}
+         embedding-model
 
-        {[active] true
-         inactive false}
-        (u/group-by :is_active #(dissoc % :is_active) model-rows)]
-    ;; Priority order: active matching index > inactive matching index > new
-    ;; This preserves existing data when possible and avoids unnecessary index creation.
-    (cond
-      ;; already active index matching model, return it.
-      active
-      (let [index (row->index active)]
-        {:index              index
-         :index-table-exists (index-table-exists? pgvector index)
-         :metadata-row       active
-         :active             true})
+         model-rows-sql (-> {:select [:m.* [[:coalesce [:= :c.active_id :m.id] false] :is_active]]
+                             :from   [[(keyword control-table-name) :c]
+                                      [(keyword metadata-table-name) :m]]
+                             :where  [:and
+                                      [:= :provider provider]
+                                      [:= :model_name model-name]
+                                      [:= :vector_dimensions vector-dimensions]
+                                      [:= :embedding_text_version embedding-text-version]]
+                             :order-by [[:index_created_at :desc]]}
+                            (sql/format :quoted true))
+         model-rows     (jdbc/execute! pgvector model-rows-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
 
-      ;; has an inactive index
-      (seq inactive)
-      (let [best-index-row (first inactive)
-            best-index     (row->index best-index-row)]
-        {:index              best-index
-         :index-table-exists (index-table-exists? pgvector best-index)
-         :metadata-row       best-index-row
-         :active             false})
+         {[active] true
+          inactive false}
+         (u/group-by :is_active #(dissoc % :is_active) model-rows)]
+     ;; Priority order: active matching index > inactive matching index > new
+     ;; This preserves existing data when possible and avoids unnecessary index creation.
+     (cond
+       ;; already active index matching model, return it.
+       active
+       (let [index (row->index active)]
+         {:index              index
+          :index-table-exists (index-table-exists? pgvector index)
+          :metadata-row       active
+          :active             true})
 
-      ;; no compatible index found
-      :else
-      nil)))
+       ;; has an inactive index
+       (seq inactive)
+       (let [best-index-row (first inactive)
+             best-index     (row->index best-index-row)]
+         {:index              best-index
+          :index-table-exists (index-table-exists? pgvector best-index)
+          :metadata-row       best-index-row
+          :active             false})
+
+       ;; no compatible index found
+       :else
+       nil))))
 
 (defn create-new-index-spec
   "Creates a new index specification for the given embedding model.
@@ -325,6 +395,7 @@
 
         {index-table-name :table-name
          index-version    :version
+         text-version     :embedding-text-version
          :keys            [embedding-model]}
         index
 
@@ -334,12 +405,14 @@
         embedding-model
 
         insert-sql (-> (sql.helpers/insert-into (keyword metadata-table-name))
-                       (sql.helpers/values [{:provider          provider
-                                             :model_name        model-name
-                                             :vector_dimensions vector-dimensions
-                                             :table_name        index-table-name
-                                             :index_version     index-version
-                                             :index_created_at  [:now]}])
+                       (sql.helpers/values [{:provider                provider
+                                             :model_name              model-name
+                                             :vector_dimensions       vector-dimensions
+                                             :table_name              index-table-name
+                                             :index_version           index-version
+                                             :embedding_text_version  (or text-version
+                                                                          (semantic.index/current-embedding-text-version))
+                                             :index_created_at        [:now]}])
                        (sql.helpers/returning :id)
                        (sql/format :quoted true))
         {:keys [id]} (jdbc/execute-one! pgvector insert-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]

@@ -126,6 +126,37 @@
       (conj batches current-batch)
       batches)))
 
+;;;; Asymmetric query/document prefixing
+
+(def ^:private model-prefixes
+  "Per-family prefixes that must be prepended to embedding inputs. arctic-embed is trained to
+  expect queries prefixed with `\"query: \"` and documents left bare; most other models (e.g.
+  OpenAI text-embedding-3) want no prefix at all, so they are simply absent from this map."
+  {:arctic-embed {:query "query: " :index ""}})
+
+(defn- model-family
+  "Map a model-name to a prefix family keyword, or nil when no special prefixing applies."
+  [model-name]
+  (when (and model-name (str/includes? (u/lower-case-en model-name) "arctic-embed"))
+    :arctic-embed))
+
+(defn- text-prefix
+  "The prefix to prepend to embedding inputs for the given `model-name` and `embed-type`
+  (`:query` or `:index`). Returns `\"\"` when the model needs no prefix, or when `embed-type`
+  is nil/unknown."
+  [model-name embed-type]
+  (get-in model-prefixes [(model-family model-name) embed-type] ""))
+
+(defn- apply-prefix
+  "Prepend the model/type-appropriate prefix to each text. Applied ONLY to the strings sent to
+  the embedding API — never to the stored `content` column or to the cache/zipmap keys, both of
+  which key on the original (un-prefixed) text."
+  [model-name texts embed-type]
+  (let [prefix (text-prefix model-name embed-type)]
+    (if (str/blank? prefix)
+      (vec texts)
+      (mapv #(str prefix %) texts))))
+
 ;;;; Provider SPI
 
 (defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
@@ -176,8 +207,8 @@
       (throw e))))
 
 ;; Ollama is not used in production. Token tracking is not implemented.
-(defmethod get-embedding        "ollama" [{:keys [model-name]} text & {:as _opts}]  (ollama-get-embedding model-name text))
-(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:as _opts}] (ollama-get-embeddings-batch model-name texts))
+(defmethod get-embedding        "ollama" [{:keys [model-name]} text & {:keys [type]}]  (ollama-get-embedding model-name (first (apply-prefix model-name [text] type))))
+(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:keys [type]}] (ollama-get-embeddings-batch model-name (apply-prefix model-name texts type)))
 (defmethod pull-model           "ollama" [{:keys [model-name]}]       (ollama-pull-model model-name))
 
 ;;;; OpenAI-compatible embedding service impl (shared by "ai-service" and "openai" providers)
@@ -299,7 +330,7 @@
              :endpoint       endpoint
              :api-key        api-key
              :model-name     model-name
-             :texts          [text]
+             :texts          (apply-prefix model-name [text] type)
              :snowplow?      true
              :record-tokens? record-tokens?
              :type           type}))))
@@ -312,7 +343,7 @@
       :endpoint       endpoint
       :api-key        api-key
       :model-name     model-name
-      :texts          texts
+      :texts          (apply-prefix model-name texts type)
       :snowplow?      true
       :record-tokens? record-tokens?
       :type           type})))
@@ -338,7 +369,7 @@
              :endpoint       endpoint
              :api-key        api-key
              :model-name     (:model-name embedding-model)
-             :texts          [text]
+             :texts          (apply-prefix (:model-name embedding-model) [text] type)
              :record-tokens? record-tokens?
              :extra-body     (when (supports-dimensions? embedding-model)
                                {:dimensions (:vector-dimensions embedding-model)})
@@ -352,7 +383,7 @@
       :endpoint       endpoint
       :api-key        api-key
       :model-name     (:model-name embedding-model)
-      :texts          texts
+      :texts          (apply-prefix (:model-name embedding-model) texts type)
       :record-tokens? record-tokens?
       :extra-body     (when (supports-dimensions? embedding-model)
                         {:dimensions (:vector-dimensions embedding-model)})

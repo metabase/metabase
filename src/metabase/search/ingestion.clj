@@ -65,26 +65,39 @@
     (->> (into [] xf search-terms)
          (str/join " "))))
 
-(defn- embeddable-text
-  "Generate labeled text for semantic search embeddings.
-  Format:
-    [model]
-    field1: value1
-    field2: value2
+(def embeddable-text-version
+  "Version of the [[embeddable-text]] representation. Bump this whenever the text produced by
+  `embeddable-text` changes. The semantic-search index identity includes this version, so a bump
+  triggers an automatic rebuild of the index with the new document representation (see
+  `metabase-enterprise.semantic-search`)."
+  2)
 
-  Note: Unlike searchable-text, transformation functions in search-terms
-  (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
-  explosion are specific to full-text search optimization."
+(defn- embeddable-text
+  "Generate natural-language text for semantic search embeddings: the entity's searchable field
+  values, name first, joined into a sentence-like string.
+
+  No structural labels or markers — the embedding model treats this as free text, and
+  out-of-distribution scaffolding (a `[model]` header, `field:` labels) is low-information
+  boilerplate that dilutes short documents and widens the query↔document representation gap.
+
+  Note: Unlike searchable-text, transformation functions in search-terms (e.g.,
+  explode-camel-case) are NOT applied. Transformations like camel-case explosion are specific to
+  full-text search optimization.
+
+  Bump [[embeddable-text-version]] whenever this output format changes."
   [m]
   (let [search-terms (:search-terms (search.spec/spec (:model m)))
         field-keys   (cond-> search-terms (map? search-terms) keys)
-        header       (str "[" (:model m) "]")
-        fields        (keep (fn [k]
-                              (let [v (get m k)]
-                                (when (not (str/blank? (str v)))
-                                  (str (name k) ": " (str/trim (str v))))))
-                            field-keys)]
-    (str header "\n" (str/join "\n" fields))))
+        ;; Lead with :name (when it's a searchable field) so it dominates the embedding and stays
+        ;; recoverable as the entity name by downstream tooling/tests.
+        ordered-keys (if (some #{:name} field-keys)
+                       (cons :name (remove #{:name} field-keys))
+                       field-keys)
+        values       (keep (fn [k]
+                             (let [v (some-> (get m k) str str/trim)]
+                               (when-not (str/blank? v) v)))
+                           ordered-keys)]
+    (str/join ". " values)))
 
 (defn- search-term-columns
   "Extract column names from search-terms spec for SQL query generation"

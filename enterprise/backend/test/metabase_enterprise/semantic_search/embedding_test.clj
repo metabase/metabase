@@ -283,6 +283,47 @@
               (is (= "Bearer embedding-api-key" (get-in @captured [:headers "Authorization"])))
               (is (nil? (get-in @captured [:headers "x-metabase-instance-token"]))))))))))
 
+(deftest query-prefix-test
+  (testing "text-prefix / apply-prefix registry (arctic-embed uses asymmetric prefixing)"
+    (testing "arctic-embed needs a query prefix but no document prefix"
+      (is (= "query: " (#'embedding/text-prefix "Snowflake/snowflake-arctic-embed-l-v2.0" :query)))
+      (is (= ""        (#'embedding/text-prefix "Snowflake/snowflake-arctic-embed-l-v2.0" :index))))
+    (testing "non-arctic models get no prefix at all"
+      (is (= "" (#'embedding/text-prefix "text-embedding-3-small" :query)))
+      (is (= "" (#'embedding/text-prefix "some-other-model" :query))))
+    (testing "an unknown embed-type yields no prefix"
+      (is (= "" (#'embedding/text-prefix "Snowflake/snowflake-arctic-embed-l-v2.0" nil))))
+    (testing "apply-prefix prepends only when a prefix applies, and never mutates the originals otherwise"
+      (is (= ["query: orders by region"]
+             (#'embedding/apply-prefix "Snowflake/snowflake-arctic-embed-l-v2.0" ["orders by region"] :query)))
+      (is (= ["orders by region"]
+             (#'embedding/apply-prefix "Snowflake/snowflake-arctic-embed-l-v2.0" ["orders by region"] :index)))
+      (is (= ["orders by region"]
+             (#'embedding/apply-prefix "text-embedding-3-small" ["orders by region"] :query)))))
+  (testing "the prefix is applied to the text sent to the embedding API, keyed on :type"
+    (let [mock-response {:data  [{:object "embedding" :embedding (encode-floats-to-base64 [1.0 2.0 3.0 4.0]) :index 0}]
+                         :model "Snowflake/snowflake-arctic-embed-l-v2.0"
+                         :usage {:prompt_tokens 1 :total_tokens 1}}
+          captured      (atom nil)
+          arctic        {:provider "ai-service" :model-name "Snowflake/snowflake-arctic-embed-l-v2.0" :vector-dimensions 4}
+          non-arctic    {:provider "ai-service" :model-name "text-embedding-3-small" :vector-dimensions 4}]
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
+                                         ee-embedding-service-api-key  "key"]
+        (mt/with-dynamic-fn-redefs [http/post (fn [_url opts]
+                                                (reset! captured (json/decode (:body opts) true))
+                                                {:status  200
+                                                 :headers {"Content-Type" "application/json"}
+                                                 :body    (json/encode mock-response)})]
+          (testing "arctic query is sent with the \"query: \" prefix"
+            (embedding/get-embedding arctic "orders by region" {:type :query :record-tokens? false})
+            (is (= ["query: orders by region"] (:input @captured))))
+          (testing "arctic documents are sent unprefixed"
+            (embedding/get-embeddings-batch arctic ["orders by region"] {:type :index :record-tokens? false})
+            (is (= ["orders by region"] (:input @captured))))
+          (testing "a non-arctic model's query is sent unprefixed"
+            (embedding/get-embedding non-arctic "orders by region" {:type :query :record-tokens? false})
+            (is (= ["orders by region"] (:input @captured)))))))))
+
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"

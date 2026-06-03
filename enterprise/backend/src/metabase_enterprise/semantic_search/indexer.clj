@@ -447,34 +447,97 @@
                 ;; nil if healthy, a timestamp of when we first stalled if unhealthy
                 :stalled-at               (:indexer_stalled_at metadata-row)})))
 
+(def ^Duration building-mode-active-budget
+  "When a background (blue-green) index build is in progress, the still-serving active index is
+  maintained for only this long per job run, leaving the rest of the run to backfill the building
+  index so the rebuild completes promptly."
+  (Duration/ofSeconds 30))
+
+(defn- run-indexing-for-index!
+  "Set up indexing state and run the indexing loop for a single `index`/`metadata-row`. An optional
+  `:max-run-duration` overrides the per-run time budget (used to time-box active-index maintenance
+  while a build is in progress)."
+  [pgvector index-metadata index metadata-row & {:keys [max-run-duration]}]
+  (log/debugf "Starting indexer loop for index %s (ID: %s)" (:table_name metadata-row) (:id metadata-row))
+  (let [indexing-state (init-indexing-state metadata-row)]
+    (when max-run-duration
+      (vswap! indexing-state assoc :max-run-duration max-run-duration))
+    ;; if the DLQ table exists, schedule runs to happen during indexing
+    ;; note: we might remove the table-exists? condition once schema solidifies
+    (if (semantic.dlq/dlq-table-exists? pgvector index-metadata (:id metadata-row))
+      (do
+        (log/debugf "DLQ table exists for index %s, scheduling DLQ processing" (:table-name index))
+        (vswap! indexing-state assoc :next-dlq-run (.plus (.instant clock) dlq-frequency)))
+      (log/warnf "DLQ table does not exist for index %s" (:table-name index)))
+    (let [loop-start-time (u/start-timer)]
+      (indexing-loop pgvector index-metadata index indexing-state)
+      (analytics/inc! :metabase-search/semantic-indexer-loop-ms (u/since-ms loop-start-time)))
+    indexing-state))
+
+(defn- building-caught-up?
+  "True when the background-building index has indexed up to the current tail of the (shared) gate
+  table, i.e. there is no gate row strictly ahead of its last-seen `(gated_at, id)` position. An
+  empty gate counts as caught up; a non-empty gate the build has not touched yet does not."
+  [pgvector index-metadata building-metadata-row]
+  (let [gate-table          (keyword (:gate-table-name index-metadata))
+        {:keys [last-seen]} (semantic.gate/resume-watermark building-metadata-row)
+        has-row?            (fn [where]
+                              (let [q (cond-> {:select [[[:inline 1] :x]] :from [gate-table] :limit 1}
+                                        where (assoc :where where))]
+                                (boolean
+                                 (seq (jdbc/execute! pgvector (sql/format q :quoted true)
+                                                     {:builder-fn jdbc.rs/as-unqualified-lower-maps})))))]
+    (cond
+      (not (has-row? nil)) true        ; gate empty -> trivially caught up
+      (nil? last-seen)     false       ; never indexed a row, gate non-empty -> behind
+      :else (not (has-row? [:> [:composite :gated_at :id]
+                            [:composite (:gated_at last-seen) (:id last-seen)]])))))
+
+(defn- maybe-swap-building-index!
+  "If the building index has caught up to the gate tail, atomically promote it to active. Re-reads
+  the building metadata row so the freshly flushed watermark is observed."
+  [pgvector index-metadata]
+  (when-let [{:keys [metadata-row]} (semantic.index-metadata/get-building-index-state pgvector index-metadata)]
+    (when (building-caught-up? pgvector index-metadata metadata-row)
+      (when-let [promoted (semantic.index-metadata/swap-active! pgvector index-metadata)]
+        (log/infof "Building index %s caught up to the gate tail; promoted to active (id %s)"
+                   (:table_name metadata-row) promoted)))))
+
 (defn quartz-job-run!
-  "Quartz job (execute) implementation. Determines the active index before running
-  a (indexing-loop) with the default parameters.
+  "Quartz job (execute) implementation. Maintains the active index and, when a background
+  (blue-green) build is in progress, also backfills the building index and swaps it in once it
+  has caught up.
 
   Blocks until exit or interrupt if an active index exists."
   [pgvector
    index-metadata]
-  (let [{:keys [index metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
-    (when-not index (log/debug "No active semantic search index"))
-    (when index
-      (log/debugf "Starting indexer loop for index %s (ID: %s)" (:table_name metadata-row) (:id metadata-row))
-      (let [indexing-state (init-indexing-state metadata-row)]
-        ;; if the DLQ table exists, schedule runs to happen during indexing
-        ;; note: we might remove the table-exists? condition once schema solidifies
-        (if (semantic.dlq/dlq-table-exists? pgvector index-metadata (:id metadata-row))
-          (do
-            (log/debugf "DLQ table exists for index %s, scheduling DLQ processing" (:table-name index))
-            (vswap! indexing-state assoc :next-dlq-run (.plus (.instant clock) dlq-frequency)))
-          (log/warnf "DLQ table does not exist for index %s" (:table-name index)))
-        (try
-          (let [loop-start-time (u/start-timer)]
-            (indexing-loop
-             pgvector
-             index-metadata
-             index
-             indexing-state)
-            (analytics/inc! :metabase-search/semantic-indexer-loop-ms (u/since-ms loop-start-time)))
-          (catch InterruptedException ie (throw ie))
-          (catch Throwable t
-            (log/errorf t "An exception was caught during the indexing loop for index %s" (:table-name metadata-row))
-            (throw t)))))))
+  (let [active-state   (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+        building-state (semantic.index-metadata/get-building-index-state pgvector index-metadata)
+        building?      (and active-state building-state
+                            (not= (-> active-state :metadata-row :id)
+                                  (-> building-state :metadata-row :id)))]
+    (cond
+      (not active-state)
+      (log/debug "No active semantic search index")
+
+      building?
+      (try
+        ;; keep the still-serving active index fresh, but only briefly...
+        (run-indexing-for-index! pgvector index-metadata (:index active-state) (:metadata-row active-state)
+                                 :max-run-duration building-mode-active-budget)
+        ;; ...then spend the rest of the run backfilling the building index, swapping if caught up.
+        (run-indexing-for-index! pgvector index-metadata (:index building-state) (:metadata-row building-state))
+        (maybe-swap-building-index! pgvector index-metadata)
+        (catch InterruptedException ie (throw ie))
+        (catch Throwable t
+          (log/error t "An exception was caught during the indexing loop (blue-green build in progress)")
+          (throw t)))
+
+      :else
+      (try
+        (run-indexing-for-index! pgvector index-metadata (:index active-state) (:metadata-row active-state))
+        (catch InterruptedException ie (throw ie))
+        (catch Throwable t
+          (log/errorf t "An exception was caught during the indexing loop for index %s"
+                      (:table_name (:metadata-row active-state)))
+          (throw t))))))

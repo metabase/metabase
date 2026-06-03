@@ -234,10 +234,11 @@
   nil)
 
 (defn- parse-entity-name
-  "Extract the entity name from embeddable text format.
-   E.g., '[dashboard]\\nname: My Dashboard\\n...' -> 'My Dashboard'"
+  "Extract the entity name (the leading segment) from embeddable text.
+   `embeddable-text` leads with the entity name, joining fields with '. ', e.g.
+   'My Dashboard. A description' -> 'My Dashboard'."
   [text]
-  (second (re-find #"(?m)^name:\s*(.+)$" text)))
+  (some-> text (str/split #"\. " 2) first))
 
 (defn get-mock-embedding
   "Lookup the embedding for `text` in [[*extra-mock-embeddings*]] first, then [[mock-embeddings]].

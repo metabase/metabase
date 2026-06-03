@@ -16,7 +16,6 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
-   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import (java.time Instant)))
 
@@ -32,34 +31,110 @@
   (def embedding-model (semantic.embedding/get-configured-model)))
 
 (defn- fresh-index [index-metadata embedding-model & {:keys [force-reset?]}]
-  (let [default-table-name   (semantic.index/model-table-name embedding-model)
+  (let [base                 (semantic.index/default-index embedding-model)
+        default-table-name   (:table-name base)
         generated-table-name (if force-reset?
                                (str default-table-name "_" (semantic.index/model-table-suffix))
                                default-table-name)
         table-name           (semantic.index/hash-identifier-if-exceeds-pg-limit generated-table-name)]
-    (-> (semantic.index/default-index embedding-model :table-name table-name)
+    (-> (assoc base :table-name table-name)
         (semantic.index-metadata/qualify-index index-metadata))))
 
-(defn initialize-index!
-  "Creates an index for the provided embedding model (if it does not exist or if we're asking to force reset).
+(defn- ensure-index-tables!
+  "Idempotently create the index table and its dead-letter-queue table for `index`/`index-id`."
+  [tx index-metadata index index-id]
+  (semantic.index/create-index-table-if-not-exists! tx index)
+  (semantic.dlq/create-dlq-table-if-not-exists! tx index-metadata index-id))
 
-  Returns the index that you can use with semantic.search.index functions to operate on the index."
+(defn initialize-index!
+  "Establishes the index for the configured embedding model + embedding-text version.
+
+  - `force-reset?` builds a brand-new (timestamped) index and activates it immediately.
+  - When a compatible index already exists (same provider/model/dimensions AND embedding-text
+    version), it is reused — activated immediately if it isn't already active, except when it is
+    the index currently being built in the background (then the build continues).
+  - When there is no active index at all, the desired index is created and activated (bootstrap).
+  - When the active index has the *same embedding model* but a *different embedding-text version*
+    (i.e. `embeddable-text` changed), the desired index is built in the background (blue-green):
+    recorded and pointed at by `index_control.building_id` while the old index keeps serving. The
+    indexer backfills it and atomically swaps it active once caught up (see indexer/swap-active!).
+  - Any other difference (an embedding *model* switch) activates the new index immediately, as
+    before — old indexes remain available and are cleaned up later.
+
+  Returns the index map for the index that callers should treat as the target of this call."
   [tx index-metadata embedding-model opts]
   (let [force-new-index (:force-reset? opts)
+        etv             (semantic.index/current-embedding-text-version)
+        active-state    (semantic.index-metadata/get-active-index-state tx index-metadata)
+        building-id     (-> (semantic.index-metadata/get-building-index-state tx index-metadata)
+                            :metadata-row :id)
+        compatible      (when-not force-new-index
+                          (semantic.index-metadata/find-compatible-index! tx index-metadata embedding-model etv))
+        compatible-id   (-> compatible :metadata-row :id)
+        ;; The active index uses the same embedding model but a different embedding-text version
+        ;; than the configured one -> the embedded-document representation changed.
+        same-model-new-text-version?
+        (and active-state
+             (nil? compatible)
+             (= embedding-model (:embedding-model (:index active-state)))
+             (not= etv (:embedding-text-version (:index active-state))))]
+    (cond
+      ;; Explicit force-reset: brand-new timestamped index, activated immediately (start-fresh).
+      force-new-index
+      (let [index    (fresh-index index-metadata embedding-model opts)
+            index-id (semantic.index-metadata/record-new-index-table! tx index-metadata index)]
+        (ensure-index-tables! tx index-metadata index index-id)
+        (semantic.index-metadata/activate-index! tx index-metadata index-id)
+        index)
 
-        {:keys [index metadata-row active]}
-        (if force-new-index
-          {:index (fresh-index index-metadata embedding-model opts)}
-          (or (semantic.index-metadata/find-compatible-index! tx index-metadata embedding-model)
-              {:index (fresh-index index-metadata embedding-model opts)}))
+      ;; A compatible index is already active -> steady state, reuse it.
+      (and compatible (:active compatible))
+      (let [{:keys [index metadata-row]} compatible]
+        (ensure-index-tables! tx index-metadata index (:id metadata-row))
+        index)
 
-        index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
-    (semantic.index/create-index-table-if-not-exists! tx index)
-    (semantic.dlq/create-dlq-table-if-not-exists! tx index-metadata index-id)
-    (when-not active
-      (log/infof "Configured model does not match active index, switching to new index %s" (u/pprint-to-str index))
-      (semantic.index-metadata/activate-index! tx index-metadata index-id))
-    index))
+      ;; The compatible index is the one currently building in the background -> keep building it,
+      ;; do not activate (the indexer swaps it in once caught up).
+      (and compatible (= compatible-id building-id))
+      (let [{:keys [index]} compatible]
+        (ensure-index-tables! tx index-metadata index compatible-id)
+        index)
+
+      ;; A compatible-but-inactive index exists (e.g. switching back to a previously used model, or
+      ;; a completed build that hasn't been activated) -> activate it immediately.
+      compatible
+      (let [{:keys [index]} compatible]
+        (ensure-index-tables! tx index-metadata index compatible-id)
+        (semantic.index-metadata/activate-index! tx index-metadata compatible-id)
+        index)
+
+      ;; No active index at all -> bootstrap: create and activate immediately.
+      (nil? active-state)
+      (let [index    (fresh-index index-metadata embedding-model opts)
+            index-id (semantic.index-metadata/record-new-index-table! tx index-metadata index)]
+        (ensure-index-tables! tx index-metadata index index-id)
+        (semantic.index-metadata/activate-index! tx index-metadata index-id)
+        index)
+
+      ;; Same embedding model, new embedding-text version -> build the new representation in the
+      ;; background and let the indexer swap it in once caught up (blue-green, zero-downtime).
+      same-model-new-text-version?
+      (let [index    (fresh-index index-metadata embedding-model opts)
+            index-id (semantic.index-metadata/record-new-index-table! tx index-metadata index)]
+        (ensure-index-tables! tx index-metadata index index-id)
+        (semantic.index-metadata/set-building-index! tx index-metadata index-id)
+        (log/infof "Embedding-text version changed; building %s in the background for a blue-green swap"
+                   (:table-name index))
+        index)
+
+      ;; Otherwise (an embedding model switch) -> create and activate immediately, as before.
+      :else
+      (let [index    (fresh-index index-metadata embedding-model opts)
+            index-id (semantic.index-metadata/record-new-index-table! tx index-metadata index)]
+        (ensure-index-tables! tx index-metadata index index-id)
+        (log/infof "Configured model does not match active index, switching to new index %s" (:table-name index))
+        (semantic.index-metadata/activate-index! tx index-metadata index-id)
+        index))))
 
 (defn init-semantic-search!
   "Initialises a pgvector database for semantic search if it does not exist and creates an index for the provided

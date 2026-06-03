@@ -33,6 +33,7 @@
   search-context]
  [search.ingestion
   bulk-ingest!
+  embeddable-text-version
   max-searchable-value-length
   searchable-value-trim-sql]
  [search.spec

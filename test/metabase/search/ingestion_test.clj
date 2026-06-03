@@ -49,14 +49,14 @@
                (#'search.ingestion/searchable-text record)))))))
 
 (deftest embeddable-text-test
-  (testing "embeddable-text with vector format"
+  (testing "embeddable-text with vector format joins searchable values as natural language"
     (let [spec-fn (constantly {:search-terms [:name :description]})
           record  {:model       "card"
                    :name        "Sales Dashboard"
                    :description "Shows quarterly sales data"
                    :other-field "Other Value"}]
       (with-redefs [search.spec/spec spec-fn]
-        (is (= "[card]\nname: Sales Dashboard\ndescription: Shows quarterly sales data"
+        (is (= "Sales Dashboard. Shows quarterly sales data"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text with map format"
     (let [spec-fn (constantly {:search-terms {:name        true
@@ -65,7 +65,15 @@
                    :name        "Test Dashboard"
                    :description "A test dashboard"}]
       (with-redefs [search.spec/spec spec-fn]
-        (is (= "[dashboard]\nname: Test Dashboard\ndescription: A test dashboard"
+        (is (= "Test Dashboard. A test dashboard"
+               (#'search.ingestion/embeddable-text record))))))
+  (testing "embeddable-text leads with the name even when it is not first in the spec"
+    (let [spec-fn (constantly {:search-terms [:description :name]})
+          record  {:model       "card"
+                   :name        "Lead Name"
+                   :description "Some description"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "Lead Name. Some description"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text filters out blank values"
     (let [spec-fn (constantly {:search-terms [:name :description :empty-field]})
@@ -74,14 +82,14 @@
                    :description "  "
                    :empty-field nil}]
       (with-redefs [search.spec/spec spec-fn]
-        (is (= "[card]\nname: Test Card"
+        (is (= "Test Card"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text does not apply transform functions"
     (let [spec-fn (constantly {:search-terms {:name search.spec/explode-camel-case}})
           record  {:model "table"
                    :name  "CamelCaseTest"}]
       (with-redefs [search.spec/spec spec-fn]
-        (is (= "[table]\nname: CamelCaseTest"
+        (is (= "CamelCaseTest"
                (#'search.ingestion/embeddable-text record))
             "Transformation functions should not be applied to embeddable text for semantic search")))))
 

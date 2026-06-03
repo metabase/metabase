@@ -215,6 +215,84 @@
                                                 :quoted true))
             (is (thrown-with-msg? Exception #"No active semantic search index" (sut pgvector index-metadata search)))))))))
 
+(deftest blue-green-build-on-text-version-change-test
+  (testing "bumping the embedding-text version starts a background (blue-green) build"
+    (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
+      (let [pgvector       (semantic.env/get-pgvector-datasource!)
+            index-metadata (semantic.tu/unique-index-metadata)
+            model          semantic.tu/mock-embedding-model]
+        (with-open [_ (open-semantic-search! pgvector index-metadata model)]
+          (let [orig-active (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+                orig-id     (-> orig-active :metadata-row :id)]
+            (testing "a fresh install has an active index and no build in progress"
+              (is (some? orig-id))
+              (is (nil? (semantic.index-metadata/get-building-index-state pgvector index-metadata))))
+            (mt/with-dynamic-fn-redefs [semantic.index/current-embedding-text-version (constantly 999)]
+              (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model)
+              (let [active   (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+                    building (semantic.index-metadata/get-building-index-state pgvector index-metadata)]
+                (testing "the active index keeps serving (unchanged) while the new one builds"
+                  (is (= orig-id (-> active :metadata-row :id))))
+                (testing "a building index is recorded for the new embedding-text version"
+                  (is (some? building))
+                  (is (not= orig-id (-> building :metadata-row :id)))
+                  (is (= 999 (-> building :index :embedding-text-version)))
+                  (is (not= (-> active :index :table-name) (-> building :index :table-name))))
+                (testing "re-running init while the build is in progress is idempotent (no premature activation)"
+                  (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model)
+                  (is (= orig-id (-> (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+                                     :metadata-row :id)))
+                  (is (= (-> building :metadata-row :id)
+                         (-> (semantic.index-metadata/get-building-index-state pgvector index-metadata)
+                             :metadata-row :id))))
+                (testing "swap-active! atomically promotes the building index and clears the pointer"
+                  (let [building-id (-> building :metadata-row :id)
+                        promoted    (semantic.index-metadata/swap-active! pgvector index-metadata)]
+                    (is (= building-id promoted))
+                    (is (= building-id (-> (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+                                           :metadata-row :id)))
+                    (is (nil? (semantic.index-metadata/get-building-index-state pgvector index-metadata)))))))))))))
+
+(deftest blue-green-rebuild-end-to-end-test
+  (testing "the indexer backfills the building index from the gate and swaps it in once caught up"
+    (semantic.tu/with-indexable-documents!
+      (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix semantic.tu/mock-table-suffix
+                                  semantic.indexer/sleep                         (fn [_])
+                                  semantic.settings/ee-search-indexer-poll-limit (constantly 4)]
+        (with-redefs [semantic.indexer/exit-early-cold-duration (Duration/ofSeconds 1)
+                      semantic.indexer/lag-tolerance            Duration/ZERO]
+          (let [pgvector       (semantic.env/get-pgvector-datasource!)
+                index-metadata (semantic.tu/unique-index-metadata)
+                model          semantic.tu/mock-embedding-model
+                docs           (vec (search.ingestion/searchable-documents))
+                count-rows     (fn [index]
+                                 (-> (jdbc/execute-one! pgvector
+                                                        (sql/format {:select [[:%count.* :n]]
+                                                                     :from   [(keyword (:table-name index))]}
+                                                                    :quoted true)
+                                                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                                     :n))]
+            (with-open [_ (open-semantic-search! pgvector index-metadata model)]
+              (semantic.pgvector-api/gate-updates! pgvector index-metadata docs)
+              (mt/with-dynamic-fn-redefs [semantic.index/current-embedding-text-version (constantly 999)]
+                (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model)
+                (let [building    (semantic.index-metadata/get-building-index-state pgvector index-metadata)
+                      building-id (-> building :metadata-row :id)
+                      deadline    (+ (System/currentTimeMillis) 30000)
+                      swapped?    (loop []
+                                    (semantic.indexer/quartz-job-run! pgvector index-metadata)
+                                    (let [active-id (-> (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+                                                        :metadata-row :id)]
+                                      (cond
+                                        (= building-id active-id)                true
+                                        (< deadline (System/currentTimeMillis)) false
+                                        :else                                    (recur))))]
+                  (testing "the building index is promoted to active once it has caught up"
+                    (is swapped?)
+                    (is (nil? (semantic.index-metadata/get-building-index-state pgvector index-metadata))))
+                  (testing "the promoted index actually contains the backfilled documents"
+                    (is (pos? (count-rows (:index building))))))))))))))
+
 (deftest e2e-index-a-sample-db-with-gate-test
   (let [docs            (mt/dataset test-data (vec (search.ingestion/searchable-documents)))
         pgvector        (semantic.env/get-pgvector-datasource!)

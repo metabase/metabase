@@ -69,7 +69,8 @@
       (testing "creates singleton control row with id=0"
         (is (= [] (semantic.tu/get-control-rows pgvector index-metadata)) "should be empty at start")
         (sut pgvector index-metadata)
-        (is (= [{:id 0, :version (:version index-metadata), :active_id nil, :active_updated_at nil}]
+        (is (= [{:id 0, :version (:version index-metadata), :active_id nil, :active_updated_at nil
+                 :building_id nil, :building_updated_at nil}]
                (semantic.tu/get-control-rows pgvector index-metadata))))
       (testing "is idempotent - doesn't create duplicate rows"
         (let [control-snap (semantic.tu/get-control-rows pgvector index-metadata)]
@@ -189,6 +190,21 @@
                 :else
                 (testing "no metadata"
                   (is (nil? (sut' model))))))))))))
+
+(deftest find-compatible-index!-embedding-text-version-test
+  (testing "embedding-text version is part of the index identity"
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.tu/unique-index-metadata)
+          model          semantic.tu/mock-embedding-model
+          recorded-etv   (semantic.index/current-embedding-text-version)]
+      (with-open [_ (open-tables! pgvector index-metadata)]
+        (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
+        (add-index! pgvector index-metadata model)
+        (testing "compatible only when the embedding-text version matches"
+          (is (some? (semantic.index-metadata/find-compatible-index! pgvector index-metadata model recorded-etv)))
+          (is (nil?  (semantic.index-metadata/find-compatible-index! pgvector index-metadata model (inc recorded-etv)))))
+        (testing "the 3-arity defaults to the running code's embedding-text version"
+          (is (some? (semantic.index-metadata/find-compatible-index! pgvector index-metadata model))))))))
 
 (deftest create-new-index-spec-test
   (let [pgvector         (semantic.env/get-pgvector-datasource!)

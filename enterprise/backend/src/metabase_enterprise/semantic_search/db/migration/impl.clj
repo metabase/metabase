@@ -9,8 +9,14 @@
 
 (def schema-version
   "Version to compare the [[metabase-enterprise.semantic-search.db.migration/db-version]] with. If this is higher,
-  schema migration will be performed."
-  2)
+  schema migration will be performed.
+
+  v3: added `index_metadata.embedding_text_version` and `index_control.building_id` /
+  `building_updated_at` for versioned, blue-green index rebuilds. Because `migrate-schema!`
+  drops and recreates the metadata/control/gate tables, upgrading performs a one-time full
+  re-index (the embedded-document representation also changed in this release, so a re-embed was
+  required regardless); the appdb engine serves search during the rebuild."
+  3)
 
 (defn- drop-all-but-migration-table
   [tx]
