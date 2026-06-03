@@ -161,6 +161,29 @@ describe("DataSelector", () => {
     expect(setDatabaseFn).not.toHaveBeenCalled();
   });
 
+  it("should not auto-select the only loaded database while the list is still loading (metabase#52411)", async () => {
+    const setDatabaseFn = jest.fn();
+    render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        combineDatabaseSchemaSteps
+        triggerElement={<div />}
+        databases={[SAMPLE_DATABASE]}
+        // The list hasn't finished hydrating, so the single database we see so
+        // far might not be the only one — don't auto-select it yet.
+        databasesLoaded={false}
+        metadata={metadata}
+        isOpen={true}
+        setDatabaseFn={setDatabaseFn}
+        setSourceTableFn={jest.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+    await delay(1);
+    expect(setDatabaseFn).not.toHaveBeenCalled();
+  });
+
   it("should fetch db, schema, and table progressively", async () => {
     const fetchDatabases = jest.fn();
     const fetchSchemas = jest.fn();
