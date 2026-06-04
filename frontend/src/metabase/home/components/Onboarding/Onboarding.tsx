@@ -17,6 +17,7 @@ import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import { useSelector } from "metabase/redux";
+import type { ChecklistItemValue } from "metabase/redux/store";
 import {
   getDocsUrl,
   getIsPaidPlan,
@@ -46,7 +47,6 @@ import {
   trackChecklistItemCTAClicked,
   trackChecklistItemExpanded,
 } from "./analytics";
-import type { ChecklistItemValue } from "./types";
 
 export const Onboarding = () => {
   const applicationName = useSelector(getApplicationName);

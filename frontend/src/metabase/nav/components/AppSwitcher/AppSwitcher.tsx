@@ -9,14 +9,14 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { userInitials } from "metabase/common/utils/user";
 import { trackDataStudioOpened } from "metabase/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
-import {
-  getCanAccessOnboardingPage,
-  getIsNewInstance,
-} from "metabase/home/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
 import { getAdminPaths } from "metabase/selectors/admin";
+import {
+  getCanAccessOnboardingPage,
+  getIsNewInstance,
+} from "metabase/selectors/onboarding";
 import { getUser } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
