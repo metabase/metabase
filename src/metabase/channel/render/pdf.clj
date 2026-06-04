@@ -20,8 +20,17 @@
   static-viz pipeline the subscription emails use, then fit (preserving aspect, top-left) into
   their grid rectangle. Text and heading cards are drawn as native PDF text within their cell.
 
-  Prototype limitations: markdown in text cards is not interpreted; link/iframe/placeholder
-  virtual cards are skipped; a card taller than a full page is scaled down to fit."
+  Native text (titles, text cards, descriptions) is drawn with embedded Noto Sans fonts (via
+  `PDType0Font`), with per-glyph font fallback (see `font-runs`), so it renders Unicode: Latin,
+  Cyrillic, Greek, and CJK (Japanese/Korean/Chinese, via Noto Sans CJK). Mixed-script text picks
+  the right font per character; CJK has no italic, so italic CJK falls back to upright. Shaping
+  scripts (Arabic, Indic, Thai) are not yet supported and their characters render as `?`.
+
+  Note on size: all faces are TrueType (glyf), which PDFBox subsets at save -- so PDFs only carry
+  the glyphs actually used and stay small even when CJK text is present.
+
+  Prototype limitations: link/iframe/placeholder virtual cards are skipped; a card taller than a
+  full page is scaled down to fit."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -43,9 +52,11 @@
    (com.vladsch.flexmark.util.data MutableDataSet)
    (java.awt Color)
    (java.io ByteArrayOutputStream)
+   (org.apache.fontbox.ttf CmapLookup TrueTypeFont TTFParser)
+   (org.apache.pdfbox.io RandomAccessReadBuffer)
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
    (org.apache.pdfbox.pdmodel.common PDRectangle)
-   (org.apache.pdfbox.pdmodel.font PDType1Font Standard14Fonts$FontName)
+   (org.apache.pdfbox.pdmodel.font PDFont PDType0Font)
    (org.apache.pdfbox.pdmodel.graphics.image PDImageXObject)))
 
 (set! *warn-on-reflection* true)
@@ -83,8 +94,97 @@
   gauge, funnel, progress, scalar, table, ...) are rendered whole and fit preserving aspect."
   #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row})
 
-(defn- bold-font ^PDType1Font [] (PDType1Font. Standard14Fonts$FontName/HELVETICA_BOLD))
-(defn- regular-font ^PDType1Font [] (PDType1Font. Standard14Fonts$FontName/HELVETICA))
+;; --------------------------------------------------------------------------------------------
+;; Fonts -- embedded Noto Sans (TrueType, via PDType0Font) so we can render Unicode (Latin,
+;; Cyrillic, Greek, ...) rather than the ASCII-only Standard-14 fonts. PDType0Fonts are tied to a
+;; specific PDDocument, so we load a registry once per render and bind it to `*fonts*`.
+;; --------------------------------------------------------------------------------------------
+
+(def ^:private physical-font-resources
+  "Physical font keyword -> classpath resource. All TrueType (glyf), so PDFBox can subset them and
+  the output PDF only carries the glyphs actually used. Noto Sans covers Latin/Cyrillic/Greek; the
+  per-region Noto Sans JP/KR/SC faces (static instances of the variable Google Fonts) cover
+  Japanese/Korean/Simplified-Chinese."
+  {:noto-regular     "fonts/pdf/NotoSans-Regular.ttf"
+   :noto-bold        "fonts/pdf/NotoSans-Bold.ttf"
+   :noto-italic      "fonts/pdf/NotoSans-Italic.ttf"
+   :noto-bold-italic "fonts/pdf/NotoSans-BoldItalic.ttf"
+   :noto-mono        "fonts/pdf/NotoSansMono-Regular.ttf"
+   :jp-regular       "fonts/pdf/NotoSansJP-Regular.ttf"
+   :jp-bold          "fonts/pdf/NotoSansJP-Bold.ttf"
+   :kr-regular       "fonts/pdf/NotoSansKR-Regular.ttf"
+   :kr-bold          "fonts/pdf/NotoSansKR-Bold.ttf"
+   :sc-regular       "fonts/pdf/NotoSansSC-Regular.ttf"
+   :sc-bold          "fonts/pdf/NotoSansSC-Bold.ttf"})
+
+(def ^:dynamic *fonts*
+  "Per-document map of face-keyword -> `{:primary <phys> :fallbacks [<phys> ...]}`, where each
+  `<phys>` is `{:font <PDType0Font> :cmap <CmapLookup>}`. Bound while a document is being rendered
+  (PDType0Fonts are tied to a specific PDDocument; see [[load-fonts!]]). Latin keeps the Noto Sans
+  look across all styles; the CJK regional faces are ordered fallbacks so mixed English/Japanese
+  text renders per-glyph from the right font (CJK has no italic, so italic CJK falls back to the
+  upright CJK face)."
+  nil)
+
+(defn- load-phys
+  [^PDDocument doc resource-path]
+  (let [bytes  (with-open [is (io/input-stream (io/resource resource-path))]
+                 (.readAllBytes is))
+        ^TrueTypeFont ttf (.parse (TTFParser.) (RandomAccessReadBuffer. ^bytes bytes))]
+    {:font (PDType0Font/load doc ttf true)
+     :cmap (.getUnicodeCmapLookup ttf)}))
+
+(defn- load-fonts!
+  "Load the font registry into `doc`. Call once per document; PDFBox subsets the embedded fonts at
+  save time, so only the glyphs actually used end up in the output PDF."
+  [^PDDocument doc]
+  (let [phys  (into {} (map (fn [[k path]] [k (load-phys doc path)])) physical-font-resources)
+        face* (fn [primary & fallbacks] {:primary (phys primary) :fallbacks (mapv phys fallbacks)})]
+    {:regular     (face* :noto-regular     :jp-regular :kr-regular :sc-regular)
+     :bold        (face* :noto-bold        :jp-bold    :kr-bold    :sc-bold)
+     :italic      (face* :noto-italic      :jp-regular :kr-regular :sc-regular)
+     :bold-italic (face* :noto-bold-italic :jp-bold    :kr-bold    :sc-bold)
+     :mono        (face* :noto-mono        :jp-regular :kr-regular :sc-regular)}))
+
+(defn- face [k] (get *fonts* k))
+(defn- bold-font [] (face :bold))
+(defn- regular-font [] (face :regular))
+
+(defn- covers? [phys cp] (pos? (.getGlyphId ^CmapLookup (:cmap phys) (int cp))))
+
+(defn- normalize-ws
+  "Turn tabs/newlines/other control chars into spaces (PDFBox `showText` can't take them)."
+  ^String [s]
+  (let [s (str s), n (.length s), sb (StringBuilder. n)]
+    (loop [i 0]
+      (when (< i n)
+        (let [cp (.codePointAt s i)]
+          (.appendCodePoint sb (if (< cp 32) (int \space) cp))
+          (recur (+ i (Character/charCount cp))))))
+    (.toString sb)))
+
+(defn- font-runs
+  "Split `s` into maximal `[phys ^String chunk]` runs, choosing for each codepoint the face's
+  primary font if it has the glyph, else the first fallback that does, else the primary with the
+  codepoint replaced by `?` (so `showText` never throws)."
+  [face ^String s]
+  (let [primary  (:primary face)
+        fallbacks (:fallbacks face)
+        pick     (fn [cp] (or (when (covers? primary cp) primary)
+                              (some #(when (covers? % cp) %) fallbacks)))
+        n        (.length s)]
+    (loop [i 0, cur nil, ^StringBuilder sb nil, out (transient [])]
+      (if (>= i n)
+        (persistent! (cond-> out (some? cur) (conj! [cur (.toString sb)])))
+        (let [cp   (.codePointAt s i)
+              phys (or (pick cp) primary)
+              ch   (if (pick cp) cp (int \?))]
+          (if (identical? phys cur)
+            (do (.appendCodePoint sb ch)
+                (recur (+ i (Character/charCount cp)) cur sb out))
+            (let [out (cond-> out (some? cur) (conj! [cur (.toString sb)]))
+                  sb2 (doto (StringBuilder.) (.appendCodePoint ch))]
+              (recur (+ i (Character/charCount cp)) phys sb2 out))))))))
 
 (defn- header-block-pt
   "Vertical points a header line of `font-pt` occupies (line height + a little padding)."
@@ -107,38 +207,106 @@
 ;; Text helpers
 ;; --------------------------------------------------------------------------------------------
 
-(defn- sanitize
-  "Standard-14 PDF fonts can't encode arbitrary characters; restrict to printable ASCII so
-  `showText` never throws, and collapse whitespace (showText can't contain newlines)."
-  ^String [s]
-  (-> (str s)
-      (str/replace #"\s+" " ")
-      (str/replace #"[^\x20-\x7E]" "?")
-      str/trim))
+(defn- text-width
+  "Width in points of `s` drawn with `face` at `font-pt`, summed across per-glyph font runs."
+  [face font-pt ^String s]
+  (transduce (map (fn [[phys ^String chunk]]
+                    (* font-pt (/ (.getStringWidth ^PDFont (:font phys) chunk) 1000.0))))
+             + 0.0
+             (font-runs face (normalize-ws s))))
+
+(defn- cjk-char?
+  "Codepoints from scripts that don't use spaces between words (CJK ideographs, kana, hangul, and
+  CJK punctuation/fullwidth forms). Line breaks are allowed between adjacent such characters."
+  [cp]
+  (or (<= 0x2E80 cp 0x2FFF)   ; CJK radicals, Kangxi
+      (<= 0x3000 cp 0x303F)   ; CJK symbols & punctuation
+      (<= 0x3040 cp 0x30FF)   ; hiragana + katakana
+      (<= 0x3400 cp 0x4DBF)   ; CJK ext A
+      (<= 0x4E00 cp 0x9FFF)   ; CJK unified ideographs
+      (<= 0xAC00 cp 0xD7A3)   ; hangul syllables
+      (<= 0xF900 cp 0xFAFF)   ; CJK compat ideographs
+      (<= 0xFF00 cp 0xFFEF))) ; halfwidth & fullwidth forms
+
+(def ^:private no-break-before-chars
+  "CJK characters that must not start a line (closing punctuation, small kana); they attach to the
+  previous break unit (a simplified kinsoku rule)."
+  (set "、。，．・：；！？）］｝」』】〕〉》〜ー…ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ"))
+
+(defn- tokenize-units
+  "Append break-unit tokens for `text` to `out`: each unit is `(assoc base :text … :space-before? …)`.
+  Whitespace collapses into break/space opportunities; CJK characters become individual units (a
+  line may break between any two), while runs of non-CJK characters stay together as words.
+  No-break-before punctuation attaches to the previous unit. Returns `[out' pending']`."
+  [^String text base pending out]
+  (let [n (.length text)]
+    (loop [i 0, pending pending, ^StringBuilder buf (StringBuilder.), buf-sb pending, out out]
+      (let [flush (fn [out] (if (pos? (.length buf))
+                              (conj out (assoc base :text (.toString buf) :space-before? buf-sb))
+                              out))]
+        (if (>= i n)
+          [(flush out) pending]
+          (let [cp (.codePointAt text i)
+                w  (Character/charCount cp)]
+            (cond
+              (Character/isWhitespace cp)
+              (recur (+ i w) true (StringBuilder.) true (flush out))
+
+              (cjk-char? cp)
+              (let [out  (flush out)
+                    cs   (String. (Character/toChars cp))
+                    prev (peek out)]
+                (if (and (contains? no-break-before-chars (char cp)) (some? prev) (:text prev))
+                  (recur (+ i w) false (StringBuilder.) false
+                         (conj (pop out) (update prev :text str cs)))
+                  (recur (+ i w) false (StringBuilder.) false
+                         (conj out (assoc base :text cs :space-before? pending)))))
+
+              :else
+              (let [buf-sb (if (zero? (.length buf)) pending buf-sb)]
+                (.appendCodePoint buf cp)
+                (recur (+ i w) false buf buf-sb out)))))))))
+
+(defn- split-into-chars
+  "Split a unit's text into one unit per codepoint (only the first keeps `:space-before?`). Used to
+  hard-break a single token that is itself wider than the whole line."
+  [unit]
+  (let [cps (vec (.toArray (.codePoints ^String (:text unit))))]
+    (map-indexed (fn [i cp] (assoc unit
+                                   :text (String. (Character/toChars (int cp)))
+                                   :space-before? (and (zero? i) (boolean (:space-before? unit)))))
+                 cps)))
 
 (defn- wrap-text
-  "Greedy word-wrap `text` to fit `max-width` points at `font-pt`. Returns a vector of lines."
-  [^PDType1Font font font-pt text max-width]
-  (let [width-of (fn [^String s] (* font-pt (/ (.getStringWidth font s) 1000.0)))]
-    (reduce
-     (fn [lines word]
-       (let [last-line (peek lines)
-             candidate (if (str/blank? last-line) word (str last-line " " word))]
-         (if (and (seq last-line) (> (width-of candidate) max-width))
-           (conj lines word)
-           (conj (if (empty? lines) [] (pop lines)) candidate))))
-     []
-     (str/split (sanitize text) #" "))))
+  "Greedy word-wrap `text` to fit `max-width` points at `font-pt` with `face`, breaking between
+  words, between CJK characters, and -- for a single token wider than the line -- between any
+  characters. Returns a vector of line strings."
+  [face font-pt text max-width]
+  (let [units (first (tokenize-units (normalize-ws text) {} false []))]
+    (loop [us units, cur "", cur-w 0.0, lines []]
+      (if (empty? us)
+        (if (str/blank? cur) lines (conj lines cur))
+        (let [u     (first us)
+              sb?   (and (seq cur) (:space-before? u))
+              piece (if sb? (str " " (:text u)) (:text u))
+              w     (text-width face font-pt piece)]
+          (cond
+            (and (str/blank? cur)
+                 (> (text-width face font-pt (:text u)) max-width)
+                 (> (count (:text u)) 1))
+            (recur (concat (split-into-chars u) (rest us)) cur cur-w lines)
 
-(defn- text-width
-  [^PDType1Font font font-pt ^String s]
-  (* font-pt (/ (.getStringWidth font s) 1000.0)))
+            (and (seq cur) (> (+ cur-w w) max-width))
+            (recur us "" 0.0 (conj lines cur))
+
+            :else
+            (recur (rest us) (str cur piece) (+ cur-w w) lines)))))))
 
 (defn- wrap-clamped
   "Wrap text to at most `max-lines` lines. If it would need more, truncate the last kept line
   and append an ellipsis (trimming characters until `line...` fits `max-w`)."
-  [^PDType1Font font font-pt text max-w max-lines]
-  (let [lines (wrap-text font font-pt text max-w)]
+  [face font-pt text max-w max-lines]
+  (let [lines (wrap-text face font-pt text max-w)]
     (cond
       (<= max-lines 0)          []
       (<= (count lines) max-lines) lines
@@ -148,40 +316,42 @@
             fitted   (loop [s (peek kept)]
                        (cond
                          (str/blank? s)                                      ellipsis
-                         (<= (text-width font font-pt (str s ellipsis)) max-w) (str s ellipsis)
+                         (<= (text-width face font-pt (str s ellipsis)) max-w) (str s ellipsis)
                          :else                                               (recur (subs s 0 (dec (count s))))))]
         (conj (pop kept) fitted)))))
 
 (defn- draw-line!
-  "Draw a single pre-sanitized line of text at a baseline."
-  [^PDPageContentStream cs ^PDType1Font font font-pt x baseline-y ^String text]
+  "Draw a single line of text with `face` at a baseline, switching physical font per glyph run so
+  mixed-script text (e.g. English + Japanese) renders from the right font."
+  [^PDPageContentStream cs face font-pt x baseline-y ^String text]
   (.beginText cs)
-  (.setFont cs font (float font-pt))
   (.newLineAtOffset cs (float x) (float baseline-y))
-  (.showText cs text)
+  (doseq [[phys ^String chunk] (font-runs face (normalize-ws text))]
+    (.setFont cs ^PDFont (:font phys) (float font-pt))
+    (.showText cs chunk))
   (.endText cs))
 
 (defn- draw-lines!
   "Draw a seq of already-wrapped lines top-down from `top-y`, optionally in `color`."
-  [^PDPageContentStream cs ^PDType1Font font font-pt ^Color color x top-y lines]
+  [^PDPageContentStream cs face font-pt ^Color color x top-y lines]
   (when color (.setNonStrokingColor cs color))
   (loop [ls lines, y (- (double top-y) font-pt)]
     (when (seq ls)
-      (draw-line! cs font font-pt x y (first ls))
+      (draw-line! cs face font-pt x y (first ls))
       (recur (rest ls) (- y (* font-pt line-height-factor)))))
   (when color (.setNonStrokingColor cs Color/BLACK)))
 
 (defn- draw-text-block!
   "Draw wrapped text top-aligned within `[x, top-y]` bounded by `max-w`/`max-h`, optionally in
   `color` (reset to black afterward). Returns the vertical points consumed."
-  [^PDPageContentStream cs ^PDType1Font font font-pt ^Color color x top-y max-w max-h text]
+  [^PDPageContentStream cs face font-pt ^Color color x top-y max-w max-h text]
   (let [lh (* font-pt line-height-factor)]
     (when color (.setNonStrokingColor cs color))
-    (let [used (loop [lines (if (str/blank? (str text)) [] (wrap-text font font-pt text max-w))
+    (let [used (loop [lines (if (str/blank? (str text)) [] (wrap-text face font-pt text max-w))
                       y     (- (double top-y) font-pt)
                       used  0.0]
                  (if (and (seq lines) (<= (+ used lh) max-h))
-                   (do (draw-line! cs font font-pt x y (first lines))
+                   (do (draw-line! cs face font-pt x y (first lines))
                        (recur (rest lines) (- y lh) (+ used lh)))
                    used))]
       (when color (.setNonStrokingColor cs Color/BLACK))
@@ -189,8 +359,8 @@
 
 (defn- draw-text-in-cell!
   "Draw wrapped text top-aligned within a cell rectangle, clipping to the cell height."
-  [^PDPageContentStream cs ^PDType1Font font font-pt x top-y cell-w cell-h text]
-  (draw-text-block! cs font font-pt nil x top-y cell-w cell-h text))
+  [^PDPageContentStream cs face font-pt x top-y cell-w cell-h text]
+  (draw-text-block! cs face font-pt nil x top-y cell-w cell-h text))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Markdown -> styled runs (text cards). We parse with flexmark (the same library the email
@@ -271,14 +441,13 @@
 (defn- parse-markdown-blocks [text]
   (vec (mapcat #(block->blocks % 0) (node-children (.parse ^Parser @md-parser (str text))))))
 
-(defn- run-font ^PDType1Font [{:keys [bold? italic? code?]}]
-  (PDType1Font.
-   (cond
-     code?               Standard14Fonts$FontName/COURIER
-     (and bold? italic?) Standard14Fonts$FontName/HELVETICA_BOLD_OBLIQUE
-     bold?               Standard14Fonts$FontName/HELVETICA_BOLD
-     italic?             Standard14Fonts$FontName/HELVETICA_OBLIQUE
-     :else               Standard14Fonts$FontName/HELVETICA)))
+(defn- run-font [{:keys [bold? italic? code?]}]
+  (face (cond
+          code?               :mono
+          (and bold? italic?) :bold-italic
+          bold?               :bold
+          italic?             :italic
+          :else               :regular)))
 
 (defn- heading-pt [level]
   (case (long level) 1 15.0 2 13.5 3 12.0 11.5))
@@ -295,12 +464,7 @@
           (recur (rest runs) false (conj out {:break? true}))
           (let [style (dissoc r :text :space? :break? :href)
                 style (cond-> style (:href r) (assoc :link? true))
-                [out2 pend2] (reduce (fn [[acc pend] tok]
-                                       (if (str/blank? tok)
-                                         [acc true]
-                                         [(conj acc {:text tok :style style :space-before? pend}) false]))
-                                     [out pending]
-                                     (re-seq #"\S+|\s+" (str (:text r ""))))]
+                [out2 pend2] (tokenize-units (str (:text r "")) {:style style} pending out)]
             (recur (rest runs) pend2 out2)))))))
 
 (defn- words->lines
@@ -315,7 +479,7 @@
           (recur (rest ws) [] 0.0 (conj lines line))
           (let [style      (:style w)
                 font       (run-font (cond-> style heading? (assoc :bold? true)))
-                txt        (sanitize (:text w))
+                txt        (:text w)
                 ww         (text-width font base-pt txt)
                 sp         (text-width font base-pt " ")
                 color      (cond (:link? style) link-color (:code? style) code-color :else Color/BLACK)
@@ -323,8 +487,15 @@
                 advance    (+ (if add-space? sp 0.0) ww)
                 item       {:text txt :font font :pt base-pt :color color
                             :ww ww :sp sp :space-before? add-space?}]
-            (if (and (seq line) (> (+ line-w advance) max-w))
+            (cond
+              ;; a single token wider than the whole line -> hard-break into characters
+              (and (empty? line) (> ww max-w) (> (count txt) 1))
+              (recur (concat (split-into-chars w) (rest ws)) line line-w lines)
+
+              (and (seq line) (> (+ line-w advance) max-w))
               (recur ws [] 0.0 (conj lines line))
+
+              :else
               (recur (rest ws) (conj line item) (+ line-w advance) lines))))))))
 
 (defn- block-height
@@ -367,14 +538,14 @@
 
 (defn- draw-code-block!
   [^PDPageContentStream cs block x top-y cell-w bottom scale]
-  (let [font (PDType1Font. Standard14Fonts$FontName/COURIER)
+  (let [font (face :mono)
         pt   (* 9.0 scale)
         lh   (* pt line-height-factor)]
     (.setNonStrokingColor cs ^Color code-color)
     (let [y (loop [ls (str/split-lines (str (:text block))), y (double top-y)]
               (if (or (empty? ls) (< (- y lh) bottom))
                 y
-                (do (draw-line! cs font pt (+ x 4.0) (- y pt) (sanitize (first ls)))
+                (do (draw-line! cs font pt (+ x 4.0) (- y pt) (first ls))
                     (recur (rest ls) (- y lh)))))]
       (.setNonStrokingColor cs Color/BLACK)
       (- y 2.0))))
@@ -606,10 +777,10 @@
   (let [bold (bold-font)
         top  (- (double page-height) margin)]
     (when dashboard-title
-      (draw-line! cs bold dashboard-title-pt margin (- top dashboard-title-pt) (sanitize dashboard-title)))
+      (draw-line! cs bold dashboard-title-pt margin (- top dashboard-title-pt) dashboard-title))
     (when tab-title
       (let [y (if dashboard-title (- top (header-block-pt dashboard-title-pt)) top)]
-        (draw-line! cs bold tab-title-pt margin (- y tab-title-pt) (sanitize tab-title))))))
+        (draw-line! cs bold tab-title-pt margin (- y tab-title-pt) tab-title)))))
 
 (defn- render-page!
   [^PDDocument doc {:keys [^PDRectangle rect unit]} timezone page]
@@ -679,14 +850,15 @@
                           sections)
            doc      (PDDocument.)]
        (try
-         (doseq [[idx section] (map-indexed vector sections)
-                 page          (pages-for-section section idx dims tabbed? (:name dash))]
-           (render-page! doc dims timezone page))
-         (when (zero? (.getNumberOfPages doc))
-           (.addPage doc (PDPage. ^PDRectangle (:rect dims))))
-         (with-open [os (ByteArrayOutputStream.)]
-           (.save doc os)
-           (.toByteArray os))
+         (binding [*fonts* (load-fonts! doc)]
+           (doseq [[idx section] (map-indexed vector sections)
+                   page          (pages-for-section section idx dims tabbed? (:name dash))]
+             (render-page! doc dims timezone page))
+           (when (zero? (.getNumberOfPages doc))
+             (.addPage doc (PDPage. ^PDRectangle (:rect dims))))
+           (with-open [os (ByteArrayOutputStream.)]
+             (.save doc os)
+             (.toByteArray os)))
          (finally
            (.close doc)))))))
 
@@ -699,3 +871,8 @@
      (with-open [os (io/output-stream path)]
        (.write os ^bytes bytes))
      path)))
+
+(comment
+  (let [main-dash 1
+        i18n-dash 18]
+    (render-dashboard-to-pdf-file 18 1 {} "/tmp/dash13.pdf")))
