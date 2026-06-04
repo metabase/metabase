@@ -44,17 +44,25 @@ export const useGetLibraryChildCollectionByType = ({
   skip?: boolean;
   type: CollectionType;
 }) => {
-  const { data: rootLibraryCollection } = useGetLibraryCollection({ skip });
-  const { data: libraryCollections } = useListCollectionItemsQuery(
-    rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
-  );
-  return useMemo(
+  const { data: rootLibraryCollection, isLoading: isLoadingLibrary } =
+    useGetLibraryCollection({ skip });
+  const { data: libraryCollections, isLoading: isLoadingItems } =
+    useListCollectionItemsQuery(
+      rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
+    );
+  const data = useMemo(
     () =>
       libraryCollections?.data.find(
         (collection: CollectionItem) => collection.type === type,
       ),
     [libraryCollections, type],
   );
+
+  return {
+    data,
+    isLoading:
+      isLoadingLibrary || (rootLibraryCollection != null && isLoadingItems),
+  };
 };
 // This hook will return the library collection if there are both metrics and models in the library,
 // the library-metrics collection if the library has no models, or the library-data collection
