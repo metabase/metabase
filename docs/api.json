@@ -2080,15 +2080,28 @@
       "metabase-enterprise.erd.impl.erd-node" : {
         "type" : "object",
         "properties" : {
-          "db_id" : {
-            "type" : "integer"
+          "owner" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-owner"
           },
-          "description" : {
+          "visibility_type" : {
             "oneOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
             } ]
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "type" : "integer"
           },
           "display_name" : {
             "type" : "string"
@@ -2099,21 +2112,15 @@
               "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-field"
             }
           },
-          "name" : {
-            "type" : "string"
+          "db_id" : {
+            "type" : "integer"
           },
-          "owner" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-owner"
-          },
-          "schema" : {
+          "description" : {
             "oneOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
             } ]
-          },
-          "table_id" : {
-            "type" : "integer"
           }
         },
         "required" : [ "table_id", "name", "display_name", "db_id", "fields" ]
@@ -6869,7 +6876,7 @@
         },
         "minItems" : 1
       },
-      "metabase.legacy-mbql.schema.MBQLQuery" : {
+      "metabase.legacy-mbql.schema.MBQLInnerQuery" : {
         "allOf" : [ {
           "type" : "object",
           "properties" : {
@@ -6924,28 +6931,6 @@
           "properties" : { }
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.RemoveFieldRefsFromFieldsAlreadyInBreakout"
-        }, {
-          "allOf" : [ ]
-        } ]
-      },
-      "metabase.legacy-mbql.schema.NativeQuery" : {
-        "description" : "Schema for a valid, normalized native [inner] query.",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "collection" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "query" : { },
-            "template-tags" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagMap"
-            }
-          },
-          "required" : [ "query" ]
         }, {
           "allOf" : [ ]
         } ]
@@ -7121,10 +7106,10 @@
               } ]
             },
             "query" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLQuery"
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLInnerQuery"
             },
             "native" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeQuery"
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TopLevelNativeInnerQuery"
             },
             "info" : {
               "description" : "Used when recording info about this run in the QueryExecution log; things like context query was\n  ran in and User who ran it.",
@@ -7188,10 +7173,15 @@
       "metabase.legacy-mbql.schema.RemoveFieldRefsFromFieldsAlreadyInBreakout" : { },
       "metabase.legacy-mbql.schema.SourceQuery" : {
         "description" : "Schema for a valid value for a `:source-query`.",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeSourceQuery"
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : { }
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLQuery"
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeSourceQuery"
+          }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLInnerQuery"
+          } ]
         } ]
       },
       "metabase.legacy-mbql.schema.SourceTable" : {
@@ -7335,6 +7325,28 @@
         "description" : "Valid unit for time bucketing.",
         "type" : "string",
         "enum" : [ "hour", "second", "default", "hour-of-day", "millisecond", "minute-of-hour", "minute" ]
+      },
+      "metabase.legacy-mbql.schema.TopLevelNativeInnerQuery" : {
+        "description" : "Schema for a valid, normalized native [inner] query.",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "collection" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "query" : { },
+            "template-tags" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagMap"
+            }
+          },
+          "required" : [ "query" ]
+        }, {
+          "allOf" : [ ]
+        } ]
       },
       "metabase.legacy-mbql.schema.UnnamedAggregation" : {
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.AnyMBQLClause"
@@ -10150,13 +10162,6 @@
           "mode-fraction" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "skewness" : {
-            "oneOf" : [ {
-              "type" : "number"
             }, {
               "type" : "null"
             } ]
@@ -42564,7 +42569,7 @@
       "get" : {
         "operationId" : "get-api-search",
         "summary" : "GET /api/search",
-        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
+        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
         "parameters" : [ {
           "in" : "query",
           "name" : "q",
@@ -42742,6 +42747,18 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "vector_search_strategy",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "hnsw", "brute-force" ]
             }, {
               "type" : "null"
             } ]
