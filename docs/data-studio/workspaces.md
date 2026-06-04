@@ -74,7 +74,8 @@ If you've (wisely) connected Metabase to your data warehouse using a user with l
 1. Summon your agent and enter your prompt, starting with the slash skill command `/metabase-cli` to invoke the CLI skill. For example:
 
    ```
-   /metabase-cli create a new metabase workspace from production for customer cohort retention analysis. The public schema contains raw ecom data (users, orders, addresses, payments). Create a nano semantic layer (2 transforms max) to power a cohort retention dashboard you need to build with signup-month cohorts, repeat purchase rate, cohort revenue curve. Put the dashboard in a new collection called Cohort analysis. Dashboard questions should be made with the query builder so we get drill-through out of the box.
+   /metabase-cli the Sample PostgreSQL database contains normalized tables. Use transforms to create a semantic layer for people so they can self-serve questions about our customers. Build transforms (3 transforms max) that pull together data from the orders, people, products, and reviews tables. Create a dashboard with questions built on the tables created by the transforms that helps people understand our customers. Include metrics, and prefer query-builder questions so we get drill-through out of the box. Put these items in a new collection called Customers.
+
    ```
 
 2. The agent does its thing. Depending on your agent setup, it might follow up with some questions.
