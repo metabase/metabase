@@ -72,8 +72,10 @@
 
 ;;; Logic
 
-(def ^:private serialization-log-nses
-  "Namespaces whose logs are forked into the `export.log`/`import.log` files inside the archive."
+(def ^:private serialization-logger-prefixes
+  "log4j2 logger-name prefixes whose logs are forked into the `export.log`/`import.log` files inside the archive.
+  These are not loaded namespaces; each prefix captures every logger nested under it (e.g.
+  `metabase-enterprise.serialization` captures `metabase-enterprise.serialization.v2.extract`)."
   ['metabase-enterprise.serialization
    'metabase.models.serialization])
 
@@ -85,7 +87,7 @@
   [^java.io.OutputStream output ^String dirname entities ^ByteArrayOutputStream log-output {:keys [full-stacktrace]}]
   (let [writer (v2.storage.tar/tar-writer output dirname)
         error  (atom nil)
-        report (with-open [_logger (logger/for-ns log-output serialization-log-nses
+        report (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
                                                   {:additive *additive-logging*})]
                  (try
                    (serdes/with-cache
@@ -126,7 +128,7 @@
         log-file (io/file dst "import.log")
         err      (atom nil)
         reindex? (if (nil? reindex?) true reindex?)
-        report   (with-open [_logger (logger/for-ns log-file serialization-log-nses
+        report   (with-open [_logger (logger/for-ns log-file serialization-logger-prefixes
                                                     {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
@@ -241,7 +243,7 @@
         ;; can set a non-200 status. Its eager logs (e.g. escape-analysis warnings) are captured into `log-output`
         ;; so they end up in export.log alongside the storage logs captured later.
         log-output (ByteArrayOutputStream.)
-        entities (with-open [_logger (logger/for-ns log-output serialization-log-nses
+        entities (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
                                                     {:additive *additive-logging*})]
                    (extract/extract opts))]
     (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
