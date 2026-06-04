@@ -358,8 +358,7 @@
                           ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
-                     {:description "Number of rows in this instance's active appdb search index table, by model."
-                      :labels      [:model]})
+                     {:description "Estimated number of rows in this instance's active appdb search index table."})
    (prometheus/gauge :metabase-search/semantic-index-size
                      {:description "Number of rows in the active semantic index table."})
    (prometheus/gauge :metabase-search/semantic-dlq-size

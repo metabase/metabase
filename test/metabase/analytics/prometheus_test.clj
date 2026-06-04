@@ -199,16 +199,14 @@
       (let [refresher (registry/get (:registry system)
                                     {:name "metabase_application_pull" :namespace "metabase"} nil)]
         (try
-          ;; the function makes whatever metric updates it wants -- here two samples of the (declared)
+          ;; the function makes whatever metric updates it wants -- here it sets the (declared)
           ;; :metabase-search/appdb-index-size gauge
           (defmethod prometheus/pull-collector ::test [_]
             {:min-interval-s 0
              :f (fn []
-                  (prometheus/set! :metabase-search/appdb-index-size {:model "card"} 7)
-                  (prometheus/set! :metabase-search/appdb-index-size {:model "dashboard"} 0))})
+                  (prometheus/set! :metabase-search/appdb-index-size 7))})
           (.collect ^Collector refresher)   ; runs the registered functions
-          (is (approx= 7 (mt/metric-value system :metabase-search/appdb-index-size {:model "card"})))
-          (is (approx= 0 (mt/metric-value system :metabase-search/appdb-index-size {:model "dashboard"})))
+          (is (approx= 7 (mt/metric-value system :metabase-search/appdb-index-size)))
           (finally
             (remove-method prometheus/pull-collector ::test)
             (swap! @#'prometheus/pull-collector-last-runs dissoc ::test)))))))

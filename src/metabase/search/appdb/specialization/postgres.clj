@@ -98,3 +98,16 @@
      :from     [[index-table :search_index]]
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
+
+(defmethod specialization/index-size-estimate :postgres
+  [table-name]
+  ;; Use the planner's row estimate (pg_class.reltuples) instead of a full count(*). reltuples/relpages are
+  ;; only populated by ANALYZE/VACUUM, so right after a rebuild (the table is freshly created and bulk-loaded
+  ;; but not yet analyzed) relpages is 0 and the estimate is meaningless -- fall back to an exact count for
+  ;; that brief window so we never report a phantom 0 for a populated index.
+  (let [{:keys [reltuples relpages]} (t2/query-one {:select [:reltuples :relpages]
+                                                    :from   [:pg_class]
+                                                    :where  [:= :oid [:to_regclass (name table-name)]]})]
+    (if (and relpages (pos? relpages) reltuples (nat-int? (long reltuples)))
+      (long reltuples)
+      (t2/count table-name))))
