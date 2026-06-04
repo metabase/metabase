@@ -72,7 +72,11 @@ describe("getHeatMapSeries", () => {
         makeHeatMapSeries("Revenue by Plan (Enterprise)", [["A", 2]]),
         makeHeatMapSeries("Revenue by Plan (SMB)", [["A", 3]]),
       ],
-      segmentNames: [null, "Enterprise", "SMB"],
+      legendItems: [
+        { name: "(All)", color: "#509EE3" },
+        { name: "Enterprise", color: "#88BF4D" },
+        { name: "SMB", color: "#A989C5" },
+      ],
     });
 
     const segmentColumn = data.rows.map((row) => row[row.length - 1]);
@@ -276,7 +280,6 @@ describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
     return buildSeriesGroups({
       queries,
       datasets,
-      queryColors: {},
       selectedTimelineId: null,
     }).chartsForDocumentEmbed;
   }
@@ -365,6 +368,36 @@ describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
     ).toBeUndefined();
   });
 
+  it("includes segment names and colors in series_settings on multi-series cartesian embeds", () => {
+    const charts = getChartsForDocumentEmbed(
+      [
+        makeQuery({
+          id: 1,
+          name: "Q1",
+          dimension_id: "dim-1",
+          segment_id: 1,
+          segment_name: "US",
+        }),
+        makeQuery({
+          id: 2,
+          name: "Q2",
+          dimension_id: "dim-1",
+          segment_id: 2,
+          segment_name: "EU",
+        }),
+      ],
+      [tsDataset, tsDataset],
+    );
+
+    expect(charts).toHaveLength(1);
+    const seriesSettings =
+      charts[0].visualization_settings.series_settings ?? {};
+    const settings = Object.values(seriesSettings);
+    expect(settings.map((s) => s?.title)).toEqual(["US", "EU"]);
+    expect(settings.every((s) => s?.color)).toBe(true);
+    expect(new Set(settings.map((s) => s?.color)).size).toBe(2);
+  });
+
   it("includes selected timeline ids on cartesian embeds", () => {
     const charts = buildSeriesGroups({
       queries: [
@@ -372,7 +405,6 @@ describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
         makeQuery({ id: 2, name: "Q2", dimension_id: "dim-1" }),
       ],
       datasets: [tsDataset, tsDataset],
-      queryColors: {},
       selectedTimelineId: 42,
     }).chartsForDocumentEmbed;
 
@@ -384,8 +416,6 @@ describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
 });
 
 describe("buildSeries (display selection)", () => {
-  const queryColors = { "1": "#509EE3", "2": "#88BF4D" };
-
   function buildOneSeries(
     query: ExplorationQuery,
     dataset: Dataset,
@@ -400,7 +430,6 @@ describe("buildSeries (display selection)", () => {
     ];
     return buildSeries({
       queriesWithDatasets: group,
-      queryColors,
       selectedTimelineId: null,
     });
   }
@@ -519,13 +548,12 @@ describe("buildSeries (display selection)", () => {
     );
     const group = buildSeries({
       queriesWithDatasets: queries.map((q) => ({ ...q, dataset: categorical })),
-      queryColors,
       selectedTimelineId: null,
     });
     expect(group.series[0].card.display).toBe("table");
   });
 
-  it("assigns distinct map color ramps per query id", () => {
+  it("assigns distinct map color ramps per segment name", () => {
     const dataset = makeDataset(
       [
         createMockColumn({
@@ -539,15 +567,21 @@ describe("buildSeries (display selection)", () => {
     );
     const group = buildSeries({
       queriesWithDatasets: [
-        { ...makeQuery({ id: 1 }), dataset },
-        { ...makeQuery({ id: 2 }), dataset },
+        {
+          ...makeQuery({ id: 1, segment_id: 1, segment_name: "US" }),
+          dataset,
+        },
+        {
+          ...makeQuery({ id: 2, segment_id: 2, segment_name: "EU" }),
+          dataset,
+        },
       ],
-      queryColors,
       selectedTimelineId: null,
     });
     const ramp1 = group.series[0].card.visualization_settings["map.colors"];
     const ramp2 = group.series[1].card.visualization_settings["map.colors"];
     expect(ramp1?.[0]).not.toEqual(ramp2?.[0]);
+    expect(group.legendItems.map((item) => item.name)).toEqual(["US", "EU"]);
   });
 });
 
@@ -576,7 +610,6 @@ describe("buildSeriesGroups", () => {
     const { seriesGroups } = buildSeriesGroups({
       queries,
       datasets,
-      queryColors: {},
       selectedTimelineId: null,
     });
     expect(seriesGroups).toHaveLength(2);
@@ -606,7 +639,6 @@ describe("buildSeriesGroups", () => {
     const { layoutStrategy } = buildSeriesGroups({
       queries,
       datasets: [tsDataset, tsDataset, tsDataset],
-      queryColors: {},
       selectedTimelineId: null,
     });
     expect(layoutStrategy).toBe("two-small-charts-down");
@@ -639,7 +671,6 @@ describe("buildSeriesGroups", () => {
     const { seriesGroups } = buildSeriesGroups({
       queries,
       datasets: [tsDataset, timeFacetDataset],
-      queryColors: {},
       selectedTimelineId: null,
     });
     expect(

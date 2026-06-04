@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { Box, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
-import { getColorsForValues } from "metabase/ui/colors/charts";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
@@ -22,7 +21,7 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
-import { buildSeriesGroups } from "./utils";
+import { type LegendItem, buildSeriesGroups } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
@@ -172,11 +171,6 @@ function ExplorationGroupVisualizationChart({
   // individually tracked in the useMemo dependency array below.
   const datasets = datasetQueries.map((q) => q.currentData);
 
-  const queryColors = useMemo(
-    () => getColorsForValues(queries.map((q) => String(q.id))),
-    [queries],
-  );
-
   const { seriesGroups, layoutStrategy, chartsForDocumentEmbed } =
     useMemo(() => {
       const filteredDatasets = datasets.filter((d) => d !== undefined);
@@ -190,14 +184,13 @@ function ExplorationGroupVisualizationChart({
       return buildSeriesGroups({
         queries,
         datasets: filteredDatasets,
-        queryColors,
         selectedTimelineId,
       });
       // datasets is reconstructed every render but its identity-stable
       // entries make this safe; including the array directly would cause
       // an unstable dep warning.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [queries, queryColors, selectedTimelineId, ...datasets]);
+    }, [queries, selectedTimelineId, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
     return seriesGroups?.some((group) => group.isTimeseries);
@@ -232,7 +225,7 @@ function ExplorationGroupVisualizationChart({
         data-chart-layout={layoutStrategy}
         data-testid="exploration-chart-grid"
       >
-        {seriesGroups.map(({ series, stackCount, chartLabel }) =>
+        {seriesGroups.map(({ series, stackCount, chartLabel, legendItems }) =>
           isCartesianChart(series[0].card.display) ? (
             <ExplorationCartesianChart
               key={series[0].card.id}
@@ -251,8 +244,8 @@ function ExplorationGroupVisualizationChart({
             <ExplorationMap
               key={series[0].card.id}
               series={series}
-              queryColors={queryColors}
               label={chartLabel}
+              legendItems={legendItems}
             />
           ),
         )}
@@ -317,24 +310,23 @@ function ExplorationHeatMap({
 
 interface ExplorationMapProps {
   series: SingleSeries[];
-  queryColors: Record<string, string>;
   label?: string;
+  legendItems: LegendItem[];
 }
 
-function ExplorationMap({ series, queryColors, label }: ExplorationMapProps) {
+function ExplorationMap({ series, label, legendItems }: ExplorationMapProps) {
   // The Stack is the grid item — height auto so it stretches to the cell.
   // The label and (optional) legend take their natural height; the map
   // boxes inside use `flex={1}` to share whatever vertical space is left.
   return (
     <Stack gap="md">
       {label && <Text size="lg">{label}</Text>}
-      {series.length > 1 && (
+      {legendItems.length > 1 && (
         <Group gap="0.75rem" wrap="nowrap" role="list" aria-label={t`Legend`}>
-          {series.map((s) => {
-            const color = queryColors[s.card.id];
+          {legendItems.map(({ name, color }, i) => {
             return (
               <Group
-                key={s.card.id}
+                key={i}
                 gap="xs"
                 align="center"
                 wrap="nowrap"
@@ -356,7 +348,7 @@ function ExplorationMap({ series, queryColors, label }: ExplorationMapProps) {
                   fz={LEGEND_ITEM_FONT_SIZE}
                   lh="normal"
                 >
-                  {s.card.name}
+                  {name}
                 </Ellipsified>
               </Group>
             );

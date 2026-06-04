@@ -2,6 +2,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import { createSeriesCard } from "metabase/metrics/utils/series";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
@@ -30,8 +31,12 @@ import type {
 interface BuildSeriesGroupsParams {
   queries: ExplorationQuery[];
   datasets: Dataset[];
-  queryColors: Record<string, string>;
   selectedTimelineId: TimelineId | null;
+}
+
+export interface LegendItem {
+  name: string;
+  color: string;
 }
 
 export interface SeriesGroup {
@@ -46,6 +51,7 @@ export interface SeriesGroup {
    * upstream, so we copy off the first one in `buildSeries`.
    */
   params?: ExplorationQueryParams | null;
+  legendItems: LegendItem[];
 }
 
 /**
@@ -166,13 +172,21 @@ type BuildSeriesParams = Omit<
 
 export function buildSeries({
   queriesWithDatasets,
-  queryColors,
   selectedTimelineId,
 }: BuildSeriesParams): SeriesGroup {
   let isTimeseries = false;
   let stackCount: number | undefined;
 
-  const series = queriesWithDatasets.map((queryWithDataset) => {
+  const segmentNames = queriesWithDatasets.map(
+    (q) => q.segment_name ?? t`(All)`,
+  );
+  const colors = getColorsForValues(segmentNames);
+  const legendItems: LegendItem[] = segmentNames.map((name) => ({
+    name,
+    color: colors[name],
+  }));
+
+  const series = queriesWithDatasets.map((queryWithDataset, i) => {
     const { dataset, ...query } = queryWithDataset;
 
     const queriesWithSegments = queriesWithDatasets.filter(
@@ -206,7 +220,8 @@ export function buildSeries({
         cardSettings["graph.x_axis.labels_enabled"] = false;
       }
     } else if (display === "map") {
-      const color = queryColors[String(query.id)];
+      const segmentName = segmentNames[i];
+      const color = colors[segmentName];
       if (color) {
         cardSettings["map.colors"] = getColorplethColorScale(color);
       }
@@ -222,13 +237,12 @@ export function buildSeries({
   });
 
   let finalSeries: SingleSeries[] = series;
-  const segmentNames = queriesWithDatasets.map((q) => q.segment_name);
 
   if (series[0]?.card.display === "table") {
     finalSeries = [
       getHeatMapSeries({
         series,
-        segmentNames,
+        legendItems,
       }),
     ];
   } else if (isCartesianChart(series[0]?.card.display) && series.length > 1) {
@@ -246,7 +260,8 @@ export function buildSeries({
     const seriesSettings: Record<string, SeriesSettings> = {};
     seriesVizSettingsKeys.forEach((key, i) => {
       seriesSettings[key] = {
-        title: segmentNames[i] ?? t`(All)`,
+        title: legendItems[i].name,
+        color: legendItems[i].color,
       };
     });
     // getStoredSettingsForSeries only looks at settings on the first series
@@ -275,6 +290,7 @@ export function buildSeries({
     stackCount,
     queryType: queriesWithDatasets[0]?.query_type || "default",
     params: queriesWithDatasets[0]?.params,
+    legendItems,
   };
 }
 
@@ -418,13 +434,13 @@ function composeChartsForGroup(
 
 interface GetHeatMapSeriesParams {
   series: SingleSeries[];
-  segmentNames: (string | null)[];
+  legendItems: LegendItem[];
 }
 
 // the Table viz only supports one series, so we have to combine them
 export function getHeatMapSeries({
   series,
-  segmentNames,
+  legendItems,
 }: GetHeatMapSeriesParams): SingleSeries {
   const { card, data } = series[0];
   const segmentCol: DatasetColumn = {
@@ -437,7 +453,7 @@ export function getHeatMapSeries({
   let minValue: number | undefined;
   let maxValue: number | undefined;
   series.forEach((s, i) => {
-    const segmentName = segmentNames[i] ?? t`(All)`;
+    const segmentName = legendItems[i].name;
     for (const row of s.data.rows) {
       rows.push([...row, segmentName]);
       const value = row[1];
