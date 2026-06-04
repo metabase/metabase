@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
-import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types";
 import type {
   DimensionBreakoutInfo,
+  MetricsViewerDimensionBreakoutState,
+} from "metabase/metrics-viewer/types";
+import type {
   DimensionPickerItem,
   DimensionPickerSection,
   DimensionPickerSidebarCategory,

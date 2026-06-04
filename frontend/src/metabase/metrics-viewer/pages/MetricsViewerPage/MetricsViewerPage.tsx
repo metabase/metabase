@@ -1,25 +1,19 @@
 import type { Location } from "history";
-import { useCallback } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  trackMetricsViewerMetricAdded,
-  trackMetricsViewerMetricRemoved,
-} from "metabase/metrics-viewer/analytics";
 import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
-import {
-  DimensionPickerSidebar,
-  DimensionPickerSidebarProvider,
-  useDimensionPickerSidebar,
-} from "metabase/metrics-viewer/components/DimensionPickerSidebar";
+import { DimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
 import {
   MetricsViewerEmptyState,
   MetricsViewerNoDimensionBreakoutEmptyState,
 } from "metabase/metrics-viewer/components/EmptyState";
 import { MetricSearchPanel } from "metabase/metrics-viewer/components/MetricSearchPanel";
 import { MetricsViewerDimensionBreakoutContent } from "metabase/metrics-viewer/components/MetricsViewerDimensionBreakoutContent";
-import { useMetricsViewer } from "metabase/metrics-viewer/hooks";
-import type { SelectedMetric } from "metabase/metrics-viewer/types";
+import {
+  MetricsViewerProvider,
+  useMetricsViewerContext,
+} from "metabase/metrics-viewer/context";
+import { useViewerState } from "metabase/metrics-viewer/hooks";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import S from "./MetricsViewerPage.module.css";
@@ -29,61 +23,9 @@ export type MetricsViewerPageProps = {
 };
 
 export function MetricsViewerPage(props: MetricsViewerPageProps) {
-  return (
-    <DimensionPickerSidebarProvider>
-      <MetricsViewerPageContent {...props} />
-    </DimensionPickerSidebarProvider>
-  );
-}
+  const viewerState = useViewerState(props);
 
-function MetricsViewerPageContent(props: MetricsViewerPageProps) {
-  const { isOpen: isDimensionPickerSidebarOpen } = useDimensionPickerSidebar();
-  const useMetricsViewerResult = useMetricsViewer(props);
-
-  const {
-    definitions,
-    formulaEntities,
-    activeDimensionBreakout,
-    initialLoadComplete,
-    queriesAreLoading,
-    queriesError,
-    modifiedDefinitionsBySlotIndex,
-    metricSlots,
-    series,
-    cardIdToEntityIndex,
-    activeBreakoutColors,
-    sourceColors,
-    selectedMetrics,
-    sourceOrder,
-    sourceDataById,
-    activeDimensionBreakoutAvailableDimensions,
-    sidebarAvailableDimensions,
-    addMetric,
-    swapMetric,
-    removeMetric,
-    selectDimensionBreakout,
-    updateActiveDimensionBreakout,
-    setBreakoutDimension,
-    setFormulaEntities,
-  } = useMetricsViewerResult;
-
-  const handleAddMetric = useCallback(
-    (metric: SelectedMetric) => {
-      addMetric(metric);
-      trackMetricsViewerMetricAdded(metric.id, metric.sourceType);
-    },
-    [addMetric],
-  );
-
-  const handleRemoveMetric = useCallback(
-    (metricId: number, sourceType: "metric" | "measure") => {
-      removeMetric(metricId, sourceType);
-      trackMetricsViewerMetricRemoved(metricId, sourceType);
-    },
-    [removeMetric],
-  );
-
-  if (!initialLoadComplete) {
+  if (!viewerState.initialLoadComplete) {
     // parsing formulas won't work until the initial set of definitions are loaded
     return (
       <Center h="100%">
@@ -92,32 +34,30 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
     );
   }
 
+  return (
+    <MetricsViewerProvider value={viewerState}>
+      <MetricsViewerPageBody />
+    </MetricsViewerProvider>
+  );
+}
+
+function MetricsViewerPageBody() {
+  const { definitions, activeDimensionBreakout, isSidebarOpen } =
+    useMetricsViewerContext();
+
   const hasDefinitions = Object.keys(definitions).length > 0;
   const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
-  const showDimensionPickerSidebar =
-    isDimensionPickerSidebarOpen && !!activeDimensionBreakout;
   const showBreakoutLegend =
-    !isDimensionPickerSidebarOpen &&
+    !isSidebarOpen &&
     !!activeDimensionBreakout &&
     activeDimensionBreakout.type !== "scalar";
 
   return (
     <Stack px="3rem" h="100%" gap={0} className={S.root}>
       <Box pt="md" flex="0 0 auto">
-        <MetricSearchPanel
-          definitions={definitions}
-          formulaEntities={formulaEntities}
-          activeDimensionBreakout={activeDimensionBreakout}
-          onFormulaEntitiesChange={setFormulaEntities}
-          selectedMetrics={selectedMetrics}
-          metricColors={sourceColors}
-          onAddMetric={handleAddMetric}
-          onRemoveMetric={handleRemoveMetric}
-          onSwapMetric={swapMetric}
-          onSetBreakout={setBreakoutDimension}
-        />
+        <MetricSearchPanel />
       </Box>
       <Flex flex="1 1 auto" mih={0}>
         <Stack gap={0} flex={1} mih={0} miw={0}>
@@ -133,49 +73,17 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
               {!hasDefinitions ? (
                 <MetricsViewerEmptyState />
               ) : activeDimensionBreakout ? (
-                <MetricsViewerDimensionBreakoutContent
-                  definitions={definitions}
-                  formulaEntities={formulaEntities}
-                  dimensionBreakout={activeDimensionBreakout}
-                  queriesAreLoading={queriesAreLoading}
-                  queriesError={queriesError}
-                  modifiedDefinitionsBySlotIndex={
-                    modifiedDefinitionsBySlotIndex
-                  }
-                  metricSlots={metricSlots}
-                  series={series}
-                  cardIdToEntityIndex={cardIdToEntityIndex}
-                  sourceColors={sourceColors}
-                  availableDimensions={
-                    activeDimensionBreakoutAvailableDimensions
-                  }
-                  sourceOrder={sourceOrder}
-                  onDimensionBreakoutUpdate={updateActiveDimensionBreakout}
-                />
+                <MetricsViewerDimensionBreakoutContent />
               ) : hasLoadedDefinitions ? (
                 <MetricsViewerNoDimensionBreakoutEmptyState />
               ) : null}
             </Flex>
-            {showDimensionPickerSidebar && (
+            {isSidebarOpen && activeDimensionBreakout && (
               <DimensionPickerSidebar
                 activeDimensionBreakout={activeDimensionBreakout}
-                availableDimensions={sidebarAvailableDimensions}
-                allFieldsAvailableDimensions={sidebarAvailableDimensions}
-                metricSlots={metricSlots}
-                sourceColors={sourceColors}
-                metricSourceOrder={sourceOrder}
-                metricSourceDataById={sourceDataById}
-                onSelectDimensionBreakout={selectDimensionBreakout}
-                onUpdateActiveDimensionBreakout={updateActiveDimensionBreakout}
               />
             )}
-            {showBreakoutLegend && (
-              <BreakoutLegend
-                formulaEntities={formulaEntities}
-                definitions={definitions}
-                activeBreakoutColors={activeBreakoutColors}
-              />
-            )}
+            {showBreakoutLegend && <BreakoutLegend />}
           </Flex>
         </Stack>
       </Flex>

@@ -3,24 +3,17 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { trackMetricsViewerDimensionSelected } from "metabase/metrics-viewer/analytics";
-import type {
-  MetricSourceId,
-  MetricsViewerDimensionBreakoutState,
-  SourceColorMap,
-} from "metabase/metrics-viewer/types";
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
+import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types";
 import {
-  type AvailableDimensionsResult,
-  type DimensionBreakoutInfo,
   type DimensionPickerItem,
   type DimensionPickerSidebarCategory,
-  type SourceDisplayInfo,
   buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
   getComparableDimensionMapping,
   getDimensionBreakoutConfig,
   getScalarDimensionBreakoutLabel,
 } from "metabase/metrics-viewer/utils";
-import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import {
   ActionIcon,
   Box,
@@ -36,7 +29,6 @@ import {
 } from "metabase/ui";
 
 import S from "./DimensionPickerSidebar.module.css";
-import { useDimensionPickerSidebar } from "./DimensionPickerSidebarContext";
 import { AllFieldsList } from "./components/AllFieldsList";
 import { CategoryItem } from "./components/CategoryItem";
 import {
@@ -49,36 +41,25 @@ import {
   isMatchingActiveDimensionBreakout,
 } from "./utils";
 
+type SidebarMode = "default" | "all";
+
 type DimensionPickerSidebarProps = {
   activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
-  availableDimensions: AvailableDimensionsResult;
-  allFieldsAvailableDimensions?: AvailableDimensionsResult;
-  metricSlots: MetricSlot[];
-  sourceColors: SourceColorMap;
-  metricSourceOrder: MetricSourceId[];
-  metricSourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  onSelectDimensionBreakout: (
-    dimensionBreakoutInfo: DimensionBreakoutInfo,
-  ) => void;
-  onUpdateActiveDimensionBreakout: (
-    updates: Partial<MetricsViewerDimensionBreakoutState>,
-  ) => void;
 };
-
-type SidebarMode = "default" | "all";
 
 export function DimensionPickerSidebar({
   activeDimensionBreakout,
-  availableDimensions,
-  allFieldsAvailableDimensions = availableDimensions,
-  metricSlots,
-  sourceColors,
-  metricSourceOrder,
-  metricSourceDataById,
-  onSelectDimensionBreakout,
-  onUpdateActiveDimensionBreakout,
 }: DimensionPickerSidebarProps) {
-  const { close } = useDimensionPickerSidebar();
+  const {
+    sidebarAvailableDimensions: availableDimensions,
+    metricSlots,
+    sourceColors,
+    sourceOrder,
+    sourceDataById,
+    selectDimensionBreakout: onSelectDimensionBreakout,
+    updateActiveDimensionBreakout: onUpdateActiveDimensionBreakout,
+    closeSidebar,
+  } = useMetricsViewerContext();
   const [searchText, setSearchText] = useState("");
   const [mode, setMode] = useState<SidebarMode>("default");
   const [expandedCategoryKey, setExpandedCategoryKey] = useState<string | null>(
@@ -89,21 +70,21 @@ export function DimensionPickerSidebar({
     () =>
       buildDimensionPickerSidebarCategories({
         availableDimensions,
-        sourceOrder: metricSourceOrder,
-        sourceDataById: metricSourceDataById,
+        sourceOrder,
+        sourceDataById,
         metricSlots,
       }),
-    [availableDimensions, metricSourceOrder, metricSourceDataById, metricSlots],
+    [availableDimensions, sourceOrder, sourceDataById, metricSlots],
   );
 
   const sections = useMemo(
     () =>
       buildDimensionPickerSections({
-        availableDimensions: allFieldsAvailableDimensions,
-        sourceOrder: metricSourceOrder,
-        sourceDataById: metricSourceDataById,
+        availableDimensions,
+        sourceOrder,
+        sourceDataById,
       }),
-    [allFieldsAvailableDimensions, metricSourceOrder, metricSourceDataById],
+    [availableDimensions, sourceOrder, sourceDataById],
   );
 
   const filteredSections = useMemo(
@@ -310,7 +291,11 @@ export function DimensionPickerSidebar({
             {showAllFields ? t`All fields` : t`Break out by`}
           </Title>
         </Flex>
-        <ActionIcon aria-label={t`Close`} variant="subtle" onClick={close}>
+        <ActionIcon
+          aria-label={t`Close`}
+          variant="subtle"
+          onClick={closeSidebar}
+        >
           <Icon name="close" />
         </ActionIcon>
       </Flex>
@@ -332,7 +317,7 @@ export function DimensionPickerSidebar({
           <AllFieldsList
             activeDimensionBreakout={activeDimensionBreakout}
             sections={filteredSections}
-            metricSourceDataById={metricSourceDataById}
+            metricSourceDataById={sourceDataById}
             sourceColors={sourceColors}
             metricSlots={metricSlots}
             onSelect={handleAllFieldsSelect}
@@ -363,7 +348,7 @@ export function DimensionPickerSidebar({
                       category={category}
                       activeDimensionBreakout={activeDimensionBreakout}
                       metricSlots={metricSlots}
-                      sourceDataById={metricSourceDataById}
+                      sourceDataById={sourceDataById}
                       sourceColors={sourceColors}
                       isSelected={isSelected}
                       isExpanded={isExpanded}

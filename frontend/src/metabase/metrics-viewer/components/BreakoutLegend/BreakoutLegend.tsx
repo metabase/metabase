@@ -1,28 +1,16 @@
 import { useMemo } from "react";
 
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import { Box, Flex, Paper, Stack, Text, Title } from "metabase/ui";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerFormulaEntity,
-  SourceBreakoutColorMap,
-} from "../../types/viewer-state";
 import { buildLegendGroups } from "../../utils/legend";
 
 import S from "./BreakoutLegend.module.css";
 
-type BreakoutLegendProps = {
-  formulaEntities: MetricsViewerFormulaEntity[];
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  activeBreakoutColors: SourceBreakoutColorMap;
-};
+export function BreakoutLegend() {
+  const { formulaEntities, definitions, activeBreakoutColors } =
+    useMetricsViewerContext();
 
-export function BreakoutLegend({
-  formulaEntities,
-  definitions,
-  activeBreakoutColors,
-}: BreakoutLegendProps) {
   const groups = useMemo(
     () => buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
     [formulaEntities, definitions, activeBreakoutColors],

@@ -1,15 +1,14 @@
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useDimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type {
-  MetricSourceId,
+  MetricsViewerDimensionBreakoutProjectionConfig,
   MetricsViewerDimensionBreakoutType,
   MetricsViewerDisplayType,
 } from "metabase/metrics-viewer/types";
 import {
-  type AvailableDimensionsResult,
   type DimensionFilterValue,
   getDimensionBreakoutConfig,
   getDimensionIcon,
@@ -36,25 +35,9 @@ function isValidDisplayTypeForDimensionBreakout(
 
 type MetricControlsProps = {
   definition: MetricDefinition;
-  displayType: MetricsViewerDisplayType;
-  dimensionBreakoutType: MetricsViewerDimensionBreakoutType;
-  dimensionBreakoutLabel?: string | null;
-  dimensionFilter?: DimensionFilterValue;
   allFilterDimensions?: DimensionMetadata[];
-  availableDimensions: AvailableDimensionsResult;
-  sourceOrder: MetricSourceId[];
-  onDisplayTypeChange: (displayType: MetricsViewerDisplayType) => void;
-  onDimensionFilterChange: (value: DimensionFilterValue | undefined) => void;
-  onTemporalUnitChange: (unit: TemporalUnit | undefined) => void;
-  onBinningChange: (binningStrategy: string | undefined) => void;
-  canToggleColumnLabels?: boolean;
-  showColumnLabels?: boolean;
-  onShowColumnLabelsChange?: (show: boolean) => void;
   showStackSeries?: boolean;
-  visualizationSettings?: Partial<VisualizationSettings>;
-  onVisualizationSettingsChange?: (
-    updates: Partial<VisualizationSettings>,
-  ) => void;
+  canToggleColumnLabels?: boolean;
 };
 
 function ControlSection({ children }: { children: ReactNode }) {
@@ -63,29 +46,95 @@ function ControlSection({ children }: { children: ReactNode }) {
 
 export function MetricControls({
   definition,
-  displayType,
-  dimensionBreakoutType,
-  dimensionBreakoutLabel,
-  dimensionFilter,
   allFilterDimensions,
-  availableDimensions,
-  sourceOrder,
-  onDisplayTypeChange,
-  onDimensionFilterChange,
-  onTemporalUnitChange,
-  onBinningChange,
-  canToggleColumnLabels,
-  showColumnLabels = false,
-  onShowColumnLabelsChange,
   showStackSeries,
-  visualizationSettings,
-  onVisualizationSettingsChange,
+  canToggleColumnLabels,
 }: MetricControlsProps) {
-  const { open: openDimensionPickerSidebar } = useDimensionPickerSidebar();
+  const {
+    activeDimensionBreakout: dimensionBreakout,
+    availableDimensions,
+    sourceOrder,
+    updateActiveDimensionBreakout: onDimensionBreakoutUpdate,
+    openSidebar,
+  } = useMetricsViewerContext();
+
+  const updateProjectionConfig = useCallback(
+    (updates: Partial<MetricsViewerDimensionBreakoutProjectionConfig>) => {
+      onDimensionBreakoutUpdate({
+        projectionConfig: {
+          ...dimensionBreakout?.projectionConfig,
+          ...updates,
+        },
+      });
+    },
+    [onDimensionBreakoutUpdate, dimensionBreakout?.projectionConfig],
+  );
+
+  const handleDisplayTypeChange = useCallback(
+    (display: MetricsViewerDisplayType) => {
+      onDimensionBreakoutUpdate({ display });
+    },
+    [onDimensionBreakoutUpdate],
+  );
+
+  const handleDimensionFilterChange = useCallback(
+    (value: DimensionFilterValue | undefined) => {
+      updateProjectionConfig({ dimensionFilter: value });
+    },
+    [updateProjectionConfig],
+  );
+
+  const handleTemporalUnitChange = useCallback(
+    (unit: TemporalUnit | undefined) => {
+      updateProjectionConfig({ temporalUnit: unit });
+    },
+    [updateProjectionConfig],
+  );
+
+  const handleBinningChange = useCallback(
+    (binningStrategy: string | undefined) => {
+      updateProjectionConfig({ binningStrategy });
+    },
+    [updateProjectionConfig],
+  );
+
+  const handleShowColumnLabelsChange = useCallback(
+    (showColumnLabels: boolean) => {
+      onDimensionBreakoutUpdate({ showColumnLabels });
+    },
+    [onDimensionBreakoutUpdate],
+  );
+
+  const handleVisualizationSettingsChange = useCallback(
+    (updates: Partial<VisualizationSettings>) => {
+      onDimensionBreakoutUpdate({
+        visualizationSettings: {
+          ...dimensionBreakout?.visualizationSettings,
+          ...updates,
+        },
+      });
+    },
+    [onDimensionBreakoutUpdate, dimensionBreakout?.visualizationSettings],
+  );
+
   const projectionInfo = useMemo(
     () => getProjectionInfo(definition),
     [definition],
   );
+
+  if (!dimensionBreakout) {
+    return null;
+  }
+
+  const {
+    type: dimensionBreakoutType,
+    label: dimensionBreakoutLabel,
+    display: displayType,
+    projectionConfig,
+    visualizationSettings,
+    showColumnLabels = false,
+  } = dimensionBreakout;
+  const dimensionFilter = projectionConfig.dimensionFilter;
 
   const hasFilterControls =
     projectionInfo.projection && projectionInfo.filterDimension;
@@ -137,7 +186,7 @@ export function MetricControls({
                 variant="subtle"
                 color="text-primary"
                 leftSection={<Icon c="brand" name="unreferenced" size={16} />}
-                onClick={openDimensionPickerSidebar}
+                onClick={openSidebar}
               >
                 {t`No breakout`}
               </Button>
@@ -154,13 +203,13 @@ export function MetricControls({
         <ChartTypePicker
           chartTypes={chartTypes}
           value={effectiveDisplayType}
-          onChange={onDisplayTypeChange}
+          onChange={handleDisplayTypeChange}
         />
-        {showStackSeries && onVisualizationSettingsChange && (
+        {showStackSeries && (
           <ChartLayoutPicker
             isStacked={!!visualizationSettings?.["graph.split_panels"]}
             onToggle={(stacked) =>
-              onVisualizationSettingsChange({
+              handleVisualizationSettingsChange({
                 "graph.split_panels": stacked,
               })
             }
@@ -187,7 +236,7 @@ export function MetricControls({
                             <Icon c="brand" name={columnPickerIcon} size={16} />
                           ) : undefined
                         }
-                        onClick={openDimensionPickerSidebar}
+                        onClick={openSidebar}
                       >
                         {columnPickerLabel}
                       </Button>
@@ -199,7 +248,7 @@ export function MetricControls({
                       filterDimension={projectionInfo.filterDimension}
                       dimensionFilter={dimensionFilter}
                       allFilterDimensions={allFilterDimensions}
-                      onChange={onDimensionFilterChange}
+                      onChange={handleDimensionFilterChange}
                     />
                   </ControlSection>
                 </>
@@ -210,7 +259,7 @@ export function MetricControls({
                     definition={definition}
                     dimension={projectionInfo.projectionDimension}
                     projection={projectionInfo.projection!}
-                    onChange={onTemporalUnitChange}
+                    onChange={handleTemporalUnitChange}
                   />
                 </ControlSection>
               )}
@@ -220,13 +269,13 @@ export function MetricControls({
                     definition={definition}
                     dimension={projectionInfo.projectionDimension}
                     projection={projectionInfo.projection!}
-                    onBinningChange={onBinningChange}
+                    onBinningChange={handleBinningChange}
                   />
                 </ControlSection>
               )}
             </Flex>
           )}
-          {canToggleColumnLabels && onShowColumnLabelsChange && (
+          {canToggleColumnLabels && (
             <Menu position="bottom-start" withinPortal>
               <Menu.Target>
                 <ActionIcon
@@ -244,7 +293,7 @@ export function MetricControls({
                   labelPosition="right"
                   checked={showColumnLabels}
                   onChange={(event) =>
-                    onShowColumnLabelsChange(event.currentTarget.checked)
+                    handleShowColumnLabelsChange(event.currentTarget.checked)
                   }
                 />
               </Menu.Dropdown>

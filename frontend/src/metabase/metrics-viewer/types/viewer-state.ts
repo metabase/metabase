@@ -1,14 +1,25 @@
-import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
-import type { MetricDefinition } from "metabase-lib/metric";
+import type {
+  DimensionType,
+  GeoSubtype,
+} from "metabase/metrics/common/utils/dimension-types";
+import type {
+  DimensionGroup,
+  MetricDefinition,
+  ProjectionClause,
+} from "metabase-lib/metric";
 import type {
   CardDisplayType,
+  CardId,
   DimensionId,
+  IconName,
   MathOperator,
+  SingleSeries,
   TemporalUnit,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
+import type { MetricSlot } from "../utils/metric-slots";
 import type { SerializedDefinitionInfo } from "../utils/url-serialization";
 
 // ── Core types ──
@@ -115,6 +126,27 @@ export interface MetricsViewerDimensionBreakoutState {
   projectionConfig: MetricsViewerDimensionBreakoutProjectionConfig;
 }
 
+export interface DimensionBreakoutInfo {
+  id?: string;
+  type: MetricsViewerDimensionBreakoutType;
+  label: string;
+  dimensionMapping: Record<number, string | null>;
+}
+
+export interface AvailableDimension {
+  icon: IconName;
+  group?: DimensionGroup;
+  canListValues?: boolean;
+  isPreferred?: boolean;
+  geoSubtype?: GeoSubtype | null;
+  dimensionBreakoutInfo: DimensionBreakoutInfo;
+}
+
+export interface AvailableDimensionsResult {
+  shared: AvailableDimension[];
+  bySource: Record<MetricSourceId, AvailableDimension[]>;
+}
+
 // ── Page state ──
 
 export interface MetricsViewerPageState {
@@ -161,3 +193,49 @@ export type SelectedMetric = {
   sourceType: "metric" | "measure";
   isLoading?: boolean;
 };
+
+export interface SourceDisplayInfo {
+  type: "metric" | "measure";
+  name: string;
+}
+
+export interface UseViewerStateResult {
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState | null;
+  initialLoadComplete: boolean;
+  queriesAreLoading: boolean;
+  queriesError: string | null;
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
+  metricSlots: MetricSlot[];
+  series: SingleSeries[];
+  cardIdToEntityIndex: Record<CardId, number>;
+  activeBreakoutColors: SourceBreakoutColorMap;
+  sourceColors: SourceColorMap;
+  selectedMetrics: SelectedMetric[];
+  sourceOrder: MetricSourceId[];
+  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
+  availableDimensions: AvailableDimensionsResult;
+  sidebarAvailableDimensions: AvailableDimensionsResult;
+  isSidebarOpen: boolean;
+  closeSidebar: () => void;
+  openSidebar: () => void;
+
+  addMetric: (metric: SelectedMetric) => void;
+  swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
+  removeMetric: (id: number, sourceType: "metric" | "measure") => void;
+  selectDimensionBreakout: (
+    dimensionBreakoutInfo: DimensionBreakoutInfo,
+  ) => void;
+  updateActiveDimensionBreakout: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
+  setBreakoutDimension: (
+    entity: MetricDefinitionEntry,
+    dimension: ProjectionClause | undefined,
+  ) => void;
+  setFormulaEntities: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
+}
