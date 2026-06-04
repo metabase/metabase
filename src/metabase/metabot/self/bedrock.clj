@@ -311,33 +311,68 @@
 
 ;;; ---- Public API ----
 
-(defn list-models
+(defn- resolve-bedrock-creds
+  "Resolve Bedrock credentials from `opts`, falling back to configured settings.
+  Opts map supports :api-key (access key id), :access-key-id, :secret-access-key,
+  :region, :session-token. Throws when the access key id or secret is missing."
+  [{:keys [api-key access-key-id secret-access-key region session-token]}]
+  (let [key-id  (not-empty (or access-key-id api-key (llm/llm-bedrock-access-key-id)))
+        secret  (not-empty (or secret-access-key (llm/llm-bedrock-secret-access-key)))
+        region  (or (not-empty region) (not-empty (llm/llm-bedrock-region)) "us-east-1")
+        session (not-empty (or session-token (llm/llm-bedrock-session-token)))]
+    (when-not key-id
+      (throw (core/missing-api-key-ex "AWS Bedrock")))
+    (when-not secret
+      (throw (ex-info (tru "AWS Bedrock Secret Access Key is not configured")
+                      {:api-error true :error-code :api-key-missing :status 401})))
+    {:access-key-id     key-id
+     :secret-access-key secret
+     :region            region
+     :session-token     session}))
+
+(defn list-foundation-models
   "List Bedrock foundation models that support streaming on-demand inference.
   No-arg uses configured settings. Opts map supports :api-key (access key id),
   :access-key-id, :secret-access-key, :region, :session-token."
-  ([] (list-models {}))
-  ([{:keys [api-key access-key-id secret-access-key region session-token]}]
-   (let [key-id  (not-empty (or access-key-id api-key (llm/llm-bedrock-access-key-id)))
-         secret  (not-empty (or secret-access-key (llm/llm-bedrock-secret-access-key)))
-         region  (or (not-empty region) (not-empty (llm/llm-bedrock-region)) "us-east-1")
-         session (not-empty (or session-token (llm/llm-bedrock-session-token)))]
-     (when-not key-id
-       (throw (core/missing-api-key-ex "AWS Bedrock")))
-     (when-not secret
-       (throw (ex-info (tru "AWS Bedrock Secret Access Key is not configured")
-                       {:api-error true :error-code :api-key-missing :status 401})))
+  ([] (list-foundation-models {}))
+  ([opts]
+   (let [creds (resolve-bedrock-creds opts)]
      (try
-       (let [creds    {:access-key-id     key-id
-                       :secret-access-key secret
-                       :region            region
-                       :session-token     session}
-             response (bedrock-request creds "bedrock" :get "/foundation-models" nil)]
+       (let [response (bedrock-request creds "bedrock" :get "/foundation-models" nil)]
          {:models (->> (get-in response [:body :modelSummaries])
                        (filter :responseStreamingSupported)
                        (filter #(contains? (set (:inferenceTypesSupported %)) "ON_DEMAND"))
                        (mapv (fn [m] {:id (:modelId m) :display_name (:modelName m)})))})
        (catch Exception e
          (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))))
+
+(defn list-inference-profiles
+  "List Bedrock system-defined (cross-region) inference profiles that are ACTIVE.
+  These are the only way to invoke current-gen models (e.g. Claude 4.x, gpt-oss)
+  that don't support direct on-demand foundation-model invocation.
+  No-arg uses configured settings; opts are as for [[list-foundation-models]]."
+  ([] (list-inference-profiles {}))
+  ([opts]
+   (let [creds (resolve-bedrock-creds opts)]
+     (try
+       (let [response (bedrock-request creds "bedrock" :get "/inference-profiles" nil)]
+         {:models (->> (get-in response [:body :inferenceProfileSummaries])
+                       (filter #(= "SYSTEM_DEFINED" (:type %)))
+                       (filter #(= "ACTIVE" (:status %)))
+                       (mapv (fn [p] {:id           (:inferenceProfileId p)
+                                      :display_name (:inferenceProfileName p)})))})
+       (catch Exception e
+         (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))))
+
+(defn list-models
+  "List available Bedrock models for the model picker: legacy on-demand foundation
+  models (invoked by bare model id) plus cross-region inference profiles (which
+  expose current-gen models that are profile-only). No-arg uses configured
+  settings; opts are as for [[list-foundation-models]]."
+  ([] (list-models {}))
+  ([opts]
+   {:models (into (:models (list-foundation-models opts))
+                  (:models (list-inference-profiles opts)))}))
 
 (mu/defn bedrock-raw
   "Perform a streaming request to AWS Bedrock Converse API.
@@ -386,14 +421,10 @@
         (core/rethrow-api-error! "bedrock" bedrock-error-msg e)))))
 
 (comment
-  (into [] (metabase.metabot.self.bedrock/bedrock
-            {:model "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-             :input [{:role :user :content "hello"}]})))
-
-(comment
+  (list-models)
 
   (into [] (metabase.metabot.self.bedrock/bedrock
-            {:model "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+            {:model "openai.gpt-oss-20b-1:0"
              :input [{:role :user :content "hello"}]})))
 
 (defn bedrock
