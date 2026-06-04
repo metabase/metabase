@@ -25,7 +25,7 @@ export const CustomBulletList = BulletList.extend({
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin(BulletList.name)];
+    return [createProseMirrorPlugin("bulletList")];
   },
 });
 

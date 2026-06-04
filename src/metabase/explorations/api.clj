@@ -681,7 +681,9 @@
               :visualization-settings visualization_settings})
             exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
             chart-href (explorations.groups/chart-page-url exp-id (:card_id primary-eq) (:dimension_id primary-eq))
-            new-body   (append-chart-nodes (:document doc) card-id stored-result-id chart-href)]
+            new-body (-> (:document doc)
+                         (append-chart-nodes card-id stored-result-id chart-href)
+                         documents/add-ids-to-nodes)]
         (t2/update! :model/Document (:id doc) {:document new-body})))
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 

@@ -35,6 +35,7 @@
    [better-cond.core :as b]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.ai-summary.common :as common]
    [metabase.explorations.ai-summary.phase1 :as phase1]
@@ -307,7 +308,8 @@
                                                           :collection-id  (:collection_id doc)
                                                           :creator        creator
                                                           :exploration-id exploration-id})
-                      wrap-card-embeds-in-resize-nodes)]
+                      wrap-card-embeds-in-resize-nodes
+                      documents/add-ids-to-nodes)]
       (t2/update! :model/Document (:id doc)
                   {:document     pm-doc
                    :content_type prose-mirror/prose-mirror-content-type})

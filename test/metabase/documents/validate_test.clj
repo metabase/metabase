@@ -181,3 +181,84 @@
                      (h 0 (text "y"))))]
       (is (= 3 (count errs))
           (str "expected 3 errors, got: " (pr-str errs))))))
+
+(deftest ^:parallel add-ids-to-nodes-adds-missing-ids-test
+  (testing "nodes in nodes-with-id set receive an _id when missing"
+    (let [result (validate/add-ids-to-nodes
+                  (doc (p (text "hello"))
+                       (h 2 (text "title"))))]
+      (is (uuid? (get-in result [:content 0 :attrs :_id])))
+      (is (uuid? (get-in result [:content 1 :attrs :_id])))))
+  (testing "each generated _id is unique"
+    (let [result (validate/add-ids-to-nodes
+                  (doc (p (text "a")) (p (text "b")) (p (text "c"))))
+          ids    (map #(get-in % [:attrs :_id]) (:content result))]
+      (is (= (count ids) (count (set ids)))))))
+
+(deftest ^:parallel add-ids-to-nodes-preserves-existing-ids-test
+  (testing "nodes that already have an _id are not modified"
+    (let [existing-id (random-uuid)
+          input       (doc {:type "paragraph"
+                            :attrs {:_id existing-id}
+                            :content [(text "keep me")]})
+          result      (validate/add-ids-to-nodes input)]
+      (is (= existing-id (get-in result [:content 0 :attrs :_id]))))))
+
+(deftest ^:parallel add-ids-to-nodes-skips-non-target-nodes-test
+  (testing "text nodes and listItems do not receive _id attributes"
+    (let [result (validate/add-ids-to-nodes
+                  (doc (bl (li (p (text "item"))))))]
+      (is (nil? (get-in result [:attrs :_id]))
+          "doc node itself should not get an _id")
+      (let [bullet-list (get-in result [:content 0])
+            list-item   (get-in bullet-list [:content 0])
+            paragraph   (get-in list-item [:content 0])
+            text-node   (get-in paragraph [:content 0])]
+        (is (uuid? (:_id (:attrs bullet-list)))
+            "bulletList gets an _id")
+        (is (nil? (:_id (:attrs list-item)))
+            "listItem does not get an _id")
+        (is (uuid? (:_id (:attrs paragraph)))
+            "paragraph gets an _id")
+        (is (nil? (:_id (:attrs text-node)))
+            "text does not get an _id")))))
+
+(deftest ^:parallel add-ids-to-nodes-handles-all-target-types-test
+  (testing "every node type in nodes-with-id gets an _id"
+    (let [input  (doc {:type "paragraph" :content [(text "x")]}
+                      {:type "heading" :attrs {:level 1} :content [(text "x")]}
+                      {:type "bulletList" :content [(li (p (text "x")))]}
+                      {:type "orderedList" :content [(li (p (text "x")))]}
+                      {:type "blockquote" :content [(p (text "x"))]}
+                      {:type "codeBlock" :attrs {:language nil} :content [(text "x")]}
+                      {:type "cardEmbed" :attrs {:cardId 1 :storedResultId 2}}
+                      {:type "supportingText" :content [(text "x")]})
+          result (validate/add-ids-to-nodes input)]
+      (doseq [child (:content result)]
+        (is (uuid? (get-in child [:attrs :_id]))
+            (str (:type child) " should have an _id"))))))
+
+(deftest ^:parallel add-ids-to-nodes-string-key-tolerance-test
+  (testing "adds _id to a node with string-keyed type and string-keyed attrs"
+    (let [result (validate/add-ids-to-nodes
+                  {"type" "doc"
+                   "content" [{"type" "paragraph"
+                               "attrs" {"class" "intro"}
+                               "content" [{"type" "text" "text" "hi"}]}]})]
+      (is (uuid? (get-in result ["content" 0 "attrs" :_id])))))
+  (testing "respects existing string-keyed _id"
+    (let [existing-id "already-here"
+          result      (validate/add-ids-to-nodes
+                       {"type" "doc"
+                        "content" [{"type" "paragraph"
+                                    "attrs" {"_id" existing-id}
+                                    "content" [{"type" "text" "text" "hi"}]}]})]
+      (is (= existing-id (get-in result ["content" 0 "attrs" "_id"])))
+      (is (nil? (get-in result ["content" 0 "attrs" :_id]))
+          "should not add a duplicate keyword _id")))
+  (testing "adds _id to a node with no attrs key at all"
+    (let [result (validate/add-ids-to-nodes
+                  {"type" "doc"
+                   "content" [{"type" "heading"
+                               "content" [{"type" "text" "text" "title"}]}]})]
+      (is (uuid? (get-in result ["content" 0 :attrs :_id]))))))

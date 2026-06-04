@@ -25,7 +25,7 @@ export const CustomParagraph = Paragraph.extend({
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin(Paragraph.name)];
+    return [createProseMirrorPlugin("paragraph")];
   },
 });
 
