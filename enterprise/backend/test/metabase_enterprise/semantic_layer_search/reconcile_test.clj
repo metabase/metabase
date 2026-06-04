@@ -114,4 +114,6 @@
                 (jdbc/execute! ds [(format "UPDATE \"%s\" SET schema_version = schema_version - 1"
                                            index-table/*meta-table*)])
                 (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
-                (is (= [] (mirror-rows ds)))))))))))
+                (is (= [] (mirror-rows ds))))
+              (testing "the rebuild heals the meta row, so it doesn't recur on the next sync"
+                (is (= :ok (index-table/ensure-tables! ds new-model)))))))))))
