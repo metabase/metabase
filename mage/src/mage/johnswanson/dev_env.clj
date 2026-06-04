@@ -83,6 +83,108 @@
    :pro-self-hosted "MBDEV_PRO_SELF_HOSTED_TOKEN"})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Token secret resolution
+;;
+;; A token secret is resolved from the most-secure available source, falling
+;; back to a plaintext env var as a last resort:
+;;   macOS: Keychain (security)         -> env var
+;;   Linux: secret-tool (libsecret)/pass -> env var
+;; Every backend is keyed by the env var name (the canonical identifier): store
+;; the token under that name.
+
+(defn- mac? []
+  (str/includes? (System/getProperty "os.name") "Mac"))
+
+(defn- run-secret-cmd
+  "Run a secret-fetching command. Returns trimmed, non-blank stdout on success,
+   else nil (missing tool, non-zero exit, or empty output all yield nil)."
+  [& cmd]
+  (let [{:keys [exit out]} (apply shell/sh* {:quiet? true} cmd)]
+    (when (zero? exit)
+      (some-> (first out) str/trim not-empty))))
+
+(defn- keychain-read [env-var]
+  (run-secret-cmd "security" "find-generic-password" "-w" "-s" env-var))
+
+(defn- secret-tool-read [env-var]
+  (run-secret-cmd "secret-tool" "lookup" "service" env-var))
+
+(defn- pass-read [env-var]
+  (run-secret-cmd "pass" "show" (str "metabase/" env-var)))
+
+(defn- env-read [env-var]
+  (some-> (System/getenv env-var) str/trim not-empty))
+
+(defn- token-sources
+  "Ordered [source-keyword reader-fn] pairs for the current platform, limited to
+   backends that are actually available (PATH check), so we never invoke a
+   secret tool the user hasn't installed."
+  []
+  (->> (if (mac?)
+         [[:keychain (u/can-run? "security") keychain-read]
+          [:env-var  true                    env-read]]
+         [[:secret-tool (u/can-run? "secret-tool") secret-tool-read]
+          [:pass        (u/can-run? "pass")        pass-read]
+          [:env-var     true                       env-read]])
+       (filter second)
+       (mapv (fn [[k _ f]] [k f]))))
+
+;; Memoized so we don't re-spawn the secret tool (and risk re-prompting the
+;; user) for the same secret multiple times within a single run.
+(def ^:private resolve-token-secret
+  (memoize
+   (fn [env-var]
+     (some (fn [[source read-fn]]
+             (when-let [v (read-fn env-var)]
+               {:value v :source source}))
+           (token-sources)))))
+
+(def ^:private env-var-fallbacks
+  "Env var names whose secrets were read from a plaintext env var this run.
+   Flushed as one consolidated note by flush-env-var-warnings!."
+  (atom #{}))
+
+(defn- secret-store-cmd
+  "A single copy-pasteable shell command that stores env-var's current value
+   into the platform's secret manager. The value is passed via $env-var, which
+   we know is set (that's why it fell back to the env var in the first place)."
+  [env-var]
+  (cond
+    (mac?)
+    (str "security add-generic-password -U -a \"$USER\" -s " env-var " -T \"\" -w \"$" env-var "\"")
+
+    (and (u/can-run? "pass") (not (u/can-run? "secret-tool")))
+    (str "printf '%s\\n' \"$" env-var "\" | pass insert -e metabase/" env-var)
+
+    :else
+    (str "printf '%s' \"$" env-var "\" | secret-tool store --label=\"" env-var "\" service " env-var)))
+
+(defn- flush-env-var-warnings!
+  "If any token secrets were read from plaintext env vars this run, print one
+   consolidated note with copy-pasteable commands to move them into a secret
+   manager. No-op when nothing fell back to an env var."
+  []
+  (let [vars (sort @env-var-fallbacks)]
+    (when (seq vars)
+      (println)
+      (println (c/yellow "Note:")
+               (str "Some secrets were read from env vars [" (str/join ", " vars) "]"))
+      (println "More secure options are available — store them in a secret manager:")
+      (println)
+      (doseq [v vars]
+        (println (c/cyan (secret-store-cmd v)))))))
+
+(defn- token-secret
+  "Resolve the secret value for env-var. Records (for a later consolidated
+   warning) when the value came from a plaintext env var. Returns the secret
+   string, or nil if unavailable."
+  [env-var]
+  (when-let [{:keys [value source]} (resolve-token-secret env-var)]
+    (when (= source :env-var)
+      (swap! env-var-fallbacks conj env-var))
+    value))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Helpers
 
 (defn- worktree-name
@@ -206,14 +308,14 @@
              (mapv keyword))))))
 
 (defn- validate-token!
-  "Verify the env var for the selected token is set."
+  "Verify a secret for the selected token is resolvable from some source."
   [token]
   (when (and token (not= token :none))
-    (let [env-var (get token-env-vars token)
-          value   (System/getenv env-var)]
-      (when (str/blank? value)
-        (println (c/red "WARNING: ") (c/yellow env-var) " is not set!")
-        (println "Set this env var with your " (name token) " token, or use --token none")
+    (let [env-var (get token-env-vars token)]
+      (when-not (token-secret env-var)
+        (println (c/red "Could not find a token for ") (c/yellow (name token)) ".")
+        (println "  Store it in your OS secret manager, set "
+                 (c/yellow env-var) ", or use " (c/yellow "--token none") ".")
         (u/exit 1)))))
 
 (defn- discover-config-files
@@ -412,8 +514,17 @@
 
                   ;; EE token
                   (and (= edition :ee) token (not= token :none))
-                  (conj (str "MB_PREMIUM_EMBEDDING_TOKEN = \"" (System/getenv (get token-env-vars token)) "\"")
+                  (conj (str "MB_PREMIUM_EMBEDDING_TOKEN = \"" (token-secret (get token-env-vars token)) "\"")
                         "METASTORE_DEV_SERVER_URL = \"https://token-check.staging.metabase.com\"")
+
+                  ;; Cypress e2e tokens (all editions). One line per MBDEV_*_TOKEN that resolves;
+                  ;; the corresponding CYPRESS_MB_*_TOKEN is what e2e/runner/run_cypress_local.ts reads.
+                  true
+                  (into (for [mbdev-var (vals token-env-vars)
+                              :let [value (token-secret mbdev-var)]
+                              :when (and value (not (str/blank? value)))]
+                          (str (str/replace mbdev-var #"^MBDEV_" "CYPRESS_MB_")
+                               " = \"" value "\"")))
 
                   ;; Helpful test/dev flags
                   true
@@ -440,14 +551,16 @@
                   (into (concat ["MB_DB_TYPE = \"mysql\""
                                  (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:"
                                       (port-for :mysql slot)
-                                      "/metabase?user=root&password=\"")]
+                                      "/metabase_test?user=root&password="
+                                      "&allowPublicKeyRetrieval=true&useSSL=false\"")]
                                 (mysql-cli-env :mysql slot)))
 
                   (= app-db :mariadb)
                   (into (concat ["MB_DB_TYPE = \"mysql\""
                                  (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:"
                                       (port-for :mariadb slot)
-                                      "/metabase?user=root&password=\"")]
+                                      "/metabase_test?user=root&password="
+                                      "&allowPublicKeyRetrieval=true&useSSL=false\"")]
                                 (mysql-cli-env :mariadb slot)))
 
                   ;; Warehouse CLI env vars (only when app-db doesn't already claim them)
@@ -528,6 +641,51 @@
   (let [{:keys [exit]} (shell/sh* {:quiet? true} "kill" "-0" (str pid))]
     (zero? exit)))
 
+(defn- pgid-alive?
+  "Check if any process in the given process group is still running."
+  [pgid]
+  (let [{:keys [exit]} (shell/sh* {:quiet? true} "kill" "-0" (str "-" pgid))]
+    (zero? exit)))
+
+(defn- proc-alive?
+  "Liveness check for a recorded process map. Prefers :pgid (catches the
+   whole descendant tree, including grandchildren reparented to init) and
+   falls back to :pid for legacy state-file entries written before pgid
+   tracking existed."
+  [{:keys [pid pgid]}]
+  (cond
+    pgid (pgid-alive? pgid)
+    pid  (pid-alive? pid)
+    :else false))
+
+(defn- listener-pid
+  "PID (as a string) of whoever is listening on `port`, or nil if the port
+   is free. Used by pre-flight checks to surface conflicts before we start
+   binding."
+  [port]
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true}
+                                      "lsof" "-t" (str "-iTCP:" port) "-sTCP:LISTEN")]
+    (when (zero? exit)
+      (some-> (first out) str/trim not-empty))))
+
+(defn- pid-command
+  "Best-effort `ps` lookup of the command string for a PID. Returns nil if
+   the PID has already exited by the time we check."
+  [pid]
+  (when pid
+    (let [{:keys [exit out]} (shell/sh* {:quiet? true} "ps" "-o" "command=" "-p" (str pid))]
+      (when (zero? exit)
+        (some-> (first out) str/trim not-empty)))))
+
+(defn- container-host-ports
+  "Vector of host ports a container would bind for the given service/suffix."
+  [service-key suffix slot]
+  (let [spec       (get service-specs service-key)
+        port-pairs (if (= suffix "app")
+                     (:internal-ports spec)
+                     (or (:wh-ports spec) (:internal-ports spec)))]
+    (mapv (fn [[pk _]] (port-for pk slot)) port-pairs)))
+
 (defn- human-duration
   "Human-readable elapsed time from a millis timestamp, e.g. \"About 2 hours\"."
   [started-at-ms]
@@ -542,22 +700,20 @@
         :else          (str "About " (quot secs 86400) " days")))))
 
 (defn- process-status
-  "Compute a status string for a process given its PID and started-at timestamp."
-  [pid started-at]
+  "Compute a status string for a recorded process map (with :pid, :pgid, :started-at)."
+  [{:keys [pid pgid started-at] :as p}]
   (cond
-    (nil? pid)       ""
-    (pid-alive? pid) (if-let [dur (human-duration started-at)]
-                       (str "Up " dur)
-                       "Up")
-    :else            "Stopped"))
+    (and (nil? pid) (nil? pgid)) ""
+    (proc-alive? p)              (if-let [dur (human-duration started-at)]
+                                   (str "Up " dur)
+                                   "Up")
+    :else                        "Stopped"))
 
 (defn- build-status-rows
   "Build unified status table rows from config, state, and live docker status."
   [slot {:keys [app-db with]} container-statuses state]
-  (let [be-status (process-status (get-in state [:backend :pid])
-                                  (get-in state [:backend :started-at]))
-        fe-status (process-status (get-in state [:frontend :pid])
-                                  (get-in state [:frontend :started-at]))]
+  (let [be-status (process-status (:backend state))
+        fe-status (process-status (:frontend state))]
     (cond-> [{:service "Backend"     :port (str (port-for :jetty slot))        :status be-status}
              {:service "Frontend"    :port (str (port-for :frontend-dev slot)) :status fe-status}
              {:service "nREPL"       :port (str (port-for :nrepl slot))        :status be-status}
@@ -611,15 +767,23 @@
     (when (.exists f)
       (.delete f))))
 
-(defn- kill-pid!
-  "Kill a process by PID (SIGTERM, then SIGKILL after 5s)."
-  [pid label]
-  (when (pid-alive? pid)
-    (println (c/yellow "Stopping " label " (PID " pid ")..."))
-    (shell/sh* {:quiet? true} "kill" (str pid))
-    (Thread/sleep 2000)
-    (when (pid-alive? pid)
-      (shell/sh* {:quiet? true} "kill" "-9" (str pid)))
+(defn- stop-proc!
+  "Stop a recorded process. When a :pgid is present, signal the whole process
+   group so reparented descendants (e.g. an orphaned rspack server) go down
+   with the launcher. Falls back to :pid for legacy state-file entries."
+  [{:keys [pid pgid] :as p} label]
+  (when (proc-alive? p)
+    (let [target (if pgid (str " (pgid " pgid ")") (str " (PID " pid ")"))]
+      (println (c/yellow "Stopping " label target "...")))
+    (if pgid
+      (do (shell/sh* {:quiet? true} "kill" "-TERM" (str "-" pgid))
+          (Thread/sleep 2000)
+          (when (pgid-alive? pgid)
+            (shell/sh* {:quiet? true} "kill" "-KILL" (str "-" pgid))))
+      (do (shell/sh* {:quiet? true} "kill" (str pid))
+          (Thread/sleep 2000)
+          (when (pid-alive? pid)
+            (shell/sh* {:quiet? true} "kill" "-9" (str pid)))))
     (println (c/green "  Stopped " label "."))))
 
 (defn- build-env
@@ -636,7 +800,7 @@
     (assoc "MB_EDITION" (name edition))
 
     (and (= edition :ee) token (not= token :none))
-    (assoc "MB_PREMIUM_EMBEDDING_TOKEN" (System/getenv (get token-env-vars token))
+    (assoc "MB_PREMIUM_EMBEDDING_TOKEN" (token-secret (get token-env-vars token))
            "METASTORE_DEV_SERVER_URL" "https://token-check.staging.metabase.com")
 
     h2-file
@@ -655,7 +819,8 @@
     (assoc "MB_DB_TYPE" "mysql"
            "MB_DB_CONNECTION_URI" (str "jdbc:mysql://localhost:"
                                        (port-for (if (= app-db :mariadb) :mariadb :mysql) slot)
-                                       "/metabase?user=root&password="))))
+                                       "/metabase_test?user=root&password="
+                                       "&allowPublicKeyRetrieval=true&useSSL=false"))))
 
 (defn- build-aliases
   "Build Clojure alias string for the backend process."
@@ -663,34 +828,54 @@
   (str ":dev:dev-start:drivers:drivers-dev"
        (when (= edition :ee) ":ee:ee-dev")))
 
+(def ^:private detached-prefix
+  "Command prefix that runs the next argv as a new session leader (and its
+   own pgid). Lets us track liveness and tear down the whole descendant tree
+   even after the immediate launcher exits and grandchildren get reparented
+   to launchd. Perl is the most portable host: it ships with macOS and every
+   common Linux distro, and POSIX::setsid + multi-arg exec gives us a
+   no-shell, no-fork bridge into the real command."
+  ["perl" "-e" "use POSIX qw(setsid); setsid; exec @ARGV or die $!"])
+
+(defn- detached-cmd
+  "Prepend the setsid prefix so cmd runs in its own session/pgid."
+  [cmd]
+  (into detached-prefix cmd))
+
 (defn- start-backend!
-  "Launch backend process in background. Returns PID."
+  "Launch backend process in background. Returns the recorded proc map."
   [slot edition env-map]
   (let [aliases    (build-aliases edition)
         nrepl-port (str (port-for :nrepl slot))
         log-file   (str "/tmp/mb-" (worktree-name) "-backend.log")
-        cmd        ["clojure" (str "-M" aliases) "-p" nrepl-port]
+        cmd        (detached-cmd ["clojure" (str "-M" aliases) "-p" nrepl-port])
         log        (java.io.File. log-file)
         proc       (apply p/process {:dir       target-project-directory
                                      :out       log
                                      :err       log
                                      :extra-env env-map}
-                          cmd)]
-    {:pid        (.pid (:proc proc))
+                          cmd)
+        pid        (.pid (:proc proc))]
+    ;; Perl called setsid before exec, so pid == pgid for the new session.
+    {:pid        pid
+     :pgid       pid
      :log-file   log-file
      :started-at (System/currentTimeMillis)}))
 
 (defn- start-frontend!
-  "Launch frontend dev server in background. Returns PID."
+  "Launch frontend dev server in background. Returns the recorded proc map."
   [env-map]
   (let [log-file (str "/tmp/mb-" (worktree-name) "-frontend.log")
         log      (java.io.File. log-file)
-        proc     (p/process {:dir       target-project-directory
-                             :out       log
-                             :err       log
-                             :extra-env env-map}
-                            "bun" "run" "build-hot")]
-    {:pid        (.pid (:proc proc))
+        cmd      (detached-cmd ["bun" "run" "build-hot"])
+        proc     (apply p/process {:dir       target-project-directory
+                                   :out       log
+                                   :err       log
+                                   :extra-env env-map}
+                        cmd)
+        pid      (.pid (:proc proc))]
+    {:pid        pid
+     :pgid       pid
      :log-file   log-file
      :started-at (System/currentTimeMillis)}))
 
@@ -793,7 +978,8 @@
     (do (println (c/bold "logs") "- Show logs for backend, frontend, or docker services")
         (println)
         (println "Without -f, dumps the last N lines from each source sequentially.")
-        (println "With -f, streams only new lines in real time with color-coded [source] prefixes.")
+        (println "With -f, prints a few recent lines per source, then streams new lines in real")
+        (println "time with color-coded [source] prefixes.")
         (println)
         (println (c/bold "Usage:"))
         (println (str "  " command-prefix " logs              Dump last 100 lines from all sources"))
@@ -804,7 +990,7 @@
         (println)
         (println (c/bold "Options:"))
         (println "  -f, --follow      Stream new log lines in real time")
-        (println "  --tail N          Lines to show in dump mode (default 100)"))
+        (println "  --tail N          Lines to show per source (default 100 dump, 10 follow)"))
 
     "open"
     (do (println (c/bold "open") "- Open backend in browser")
@@ -838,33 +1024,33 @@
     (when (.exists f)
       (when-let [state (try (edn/read-string (slurp f)) (catch Exception _ nil))]
         (let [wt-name    (last (str/split wt-path #"/"))
-              be-pid     (get-in state [:backend :pid])
-              fe-pid     (get-in state [:frontend :pid])
-              be-alive?  (and be-pid (pid-alive? be-pid))
-              fe-alive?  (and fe-pid (pid-alive? fe-pid))
+              be         (:backend state)
+              fe         (:frontend state)
+              be-alive?  (and be (proc-alive? be))
+              fe-alive?  (and fe (proc-alive? fe))
               prefix     (str "mb-" wt-name "-")
               {:keys [out]} (shell/sh* {:quiet? true}
                                        "docker" "ps"
                                        "--filter" (str "name=^" prefix)
                                        "--format" "{{.Names}}")
               containers (when (seq out) (vec (remove str/blank? out)))]
-          {:path       wt-path
-           :name       wt-name
-           :slot       (:slot state)
-           :backend    (cond (nil? be-pid) nil be-alive? :running :else :stopped)
-           :frontend   (cond (nil? fe-pid) nil fe-alive? :running :else :stopped)
-           :be-pid     be-pid
-           :fe-pid     fe-pid
-           :containers containers
-           :state      state})))))
+          {:path          wt-path
+           :name          wt-name
+           :slot          (:slot state)
+           :backend       (cond (nil? be) nil be-alive? :running :else :stopped)
+           :frontend      (cond (nil? fe) nil fe-alive? :running :else :stopped)
+           :backend-proc  be
+           :frontend-proc fe
+           :containers    containers
+           :state         state})))))
 
 (defn- stop-worktree-env!
   "Stop processes and containers for a worktree env (preserves containers)."
-  [{:keys [name be-pid fe-pid containers state path]}]
-  (when (and be-pid (pid-alive? be-pid))
-    (kill-pid! be-pid (str name " backend")))
-  (when (and fe-pid (pid-alive? fe-pid))
-    (kill-pid! fe-pid (str name " frontend")))
+  [{:keys [name backend-proc frontend-proc containers state path]}]
+  (when (and backend-proc (proc-alive? backend-proc))
+    (stop-proc! backend-proc (str name " backend")))
+  (when (and frontend-proc (proc-alive? frontend-proc))
+    (stop-proc! frontend-proc (str name " frontend")))
   (doseq [cname containers]
     (println (c/yellow "  Stopping " cname))
     (stop-container! cname))
@@ -874,11 +1060,11 @@
 
 (defn- down-worktree-env!
   "Tear down processes, containers, and config for a worktree env."
-  [{:keys [name be-pid fe-pid path]}]
-  (when (and be-pid (pid-alive? be-pid))
-    (kill-pid! be-pid (str name " backend")))
-  (when (and fe-pid (pid-alive? fe-pid))
-    (kill-pid! fe-pid (str name " frontend")))
+  [{:keys [name backend-proc frontend-proc path]}]
+  (when (and backend-proc (proc-alive? backend-proc))
+    (stop-proc! backend-proc (str name " backend")))
+  (when (and frontend-proc (proc-alive? frontend-proc))
+    (stop-proc! frontend-proc (str name " frontend")))
   ;; Kill all containers for this worktree (not just running ones)
   (let [prefix (str "mb-" name "-")
         {:keys [out]} (shell/sh* {:quiet? true}
@@ -1000,34 +1186,36 @@
   (let [state     (read-state-file)
         fresh?    (:fresh opts)
         env-map   (build-env slot full-config)
-        be-pid    (get-in state [:backend :pid])
-        fe-pid    (get-in state [:frontend :pid])
-        be-alive? (and be-pid (pid-alive? be-pid))
-        fe-alive? (and fe-pid (pid-alive? fe-pid))
+        be        (:backend state)
+        fe        (:frontend state)
+        be-alive? (and be (proc-alive? be))
+        fe-alive? (and fe (proc-alive? fe))
         ;; Backend
         backend   (cond
                     (:no-backend opts)
-                    (:backend state)
+                    be
 
                     (and be-alive? (not fresh?))
-                    (do (println (c/green "  Backend already running (PID " be-pid ")"))
-                        (:backend state))
+                    (do (println (c/green "  Backend already running"
+                                          (when-let [pid (:pid be)] (str " (PID " pid ")"))))
+                        be)
 
                     :else
-                    (do (when be-alive? (kill-pid! be-pid "backend"))
+                    (do (when be-alive? (stop-proc! be "backend"))
                         (println (c/yellow "Starting backend..."))
                         (start-backend! slot (:edition full-config) env-map)))
         ;; Frontend
         frontend  (cond
                     (:no-frontend opts)
-                    (:frontend state)
+                    fe
 
                     (and fe-alive? (not fresh?))
-                    (do (println (c/green "  Frontend already running (PID " fe-pid ")"))
-                        (:frontend state))
+                    (do (println (c/green "  Frontend already running"
+                                          (when-let [pid (:pid fe)] (str " (PID " pid ")"))))
+                        fe)
 
                     :else
-                    (do (when fe-alive? (kill-pid! fe-pid "frontend"))
+                    (do (when fe-alive? (stop-proc! fe "frontend"))
                         (println (c/yellow "Starting frontend..."))
                         (start-frontend! env-map)))
         new-state (cond-> (merge (read-state-file) {})
@@ -1103,10 +1291,11 @@
         (let [target (resolve-service-target svc-name state)]
           (case (:type target)
             :process
-            (let [pid    (get-in state [(:key target) :pid])
-                  alive? (and pid (pid-alive? pid))]
+            (let [proc   (get state (:key target))
+                  alive? (and proc (proc-alive? proc))]
               (if alive?
-                (println (c/green "  " svc-name " already running (PID " pid ")"))
+                (println (c/green "  " svc-name " already running"
+                                  (when-let [pid (:pid proc)] (str " (PID " pid ")"))))
                 (let [result (case (:key target)
                                :backend  (do (println (c/yellow "Starting backend..."))
                                              (start-backend! slot (:edition config) env-map))
@@ -1118,6 +1307,70 @@
                 (ensure-container! (:service target) (:suffix target) slot {:fresh? fresh?}))
             :h2
             (println (c/yellow "H2 is an embedded database — nothing to start."))))))))
+
+(defn- preflight-port-checks!
+  "Verify every port we'd actually bind is free (or already held by us).
+   Aborts with a consolidated report of conflicts so the user sees the full
+   picture before any side-effects.
+
+   Skipped: ports for backend/frontend that we'd not respawn (alive recorded
+   proc and no --fresh), and container host ports whose container is already
+   running (ensure-container! reuses the binding idempotently)."
+  [slot full-config opts]
+  (let [state              (read-state-file)
+        fresh?             (:fresh opts)
+        be                 (:backend state)
+        fe                 (:frontend state)
+        be-skip?           (or (:no-backend opts)
+                               (and (proc-alive? be) (not fresh?)))
+        fe-skip?           (or (:no-frontend opts)
+                               (and (proc-alive? fe) (not fresh?)))
+        be-allowed         (set (map str (keep identity [(:pid be) (:pgid be)])))
+        fe-allowed         (set (map str (keep identity [(:pid fe) (:pgid fe)])))
+        container-statuses (docker-container-status)
+        container-running? (fn [cname]
+                             (-> (get container-statuses cname "")
+                                 (str/starts-with? "Up")))
+        proc-checks
+        (cond-> []
+          (not be-skip?)
+          (into (for [[pk label] [[:jetty       "backend (jetty)"]
+                                  [:nrepl       "nREPL"]
+                                  [:socket-repl "Socket REPL"]]]
+                  {:port (port-for pk slot) :label label :allowed be-allowed}))
+          (not fe-skip?)
+          (conj {:port    (port-for :frontend-dev slot)
+                 :label   "frontend dev server"
+                 :allowed fe-allowed}))
+        container-checks
+        (concat
+         (when-not (= (:app-db full-config) :h2)
+           (let [svc   (:app-db full-config)
+                 cname (str (container-prefix) (name svc) "-app")]
+             (when-not (container-running? cname)
+               (for [port (container-host-ports svc "app" slot)]
+                 {:port port :label (service-display-name svc "app") :allowed #{}}))))
+         (for [svc  (:with full-config)
+               :let [cname (str (container-prefix) (name svc) "-wh")]
+               :when (not (container-running? cname))
+               port (container-host-ports svc "wh" slot)]
+           {:port port :label (service-display-name svc "wh") :allowed #{}}))
+        conflicts
+        (keep (fn [{:keys [port label allowed]}]
+                (when-let [lpid (listener-pid port)]
+                  (when-not (contains? allowed lpid)
+                    {:port port :label label :pid lpid :command (pid-command lpid)})))
+              (concat proc-checks container-checks))]
+    (when (seq conflicts)
+      (println)
+      (println (c/red "Port conflict — refusing to proceed:"))
+      (doseq [{:keys [port label pid command]} conflicts]
+        (println (c/red (str "  :" port " (" label "): PID " pid))
+                 (when command
+                   (c/yellow (str "— " (subs command 0 (min 100 (count command))))))))
+      (println)
+      (println (c/yellow "Free those ports (or kill the conflicting processes) and try again."))
+      (u/exit 1))))
 
 (defn- stand-up!
   "Orchestrate: prompt -> validate -> check docker -> ensure containers -> start processes."
@@ -1146,6 +1399,8 @@
                         config-file
                         (assoc :config-file config-file))
           fresh?      (:fresh opts)]
+      ;; Pre-flight: every port we'd bind must be free (or already ours)
+      (preflight-port-checks! slot full-config opts)
       ;; Ensure docker containers are running
       (when (or (not= (:app-db config) :h2) (seq (:with config)))
         (check-docker!))
@@ -1178,8 +1433,8 @@
         (let [target (resolve-service-target svc-name state)]
           (case (:type target)
             :process
-            (do (when-let [pid (get-in state [(:key target) :pid])]
-                  (kill-pid! pid svc-name))
+            (do (when-let [proc (get state (:key target))]
+                  (stop-proc! proc svc-name))
                 (write-state-file! (dissoc (read-state-file) (:key target))))
             :container
             (do (check-docker!)
@@ -1190,10 +1445,10 @@
     ;; Stop everything
     (do
       (when-let [state (read-state-file)]
-        (when-let [pid (get-in state [:backend :pid])]
-          (kill-pid! pid "backend"))
-        (when-let [pid (get-in state [:frontend :pid])]
-          (kill-pid! pid "frontend")))
+        (when-let [proc (:backend state)]
+          (stop-proc! proc "backend"))
+        (when-let [proc (:frontend state)]
+          (stop-proc! proc "frontend")))
       (check-docker!)
       (let [prefix     (container-prefix)
             {:keys [out]} (shell/sh* {:quiet? true}
@@ -1229,8 +1484,8 @@
         (let [target (resolve-service-target svc-name state)]
           (case (:type target)
             :process
-            (do (when-let [pid (get-in state [(:key target) :pid])]
-                  (kill-pid! pid svc-name))
+            (do (when-let [proc (get state (:key target))]
+                  (stop-proc! proc svc-name))
                 (write-state-file! (dissoc (read-state-file) (:key target))))
             :container
             (do (check-docker!)
@@ -1241,10 +1496,10 @@
     ;; Tear down everything
     (let [state (read-state-file)]
       (when state
-        (when-let [pid (get-in state [:backend :pid])]
-          (kill-pid! pid "backend"))
-        (when-let [pid (get-in state [:frontend :pid])]
-          (kill-pid! pid "frontend")))
+        (when-let [proc (:backend state)]
+          (stop-proc! proc "backend"))
+        (when-let [proc (:frontend state)]
+          (stop-proc! proc "frontend")))
       (check-docker!)
       (let [prefix     (container-prefix)
             {:keys [out]} (shell/sh* {:quiet? true}
@@ -1375,7 +1630,7 @@
       (println (c/red "No dev environment configured yet. Run `up` first."))
       (u/exit 1))
     (let [follow?     (:follow opts)
-          tail-n      (str (or (:tail opts) 100))
+          tail-n      (str (or (:tail opts) (if (:follow opts) 10 100)))
           filter-name (first arguments)
           all-sources (build-log-sources state)
           sources     (if filter-name
@@ -1390,15 +1645,15 @@
           (println "Available:" (str/join ", " (distinct (map :name all-sources)))))
         (u/exit 1))
       (if follow?
-        ;; Stream mode: only new lines (--tail 0) to avoid misordered history
+        ;; Stream mode: print a small chunk of recent history per source, then follow
         (let [procs (into []
                           (keep (fn [{:keys [type target name color]}]
                                   (let [proc (case type
                                                :file   (when (.exists (java.io.File. ^String target))
                                                          (p/process {:out :pipe :err :pipe}
-                                                                    "tail" "-f" "-n" "0" target))
+                                                                    "tail" "-f" "-n" tail-n target))
                                                :docker (p/process {:out :pipe :err :pipe}
-                                                                  "docker" "logs" "-f" "--tail" "0" target))]
+                                                                  "docker" "logs" "-f" "--tail" tail-n target))]
                                     (when proc
                                       {:proc proc :name name :color color}))))
                           sources)]
@@ -1460,13 +1715,15 @@
   [{:keys [options arguments]}]
   (if (:help options)
     (print-help! (first arguments))
-    (case (first arguments)
-      "up"     (stand-up! options (rest arguments))
-      "add"    (add-services! (rest arguments))
-      "logs"   (logs! options (rest arguments))
-      "stop"   (stop! (rest arguments))
-      "down"   (tear-down! (rest arguments))
-      "open"   (open!)
-      "status" (print-status!)
-      "list"   (list-all! options)
-      (print-status!))))
+    (do
+      (case (first arguments)
+        "up"     (stand-up! options (rest arguments))
+        "add"    (add-services! (rest arguments))
+        "logs"   (logs! options (rest arguments))
+        "stop"   (stop! (rest arguments))
+        "down"   (tear-down! (rest arguments))
+        "open"   (open!)
+        "status" (print-status!)
+        "list"   (list-all! options)
+        (print-status!))
+      (flush-env-var-warnings!))))
