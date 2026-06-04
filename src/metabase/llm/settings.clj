@@ -10,6 +10,8 @@
   (:import
    (java.net URL)))
 
+(set! *warn-on-reflection* true)
+
 (defn- trimmed-string
   [value]
   (when (string? value)
