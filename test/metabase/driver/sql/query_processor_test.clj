@@ -1718,7 +1718,6 @@
                                                                  (lib/aggregable-columns $query nil)
                                                                  {}
                                                                  {:display-name "Average of Count"})))))]
-
       (is (= ["SELECT"
               "  AVG(__mb_source.avg) AS avg"
               "FROM"
