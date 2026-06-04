@@ -307,6 +307,64 @@
          enrich-with-metric-base-tables
          remove-unreadable-transforms)))
 
+(defn- table-refs->results
+  [ids]
+  (when (seq ids)
+    (for [t (t2/select [:model/Table :id :name :display_name :db_id :schema :description] :id [:in ids])]
+      {:id              (:id t)
+       :type            "table"
+       :name            (:name t)
+       :display_name    (:display_name t)
+       :database_id     (:db_id t)
+       :database_schema (:schema t)
+       :description     (:description t)})))
+
+(defn- card-refs->results
+  "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`)."
+  [refs]
+  (let [ids       (map :id refs)
+        id->type  (into {} (map (juxt :id :type)) refs)
+        cards     (when (seq ids)
+                    (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema]
+                               :id [:in ids]))
+        coll-ids  (->> cards (keep :collection_id) distinct)
+        id->coll  (when (seq coll-ids)
+                    (into {} (map (juxt :id identity))
+                          (t2/select [:model/Collection :id :name :authority_level] :id [:in coll-ids])))
+        verified  (when (seq ids)
+                    (t2/select-fn-set :moderated_item_id :model/ModerationReview
+                                      :moderated_item_id [:in ids] :moderated_item_type "card"
+                                      :most_recent true :status "verified"))]
+    (for [c cards]
+      (let [coll (get id->coll (:collection_id c))]
+        {:id          (:id c)
+         :type        (id->type (:id c))
+         :name        (:name c)
+         :description (:description c)
+         :database_id (:database_id c)
+         :verified    (boolean (contains? (set verified) (:id c)))
+         :collection  (when coll (select-keys coll [:id :name :authority_level]))}))))
+
+(defn entity-refs->search-results
+  "Hydrate semantic-layer entity refs into the enriched search-result shape that
+  [[metabase.metabot.tools.shared.llm-shape/search-results->xml]] and the `search` tool consume.
+
+  `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"model\"`,
+  `\"metric\"`, or `\"question\"` (the names the agent uses with `read_resource`). Returns records carrying
+  `:portable_entity_id`, `:database_name`, fully-qualified names, metric base tables, etc. — everything the
+  LLM needs to build a query without an extra round-trip. Refs whose entity no longer exists are dropped."
+  [refs]
+  (let [by-model  (group-by :model refs)
+        table-ids (distinct (map :id (get by-model "table")))
+        card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})]
+    (->> (concat (table-refs->results table-ids)
+                 (card-refs->results (distinct card-refs)))
+         enrich-with-collection-descriptions
+         enrich-with-database-engines
+         enrich-with-portable-entity-ids
+         enrich-with-metric-base-tables
+         remove-unreadable-transforms)))
+
 (defn- format-search-output
   "Format search results as an LLM-ready string."
   [results]

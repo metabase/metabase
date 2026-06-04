@@ -137,7 +137,9 @@
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  10
   :temperature     0.3
-  :tools           [#'tools/nlq-search-tool
+  ;; data selection for the nlq profile goes through the curated semantic layer (see
+  ;; tools.semantic-layer-search), not the general instance search.
+  :tools           [#'tools/semantic-layer-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/navigate-user-tool
