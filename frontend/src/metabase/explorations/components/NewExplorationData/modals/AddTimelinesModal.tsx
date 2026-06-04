@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 
@@ -33,11 +33,18 @@ export function AddTimelinesModal({
             timeline.name.toLowerCase().includes(query) ||
             (timeline.description ?? "").toLowerCase().includes(query),
         )
-        .map((timeline) => ({
-          key: String(timeline.id),
-          label: timeline.name,
-          description: timeline.description,
-        }))
+        .map((timeline) => {
+          const eventCount = timeline.events?.length ?? 0;
+          return {
+            key: String(timeline.id),
+            label: timeline.name,
+            description: ngettext(
+              msgid`${eventCount} event`,
+              `${eventCount} events`,
+              eventCount,
+            ),
+          };
+        })
     );
   }, [allTimelines, search]);
 

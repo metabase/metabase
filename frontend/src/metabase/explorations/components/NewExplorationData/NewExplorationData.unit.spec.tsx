@@ -213,6 +213,7 @@ describe("NewExplorationData (Research plan)", () => {
 
   describe("buildCreateExplorationRequest", () => {
     const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
+    const launchTimeline = createMockTimeline({ id: 9, name: "Launches" });
 
     it("sends only the selected dimensions of a metric block", () => {
       const block = mockMetricBlock(

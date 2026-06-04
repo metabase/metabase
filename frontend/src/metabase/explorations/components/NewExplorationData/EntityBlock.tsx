@@ -41,12 +41,16 @@ export function EntityBlock({
   expanded,
   onToggleExpand,
   onRemoveBlock,
-
   children,
 }: EntityBlockProps) {
   return (
     <Box className={S.block} data-expanded={expanded || undefined}>
-      <Group className={S.blockHeader} wrap="nowrap" gap="sm">
+      <Group
+        className={S.blockHeader}
+        wrap="nowrap"
+        gap="sm"
+        onClick={onToggleExpand}
+      >
         <Icon
           name={iconName}
           size={14}
@@ -61,7 +65,10 @@ export function EntityBlock({
           <ActionIcon
             size="sm"
             variant="subtle"
-            onClick={onToggleExpand}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleExpand();
+            }}
             aria-label={expanded ? t`Collapse` : t`Expand`}
           >
             <Icon name={expanded ? "chevronup" : "chevrondown"} size={14} />
@@ -69,7 +76,10 @@ export function EntityBlock({
           <ActionIcon
             size="sm"
             variant="subtle"
-            onClick={onRemoveBlock}
+            onClick={(event) => {
+              event.stopPropagation();
+              onRemoveBlock();
+            }}
             aria-label={t`Remove area`}
           >
             <Icon name="close" size={12} />
@@ -126,9 +136,12 @@ export function MetricBlockItem({
     >
       {expanded ? (
         <Stack gap="md">
+          <Text size="sm" c="text-secondary">
+            {t`Modify which dimensions to see this metric by`}
+          </Text>
           {sections.map((section) => (
-            <Stack key={section.label} gap="xs">
-              <Text size="xs" c="text-secondary">
+            <Stack key={section.label} gap="sm">
+              <Text size="sm" c="text-secondary">
                 {section.label}
               </Text>
               <Group align="center" gap="sm" wrap="wrap">
@@ -184,8 +197,10 @@ export function DimensionBlockItem({
       onRemoveBlock={onRemoveBlock}
     >
       {expanded ? (
-        <Stack gap="xs">
-          <Text size="xs" c="text-secondary">{t`Metrics`}</Text>
+        <Stack gap="md">
+          <Text size="sm" c="text-secondary">
+            {t`Modify which metrics to look at for this dimension`}
+          </Text>
           {block.metrics.length === 0 ? (
             <Text size="sm" c="text-secondary">
               {t`No related metrics.`}

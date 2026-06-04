@@ -6,6 +6,7 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
+import { Tabs } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   DimensionId,
@@ -13,8 +14,10 @@ import type {
 } from "metabase-types/api";
 
 import {
+  DIMENSION_TYPE_ORDER,
   filterDimensionGroupsBySearch,
-  groupDimensionsByGroupSource,
+  getDimensionTypeKey,
+  getDimensionTypeLabel,
 } from "../utils";
 
 import {
@@ -22,10 +25,16 @@ import {
   type AddEntitiesModalItem,
 } from "./AddEntitiesModal";
 
+const ALL_TAB = "all";
+
 export interface AddDimensionsModalProps {
   opened: boolean;
   onClose: () => void;
   selection: ExplorationSelection;
+}
+
+function groupTypeKey(group: ExplorationDimensionGroup) {
+  return getDimensionTypeKey(group.dimensions[0]);
 }
 
 export function AddDimensionsModal({
@@ -35,6 +44,7 @@ export function AddDimensionsModal({
 }: AddDimensionsModalProps) {
   const { addDimension } = selection;
 
+  const [tab, setTab] = useState<string>(ALL_TAB);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
 
@@ -78,31 +88,32 @@ export function AddDimensionsModal({
     return map;
   }, [response]);
 
-  // Group the per-source dimension groups under source-section headers,
-  // mirroring the expanded MetricBlockItem list.
-  const items = useMemo<AddEntitiesModalItem[]>(() => {
-    // Represent each source-bucket group by its head dimension, carrying the
-    // group's interestingness so sections + rows sort by it.
-    const headDimensions = groups.map((group) => ({
-      ...group.dimensions[0],
-      dimension_interestingness: group.dimension_interestingness,
-    }));
-    const out: AddEntitiesModalItem[] = [];
-    let groupLabel: string | undefined;
-    for (const row of groupDimensionsByGroupSource(headDimensions)) {
-      if (row.type === "header") {
-        groupLabel = row.label;
-      } else {
-        out.push({
-          key: row.dimension.id,
-          label: row.dimension.display_name ?? row.dimension.id,
-          groupLabel,
-          interestingness: row.dimension.dimension_interestingness,
-        });
-      }
-    }
-    return out;
+  // Type tabs are only worth showing when more than one type is present.
+  const presentTypes = useMemo(() => {
+    const present = new Set(groups.map(groupTypeKey));
+    return DIMENSION_TYPE_ORDER.filter((key) => present.has(key));
   }, [groups]);
+  const showTabs = presentTypes.length > 1;
+  const activeTab =
+    showTabs && presentTypes.some((key) => key === tab) ? tab : ALL_TAB;
+
+  const items = useMemo<AddEntitiesModalItem[]>(() => {
+    const visible =
+      activeTab === ALL_TAB
+        ? groups
+        : groups.filter((group) => groupTypeKey(group) === activeTab);
+    return [...visible]
+      .sort(
+        (a, b) =>
+          (b.dimension_interestingness ?? 0) -
+          (a.dimension_interestingness ?? 0),
+      )
+      .map((group) => ({
+        key: group.dimensions[0].id,
+        label: group.name,
+        interestingness: group.dimension_interestingness,
+      }));
+  }, [groups, activeTab]);
 
   const handleAdd = (keys: string[]) => {
     trackExplorationPlanEdited("manual", "dimensions");
@@ -114,11 +125,24 @@ export function AddDimensionsModal({
     }
   };
 
+  const tabs = showTabs ? (
+    <Tabs value={activeTab} onChange={(value) => value && setTab(value)}>
+      <Tabs.List>
+        <Tabs.Tab value={ALL_TAB}>{t`All`}</Tabs.Tab>
+        {presentTypes.map((key) => (
+          <Tabs.Tab key={key} value={key}>
+            {getDimensionTypeLabel(key)}
+          </Tabs.Tab>
+        ))}
+      </Tabs.List>
+    </Tabs>
+  ) : undefined;
+
   return (
     <AddEntitiesModal
       opened={opened}
       onClose={onClose}
-      title={t`Add dimensions to your research plan`}
+      title={t`Add dimensions of interest to your research plan`}
       searchPlaceholder={t`Search for a dimension`}
       search={search}
       onSearchChange={setSearch}
@@ -126,6 +150,7 @@ export function AddDimensionsModal({
       isLoading={isFetching}
       error={error}
       onAdd={handleAdd}
+      tabs={tabs}
     />
   );
 }

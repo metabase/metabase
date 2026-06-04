@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -37,6 +37,7 @@ export interface AddEntitiesModalProps {
   isLoading?: boolean;
   error?: unknown;
   onAdd: (keys: string[]) => void;
+  tabs?: ReactNode;
 }
 
 export function AddEntitiesModal({
@@ -50,6 +51,7 @@ export function AddEntitiesModal({
   isLoading,
   error,
   onAdd,
+  tabs,
 }: AddEntitiesModalProps) {
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
@@ -92,6 +94,7 @@ export function AddEntitiesModal({
           placeholder={searchPlaceholder}
           leftSection={<Icon name="search" />}
         />
+        {tabs}
         <Box mih="20rem" mah="24rem" style={{ overflowY: "auto" }}>
           <LoadingAndErrorWrapper loading={Boolean(isLoading)} error={error}>
             {items.length === 0 ? (

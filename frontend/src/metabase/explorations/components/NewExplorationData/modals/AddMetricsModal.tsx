@@ -5,6 +5,8 @@ import { useGetExplorationDataQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { Icon, Tabs } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { DimensionId, MetricDimension } from "metabase-types/api";
 
@@ -16,12 +18,19 @@ export interface AddMetricsModalProps {
   selection: ExplorationSelection;
 }
 
+type MetricsTab = "library" | "all";
+
 export function AddMetricsModal({
   opened,
   onClose,
   selection,
 }: AddMetricsModalProps) {
   const { addMetric } = selection;
+
+  const libraryEnabled = PLUGIN_LIBRARY.isEnabled;
+  const [tab, setTab] = useState<MetricsTab>(
+    libraryEnabled ? "library" : "all",
+  );
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
@@ -50,7 +59,15 @@ export function AddMetricsModal({
     [metrics],
   );
 
-  const items = metrics.map((metric) => ({
+  const visibleMetrics = useMemo(
+    () =>
+      libraryEnabled && tab === "library"
+        ? metrics.filter((metric) => metric.in_library)
+        : metrics,
+    [libraryEnabled, tab, metrics],
+  );
+
+  const items = visibleMetrics.map((metric) => ({
     key: String(metric.id),
     label: metric.name,
     description: metric.description,
@@ -66,6 +83,21 @@ export function AddMetricsModal({
     }
   };
 
+  const tabs = libraryEnabled ? (
+    <Tabs
+      value={tab}
+      onChange={(value) => value && setTab(value as MetricsTab)}
+    >
+      <Tabs.List>
+        <Tabs.Tab
+          value="library"
+          leftSection={<Icon name="repository" size={14} />}
+        >{t`Library`}</Tabs.Tab>
+        <Tabs.Tab value="all">{t`All`}</Tabs.Tab>
+      </Tabs.List>
+    </Tabs>
+  ) : undefined;
+
   return (
     <AddEntitiesModal
       opened={opened}
@@ -78,6 +110,7 @@ export function AddMetricsModal({
       isLoading={isFetching}
       error={error}
       onAdd={handleAdd}
+      tabs={tabs}
     />
   );
 }

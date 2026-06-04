@@ -20,6 +20,7 @@ export type ExplorationDimensionGroup = {
 
 type MetricWithDimensionIds = Metric & {
   dimension_ids: DimensionId[];
+  in_library?: boolean;
 };
 
 export type GetExplorationDataResponse = {

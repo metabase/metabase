@@ -9,13 +9,12 @@
 }
 
 .blockHeader {
-  padding-inline: 0.75rem;
-  padding-block: 0.5rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
 }
 
 .blockBody {
-  padding-inline: 1rem;
-  padding-block: 0.75rem;
+  padding: 0.25rem 1rem 0.75rem;
 }
 
 /* Reveal the header controls only while hovering (or keyboard-focusing) the block. */

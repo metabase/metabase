@@ -386,7 +386,8 @@
    [:dimension_ids        [:sequential :any]]
    [:dimension_mappings   {:optional true} [:maybe [:sequential :map]]]
    [:database_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:result_column_name   {:optional true} [:maybe :string]]])
+   [:result_column_name   {:optional true} [:maybe :string]]
+   [:in_library           {:optional true} :boolean]])
 
 (mr/def ::ExplorationDimensionGroup
   "Schema for a dimension group in the /dimensions response. A group bundles together dimensions that
