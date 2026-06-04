@@ -435,7 +435,7 @@
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Mixed integer and date arithmetic works with Mongo 5+"
-        (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
+        (mt/with-dynamic-fn-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
           (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
             (is (= {"$expr"
                     {"$lt"
@@ -466,7 +466,7 @@
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Date arithmetic fails with Mongo 4-"
-        (with-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
+        (mt/with-dynamic-fn-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Date arithmetic not supported in versions before 5"

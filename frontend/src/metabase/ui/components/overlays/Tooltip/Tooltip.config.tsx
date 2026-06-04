@@ -3,6 +3,8 @@ import cx from "classnames";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 
+import { PORTAL_CONTAINER_ID } from "../PortalContainer/constants";
+
 import TooltipStyles from "./Tooltip.module.css";
 
 export const tooltipOverrides: MantineThemeOverride["components"] = {
@@ -11,6 +13,9 @@ export const tooltipOverrides: MantineThemeOverride["components"] = {
       arrowSize: 10,
       withArrow: true,
       withinPortal: true,
+      portalProps: {
+        target: `#${PORTAL_CONTAINER_ID}`,
+      },
       transitionProps: {
         transition: "fade",
         duration: 200,

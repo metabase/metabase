@@ -10,9 +10,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.queue :as queue]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
@@ -27,11 +27,22 @@
   "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
   nil)
 
+(def ^:private ^:dynamic *invalidate-select-batch-size*
+  "Chunk size when fetching :model/Field rows for invalidation. Keeps a single SQL `IN (…)`
+  clause well under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+  500)
+
 (defn- batch-invalidate-field-values!
-  "Recalculate the field values for the given fields."
+  "Recalculate the field values for the given fields. Groups by table and uses the UNION-distinct
+  path (one warehouse query per table) on SQL drivers."
   [field-batches]
-  (->> (t2/select :model/Field :id [:in (into #{} cat field-batches)])
-       (run! field-values/create-or-update-full-field-values!)))
+  (let [field-ids (into #{} cat field-batches)
+        fields    (when (seq field-ids)
+                    (->> field-ids
+                         (partition-all *invalidate-select-batch-size*)
+                         (mapcat (fn [batch]
+                                   (t2/select :model/Field :id [:in batch])))))]
+    (sync.field-values/sync-fields-grouped-by-table! fields)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
   (queue/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!

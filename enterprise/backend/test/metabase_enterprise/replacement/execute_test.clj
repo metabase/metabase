@@ -17,9 +17,9 @@
       (mt/with-model-cleanup [:model/ReplacementRun]
         (let [writes (atom [])
               done?  (promise)]
-          (with-redefs [replacement-run/update-progress!
-                        (fn [_run-id progress]
-                          (swap! writes conj progress))]
+          (mt/with-dynamic-fn-redefs [replacement-run/update-progress!
+                                      (fn [_run-id progress]
+                                        (swap! writes conj progress))]
             (let [record (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
                   progress (replacement-run/run-row->progress record done?)]
               (replacement.execute/execute-async!
@@ -43,9 +43,9 @@
       (mt/with-model-cleanup [:model/ReplacementRun]
         (let [writes (atom [])
               done?  (promise)]
-          (with-redefs [replacement-run/update-progress!
-                        (fn [_run-id progress]
-                          (swap! writes conj progress))]
+          (mt/with-dynamic-fn-redefs [replacement-run/update-progress!
+                                      (fn [_run-id progress]
+                                        (swap! writes conj progress))]
             (let [record (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
                   progress (replacement-run/run-row->progress record done?)]
               (replacement.execute/execute-async!
@@ -72,9 +72,9 @@
               done?   (promise)
               pause   (promise)
               ready   (promise)]
-          (with-redefs [replacement-run/update-progress!
-                        (fn [_run-id progress]
-                          (swap! writes conj progress))]
+          (mt/with-dynamic-fn-redefs [replacement-run/update-progress!
+                                      (fn [_run-id progress]
+                                        (swap! writes conj progress))]
             (let [record (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
                   progress (replacement-run/run-row->progress record done?)]
               (replacement.execute/execute-async!
