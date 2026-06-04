@@ -14,9 +14,11 @@ const questionDetails = {
         condition: [
           "=",
           ["field-id", ORDERS.PRODUCT_ID],
-          ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+          ["joined-field", "Products_2", ["field-id", PRODUCTS.ID]],
         ],
-        alias: "Products",
+        // Suffixed alias (as MBQL-created joins are); an alias equal to the real table name
+        // ("Products") collides on SQLite (ambiguous column).
+        alias: "Products_2",
       },
     ],
     limit: 5,
@@ -61,7 +63,7 @@ describe("scenarios > dashboard > filters", () => {
                   "field",
                   PRODUCTS.TITLE,
                   {
-                    "join-alias": "Products",
+                    "join-alias": "Products_2",
                   },
                 ],
               ],
