@@ -58,7 +58,7 @@ If you've (wisely) connected Metabase to your data warehouse using a user with l
 
 3. In your dev Metabase, [create a new branch](../installation-and-operation/remote-sync.md#creating-a-branch).
 
-4. In your dev instance, [create an API key](../people-and-groups/api-keys.md#create-an-api-key). Assign the key to the Admin group.
+4. In your dev Metabase, [create an API key](../people-and-groups/api-keys.md#create-an-api-key). Assign the key to the Admin group.
 
 5. Authenticate the Metabase CLI to your dev Metabase. In a terminal, run:
 
@@ -90,7 +90,9 @@ If you've (wisely) connected Metabase to your data warehouse using a user with l
 
 ### Bring your changes into production
 
-1. Once you're happy with your tables and any questions, documents, or dashboards, push your changes to your branch using remote sync.
+Once you're happy with your tables and any questions, documents, or dashboards, use [remote sync](../installation-and-operation/remote-sync.md) to bring those changes into your production Metabase.
+
+1. Push your changes from Metabase to your repo.
 
 2. Put up a PR for the changes, then merge the branch into your main branch.
 
