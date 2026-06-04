@@ -131,6 +131,12 @@
 (def ^:private internal-model?
   #{"Schema"})
 
+(def ^:private covered-by-dedicated-round-trip-test?
+  "Models that have full export/import coverage in their own round-trip test and so don't need a
+  fixture in this shared baseline. SemanticLayerIndex is covered (in-memory + on-disk) by
+  metabase-enterprise.serialization.v2.semantic-layer-index-test."
+  #{"SemanticLayerIndex"})
+
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."
   []
@@ -142,7 +148,7 @@
         resources  (ingest/ingest-list ingestable)
         baselined  (into #{} (map :model) (apply concat resources))
         necessary? (set serdes.models/exported-models)]
-    (doseq [m serdes.models/exported-models]
+    (doseq [m serdes.models/exported-models :when (not (covered-by-dedicated-round-trip-test? m))]
       (is (baselined m) (format "We need to add %s entries to %s" m source-dir-path)))
     (doseq [b baselined :when (not (internal-model? b))]
       (is (necessary? b) (format "We can remove %s files from %s" b source-dir-path)))))

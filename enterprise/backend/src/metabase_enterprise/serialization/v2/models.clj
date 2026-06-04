@@ -38,6 +38,7 @@
            "FieldValues"
            "Metabot"
            "PythonLibrary"
+           "SemanticLayerIndex"
            "Setting"
            "Transform"
            "TransformJob"
