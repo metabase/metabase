@@ -3,14 +3,20 @@ import { getNextId } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { createMockLocation } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
-import { isNavigationAllowed } from ".";
+import { getTableUrlForPristineQuestion, isNavigationAllowed } from ".";
 
 const structuredCard = createMockCard({
   id: getNextId(),
@@ -654,5 +660,59 @@ describe("isNavigationAllowed", () => {
         ).toBe(false);
       });
     });
+  });
+});
+
+describe("getTableUrlForPristineQuestion", () => {
+  const tableMetadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const pristineOrders = checkNotNull(
+    tableMetadata.table(ORDERS_ID),
+  ).newQuestion();
+
+  it("returns the /table/:slug URL for a table's pristine default question", () => {
+    expect(getTableUrlForPristineQuestion(pristineOrders)).toBe(
+      "/table/2-orders",
+    );
+    expect(
+      getTableUrlForPristineQuestion(
+        checkNotNull(tableMetadata.table(PRODUCTS_ID)).newQuestion(),
+      ),
+    ).toBe("/table/1-products");
+  });
+
+  it("returns null once the query is modified", () => {
+    const withLimit = pristineOrders.setQuery(
+      Lib.limit(pristineOrders.query(), -1, 10),
+    );
+    expect(getTableUrlForPristineQuestion(withLimit)).toBeNull();
+  });
+
+  it("returns null when the display is changed", () => {
+    expect(
+      getTableUrlForPristineQuestion(pristineOrders.setDisplay("bar")),
+    ).toBeNull();
+  });
+
+  it("returns null when visualization settings are set", () => {
+    const withSettings = pristineOrders.setCard({
+      ...pristineOrders.card(),
+      visualization_settings: { "table.pivot": true },
+    });
+    expect(getTableUrlForPristineQuestion(withSettings)).toBeNull();
+  });
+
+  it("returns null for a saved question", () => {
+    expect(getTableUrlForPristineQuestion(pristineOrders.setId(1))).toBeNull();
+  });
+
+  it("returns null for a native question", () => {
+    const native = pristineOrders.setCard({
+      ...pristineOrders.card(),
+      dataset_query: createMockNativeDatasetQuery(),
+    });
+    expect(getTableUrlForPristineQuestion(native)).toBeNull();
   });
 });
