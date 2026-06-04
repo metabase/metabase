@@ -20,7 +20,7 @@ databaseChangeLog:
                   name: last_heartbeat
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
-                  remarks: Last heartbeat timestamp - stamped periodically for runs actively executing in this JVM; a stale value means the owning process died
+                  remarks: Heartbeat timestamp stamped periodically while the run executes; a stale value means the owning process died
                   constraints:
                     nullable: false
       rollback:
