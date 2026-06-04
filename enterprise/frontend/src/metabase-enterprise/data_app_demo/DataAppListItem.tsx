@@ -7,6 +7,7 @@ import { ActionIcon, Box, Flex, Icon, Menu } from "metabase/ui";
 import type { DataApp } from "metabase-types/api";
 
 import { DataAppSummary } from "./DataAppSummary";
+import { ReplaceDataAppBundleModal } from "./ReplaceDataAppBundleModal";
 
 type Props = {
   app: DataApp;
@@ -16,6 +17,7 @@ type Props = {
 export function DataAppListItem({ app, onDelete }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isReplaceOpen, setIsReplaceOpen] = useState(false);
 
   const handleConfirmDelete = useCallback(async () => {
     setIsDeleting(true);
@@ -51,6 +53,12 @@ export function DataAppListItem({ app, onDelete }: Props) {
               {t`Open`}
             </Menu.Item>
             <Menu.Item
+              leftSection={<Icon name="upload" />}
+              onClick={() => setIsReplaceOpen(true)}
+            >
+              {t`Replace bundle`}
+            </Menu.Item>
+            <Menu.Item
               leftSection={<Icon name="trash" />}
               color="error"
               onClick={() => setIsConfirmOpen(true)}
@@ -59,6 +67,11 @@ export function DataAppListItem({ app, onDelete }: Props) {
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
+        <ReplaceDataAppBundleModal
+          app={app}
+          opened={isReplaceOpen}
+          onClose={() => setIsReplaceOpen(false)}
+        />
         <ConfirmModal
           opened={isConfirmOpen}
           title={t`Remove this data app?`}
