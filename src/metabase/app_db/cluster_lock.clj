@@ -64,12 +64,6 @@
    :delay-ms 1000 ;; Constant delay between retries.
    :retry-if (fn [_ e] (retryable? e))})
 
-(def ^:private transient-retry-jitter-factor
-  "±50% jitter applied to the retry delay on the `:retry-transient?` path. Instances flush their batched
-  stat updates on identical fixed intervals, so a constant delay would have two deadlocked writers sleep
-  the same amount and re-collide in lockstep; jitter decorrelates the retries."
-  0.5)
-
 ;; MySQL 8.0+ supports `SELECT ... FOR SHARE`, but MariaDB (all versions as of
 ;; writing) only understands the older `LOCK IN SHARE MODE` syntax.
 ;; `LOCK IN SHARE MODE` works on all supported MySQL-family versions including
@@ -257,11 +251,8 @@
       (do-with-h2-cluster-locks* locks thunk)
 
       :else
-      (let [config (cond-> (assoc (merge default-retry-config retry-config)
-                                  :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))
-                     ;; jitter only matters when we retry transient (deadlock) errors; leave the
-                     ;; acquisition-only retry path on its existing constant delay.
-                     retry-transient? (assoc :jitter-factor transient-retry-jitter-factor))]
+      (let [config (assoc (merge default-retry-config retry-config)
+                          :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))]
         (try
           (retry/with-retry config
             (do-with-cluster-locks* locks timeout-seconds thunk))

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.cluster-lock :as sut]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.transient-error :as transient-error]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -52,12 +53,17 @@
           (is (= :ok result))
           (is (= 2 @attempts))))
       (testing "without :retry-transient? the same deadlock is not retried and propagates"
-        (let [attempts (atom 0)]
-          (is (thrown? java.sql.SQLException
-                       (sut/with-cluster-lock {:lock ::retry-transient-test
-                                               :retry-config retry-cfg}
-                         (swap! attempts inc)
-                         (throw (deadlock-exception)))))
+        (let [attempts (atom 0)
+              ;; toucan2 wraps a body exception thrown inside the tx in an ExceptionInfo, so the deadlock
+              ;; surfaces as that wrapper rather than a bare SQLException — but the SQLException is still in
+              ;; its cause chain.
+              e (is (thrown? Throwable
+                             (sut/with-cluster-lock {:lock ::retry-transient-test
+                                                     :retry-config retry-cfg}
+                               (swap! attempts inc)
+                               (throw (deadlock-exception)))))]
+          ;; it's a genuine transient error; it propagated unretried only because we didn't opt in.
+          (is (transient-error/transient-error? (mdb/db-type) e))
           (is (= 1 @attempts)))))))
 
 (deftest with-cluster-locking-test
