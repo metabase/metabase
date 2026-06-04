@@ -20,6 +20,9 @@ export function useCommentUrl({
     existingCommentIndex !== -1
       ? pathname.slice(0, existingCommentIndex)
       : pathname;
-  const nextQuery = { ...query, ...searchParams };
-  return `${nextPathname}/comments/${childTargetId}?${new URLSearchParams(nextQuery).toString()}`;
+  const nextSearch = new URLSearchParams({
+    ...query,
+    ...searchParams,
+  }).toString();
+  return `${nextPathname}/comments/${childTargetId}${nextSearch ? `?${nextSearch}` : ""}`;
 }

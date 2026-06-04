@@ -56,4 +56,11 @@ describe("CommentsMenu", () => {
     expect(href).toContain("timeline=5");
     expect(href).toContain("new=true");
   });
+
+  it("does not add a trailing ? when there are no search params", () => {
+    setup(2, "/document/entity-1");
+
+    const href = getCommentLink().getAttribute("href") ?? "";
+    expect(href).toBe("/document/entity-1/comments/block-123");
+  });
 });
