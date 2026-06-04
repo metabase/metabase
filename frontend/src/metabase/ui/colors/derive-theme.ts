@@ -39,14 +39,17 @@ export function deriveFullMetabaseTheme({
     ...PROTECTED_COLORS,
   );
 
-  return {
-    version: 2,
-    colors: {
-      ...baseTheme.colors,
-      ...mapChartColorsToAccents(baseTheme.chartColors),
-      ...deriveAllAccentColors(whitelabelColors ?? {}),
-      ...filteredEmbeddingColors,
-      ...mapChartColorsToAccents(embeddingThemeOverride?.chartColors ?? []),
-    } as Record<MetabaseColorKey, string>,
-  };
+  const colors = {
+    ...baseTheme.colors,
+    ...mapChartColorsToAccents(baseTheme.chartColors),
+    ...deriveAllAccentColors(whitelabelColors ?? {}),
+    ...filteredEmbeddingColors,
+    ...mapChartColorsToAccents(embeddingThemeOverride?.chartColors ?? []),
+  } as Record<MetabaseColorKey, string>;
+
+  colors["core-brand"] = colors.brand;
+  colors["core-filter"] = colors.filter;
+  colors["core-summarize"] = colors.summarize;
+
+  return { version: 2, colors };
 }
