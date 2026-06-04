@@ -1038,7 +1038,7 @@
 
   **Code Health:** Healthy. This is a core API."
   [a-join :- ::lib.join.util/partial-join
-   cols   :- [:maybe [:sequential some?]]] ; ideally [:sequential ::lib.schema.metadata/column] once the surface is uniformly typed
+   cols   :- [:maybe [:sequential some?]]] ; ideally [:sequential ::lib.schema.metadata/column]
   (lib.join/with-join-source-fields a-join cols))
 
 (mu/defn join-fieldable-columns :- ::lib.metadata.calculation/visible-columns

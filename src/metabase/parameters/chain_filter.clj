@@ -428,8 +428,9 @@
                                (:id thing))]
                    (if tid
                      (lib/with-join-source-fields a-join (get cols-by-tid tid))
-                     ;; Non-Table source (e.g. Card): leave alone — projecting by table-id isn't meaningful and
-                     ;; dropping the existing `:fields` would re-expose the original bug.
+                     ;; Non-Table source (e.g. Card): leave alone — projecting by table-id isn't meaningful, and
+                     ;; dropping the existing `:fields` would let `add-implicit-clauses` expand the inner stage to
+                     ;; every column on the source.
                      a-join)))
                the-joins))))))
 

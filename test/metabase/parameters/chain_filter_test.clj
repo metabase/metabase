@@ -597,7 +597,7 @@
 ;;;
 ;;;   - OVER-projection — the inner :fields contains a column nothing references. SQL
 ;;;     compiles fine and values are correct, but we're materializing columns we don't need,
-;;;     which on wide tables is enough to OOM the engine.
+;;;     which on wide tables could OOM an engine.
 
 (defn- referenced-field-ids-by-join-alias
   "Return `{alias #{field-id ...}}` — for every `[:field {:join-alias A} id]` ref in `query`'s outer stage (including
