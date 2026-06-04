@@ -35,18 +35,23 @@ export const LensNavigator = ({
     if (!tab.isStatic || tab.isFullyLoaded) {
       return;
     }
+    // Only the active tab is mounted and actually loading, so an unvisited
+    // inactive tab would otherwise show a spinner forever.
     if (tab.key === activeTabKey) {
       return <Loader size="xs" data-testid="lens-tab-loader" />;
     }
+    if (!tab.complexity || tab.complexity.level === "fast") {
+      return null;
+    }
     return (
       <Tooltip
-        label={match(tab.complexity?.level)
+        label={match(tab.complexity.level)
           .with("slow", () => t`This analysis may take longer to load`)
           .with(
             "very-slow",
             () => t`This analysis may take significantly longer to load`,
           )
-          .otherwise(() => null)}
+          .exhaustive()}
       >
         <Icon name="clock" size={12} c="text-tertiary" />
       </Tooltip>
