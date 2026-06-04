@@ -710,8 +710,11 @@
   [block cell-w scale]
   (case (:kind block)
     :hr (* 10.0 scale)
-    ;; we don't know an image's aspect without fetching; estimate ~0.6x width for fit-scale
-    :image (* 0.6 cell-w)
+    ;; Images don't participate in the font fit-scale: shrinking the text wouldn't shrink an image,
+    ;; so an image must never force the surrounding text smaller. They contribute no height here and
+    ;; are instead scaled (aspect-preserved) to fit whatever space is left after the text -- see
+    ;; `draw-image-block!`.
+    :image 0.0
     :code-block (let [pt (* 9.0 scale)
                       lh (* pt line-height-factor)]
                   (+ (* (count (str/split-lines (str (:text block)))) lh) 2.0))
