@@ -91,7 +91,7 @@
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf        rrf-rank-exp
      ;; Keyword-only hits have no vector distance, so treat them as maximally distant (score 0).
-     :semantic-distance (semantic-distance-score-expr [:coalesce :semantic_score [:inline cosine-distance-ceiling]])
+     :semantic-distance (semantic-distance-score-expr [:coalesce :semantic_distance [:inline cosine-distance-ceiling]])
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
      :recency    (search.scoring/inverse-duration

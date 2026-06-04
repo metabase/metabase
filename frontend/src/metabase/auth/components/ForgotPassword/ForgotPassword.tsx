@@ -2,8 +2,8 @@ import type { Location } from "history";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Button } from "metabase/ui";
 
 import { forgotPassword } from "../../actions";
 import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
@@ -72,7 +72,11 @@ const ForgotPasswordSuccess = (): JSX.Element => {
       <InfoMessage>
         {t` If the email exists, we'll send instructions on how to reset your password.`}
       </InfoMessage>
-      <Button primary as="a" href="/auth/login">{t`Back to sign in`}</Button>
+      <Button
+        variant="filled"
+        component="a"
+        href="/auth/login"
+      >{t`Back to sign in`}</Button>
     </InfoBody>
   );
 };

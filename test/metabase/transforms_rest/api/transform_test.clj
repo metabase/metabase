@@ -1780,3 +1780,45 @@
             (search.tu/with-new-search-and-legacy-search
               (is (= #{native-id mbql-id}
                      (search-transform-ids search-term))))))))))
+
+(deftest get-runs-sort-by-duration-test
+  (testing "GET /api/transform/run supports sort-column=duration"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Transform     {tid :id}        {}
+                     ;; 1s short run
+                     :model/TransformRun  {short-id :id}   {:transform_id tid
+                                                            :status :succeeded
+                                                            :start_time #t "2026-01-01T00:00:00Z"
+                                                            :end_time   #t "2026-01-01T00:00:01Z"
+                                                            :run_method "cron"}
+                     ;; 10s longer run
+                     :model/TransformRun  {long-id :id}    {:transform_id tid
+                                                            :status :succeeded
+                                                            :start_time #t "2026-01-01T00:00:00Z"
+                                                            :end_time   #t "2026-01-01T00:00:10Z"
+                                                            :run_method "cron"}
+                     ;; in-progress run (no end_time, no measurable duration)
+                     :model/TransformRun  {running-id :id} {:transform_id tid
+                                                            :status :started
+                                                            :start_time #t "2026-01-01T00:00:00Z"
+                                                            :end_time   nil
+                                                            :is_active true
+                                                            :run_method "cron"}]
+        (let [run-id?      #{short-id long-id running-id}
+              seed-runs    (fn [data] (filter (comp run-id? :id) data))]
+          (testing "desc — longest completed runs first; in-progress (null duration) sinks to the bottom"
+            (let [resp (mt/user-http-request :crowberto :get 200 "transform/run"
+                                             :sort-column "duration"
+                                             :sort-direction "desc")
+                  ids  (map :id (seed-runs (:data resp)))]
+              (is (= [long-id short-id running-id] ids))))
+          (testing "asc — shortest completed runs first; in-progress run still last"
+            (let [resp (mt/user-http-request :crowberto :get 200 "transform/run"
+                                             :sort-column "duration"
+                                             :sort-direction "asc")
+                  ids  (map :id (seed-runs (:data resp)))]
+              (is (= [short-id long-id running-id] ids))))
+          (testing "unknown sort-column is rejected with a 400"
+            (mt/user-http-request :crowberto :get 400 "transform/run"
+                                  :sort-column "bogus"
+                                  :sort-direction "asc")))))))

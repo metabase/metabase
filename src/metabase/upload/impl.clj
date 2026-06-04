@@ -367,6 +367,33 @@
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
 
+(defn- match-column-names
+  "Return the existing field name that each CSV `header` column should be written to.
+
+   - Columns are matched to fields by name, independent of the order they appear in the CSV.
+   - When several headers resolve to the same name, they are matched by display name so each value
+     lands in the column it came from.
+   - When columns can't be told apart even by display name, they are matched by the order they appear in."
+  [driver header name->field]
+  (let [positional (mapv name (derive-column-names driver header))
+        normalized (mapv #(normalize-column-name driver %) header)
+        collisions (into #{} (keep (fn [[col-name freq]] (when (> freq 1) col-name))) (frequencies normalized))]
+    (if (empty? collisions)
+      positional
+      ;; Map each colliding field's display name (scoped to its normalized name) back to its positional
+      ;; name, then re-match the colliding columns by display name.
+      (let [display->name (into {}
+                                (for [[norm pos] (map vector normalized positional)
+                                      :when (collisions norm)
+                                      :let  [field (name->field pos)]
+                                      :when field]
+                                  [[norm (:display_name field)] pos]))]
+        (mapv (fn [norm pos display]
+                (if (collisions norm)
+                  (get display->name [norm display] pos)
+                  pos))
+              normalized positional (derive-display-names driver header))))))
+
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
@@ -789,13 +816,9 @@
                                      auto-pk?
                                      without-auto-pk-columns)
                 name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
-                ;; Gotcha: Long column names, which get sanitized and truncated to the same string, will be match to the
-                ;; database columns based on their order. If their order in the new upload differs from that in previous
-                ;; uploads, they will be matched incorrectly.
-                ;; We accept this edge case (customers can reorder CSV columns to fix) rather than rejecting uploads
-                ;; with ambiguous column names even when the order is consistent (see #44926/#issuecomment-3524373073).
-                ;; Future idea: match on display names for smart re-ordering.
-                column-names       (map name (derive-column-names driver header))
+                ;; Match colliding columns to existing fields by display name so reordering them between
+                ;; uploads doesn't write data to the wrong column. See [[match-column-names]] (GDGT-2233).
+                column-names       (match-column-names driver header name->field)
                 display-names      (for [h header] (normalize-display-name h))
                 create-auto-pk?    (and
                                     auto-pk?

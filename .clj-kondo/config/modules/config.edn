@@ -160,6 +160,7 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              channel
               collections
               dashboards
               events
@@ -703,8 +704,8 @@
            query-processor
            search
            settings
-           util
-           warehouse-schema}
+           sync
+           util}
    :model-exports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
@@ -1679,6 +1680,7 @@
            query-processor
            request
            search
+           sync
            util
            view-log
            warehouse-schema}
@@ -2142,6 +2144,7 @@
   {:team "Graphy"
    :api  #{metabase.sync.api
            metabase.sync.core
+           metabase.sync.field-values
            metabase.sync.init
            metabase.sync.schedules
            metabase.sync.task.sync-databases
@@ -2503,6 +2506,7 @@
   warehouse-schema
   {:team "UX West"
    :api  #{metabase.warehouse-schema.field
+           metabase.warehouse-schema.field-values.distinct-batch
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
@@ -2680,8 +2684,8 @@
            lib-be
            models
            query-processor
-           util
-           warehouse-schema}
+           sync
+           util}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
