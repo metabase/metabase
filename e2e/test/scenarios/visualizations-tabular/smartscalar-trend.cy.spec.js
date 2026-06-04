@@ -1,10 +1,14 @@
 import Color from "color";
 
 const { H } = cy;
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
+// Pinned to the H2 sample database: trend charts compare consecutive temporal periods, which needs
+// real date typing. SQLite stores dates as text (and rejects `DATE '…'` literals), breaking the
+// comparisons. H2 types dates correctly.
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import { colors } from "metabase/ui/colors";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = H2_SAMPLE_DATABASE;
 
 const BIG_NUMBER_AGGREGATION = [
   "aggregation-options",
@@ -20,7 +24,7 @@ const AGGREGATIONS = [
 
 describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     cy.signInAsAdmin();
   });
 
@@ -36,6 +40,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
           ],
         },
         display: "smartscalar",
+        database: H2_SAMPLE_DB_ID,
       },
       { visitQuestion: true },
     );
@@ -167,6 +172,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
           ],
         },
         display: "smartscalar",
+        database: H2_SAMPLE_DB_ID,
       },
       { visitQuestion: true },
     );
@@ -241,6 +247,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
           ],
         },
         display: "smartscalar",
+        database: H2_SAMPLE_DB_ID,
         visualization_settings: {
           "scalar.field": "Count",
           "scalar.comparisons": [
@@ -357,6 +364,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
           ],
         },
         display: "smartscalar",
+        database: H2_SAMPLE_DB_ID,
       },
       { visitQuestion: true },
     );
@@ -467,6 +475,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
           ],
         },
         display: "smartscalar",
+        database: H2_SAMPLE_DB_ID,
       },
       { visitQuestion: true },
     );
@@ -487,6 +496,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
         },
 
         display: "smartscalar",
+        database: H2_SAMPLE_DB_ID,
         visualization_settings: {
           "scalar.field": "v",
           "scalar.comparisons": [
@@ -533,6 +543,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
           ],
         },
         display: "smartscalar",
+        database: H2_SAMPLE_DB_ID,
       },
       { visitQuestion: true },
     );
