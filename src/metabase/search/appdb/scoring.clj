@@ -56,12 +56,14 @@
      :model        (search.scoring/model-rank-expr search-ctx)
      :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
      :exact        (if search-string
-                     ;; perform the lower casing within the database, in case it behaves differently to our helper
-                     (search.scoring/equal [:lower :search_index.name] [:lower search-string])
+                     ;; normalize both sides in the database, in case it behaves differently to our helper
+                     (search.scoring/equal (search.scoring/normalize-text-expr :search_index.name)
+                                           (search.scoring/normalize-text-expr search-string))
                      [:inline 0])
      :prefix       (if search-string
                      ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                     (search.scoring/prefix [:lower :search_index.name] (u/lower-case-en search-string))
+                     (search.scoring/prefix (search.scoring/normalize-text-expr :search_index.name)
+                                            (search.scoring/normalize-text search-string))
                      [:inline 0])
      :library      (search.scoring/library-score-expr)
      :data-layer   (search.scoring/data-layer-score-expr search-ctx)}))
