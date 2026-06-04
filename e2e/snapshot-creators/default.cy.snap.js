@@ -70,6 +70,7 @@ describe("snapshots", () => {
       // "Sample Database", etc.) from colliding with name/entity selectors across the whole suite.
       // Tests coupled to H2-specific sample-data behavior opt in via restore("default-with-h2").
       addH2SampleDatabase();
+      grantH2SampleDatabasePermissions();
       withH2SampleDatabase((H2_SAMPLE_DATABASE) => {
         hideNewSampleTables(H2_SAMPLE_DATABASE);
         createExampleContentForH2(H2_SAMPLE_DATABASE);
@@ -310,6 +311,42 @@ describe("snapshots", () => {
     }).then(({ body }) => {
       expect(body.id).to.eq(H2_SAMPLE_DB_ID);
     });
+  }
+
+  // Give the H2 sample database the same per-group permissions as the SQLite sample DB so it's a
+  // drop-in for tests that opt into it (e.g. temporal tests that run as non-admin users). The
+  // graph is merged per-group (Object.assign), so each group must re-state its SAMPLE_DB grant.
+  function grantH2SampleDatabasePermissions() {
+    const grants = {
+      [ALL_USERS_GROUP]: {
+        "view-data": "unrestricted",
+        "create-queries": "no",
+      },
+      [DATA_GROUP]: {
+        "view-data": "unrestricted",
+        "create-queries": "query-builder-and-native",
+      },
+      [NOSQL_GROUP]: {
+        "view-data": "unrestricted",
+        "create-queries": "query-builder",
+      },
+      [COLLECTION_GROUP]: {
+        "view-data": "unrestricted",
+        "create-queries": "no",
+      },
+      [READONLY_GROUP]: {
+        "view-data": "unrestricted",
+        "create-queries": "no",
+      },
+    };
+    cy.updatePermissionsGraph(
+      Object.fromEntries(
+        Object.entries(grants).map(([groupId, perms]) => [
+          groupId,
+          { [SAMPLE_DB_ID]: perms, [H2_SAMPLE_DB_ID]: perms },
+        ]),
+      ),
+    );
   }
 
   // Duplicate of the root-level example content (Orders question/dashboard/model), but bound to the

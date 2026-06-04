@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 
+import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import "metabase/utils/dayjs";
 
 const { H } = cy;
@@ -18,7 +19,10 @@ describe("scenarios > question > relative-datetime", () => {
   const now = dayjs().utc();
 
   beforeEach(() => {
-    H.restore();
+    // The "starting from" tests build date columns with `::timestamp` native SQL, which SQLite
+    // can't type as a date. Run those native questions against the writable H2 sample database
+    // (see `nativeSQL`); the sample-DB-backed tests below keep using the default SQLite sample DB.
+    H.restore("default-with-h2");
     cy.signInAsNormalUser();
   });
 
@@ -246,6 +250,7 @@ const nativeSQL = (values) => {
   H.createNativeQuestion(
     {
       name: "datetime",
+      database: H2_SAMPLE_DB_ID,
       native: {
         query: queries.join(" UNION ALL "),
       },
