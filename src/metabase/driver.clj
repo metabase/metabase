@@ -453,6 +453,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(declare database-supports?)
+
 (mu/defmethod describe-fks ::driver :- ::describe-fks.result
   [driver   :- :keyword
    database :- ::lib.schema.metadata/database
