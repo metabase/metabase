@@ -7,7 +7,7 @@ description: Scaffold a new Metabase data-app development project — a Vite + R
 
 A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. This skill scaffolds a proper Vite + TypeScript project: source code in `src/` (multiple `.tsx` files allowed and encouraged), a dev server with HMR that previews the app against a real Metabase via the Embedding SDK, and `yarn build` producing a single `dist/index.js` to upload via Admin → Data apps.
 
-**Always use TypeScript (`.tsx` / `.ts`).** Plain `.jsx` is not a supported scaffold output — every source file the agent creates must be TypeScript. The host endowments have public types you'll declare in `src/globals.d.ts` so usages of `globalThis.MetabaseProvider`, `globalThis.useQuestionQuery`, etc. are typed correctly.
+**Always use TypeScript (`.tsx` / `.ts`).** The host endowments have public types you'll declare in `src/globals.d.ts` so usages of `globalThis.MetabaseProvider`, `globalThis.useQuestionQuery`, etc. are typed correctly.
 
 ## When to invoke this skill
 
@@ -19,34 +19,23 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 Before writing any files, check whether the working directory already looks
 like a data-app project. Telltale signs:
 
-- `src/index.tsx` (or `src/index.jsx` from an older scaffold) exists, **or**
+- `src/index.tsx` exists, **or**
 - `vite.config.ts` with a `name: "__customVizPlugin__"` entry, **or**
 - `package.json` whose `scripts` include `vite build` and depends on
   `@metabase/embedding-sdk-react`.
 
 If any of these signals are present, **do not silently re-scaffold** — pause
-and ask the user how to proceed. The exact question depends on whether the
-project is already TypeScript:
+and ask the user:
 
-- **TypeScript project (`.tsx` source)** — ask:
-  > "I see this looks like an existing data-app project. Should I keep
-  > working in it (extend the current `src/`), or do you want me to
-  > scaffold a fresh project somewhere else?"
-
-- **Old `.jsx` project** — the scaffold is TypeScript-only
-  (`tsconfig.json` sets `allowJs: false`), so "keep working in it as `.jsx`"
-  is not an option. Ask:
-  > "This project is currently `.jsx`. The data-app scaffold is
-  > TypeScript-only. I can either migrate it now (rename `.jsx` → `.tsx`,
-  > add `tsconfig.json` + `src/globals.d.ts`, fix type errors) and then
-  > work on your changes, or scaffold a fresh TypeScript project
-  > somewhere else. Which would you like?"
+> "I see this looks like an existing data-app project. Should I keep
+> working in it (extend the current `src/`), or do you want me to
+> scaffold a fresh project somewhere else?"
 
 Only continue once the user has answered:
 
-- **"Keep / migrate this one"** → skip the file-writing steps below and
+- **"Keep working in this one"** → skip the file-writing steps below and
   edit the existing `src/` files (typically `src/App.tsx` and
-  `src/components/`). For a `.jsx` project, do the migration first.
+  `src/components/`).
 - **"Scaffold fresh"** → ask for the target path, then write the files
   there.
 
@@ -192,8 +181,6 @@ export default defineConfig({
   "include": ["src", "vite.config.ts"]
 }
 ```
-
-**This is a TypeScript-only project — `allowJs: false` is explicit, not just the default.** Every source file must be `.ts` or `.tsx`. The agent must not author `.js` / `.jsx` and must not weaken `strict`. Type the props/state/utilities it writes — including any data shapes returned by `useQuestionQuery` (cast or type the rows/columns at the read site so downstream code is type-safe).
 
 ### `index.html`
 
@@ -503,7 +490,7 @@ yarn build    # produces dist/index.js
 
 ## Source conventions
 
-### 1. Write normal TSX.
+### 1. Write TSX.
 
 The source is plain ESM + TSX:
 
@@ -522,8 +509,6 @@ export default function PokemonCard({ pokemon }: { pokemon: Pokemon }) {
   );
 }
 ```
-
-`.jsx` is **not** acceptable — every new file is `.tsx` (for components) or `.ts` (for data / helpers). The agent should never produce plain `.jsx` for new code.
 
 ### 2. Multiple files are encouraged
 
@@ -608,7 +593,7 @@ Vite lib mode + `name: "__customVizPlugin__"` makes the bundle assign this facto
 
 ## Available endowments
 
-Set on `globalThis` by the host in production and by `src/dev-globals.jsx` in dev.
+Set on `globalThis` by the host in production and by `src/dev-globals.tsx` in dev.
 
 | Endowment | Purpose |
 |---|---|
@@ -690,7 +675,7 @@ Different ids, or the same id with different `initialSqlParameters`, are differe
 
 SDK components do NOT auto-fit their parent. Always pass explicit dimensions:
 
-```jsx
+```tsx
 <div style={{ height: 360, overflow: "hidden" }}>
   <StaticQuestion
     questionId={1}
