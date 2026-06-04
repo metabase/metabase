@@ -30,10 +30,6 @@ Use Redux global state as little as possible, and wherever possible, prefer loca
 
 We use [RTK Query](https://redux-toolkit.js.org/rtk-query/overview) for data fetching and caching. All API endpoints are defined in `metabase/api`. These should be properly typed, and should not depend on any other application code or contain business logic outside of invalidating tags within the API.
 
-### Entity Loaders
-
-Legacy code uses `metabase/entities` to load data. These entity loaders are deprecated, and wherever possible, use of RTK query apis should be preferred.
-
 ## UI Library
 
 Our UI library in `metabase/ui` is built on top of [`Mantine`](https://mantine.dev/core/package/). You should almost always prefer using mantine components above anything else in the codebase. We have a lot of customization on top of mantine, but no business logic should leak into the `metabase/ui` folder. It should remain purely display-level. All components added to the UI library must have a storybook file to demonstrate usage.
@@ -178,9 +174,9 @@ const output = c("{0} and {2} are people's names, and {1} is a place")
 
 The first rule of frontend style, is we want to avoid talking about frontend style. Wherever possible, style-level considerations should be encapsulated in lint rules.
 
-### Prettier + Eslint
+### oxfmt + Eslint
 
-We use [Prettier](https://prettier.io/) to format our JavaScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run prettier`, and verify it has been formatted correctly using `bun run lint-prettier`.
+We use [oxfmt](https://oxc.rs/) to format our JavaScript and TypeScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run format`, and verify it has been formatted correctly using `bun run lint-format-pure`.
 
 We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `bun run lint-eslint` to check. Nitpicky things like import order, spacing, etc. are all enforced by eslint.
 

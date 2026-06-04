@@ -26,11 +26,8 @@ to understand DOM structure, selectors, and user flows.
 
 1. Read existing helpers before writing anything:
    - `e2e/support/helpers/` — all shared helpers (restore, signInAs, openOrdersTable, etc.)
-   - `e2e/support/helpers/api/` — API-level helpers. All new API helpers must live here.
    - `e2e/support/cypress_sample_database.ts` — table/field schema constants (ORDERS, PRODUCTS, etc.)
    - `e2e/support/cypress_sample_instance_data.ts` — instance-specific IDs (ORDERS_DASHBOARD_ID, NORMAL_USER_ID, etc.)
-   - `frontend/src/metabase-types/api/mocks/` — mock factories (`createMockDataset`, `createMockLocation`, etc.). Prefer these over hand-rolling mocks.
-   - `H.createTestQuery` — prefer over ad-hoc MBQL construction.
 2. Glob `e2e/test/scenarios/` to find the closest existing spec to the area under test.
    Study its patterns — match them exactly.
 3. Glob `frontend/src/metabase/` to find React components for the feature area.
@@ -73,88 +70,7 @@ Follow the Metabase Cypress conventions:
 
 @./../_shared/cypress-conventions.md
 
-### Metabase conventions (mandatory)
-
-- **Helpers via `cy.H`**: All helpers are accessed via `const { H } = cy;` — NOT via direct imports from `e2e/support/helpers`.
-
-```js
-const { H } = cy;
-
-describe("feature name", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-});
-```
-
-- **Sample Database schema** (table/field definitions): Import from `cypress_sample_database`.
-
-```js
-import { ORDERS, ORDERS_ID, PRODUCTS } from "e2e/support/cypress_sample_database";
-```
-
-- **Instance data** (dashboard IDs, user IDs, etc.): Import from `cypress_sample_instance_data`.
-
-```js
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-```
-
-- **Selectors** (priority order):
-  1. `cy.findByText()` / `cy.findByLabelText()` / `cy.findByRole()` — from `@testing-library/cypress`
-  2. `cy.findByTestId()` — for `data-testid` attributes
-  3. `cy.get("[data-testid='...']")` — fallback
-  4. NEVER use positional selectors, CSS class names, or XPaths.
-
-- **Navigation helpers**: Use existing helpers like `H.openOrdersTable()`, `H.openNativeEditor()`,
-  `H.visitDashboard(id)`, `H.visitQuestion(id)` instead of raw `cy.visit()` chains.
-  Grep `e2e/support/helpers/` to discover what's available for your area.
-
-- **API setup over UI setup**: Use `cy.request()` or existing API helpers to set up state.
-  Only use the UI for the flow you're actually testing.
-
-- **Assertions**: Assert on visible text, URL, aria state — not DOM structure.
-
-- **Waits**: Never use `cy.wait(ms)`. Use `cy.intercept()` + `cy.wait("@alias")` for API calls,
-  or `cy.findByText().should("be.visible")` for DOM readiness.
-
-- **Intercept helpers**: Use existing helpers from `e2e/support/helpers/api/` instead of hand-writing `cy.intercept` with raw URLs. If a helper is missing, add one there.
-
-- **Isolation**: Each `it()` block must be independently runnable.
-  Don't depend on state from a previous `it()`.
-
-### Spec structure template
-
-```js
-const { H } = cy;
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { ORDERS, ORDERS_ID } from "e2e/support/cypress_sample_database";
-
-describe("area > sub-area > feature (#issue-number)", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should do the primary happy-path thing", () => {
-    // test
-  });
-
-  it("should handle the edge case", () => {
-    // test
-  });
-});
-```
-
-### Intercepts
-
-When you identified API calls during code analysis, check `e2e/support/helpers/api/` for an existing intercept helper first. If none exists, stub or wait on them directly:
-
-```js
-cy.intercept("POST", "/api/dataset").as("dataset");
-// ... trigger action ...
-cy.wait("@dataset");
-```
+When you identified API calls during code analysis, stub or wait on them using the intercept pattern shown above.
 
 ## Phase 4 — Validate
 
@@ -257,9 +173,5 @@ Leaving it running wastes resources and can interfere with future sessions. Alwa
 - Do NOT use Playwright as the first step — always analyze source code first.
 - Do NOT kill the backend between phases — it stays running throughout.
 - Do NOT invent selectors you didn't find in source code or observe in the browser.
-- Do NOT hardcode database IDs — import from `cypress_sample_database` or `cypress_sample_instance_data`.
-- Do NOT use `cy.wait(1000)` or any numeric wait.
-- Do NOT create setup flows through the UI when an API helper exists.
-- Do NOT put tests in `cypress/e2e/` — Metabase uses `e2e/test/scenarios/`.
-- Do NOT import helpers directly from `e2e/support/helpers` — use `const { H } = cy;`.
-- Do NOT use `Cypress.env` — it is deprecated.
+
+For convention-level "do nots" (selectors, waits, helpers, etc.), see the conventions file referenced in Phase 3.

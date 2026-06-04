@@ -9,20 +9,25 @@ allowed-tools: Read, Grep, Bash, Glob
 @./../_shared/typescript-commands.md
 @./../_shared/react-redux-patterns.md
 
-Review pull requests by enforcing the patterns defined in the `typescript-write` skill and `frontend/CLAUDE.md`. Focus on:
+## Main Focus
 
-- Readability and maintainability
-- Appropriate test coverage
-- Compliance with project coding standards and conventions
-- Type safety and proper TypeScript usage
-- React best practices
+**Primary standard: the [`typescript-write`](../typescript-write/SKILL.md) skill.** Load it first — it defines the authoring rules this review enforces, alongside `frontend/CLAUDE.md` and `docs/developers-guide/frontend.md`.
+
+Adherence to `typescript-write` is the **highest-priority** review dimension: rank any violation of its provisions above all other findings. Treat its **no-`any` hard rule** (no explicit *or* implicit `any` in new code) as **blocking**, and verify it with the LSP rather than by eye.
+
+Review in this priority order:
+
+1. **Violations of [`typescript-write`](../typescript-write/SKILL.md) provisions** — no-`any`, type tightening, type modeling, null/undefined handling, naming, structure, comments. Highest priority; block on the no-`any` rule.
+2. Compliance with `frontend/CLAUDE.md`.
+3. Readability and maintainability.
+4. Appropriate test coverage.
 
 ## Blind spots — act as the missing reviewer
 
-These rarely surface in team reviews, so this skill should raise them:
+These rarely surface in team reviews, so this skill should raise them. They are **additive** — raise them, but rank them below `typescript-write` violations:
 
-- **Accessibility.** Interactive elements need keyboard support, focus management, and accessible names. Flag missing `aria-label`/`aria-labelledby`, non-semantic click targets, modals without focus trap, icon-only buttons without a label, and form inputs without a linked label.
-- **Performance.** Flag renders that scale with list size but don't memoize; inline object/array literals passed to memoized children; effects that fire on every batch of a progressive load; and new dependencies added to hot paths.
+- **Accessibility.** Interactive elements need keyboard support, focus management, and accessible names. Flag missing `aria-label`/`aria-labelledby`, non-semantic click targets, modals without focus trap, icon-only buttons without labels, and form inputs without a linked label.
+- **Performance.** Flag areas that scale poorly and aren't memoized; inline object/array literals passed to memoized children; effects that fire on every batch of a progressive load; and new dependencies added to hot paths.
+- **Security.** Evaluate potential security issues in new code.
+- **Bundle size.** Flag new large dependencies, default imports from icon or util libs, and heavy modules imported at route-load time.
 - **Analytics.** User-facing flows should emit tracking events. If a PR adds a new flow (button, modal, navigation) without a tracking event, ask whether one is expected.
-- **Security.** Flag `dangerouslySetInnerHTML`, unescaped user input rendered into URLs or HTML, `eval`/`new Function`, state-changing requests missing CSRF protection, raw user input in `target`/`href`, and `window.postMessage` handlers without origin checks.
-- **Bundle size.** Flag new large dependencies, default imports from icon or util libs (`import Foo from 'lodash'`), `import * as X`, and heavy modules imported at route-load time instead of via `import()`. Ask if a tree-shakable named import or lazy load is possible.

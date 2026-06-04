@@ -1,15 +1,24 @@
-# Working in /frontend
+# Working with frontend code
 
 ## Structure
 
 ```
 frontend/src/
-├── metabase/           # Main application components and pages
-├── metabase-lib/       # Query building and data modeling utilities
-├── metabase-types/     # TypeScript type definitions
-└── metabase/ui/        # Design system components
+├── metabase/              # Main application — components, pages, and features
+├── metabase-lib/          # Query building & data modeling (MLv2 JS bindings)
+├── metabase-types/        # TypeScript type definitions (API responses, analytics)
+├── metabase-shared/       # Thin shared helpers reused across bundles
+├── embedding-sdk-bundle/  # Embedding SDK public API and component exports
+├── embedding-sdk-shared/  # Shared utilities/types for the embedding SDK
+└── types/                 # Global / ambient type declarations
 
-frontend/test/          # Jest unit tests
+enterprise/frontend/src/
+├── metabase-enterprise/   # Enterprise feature modules (loaded via the plugin system)
+├── embedding/             # Embedded analytics customization and extensions
+├── embedding-sdk-ee/      # Enterprise-only embedding SDK features
+└── embedding-sdk-package/ # Embedding SDK npm package build tooling and exports
+
+frontend/test/             # Jest unit tests
 ```
 
 ## Technology Stack
@@ -24,40 +33,27 @@ frontend/test/          # Jest unit tests
 
 ## Coding Standards
 
-### Component Preferences
+@../docs/developers-guide/frontend.md
 
-- Prefer `metabase/ui`components over `metabase/common/components`
-- Use `.tsx` for components, `.ts` for utilities
+Read `docs/developers-guide/frontend.md` before frontend work — it's the detailed guide imported above.
 
-### Styling
+### Load the right skill first
 
-ALWAYS prefer Mantine style props (`p`, `m`, `w`, `h`, `c`, `bg`, `position`, `shadow` etc.), then CSS modules. DO NOT suggest styled components, they are deprecated.
+Before starting a frontend task, load the matching skill from `.claude/skills/` — the
+skills hold the authoritative, detailed rules. The guide above and the notes below are a
+summary; when they disagree, follow the skill.
 
-- Use design tokens, not raw values. `var(--default-border-radius)` beats a hardcoded `4px`; a theme color key beats a hex literal.
-- Do not reach into Mantine's internal CSS variables. If a token is missing, add it to the theme.
-- Normalize styling props across sibling components that render the same kind of thing.
-- Prefer the Metabase component when both exist (e.g. `AccordionList` over Mantine `Accordion` for heavy lists with search/virtualization).
-
-### TypeScript Migration
-
-When heavily editing `.js`/`.jsx` files, create a separate PR to convert to TypeScript first, then implement changes.
+- Writing / refactoring TypeScript or React → **typescript-write**
+- Reviewing a TypeScript/React diff → **typescript-review**
+- Writing Cypress E2E specs → **e2e-test-create**, **typescript-write**
+- Running / debugging Cypress E2E → **e2e-test**
+- Replacing Emotion styled-components with Mantine → **emotion-migrate**
+- Adding product analytics events → **analytics-events**
 
 ### Enterprise Features
 
 Enterprise functionality MUST use the plugin system. It is very important to not expose enterprise code in the OSS version.
 
-### Testing Requirements
-
-All PRs should include tests. Prefer Unit tests over E2E tests.
-
-### Localization
-
-All user-facing strings MUST be localized using the ttag library. Localized strings should be complete phrases, do not concatenate a few separately localized strings. You should add context to strings where the meaning of the string might not be obvious in isolation: e.g. "Home" might have different words in some languages depending on whether you're talking about a dwelling or the landing page for a website.
-
-- Use `` t`...` `` for plain strings and `jt` for JSX interpolation. No bare English strings in JSX, error messages, or toast content.
-
 ### Scripts
 
-- Use `bun run type-check-pure` to run project-wide type checking.
-- Use `bun run lint-eslint-pure` to run project-wide linting.
-- Use `bun run test-unit` to run Jest tests.
+@../.claude/skills/_shared/typescript-commands.md
