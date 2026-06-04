@@ -235,6 +235,25 @@
                    "error_message"   nil}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
 
+(deftest export-log-captures-extract-warnings-test
+  (testing "export.log captures escape-analysis warnings emitted during the eager extract phase (GHY-3802)"
+    ;; A dashboard in the exported collection references a card living in a different collection. Escape analysis
+    ;; runs eagerly inside extract/extract (before storage streaming) and warns about the escaped card. That warning
+    ;; must still land in export.log even though extract happens outside the storage logging block.
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Collection    target       {:name "Target Collection"}
+                     :model/Collection    other        {:name "Other Collection"}
+                     :model/Card          outside-card {:collection_id (:id other) :name "OutsideCard"}
+                     :model/Dashboard     dash         {:collection_id (:id target) :name "DashWithOutsideCard"}
+                     :model/DashboardCard _            {:dashboard_id (:id dash) :card_id (:id outside-card)}]
+        (let [res (binding [api.serialization/*additive-logging* false]
+                    (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                          :collection (:id target) :data_model false :settings false))
+              log (read-export-log res)]
+          (is (some? log) "export.log should be present in the archive")
+          (is (re-find #"outside requested collections" log)
+              "export.log should contain the escape-analysis warning emitted during extract"))))))
+
 (deftest import-restores-entities-test
   (testing "Import restores deleted/renamed entities and updates search index"
     (with-serialization-test-data! [coll dash card]
