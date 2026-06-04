@@ -312,7 +312,7 @@
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Exports are only allowed when remote-sync-type is set to 'read-write'"
-                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
+                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))))))
 
 (deftest export-with-default-settings-test
   (testing "POST /api/ee/remote-sync/export succeeds with default settings"
@@ -323,20 +323,20 @@
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-main)]
-              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})
                     task (wait-for-task-completion task_id)]
                 (is (remote-sync.task/successful? task))
                 (is (=? {:message string? :task_id int?}
                         resp))))))))))
 
 (deftest export-with-custom-branch-and-message-test
-  (testing "POST /api/ee/remote-sync/export succeeds with custom branch and message"
+  (testing "POST /api/ee/remote-sync/export succeeds with a non-default branch and message when on that branch"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
-                                             remote-sync-branch "main"]
+                                             remote-sync-branch "feature-branch"]
             (with-redefs [source/source-from-settings (constantly mock-main)]
               (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
                                                                      {:branch "feature-branch" :message "Custom export message"})
@@ -350,14 +350,14 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write
                                        remote-sync-url "file://repo.git"]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "ee/remote-sync/export" {}))))))
+             (mt/user-http-request :rasta :post 403 "ee/remote-sync/export" {:branch "main"}))))))
 
 (deftest export-errors-when-remote-sync-disabled-test
   (testing "POST /api/ee/remote-sync/export errors when remote sync is disabled"
     (mt/with-temporary-setting-values [remote-sync-type :read-write
                                        remote-sync-url nil]
       (is (= "Remote sync is not configured."
-             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))
+             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))
 
 (deftest export-handles-write-errors-test
   (testing "POST /api/ee/remote-sync/export handles write errors"
@@ -368,7 +368,7 @@
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-main)]
-              (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})
                     task (wait-for-task-completion (:task_id response))]
                 (is (remote-sync.task/failed? task))))))))))
 
@@ -382,7 +382,7 @@
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Remote sync task in progress"
-                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
+                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))))))
 
 (deftest export-merges-if-external-changes-test
   (testing "POST /api/ee/remote-sync/export with merge=true merges when the remote is ahead of the last sync"
@@ -401,7 +401,7 @@
             (with-redefs [source/source-from-settings (constantly mock-source)
                           impl/load-snapshot! (constantly nil)]
               (testing "merge=true reconciles non-conflicting remote changes and succeeds"
-                (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:merge true})
+                (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:merge true :branch "main"})
                       task     (wait-for-task-completion (:task_id response))]
                   (is (remote-sync.task/successful? task)
                       "non-conflicting remote changes are merged in, so the export succeeds")))
@@ -409,7 +409,7 @@
                 (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "bar"
                                                         :ended_at :%now
                                                         :version "other-version"}]
-                  (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+                  (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})
                         task     (wait-for-task-completion (:task_id response))]
                     (is (remote-sync.task/conflict? task)
                         "a diverged export without force/merge surfaces a conflict for the UI to resolve"))))
@@ -417,7 +417,7 @@
                 (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
                                                         :ended_at :%now
                                                         :version "mock-version"}]
-                  (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {}))))))))))
+                  (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"}))))))))))
 
 (deftest export-preflight-test
   (testing "GET /api/ee/remote-sync/export-preflight previews a merge without writing"
@@ -429,16 +429,38 @@
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
               (testing "no prior sync -> not diverged"
-                (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight")]
+                (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight?branch=main")]
                   (is (false? (:has_changes resp)))))
               (testing "remote ahead with non-conflicting changes -> clean merge available"
                 (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
                                                         :ended_at :%now
                                                         :version "other-version"}]
-                  (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight")]
+                  (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight?branch=main")]
                     (is (true? (:has_changes resp)))
                     (is (true? (:clean resp)))
                     (is (= [] (:conflicts resp)))))))))))))
+
+(deftest export-rejects-branch-mismatch-test
+  (testing "export and export-preflight reject a requested branch that disagrees with the configured setting (multi-tab CAS guard)"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
+        (let [mock-main (test-helpers/create-mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch "main"]
+            (with-redefs [source/source-from-settings (constantly mock-main)]
+              (testing "POST /export -> 409 with a branch_mismatch flag and the current branch"
+                (let [before (t2/count :model/RemoteSyncTask)
+                      resp   (mt/user-http-request :crowberto :post 409 "ee/remote-sync/export" {:branch "stale-branch"})]
+                  (is (true? (:branch_mismatch resp)))
+                  (is (= "main" (:current_branch resp)))
+                  (is (string? (:message resp)))
+                  (is (= before (t2/count :model/RemoteSyncTask))
+                      "no RemoteSyncTask row is created when the guard fires")))
+              (testing "GET /export-preflight -> 409 with a branch_mismatch flag and the current branch"
+                (let [resp (mt/user-http-request :crowberto :get 409 "ee/remote-sync/export-preflight?branch=stale-branch")]
+                  (is (true? (:branch_mismatch resp)))
+                  (is (= "main" (:current_branch resp))))))))))))
 
 (deftest export-force-if-external-changes-test
   (testing "POST /api/ee/remote-sync/export can force sync when remote is ahead of the last sync"
@@ -452,7 +474,7 @@
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
               (testing "Can export with force"
-                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true})))))))))
+                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true :branch "main"})))))))))
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
@@ -1435,7 +1457,7 @@
                                              remote-sync-type   :read-write]
             (is (= "Remote sync task in progress"
                    (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export"
-                                         {:message "test export"})))
+                                         {:message "test export" :branch "main"})))
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
 

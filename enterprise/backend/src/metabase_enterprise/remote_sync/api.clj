@@ -32,6 +32,24 @@
                             :details {:branch branch}
                             :user-id user-id})))
 
+(defn- check-branch-matches-setting!
+  "Compare-and-swap guard against the multi-tab staleness hole: the client sends the branch it
+  believes it is operating on, and we reject the request when that disagrees with the authoritative
+  `remote-sync-branch` setting — e.g. another session switched branches since this client last loaded
+  its settings. The setting stays the source of truth; `requested-branch` is only an assertion.
+
+  Throws a 409 carrying `:branch_mismatch true` and the current `:current_branch` so the client can
+  refresh its view and retry. Returns the (now-validated) branch on success."
+  [requested-branch]
+  (let [current (settings/remote-sync-branch)]
+    (when-not (= requested-branch current)
+      (throw (ex-info (format "The sync branch changed to '%s' in another session. Refresh and try again."
+                              current)
+                      {:status-code     409
+                       :branch_mismatch true
+                       :current_branch  current})))
+    requested-branch))
+
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Import Metabase content from configured Remote Sync source.
 
@@ -112,15 +130,15 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch force merge]}] :- [:map
-                                             [:message {:optional true} ms/NonBlankString]
-                                             [:branch {:optional true} ms/NonBlankString]
-                                             [:force {:optional true} :boolean]
-                                             [:merge {:optional true} :boolean]]
+   {:keys [message branch force merge]} :- [:map
+                                            [:message {:optional true} ms/NonBlankString]
+                                            [:branch ms/NonBlankString]
+                                            [:force {:optional true} :boolean]
+                                            [:merge {:optional true} :boolean]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
-  (let [branch-name (or branch (settings/remote-sync-branch))
+  (let [branch-name (check-branch-matches-setting! branch)
         user-id     api/*current-user-id*
         {task-id :id}
         (impl/async-export!
@@ -144,10 +162,12 @@
   - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists
 
   Requires superuser permissions."
-  []
+  [_route
+   {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (let [{:keys [diverged? clean? conflicts summary reason]} (impl/preview-export-merge)]
+  (let [branch-name (check-branch-matches-setting! branch)
+        {:keys [diverged? clean? conflicts summary reason]} (impl/preview-export-merge branch-name)]
     {:has_changes diverged?
      :clean       clean?
      :conflicts   conflicts

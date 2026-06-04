@@ -181,6 +181,39 @@ describe("GitSyncControls", () => {
         expect(screen.getByRole("dialog")).toBeInTheDocument();
       });
     });
+
+    it("shows a refresh modal when the branch changed in another session", async () => {
+      setup({ dirty: [createMockDirtyEntity()] });
+
+      // Another session switched the branch since this tab loaded; the preflight CAS guard rejects.
+      fetchMock.removeRoute("remote-sync-export-preflight");
+      fetchMock.get(
+        "path:/api/ee/remote-sync/export-preflight",
+        {
+          status: 409,
+          body: {
+            message:
+              "The sync branch changed to 'develop' in another session. Refresh and try again.",
+            branch_mismatch: true,
+            current_branch: "develop",
+          },
+        },
+        { name: "remote-sync-export-preflight" },
+      );
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      await userEvent.click(await findOption(/Push changes/));
+
+      expect(
+        await screen.findByText(/changed .* in another session/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Refresh/ }),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("pull option", () => {

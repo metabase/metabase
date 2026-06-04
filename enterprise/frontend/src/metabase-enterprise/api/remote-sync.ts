@@ -40,10 +40,14 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("session-properties"),
       ],
     }),
-    getExportPreflight: builder.query<ExportPreflightResponse, void>({
-      query: () => ({
+    getExportPreflight: builder.query<
+      ExportPreflightResponse,
+      { branch: string }
+    >({
+      query: ({ branch }) => ({
         url: `/api/ee/remote-sync/export-preflight`,
         method: "GET",
+        params: { branch },
       }),
       providesTags: () => [tag("remote-sync-has-remote-changes")],
     }),

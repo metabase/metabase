@@ -785,10 +785,13 @@
   - `:clean?`    - whether a 3-way merge would apply with no conflicts
   - `:conflicts` - human-readable labels of the entities that conflict (empty when clean)
   - `:summary`   - `{:added :updated :removed}` counts of remote changes a merge would fold in
-  - `:reason`    - `:history-rewritten` when the remote was force-pushed/rebased so no merge base exists"
-  []
+  - `:reason`    - `:history-rewritten` when the remote was force-pushed/rebased so no merge base exists
+
+  `branch` is the branch to preview against — the caller is responsible for having validated it against
+  the `remote-sync-branch` setting."
+  [branch]
   (let [no-changes {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
-        source         (source/source-from-settings)
+        source         (source/source-from-settings branch)
         snapshot       (source.p/snapshot source)
         remote-version (source.p/version snapshot)
         base-version   (remote-sync.task/last-version)]

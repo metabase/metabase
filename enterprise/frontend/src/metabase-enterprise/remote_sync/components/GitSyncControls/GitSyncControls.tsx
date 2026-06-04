@@ -5,7 +5,16 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
+import {
+  Button,
+  Combobox,
+  Group,
+  Icon,
+  Loader,
+  Modal,
+  Text,
+  useCombobox,
+} from "metabase/ui";
 import {
   useGetHasRemoteChangesQuery,
   useImportChangesMutation,
@@ -43,6 +52,11 @@ export const GitSyncControls = () => {
   // Set when a push or pull needs the conflict modal; carries whether a clean merge is available.
   const [conflictPreflight, setConflictPreflight] =
     useState<ExportPreflightResponse | null>(null);
+  // Set when the backend rejects an action because the branch changed in another session.
+  const [branchMismatch, setBranchMismatch] = useState<{
+    message: string;
+    currentBranch: string | null;
+  } | null>(null);
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
   const [sendToast] = useToast();
   const [dropdownView, setDropdownView] = useState<DropdownView>("options");
@@ -114,22 +128,43 @@ export const GitSyncControls = () => {
   );
 
   const handlePushClick = useCallback(async () => {
+    if (!currentBranch) {
+      return;
+    }
+
     combobox.closeDropdown();
 
     // Find out up front whether the remote has advanced, so we open the right modal directly instead of
     // collecting a commit message and only then discovering the divergence.
     try {
-      const preflight = await runExportPreflight().unwrap();
+      const preflight = await runExportPreflight({
+        branch: currentBranch,
+      }).unwrap();
       if (preflight.has_changes) {
         setConflictPreflight(preflight);
         dispatch(syncConflictVariantUpdated("push"));
         return;
       }
-    } catch {
-      // fall through to the plain push modal on a preflight error
+    } catch (error) {
+      const {
+        hasBranchMismatch,
+        errorMessage,
+        currentBranch: serverBranch,
+      } = parseSyncError(error as SyncError);
+      if (hasBranchMismatch) {
+        // Another session switched branches under us, so the branch shown here is stale. Don't fall
+        // through to a push that would target the wrong branch — surface it and prompt a refresh.
+        setBranchMismatch({
+          message:
+            errorMessage ?? t`The sync branch changed in another session.`,
+          currentBranch: serverBranch,
+        });
+        return;
+      }
+      // fall through to the plain push modal on any other preflight error
     }
     togglePushModal();
-  }, [combobox, dispatch, runExportPreflight, togglePushModal]);
+  }, [combobox, currentBranch, dispatch, runExportPreflight, togglePushModal]);
 
   const handlePullClick = useCallback(async () => {
     if (!currentBranch) {
@@ -142,9 +177,24 @@ export const GitSyncControls = () => {
     // merge is possible and let the user choose (merge / force / new branch / discard).
     if (isDirty) {
       try {
-        const preflight = await runExportPreflight().unwrap();
+        const preflight = await runExportPreflight({
+          branch: currentBranch,
+        }).unwrap();
         setConflictPreflight(preflight);
-      } catch {
+      } catch (error) {
+        const {
+          hasBranchMismatch,
+          errorMessage,
+          currentBranch: serverBranch,
+        } = parseSyncError(error as SyncError);
+        if (hasBranchMismatch) {
+          setBranchMismatch({
+            message:
+              errorMessage ?? t`The sync branch changed in another session.`,
+            currentBranch: serverBranch,
+          });
+          return;
+        }
         setConflictPreflight(null);
       }
       dispatch(syncConflictVariantUpdated("pull"));
@@ -278,6 +328,26 @@ export const GitSyncControls = () => {
           canMerge={conflictPreflight?.clean}
           conflicts={conflictPreflight?.conflicts}
         />
+      )}
+
+      {branchMismatch && (
+        <Modal
+          opened
+          padding="xl"
+          title={t`This view is out of date`}
+          withCloseButton={false}
+          onClose={() => setBranchMismatch(null)}
+        >
+          <Text mt="md">{branchMismatch.message}</Text>
+          <Group gap="sm" justify="end" mt="xl">
+            <Button variant="subtle" onClick={() => setBranchMismatch(null)}>
+              {t`Cancel`}
+            </Button>
+            <Button variant="filled" onClick={() => window.location.reload()}>
+              {t`Refresh`}
+            </Button>
+          </Group>
+        </Modal>
       )}
     </>
   );

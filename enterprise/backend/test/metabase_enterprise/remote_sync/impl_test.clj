@@ -1721,7 +1721,7 @@ serdes/meta:
     (with-redefs [remote-sync.task/last-version (constantly "remote-R") ; == snapshot version
                   source/source-from-settings   (constantly (export-test-source))]
       (is (= {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
-             (impl/preview-export-merge))))))
+             (impl/preview-export-merge "main"))))))
 
 (deftest preview-export-merge-clean-test
   (testing "preview reports a clean merge with a summary when changes don't conflict"
@@ -1732,7 +1732,7 @@ serdes/meta:
                                                      {:clean? true :conflicts []
                                                       :summary {:added 1 :updated 0 :removed 0}})]
       (is (= {:diverged? true :clean? true :conflicts [] :summary {:added 1 :updated 0 :removed 0}}
-             (impl/preview-export-merge))))))
+             (impl/preview-export-merge "main"))))))
 
 (deftest preview-export-merge-conflict-test
   (testing "preview reports conflicts when the same entity changed on both sides"
@@ -1745,7 +1745,7 @@ serdes/meta:
       (is (= {:diverged? true :clean? false
               :conflicts ["Card A (collections/a.yaml)"]
               :summary {:added 0 :updated 0 :removed 0}}
-             (impl/preview-export-merge))))))
+             (impl/preview-export-merge "main"))))))
 
 (deftest preview-export-merge-history-rewritten-test
   (testing "preview reports :history-rewritten when the merge base is gone"
@@ -1758,7 +1758,7 @@ serdes/meta:
       (with-redefs [remote-sync.task/last-version    (constantly "gone-base")
                     source/source-from-settings      (constantly no-base-source)
                     spec/extract-entities-for-export (constantly [{:dummy true}])]
-        (let [result (impl/preview-export-merge)]
+        (let [result (impl/preview-export-merge "main")]
           (is (true? (:diverged? result)))
           (is (false? (:clean? result)))
           (is (= :history-rewritten (:reason result))))))))
