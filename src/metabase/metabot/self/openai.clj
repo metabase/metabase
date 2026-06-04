@@ -13,6 +13,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private translated-chunk-type?
+  "Output item types we translate into AI SDK chunks. Other types (e.g. reasoning summaries) are ignored so we
+  don't emit garbage or blow up on an unmatched `case` clause."
+  #{:text :function_call})
+
 (defn openai->aisdk-chunks-xf
   "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.
 
@@ -34,10 +39,14 @@
           model-name   (volatile! nil)
           payload      (volatile! {})
           close!       (fn [result]
-                         (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text          :text-end
-                                                             :function_call :tool-input-available)}
-                                                    @payload))
+                         ;; only emit an end marker for chunk types we translate; reasoning (and any other
+                         ;; output item types) are ignored so we don't blow up on an unmatched `case` clause.
+                         (u/prog1 (if-let [end-type (case @current-type
+                                                      :text          :text-end
+                                                      :function_call :tool-input-available
+                                                      nil)]
+                                    (rf result (merge {:type end-type} @payload))
+                                    result)
                            (vreset! current-type nil)
                            (vreset! current-id nil)
                            (vreset! payload {})))]
@@ -79,29 +88,32 @@
                  (and @current-id
                       (not= chunk-id
                             @current-id)))      (close!)
-             ;; start of a new chunk
-             (= t "response.output_item.added") (-> (u/prog1
-                                                      (vreset! current-type chunk-type)
-                                                      (vreset! current-id chunk-id)
-                                                      (vreset! payload
-                                                               (case @current-type
-                                                                 ;; no :type in payloads since we'll use that for finish msg too
-                                                                 :text          {:id chunk-id}
-                                                                 :function_call {:toolCallId chunk-id
-                                                                                 :toolName   (:name item)}
-                                                                 nil)))
-                                                    (rf (merge (case @current-type
-                                                                 :text          {:type :text-start}
-                                                                 :function_call {:type :tool-input-start})
-                                                               @payload)))
-             ;; just a middle of a chunk
-             delta                              (rf (case @current-type
-                                                      :text          {:type  :text-delta
-                                                                      :id    @current-id
-                                                                      :delta delta}
-                                                      :function_call {:type           :tool-input-delta
-                                                                      :toolCallId     (:toolCallId @payload)
-                                                                      :inputTextDelta delta}))
+             ;; start of a new chunk — only for types we translate; reasoning items are ignored
+             (and (= t "response.output_item.added")
+                  (translated-chunk-type? chunk-type)) (-> (u/prog1
+                                                             (vreset! current-type chunk-type)
+                                                             (vreset! current-id chunk-id)
+                                                             (vreset! payload
+                                                                      (case @current-type
+                                                                        ;; no :type in payloads since we'll use that for finish msg too
+                                                                        :text          {:id chunk-id}
+                                                                        :function_call {:toolCallId chunk-id
+                                                                                        :toolName   (:name item)}
+                                                                        nil)))
+                                                           (rf (merge (case @current-type
+                                                                        :text          {:type :text-start}
+                                                                        :function_call {:type :tool-input-start}
+                                                                        nil)
+                                                                      @payload)))
+             ;; just a middle of a chunk — ignore deltas for types we don't translate (e.g. reasoning summaries)
+             (and delta
+                  (translated-chunk-type? @current-type)) (rf (case @current-type
+                                                                :text          {:type  :text-delta
+                                                                                :id    @current-id
+                                                                                :delta delta}
+                                                                :function_call {:type           :tool-input-delta
+                                                                                :toolCallId     (:toolCallId @payload)
+                                                                                :inputTextDelta delta}))
              (= (:type chunk)
                 "response.completed")           (rf {:type  :usage
                                                      :usage (let [u (:usage response)]
@@ -196,6 +208,16 @@
      (catch Exception e
        (core/rethrow-api-error! "openai" openai-error-msg e)))))
 
+(defn- model-supports-temperature?
+  "Whether `model` accepts an explicit `temperature` parameter.
+
+  The GPT-5 family and the o-series reasoning models only support the default temperature and return a 400
+  (\"Unsupported parameter: 'temperature' is not supported with this model.\") when one is sent, so we omit it for them."
+  [model]
+  (let [model (str model)]
+    (not (or (str/starts-with? model "gpt-5")
+             (re-find #"^o\d" model)))))
+
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API."
   [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
@@ -217,7 +239,8 @@
                                                       tool_choice tool_choice
                                                       :else       "auto")
                                        :tools       all-tools)
-                    temperature (assoc :temperature temperature)
+                    (and temperature
+                         (model-supports-temperature? model)) (assoc :temperature temperature)
                     max-tokens  (assoc :max_output_tokens max-tokens))]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))

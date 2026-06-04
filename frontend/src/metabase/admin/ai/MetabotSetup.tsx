@@ -479,6 +479,9 @@ const AIProviderSetup = ({
 }) => {
   const [model, setModel] = useState<string | undefined>(connectedModel);
   const [apiKeyLocalValue, setApiKeyLocalValue] = useState<string | null>(null);
+  const [baseUrlLocalValue, setBaseUrlLocalValue] = useState<string | null>(
+    null,
+  );
   const [sendToast] = useToast();
 
   useEffect(() => {
@@ -487,25 +490,37 @@ const AIProviderSetup = ({
 
   const [updateMetabotSettings, updateMetabotSettingsResult] =
     useUpdateMetabotSettingsMutation();
+  const [updateSettings] = useUpdateSettingsMutation();
 
   const onConnect = async () => {
+    if (selectedProvider === "openai" && baseUrlLocalValue !== null) {
+      await updateSettings({
+        "llm-openai-api-base-url": baseUrlLocalValue || null,
+      });
+    }
+
     await updateMetabotSettings({
       provider: selectedProvider,
       "api-key": apiKeyLocalValue || null,
     }).unwrap();
 
     setApiKeyLocalValue(null);
+    setBaseUrlLocalValue(null);
   };
 
   const hasDirtyApiKey = apiKeyLocalValue !== null;
+  const hasDirtyBaseUrl = baseUrlLocalValue !== null;
   const connectHandler =
-    !isCurrentConfigured || hasDirtyApiKey ? onConnect : null;
+    !isCurrentConfigured || hasDirtyApiKey || hasDirtyBaseUrl
+      ? onConnect
+      : null;
 
   const { isMutating } = useMetabotSetupContext(connectHandler);
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
     "llm-openai-api-key",
+    "llm-openai-api-base-url",
     "llm-openrouter-api-key",
   ] as const);
 
@@ -516,6 +531,12 @@ const AIProviderSetup = ({
     ? selectedApiKeySetting.env_name
     : undefined;
   const needsApiKey = !hasConfiguredSettingValue(selectedApiKeySetting);
+
+  const savedBaseUrlValue =
+    selectedProvider === "openai"
+      ? String(providerApiKeyDetails["llm-openai-api-base-url"]?.value ?? "")
+      : "";
+  const displayBaseUrlValue = baseUrlLocalValue ?? savedBaseUrlValue;
 
   const metabotSettingsQuery = useGetMetabotSettingsQuery(
     {
@@ -541,10 +562,15 @@ const AIProviderSetup = ({
 
   useEffect(() => {
     setApiKeyLocalValue(null);
+    setBaseUrlLocalValue(null);
   }, [selectedProvider, selectedApiKeySetting?.value]);
 
   const handleApiKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
     setApiKeyLocalValue(event.target.value);
+  };
+
+  const handleBaseUrlChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setBaseUrlLocalValue(event.target.value);
   };
 
   const handleModelChange = async (value: string) => {
@@ -596,6 +622,18 @@ const AIProviderSetup = ({
         <SetByEnvVar varName={apiKeyEnvSettingName} />
       ) : null}
 
+      {selectedProvider === "openai" && (
+        <TextInput
+          label={t`Base URL`}
+          description={t`Override the default OpenAI API endpoint, e.g. for Azure OpenAI.`}
+          placeholder="https://api.openai.com"
+          value={displayBaseUrlValue}
+          onChange={handleBaseUrlChange}
+          disabled={isMutating || isEnvSetting}
+          w="100%"
+        />
+      )}
+
       {!needsApiKey && !apiKeyError && (
         <Select
           label={t`Model`}
@@ -628,11 +666,20 @@ const AIProviderSetup = ({
 };
 
 const getLlmModelOptions = (models: MetabotSettingsResponse["models"]) => {
-  const modelOptions = models.map((m) => ({
-    value: m.id,
-    label: m.display_name,
-    group: m.group,
-  }));
+  const seen = new Set<string>();
+  const modelOptions = models
+    .filter((m) => {
+      if (seen.has(m.id)) {
+        return false;
+      }
+      seen.add(m.id);
+      return true;
+    })
+    .map((m) => ({
+      value: m.id,
+      label: m.display_name,
+      group: m.group,
+    }));
 
   const sel = (o: MetabotModelOption) => _.pick(o, ["value", "label"]);
   // group model options if needed

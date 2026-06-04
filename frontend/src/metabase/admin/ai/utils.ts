@@ -83,7 +83,9 @@ export function isApiKeyMetabotProvider(
 }
 
 export function isAvailableProvider(provider: MetabotProvider): boolean {
-  return provider === "anthropic" || provider === "metabase";
+  return (
+    provider === "anthropic" || provider === "openai" || provider === "metabase"
+  );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
