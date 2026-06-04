@@ -13,6 +13,21 @@
   gap: 0.5rem;
   z-index: 1;
   min-width: 0;
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -24px;
+    height: 24px;
+    background: linear-gradient(
+      to bottom,
+      var(--mb-color-background-secondary),
+      transparent
+    );
+    pointer-events: none;
+  }
 }
 
 .backgroundIllustration {
@@ -118,7 +133,7 @@
   max-width: 54rem;
   flex-direction: column;
   margin: 0 auto;
-  padding-inline: 0.5rem;
+  padding-inline: 1rem;
   /* positioning context for the turn-level dot field layer */
   position: relative;
   isolation: isolate;
