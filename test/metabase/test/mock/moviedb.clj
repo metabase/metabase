@@ -92,7 +92,7 @@
    {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
   (for [[table-name table] moviedb-tables
         :when              (or (empty? table-names)
-                               (contains? table-names table-name))
+                               (contains? (set table-names) table-name))
         fk                 (:fks table)]
     {:fk-table-name   table-name
      :fk-table-schema nil

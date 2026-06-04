@@ -441,11 +441,8 @@
                (testing "also works if db-name is nil"
                  (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn nil dynamic-table)))))
              (testing "driver/describe-fks returns empty set for dynamic table"
-               #_{:clj-kondo/ignore [:deprecated-var]}
-               (is (= #{} (driver/describe-fks
-                           :snowflake
-                           (mt/db)
-                           dynamic-table)))))))))))
+               (is (= #{}
+                      (driver/describe-fks :snowflake (mt/db) dynamic-table)))))))))))
 
 (deftest ^:sequential describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake

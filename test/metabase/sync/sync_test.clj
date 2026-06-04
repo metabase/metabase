@@ -90,12 +90,12 @@
    _database                           :- ::lib.schema.metadata/database
    {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
   (when (or (empty? table-names)
-            (contains? table-names "movie"))
-    [{:fk-table-name   "movie"
-      :fk-table-schema (when *supports-schemas?* "default")
+            (contains? (set table-names) "movie"))
+    [{:fk-table-schema (when *supports-schemas?* "default")
+      :fk-table-name   "movie"
       :fk-column-name  "studio"
-      :pk-table-name   "studio"
       :pk-table-schema (when *supports-schemas?* "public")
+      :pk-table-name   "studio"
       :pk-column-name  "studio"}]))
 
 (defmethod driver/database-supports? [::sync-test :metadata/key-constraints]

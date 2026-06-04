@@ -392,7 +392,7 @@
 (defmethod driver/describe-fks :clickhouse
   [_driver _database _spec]
   (log/warn "Clickhouse does not support foreign keys. `describe-fks` should not have been called!")
-  #{})
+  nil)
 
 (defmethod driver/table-known-to-not-exist? :clickhouse
   [_driver e]
