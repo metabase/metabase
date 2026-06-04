@@ -1,30 +1,47 @@
-/* eslint-disable react/prop-types */
-import { withRouter } from "react-router";
+import { type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import * as Urls from "metabase/urls";
+import type { Collection } from "metabase-types/api";
 
-function ArchiveCollectionModalInner({ collection, onClose }) {
+type OwnProps = {
+  onClose: () => void;
+};
+
+type ArchiveCollectionModalInnerProps = OwnProps & {
+  collection: Collection;
+};
+
+function ArchiveCollectionModalInner({
+  collection,
+  onClose,
+}: ArchiveCollectionModalInnerProps) {
   const archive = useSetArchive();
-  const handleArchive = () =>
-    archive({ id: collection.id, model: "collection" }, true);
+  const handleArchive = async () => {
+    await archive({ id: collection.id, model: "collection" }, true);
+  };
 
   return (
     <ArchiveModal
       title={t`Move this collection to trash?`}
       message={t`The dashboards, collections, and alerts in this collection will also be moved to the trash.`}
       model="collection"
-      modelId={collection.id}
+      // Archivable collections always have a numeric id; special collections
+      // (e.g. "root") are not archivable and only the analytics id is affected.
+      modelId={typeof collection.id === "number" ? collection.id : null}
       onClose={onClose}
       onArchive={handleArchive}
     />
   );
 }
 
-function ArchiveCollectionModalContainer({ params, onClose }) {
+export function ArchiveCollectionModalContainer({
+  params,
+  onClose,
+}: OwnProps & WithRouterProps) {
   const collectionId = Urls.extractCollectionId(params.slug);
   const { data: collection } = useGetCollectionQuery(
     collectionId != null ? { id: collectionId } : skipToken,

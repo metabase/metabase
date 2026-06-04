@@ -9,7 +9,8 @@ interface ArchiveModalProps {
   title?: string;
   message?: ReactNode;
   model: "card" | "model" | "metric" | "dashboard" | "collection";
-  modelId: number;
+  // null matches SimpleEventSchema's target_id for entities without a numeric id
+  modelId: number | null;
   isLoading?: boolean;
   onArchive: () => Promise<void>;
   onClose: () => void;

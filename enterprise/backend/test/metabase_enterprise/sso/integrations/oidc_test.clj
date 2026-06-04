@@ -236,6 +236,8 @@
                 (binding [*group-sync-claims* claims
                           *group-sync-email*  email]
                   (with-group-sync-oidc!
+                    ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                     (with-redefs [oidc.state/validate-oidc-callback
                                   (fn [_request _state _provider & _opts]
                                     {:valid? true :nonce "test-nonce" :redirect "/"})]
