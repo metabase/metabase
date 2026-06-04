@@ -5,17 +5,19 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.connection :as driver.conn]
-   [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.driver.sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
-   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.parameters.values :as params.values]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -23,7 +25,8 @@
    [metabase.util.performance :refer [mapv]]
    [potemkin :as p]))
 
-(comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
+(comment metabase.driver.sql.parameters.substitution/keep-me
+         metabase.driver.sql.normalize/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
 (driver/register! :sql, :abstract? true)
 
@@ -70,15 +73,16 @@
   [driver native-form]
   (sql.u/format-sql-and-fix-params driver native-form))
 
-(mu/defmethod driver/substitute-native-parameters :sql
-  [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query driver-api/schema.common.non-blank-string}]]]
-  (let [params-map          (params.values/query->params-map inner-query)
-        referenced-card-ids (params.values/referenced-card-ids params-map)
-        [query params]      (-> query
-                                lib/parse-parameters
-                                (sql.params.substitute/substitute params-map))]
-    (cond-> (assoc inner-query
-                   :query  query
+(mu/defmethod driver/substitute-native-parameters-in-stage-method :sql :- ::lib.schema/stage.native
+  [_driver                                  :- :keyword
+   metadata-providerable                    :- ::lib.schema.metadata/metadata-providerable
+   {native-query :native, :as native-stage} :- ::lib.schema/stage.native]
+  (let [params-map            (params.values/stage->params-map metadata-providerable native-stage)
+        referenced-card-ids   (params.values/referenced-card-ids params-map)
+        parsed-query          (lib/parse-parameters native-query)
+        [native-query params] (sql.params.substitute/substitute metadata-providerable parsed-query params-map)]
+    (cond-> (assoc native-stage
+                   :native native-query
                    :params params)
       (seq referenced-card-ids)
       (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))
@@ -308,5 +312,5 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p/import-vars
- [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution]
- [sql.normalize default-schema normalize-error normalize-name reserved-literal])
+ [metabase.driver.sql.parameters.substitution ->prepared-substitution PreparedStatementSubstitution]
+ [metabase.driver.sql.normalize default-schema normalize-error normalize-name reserved-literal])

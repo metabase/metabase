@@ -250,9 +250,17 @@ describe("MetricToolbar", () => {
       expect(
         await screen.findByRole("dialog", { name: /Caching/i }),
       ).toBeInTheDocument();
-      expect(
-        await screen.findByRole("radio", { name: /^Default$/i }),
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId("cache-strategy-select")).toHaveValue(
+        "Default",
+      );
+    });
+  });
+
+  describe("Explore button", () => {
+    it("should not render an Explore button in the toolbar", () => {
+      setup({ canWrite: true });
+
+      expect(screen.queryByTestId("explore-link")).not.toBeInTheDocument();
     });
   });
 });

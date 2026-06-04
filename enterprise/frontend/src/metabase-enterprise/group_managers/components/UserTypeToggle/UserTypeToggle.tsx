@@ -1,9 +1,9 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
-import { type FloatingPosition, Icon, Tooltip } from "metabase/ui";
+import { Box, type FloatingPosition, Icon, Tooltip } from "metabase/ui";
 
-import { UserTypeToggleRoot } from "./UserTypeToggle.styled";
+import S from "./UserTypeToggle.module.css";
 
 interface UserTypeCellProps {
   isManager: boolean;
@@ -25,13 +25,18 @@ export const UserTypeToggle = ({
 
   return (
     <Tooltip label={tooltipText} position={tooltipPlacement}>
-      <UserTypeToggleRoot
+      <Box
+        component="button"
+        className={S.toggle}
+        c="filter"
+        px="sm"
+        py={0}
         aria-label={tooltipText}
         data-testid="user-type-toggle"
         onClick={handleChangeType}
       >
         <Icon name={icon} />
-      </UserTypeToggleRoot>
+      </Box>
     </Tooltip>
   );
 };

@@ -33,7 +33,7 @@
       (lib/query-from-legacy-inner-query
        (qp.store/metadata-provider)
        (:id (lib.metadata/database (qp.store/metadata-provider)))
-       (mbql.normalize/normalize ::mbql.s/MBQLQuery inner-query))
+       (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery inner-query))
       (catch Throwable e
         (throw (ex-info (tru "Error converting query to MBQL 5: {0}" (ex-message e))
                         {:inner-query inner-query, :type qp.error-type/qp}

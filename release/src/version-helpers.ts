@@ -252,6 +252,7 @@ export const versionRequirements: Record<
   59: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   60: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   61: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  62: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {

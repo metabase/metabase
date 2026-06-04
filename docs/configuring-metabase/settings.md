@@ -84,3 +84,17 @@ docs.example.com
 Metabase would only allow iframes from `data.example.com` and `docs.example.com`. Metabase would block iframes from all other domains, including iframes from `example.com` and its other subdomains.
 
 See [iframes in dashboards](../dashboards/introduction.md#iframe-cards).
+
+## Restrict image domains
+
+When on, Metabase restricts the browser's Content Security Policy so images can only load from this Metabase instance or the domains listed in [Allowed domains for images](#allowed-domains-for-images).
+
+By default, images from any domain are allowed.
+
+## Allowed domains for images
+
+When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, and any domains listed here. 
+
+Leave this input empty to only allow images hosted by your Metabase instance.
+
+Add multiple domains separated by a comma. Domains follow the same matching rules as [Allowed domains for iframes in dashboards](#allowed-domains-for-iframes-in-dashboards): listing a domain like `example.com` also allows its subdomains, while listing a subdomain like `images.example.com` allows only that subdomain.

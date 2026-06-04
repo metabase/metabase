@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -240,7 +241,7 @@
           (mt/user-http-request :rasta :get 404 (format "table/%d/data" 133713371337)))))))
 
 (defn- query-metadata-defaults []
-  (table-defaults))
+  (assoc (table-defaults) :transform nil))
 
 (deftest ^:parallel sensitive-fields-included-test
   (mt/with-premium-features #{}
@@ -389,6 +390,22 @@
                  :id           (mt/id :users)})
                (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
             "Make sure that getting the User table does *not* include password info")))))
+
+(deftest query-metadata-transform-hydration-test
+  (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
+    (mt/with-temp [:model/Transform transform {:name   "My transform"
+                                               :source {:type  "query"
+                                                        :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                               :target {:database (mt/id) :table "my_transform_table"}}
+                   :model/Table     {table-id :id} {:db_id        (mt/id)
+                                                    :transform_id (:id transform)}]
+      (testing "self-hosted (not hosted) without :transforms-basic still hydrates the source transform"
+        (mt/with-premium-features #{}
+          (is (=? {:transform {:id (:id transform)}}
+                  (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" table-id))))))
+      (testing "hosted instance without :transforms-basic does not hydrate the source transform"
+        (mt/with-premium-features #{:hosting}
+          (is (nil? (:transform (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" table-id))))))))))
 
 (deftest fk-target-permissions-test
   (testing "GET /api/table/:id/query_metadata"
@@ -1086,6 +1103,16 @@
                  (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
                       :fields
                       (map u/the-id))))))
+      (testing "Can we set custom field ordering with a wrapped {:field_order [...]} body?"
+        (let [custom-field-order [(mt/id :venues :name) (mt/id :venues :id) (mt/id :venues :price)
+                                  (mt/id :venues :latitude) (mt/id :venues :longitude) (mt/id :venues :category_id)]]
+          (is (=? {:success true}
+                  (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
+                                        {:field_order custom-field-order})))
+          (is (= custom-field-order
+                 (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
+                      :fields
+                      (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))
 
@@ -1115,7 +1142,7 @@
     (mt/with-empty-db
       (testing "Happy path"
         (upload-test/with-uploads-enabled!
-          (is (= {:status 200, :body nil}
+          (is (= {:status 204, :body nil}
                  (update-csv-via-api! :metabase.upload/append)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (upload-test/with-uploads-disabled!
@@ -1146,7 +1173,7 @@
     (mt/with-empty-db
       (testing "Happy path"
         (upload-test/with-uploads-enabled!
-          (is (= {:status 200, :body nil}
+          (is (= {:status 204, :body nil}
                  (update-csv-via-api! :metabase.upload/replace)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (upload-test/with-uploads-disabled!

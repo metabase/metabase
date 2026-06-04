@@ -32,11 +32,13 @@
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -336,6 +338,107 @@
    (fn [node]
      (if (direction-alias-clause? node)
        (assoc node 0 (get direction-aliases (u/lower-case-en (nth node 0))))
+       node))
+   form))
+
+;;; ============================================================
+;;; Pass 1.88 -- merge a trailing extra options-map into the position-1 options.
+;;;
+;;; LLMs sometimes place a clause's options at the END of the vector instead of
+;;; (or in addition to) position 1. The canonical example:
+;;;
+;;;   ["time-interval" {} <expr> -1 "month" {"include-current" true}]
+;;;
+;;; The schema for `time-interval` is a strict `:tuple` of 5 elements with options
+;;; at position 1 (the `include-current` flag lives there). The 6th element above
+;;; is misplaced options - the LLM read the prompt's "Opts may set
+;;; {include-current: true}" hint and put it after the args.
+;;;
+;;; We handle this generically across every fixed-arity tuple clause registered with
+;;; `metabase.lib.schema.mbql-clause`. The expected-element-count table is derived
+;;; once at namespace load from [[mbql-clause/registered-tags]] and selecting
+;;; schemas whose head form is `:tuple`. Variadic clauses (`and`, `or`, `=`, `in`,
+;;; `case`, `coalesce`, ...) use `:catn` / `:repeat` and are correctly excluded -
+;;; their arity isn't fixed, so a trailing map could be a legitimate arg.
+;;;
+;;; Repair condition (all four required):
+;;;   * clause-shaped vector (string head, not a map-entry, not an FK path);
+;;;   * head matches a known fixed-arity clause;
+;;;   * count is exactly `expected + 1` (count off by >=2 is too ambiguous - the
+;;;     schema validator will reject it with a friendly tuple-shape error);
+;;;   * position 1 is a map AND last element is a map.
+;;;
+;;; Repair action: merge the trailing map into position-1 options, with trailing
+;;; keys winning on conflict (the trailing map is where the LLM wrote content;
+;;; position 1 is typically `{}`). Then drop the trailing element.
+;;;
+;;; Idempotent by construction: a repaired clause has the canonical expected count,
+;;; so the predicate fails on a second pass.
+;;; ============================================================
+
+(defn- tuple-clause-element-count
+  "If `schema-form` is a `:tuple` schema (the shape [[mbql-clause/tuple-clause-schema]]
+  produces), return the expected number of elements in matching tuples (head + opts + args).
+  Returns `nil` for non-tuple schemas (`:catn` / `:repeat` variadic clauses) and for
+  malformed inputs."
+  [schema-form]
+  (when (and (vector? schema-form)
+             (= :tuple (first schema-form)))
+    (let [after-head    (next schema-form)
+          ;; Malli optionally puts a properties map at index 1; skip it if present.
+          child-schemas (if (map? (first after-head))
+                          (next after-head)
+                          after-head)]
+      (count child-schemas))))
+
+(def ^:private fixed-arity-clause-element-counts
+  "Map of clause-head-string -> expected element count, derived from the MBQL clause
+  registry at first use. Includes only `:tuple` clauses; variadic `:catn` / `:repeat`
+  clauses are excluded (their arity isn't fixed). Used by [[merge-trailing-options*]]
+  to detect a misplaced trailing options map.
+
+  Wrapped in `delay` so we don't pay the introspection cost at require time. If
+  introspecting an individual clause's schema throws, the exception is allowed to
+  propagate so a Malli reshape that breaks the walk surfaces immediately instead of
+  silently dropping that clause from the table."
+  (delay
+    (into {}
+          (keep (fn [tag]
+                  (let [schema-name (mbql-clause/tag->registered-schema-name tag)
+                        form        (mr/registered-schema schema-name)]
+                    (when-let [n (tuple-clause-element-count form)]
+                      [(name tag) n]))))
+          (mbql-clause/registered-tags))))
+
+(defn- needs-trailing-options-merge?
+  "True when `node` is a fixed-arity tuple clause that the LLM wrote with one extra
+  element at the end, and that extra element is a map. See the pass docstring above
+  for the full condition."
+  [node]
+  (and (clause-like? node)
+       (>= (count node) 3)
+       (map? (nth node 1))
+       (map? (peek node))
+       (when-let [expected (get @fixed-arity-clause-element-counts (nth node 0))]
+         (= (count node) (inc expected)))))
+
+(defn- merge-trailing-options
+  "Merge the trailing map into the position-1 options (trailing keys win) and drop
+  the trailing element."
+  [node]
+  (let [head      (nth node 0)
+        pos1-opts (nth node 1)
+        trailing  (peek node)
+        middle    (subvec node 2 (dec (count node)))
+        merged    (merge pos1-opts trailing)]
+    (into [head merged] middle)))
+
+(defn- merge-trailing-options*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (needs-trailing-options-merge? node)
+       (merge-trailing-options node)
        node))
    form))
 
@@ -2336,6 +2439,7 @@
       rewrite-operator-name-aliases*
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
+      merge-trailing-options*
       wrap-iso-date-bounds*
       wrap-now-literals*
       swap-between-bounds*
@@ -2358,6 +2462,8 @@
     1.5. normalise `expressions:` shape - accept map form `{Name: clause, …}` or the
        canonical sequential form, always output sequential with `lib/expression-name`
        stamped into each clause's options from the map key when missing;
+    1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
+       tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query and stages;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the

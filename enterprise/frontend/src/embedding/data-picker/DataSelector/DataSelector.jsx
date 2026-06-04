@@ -12,10 +12,10 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -917,10 +917,19 @@ function withAvailableModels(WrappedComponent) {
   };
 }
 
+// Prefetches the saved-databases list and forwards its loading state as
+// `allLoading` so the picker waits for the databases (not just the models
+// search) before hydrating its initial step. Without this the picker would
+// briefly show only models and stream the databases in afterwards.
 function withSavedDatabasesPrefetch(WrappedComponent) {
   return function DataSelectorWithSavedDatabasesPrefetch(props) {
-    useListDatabasesQuery({ saved: true });
-    return <WrappedComponent {...props} />;
+    const { isLoading } = useListDatabasesQuery({ saved: true });
+    return (
+      <WrappedComponent
+        {...props}
+        allLoading={isLoading || (props.allLoading ?? false)}
+      />
+    );
   };
 }
 
@@ -964,7 +973,7 @@ const DataSelector = _.compose(
     },
     (dispatch) => ({
       fetchDatabases: () =>
-        entityCompatibleQuery(
+        runRtkEndpoint(
           { saved: true },
           dispatch,
           databaseApi.endpoints.listDatabases,
@@ -972,7 +981,7 @@ const DataSelector = _.compose(
         ),
       fetchFields: (tableId) => dispatch(fetchTableMetadata({ id: tableId })),
       fetchQuestion: (id) =>
-        entityCompatibleQuery(
+        runRtkEndpoint(
           { id: getQuestionIdFromVirtualTableId(id) },
           dispatch,
           cardApi.endpoints.getCard,

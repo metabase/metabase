@@ -38,19 +38,37 @@
           (events/publish-event! :event/transform-update
                                  {:object (merge transform changes) :user-id api/*current-user-id*}))))))
 
+(defn- swap-parameter-source-card-id
+  "For a parameters collection, replace `values_source_config.card_id` references to `old-source-id` with
+  `new-source-id`. Only applies to card-to-card swaps; returns parameters unchanged for any other swap shape
+  (e.g. card-to-table)."
+  [parameters [old-source-type old-source-id] [new-source-type new-source-id]]
+  (letfn [(swap-card-id [card-id]
+            (if (and (= :card old-source-type)
+                     (= :card new-source-type)
+                     (= old-source-id card-id))
+              new-source-id
+              card-id))]
+    (replacement.walk/walk-parameter-source-card-ids (or parameters []) swap-card-id)))
+
 (defn- card-swap-source!
   [card old-source new-source]
   (when (replacement.util/valid-query? (:dataset_query card))
-    (let [query     (:dataset_query card)
-          query'    (source-swap/swap-source-in-query query old-source new-source)
-          table-id  (:table_id card)
-          table-id' (:table-id (queries.query/query->database-and-table-ids query'))
-          changes   (cond-> {}
-                      (not= query query')
-                      (assoc :dataset_query query')
+    (let [query       (:dataset_query card)
+          query'      (source-swap/swap-source-in-query query old-source new-source)
+          table-id    (:table_id card)
+          table-id'   (:table-id (queries.query/query->database-and-table-ids query'))
+          parameters  (or (:parameters card) [])
+          parameters' (swap-parameter-source-card-id parameters old-source new-source)
+          changes     (cond-> {}
+                        (not= query query')
+                        (assoc :dataset_query query')
 
-                      (not= table-id table-id')
-                      (assoc :table_id table-id'))
+                        (not= table-id table-id')
+                        (assoc :table_id table-id')
+
+                        (not= parameters parameters')
+                        (assoc :parameters parameters'))
           ;; `:result_metadata` is set to nil for native queries if not present in changes.
           ;; `verified-result-metadata?` prevents the Card model hooks from clearing it.
           changes   (cond-> changes
@@ -144,13 +162,18 @@
         card-id->card (if (seq all-card-ids)
                         (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
                         {})
-        any-changed? (reduce (fn [changed? dashcard]
-                               (or
-                                (dashcard-swap-source! dashcard card-id->card old-source new-source)
-                                changed?))
-                             false
-                             dashcards)]
-    (when any-changed?
+        any-dashcard-changed? (reduce (fn [changed? dashcard]
+                                        (or
+                                         (dashcard-swap-source! dashcard card-id->card old-source new-source)
+                                         changed?))
+                                      false
+                                      dashcards)
+        parameters    (or (:parameters dashboard) [])
+        parameters'   (swap-parameter-source-card-id parameters old-source new-source)
+        params-changed? (not= parameters parameters')]
+    (when params-changed?
+      (t2/update! :model/Dashboard (:id dashboard) {:parameters parameters'}))
+    (when (or any-dashcard-changed? params-changed?)
       (events/publish-event!
        :event/dashboard-update {:object  (t2/select-one :model/Dashboard :id (:id dashboard))
                                 :user-id api/*current-user-id*}))))

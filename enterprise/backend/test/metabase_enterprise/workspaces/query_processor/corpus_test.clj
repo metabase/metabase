@@ -306,41 +306,42 @@
                                 :table  source-table}]
           (mt/with-empty-h2-app-db!
             (mt/with-temp [:model/Database {db-id :id} {:name db-name :engine engine :details details}]
-              (try
-                ;; 1. Load through the production loader. Populates the atom.
-                (advanced-config.file.workspace/apply-workspace-section! section)
-                ;; 2. Read the namespace via the production reader.
-                (let [ws-ns      (ws/db-workspace-namespace db-id)
-                      to-spec    (merge from-spec ws-ns)
-                      {:keys [tables rewritten]} (rewrite-and-parse
-                                                  driver canonical-sql
-                                                  {(ws.table-remapping/prune-no-level from-spec)
-                                                   (ws.table-remapping/prune-no-level to-spec)})]
-                  (testing "atom output matches the loader's expansion of fixture's output_namespace"
-                    (is (= expected-output ws-ns)
-                        "db-workspace-namespace must return the loader's expanded :output map"))
-                  ;; MySQL is special-cased: it has no schema layer, so Phase 1 (table
-                  ;; metadata mutation) adds the iso `:db` qualifier — Phase 2's SQLGlot
-                  ;; rewriter never sees a qualifier to swap. Skip the rewriter SQL
-                  ;; assertions for MySQL; the atom-output assertion above is what matters.
-                  (when (not= driver :mysql)
-                    (testing "rewritten SQL parses to the workspace :schema slot"
-                      (let [expected-schema (or (:schema expected-output) (:db expected-output))]
-                        (is (contains? tables {:schema expected-schema :table source-table})
-                            (str "expected {:schema " expected-schema ", :table " source-table
-                                 "} in parsed tables; got: " tables
-                                 "\n  rewritten SQL: " rewritten))))
-                    (testing "rewritten SQL no longer references the canonical schema"
-                      (when (:schema input-positions)
-                        (is (not-any? #(= (:schema %) (:schema input-positions)) tables)
-                            (str "expected canonical schema " (pr-str (:schema input-positions))
-                                 " gone from parsed refs; got: " tables))))
-                    ;; 3-slot drivers (where workspace output has :db): parser is lossy on :db,
-                    ;; so verify via the rewritten string.
-                    (when-let [output-db (:db expected-output)]
-                      (let [from-text (str (re-find #"(?i)\bFROM\b.*$" rewritten))]
-                        (testing "rewritten FROM clause contains workspace :db slot"
-                          (is (re-find (re-pattern (java.util.regex.Pattern/quote output-db)) from-text)
-                              (str "expected " (pr-str output-db) " in FROM; got: " from-text)))))))
-                (finally
-                  (ws/clear-instance-workspace!))))))))))
+              (mt/with-premium-features #{:workspaces}
+                (try
+                  ;; 1. Load through the production loader. Populates the atom.
+                  (advanced-config.file.workspace/apply-workspace-section! section)
+                  ;; 2. Read the namespace via the production reader.
+                  (let [ws-ns      (ws/db-workspace-namespace db-id)
+                        to-spec    (merge from-spec ws-ns)
+                        {:keys [tables rewritten]} (rewrite-and-parse
+                                                    driver canonical-sql
+                                                    {(ws.table-remapping/prune-no-level from-spec)
+                                                     (ws.table-remapping/prune-no-level to-spec)})]
+                    (testing "atom output matches the loader's expansion of fixture's output_namespace"
+                      (is (= expected-output ws-ns)
+                          "db-workspace-namespace must return the loader's expanded :output map"))
+                    ;; MySQL is special-cased: it has no schema layer, so Phase 1 (table
+                    ;; metadata mutation) adds the iso `:db` qualifier — Phase 2's SQLGlot
+                    ;; rewriter never sees a qualifier to swap. Skip the rewriter SQL
+                    ;; assertions for MySQL; the atom-output assertion above is what matters.
+                    (when (not= driver :mysql)
+                      (testing "rewritten SQL parses to the workspace :schema slot"
+                        (let [expected-schema (or (:schema expected-output) (:db expected-output))]
+                          (is (contains? tables {:schema expected-schema :table source-table})
+                              (str "expected {:schema " expected-schema ", :table " source-table
+                                   "} in parsed tables; got: " tables
+                                   "\n  rewritten SQL: " rewritten))))
+                      (testing "rewritten SQL no longer references the canonical schema"
+                        (when (:schema input-positions)
+                          (is (not-any? #(= (:schema %) (:schema input-positions)) tables)
+                              (str "expected canonical schema " (pr-str (:schema input-positions))
+                                   " gone from parsed refs; got: " tables))))
+                      ;; 3-slot drivers (where workspace output has :db): parser is lossy on :db,
+                      ;; so verify via the rewritten string.
+                      (when-let [output-db (:db expected-output)]
+                        (let [from-text (str (re-find #"(?i)\bFROM\b.*$" rewritten))]
+                          (testing "rewritten FROM clause contains workspace :db slot"
+                            (is (re-find (re-pattern (java.util.regex.Pattern/quote output-db)) from-text)
+                                (str "expected " (pr-str output-db) " in FROM; got: " from-text)))))))
+                  (finally
+                    (ws/clear-instance-workspace!)))))))))))

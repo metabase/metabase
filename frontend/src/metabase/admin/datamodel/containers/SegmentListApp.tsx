@@ -7,7 +7,6 @@ import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import { FilteredToUrlTable } from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import { useListSegmentsQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
@@ -17,6 +16,7 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getShallowTables } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
 
@@ -50,7 +50,7 @@ function SegmentListAppInner({ segments, tableSelector }: Props) {
             onClickCapture={trackSegmentCreateClick}
             to={Urls.newDataModelSegment()}
           >
-            <Button primary>{t`New segment`}</Button>
+            <Button variant="filled">{t`New segment`}</Button>
           </Link>
         )}
       </div>

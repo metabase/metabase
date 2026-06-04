@@ -3451,7 +3451,7 @@
     (is (= "Collection must be trashed before deletion."
            (mt/user-http-request :crowberto :delete 400 (str "/collection/" a-id)))))
   (mt/with-temp [:model/Collection {a-id :id} {:namespace "flippity" :archived true}]
-    (is (= "Collections in non-nil namespaces cannot be deleted."
+    (is (= "Only collections in the default or tenant namespaces can be deleted."
            (mt/user-http-request :crowberto :delete 400 (str "/collection/" a-id)))))
   (mt/with-temp [:model/Collection {a-id :id} {:archived true}]
     (is (= "You don't have permissions to do that."

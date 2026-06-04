@@ -14,6 +14,7 @@
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
+   [metabase.system.settings :as system.settings]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -77,6 +78,24 @@
                                :delete "mcp"
                                {:request-options {:headers extra-headers}}))
 
+(def ^:private mcp-endpoint-paths
+  "Client paths that serve the MCP endpoint, appended to the test client's `/api`: the canonical
+   `metabase-mcp` and the legacy `mcp` alias."
+  ["metabase-mcp" "mcp"])
+
+(defn- mcp-request-to
+  "Like `mcp-request` but to an explicit endpoint path (e.g. \"metabase-mcp\"), authenticated as :crowberto."
+  [path body]
+  (client/client-full-response (test.users/username->token :crowberto)
+                               :post path
+                               {:request-options {:headers {}}}
+                               body))
+
+(defn- mcp-request-unauthenticated-to
+  "Make an unauthenticated POST to an explicit endpoint path, expecting a 401."
+  [path body]
+  (client/client-full-response :post 401 path {:request-options {:headers {}}} body))
+
 (defn- jsonrpc-request
   "Build a JSON-RPC 2.0 request map."
   ([method]
@@ -93,21 +112,38 @@
   ([method params]
    {:jsonrpc "2.0" :method method :params params}))
 
-(defn- initialize!
-  "Perform the full MCP initialize handshake (initialize + notifications/initialized).
+(def ^:private mcp-app-ui-capabilities
+  {:extensions {:io.modelcontextprotocol/ui {:mimeTypes ["text/html;profile=mcp-app"]}}})
+
+(defn- initialize-with-params!
+  "Perform the full MCP initialize handshake with custom initialize params.
    Returns [session-id init-response]."
-  []
-  (let [response   (mcp-request (jsonrpc-request "initialize"))
+  [params]
+  (let [response   (mcp-request (jsonrpc-request "initialize" params))
         session-id (get-in response [:headers "Mcp-Session-Id"])]
     ;; Complete the handshake so the session is marked initialized
     (mcp-request (jsonrpc-notification "notifications/initialized")
                  {"mcp-session-id" session-id})
     [session-id response]))
 
+(defn- initialize!
+  "Perform the full MCP initialize handshake (initialize + notifications/initialized).
+   Returns [session-id init-response]."
+  []
+  (initialize-with-params! {:capabilities mcp-app-ui-capabilities}))
+
+(defn- initialize-without-ui!
+  "Perform the full MCP initialize handshake without MCP Apps UI capability.
+   Returns [session-id init-response]."
+  []
+  (initialize-with-params! {}))
+
 (defn- initialize-as!
   "Like `initialize!` but authenticates as the given test username."
   [username]
-  (let [response   (mcp-request-as username (jsonrpc-request "initialize") {})
+  (let [response   (mcp-request-as username
+                                   (jsonrpc-request "initialize" {:capabilities mcp-app-ui-capabilities})
+                                   {})
         session-id (get-in response [:headers "Mcp-Session-Id"])]
     (mcp-request-as username
                     (jsonrpc-notification "notifications/initialized")
@@ -240,6 +276,12 @@
     "update_question"
     "visualize_query"})
 
+(deftest ui-tools-declare-required-extensions-test
+  (testing "UI tools declare their own required client extensions"
+    (doseq [{:keys [name required-extensions]} (mcp.resources/list-ui-tools)]
+      (is (= #{:mcp-app-ui} required-extensions)
+          (str name " should require MCP Apps UI support")))))
+
 (deftest tools-list-all-tools-declare-required-hints-test
   (testing "every tool advertises readOnlyHint, destructiveHint, openWorldHint (some MCP clients reject tools that omit them)"
     (let [[session-id _] (initialize!)
@@ -250,6 +292,36 @@
         (is (contains? annotations :readOnlyHint)    (str name " missing :readOnlyHint"))
         (is (contains? annotations :destructiveHint) (str name " missing :destructiveHint"))
         (is (contains? annotations :openWorldHint)   (str name " missing :openWorldHint"))))))
+
+(deftest tools-list-omits-ui-tools-without-ui-capability-test
+  (testing "clients that do not advertise MCP Apps UI support do not see UI-only tools"
+    (let [[session-id _] (initialize-without-ui!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tool-names     (set (map :name (get-in response [:body :result :tools])))]
+      (is (= (disj all-tool-names "visualize_query" "render_drill_through") tool-names))
+      (is (not (contains? tool-names "visualize_query")))
+      (is (not (contains? tool-names "render_drill_through")))))
+  (testing "clients that advertise MCP Apps UI support see UI-only tools"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tool-names     (set (map :name (get-in response [:body :result :tools])))]
+      (is (contains? tool-names "visualize_query"))
+      (is (contains? tool-names "render_drill_through")))))
+
+(deftest ui-capability-detection-requires-mcp-ui-extension-test
+  (testing "the MCP Apps UI extension path enables UI-only tools"
+    (let [[session-id _] (initialize-with-params! {:capabilities mcp-app-ui-capabilities})
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tool-names     (set (map :name (get-in response [:body :result :tools])))]
+      (is (contains? tool-names "visualize_query"))
+      (is (contains? tool-names "render_drill_through"))))
+  (testing "an unrelated nested MCP Apps mimeType does not enable UI-only tools"
+    (let [[session-id _] (initialize-with-params!
+                          {:capabilities {:experimental {:mimeTypes ["text/html;profile=mcp-app"]}}})
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tool-names     (set (map :name (get-in response [:body :result :tools])))]
+      (is (not (contains? tool-names "visualize_query")))
+      (is (not (contains? tool-names "render_drill_through"))))))
 
 (deftest text-content-includes-structured-content-for-maps-test
   (testing "text-content emits structuredContent for map values — MCP spec requires it for tools with outputSchema"
@@ -583,66 +655,73 @@
     "create_question" "create_dashboard"
     "update_question" "update_dashboard" "create_collection"})
 
-(deftest tools-call-smoke-test
+(deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
     (is (= (apply disj (set (map :name (mcp.tools/list-tools nil)))
                   ["visualize_query" "render_drill_through"])
            smoke-tested-tools)
-        "Add the missing tool to `smoke-tested-tools` and the call sequence below."))
+        "Add the missing tool to `smoke-tested-tools` and the call sequence below.")))
+
+(deftest tools-call-smoke-test
   (testing "every tool returns a successful response with valid parameters"
-    (search.tu/with-legacy-search
-      (mt/with-temp [:model/Card _metric {:name          "Smoke Metric"
-                                          :type          :metric
-                                          :database_id   (mt/id)
-                                          :dataset_query (orders-count-query)}]
-        (let [[session-id _] (initialize!)
-              db-name        (t2/select-one-fn :name :model/Database (mt/id))
-              orders-query   {:lib/type "mbql/query"
-                              :stages   [{:lib/type     "mbql.stage/mbql"
-                                          :source-table [db-name "PUBLIC" "ORDERS"]
-                                          :limit        5}]}
-              ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
-              ;; assertion in `call-tool` fails partway through the sequence.
-              question-id    (atom nil)
-              dash-id        (atom nil)
-              coll-id        (atom nil)]
-          (try
-            (let [;; Discovery tools — call-tool helper asserts (not :isError) internally.
-                  _              (call-tool session-id "search" {:term_queries ["orders"]})
-                  ;; Query construction + execution
-                  construct-data (call-tool session-id "construct_query" {:query orders-query})
-                  _              (call-tool session-id "query" {:query orders-query})
-                  _              (call-tool session-id "execute_query"
-                                            {:query_handle (:query_handle construct-data)})
-                  _              (call-tool session-id "execute_sql"
-                                            {:database_id (mt/id)
-                                             :sql         "SELECT 1"})
-                  _              (call-tool session-id "read_resource"
-                                            {:uris ["metabase://databases"]})
-                  ;; Write tools — record IDs as soon as they're known so the `finally` block
-                  ;; can clean up even if a later step throws.
-                  question-data  (call-tool session-id "create_question"
-                                            {:name  "Smoke Question"
-                                             :query (mcp.session/read-handle session-id
-                                                                             (mt/user->id :crowberto)
-                                                                             (:query_handle construct-data))})
-                  _              (reset! question-id (:id question-data))
-                  _              (call-tool session-id "update_question"
-                                            {:id          (:id question-data)
-                                             :description "Smoke updated description"})
-                  dash-data      (call-tool session-id "create_dashboard"
-                                            {:name "Smoke Dashboard"})
-                  _              (reset! dash-id (:id dash-data))
-                  _              (call-tool session-id "update_dashboard"
-                                            {:id          (:id dash-data)
-                                             :description "Smoke updated dashboard"})
-                  coll-data      (call-tool session-id "create_collection"
-                                            {:name "Smoke Collection"})]
-              (reset! coll-id (:id coll-data)))
-            (finally
-              (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
-              (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
-              (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid)))))))))
+    (mt/with-temporary-setting-values [system.settings/site-url "https://stats.metabase.test"]
+      (search.tu/with-legacy-search
+        (mt/with-temp [:model/Card _metric {:name          "Smoke Metric"
+                                            :type          :metric
+                                            :database_id   (mt/id)
+                                            :dataset_query (orders-count-query)}]
+          (let [[session-id _] (initialize!)
+                db-name        (t2/select-one-fn :name :model/Database (mt/id))
+                orders-query   {:lib/type "mbql/query"
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table [db-name "PUBLIC" "ORDERS"]
+                                            :limit        5}]}
+                ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
+                ;; assertion in `call-tool` fails partway through the sequence.
+                question-id    (atom nil)
+                dash-id        (atom nil)
+                coll-id        (atom nil)]
+            (try
+              (let [;; Discovery tools — call-tool helper asserts (not :isError) internally.
+                    _              (call-tool session-id "search" {:term_queries ["orders"]})
+                    ;; Query construction + execution
+                    construct-data (call-tool session-id "construct_query" {:query orders-query})
+                    _              (call-tool session-id "query" {:query orders-query})
+                    _              (call-tool session-id "execute_query"
+                                              {:query_handle (:query_handle construct-data)})
+                    _              (call-tool session-id "execute_sql"
+                                              {:database_id (mt/id)
+                                               :sql         "SELECT 1"})
+                    _              (call-tool session-id "read_resource"
+                                              {:uris ["metabase://databases"]})
+                    ;; Write tools — record IDs as soon as they're known so the `finally` block
+                    ;; can clean up even if a later step throws.
+                    question-data  (call-tool session-id "create_question"
+                                              {:name  "Smoke Question"
+                                               :query (mcp.session/read-handle session-id
+                                                                               (mt/user->id :crowberto)
+                                                                               (:query_handle construct-data))})
+                    _              (reset! question-id (:id question-data))
+                    _              (is (= (format "https://stats.metabase.test/question/%d" @question-id)
+                                          (:url question-data)))
+                    _              (call-tool session-id "update_question"
+                                              {:id          (:id question-data)
+                                               :description "Smoke updated description"})
+                    dash-data      (call-tool session-id "create_dashboard"
+                                              {:name "Smoke Dashboard"})
+                    _              (reset! dash-id (:id dash-data))
+                    _              (is (= (format "https://stats.metabase.test/dashboard/%d" @dash-id)
+                                          (:url dash-data)))
+                    _              (call-tool session-id "update_dashboard"
+                                              {:id          (:id dash-data)
+                                               :description "Smoke updated dashboard"})
+                    coll-data      (call-tool session-id "create_collection"
+                                              {:name "Smoke Collection"})]
+                (reset! coll-id (:id coll-data)))
+              (finally
+                (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
+                (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
+                (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
 
 (deftest tools-call-visualize-query-direct-test
   (testing "visualize_query returns UI structured content"
@@ -651,6 +730,18 @@
       (is (=? {:content           [{:type "text"}]
                :structuredContent {:query "card__1"}}
               result)))))
+
+(deftest tools-call-rejects-ui-tools-without-ui-capability-test
+  (testing "direct calls to UI-only tools are rejected for clients without MCP Apps UI support"
+    (let [[session-id _] (initialize-without-ui!)
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query "card__1"}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "requires a client that supports MCP Apps UI")}]}}}
+              response)))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query returns a streaming response captured as MCP text content"
@@ -1037,6 +1128,55 @@
                  :headers {"WWW-Authenticate" #(str/includes? % "oauth-protected-resource")}}
                 response))))))
 
+;;; ----------------------------------------- Canonical and legacy endpoints ---------------------------------------
+
+(deftest endpoint-alias-routing-test
+  (testing "initialize succeeds (session auth) on both the canonical and legacy MCP paths"
+    (doseq [path mcp-endpoint-paths]
+      (testing (str "/api/" path)
+        (is (=? {:status  200
+                 :headers {"Mcp-Session-Id" some?}
+                 :body    {:result {:serverInfo {:name "metabase"}}}}
+                (mcp-request-to path (jsonrpc-request "initialize"))))))))
+
+(deftest endpoint-alias-discovery-401-test
+  (testing "unauthenticated request on each path advertises that same path as the protected resource"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (doseq [path mcp-endpoint-paths]
+        (testing (str "/api/" path)
+          ;; The trailing quote pins the match to the exact path (so /api/mcp can't match /api/metabase-mcp).
+          (let [expected (str "/.well-known/oauth-protected-resource/api/" path "\"")]
+            (is (=? {:status  401
+                     :headers {"WWW-Authenticate" #(str/includes? % expected)}}
+                    (mcp-request-unauthenticated-to path (jsonrpc-request "initialize"))))))))))
+
+(deftest endpoint-alias-trailing-slash-discovery-test
+  (testing "a trailing-slash request still advertises the matching path (not canonical fallback)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [expected "/.well-known/oauth-protected-resource/api/mcp\""]
+        (is (=? {:status  401
+                 :headers {"WWW-Authenticate" #(str/includes? % expected)}}
+                (mcp-request-unauthenticated-to "mcp/" (jsonrpc-request "initialize"))))))))
+
+(deftest endpoint-alias-bearer-token-test
+  (testing "bearer-token handling is identical on the legacy path — same invalid_token 401 as canonical"
+    ;; Bearer validation (validate-bearer-token) has no path logic, so reaching it via the legacy
+    ;; alias must behave exactly like the canonical path. We assert the invalid-token branch since
+    ;; it's deterministic and doesn't depend on minting a live token.
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server/reset-provider!)
+      (try
+        (doseq [path mcp-endpoint-paths]
+          (testing (str "/api/" path)
+            (is (=? {:status  401
+                     :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
+                    (client/client-full-response
+                     :post 401 path
+                     {:request-options {:headers {"authorization" "Bearer totally-bogus-token"}}}
+                     (jsonrpc-request "initialize"))))))
+        (finally
+          (oauth-server/reset-provider!))))))
+
 (deftest invalid-bearer-token-returns-401-test
   (testing "POST with invalid bearer token returns 401 with invalid_token error"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -1244,7 +1384,14 @@
                                           {:id card-id :name "Nope"}))]
         (is (=? {:isError true} result))
         (is (str/includes? (-> result :content first :text) "Insufficient scope")
-            "Scope enforcement error from defendpoint middleware")))))
+            "Scope enforcement error from defendpoint middleware"))))
+  (testing "scope failures take precedence over missing client extensions"
+    (let [result (mt/with-current-user (mt/user->id :crowberto)
+                   (mcp.tools/call-tool #{} nil "visualize_query" {:query "card__1"} {:supports-mcp-ui? false}))
+          message (-> result :content first :text)]
+      (is (=? {:isError true} result))
+      (is (str/includes? message "Insufficient scope"))
+      (is (not (str/includes? message "requires a client that supports MCP Apps UI"))))))
 
 (deftest check-resource-access-test
   (testing "returns :ok for a known URI with matching scope"
