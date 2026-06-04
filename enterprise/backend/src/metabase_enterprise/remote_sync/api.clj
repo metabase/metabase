@@ -63,11 +63,18 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch force merge]} :- [:map [:branch {:optional true} ms/NonBlankString]
-                                    [:force {:optional true} :boolean]
-                                    [:merge {:optional true} :boolean]]]
+   {:keys [branch force merge expected_branch]}
+   :- [:map [:branch {:optional true} ms/NonBlankString]
+       [:force {:optional true} :boolean]
+       [:merge {:optional true} :boolean]
+       ;; the branch the client believes is currently active; rejected if it disagrees with the
+       ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
+       ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
+       [:expected_branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
+  (when expected_branch
+    (check-branch-matches-setting! expected_branch))
   (let [branch-name (or branch (settings/remote-sync-branch))
         user-id     api/*current-user-id*
         {task-id :id}

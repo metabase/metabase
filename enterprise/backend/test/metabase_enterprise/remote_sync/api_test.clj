@@ -218,6 +218,32 @@
             (is (= "success" (:status response)))
             (is (remote-sync.task/successful? completed-task))))))))
 
+(deftest import-rejects-expected-branch-mismatch-test
+  (testing "POST /api/ee/remote-sync/import rejects when expected_branch disagrees with the configured setting"
+    (let [mock-main (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (with-redefs [source/source-from-settings (constantly mock-main)]
+          (testing "stale expected_branch -> 409 branch_mismatch, no task created"
+            (let [before (t2/count :model/RemoteSyncTask)
+                  resp   (mt/user-http-request :crowberto :post 409 "ee/remote-sync/import"
+                                               {:branch "main" :expected_branch "stale-branch"})]
+              (is (true? (:branch_mismatch resp)))
+              (is (= "main" (:current_branch resp)))
+              (is (= before (t2/count :model/RemoteSyncTask))
+                  "no RemoteSyncTask row is created when the guard fires")))
+          (testing "matching expected_branch -> pull proceeds"
+            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                   {:branch "main" :expected_branch "main"})]
+              (is (=? {:status "success" :task_id int?} resp))
+              (wait-for-task-completion task_id)))
+          (testing "a branch switch (operational branch != expected_branch) is allowed when expected_branch matches the setting"
+            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                   {:branch "feature-branch" :expected_branch "main"})]
+              (is (=? {:status "success" :task_id int?} resp))
+              (wait-for-task-completion task_id))))))))
+
 (deftest import-requires-superuser-test
   (testing "POST /api/ee/remote-sync/import requires superuser permissions"
     (mt/with-temporary-setting-values [remote-sync-enabled true]

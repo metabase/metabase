@@ -107,7 +107,13 @@ export const useMergeImportAction = () => {
     mergeImport: useCallback(
       async (branch: string, closeModal: VoidFunction) => {
         try {
-          await importChanges({ branch, merge: true }).unwrap();
+          // Pull merge: the operational branch is the current branch, so it doubles as the
+          // expected_branch assertion.
+          await importChanges({
+            branch,
+            merge: true,
+            expected_branch: branch,
+          }).unwrap();
 
           sendToast({
             message: t`Merging the latest remote changes into your local content...`,
@@ -197,14 +203,27 @@ export const useDiscardChangesAndImportAction = () => {
 
   return {
     discardChangesAndImport: useCallback(
-      async (targetBranch: string, closeModal: VoidFunction) => {
+      async (
+        targetBranch: string,
+        expectedBranch: string,
+        closeModal: VoidFunction,
+      ) => {
         try {
-          await importChanges({ branch: targetBranch, force: true }).unwrap();
+          // targetBranch is what we import (may be a switch target); expectedBranch is the branch
+          // we believe is currently active, asserted against the setting to catch a stale tab.
+          await importChanges({
+            branch: targetBranch,
+            force: true,
+            expected_branch: expectedBranch,
+          }).unwrap();
           closeModal();
         } catch (error) {
+          const { errorMessage } = parseSyncError(error as SyncError);
           sendToast({
-            message: c("{0} is the GitHub branch name")
-              .t`Failed to import from branch ${targetBranch}`,
+            message:
+              errorMessage ||
+              c("{0} is the GitHub branch name")
+                .t`Failed to import from branch ${targetBranch}`,
             icon: "warning",
           });
         }

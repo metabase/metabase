@@ -85,7 +85,12 @@ export const GitSyncControls = () => {
       }
 
       if (!isNewBranch) {
-        await importChanges({ branch });
+        // expected_branch is the branch we're switching away from: reject if another session already
+        // moved off it, so we don't switch from a stale base.
+        await importChanges({
+          branch,
+          expected_branch: currentBranch ?? undefined,
+        });
 
         trackBranchSwitched({
           triggeredFrom: "app-bar",
@@ -94,7 +99,7 @@ export const GitSyncControls = () => {
 
       setNextBranch(null);
     },
-    [importChanges],
+    [importChanges, currentBranch],
   );
 
   const handleBranchSelect = useCallback(
@@ -202,7 +207,10 @@ export const GitSyncControls = () => {
     }
 
     try {
-      await importChanges({ branch: currentBranch }).unwrap();
+      await importChanges({
+        branch: currentBranch,
+        expected_branch: currentBranch,
+      }).unwrap();
 
       trackPullChanges({
         triggeredFrom: "app-bar",

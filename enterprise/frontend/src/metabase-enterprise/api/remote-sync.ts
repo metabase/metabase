@@ -55,13 +55,14 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ImportFromBranchResponse,
       ImportFromBranchRequest
     >({
-      query: ({ branch, force, merge }) => ({
+      query: ({ branch, force, merge, expected_branch }) => ({
         url: `/api/ee/remote-sync/import`,
         method: "POST",
         body: {
           branch,
           force,
           merge,
+          expected_branch,
         },
       }),
       /**

@@ -144,7 +144,13 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "discard") {
-      await discardChangesAndImport(nextBranch || currentBranch, onClose);
+      // nextBranch is set on a switch-branch discard; currentBranch is the branch we're on now and is
+      // asserted against the setting to catch a stale tab.
+      await discardChangesAndImport(
+        nextBranch || currentBranch,
+        currentBranch,
+        onClose,
+      );
     }
   };
 
