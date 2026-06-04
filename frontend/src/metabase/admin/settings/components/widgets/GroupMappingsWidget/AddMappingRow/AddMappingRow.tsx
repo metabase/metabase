@@ -3,8 +3,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import type { MappingsType } from "metabase/admin/types";
-import { Button } from "metabase/common/components/Button";
 import CS from "metabase/css/core/index.css";
+import { Button } from "metabase/ui";
 
 type AddMappingRowProps = {
   mappings: MappingsType;
@@ -68,11 +68,14 @@ function AddMappingRow({
             onKeyDown={handleKeyDown}
           />
           <div>
-            <Button borderless onClick={handleCancelClick}>{t`Cancel`}</Button>
+            <Button
+              variant="subtle"
+              onClick={handleCancelClick}
+            >{t`Cancel`}</Button>
             <Button
               className={CS.ml2}
               type="submit"
-              primary={!!isMappingNameUnique}
+              variant={isMappingNameUnique ? "filled" : "default"}
               disabled={!isMappingNameUnique}
               onClick={() => (isMappingNameUnique ? handleSubmit() : undefined)}
             >{t`Add`}</Button>

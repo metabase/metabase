@@ -50,6 +50,16 @@ export function GroupMembersTable({
     return _.partition(group.members, isApiKeyGroupMember).flat();
   }, [group.members]);
   const groupsPage = members.slice(offset, offset + pageSize);
+  const hasMembers = members.length > 0;
+
+  // An empty group renders just the call to action, without the column header.
+  if (!hasMembers && !showAddUser) {
+    return (
+      <Text c="text-secondary" ta="center" mt="xl">
+        {t`Add members to get started.`}
+      </Text>
+    );
+  }
 
   return (
     <>
@@ -83,7 +93,7 @@ export function GroupMembersTable({
         )}
       </AdminContentTable>
 
-      {members.length > 0 ? (
+      {hasMembers && (
         <Flex align="center" justify="flex-end" p="md">
           <PaginationControls
             page={page}
@@ -94,10 +104,6 @@ export function GroupMembersTable({
             onPreviousPage={handlePreviousPage}
           />
         </Flex>
-      ) : (
-        <Text size="lg" fw="700" ta="center" mt="4rem">
-          {t`A group is only as good as its members.`}
-        </Text>
       )}
     </>
   );

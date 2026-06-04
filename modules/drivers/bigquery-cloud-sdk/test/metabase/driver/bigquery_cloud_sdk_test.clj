@@ -20,6 +20,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.impl :as data.impl]
@@ -69,8 +70,8 @@
       (testing "can-connect? returns false for bogus credentials"
         (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :project-id fake-proj-id)))))
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
-        (with-redefs [bigquery/describe-database-tables (fn [& _]
-                                                          [])]
+        (mt/with-dynamic-fn-redefs [bigquery/describe-database-tables (fn [& _]
+                                                                        [])]
           (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details)))))
       (testing "can-connect? returns an appropriate exception message if no datasets are found"
         (is (thrown-with-msg? Exception
@@ -655,6 +656,32 @@
               (finally
                 (drop-table-if-exists! table-name)))))))))
 
+(deftest ^:synchronized sync-fields-grouped-by-table!-on-partitioned-bigquery-table-test
+  (testing "Partitioned BigQuery tables that require a partition filter can't go through
+            run-distinct-batch directly (it bypasses the metadata-from-qp middleware that
+            injects the partition filter). sync-fields-grouped-by-table! should detect this
+            via can-batch-distinct? and fall back to the per-field path, which does go through
+            the middleware. The distinct values must still come back correctly."
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/dataset native-dataset
+        (let [category-field-id (u/auto-retry 1
+                                  (try (mt/id :fv_partitioned_table :category)
+                                       (catch Exception e
+                                         (sync/sync-database! (mt/db) {:scan :schema})
+                                         (throw e))))
+              category-field    (t2/select-one :model/Field :id category-field-id)
+              table             (t2/select-one :model/Table :id (:table_id category-field))]
+          (testing "Dispatcher identifies this as a non-batch-able table"
+            (is (false? (#'sync.field-values/can-batch-distinct? table))))
+          (testing "Distinct values come back correctly via the fallback per-field path"
+            (t2/update! :model/Field category-field-id {:has_field_values :list})
+            (t2/delete! :model/FieldValues :field_id category-field-id)
+            (sync.field-values/sync-fields-grouped-by-table! [category-field])
+            (is (= #{"coffee" "tea" "matcha"}
+                   (set (:values (t2/select-one :model/FieldValues
+                                                :field_id category-field-id
+                                                :type :full)))))))))))
+
 (deftest search-field-from-table-requires-a-filter-test
   (testing "#40673"
     (mt/test-driver
@@ -982,14 +1009,14 @@
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [fake-execute-called (atom false)
-          orig-fn             @#'bigquery/execute-bigquery]
+          orig-fn             (mt/original-fn #'bigquery/execute-bigquery)]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [& args]
-                                                  (if-not @fake-execute-called
-                                                    (do (reset! fake-execute-called true)
-                                                        ;; simulate a transient error being thrown
-                                                        (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (apply orig-fn args)))]
+        (mt/with-dynamic-fn-redefs [bigquery/execute-bigquery (fn [& args]
+                                                                (if-not @fake-execute-called
+                                                                  (do (reset! fake-execute-called true)
+                                                                      ;; simulate a transient error being thrown
+                                                                      (throw (ex-info "Transient error" {:retryable? true})))
+                                                                  (apply orig-fn args)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
@@ -998,14 +1025,14 @@
 (deftest not-retry-cancellation-exception-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [fake-execute-called (atom false)
-          orig-fn        @#'bigquery/execute-bigquery]
+          orig-fn        (mt/original-fn #'bigquery/execute-bigquery)]
       (testing "Should not retry query on cancellation"
-        (with-redefs [bigquery/execute-bigquery (fn [& args]
-                                                  (if (not @fake-execute-called)
-                                                    (do (reset! fake-execute-called true)
-                                                        ;; Simulate a cancellation happening
-                                                        (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
-                                                    (apply orig-fn args)))]
+        (mt/with-dynamic-fn-redefs [bigquery/execute-bigquery (fn [& args]
+                                                                (if (not @fake-execute-called)
+                                                                  (do (reset! fake-execute-called true)
+                                                                      ;; Simulate a cancellation happening
+                                                                      (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
+                                                                  (apply orig-fn args)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
                                :type     :native})
@@ -1059,7 +1086,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries which fail on later pages are caught properly"
       (let [page-counter (atom 3)
-            orig-exec    @#'bigquery/reducible-bigquery-results
+            orig-exec    (mt/original-fn #'bigquery/reducible-bigquery-results)
             wrap-result  (fn wrap-result [^TableResult result]
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
@@ -1069,8 +1096,8 @@
                                (if (zero? @page-counter)
                                  nil
                                  (wrap-result (.getNextPage result))))))]
-        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
-                                                            (apply orig-exec (wrap-result page) args))]
+        (mt/with-dynamic-fn-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                                          (apply orig-exec (wrap-result page) args))]
           (binding [bigquery/*page-size*     10 ; small pages so there are several
                     bigquery/*page-callback* (fn []
                                                (let [pages (swap! page-counter #(max (dec %) 0))]
@@ -1086,7 +1113,7 @@
     (testing "BigQuery queries which fail on later pages are caught properly"
       (let [count-before (count (future-thread-names))
             page-counter (atom 3)
-            orig-exec    @#'bigquery/reducible-bigquery-results
+            orig-exec    (mt/original-fn #'bigquery/reducible-bigquery-results)
             wrap-result  (fn wrap-result [^TableResult result]
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
@@ -1096,8 +1123,8 @@
                                (if (zero? @page-counter)
                                  (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
                                  (wrap-result (.getNextPage result))))))]
-        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
-                                                            (apply orig-exec (wrap-result page) args))]
+        (mt/with-dynamic-fn-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                                          (apply orig-exec (wrap-result page) args))]
           (dotimes [_ 10]
             (reset! page-counter 3)
             (binding [bigquery/*page-size*     100 ; small pages so there are several
@@ -1197,10 +1224,10 @@
                                              :db_id (u/the-id db)}]
         (let [db-id      (u/the-id db)
               call-count (atom 0)
-              orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
-          (with-redefs [bigquery/convert-dataset-id-to-filters! (fn [database dataset-id]
-                                                                  (swap! call-count inc)
-                                                                  (orig-fn database dataset-id))]
+              orig-fn    (mt/original-fn #'bigquery/convert-dataset-id-to-filters!)]
+          (mt/with-dynamic-fn-redefs [bigquery/convert-dataset-id-to-filters! (fn [database dataset-id]
+                                                                                (swap! call-count inc)
+                                                                                (orig-fn database dataset-id))]
             ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
             (doseq [_ (range 5)]
               (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:details :dataset-id]))))
