@@ -2226,12 +2226,15 @@
            lib
            lib-be
            permissions
+           plugins
            premium-features
            search
+           sync
            util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
+                    :model/Database
                     :model/MetabotConversation
                     :model/MetabotMessage
                     :model/PermissionsGroup
