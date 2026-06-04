@@ -21,11 +21,9 @@
 ;; These tools are pretty sophisticated for the amount of tests we have!
 
 (defn- sample-database-db
-  "POC: sample DB now SQLite-backed. `read-write?` was used to add
-  `;ACCESS_MODE_DATA=r` to the H2 URL; SQLite read-only mode is set via the
-  `mode=ro` query parameter on the JDBC URL, not via Metabase details, so we
-  drop that toggle here and rely on `mt/with-temp` cleanup."
-  [_read-write?]
+  "Sample DB is SQLite-backed and always read-only: `try-to-extract-sample-database!` returns details with
+  `:read-only? true`, which the SQLite driver honors by opening the connection in read-only `open_mode`."
+  []
   {:details (#'sample-data/try-to-extract-sample-database!)
    :engine  :sqlite
    :name    "Sample Database"})
@@ -34,7 +32,7 @@
   "Execute `body` with a temporary Sample Database DB bound to `db-binding`."
   {:style/indent 1}
   [[db-binding] & body]
-  `(mt/with-temp [:model/Database db# (sample-database-db false)]
+  `(mt/with-temp [:model/Database db# (sample-database-db)]
      (sync/sync-database! db#)
      (let [~db-binding db#]
        ~@body)))
@@ -97,58 +95,25 @@
                  (select-keys [:name :description :database_type :semantic_type :has_field_values :active :visibility_type
                                :preview_display :display_name :fingerprint :base_type])))))))
 
-(deftest write-rows-sample-database-test
-  (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
-    (mt/with-temp [:model/Database db (sample-database-db true)]
+(deftest sample-database-is-read-only-test
+  (testing "The Sample Database connection is read-only: reads succeed but INSERT/UPDATE/DELETE are rejected"
+    (mt/with-temp [:model/Database db (sample-database-db)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (testing "update row"
-            (let [quantity (fn []
-                             (->> (jdbc/query conn-spec "SELECT QUANTITY FROM ORDERS WHERE ID = 1;")
-                                  (map :quantity)))]
-              (testing "before"
-                (is (= [2]
-                       (quantity))))
-              (is (= [1]
-                     (jdbc/execute! conn-spec "UPDATE ORDERS SET QUANTITY = 1 WHERE ID = 1;")))
-              (testing "after"
-                (is (= [1]
-                       (quantity))))
-              ;; TODO: this shouldn't be necessary, since we're modifying a temp sample database.
-              (testing "restore"
-                (is (= [1]
-                       (jdbc/execute! conn-spec "UPDATE ORDERS SET QUANTITY = 2 WHERE ID = 1;"))))))
-          (let [rating (fn []
-                         (->> (jdbc/query conn-spec "SELECT RATING FROM PRODUCTS WHERE PRICE = 12.345;")
-                              (map :rating)))]
-            (testing "before"
-              (is (= []
-                     (rating))))
-            (testing "insert row"
-              (is (= [1]
-                     (jdbc/execute! conn-spec "INSERT INTO PRODUCTS (price, rating) VALUES (12.345, 6.789);")))
-              (is (= [6.789]
-                     (rating))))
-            (testing "delete row"
-              (testing "before"
-                (is (= [6.789]
-                       (rating))))
-              (is (= [1]
-                     (jdbc/execute! conn-spec "DELETE FROM PRODUCTS WHERE PRICE = 12.345;")))
-              (testing "after"
-                (is (= []
-                       (rating)))))))))))
-
-;; POC NOTE: the original `ddl-sample-database-test` exercised H2-specific
-;; DDL (`SHOW TABLES`, `CREATE SCHEMA`, `SHOW COLUMNS FROM`). SQLite has no
-;; schemas and no `SHOW` statements. The equivalent SQLite test would use
-;; `sqlite_master`, `PRAGMA table_info(...)`, and would skip the schema
-;; subtests entirely. Leaving disabled until the POC is promoted to a real
-;; design; rewriting it is mechanical but out of scope.
-(deftest ^:disabled ddl-sample-database-test
-  (testing "disabled in SQLite POC — rewrite needed"
-    (is true)))
+          (testing "reads succeed"
+            (is (= [2]
+                   (->> (jdbc/query conn-spec "SELECT QUANTITY FROM ORDERS WHERE ID = 1;")
+                        (map :quantity)))))
+          (testing "writes are rejected because the connection is read-only"
+            (doseq [[op sql] [["UPDATE" "UPDATE ORDERS SET QUANTITY = 1 WHERE ID = 1;"]
+                              ["INSERT" "INSERT INTO PRODUCTS (price, rating) VALUES (12.345, 6.789);"]
+                              ["DELETE" "DELETE FROM PRODUCTS WHERE PRICE = 12.345;"]]]
+              (testing op
+                (is (thrown-with-msg?
+                     org.sqlite.SQLiteException
+                     #"(?i)readonly"
+                     (jdbc/execute! conn-spec sql)))))))))))
 
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
