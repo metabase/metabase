@@ -917,10 +917,14 @@ function withAvailableModels(WrappedComponent) {
   };
 }
 
+// Prefetches the saved-databases list and forwards its loading state as
+// `allLoading` so the picker waits for the databases (not just the models
+// search) before hydrating its initial step. Without this the picker would
+// briefly show only models and stream the databases in afterwards.
 function withSavedDatabasesPrefetch(WrappedComponent) {
   return function DataSelectorWithSavedDatabasesPrefetch(props) {
-    useListDatabasesQuery({ saved: true });
-    return <WrappedComponent {...props} />;
+    const { isLoading } = useListDatabasesQuery({ saved: true });
+    return <WrappedComponent {...props} allLoading={isLoading} />;
   };
 }
 
