@@ -52,7 +52,6 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
-   [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -67,6 +66,15 @@
    (org.postgresql.util PGobject PSQLException PSQLState)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
+                      ;;    can debug it. This is much less confusing when trying to fix broken tests.
+                      ;;
+                      ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;;    tests.
+                      (binding [sync-util/*log-exceptions-and-continue?* false]
+                        (mt/with-test-user :rasta (thunk)))))
 
 (deftest ^:parallel extract-test
   (is (= ["extract(month from NOW())"]
@@ -85,7 +93,7 @@
            ")"]
           "2021-10-03T09:00:00"
           "2021-10-03T09:00:00"]
-         (as-> [:datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
+         (as-> [:datetime-diff {} "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
            (sql.qp/->honeysql :postgres <>)
            (sql.qp/format-honeysql :postgres <>)
            (update (vec <>) 0 #(str/split-lines (driver/prettify-native-form :postgres %)))))))
