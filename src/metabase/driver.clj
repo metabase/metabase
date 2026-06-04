@@ -14,7 +14,6 @@
    [clojure.string :as str]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.classloader.core :as classloader]
-   [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings]
    [metabase.lib.schema :as lib.schema]
