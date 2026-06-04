@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   FIRST_COLLECTION_ID,
   SECOND_COLLECTION_ID,
@@ -101,7 +101,7 @@ describe("better onboarding via sidebar", { tags: "@external" }, () => {
       cy.log("Enable uploads");
       cy.request("PUT", "/api/setting/uploads-settings", {
         value: {
-          db_id: SAMPLE_DB_ID,
+          db_id: H2_SAMPLE_DB_ID,
           schema_name: "PUBLIC",
           table_prefix: null,
         },
@@ -236,7 +236,12 @@ describe("Add data modal", () => {
 
       cy.location("pathname").should("eq", "/admin/settings/uploads");
       cy.findByLabelText("Database to use for uploads").click();
-      H.popover().contains("Sample Database").click();
+      H.popover().within(() => {
+        // The read-only SQLite Sample Database is not uploadable, so only the
+        // writable H2 sample database is offered as an upload target.
+        cy.findByText("Sample Database").should("not.exist");
+        cy.findByText("Sample Database (H2)").click();
+      });
       cy.findByLabelText("Schema").click();
       H.popover().contains("PUBLIC").click();
       cy.intercept("PUT", "/api/setting/uploads-settings").as("enableUploads");
@@ -299,7 +304,7 @@ describe("Add data modal", () => {
       cy.log("Enable uploads");
       cy.request("PUT", "/api/setting/uploads-settings", {
         value: {
-          db_id: SAMPLE_DB_ID,
+          db_id: H2_SAMPLE_DB_ID,
           schema_name: "PUBLIC",
           table_prefix: null,
         },

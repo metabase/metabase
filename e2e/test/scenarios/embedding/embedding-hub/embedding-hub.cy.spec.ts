@@ -1,4 +1,9 @@
-import { SAMPLE_DB_TABLES, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  H2_SAMPLE_DB_ID,
+  SAMPLE_DB_ID,
+  SAMPLE_DB_TABLES,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
@@ -74,17 +79,16 @@ describe("scenarios - embedding hub", () => {
       cy.url().should("include", "returnToEmbeddingSetupGuide=");
     });
 
-    it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {
+    it("'Connect a database' is completed by adding a real database (the read-only sample DB is not uploadable)", () => {
       cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
 
-      cy.log("Enable CSV uploads");
-      cy.request("PUT", "/api/setting/uploads-settings", {
-        value: {
-          db_id: 1, // Sample Database ID
-          schema_name: "PUBLIC",
-          table_prefix: null,
+      cy.log("The read-only SQLite sample database is not an upload target");
+      cy.request("/api/database?include_only_uploadable=true").then(
+        ({ body }) => {
+          const ids = body.data.map((db: { id: number }) => db.id);
+          expect(ids).not.to.include(SAMPLE_DB_ID);
         },
-      });
+      );
 
       cy.visit("/admin/embedding/setup-guide");
 
@@ -95,30 +99,12 @@ describe("scenarios - embedding hub", () => {
         .findByText("Done")
         .should("not.exist");
 
-      cy.findByTestId("admin-layout-content")
-        .findByText("Connect a database")
-        .click();
-
-      H.modal().within(() => {
-        cy.findByText("CSV").click();
-
-        cy.log("Upload a CSV file");
-        cy.get("#add-data-modal-upload-csv-input").selectFile(
-          {
-            contents: Cypress.Buffer.from(
-              "header1,header2\nvalue1,value2",
-              "utf8",
-            ),
-            fileName: "test-upload.csv",
-            mimeType: "text/csv",
-            lastModified: Date.now(),
-          },
-          { force: true },
-        );
-
-        cy.button("Upload").should("be.enabled").click();
+      cy.log("Connecting a real (non-sample) database completes the step");
+      cy.request("POST", "/api/testing/add-h2-sample-database", {
+        id: H2_SAMPLE_DB_ID,
       });
 
+      cy.visit("/admin/embedding/setup-guide");
       cy.wait("@getChecklist");
 
       cy.log("'Connect a database' should be marked as done");
