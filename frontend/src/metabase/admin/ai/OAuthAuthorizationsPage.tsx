@@ -2,9 +2,11 @@ import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
+import NoResults from "assets/img/no_results.svg";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useListOAuthAuthorizationsQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import {
@@ -21,7 +23,6 @@ import {
   Ellipsified,
   Group,
   Select,
-  Text,
   TreeTable,
   type TreeTableColumnDef,
   useTreeTableInstance,
@@ -32,6 +33,7 @@ import type {
   OAuthClientEventType,
 } from "metabase-types/api";
 
+import S from "./OAuthAuthorizationsPage.module.css";
 import {
   OAUTH_EVENT_TYPES,
   OAUTH_PAGE_SIZE,
@@ -96,7 +98,7 @@ export const OAuthAuthorizationsPage = ({ location }: WithRouterProps) => {
 
   return (
     <SettingsPageWrapper
-      title={t`Authorizations`}
+      title={t`Authorization logs`}
       description={t`An audit log of MCP and Agent API client registrations and the authorization decisions users have approved or denied.`}
       h="100%"
       mih={0}
@@ -222,10 +224,15 @@ function AuthorizationsTable({
       <TreeTable
         instance={instance}
         hierarchical={false}
+        classNames={{ row: S.staticRow }}
         ariaLabel={t`OAuth authorizations`}
         emptyState={
           <Box p="xl" ta="center" data-testid="oauth-authorizations-empty">
-            <Text c="text-secondary">{t`No events match these filters.`}</Text>
+            <EmptyState
+              title={t`No events`}
+              illustrationElement={<img src={NoResults} />}
+              spacing="sm"
+            />
           </Box>
         }
       />
