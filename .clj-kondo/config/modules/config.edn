@@ -1397,6 +1397,7 @@
    :uses #{analytics
            analytics-interface
            api
+           app-db
            appearance
            auth-identity
            channel
@@ -1427,6 +1428,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
+                    :model/TaskHistory
                     :model/User}}
 
   oauth-server
@@ -3174,20 +3176,6 @@
            sql-tools
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
-
-  enterprise/notification-admin
-  {:team "Gadget"
-   :api  #{metabase-enterprise.notification-admin.api}
-   :uses #{api
-           app-db
-           models
-           notification
-           request
-           util}
-   :model-imports #{:model/Notification
-                    :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/TaskHistory}}
 
   enterprise/permission-debug
   {:team "UX West"
