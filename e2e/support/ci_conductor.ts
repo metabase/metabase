@@ -1,3 +1,5 @@
+import { readFileSync, statSync } from "node:fs";
+
 import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
 
 // `Cypress` and `CypressCommandLine` are global namespaces provided by the
@@ -57,6 +59,19 @@ type ConductorTest = {
    * value. Conductor schema isn't final — fields it doesn't store are ignored.
    */
   message?: string | null;
+  /**
+   * The test's first failure screenshot as a base64 PNG data URI. ci-conductor
+   * uploads it to S3 and stores the public URL. Attached at send time by
+   * `reportFailedTestsToConductor`; absent when there's no screenshot or it
+   * can't be read. See DEV-2000.
+   */
+  failure_screenshot?: string;
+  /**
+   * Transient (never sent on the wire): absolute path to the resolved first
+   * failure screenshot, set by `extractFailedTests`. It's read and encoded into
+   * `failure_screenshot` just before the POST, then dropped. See DEV-2000.
+   */
+  screenshotPath?: string;
 };
 
 /**
@@ -95,6 +110,132 @@ function toNumber(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/** Normalize a string to just [a-z0-9] for sanitization-proof matching. */
+function normalizeForMatch(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Basename of a path, tolerant of both POSIX and Windows separators. */
+function baseName(p: string): string {
+  return p.split(/[\\/]/).pop() ?? "";
+}
+
+// First-failure screenshot paths captured for the current spec via Cypress'
+// after:screenshot hook. Populated by recordFailureScreenshot and drained by
+// takeRecordedScreenshotPaths (per spec, in after:spec). Module-level state, but
+// specs run serially so a spec only ever sees its own shots.
+const recordedFailureScreenshots: string[] = [];
+
+/**
+ * Record a screenshot from Cypress' after:screenshot hook (see config.js). The
+ * hook's details carry `testFailure` and `testAttemptIndex`, which the after:spec
+ * results don't — so we keep exactly the first failure shot per test
+ * (`testFailure === true && testAttemptIndex === 0`) and ignore manual
+ * screenshots and retry shots ("(attempt 2)", ...). Defensive: ignores anything
+ * malformed and never throws into the run. See DEV-2000.
+ */
+export function recordFailureScreenshot(details: {
+  path?: string;
+  testFailure?: boolean;
+  testAttemptIndex?: number;
+}): void {
+  try {
+    if (
+      details?.testFailure === true &&
+      details?.testAttemptIndex === 0 &&
+      typeof details?.path === "string" &&
+      details.path
+    ) {
+      recordedFailureScreenshots.push(details.path);
+    }
+  } catch (error) {
+    // Recording is best-effort; log but never throw into the run.
+    console.error("[ci-conductor] failed to record screenshot", error);
+  }
+}
+
+/**
+ * Return the first-failure screenshot paths captured for the current spec and
+ * reset the buffer for the next one (snapshot-and-clear, so a spec only ever
+ * sees its own shots even if reporting later throws). Called once per spec.
+ */
+export function takeRecordedScreenshotPaths(): string[] {
+  // splice(0) returns all elements and empties the buffer in one step.
+  return recordedFailureScreenshots.splice(0);
+}
+
+/**
+ * Match a test to its (already filtered to first-failure) screenshot path. The
+ * after:screenshot hook gives us paths but no test title, so the only link is
+ * the path itself — Cypress derives the filename from the test's full title. We
+ * normalize the title and each path's basename down to [a-z0-9] (dropping spaces,
+ * the " -- " separators, the "(failed)" suffix, the extension and any filesystem
+ * sanitization) and test containment.
+ *
+ * `recordedPaths` already holds only first-failure shots (one per test), so the
+ * sole remaining ambiguity is a title that's a prefix of another test's — we
+ * keep the most specific (shortest normalized basename that still contains the
+ * title) so a short title can't steal a longer test's shot.
+ *
+ * Pure and defensive: returns undefined on any missing/odd input, never throws.
+ * See DEV-2000.
+ */
+export function resolveScreenshotPath(
+  titlePath: string[] | undefined,
+  recordedPaths: string[] | undefined,
+): string | undefined {
+  try {
+    const key = normalizeForMatch((titlePath ?? []).join(""));
+    if (!key || !Array.isArray(recordedPaths)) {
+      return undefined;
+    }
+
+    // Most specific wins (shortest basename still containing the title); ties
+    // keep the earlier, first-captured match.
+    return recordedPaths
+      .filter((path): path is string => typeof path === "string" && path !== "")
+      .map((path) => ({ path, hay: normalizeForMatch(baseName(path)) }))
+      .filter(({ hay }) => hay.includes(key))
+      .reduce<{ path: string; hay: string } | undefined>(
+        (best, match) =>
+          best === undefined || match.hay.length < best.hay.length
+            ? match
+            : best,
+        undefined,
+      )?.path;
+  } catch (error) {
+    console.error("[ci-conductor] failed to resolve screenshot path", error);
+    return undefined;
+  }
+}
+
+// ci-conductor rejects screenshots over 10 MB decoded; base64 inflates ~33%, so
+// we cap the raw file well under that (see its lib/screenshots MAX_SCREENSHOT_BYTES).
+const MAX_SCREENSHOT_RAW_BYTES = 7 * 1024 * 1024;
+
+/**
+ * Read a screenshot file and return it as a base64 PNG data URI, or undefined if
+ * the file is missing, empty, too large, or unreadable. Best-effort and never
+ * throws — a screenshot problem must not break reporting. See DEV-2000.
+ */
+function encodeScreenshot(filePath: string): string | undefined {
+  try {
+    const stat = statSync(filePath);
+    if (
+      !stat.isFile() ||
+      stat.size === 0 ||
+      stat.size > MAX_SCREENSHOT_RAW_BYTES
+    ) {
+      return undefined;
+    }
+    const b64 = readFileSync(filePath).toString("base64");
+    return b64 ? `data:image/png;base64,${b64}` : undefined;
+  } catch (error) {
+    console.error("[ci-conductor] failed to read screenshot", filePath, error);
+    return undefined;
+  }
+}
+
 /**
  * Pull the reportable tests out of a single spec's run results. We always
  * include any test that had at least one failed attempt — so both "broken"
@@ -115,6 +256,7 @@ function toNumber(value: string | undefined): number | null {
 export function extractFailedTests(
   spec: Cypress.Spec,
   results: CypressCommandLine.RunResult,
+  failureScreenshotPaths: string[] = [],
 ): ConductorTest[] {
   const file = spec?.relative;
 
@@ -139,6 +281,14 @@ export function extractFailedTests(
       const name = titlePath[titlePath.length - 1] ?? "(unknown test)";
       const suite = titlePath.slice(0, -1).join(" > ");
       const attempts = test.attempts ?? [];
+      // Resolve (but don't yet read) the test's first failure screenshot from
+      // the paths captured by the after:screenshot hook. The file is encoded
+      // into `failure_screenshot` at send time so the matching logic here stays
+      // pure. Returns undefined on any miss — best-effort.
+      const screenshotPath = resolveScreenshotPath(
+        titlePath,
+        failureScreenshotPaths,
+      );
       return {
         name,
         path: suite || undefined,
@@ -147,6 +297,7 @@ export function extractFailedTests(
         attempts,
         status: classifyStatus(attempts),
         message: test.displayError ?? null,
+        ...(screenshotPath ? { screenshotPath } : {}),
       };
     });
 
@@ -181,6 +332,17 @@ export async function reportFailedTestsToConductor(
   // Everything below is wrapped so the reporter can never throw into the test
   // run, regardless of payload contents or network behavior.
   try {
+    // Best-effort: read each resolved screenshot and inline it as base64 for
+    // ci-conductor to upload. encodeScreenshot never throws — a test simply goes
+    // without a screenshot if it can't be read. The transient `screenshotPath`
+    // is dropped here so it never reaches the wire.
+    const outgoing = tests.map(({ screenshotPath, ...rest }) => {
+      const failure_screenshot = screenshotPath
+        ? encodeScreenshot(screenshotPath)
+        : undefined;
+      return failure_screenshot ? { ...rest, failure_screenshot } : rest;
+    });
+
     const body = {
       repo_id: toNumber(REPO_ID),
       run_id: toNumber(GITHUB_RUN_ID),
@@ -195,13 +357,25 @@ export async function reportFailedTestsToConductor(
       // CYPRESS_RETRIES isn't set in CI by default; e2e/support/config.js
       // surfaces the resolved Cypress config value into this env at startup.
       retries: toNumber(process.env.CYPRESS_RETRIES),
-      tests,
+      tests: outgoing,
     };
 
     if (isDryRun) {
+      // Don't dump base64 blobs into the log — replace each with a size marker.
+      const screenshotCount = outgoing.filter(
+        (t) => t.failure_screenshot,
+      ).length;
+      const redactedTests = outgoing.map((t) =>
+        t.failure_screenshot
+          ? {
+              ...t,
+              failure_screenshot: `<base64 ${t.failure_screenshot.length} chars>`,
+            }
+          : t,
+      );
       console.log(
-        `[ci-conductor] (dry run) would POST ${tests.length} failure(s):`,
-        JSON.stringify(body),
+        `[ci-conductor] (dry run) would POST ${outgoing.length} failure(s), ${screenshotCount} with screenshot(s):`,
+        JSON.stringify({ ...body, tests: redactedTests }),
       );
       return;
     }

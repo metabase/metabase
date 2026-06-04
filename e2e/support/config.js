@@ -10,7 +10,9 @@ import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
 import {
   extractFailedTests,
+  recordFailureScreenshot,
   reportFailedTestsToConductor,
+  takeRecordedScreenshotPaths,
 } from "./ci_conductor";
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
@@ -191,6 +193,14 @@ const defaultConfig = {
         : (config.retries?.runMode ?? 0);
     process.env.CYPRESS_RETRIES = String(resolvedRetries);
 
+    // Capture each test's first failure screenshot for ci-conductor. The
+    // after:screenshot hook is the only place Cypress exposes `testFailure` and
+    // `testAttemptIndex`, which let us keep just the first failure shot per test
+    // (see recordFailureScreenshot). after:spec then drains and reports them.
+    if (isCI) {
+      on("after:screenshot", (details) => recordFailureScreenshot(details));
+    }
+
     on("after:spec", async (spec, results) => {
       // Report failures to ci-conductor mid-run (no-ops unless configured).
       if (isCI) {
@@ -198,7 +208,9 @@ const defaultConfig = {
         // a hard backstop around everything — extraction, payload build, and
         // the request. The reporter also handles its own errors internally.
         try {
-          await reportFailedTestsToConductor(extractFailedTests(spec, results));
+          await reportFailedTestsToConductor(
+            extractFailedTests(spec, results, takeRecordedScreenshotPaths()),
+          );
         } catch (error) {
           console.error("[ci-conductor] reporting failed (ignored)", error);
         }
