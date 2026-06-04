@@ -16,7 +16,7 @@
 
     /* CodeMirror's search panel defaults to z-index 300, which leaks out of the
        editor and renders over surrounding components and modals. Drop it so the
-       panel only stacks above the editor's own content. */
+       panel only stacks above the editor's own content. (metabase#73290) */
     .cm-panels {
       z-index: 2;
     }
