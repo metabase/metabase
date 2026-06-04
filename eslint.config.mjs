@@ -293,7 +293,7 @@ const configs = [
       "boundaries/ignore": [
         "**/*.unit.spec.*",
         "**/e2e/**",
-        "*.stories.*",
+        "**/*.stories.*",
         "test/**",
       ],
     },
