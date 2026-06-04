@@ -98,8 +98,8 @@
   (let [dbs   (t2/select :model/Database
                          :is_audit false
                          {:order-by [[:%lower.name :asc]]})
-        items (mbr/extract-readable "Database" dbs)]
-    (mbr/list-result :databases items {:total (count items)})))
+        {:keys [items total]} (mbr/extract-readable "Database" dbs {:limit mbr/max-list-items})]
+    (mbr/list-result :databases items {:total total})))
 
 (defn- fetch-collections-list
   "metabase://collections (root only) and metabase://collections?tree=true (flat list of all).
@@ -118,10 +118,10 @@
         colls  (t2/select :model/Collection
                           {:where    where
                            :order-by [[:location :asc] [:%lower.name :asc]]})
-        items  (mbr/extract-readable "Collection" colls)]
+        {:keys [items total]} (mbr/extract-readable "Collection" colls {:limit mbr/max-list-items})]
     (mbr/list-result (if tree? :collections-tree :collections-root)
                      items
-                     {:total (count items)})))
+                     {:total total})))
 
 (defn- recent-model->mbr-model
   "Activity-feed shorthand -> MBR model name."
@@ -177,8 +177,8 @@
                           :db_id  (:id db)
                           :active true
                           {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})
-        items  (mbr/extract-readable "Table" tables)]
-    (mbr/list-result :database-tables items {:total (count items)})))
+        {:keys [items total]} (mbr/extract-readable "Table" tables {:limit mbr/max-list-items})]
+    (mbr/list-result :database-tables items {:total total})))
 
 (defn- fetch-database-models [id-str]
   (let [db     (mbr/resolve-database id-str)
@@ -188,8 +188,8 @@
                           :database_id (:id db)
                           :archived    false
                           {:order-by [[:%lower.name :asc]]})
-        items  (mbr/extract-readable "Card" models)]
-    (mbr/list-result :database-models items {:total (count items)})))
+        {:keys [items total]} (mbr/extract-readable "Card" models {:limit mbr/max-list-items})]
+    (mbr/list-result :database-models items {:total total})))
 
 (defn- fetch-database-schemas [id-str]
   (let [db      (mbr/resolve-database id-str)
@@ -218,8 +218,8 @@
                           :schema schema-name
                           :active true
                           {:order-by [[:%lower.name :asc]]})
-        items  (mbr/extract-readable "Table" tables)]
-    (mbr/list-result :database-schema-tables items {:total (count items)})))
+        {:keys [items total]} (mbr/extract-readable "Table" tables {:limit mbr/max-list-items})]
+    (mbr/list-result :database-schema-tables items {:total total})))
 
 ;; ----- Collection drill-down -----
 
@@ -243,10 +243,15 @@
                                   :location (str (:location coll) coll-id "/")
                                   :archived false
                                   {:order-by [[:%lower.name :asc]]})
-        items          (concat (mbr/extract-readable "Collection" subcollections)
-                               (mbr/extract-readable "Card" cards)
-                               (mbr/extract-readable "Dashboard" dashboards))]
-    (mbr/list-result :collection-items items {:total (count items)})))
+        ;; Each call caps extraction at `max-list-items`, so the worst case is
+        ;; 3×cap hydrated (not the full collection). `:total` sums the true
+        ;; pre-cap readable counts so truncation reporting stays honest.
+        sub-res        (mbr/extract-readable "Collection" subcollections {:limit mbr/max-list-items})
+        card-res       (mbr/extract-readable "Card" cards {:limit mbr/max-list-items})
+        dash-res       (mbr/extract-readable "Dashboard" dashboards {:limit mbr/max-list-items})
+        items          (concat (:items sub-res) (:items card-res) (:items dash-res))
+        total          (+ (:total sub-res) (:total card-res) (:total dash-res))]
+    (mbr/list-result :collection-items items {:total total})))
 
 (defn- fetch-collection-subcollections [id-str]
   (let [coll    (mbr/resolve-user-entity :model/Collection id-str)
@@ -256,8 +261,8 @@
                            :location (str (:location coll) coll-id "/")
                            :archived false
                            {:order-by [[:%lower.name :asc]]})
-        items   (mbr/extract-readable "Collection" subs)]
-    (mbr/list-result :collection-subcollections items {:total (count items)})))
+        {:keys [items total]} (mbr/extract-readable "Collection" subs {:limit mbr/max-list-items})]
+    (mbr/list-result :collection-subcollections items {:total total})))
 
 ;; ----- Table -----
 
@@ -314,10 +319,11 @@
                                      :source_database_id db-id
                                      {:order-by [[:%lower.name :asc]]})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))))
-        card-items     (mbr/extract-readable "Card" cards)
-        transform-items (mbr/extract-readable "Transform" (or transforms []))
-        items           (concat card-items transform-items)]
-    (mbr/list-result :table-derived items {:total (count items)})))
+        card-res        (mbr/extract-readable "Card" cards {:limit mbr/max-list-items})
+        transform-res   (mbr/extract-readable "Transform" (or transforms []) {:limit mbr/max-list-items})
+        items           (concat (:items card-res) (:items transform-res))
+        total           (+ (:total card-res) (:total transform-res))]
+    (mbr/list-result :table-derived items {:total total})))
 
 (defn- fetch-table-derived [id-str]
   (fetch-table-derived* (mbr/resolve-table-legacy id-str)))
@@ -403,16 +409,18 @@
 (defn- fetch-transform-sources [id-str]
   (let [transform        (transforms/get-transform (parse-long id-str))
         source-table-ids (transform-source-table-ids transform)
-        source-tables    (when (seq source-table-ids)
-                           (->> (t2/select :model/Table
-                                           :id [:in (set source-table-ids)])
-                                (mbr/extract-readable "Table")))
+        tables-res       (when (seq source-table-ids)
+                           (mbr/extract-readable "Table"
+                                                 (t2/select :model/Table
+                                                            :id [:in (set source-table-ids)])
+                                                 {:limit mbr/max-list-items}))
         db-id            (:source_database_id transform)
         db               (when db-id (t2/select-one :model/Database db-id))
         items            (cond-> []
-                           db            (conj (mbr/->mbr "Database" db))
-                           source-tables (into source-tables))]
-    (mbr/list-result :transform-sources items {:total (count items)})))
+                           db         (conj (mbr/->mbr "Database" db))
+                           tables-res (into (:items tables-res)))
+        total            (+ (if db 1 0) (or (:total tables-res) 0))]
+    (mbr/list-result :transform-sources items {:total total})))
 
 (defn- fetch-transform-target [id-str]
   (let [transform    (transforms/get-transform (parse-long id-str))
@@ -450,8 +458,8 @@
                                                                [:= :dc.card_id :report_card.id]
                                                                [:= :dc.dashboard_id dashboard-id]]}]]
                                  :order-by [[:%lower.name :asc]]})
-        items        (mbr/extract-readable "Card" cards)]
-    (mbr/list-result :dashboard-items items {:total (count items)})))
+        {:keys [items total]} (mbr/extract-readable "Card" cards {:limit mbr/max-list-items})]
+    (mbr/list-result :dashboard-items items {:total total})))
 
 ;; ----- Dispatch -----
 

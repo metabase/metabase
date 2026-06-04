@@ -171,37 +171,54 @@
 (defn extract-readable
   "Map MBR over a sequence of `instances`, dropping any the current user cannot read.
 
-  Returns a vector of MBR maps for the readable subset. Maintains input order
-  using the input's numeric `:id` to look up the extracted MBR.
+  Without `:limit`, returns a vector of MBR maps for the readable subset.
 
-  Batched: one `extract-all` call against the union of readable ids, not one per
-  instance. This matters for collection list endpoints where a single response
-  may extract dozens of cards/dashboards — N+1 nested-hydration roundtrips would
-  be a noticeable perf cliff. `extract-all`'s pipeline strips numeric `:id` from
-  the MBR, so we re-fetch by id from the readable seq to re-correlate."
-  [model instances]
-  (let [readable (filterv mi/can-read? instances)
-        ids      (mapv :id readable)]
-    (if (empty? ids)
-      []
-      ;; Run extract-all then zip back to original order. The pipeline drops :id,
-      ;; so we trust `extract-all`'s order matches the SQL `:in` filter — which
-      ;; we can't guarantee. Re-fetch via :id is the safe play: query with order
-      ;; matching `ids`, then map by position.
-      (let [extract  (fn [] (into {}
-                                  (map (fn [m]
-                                         (let [eid (some-> m :serdes/meta last :id)]
-                                           [eid m])))
-                                  (serdes/extract-all model {:where [:in :id ids]})))
-            extracted-by-id (if (= model "Database")
-                              (binding [warehouses.database/*include-h2-in-extract?* true]
-                                (extract))
-                              (extract))]
-        (into [] (keep (fn [inst]
-                         (let [eid (or (:entity_id inst)
-                                       (some-> (serdes/generate-path model inst) last :id))]
-                           (get extracted-by-id eid))))
-              readable)))))
+  With `:limit n`, slices the readable subset to the first `n` instances *before*
+  extracting — so we never serdes-hydrate items the caller will throw away — and
+  returns a map `{:items <≤n MBRs> :total <full readable count>}`. `:total` is
+  the count of readable instances before the limit, so the caller can report
+  honest truncation even though only `n` were extracted.
+
+  Maintains input order using the input's numeric `:id` to look up the extracted
+  MBR.
+
+  Batched: one `extract-all` call against the union of (possibly limited) readable
+  ids, not one per instance. This matters for collection list endpoints where a
+  single response may extract dozens of cards/dashboards — N+1 nested-hydration
+  roundtrips would be a noticeable perf cliff. `extract-all`'s pipeline strips
+  numeric `:id` from the MBR, so we re-fetch by id from the readable seq to
+  re-correlate."
+  ([model instances]
+   (extract-readable model instances nil))
+  ([model instances {:keys [limit]}]
+   (let [readable (filterv mi/can-read? instances)
+         total    (count readable)
+         sliced   (if limit (vec (take limit readable)) readable)
+         ids      (mapv :id sliced)
+         mbrs     (if (empty? ids)
+                    []
+                    ;; Run extract-all then zip back to original order. The
+                    ;; pipeline drops :id, so we trust `extract-all`'s order
+                    ;; matches the SQL `:in` filter — which we can't guarantee.
+                    ;; Re-fetch via :id is the safe play: query with order
+                    ;; matching `ids`, then map by position.
+                    (let [extract (fn [] (into {}
+                                               (map (fn [m]
+                                                      (let [eid (some-> m :serdes/meta last :id)]
+                                                        [eid m])))
+                                               (serdes/extract-all model {:where [:in :id ids]})))
+                          extracted-by-id (if (= model "Database")
+                                            (binding [warehouses.database/*include-h2-in-extract?* true]
+                                              (extract))
+                                            (extract))]
+                      (into [] (keep (fn [inst]
+                                       (let [eid (or (:entity_id inst)
+                                                     (some-> (serdes/generate-path model inst) last :id))]
+                                         (get extracted-by-id eid))))
+                            sliced)))]
+     (if limit
+       {:items mbrs :total total}
+       mbrs))))
 
 (defn with-uri
   "Attach a navigation URI to an MBR map. Non-spec metadata, keyed `_uri`."
@@ -221,10 +238,13 @@
   (let [{:keys [db-name schema table-name]} (canonical-fields table db-name)]
     (table-uri db-name schema table-name)))
 
-(def ^:private max-list-items
+(def max-list-items
   "Cap on items in a single list response. When exceeded the response includes
    `:truncated true` and `:total` so the agent knows there are more items it
-   can drill into (via search or by paginating, once that's wired)."
+   can drill into (via search or by paginating, once that's wired).
+
+   Callers pass this as `:limit` to [[extract-readable]] so only this many items
+   are serdes-hydrated, never the full readable set."
   25)
 
 (defn list-result
@@ -234,13 +254,14 @@
    the outer map has `:structured-output` whose `:result-type` tells
    [[metabase.metabot.tools.resources/format-content]] how to render.
 
-   Caps items at `max-list-items`; the full count survives in `:total` and the
-   `:truncated` boolean lets the caller decide whether to refine the URI or
-   page."
-  [list-type items _opts-ignored]
-  (let [items   (vec items)
-        total   (count items)
-        capped  (vec (take max-list-items items))]
+   `items` is already capped upstream (callers slice via [[extract-readable]]'s
+   `:limit`). Pass the true pre-cap count as `:total` in `opts` so `:truncated`
+   reports honestly; when `:total` is omitted it falls back to `(count items)`
+   (correct only when no upstream cap was applied)."
+  [list-type items {:keys [total]}]
+  (let [items  (vec items)
+        total  (or total (count items))
+        capped (vec (take max-list-items items))]
     {:structured-output
      {:result-type :mbr-list
       :list-type   list-type

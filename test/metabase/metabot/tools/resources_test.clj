@@ -404,6 +404,27 @@
               (is (not (str/includes? output "HIDDEN-TBL"))
                   "unreadable table must not appear in the database tables list"))))))))
 
+(deftest list-caps-items-and-reports-true-total-test
+  (testing "a list with more than the cap reports the full count in :total, caps :items, and sets :truncated"
+    ;; The cap is applied *before* serdes extraction (extract-readable :limit), so
+    ;; only `cap` items are hydrated even when the readable set is larger. :total
+    ;; must still reflect the full readable count so the agent knows to refine.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (let [cap   @(requiring-resolve 'metabase.metabot.tools.shared.mbr/max-list-items)
+              n     (+ cap 2)]
+          (doseq [i (range n)]
+            (t2/insert! :model/Table {:db_id db-id :name (format "TBL-%02d" i) :active true}))
+          (let [result (read-resource/read-resource
+                        {:uris [(str "metabase://database/" db-id "/tables")]})
+                so     (get-in result [:resources 0 :content :structured-output])]
+            (is (= n (:total so))
+                "total must be the full readable count, not the capped item count")
+            (is (= cap (count (:items so)))
+                "items must be capped at max-list-items")
+            (is (true? (:truncated so))
+                "truncated must be true when readable count exceeds the cap")))))))
+
 (deftest list-filters-dashboard-items-by-can-read-test
   (testing "metabase://dashboard/{id}/items hides cards the user can't read"
     (mt/with-current-user (mt/user->id :crowberto)
