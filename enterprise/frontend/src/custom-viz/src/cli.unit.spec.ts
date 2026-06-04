@@ -74,8 +74,6 @@ describe("cli init", () => {
       "src/index.tsx",
       "metabase-plugin.json",
       "public/assets/icon.svg",
-      "public/assets/thumbs-up.png",
-      "public/assets/thumbs-down.png",
       ".gitignore",
     ];
 

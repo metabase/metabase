@@ -1532,15 +1532,13 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("viz-type-button").click();
 
       cy.log(
-        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up image should render.",
+        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up should render.",
       );
       H.main()
-        .findByAltText("Above threshold")
-        .should("be.visible")
-        .and("have.attr", "src")
-        .and("match", /thumbs-up\.png/);
+        .findByRole("img", { name: "Above threshold" })
+        .should("be.visible");
 
-      cy.log("Modifying plugin source to change the alt text via getAssetUrl");
+      cy.log("Modifying plugin source to change the rendered label");
       cy.readFile(pluginSrcPath).then((src) => {
         const updated = src.replace('"Above threshold"', '"Way above!"');
         if (updated === src) {
@@ -1552,7 +1550,7 @@ describe("admin > custom visualizations", () => {
       });
 
       cy.log("Checking if hot reload works");
-      H.main().findByAltText("Way above!").should("be.visible");
+      H.main().findByRole("img", { name: "Way above!" }).should("be.visible");
 
       cy.log("Verify plugin settings affect rendering.");
       cy.log(
@@ -1567,9 +1565,8 @@ describe("admin > custom visualizations", () => {
         name: /Done/,
       }).click();
       H.main()
-        .findByAltText("Below threshold")
-        .should("have.attr", "src")
-        .and("match", /thumbs-down\.png/);
+        .findByRole("img", { name: "Below threshold" })
+        .should("be.visible");
 
       cy.log(
         "Saving the question and reloading to verify persistence of settings and dev URL",
@@ -1580,9 +1577,8 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("dialog", { name: /Save question/ }).should("not.exist");
       cy.reload();
       H.main()
-        .findByAltText("Below threshold")
-        .should("have.attr", "src")
-        .and("match", /thumbs-down\.png/);
+        .findByRole("img", { name: "Below threshold" })
+        .should("be.visible");
 
       cy.log(
         "When the dev server is stopped, the visualization should revert to the default",
@@ -2562,6 +2558,44 @@ describe("sandbox", () => {
         "message",
         Cypress.sinon.match(/blocked API call: window\.fetch/),
       ),
+    );
+  });
+
+  it("sandboxes React component setting widgets", () => {
+    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
+
+    H.createQuestion(
+      {
+        name: "Custom Viz Component Widget Security Test",
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "table",
+      },
+      { wrapId: true, idAlias: "questionId" },
+    );
+
+    H.visitQuestion("@questionId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("custom-viz-plugins-toggle").click();
+    cy.findByTestId(
+      `${H.CUSTOM_VIZ_IDENTIFIER_4_SECURITY_COMPONENT}-button`,
+    ).click();
+    cy.findByTestId("viz-type-button").click();
+
+    cy.log("open viz settings to mount the custom component widget");
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.log("the sandbox blocks the component's forbidden <input> element");
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /render failed: \[plugin \d+\] blocked createElement: input/,
     );
   });
 });

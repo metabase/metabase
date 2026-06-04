@@ -635,7 +635,7 @@
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
         (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
         (is (= [10 20 30 40] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
-        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
                                                          :create-queries :no
                                                          :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
@@ -749,7 +749,7 @@
   (mt/test-helpers-set-global-values!
     (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
       ;; Don't actually run the sync task in this test — just test the API-level permission enforcement
-      (with-redefs [quick-task/submit-task! (constantly nil)]
+      (mt/with-dynamic-fn-redefs [quick-task/submit-task! (constantly nil)]
         (testing "A non-admin cannot trigger a sync of the DB schema if they do not have DB details permissions"
           (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
             (mt/user-http-request :rasta :post 403 (format "database/%d/sync_schema" db-id))))

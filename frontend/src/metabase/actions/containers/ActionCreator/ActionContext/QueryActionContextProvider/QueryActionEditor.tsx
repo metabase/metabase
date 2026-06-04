@@ -18,13 +18,13 @@ function QueryActionEditor({
       query={query}
       question={question}
       setDatasetQuery={onChangeQuestionQuery}
-      hasEditingSidebar={false}
       isNativeEditorOpen
-      hasParametersList={false}
       resizable={false}
       readOnly={!isEditable}
       editorContext="action"
-    />
+    >
+      <NativeQueryEditor.TopBar />
+    </NativeQueryEditor>
   );
 }
 

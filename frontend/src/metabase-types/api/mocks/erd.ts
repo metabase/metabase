@@ -25,6 +25,7 @@ export const createMockErdNode = (opts?: Partial<ErdNode>): ErdNode => ({
   description: null,
   owner: null,
   schema: "public",
+  visibility_type: null,
   db_id: 1,
   fields: [],
   ...opts,
