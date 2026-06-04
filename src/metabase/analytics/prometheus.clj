@@ -170,6 +170,46 @@
            ([] (collect-metrics))
            ([_sampleNameFilter] (collect-metrics))))))))
 
+(defmulti pull-collector
+  "Declare a collect-time metric refresher. Each implementation returns a map of:
+
+    `:min-interval-s` -- run no more often than once every this many seconds
+    `:f`              -- a 0-arg function that refreshes one or more *declared* Prometheus metrics by making
+                         whatever update calls it wants (e.g. [[metabase.analytics-interface.core/set-gauge!]]
+                         or [[inc!]], for any number of metrics)
+
+  The dispatch value is any unique keyword identifying the collector. Implementations are run by
+  [[product-pull-collectors]] on each scrape (throttled by min-interval-s)."
+  {:arglists '([id])}
+  identity)
+
+(defonce ^:private pull-collector-last-runs
+  ;; id -> epoch-ms the collector's function last ran, used to enforce its :min-interval-s
+  (atom {}))
+
+(def ^:private product-pull-collectors
+  "Registered collector that runs the [[pull-collector]] implementations at scrape time, each throttled to
+  its own `:min-interval-s`. A throwing function is skipped without failing the scrape."
+  (letfn [(run-all! []
+            (let [now (System/currentTimeMillis)]
+              (doseq [id (keys (methods pull-collector))]
+                (try
+                  (let [{:keys [min-interval-s f]} (pull-collector id)]
+                    (when (>= (- now (get @pull-collector-last-runs id 0)) (long (* 1000 min-interval-s)))
+                      (swap! pull-collector-last-runs assoc id now)
+                      (f)))
+                  (catch Throwable e
+                    (log/warn e "Error running pull collector" id)))))
+            (ArrayList. 0))]
+    (delay
+      (collector/named
+       {:name      "metabase_application_pull"
+        :namespace "metabase"}
+       (proxy [Collector] []
+         (collect
+           ([] (run-all!))
+           ([_sampleNameFilter] (run-all!))))))))
+
 (defn- jvm-collectors
   "JVM collectors. Essentially duplicating [[iapetos.collector.jvm]] namespace so we can set our own namespaces rather
   than \"iapetos_internal\""
@@ -318,7 +358,8 @@
                           ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
-                     {:description "Number of rows in the active appdb index table."})
+                     {:description "Number of rows in this instance's active appdb search index table, by model."
+                      :labels      [:model]})
    (prometheus/gauge :metabase-search/semantic-index-size
                      {:description "Number of rows in the active semantic index table."})
    (prometheus/gauge :metabase-search/semantic-dlq-size
@@ -774,7 +815,8 @@
                         (collector.ring/initialize registry)
                         (concat (jvm-collectors)
                                 (jetty-collectors)
-                                [@c3p0-collector]
+                                [@c3p0-collector
+                                 @product-pull-collectors]
                                 (product-collectors)
                                 (quartz-collectors)))]
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))

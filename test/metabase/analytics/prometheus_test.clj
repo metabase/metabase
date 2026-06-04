@@ -193,6 +193,26 @@
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
 
+(deftest pull-collector-test
+  (testing "a pull collector implementation runs at scrape time and can update one or more declared metrics"
+    (mt/with-prometheus-system! [_ system]
+      (let [refresher (registry/get (:registry system)
+                                    {:name "metabase_application_pull" :namespace "metabase"} nil)]
+        (try
+          ;; the function makes whatever metric updates it wants -- here two samples of the (declared)
+          ;; :metabase-search/appdb-index-size gauge
+          (defmethod prometheus/pull-collector ::test [_]
+            {:min-interval-s 0
+             :f (fn []
+                  (prometheus/set! :metabase-search/appdb-index-size {:model "card"} 7)
+                  (prometheus/set! :metabase-search/appdb-index-size {:model "dashboard"} 0))})
+          (.collect ^Collector refresher)   ; runs the registered functions
+          (is (approx= 7 (mt/metric-value system :metabase-search/appdb-index-size {:model "card"})))
+          (is (approx= 0 (mt/metric-value system :metabase-search/appdb-index-size {:model "dashboard"})))
+          (finally
+            (remove-method prometheus/pull-collector ::test)
+            (swap! @#'prometheus/pull-collector-last-runs dissoc ::test)))))))
+
 (deftest search-engine-metrics-test
   (let [metrics       (#'prometheus/initial-labelled-metric-values)
         engine->value (fn [metric] (u/index-by (comp :engine :labels) :value (filter (comp #{metric} :metric) metrics)))
