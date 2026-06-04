@@ -12,10 +12,10 @@
     (not-empty (str/trim value))))
 
 (defn- set-prefixed-api-key!
-  [setting-key prefix deferred-message new-value]
+  [setting-key _prefix _deferred-message new-value]
   (let [trimmed (trimmed-string new-value)]
-    #_(when (and trimmed (not (str/starts-with? trimmed prefix)))
-        (throw (ex-info (str deferred-message) {:status-code 400})))
+    #_(when (and trimmed (not (str/starts-with? trimmed _prefix)))
+        (throw (ex-info (str _deferred-message) {:status-code 400})))
     (setting/set-value-of-type! :string setting-key trimmed)))
 
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
