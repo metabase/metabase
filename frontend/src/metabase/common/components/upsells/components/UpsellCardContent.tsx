@@ -10,6 +10,7 @@ import {
 } from "metabase/common/components/upsells/components/analytics";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
   Box,
@@ -141,9 +142,10 @@ const UpsellCardLeftColumnContent = ({
   isTrialAvailable: boolean;
 }) => {
   const isHosted = useSelector(getIsHosted);
+  const isAdmin = useSelector(getUserIsAdmin);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
-  const shouldShowContactAdmin = isHosted && !isStoreUser;
+  const shouldShowContactAdmin = isHosted && !isStoreUser && !isAdmin;
 
   return (
     <Stack gap="sm" w="100%">

@@ -54,6 +54,7 @@ export function makeFlowNode({
       description: null,
       owner: null,
       schema: "public",
+      visibility_type: null,
       db_id: 1,
       fields: resolvedFields.map((f, i) => ({
         id: i + 1,

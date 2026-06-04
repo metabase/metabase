@@ -2,10 +2,10 @@ import type { FunctionComponent } from "react";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { ActionsApi } from "metabase/services";
+import { Button } from "metabase/ui";
 import type { WritebackActionId } from "metabase-types/api";
 
 import type { ObjectId } from "./types";
@@ -52,7 +52,8 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
         <Button
           key="delete"
-          danger
+          variant="filled"
+          color="error"
           disabled={
             typeof actionId === "undefined" ||
             typeof objectId === "undefined" ||

@@ -18,9 +18,9 @@
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-open [index-ref (semantic.tu/open-temp-index!)]
-          (with-redefs [semantic.index-metadata/get-active-index-state (fn [_ _]
-                                                                         {:index @index-ref
-                                                                          :status :active})]
+          (mt/with-dynamic-fn-redefs [semantic.index-metadata/get-active-index-state (fn [_ _]
+                                                                                       {:index @index-ref
+                                                                                        :status :active})]
             (let [expected-search-items-count (search.ingestion/search-items-count)]
               (memoize/memo-clear! @#'semantic.api/indexible-items-count)
               (testing "Correctly reports empty index status"
@@ -39,8 +39,8 @@
             (is (= 402 (get-in response [:data :status-code])))))))
     (testing "with no active index"
       (mt/with-premium-features #{:semantic-search}
-        (with-redefs [semantic.env/get-pgvector-datasource! (constantly nil)
-                      semantic.env/get-index-metadata (constantly nil)]
+        (mt/with-dynamic-fn-redefs [semantic.env/get-pgvector-datasource! (constantly nil)
+                                    semantic.env/get-index-metadata (constantly nil)]
           (let [response (mt/user-http-request :crowberto :get 200 "ee/semantic-search/status")]
             (testing "returns empty map when no index is active"
               (is (= {} response)))))))))
@@ -59,7 +59,7 @@
       (semantic.tu/with-test-db! {:mode :mock-indexed}
         (let [original-index      semantic.tu/mock-index
               original-table-name (:table-name original-index)
-              new-index           (with-redefs [semantic.index/model-table-suffix (constantly 345)]
+              new-index           (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix (constantly 345)]
                                     (#'semantic.pgvector-api/fresh-index semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model :force-reset? true))
               new-table-name      (:table-name new-index)
               pgvector (semantic.env/get-pgvector-datasource!)]
@@ -69,7 +69,7 @@
             (is (=? original-index (:index best-index)))
             (is (:active best-index)))
           (testing "re-init creates the new index"
-            (with-redefs [semantic.index/model-table-suffix (constantly 345)]
+            (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix (constantly 345)]
               (let [response (mt/user-http-request :crowberto :post 200 "search/re-init")]
                 (is (contains? response :message))))
             (is (not= original-table-name new-table-name))
