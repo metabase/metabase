@@ -614,6 +614,7 @@
   [:map
    [:id            ms/PositiveInt]
    [:name          ms/NonBlankString]
+   [:url           :string]
    [:display       :string]
    [:collection_id [:maybe ms/PositiveInt]]
    [:description   [:maybe :string]]])
@@ -659,6 +660,7 @@
                 {:id api/*current-user-id*})]
       {:id            (:id card)
        :name          (:name card)
+       :url           (channel.urls/card-url (:id card))
        :display       (name (:display card))
        :collection_id (:collection_id card)
        :description   (:description card)})))

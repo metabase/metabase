@@ -702,6 +702,8 @@
                                                                                (mt/user->id :crowberto)
                                                                                (:query_handle construct-data))})
                     _              (reset! question-id (:id question-data))
+                    _              (is (= (format "https://stats.metabase.test/question/%d" @question-id)
+                                          (:url question-data)))
                     _              (call-tool session-id "update_question"
                                               {:id          (:id question-data)
                                                :description "Smoke updated description"})
