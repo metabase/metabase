@@ -7,16 +7,6 @@
   position: relative;
 }
 
-/* Top mode switcher — centers the `QuestionModeSwitcher` above
-   the greeting + prompt block. Sits out of `centeredContainer`'s
-   flex centering so the prompt itself stays true-vertically
-   centered on screen. */
-.modeSwitcher {
-  display: flex;
-  justify-content: center;
-  padding-top: 1.5rem;
-}
-
 /* Empty state - centered layout */
 .centeredContainer {
   display: flex;
@@ -26,22 +16,6 @@
   flex: 1;
   padding: 2rem;
   gap: 1.5rem;
-}
-
-.greeting {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  gap: 0.75rem;
-
-  @media screen and (--breakpoint-min-sm) {
-    flex-direction: row;
-  }
-}
-
-.greetingIcon {
-  width: 2.5rem;
-  height: 2.5rem;
 }
 
 .inputWrapper {

@@ -5,13 +5,19 @@ import {
   useMemo,
   useState,
 } from "react";
+import { t } from "ttag";
 
 import { useListTimelinesQuery } from "metabase/api";
 import {
   getDefaultExplorationName,
   isInterestingDimension,
 } from "metabase/explorations/constants";
-import type { ExplorationMetric } from "metabase/explorations/types";
+import type {
+  ExplorationCollection,
+  ExplorationMetric,
+} from "metabase/explorations/types";
+import { useSelector } from "metabase/redux";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   DimensionId,
   ExplorationDimensionGroup,
@@ -82,10 +88,12 @@ export interface ExplorationSelection {
   timelinesError: unknown;
 
   name: string;
-  setName: Dispatch<SetStateAction<string>>;
+  collection: ExplorationCollection;
 
   setBlocks: Dispatch<SetStateAction<ExplorationBlock[]>>;
   setTimelines: Dispatch<SetStateAction<Timeline[]>>;
+  setName: Dispatch<SetStateAction<string>>;
+  setCollection: (collection: Required<ExplorationCollection>) => void;
 
   addMetric: (metric: ExplorationMetric, context: ToggleMetricContext) => void;
   addDimension: (
@@ -173,9 +181,15 @@ function buildDimensionBlock(
 }
 
 export function useExplorationSelection(): ExplorationSelection {
+  const personalCollectionId = useSelector(getUserPersonalCollectionId);
+
   const [blocks, setBlocks] = useState<ExplorationBlock[]>([]);
   const [timelines, setTimelines] = useState<Timeline[]>([]);
   const [name, setName] = useState<string>(getDefaultExplorationName());
+  const [collection, setCollection] = useState<ExplorationCollection>({
+    id: personalCollectionId,
+    name: t`Personal collection`,
+  });
 
   const {
     data: allTimelines = [],
@@ -380,9 +394,11 @@ export function useExplorationSelection(): ExplorationSelection {
     timelinesLoading,
     timelinesError,
     name,
-    setName,
+    collection,
     setBlocks,
     setTimelines,
+    setName,
+    setCollection,
     addMetric,
     addDimension,
     toggleMetric,

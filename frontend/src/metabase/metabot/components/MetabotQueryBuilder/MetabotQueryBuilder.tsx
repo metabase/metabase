@@ -8,8 +8,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
-import { MetabotLogo } from "metabase/common/components/MetabotLogo";
-import { useSetting } from "metabase/common/hooks";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
@@ -19,6 +18,8 @@ import { getSettingsLoading } from "metabase/selectors/settings";
 import {
   ActionIcon,
   Box,
+  Button,
+  Flex,
   Icon,
   Paper,
   Stack,
@@ -29,7 +30,6 @@ import * as Urls from "metabase/urls";
 
 import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
-import { QuestionModeSwitcher } from "../QuestionModeSwitcher";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -85,7 +85,6 @@ const MetabotQueryBuilderInner = () => {
 
   const [title] = useState(getTitleText);
   const [hasError, setHasError] = useState(false);
-  const showIllustrations = useSetting("metabot-show-illustrations");
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
     metabot_id: metabotId,
@@ -183,18 +182,21 @@ const MetabotQueryBuilderInner = () => {
 
   return (
     <Box className={S.page}>
-      <Box className={S.modeSwitcher}>
-        <QuestionModeSwitcher value="ask" />
-      </Box>
       <Box className={S.centeredContainer}>
-        <Box className={S.greeting}>
-          {showIllustrations && <MetabotLogo className={S.greetingIcon} />}
-          <Text fz={{ base: "xl", sm: 32 }} fw={600} c="text-primary">
-            {title}
-          </Text>
-        </Box>
-
         <Stack gap="lg" className={S.inputWrapper}>
+          <Flex align="center" justify="space-between">
+            <Text fz="xl" fw={600} c="text-primary">
+              {title}
+            </Text>
+            <Button
+              component={ForwardRefLink}
+              to={Urls.newExploration()}
+              bd="none"
+              leftSection={<Icon name="learn" c="brand" />}
+            >
+              {t`Research`}
+            </Button>
+          </Flex>
           <Paper
             className={cx(
               S.inputContainer,
