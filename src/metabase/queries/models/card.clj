@@ -1259,7 +1259,11 @@
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defn- export-result-metadata [card _k metadata]
-  (if (and (seq metadata) (model? card))
+  (cond
+    (empty? metadata)
+    ::serdes/skip
+
+    (model? card)
     (let [native?   (lib/native? (:dataset_query card))
           keep-keys (into #{:name}
                           (map u/->snake_case_en)
@@ -1269,6 +1273,20 @@
                   (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
                   (m/update-existing :id serdes/*export-field-fk*)))
             metadata))
+
+    ;; Native non-model cards keep their full result_metadata. Unlike MBQL cards, their columns can't be
+    ;; re-derived from the query at import time without executing the SQL, and downstream questions that join
+    ;; them depend on this metadata to resolve join columns.
+    (lib/native? (:dataset_query card))
+    (mapv (fn [m]
+            (-> (dissoc m :fingerprint)
+                (m/update-existing :table_id           serdes/*export-table-fk*)
+                (m/update-existing :id                 serdes/*export-field-fk*)
+                (m/update-existing :field_ref          serdes/export-mbql)
+                (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))
+          metadata)
+
+    :else
     ::serdes/skip))
 
 (defn- import-result-metadata [metadata]
