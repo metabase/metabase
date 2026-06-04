@@ -240,6 +240,7 @@ export function MetabotSetupInner({
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-bedrock-access-key-id",
   ] as const);
 
   const disconnectProvider = useCallback(async () => {
@@ -263,6 +264,11 @@ export function MetabotSetupInner({
 
       if (!apiKeySetting?.is_env_setting) {
         settingsToClear[apiKeySettingKey] = null;
+      }
+
+      if (connectedProvider === "bedrock") {
+        settingsToClear["llm-bedrock-secret-access-key"] = null;
+        settingsToClear["llm-bedrock-session-token"] = null;
       }
     }
 
@@ -477,11 +483,19 @@ const AIProviderSetup = ({
   isCurrentConfigured: boolean;
   isEnvSetting: boolean;
 }) => {
+  const isBedrock = selectedProvider === "bedrock";
   const [model, setModel] = useState<string | undefined>(connectedModel);
   const [apiKeyLocalValue, setApiKeyLocalValue] = useState<string | null>(null);
   const [baseUrlLocalValue, setBaseUrlLocalValue] = useState<string | null>(
     null,
   );
+  const [secretAccessKeyLocalValue, setSecretAccessKeyLocalValue] = useState<
+    string | null
+  >(null);
+  const [regionLocalValue, setRegionLocalValue] = useState<string | null>(null);
+  const [sessionTokenLocalValue, setSessionTokenLocalValue] = useState<
+    string | null
+  >(null);
   const [sendToast] = useToast();
 
   useEffect(() => {
@@ -493,6 +507,24 @@ const AIProviderSetup = ({
   const [updateSettings] = useUpdateSettingsMutation();
 
   const onConnect = async () => {
+    if (isBedrock) {
+      await updateMetabotSettings({
+        provider: selectedProvider,
+        credentials: {
+          "access-key-id": apiKeyLocalValue || null,
+          "secret-access-key": secretAccessKeyLocalValue || null,
+          region: regionLocalValue || null,
+          "session-token": sessionTokenLocalValue || null,
+        },
+      }).unwrap();
+
+      setApiKeyLocalValue(null);
+      setSecretAccessKeyLocalValue(null);
+      setRegionLocalValue(null);
+      setSessionTokenLocalValue(null);
+      return;
+    }
+
     if (selectedProvider === "openai" && baseUrlLocalValue !== null) {
       await updateSettings({
         "llm-openai-api-base-url": baseUrlLocalValue || null,
@@ -510,8 +542,15 @@ const AIProviderSetup = ({
 
   const hasDirtyApiKey = apiKeyLocalValue !== null;
   const hasDirtyBaseUrl = baseUrlLocalValue !== null;
+  const hasDirtyBedrockCredentials =
+    secretAccessKeyLocalValue !== null ||
+    regionLocalValue !== null ||
+    sessionTokenLocalValue !== null;
   const connectHandler =
-    !isCurrentConfigured || hasDirtyApiKey || hasDirtyBaseUrl
+    !isCurrentConfigured ||
+    hasDirtyApiKey ||
+    hasDirtyBaseUrl ||
+    hasDirtyBedrockCredentials
       ? onConnect
       : null;
 
@@ -522,6 +561,10 @@ const AIProviderSetup = ({
     "llm-openai-api-key",
     "llm-openai-api-base-url",
     "llm-openrouter-api-key",
+    "llm-bedrock-access-key-id",
+    "llm-bedrock-secret-access-key",
+    "llm-bedrock-region",
+    "llm-bedrock-session-token",
   ] as const);
 
   const selectedApiKeySetting =
@@ -537,6 +580,21 @@ const AIProviderSetup = ({
       ? String(providerApiKeyDetails["llm-openai-api-base-url"]?.value ?? "")
       : "";
   const displayBaseUrlValue = baseUrlLocalValue ?? savedBaseUrlValue;
+
+  const savedSecretAccessKeyValue = String(
+    providerApiKeyDetails["llm-bedrock-secret-access-key"]?.value ?? "",
+  );
+  const displaySecretAccessKeyValue =
+    secretAccessKeyLocalValue ?? savedSecretAccessKeyValue;
+  const savedRegionValue = String(
+    providerApiKeyDetails["llm-bedrock-region"]?.value ?? "",
+  );
+  const displayRegionValue = regionLocalValue ?? savedRegionValue;
+  const savedSessionTokenValue = String(
+    providerApiKeyDetails["llm-bedrock-session-token"]?.value ?? "",
+  );
+  const displaySessionTokenValue =
+    sessionTokenLocalValue ?? savedSessionTokenValue;
 
   const metabotSettingsQuery = useGetMetabotSettingsQuery(
     {
@@ -563,6 +621,9 @@ const AIProviderSetup = ({
   useEffect(() => {
     setApiKeyLocalValue(null);
     setBaseUrlLocalValue(null);
+    setSecretAccessKeyLocalValue(null);
+    setRegionLocalValue(null);
+    setSessionTokenLocalValue(null);
   }, [selectedProvider, selectedApiKeySetting?.value]);
 
   const handleApiKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -571,6 +632,20 @@ const AIProviderSetup = ({
 
   const handleBaseUrlChange = (event: ChangeEvent<HTMLInputElement>) => {
     setBaseUrlLocalValue(event.target.value);
+  };
+
+  const handleSecretAccessKeyChange = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    setSecretAccessKeyLocalValue(event.target.value);
+  };
+
+  const handleRegionChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setRegionLocalValue(event.target.value);
+  };
+
+  const handleSessionTokenChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSessionTokenLocalValue(event.target.value);
   };
 
   const handleModelChange = async (value: string) => {
@@ -597,7 +672,7 @@ const AIProviderSetup = ({
     <>
       <TextInput
         key={selectedProvider}
-        label={t`API key`}
+        label={isBedrock ? t`Access Key ID` : t`API key`}
         type="password"
         description={
           <ExternalLink
@@ -632,6 +707,39 @@ const AIProviderSetup = ({
           disabled={isMutating || isEnvSetting}
           w="100%"
         />
+      )}
+
+      {isBedrock && (
+        <>
+          <TextInput
+            label={t`Secret Access Key`}
+            type="password"
+            placeholder={t`Enter your AWS secret access key`}
+            value={displaySecretAccessKeyValue}
+            onChange={handleSecretAccessKeyChange}
+            disabled={isMutating || isEnvSetting}
+            w="100%"
+          />
+          <TextInput
+            label={t`Region`}
+            description={t`The AWS region for Bedrock, e.g. us-east-1.`}
+            placeholder="us-east-1"
+            value={displayRegionValue}
+            onChange={handleRegionChange}
+            disabled={isMutating || isEnvSetting}
+            w="100%"
+          />
+          <TextInput
+            label={t`Session Token`}
+            type="password"
+            description={t`Optional. Only needed for temporary AWS credentials.`}
+            placeholder={t`Enter your AWS session token`}
+            value={displaySessionTokenValue}
+            onChange={handleSessionTokenChange}
+            disabled={isMutating || isEnvSetting}
+            w="100%"
+          />
+        </>
       )}
 
       {!needsApiKey && !apiKeyError && (

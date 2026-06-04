@@ -80,6 +80,16 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  bedrock: {
+    value: "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    models: [
+      {
+        id: "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+        display_name: "Claude Haiku 4.5",
+        group: "Anthropic",
+      },
+    ],
+  },
 };
 
 type MetabotUsageQuota = {
@@ -98,13 +108,23 @@ type MetabotSettingKey =
   | "llm-anthropic-api-key"
   | "llm-openai-api-key"
   | "llm-openai-api-base-url"
-  | "llm-openrouter-api-key";
+  | "llm-openrouter-api-key"
+  | "llm-bedrock-access-key-id"
+  | "llm-bedrock-secret-access-key"
+  | "llm-bedrock-region"
+  | "llm-bedrock-session-token";
 
 type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
 type MetabotSettingsUpdateBody = {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
+  credentials?: {
+    "access-key-id"?: string | null;
+    "secret-access-key"?: string | null;
+    region?: string | null;
+    "session-token"?: string | null;
+  } | null;
 };
 
 type SetupOptions = {
@@ -180,6 +200,7 @@ async function setup({
     anthropic: "**********45",
     openai: null,
     openrouter: null,
+    bedrock: null,
     ...apiKeyValues,
   };
 
@@ -234,6 +255,22 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-bedrock-access-key-id": createMockSettingDefinition({
+      key: "llm-bedrock-access-key-id",
+      value: mergedApiKeyValues.bedrock ?? undefined,
+    }),
+    "llm-bedrock-secret-access-key": createMockSettingDefinition({
+      key: "llm-bedrock-secret-access-key",
+      value: undefined,
+    }),
+    "llm-bedrock-region": createMockSettingDefinition({
+      key: "llm-bedrock-region",
+      value: "us-east-1",
+    }),
+    "llm-bedrock-session-token": createMockSettingDefinition({
+      key: "llm-bedrock-session-token",
+      value: undefined,
     }),
   };
 
@@ -324,6 +361,20 @@ async function setup({
         key: apiKeySettingKey,
         value: maskedApiKey,
       });
+    }
+
+    if ("credentials" in body && body.credentials) {
+      const { credentials } = body;
+      const maskedAccessKeyId = credentials["access-key-id"]
+        ? `**********${String(credentials["access-key-id"]).slice(-2)}`
+        : settingsDefinitions["llm-bedrock-access-key-id"].value;
+
+      settingsDefinitions["llm-bedrock-access-key-id"] =
+        createMockSettingDefinition({
+          ...settingsDefinitions["llm-bedrock-access-key-id"],
+          key: "llm-bedrock-access-key-id",
+          value: maskedAccessKeyId,
+        });
     }
 
     if ("model" in body) {
@@ -577,6 +628,111 @@ describe("MetabotSetup", () => {
       screen.getByLabelText("Base URL"),
       "https://new-endpoint.openai.azure.com",
     );
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
+  });
+
+  it("shows Amazon Bedrock as selectable in the provider dropdown", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+
+    const bedrockOption = await screen.findByRole("option", {
+      name: /Amazon Bedrock/,
+    });
+    expect(bedrockOption).toBeInTheDocument();
+    expect(bedrockOption).not.toHaveAttribute("data-combobox-disabled");
+  });
+
+  it("shows the AWS credential fields when Amazon Bedrock is selected", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Amazon Bedrock" }),
+    );
+
+    expect(await screen.findByLabelText("Access Key ID")).toBeInTheDocument();
+    expect(screen.getByLabelText("Secret Access Key")).toBeInTheDocument();
+    expect(screen.getByLabelText("Region")).toBeInTheDocument();
+    expect(screen.getByLabelText("Session Token")).toBeInTheDocument();
+    expect(screen.queryByLabelText("API key")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Base URL")).not.toBeInTheDocument();
+  });
+
+  it("defaults the Bedrock region to us-east-1", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Amazon Bedrock" }),
+    );
+
+    expect(await screen.findByLabelText("Region")).toHaveValue("us-east-1");
+  });
+
+  it("saves AWS credentials via the credentials payload on connect for Amazon Bedrock", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { bedrock: null },
+    });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Amazon Bedrock" }),
+    );
+
+    await userEvent.type(
+      await screen.findByLabelText("Access Key ID"),
+      "AKIAEXAMPLE",
+    );
+    await userEvent.type(
+      screen.getByLabelText("Secret Access Key"),
+      "secret-key",
+    );
+    await userEvent.clear(screen.getByLabelText("Region"));
+    await userEvent.type(screen.getByLabelText("Region"), "us-west-2");
+
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toBe(true);
+    });
+
+    const updateRequest = fetchMock.callHistory.calls(
+      "path:/api/metabot/settings",
+      { method: "PUT" },
+    )[0];
+    const body = JSON.parse(String(updateRequest?.options?.body ?? "{}"));
+    expect(body.provider).toBe("bedrock");
+    expect(body.credentials).toEqual({
+      "access-key-id": "AKIAEXAMPLE",
+      "secret-access-key": "secret-key",
+      region: "us-west-2",
+      "session-token": null,
+    });
+  });
+
+  it("enables Connect when only a Bedrock credential changes for a configured provider", async () => {
+    await setup({
+      savedProviderValue:
+        "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      isConfigured: true,
+      apiKeyValues: { bedrock: "**********EY" },
+    });
+
+    await screen.findByLabelText("Access Key ID");
+    expect(
+      screen.getByRole("button", { name: "Disconnect" }),
+    ).toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Region"));
+    await userEvent.type(screen.getByLabelText("Region"), "eu-central-1");
 
     expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
   });

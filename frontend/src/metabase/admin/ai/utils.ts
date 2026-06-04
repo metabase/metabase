@@ -62,6 +62,15 @@ export function getProviderOptions(
         addKeyUrl: "https://openrouter.ai/keys",
       },
     },
+    bedrock: {
+      value: "bedrock",
+      label: "Amazon Bedrock",
+      apiKey: {
+        placeholder: "AKIA...",
+        addKeyUrl:
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
+      },
+    },
   };
 }
 
@@ -84,17 +93,28 @@ export function isApiKeyMetabotProvider(
 
 export function isAvailableProvider(provider: MetabotProvider): boolean {
   return (
-    provider === "anthropic" || provider === "openai" || provider === "metabase"
+    provider === "anthropic" ||
+    provider === "openai" ||
+    provider === "bedrock" ||
+    provider === "metabase"
   );
+}
+
+export function isBedrockMetabotProvider(provider: MetabotProvider): boolean {
+  return provider === "bedrock";
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
-  "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
+  | "llm-anthropic-api-key"
+  | "llm-openai-api-key"
+  | "llm-openrouter-api-key"
+  | "llm-bedrock-access-key-id"
 > = {
   anthropic: "llm-anthropic-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
+  bedrock: "llm-bedrock-access-key-id",
 };
 
 export function parseProviderAndModel(value: string | null | undefined) {
