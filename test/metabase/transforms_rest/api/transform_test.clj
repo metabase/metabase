@@ -1808,12 +1808,14 @@
               seed-runs    (fn [data] (filter (comp run-id? :id) data))]
           (testing "desc — longest completed runs first; in-progress (null duration) sinks to the bottom"
             (let [resp (mt/user-http-request :crowberto :get 200 "transform/run"
+                                             :transform-ids [tid]
                                              :sort-column "duration"
                                              :sort-direction "desc")
                   ids  (map :id (seed-runs (:data resp)))]
               (is (= [long-id short-id running-id] ids))))
           (testing "asc — shortest completed runs first; in-progress run still last"
             (let [resp (mt/user-http-request :crowberto :get 200 "transform/run"
+                                             :transform-ids [tid]
                                              :sort-column "duration"
                                              :sort-direction "asc")
                   ids  (map :id (seed-runs (:data resp)))]
