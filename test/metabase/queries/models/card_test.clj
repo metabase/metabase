@@ -1561,3 +1561,35 @@
               (testing "remapped values appear correctly"
                 (is (= ["Zero" "A" "B" "C" "D"]
                        (map last rows)))))))))))
+
+(defn- dependent-card [db-id source-card]
+  {:database_id   db-id
+   :dataset_query {:lib/type :mbql/query
+                   :database db-id
+                   :stages   [{:lib/type    :mbql.stage/mbql
+                               :source-card (:id source-card)}]}})
+
+(deftest cascade-database-change-to-transitive-dependents-test
+  (testing "Recursive cascade through chains of dependent cards (#74561)"
+    (mt/with-temp [:model/Database {db1-id :id} {:name "db1" :engine :h2}
+                   :model/Database {db2-id :id} {:name "db2" :engine :h2}
+                   :model/Card     model        {:type          :model
+                                                 :database_id   db1-id
+                                                 :dataset_query {:lib/type :mbql/query
+                                                                 :database db1-id
+                                                                 :stages   [{:lib/type :mbql.stage/native
+                                                                             :native   "SELECT 1"}]}}
+                   :model/Card     question1    (dependent-card db1-id model)
+                   :model/Card     question2    (dependent-card db1-id model)
+                   :model/Card     question3    (dependent-card db1-id question1)
+                   :model/Card     question4    (dependent-card db1-id question2)]
+      (mt/with-test-user :crowberto
+        (card/update-card! {:card-before-update model
+                            :card-updates       {:dataset_query {:lib/type :mbql/query
+                                                                 :database db2-id
+                                                                 :stages   [{:lib/type :mbql.stage/native
+                                                                             :native   "SELECT 1"}]}}}))
+      (doseq [question [question1 question2 question3 question4]]
+        (let [updated-question (t2/select-one :model/Card :id (:id question))]
+          (is (= db2-id (get-in updated-question [:dataset_query :database])))
+          (is (= db2-id (:database_id updated-question))))))))
