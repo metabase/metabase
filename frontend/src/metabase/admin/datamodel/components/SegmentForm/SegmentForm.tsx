@@ -29,7 +29,6 @@ import {
   FormFooterContent,
   FormRoot,
   FormSection,
-  FormSubmitButton,
 } from "./SegmentForm.styled";
 
 export interface SegmentFormProps {
@@ -162,10 +161,16 @@ const SegmentFormActions = ({
 }: SegmentFormActionsProps): JSX.Element => {
   return (
     <div>
-      <FormSubmitButton type="submit" primary={isValid} disabled={!isValid}>
+      <Button
+        type="submit"
+        variant="filled"
+        size="sm"
+        disabled={!isValid}
+        mr="md"
+      >
         {t`Save changes`}
-      </FormSubmitButton>
-      <Button component={Link} to="/admin/datamodel/segments">
+      </Button>
+      <Button component={Link} size="sm" to="/admin/datamodel/segments">
         {t`Cancel`}
       </Button>
     </div>
