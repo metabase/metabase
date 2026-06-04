@@ -5,7 +5,7 @@ summary: Workspaces create isolated schemas in your data warehouse for you to te
 
 # Workspaces
 
-Workspaces are Metabase configurations that remap tables so you can test out new transforms in a safe way, without polluting your production schema.
+Workspaces are Metabase configurations that remap tables so you can test out new transforms safely, without polluting your production schema.
 
 ## How workspaces work
 
@@ -30,7 +30,7 @@ To use the workspace, spin up a dev instance of Metabase, navigate to **Data Stu
 
 ## Agent workflow with workspaces
 
-How you're most likely to use workspaces: to set up an environment where agents can write to your data warehouse in a safe way. Paired with the Metabase CLI, you can put agents to work building your semantic layer.
+How you're most likely to use workspaces: to set up an environment where agents can write to your data warehouse safely. Paired with the Metabase CLI, you can put agents to work building your semantic layer.
 
 The goal here is a setup where you prompt an agent to create a semantic layer for you. You can iterate on the agent's output, either with the agent or in the UI itself. Once you're happy, you can create a pull request to bring your changes into production using remote sync.
 
@@ -75,7 +75,6 @@ If you've (wisely) connected Metabase to your data warehouse using a user with l
 
    ```
    /metabase-cli the Sample PostgreSQL database contains normalized tables. Use transforms to create a semantic layer for people so they can self-serve questions about our customers. Build transforms (3 transforms max) that pull together data from the orders, people, products, and reviews tables. Create a dashboard with questions built on the tables created by the transforms that helps people understand our customers. Include metrics, and prefer query-builder questions so we get drill-through out of the box. Put these items in a new collection called Customers.
-
    ```
 
 2. The agent does its thing. Depending on your agent setup, it might follow up with some questions.
@@ -84,7 +83,7 @@ If you've (wisely) connected Metabase to your data warehouse using a user with l
 
    ![Workspace mapped tables](./images/workspace-mapped-tables.png)
 
-   The `Table` column shows the table created by a transform. The `Mapped Table` column shows where Metabase actually wrote the table: in the isolated schema in your data warehouse. If you look at any questions built on top of one of these tables, it'll look like they are targeting the `Table`, but under the hood Metabase queries the `Mapped Table`.
+   The **Table** column shows the table created by a transform. The **Mapped Table** column shows where Metabase actually wrote the table: in the isolated schema in your data warehouse. If you look at any questions built on top of one of these tables, it'll look like they are targeting the **Table**, but under the hood Metabase queries the **Mapped Table**.
 
 4. Iterate on the agent's output. You can either prompt the agent again, or make changes in Metabase's handy UI (it's actually faster for a lot of things, like arranging cards on a dashboard, and helps you get a feel for the data).
 
@@ -100,7 +99,7 @@ Once you're happy with your tables and any questions, documents, or dashboards, 
 
 4. If you created any transforms, you'll need to run those transforms in production to create the tables. The transforms in production will write to the tables they target (not to an isolated schema, since prod isn't—and shouldn't be—in a workspace). See [transforms](./transforms/transforms-overview.md#run-a-transform).
 
-## Deleting a workspace
+## Delete a workspace
 
 When you leave a workspace, the database connection will remain, but Metabase will stop remapping tables.
 
@@ -113,4 +112,4 @@ To delete the workspace, and the isolated schema the workspace was using in your
 5. Next to the workspace you want to delete, click the **Three-dot menu** next to the workspace's name.
 6. Select **Delete**, and **Delete workspace** in the confirmation modal.
 
-Metabase will delete both the db user it used to connect to your data warehouse, as well as the schema and tables (if any) it used for the workspace. You can't undo this.
+Metabase will delete both the database user it used to connect to your data warehouse, as well as the schema and tables (if any) it used for the workspace. You can't undo this.
