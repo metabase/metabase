@@ -12,6 +12,8 @@
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.models.serialization :as serdes]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
@@ -929,6 +931,62 @@
                            :dataset_query {:stages [{:aggregation [[:metric {} (:id new-metric)]]
                                                      :breakout    [[:field {} (mt/id :orders :user_id)]]}]}}
                           (t2/select-one :model/Card :name "Metric Consuming Question Card"))))))))))))
+
+(deftest gui-question-joined-to-native-source-card-survives-roundtrip-test
+  (testing "GUI question joining a native source-card should still run after serdes export+import (GHY-3801)"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (mt/with-temp
+            [:model/Collection {coll-id :id}                {:name "GHY-3801"}
+             :model/Card       {native-id :id
+                                native-eid :entity_id}      {:name          "Native Products"
+                                                             :collection_id coll-id
+                                                             :type          :question
+                                                             :display       :table
+                                                             :dataset_query {:type     :native
+                                                                             :database (mt/id)
+                                                                             :native   {:query "SELECT * FROM PRODUCTS"}}}
+             :model/Card       {gui-eid :entity_id}         {:name          "GUI Joins Native"
+                                                             :collection_id coll-id
+                                                             :type          :question
+                                                             :display       :table
+                                                             :dataset_query (mt/mbql-query nil
+                                                                              {:source-table (str "card__" native-id)
+                                                                               :joins        [{:fields       :all
+                                                                                               :strategy     :left-join
+                                                                                               :alias        "Products"
+                                                                                               :source-table $$products
+                                                                                               :condition    [:=
+                                                                                                              [:field "CATEGORY" {:base-type :type/Text}]
+                                                                                                              [:field %products.category {:join-alias "Products"}]]}]})}]
+            ;; Populate the native source card's result_metadata the way the app does when a user runs and
+            ;; saves the query. This is the state serdes must preserve across the round-trip.
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] native-id))
+                                   (get-in [:data :results_metadata :columns]))
+                  source-names (mapv :name source-cols)]
+              (t2/update! :model/Card native-id {:result_metadata source-cols})
+              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+                (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
+              (ts/with-db dest-db
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "serdes ingest succeeded")
+                (let [imported-native (t2/select-one :model/Card :entity_id native-eid)
+                      imported-gui    (t2/select-one :model/Card :entity_id gui-eid)]
+                  (testing "imported native card preserves its result_metadata columns"
+                    (is (= source-names (mapv :name (:result_metadata imported-native)))
+                        "Native source card lost result_metadata columns during serdes round-trip"))
+                  (testing "imported GUI question's query compiles without 'add alias info to join' errors"
+                    ;; Compile (not execute): the bug surfaces in add-alias-info during compilation, and serdes
+                    ;; strips warehouse connection details so the imported card can't actually be run here.
+                    (let [result (try
+                                   (qp.compile/compile (:dataset_query imported-gui))
+                                   (catch Throwable e
+                                     {:error (ex-message e)
+                                      :data  (ex-data e)}))]
+                      (is (not (and (map? result) (:error result)))
+                          (str "Expected query to compile but got error: "
+                               (when (map? result) (:error result)))))))))))))))
 
 (deftest schema-coercion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
