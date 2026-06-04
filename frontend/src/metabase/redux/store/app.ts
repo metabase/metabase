@@ -1,11 +1,6 @@
 import type { Table } from "metabase-types/api";
 import type { CollectionId } from "metabase-types/api/collection";
 
-/**
- * Identifiers for the onboarding checklist items. Lives here (rather than in the
- * `home` feature that renders the checklist) because the temp-storage contract
- * below is shared infra; `home` imports it back from `metabase/redux/store`.
- */
 export type ChecklistItemValue =
   | "database"
   | "invite"
