@@ -389,7 +389,6 @@
                             :profile-id      "internal"
                             :total-tokens    8
                             :data            [{:type "text" :text "hi there"}]})
-
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))]
             (is (= conversation-id (:conversation_id response)))
@@ -464,7 +463,6 @@
                                               {:type   "tool-output"
                                                :id     "call-failed"
                                                :result {:output "<result>SQL query construction failed.</result>"}}]})
-
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))
                 queries  (:queries response)]
@@ -692,10 +690,10 @@
                                  :slack-team-id    "T123"
                                  :slack-channel-id "C123"
                                  :slack-thread-ts  "1712785577.123456"})
-          (with-redefs [slackbot.api/conversation-permalink (fn [channel ts]
-                                                              (is (= "C123" channel))
-                                                              (is (= "1712785577.123456" ts))
-                                                              permalink)]
+          (mt/with-dynamic-fn-redefs [slackbot.api/conversation-permalink (fn [channel ts]
+                                                                            (is (= "C123" channel))
+                                                                            (is (= "1712785577.123456" ts))
+                                                                            permalink)]
             (let [response (mt/user-http-request :crowberto :get 200
                                                  (format "ee/metabot-analytics/conversations/%s" conversation-id))]
               (is (= permalink (:slack_permalink response)))))

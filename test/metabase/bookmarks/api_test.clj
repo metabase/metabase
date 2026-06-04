@@ -131,19 +131,16 @@
         (is (= (u/the-id document)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/document/" (u/the-id document)))
                     :document_id))))
-
       (testing "document appears in bookmark list"
         (let [result (mt/user-http-request :rasta :get 200 "bookmark")
               document-bookmark (first (filter #(= (:type %) "document") result))]
           (is (some? document-bookmark))
           (is (= "Test Document" (:name document-bookmark)))
           (is (= (u/the-id document) (:item_id document-bookmark)))))
-
       (testing "can delete document bookmark"
         (mt/user-http-request :rasta :delete 204 (str "bookmark/document/" (u/the-id document)))
         (is (empty? (filter #(= (:type %) "document")
                             (mt/user-http-request :rasta :get 200 "bookmark")))))
-
       (testing "document bookmarks are included in ordering"
         (mt/with-temp [:model/Card card {:name "Test Card"}]
           (mt/with-model-cleanup [:model/BookmarkOrdering]

@@ -45,6 +45,7 @@ import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import {
@@ -67,7 +68,6 @@ import {
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   Card,
   CardId,
@@ -172,6 +172,7 @@ type VisualizationOwnProps = {
   timelineEvents?: TimelineEvent[];
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
+  onZoomRow?: (rowIndex: number) => void;
   onOpenChartSettings?: (data: {
     initialChartSettings?: { section: string };
     showSidebarTitle?: boolean;
@@ -723,6 +724,7 @@ class Visualization extends PureComponent<
       onUpdateWarnings,
       titleMenuItems,
       zoomedRowIndex,
+      onZoomRow,
       tableFooterExtraButtons,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
@@ -796,10 +798,7 @@ class Visualization extends PureComponent<
     }
 
     if (!error && !genericError && series) {
-      noResults = _.every(
-        series,
-        (s) => s && s.data && datasetContainsNoResults(s.data),
-      );
+      noResults = _.every(series, (s) => s && s.data && hasNoResults(s.data));
     }
 
     const extra = (
@@ -978,6 +977,7 @@ class Visualization extends PureComponent<
                     visualizationIsClickable={this.visualizationIsClickable}
                     width={rawWidth}
                     zoomedRowIndex={zoomedRowIndex}
+                    onZoomRow={onZoomRow}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={
                       this.props.onChangeCardAndRun

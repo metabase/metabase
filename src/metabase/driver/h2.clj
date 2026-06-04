@@ -30,12 +30,13 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some]])
+   [metabase.util.performance :as perf :refer [every? some]])
   (:import
    (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
-   (org.h2.engine SessionLocal)))
+   (org.h2.engine SessionLocal)
+   (org.h2.util StringUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -251,6 +252,43 @@
       (catch org.h2.message.DbException _
         {:command-types [] :remaining-sql nil}))))
 
+(def ^:private unsupported-builtin-functions
+  "H2 built-in functions that operate on the server environment (filesystem, linked databases,
+   session and memory state) rather than on query data. They are not supported in native queries
+   or actions, and can be embedded inside otherwise-ordinary SELECT/CALL statements, so they are
+   matched by name rather than by statement type."
+  #{"ABORT_SESSION"
+    "CANCEL_SESSION"
+    "CSVREAD"
+    "CSVWRITE"
+    "DATABASE_PATH"
+    "DB_OBJECT_ID"
+    "DB_OBJECT_SQL"
+    "FILE_READ"
+    "FILE_WRITE"
+    "LINK_SCHEMA"
+    "MEMORY_FREE"
+    "MEMORY_USED"})
+
+(def ^:private unsupported-builtin-function-regex
+  (re-pattern (str "(?i)\\b(?:" (str/join "|" unsupported-builtin-functions) ")\\b")))
+
+(defn- unsupported-functions-in-query
+  "The set of `unsupported-builtin-functions` referenced by `sql`, or nil if none. Scans the SQL
+   text rather than the parsed command, so it still applies when the H2 parser is unavailable."
+  [sql]
+  (when sql
+    (perf/not-empty
+     (into #{} (map u/upper-case-en)
+           (re-seq unsupported-builtin-function-regex
+                   (StringUtils/toUpperEnglish sql))))))
+
+(defn- check-no-unsupported-functions [sql]
+  (when-let [fns (unsupported-functions-in-query sql)]
+    (throw (ex-info (tru "These functions are not supported in native queries: {0}" (str/join ", " (sort fns)))
+                    {:type      driver-api/qp.error-type.db
+                     :functions fns}))))
+
 (defn- every-command-allowed-for-actions? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
     (boolean
@@ -281,6 +319,7 @@
 
 (defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
   (when query
+    (check-no-unsupported-functions query)
     (when-let [query-classification (classify-query database query)]
       (when-not (every-command-allowed-for-actions? query-classification)
         (throw (ex-info "DDL commands are not allowed to be used with H2."
@@ -300,6 +339,7 @@
                                                                               [:map
                                                                                [:query string?]]]]]
   (when sql
+    (check-no-unsupported-functions sql)
     (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
                                                sql)]
       (when-not (read-only-statements? query-classification)
@@ -331,6 +371,10 @@
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
+(defmethod sql.qp/add-interval-honeysql-form :h2-mbql5
+  [driver hsql-form amount unit]
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+
 (defmethod driver/humanize-connection-error-message :h2
   [_ messages]
   (let [message (first messages)]
@@ -357,6 +401,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
+
+(defmethod sql.qp/current-datetime-honeysql-form :h2-mbql5
   [driver]
   (h2x/current-datetime-honeysql-form driver))
 
@@ -474,10 +522,8 @@
          [:case
           [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 
@@ -743,7 +789,10 @@
                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [password]))))))
     {:schema           schema-name
      :database_details {:db new-db}}))
 

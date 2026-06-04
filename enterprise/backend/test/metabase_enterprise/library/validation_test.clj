@@ -40,7 +40,6 @@
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id allow-tables)}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-tables)})))))
-
       (testing "Can add collections iff they have the same :type"
         (let [new-coll (merge (mt/with-temp-defaults :model/Collection)
                               {:location (str "/" (:id allow-tables) "/")})]

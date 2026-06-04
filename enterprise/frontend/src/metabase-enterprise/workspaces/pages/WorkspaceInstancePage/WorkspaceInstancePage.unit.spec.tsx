@@ -18,19 +18,21 @@ import { WorkspaceInstancePage } from "./WorkspaceInstancePage";
 
 const POSTGRES = createMockDatabase({ id: 10, name: "Postgres" });
 
-function setup({ remappings = [] as TableRemapping[] } = {}) {
+function setup({
+  remappings = [] as TableRemapping[],
+  workspace = createMockWorkspaceInstance({
+    name: "Dev workspace",
+    databases: {
+      [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
+        input_schemas: ["public"],
+        output: { schema: "ws_dev" },
+      }),
+    },
+    can_write: true,
+  }),
+} = {}) {
   setupDatabasesEndpoints([POSTGRES]);
-  setupGetCurrentWorkspaceEndpoint(
-    createMockWorkspaceInstance({
-      name: "Dev workspace",
-      databases: {
-        [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
-          input_schemas: ["public"],
-          output: { schema: "ws_dev" },
-        }),
-      },
-    }),
-  );
+  setupGetCurrentWorkspaceEndpoint(workspace);
   setupListTableRemappingsEndpoint(remappings);
 
   renderWithProviders(<Route path="*" component={WorkspaceInstancePage} />, {
@@ -65,5 +67,43 @@ describe("WorkspaceInstancePage", () => {
     expect(
       await screen.findByRole("region", { name: "Postgres" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows the help menu when a workspace is set up", async () => {
+    setup();
+
+    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Help/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the delete section", async () => {
+    setup();
+
+    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("workspace-instance-delete-section"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the delete section when can_write is false", async () => {
+    setup({
+      workspace: createMockWorkspaceInstance({
+        name: "Dev workspace",
+        databases: {
+          [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
+            input_schemas: ["public"],
+            output: { schema: "ws_dev" },
+          }),
+        },
+        can_write: false,
+      }),
+    });
+
+    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("workspace-instance-delete-section"),
+    ).not.toBeInTheDocument();
   });
 });

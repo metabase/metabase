@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type * as LibMetric from "metabase-lib/metric";
-import type { Card, CardId, DatabaseId } from "metabase-types/api";
+import type { Card, CardId, DatabaseId, TableId } from "metabase-types/api";
 
 export interface DimensionWithDefinition {
   dimension: LibMetric.DimensionMetadata;
@@ -13,9 +13,9 @@ export interface MetricUrls {
   overview: (cardId: CardId) => string;
   query: (cardId: CardId) => string;
   dependencies: (cardId: CardId) => string;
-  caching: (cardId: CardId) => string;
   history: (cardId: CardId) => string;
   database?: (databaseId: DatabaseId) => string;
+  table?: (databaseId: DatabaseId, tableId: TableId) => string;
 }
 
 export interface MetricPageParams {

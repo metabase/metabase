@@ -53,7 +53,6 @@
    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:earliest             {:optional true} [:maybe :string]]
    [:latest               {:optional true} [:maybe :string]]
-   [:skewness             {:optional true} [:maybe number?]]
    [:mode-fraction        {:optional true} [:maybe [:ref ::percent]]]
    [:top-3-fraction       {:optional true} [:maybe [:ref ::percent]]]])
 

@@ -630,7 +630,6 @@
    (or
     ;; If collection has an owner ID we're already done here, we know it's a Personal Collection
     (:personal_owner_id collection)
-
     ;; Try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`. Then see if
     ;; the root-level ancestor is a Personal Collection (Personal Collections can only exist in the Root Collection.)
     (when-let [id (first (location-path->ids (:location collection)))]
@@ -827,10 +826,8 @@
    (and
     ;; we have permission for it.
     (can-access-root-collection? user-scope (:permission-level visibility-config))
-
     ;; we're not *only* looking for archived items
     (not= :only (:include-archived-items visibility-config))
-
     ;; we're not looking for a particular `archive_operation_id`
     (not (:archive-operation-id visibility-config)))))
 
@@ -906,24 +903,20 @@
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
-
             ;; hiding archived items when desired...
             (when (= :exclude (:include-archived-items visibility-config))
               [:= :c.archived false])
-
             ;; (or showing them, if that's what you want)
             (when (= :only (:include-archived-items visibility-config))
               [:or
                [:= :c.archived true]
                ;; the trash collection is included when viewing archived-only
                [:= :id [:inline (trash-collection-id)]]])
-
             (when-not (perms/use-tenants)
               [:not [:exists {:select [1]
                               :from [[:collection :sub_c]]
                               :where [:and [:= :c.id :sub_c.id]
                                       [:= :sub_c.namespace [:inline "shared-tenant-collection"]]]}]])
-
             ;; excluding things outside of the `archive_operation_id` you wanted...
             (when-let [op-id (:archive-operation-id visibility-config)]
               [:or
@@ -972,7 +965,6 @@
        [:and
         ;; an effective child is a descendant of the parent collection
         [:like (->col "location") (str (children-location parent-coll) "%")]
-
         ;; but NOT a child of any OTHER visible collection.
         [:not [:exists {:select 1
                         :from [[:collection :c2]]
@@ -1670,7 +1662,6 @@
                                                                   :archived [:= true]))]
     (api/check-400
      (and (some? new-parent) (not (:archived new-parent))))
-
     (if (contains? updates :parent_id)
       (api/check-403
        (and (mi/can-write? new-parent)
@@ -1680,7 +1671,6 @@
       ;; Restoring to original location, use `can_restore` for a single source of truth
       (api/check-403
        (:can_restore (t2/hydrate collection :can_restore))))
-
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
                   {:location             new-location
@@ -1973,7 +1963,6 @@
         (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
-
     ;; (3.6) Check that the parent collection allows this collection to be there
     (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (3.7) Check if it's a semantic-library collection that can't be updated
@@ -2019,7 +2008,6 @@
                    :model/Pulse
                    :model/Timeline]]
       (t2/delete! model :collection_id [:in affected-collection-ids])))
-
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
@@ -2090,14 +2078,18 @@
                               [:in :id collection-set]
                               (when (some nil? collection-set) [:= :id nil])]
                              not-trash-clause
-                             (or where true)]})
+                             (or where true)]
+                            ;; stable filename de-dup suffixes across exports, see GHY-3754
+                            :order-by serdes/stable-storage-order})
       (t2/reducible-select :model/Collection
                            {:where
                             [:and
                              (when skip-archived [:not :archived])
                              [:= :personal_owner_id nil]
                              not-trash-clause
-                             (or where true)]}))))
+                             (or where true)]
+                            ;; stable filename de-dup suffixes across exports, see GHY-3754
+                            :order-by serdes/stable-storage-order}))))
 
 (defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]
@@ -2408,21 +2400,17 @@
                               (and
                                ;; the item is archived
                                (:archived item)
-
                                ;; the item is directly in the trash (it was archived independently, not as
                                ;; part of a collection)
                                (:archived_directly item)
-
                                ;; EITHER:
                                (or
                                 ;; the item was archived from the root collection
                                 (nil? (:collection_id item))
                                 ;; or the collection we'll restore to actually exists.
                                 (some? collection))
-
                                ;; the collection we'll restore to is not archived
                                (not (:archived collection))
-
                                ;; we have perms on the collection
                                (mi/can-write? (or collection root-collection)))))))
 

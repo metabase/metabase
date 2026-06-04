@@ -4,8 +4,10 @@ import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
   Dashboard,
+  DashboardCardQueryRequest,
   DashboardId,
   DashboardQueryMetadata,
+  Dataset,
   FieldId,
   FieldValue,
   GetDashboardQueryMetadataRequest,
@@ -28,6 +30,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideCardQueryTags,
   provideDashboardListTags,
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
@@ -35,7 +38,7 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -70,7 +73,7 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboards) =>
           dashboards ? provideDashboardListTags(dashboards) : [],
-        onQueryStarted: hydrateLegacyEntities([DashboardSchema]),
+        onQueryStarted: hydrateMetadataStore([DashboardSchema]),
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
         query: ({ id, ignore_error }) => ({
@@ -80,7 +83,7 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboard) =>
           dashboard ? provideDashboardTags(dashboard) : [],
-        onQueryStarted: hydrateLegacyEntities(DashboardSchema),
+        onQueryStarted: hydrateMetadataStore(DashboardSchema),
       }),
       getDashboardQueryMetadata: builder.query<
         DashboardQueryMetadata,
@@ -93,7 +96,45 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
-        onQueryStarted: hydrateLegacyEntities(QueryMetadataSchema),
+        onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
+      }),
+      getDashboardCardQuery: builder.query<
+        Dataset,
+        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+      >({
+        // `_refetchDeps` is part of the RTK cache key (so imperative runners can
+        // force a unique key per call) but must not be sent to the server.
+        query: ({
+          dashboardId,
+          dashcardId,
+          cardId,
+          _refetchDeps,
+          ...body
+        }) => ({
+          method: "POST",
+          url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
+          body,
+        }),
+        providesTags: (_data, _error, { cardId }) =>
+          provideCardQueryTags(cardId),
+      }),
+      getDashboardCardQueryPivot: builder.query<
+        Dataset,
+        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+      >({
+        query: ({
+          dashboardId,
+          dashcardId,
+          cardId,
+          _refetchDeps,
+          ...body
+        }) => ({
+          method: "POST",
+          url: `/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
+          body,
+        }),
+        providesTags: (_data, _error, { cardId }) =>
+          provideCardQueryTags(cardId),
       }),
       getRemappedDashboardParameterValue: builder.query<
         FieldValue,
@@ -263,6 +304,8 @@ export const {
   useGetDashboardQuery,
   useLazyGetDashboardQuery,
   useGetDashboardQueryMetadataQuery,
+  useGetDashboardCardQueryQuery,
+  useGetDashboardCardQueryPivotQuery,
   useListDashboardsQuery,
   useListDashboardItemsQuery,
   useGetRemappedDashboardParameterValueQuery,

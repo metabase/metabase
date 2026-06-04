@@ -194,7 +194,6 @@
                    :recipients    [{:email "foo@bar.com"}
                                    {:id (mt/user->id :rasta)}
                                    {:id (mt/user->id :crowberto)}]}))))
-
         (testing "slack"
           (is (= (merge default-pulse-channel
                         {:channel_type :slack
@@ -222,7 +221,6 @@
                    :schedule_type :daily
                    :schedule_hour 18
                    :recipients    [{:email "foo@bar.com"}]})))))
-
       (testing "monthly schedules require a schedule_frame and can optionally omit they schedule_day"
         (mt/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
           (is (= (merge default-pulse-channel
@@ -240,7 +238,6 @@
                    :schedule_day   nil
                    :schedule_frame :mid
                    :recipients     [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
-
       (testing "weekly schedule should have a day in it, show that we can get full users"
         (mt/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
           (is (= (merge default-pulse-channel
@@ -257,7 +254,6 @@
                    :schedule_hour 8
                    :schedule_day  "mon"
                    :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
-
       (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
         (mt/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
           (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
@@ -275,7 +271,6 @@
                    :schedule_hour 12
                    :schedule_day  "tue"
                    :recipients    [{:id (mt/user->id :crowberto)}]})))))
-
       (testing "custom details for channels that need it"
         (mt/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
           (is (= (merge default-pulse-channel
@@ -402,21 +397,17 @@
       (testing "Creating a PulseChannel will creates a trigger"
         (is (= #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id])}
                (send-pulse-triggers pulse-id))))
-
       (testing "updating the schedule of a trigger will remove it from the existing trigger and create a new one"
         (t2/update! :model/PulseChannel pc-id daily-at-7pm)
         (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
                 (send-pulse-triggers pulse-id))))
-
       (testing "disable PC will delete its trigger"
         (t2/update! :model/PulseChannel pc-id {:enabled false})
         (is (empty? (send-pulse-triggers pulse-id))))
-
       (testing "reenable PC will add its trigger"
         (t2/update! :model/PulseChannel pc-id {:enabled true})
         (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
                 (send-pulse-triggers pulse-id))))
-
       (testing "remove the trigger if PC is deleted"
         (t2/delete! :model/PulseChannel pc-id)
         (is (empty? (send-pulse-triggers pulse-id)))))))
@@ -430,32 +421,27 @@
       (testing "pc 1 will have its own channel to start with"
         (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
                 (send-pulse-triggers pulse-id))))
-
       (testing "add a new pc with the same time will update the existing trigger"
         (mt/with-temp [:model/PulseChannel {pc-id-2 :id} (merge {:pulse_id     pulse-id
                                                                  :channel_type :slack}
                                                                 daily-at-6pm)]
           (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
                   (send-pulse-triggers pulse-id)))
-
           (t2/delete! :model/PulseChannel pc-id-2)
           (testing "deleting channel-2 should remove the id, but keep the existing trigger"
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
                     (send-pulse-triggers pulse-id))))))
-
       (testing "add a new pc then change its schedule"
         (mt/with-temp [:model/PulseChannel {pc-id-2 :id} (merge {:pulse_id     pulse-id
                                                                  :channel_type :slack}
                                                                 daily-at-6pm)]
           (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
                   (send-pulse-triggers pulse-id)))
-
           (testing "change schedule of a trigger will remove it from the existing trigger and create a new one"
             (t2/update! :model/PulseChannel pc-id-2 daily-at-7pm)
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])
                       (pulse->trigger-info pulse-id daily-at-7pm [pc-id-2])}
                     (send-pulse-triggers pulse-id))))
-
           (testing "change it back to the original schedule will remove the trigger and update channel-ids of the existing one"
             (t2/update! :model/PulseChannel pc-id-2 daily-at-6pm)
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}

@@ -52,7 +52,7 @@
             "add-transform-target-mapping! receives the db-id and the canonical target map verbatim")))))
 
 (defn- with-instance-workspace-for-db!
-  "Set the in-process workspace atom so that `db-workspace-namespace` returns
+  "Set the `instance-workspace` setting so that `db-workspace-namespace` returns
    `{:schema output-schema}` for the test database, run `body-fn`, clear it on
    the way out."
   [output-schema body-fn]

@@ -28,4 +28,5 @@ config:
       test-data (postgres):
         input_schemas:
         - public
-        output_namespace: mb__isolation_44490_1933
+        output:
+          schema: mb__isolation_44490_1933

@@ -21,8 +21,6 @@ AI features are available on both Metabase Cloud and self-hosted Metabase. To tu
    - Another supported provider. See [bring your own API key](#bring-your-own-api-key).
 3. Once connected, configure [Metabot](#configure-metabot) and other AI features below.
 
-> The Metabase AI add-on only appears in your Metabase Store account after you've connected to the Metabase AI service in **Admin settings > AI**. If you're on a Pro trial and don't see the add-on in **Manage plan**, connect it from Admin first; the Store will reflect it after.
-
 ## Choose AI provider
 
 _Admin > AI_
@@ -42,8 +40,6 @@ Metabase's AI Service is a good option if you don't have a preferred AI provider
 
 If you use Metabase's AI Service, you'll get charge based on token usage (in addition to your regular Metabase Cloud subscription fee). See [Pricing](https://www.metabase.com/pricing).
 
-To enable Metabase's AI Service on Metabase Cloud, you must me logged in to your Metabase instance with the email that matches the email for the admin of your [Metabase Store account](https://store.metabase.com).
-
 To use Metabase AI provider for your Metabot:
 
 1. Go to **Admin > AI > AI settings**.
@@ -55,8 +51,6 @@ To disable Metabase AI provider and stop charges:
 
 1. Go to **Admin > AI > AI settings**.
 2. Under **Connected to Metabase**, click **Disconnect**.
-
-Any Metabase instance admin can disconnect the Metabase AI Service, even if they lack an admin account in the Metabase store.
 
 ### Bring your own API key
 
@@ -193,28 +187,11 @@ If you're using your own API key, you can track usage and costs through your AI 
 
 On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](usage-auditing.md) with detailed breakdown of AI usage by user, tool, feature etc.
 
-## Privacy
-
-When using the Metabase AI service, your questions and conversations remain private to your Metabase -- we don't send your data to external services. We do collect some metadata to gauge and improve usage.
-
-If you're using your own API key, your prompts and data are sent to your selected AI provider. Review your provider's data handling and privacy policies. When using the [MCP server](./mcp.md), query results are sent to the connected MCP client.
-
-In both cases, Metabot can't create assets or write data. If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses), the form you send may contain sensitive data from your conversation.
-
-### What Metabot can see
-
-Metabot has access to your Metabase metadata and some data values to help answer your questions:
-
-- **Table, Question, Model, Dashboard, and Metric metadata**: Metabot can see the structure and configuration of your content.
-- **Sample field values**: When you ask questions like "Filter everyone from Wisconsin," Metabot might check the values in the state field to understand how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
-- **Timeseries data**: For chart analysis, Metabot might see the timeseries data used to draw certain visualizations, depending on the chart type.
-
-When you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses), the context for the conversation - including this metadata and conversation prompts - might be sent to Metabase.
-
 ## Further reading
 
 - [Using Metabot](metabot.md)
 - [MCP server](mcp.md)
+- [AI privacy](privacy.md)
 - [AI access and usage controls](usage-controls.md)
 - [AI usage auditing](usage-auditing.md)
 - [Metabot customization](customization.md)

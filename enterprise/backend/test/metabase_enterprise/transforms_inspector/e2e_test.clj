@@ -175,7 +175,6 @@
       (let [step-cards (filter #(re-matches #"join-step-\d+" (:id %))
                                (get-in ja [:lens :cards]))]
         (is (= 3 (count step-cards)))))
-
     (testing "all join-step cards return output_count and matched_count"
       (doseq [step [1 2 3]
               :let [r (join-step-result ja step)]]
@@ -185,13 +184,11 @@
               (str "step " step " should have rows"))
           (is (number? (get r "matched_count"))
               (str "step " step " should have matched_count")))))
-
     (testing "INNER JOIN (step 1) has 0% null rate"
       (let [r (join-step-result ja 1)]
         (when r
           (is (= 0 (get r "null_count"))
               "INNER JOIN should have no unmatched rows"))))
-
     (testing "LEFT JOIN reviews (step 3) has non-zero null rate"
       (let [r (join-step-result ja 3)]
         (when r
@@ -199,7 +196,6 @@
               "LEFT JOIN reviews should have unmatched rows")
           (is (pos? (get r "null_rate"))
               "null_rate should be positive"))))
-
     (testing "triggers fire for LEFT JOINs with unmatched rows"
       (let [{:keys [triggers]} ja]
         (is (seq (:alerts triggers))
@@ -209,7 +205,6 @@
         (when (= source-type :mbql)
           (is (seq (:drill_lenses triggers))
               "should have at least one drill lens trigger"))))
-
     (when (= source-type :mbql)
       (testing "unmatched-rows drill lens fires and its cards execute"
         (let [{:keys [drills]} ja]

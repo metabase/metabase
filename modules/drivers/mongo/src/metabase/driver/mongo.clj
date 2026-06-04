@@ -300,7 +300,6 @@
             (->> (get-in ftree* (conj path :children))
                  keys (sort-by (juxt #(get-in ftree* (conj path :children % :index)) identity))
                  (map (partial conj path :children))))
-
           (ftree-prewalk*
             [ftree* path]
             (reduce ftree-prewalk*
@@ -524,9 +523,9 @@
   (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
 
-(defmethod driver/substitute-native-parameters :mongo
-  [driver inner-query]
-  (mongo.params/substitute-native-parameters driver inner-query))
+(defmethod driver/substitute-native-parameters-in-stage-method :mongo
+  [driver metadata-providerable stage]
+  (mongo.params/substitute-native-parameters driver metadata-providerable stage))
 
 (defmethod driver/db-start-of-week :mongo
   [_]

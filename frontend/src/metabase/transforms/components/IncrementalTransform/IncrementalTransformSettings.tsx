@@ -84,7 +84,7 @@ export const IncrementalTransformSettings = ({
       if (!hasCheckpointOptions) {
         return t`Incremental transforms require at least one numeric or temporal source field.`;
       }
-      return t`Only process new and changed data`;
+      return t`Only process new data`;
     };
 
     const transformHasIssues =

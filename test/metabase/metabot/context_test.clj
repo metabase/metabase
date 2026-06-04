@@ -273,7 +273,6 @@
                             [:model/Card um]
                             [:model/Dashboard ud]]]
           (recent-views/update-users-recent-views! (mt/user->id :rasta) model id :view))
-
         ;; IDs are unique per model but can collide across models (e.g. a Card and a Dashboard
         ;; can share the same id). Identify items by [:type :id] pairs so cross-model collisions
         ;; don't mask filtering bugs.
@@ -286,7 +285,6 @@
               ud*     (as-pair "dashboard" ud)
               table*  (as-pair "table"     table-id)
               keys-of (fn [items] (set (map (juxt :type :id) items)))]
-
           (testing "no metabot-id passed -> no filtering (even with :content-verification active)"
             (mt/with-premium-features #{:content-verification}
               (let [items (-> (context/create-context {}) :user_recently_viewed)
@@ -296,7 +294,6 @@
                 (is (contains? ks um*))
                 (is (contains? ks ud*))
                 (is (contains? ks table*)))))
-
           (testing "use_verified_content=true with :content-verification feature -> filters"
             (mt/with-premium-features #{:content-verification}
               (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
@@ -312,7 +309,6 @@
                       "Should keep 5 items even though 3 unverified items were ahead of older verified items")
                   (is (contains? ks vm2*))
                   (is (contains? ks vm1*))))))
-
           (testing "use_verified_content=true but premium feature absent -> no filtering"
             (mt/with-premium-features #{}
               (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
@@ -321,7 +317,6 @@
                 (is (contains? ks uq*))
                 (is (contains? ks um*))
                 (is (contains? ks ud*)))))
-
           (testing "metabot-id that does not resolve -> no filtering"
             (mt/with-premium-features #{:content-verification}
               (let [items (-> (context/create-context {} {:metabot-id "nonexistent-entity-id"})

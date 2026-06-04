@@ -35,17 +35,11 @@
   "Prefix used for temporary tables created during transforms."
   "mb_transform_temp_table")
 
-(defn- transforms-enabled?
-  "Whether any transforms are enabled."
-  []
-  (or (not (premium-features/is-hosted?))
-      (premium-features/has-feature? :transforms-basic)))
-
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
   [table]
   (boolean
-   (when (and (transforms-enabled?) (:name table))
+   (when (and (premium-features/any-transforms-enabled?) (:name table))
      (str/starts-with? (u/lower-case-en (:name table)) transform-temp-table-prefix))))
 
 (derive ::event :metabase/event)

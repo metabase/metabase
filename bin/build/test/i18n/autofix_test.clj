@@ -48,20 +48,16 @@
       "It's {0}"                      "It''s {0}"
       "won't {0} do"                  "won''t {0} do"
       "Cam's file"                    "Cam''s file"))
-
   (testing "Already-escaped apostrophes are not re-doubled"
     (is (= "It''s fine" (fix-backend-str "It''s fine"))))
-
   (testing "Intentional MessageFormat escapes (apostrophe adjacent to {}) are preserved"
     (are [input expected] (= expected (fix-backend-str input))
       "'{0}'"                         "'{0}'"
       "'{login}' literal"             "'{login}' literal"
       "'''{{...}}''' clause"          "'''{{...}}''' clause"))
-
   (testing "Strings without apostrophes pass through unchanged"
     (is (= "Hello {0}" (fix-backend-str "Hello {0}")))
     (is (= "" (fix-backend-str ""))))
-
   (testing "nil msgstr passes through as nil"
     (is (nil? (fix-backend-str nil)))))
 
@@ -88,7 +84,6 @@
                  :messages []}]
       (is (= (:headers input)
              (:headers (autofix/autofix-po-contents input))))))
-
   (testing "Message count is preserved — autofix transforms, never drops"
     (let [input {:headers {}
                  :messages [(backend-msg "a'b")

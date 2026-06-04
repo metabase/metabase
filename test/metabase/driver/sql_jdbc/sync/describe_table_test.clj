@@ -417,13 +417,11 @@
                      [{:field-name "array_col" :base-type :type/JSON}
                       {:field-name "string_col" :base-type :type/JSON}]
                      [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]]])
-
         (testing "there should be no nested fields"
           (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
                       driver/*driver*
                       (mt/db)
                       {:name "json_table" :id (mt/id "json_table")}))))
-
         (sync/sync-database! (mt/db))
         (is (=? (if (mysql/mariadb? (mt/db))
                   #{{:name "id"
@@ -506,19 +504,26 @@
                        {:short_json {"b" "y"}, :long_json nil}}
                      (sample)))
               (testing "If driver.sql/json-field-length is not implemented for the driver don't omit the long value"
-                (letfn [(do-with-removed-method [thunk]
-                          (let [original-method (get-method driver.sql/json-field-length driver/*driver*)]
-                            (if (= original-method (get-method driver.sql/json-field-length :default))
-                              (thunk)
-                              (do (remove-method driver.sql/json-field-length driver/*driver*)
-                                  (thunk)
-                                  (defmethod driver.sql/json-field-length driver/*driver* [driver field]
-                                    (original-method driver field))))))]
-                  (do-with-removed-method
-                   (fn []
-                     (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
-                              {:short_json {"b" "y"}, :long_json {"b" "yyyyyyyyyy"}}}
-                            (sample)))))))
+                ;; Temporarily override json-field-length with the default (nyi) implementation.
+                ;; We can't just remove-method — for child drivers (e.g. :postgres-mbql5) the
+                ;; parent's method would still be inherited.
+                (let [default-method  (get-method driver.sql/json-field-length :default)
+                      original-method (get-method driver.sql/json-field-length driver/*driver*)
+                      had-explicit?   (contains? (methods driver.sql/json-field-length) driver/*driver*)]
+                  (defmethod driver.sql/json-field-length driver/*driver* [driver field]
+                    (default-method driver field))
+                  (try
+                    (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
+                             {:short_json {"b" "y"}, :long_json {"b" "yyyyyyyyyy"}}}
+                           (sample)))
+                    (finally
+                      (remove-method driver.sql/json-field-length driver/*driver*)
+                      ;; Re-install the original if there was an explicit method (not just inherited).
+                      ;; For inherited methods (e.g. :postgres-mbql5), remove-method is enough —
+                      ;; the parent's method resumes via hierarchy dispatch.
+                      (when had-explicit?
+                        (defmethod driver.sql/json-field-length driver/*driver* [driver field]
+                          (original-method driver field)))))))
               (testing "The resulting synced fields exclude the field that corresponds to the long value"
                 (is (= #{"id"
                          "short_json"
@@ -666,7 +671,6 @@
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "indexed"}}
                (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
-
       (testing "for composite indexes, we only care about the 1st column"
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
