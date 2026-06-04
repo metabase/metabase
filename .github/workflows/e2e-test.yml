@@ -183,9 +183,11 @@ jobs:
       - name: Rewrite JUnit hook failures (partial rollout)
         if: always()
         continue-on-error: true
+        timeout-minutes: 1
         shell: bash
         run: |
           if [ -d ./target/junit ]; then
+            echo "fix-junit-hooks: invoking bun"
             bun e2e/support/fix-junit-hooks.ts ./target/junit \
               --include sharing/public-resource-downloads \
               --include sharing/sharing-reproductions \

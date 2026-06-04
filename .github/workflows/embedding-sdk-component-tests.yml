@@ -90,9 +90,11 @@ jobs:
       - name: Rewrite JUnit hook failures (dry-run)
         if: always()
         continue-on-error: true
+        timeout-minutes: 1
         shell: bash
         run: |
           if [ -d ./target/junit ]; then
+            echo "fix-junit-hooks: invoking bun"
             bun e2e/support/fix-junit-hooks.ts --dry-run ./target/junit
           else
             echo "No ./target/junit directory; nothing to process."
@@ -254,9 +256,11 @@ jobs:
       - name: Rewrite JUnit hook failures (dry-run)
         if: always()
         continue-on-error: true
+        timeout-minutes: 1
         shell: bash
         run: |
           if [ -d ./target/junit ]; then
+            echo "fix-junit-hooks: invoking bun"
             bun e2e/support/fix-junit-hooks.ts --dry-run ./target/junit
           else
             echo "No ./target/junit directory; nothing to process."

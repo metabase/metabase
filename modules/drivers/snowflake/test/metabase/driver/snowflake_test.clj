@@ -189,7 +189,7 @@
 
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (with-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
+    (mt/with-dynamic-fn-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
       (testing "Create DB DDL statements"
         (is (= "CREATE DATABASE IF NOT EXISTS \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
@@ -1467,7 +1467,7 @@
     (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
-          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
