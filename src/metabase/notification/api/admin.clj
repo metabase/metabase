@@ -1,6 +1,6 @@
-(ns metabase-enterprise.notification-admin.api
-  "Admin endpoints for notifications (card-type alerts). Gated behind the `:audit-app` feature flag
-  and `check-superuser`. Each row carries `:last_check` (latest scheduler tick — any terminal
+(ns metabase.notification.api.admin
+  "Admin endpoints for notifications (card-type alerts). Gated behind `check-superuser`. Each row
+  carries `:last_check` (latest scheduler tick — any terminal
   outcome) and `:last_send` (latest channel-send delivery attempt — any outcome, including
   failures) computed from windowed subqueries; both expose `{at, error, status}`. The API surface
   uses `creator_*` throughout — matching `notification.creator_id` and the hydrated `:creator` map,
