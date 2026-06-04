@@ -171,18 +171,31 @@ const URL_TAG_REGEX = /:\w+\*?/g;
 
 /**
  * Replace `:tag` / `:tag*` placeholders in a URL template with values pulled
- * from `data`. Substituted keys are deleted from `data` so the caller can use
- * any leftovers as querystring params.
+ * from `data` (params) first, then falling back to `body` fields — this is how
+ * an embed `:token` gets filled from the request body. The key is consumed from
+ * whichever bag held it, so the caller can use any leftovers as querystring
+ * params (from `data`) or as the JSON body (from `body`).
  */
 export function substituteUrlTags(
   url: string,
   data: Record<string, unknown>,
+  body?: Record<string, unknown>,
 ): string {
   return url.replace(URL_TAG_REGEX, (tag) => {
     const isRaw = tag.endsWith("*");
     const paramName = tag.slice(1, isRaw ? -1 : undefined);
-    const value = data[paramName];
-    delete data[paramName];
+    let value: unknown;
+    for (const bag of [data, body]) {
+      if (bag && paramName in bag) {
+        value = bag[paramName];
+        delete bag[paramName];
+        // A key present in `data` but explicitly `undefined` still falls
+        // through to `body` (e.g. an absent param, real token in the body).
+        if (value !== undefined) {
+          break;
+        }
+      }
+    }
     if (value === undefined) {
       console.warn("Warning: calling", url, "without", tag);
       return "";

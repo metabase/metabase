@@ -63,4 +63,24 @@ describe("substituteUrlTags", () => {
     const url = substituteUrlTags("/api/:id/:flag", data);
     expect(url).toBe("/api/7/true");
   });
+
+  it("falls back to a body field when the tag is absent from data (embed :token)", () => {
+    const data = {};
+    const body = { token: "THE_JWT", parameters: "[]" };
+    const url = substituteUrlTags("/api/embed/card/:token/query", data, body);
+    expect(url).toBe("/api/embed/card/THE_JWT/query");
+    // consumed from the body, leaving the other body field intact
+    expect(body).toEqual({ parameters: "[]" });
+    expect(data).toEqual({});
+  });
+
+  it("prefers a data value over a body value for the same tag", () => {
+    const data = { id: "from-data" };
+    const body = { id: "from-body" };
+    const url = substituteUrlTags("/api/foo/:id", data, body);
+    expect(url).toBe("/api/foo/from-data");
+    expect(data).toEqual({});
+    // the body value is left untouched since data satisfied the tag
+    expect(body).toEqual({ id: "from-body" });
+  });
 });

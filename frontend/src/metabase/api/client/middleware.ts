@@ -55,6 +55,12 @@ function merge(
       ...next.data,
     };
   }
+  if (next?.body) {
+    result.body = {
+      ...(result.body ?? {}),
+      ...next.body,
+    };
+  }
 
   return result;
 }

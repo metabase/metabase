@@ -1,8 +1,6 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 
-import _ from "underscore";
-
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type {
   OnBeforeRequestHandler,
@@ -41,8 +39,12 @@ export class ApiClient extends EventEmitter<EventMap> {
 
   beforeRequestHandlers: OnBeforeRequestHandler[] = [];
 
-  private buildUrl(template: string, data: Record<string, unknown>): URL {
-    const relativePath = substituteUrlTags(template, data);
+  private buildUrl(
+    template: string,
+    data: Record<string, unknown>,
+    body?: Record<string, unknown>,
+  ): URL {
+    const relativePath = substituteUrlTags(template, data, body);
     return new URL(this.basename.concat(relativePath), location.origin);
   }
 
@@ -106,14 +108,19 @@ export class ApiClient extends EventEmitter<EventMap> {
         headers: options.headers ?? {},
         // This will transform arrays to objects with numeric keys
         // we shouldn't be using top level-arrays in the API.
-        // It also defensively copies the data object, so middleware can safely mutate it.
+        // Both bags are defensively copied so middleware can safely mutate them.
         data: { ...options.data },
+        body: options.body ? { ...options.body } : undefined,
       },
     );
 
     return {
       ...middlewareResult,
-      url: this.buildUrl(middlewareResult.url, middlewareResult.data),
+      url: this.buildUrl(
+        middlewareResult.url,
+        middlewareResult.data,
+        middlewareResult.body,
+      ),
       headers: this.getClientHeaders(middlewareResult.headers),
     };
   }
@@ -208,10 +215,12 @@ export class ApiClient extends EventEmitter<EventMap> {
    * Shared by `request` and `fetch`.
    *
    * Body/params semantics:
+   * - `params`: URL `:tag` substitution first, leftover keys become querystring.
    * - `body`: sent as the request body. `FormData` / `URLSearchParams` are
    *   forwarded as-is so the browser sets the right Content-Type. Anything
    *   else is `JSON.stringify`'d. For `GET` it's folded into the querystring.
-   * - `params`: URL `:tag` substitution first, leftover keys become querystring.
+   *   Body fields can also fill URL `:tag`s a handler introduces (the embed
+   *   `:token` rewrite), and any tag-consumed field drops out of the body.
    */
   private async _prepareRequest(
     options: {
@@ -229,50 +238,47 @@ export class ApiClient extends EventEmitter<EventMap> {
       options.body instanceof FormData ||
       options.body instanceof URLSearchParams;
 
-    // Hand the middleware the whole request payload — body merged under `params`
-    // (which win on key clashes) — so handlers can fill embed URL `:tag` tokens
-    // (notably the `:token` on the guest-embed card-query rewrite) from fields
-    // that morally live in the body. The embed handlers already read these off
-    // `config.data`, so no special body channel is needed. `FormData` /
-    // `URLSearchParams` can't be merged, so they pass through untouched.
-    const paramKeys = Object.keys(options.params ?? {});
-    const middlewareData = bodyIsRaw
-      ? { ...options.params }
-      : {
-          ...(options.body as Record<string, unknown> | undefined),
-          ...options.params,
-        };
-
-    // `data` comes back holding only the leftovers: URL-tag substitution has
-    // deleted the keys it consumed (e.g. an embed `:token` lifted from the body).
-    const { url, method, data, headers } = await this._resolveOptions({
+    // Hand the middleware `params` and `body` as separate channels (`data` vs
+    // `body`). URL-tag substitution pulls from either — so the embed override
+    // fills `:token` from the body — and what's left stays sorted into its own
+    // bag, so there's nothing to unweave afterwards. `FormData` /
+    // `URLSearchParams` can't be inspected, so they skip the body channel and
+    // attach as-is below.
+    const {
+      url,
+      method,
+      data,
+      body: resolvedBody,
+      headers,
+    } = await this._resolveOptions({
       url: options.url,
       method: options.method,
       headers: options.headers,
-      data: middlewareData,
+      data: options.params ?? {},
+      body: bodyIsRaw
+        ? undefined
+        : (options.body as Record<string, unknown> | undefined),
     });
 
     let body: BodyInit | undefined = undefined;
 
+    // Leftover params (post URL-tag substitution) always go to the querystring.
+    appendQueryParameters(url, data);
+
     if (method === "GET") {
-      // GET cannot carry a body: every leftover — params and body fields alike —
-      // folds into the querystring.
-      appendQueryParameters(url, data);
+      // GET cannot carry a body: fold the leftover body fields into the
+      // querystring too.
+      if (resolvedBody) {
+        appendQueryParameters(url, resolvedBody);
+      }
     } else if (bodyIsRaw) {
-      // Leftover params go to the querystring; the raw body passes through as-is.
-      appendQueryParameters(url, data);
       body = options.body as BodyInit;
 
       // Let the browser set Content-Type with the multipart boundary
       // (FormData) or urlencoded charset (URLSearchParams).
       delete headers["Content-Type"];
-    } else {
-      // Route leftovers back to their channels: `params`-origin keys to the
-      // querystring, the rest to the JSON body.
-      appendQueryParameters(url, _.pick(data, paramKeys));
-      if (options.body !== undefined) {
-        body = JSON.stringify(_.omit(data, paramKeys));
-      }
+    } else if (options.body !== undefined) {
+      body = JSON.stringify(resolvedBody ?? {});
     }
 
     return { ...options, url, method, headers, body };
