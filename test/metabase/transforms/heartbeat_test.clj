@@ -38,25 +38,27 @@
 
 (deftest heartbeat-runs!-test
   (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temp [:model/Transform    {transform-id :id} {}
-                   :model/TransformRun {beat-id :id}      {:transform_id   transform-id
-                                                           :status         :started
-                                                           :is_active      true
-                                                           :run_method     :manual
-                                                           :start_time     (minutes-ago 10)
-                                                           :last_heartbeat (minutes-ago 10)}
-                   :model/TransformRun {other-id :id}     {:transform_id   transform-id
-                                                           :status         :started
-                                                           :is_active      true
-                                                           :run_method     :manual
-                                                           :start_time     (minutes-ago 10)
-                                                           :last_heartbeat (minutes-ago 10)}
-                   :model/TransformRun {done-id :id}      {:transform_id   transform-id
-                                                           :status         :succeeded
-                                                           :is_active      nil
-                                                           :run_method     :manual
-                                                           :start_time     (minutes-ago 10)
-                                                           :last_heartbeat (minutes-ago 10)}]
+    ;; only one active run per transform is allowed (unique index): distinct transform per active run
+    (mt/with-temp [:model/Transform    {t1 :id}          {}
+                   :model/Transform    {t2 :id}          {}
+                   :model/TransformRun {beat-id :id}     {:transform_id   t1
+                                                          :status         :started
+                                                          :is_active      true
+                                                          :run_method     :manual
+                                                          :start_time     (minutes-ago 10)
+                                                          :last_heartbeat (minutes-ago 10)}
+                   :model/TransformRun {other-id :id}    {:transform_id   t2
+                                                          :status         :started
+                                                          :is_active      true
+                                                          :run_method     :manual
+                                                          :start_time     (minutes-ago 10)
+                                                          :last_heartbeat (minutes-ago 10)}
+                   :model/TransformRun {done-id :id}     {:transform_id   t1
+                                                          :status         :succeeded
+                                                          :is_active      nil
+                                                          :run_method     :manual
+                                                          :start_time     (minutes-ago 10)
+                                                          :last_heartbeat (minutes-ago 10)}]
       (transform-run/heartbeat-runs! [beat-id done-id])
       (testing "only the passed run that is still active gets a fresh heartbeat"
         (is (recently-beaten? beat-id))
@@ -69,14 +71,15 @@
 (deftest send-heartbeat!-beats-connections-test
   (testing "send-heartbeat! beats exactly the runs registered in the cancel/heartbeat registry"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Transform    {transform-id :id}   {}
-                     :model/TransformRun {registered-id :id}   {:transform_id   transform-id
+      (mt/with-temp [:model/Transform    {t1 :id}             {}
+                     :model/Transform    {t2 :id}             {}
+                     :model/TransformRun {registered-id :id}   {:transform_id   t1
                                                                 :status         :started
                                                                 :is_active      true
                                                                 :run_method     :manual
                                                                 :start_time     (minutes-ago 10)
                                                                 :last_heartbeat (minutes-ago 10)}
-                     :model/TransformRun {unregistered-id :id} {:transform_id   transform-id
+                     :model/TransformRun {unregistered-id :id} {:transform_id   t2
                                                                 :status         :started
                                                                 :is_active      true
                                                                 :run_method     :manual
@@ -93,19 +96,20 @@
 (deftest reap-orphaned-runs!-test
   (mt/with-premium-features #{:transforms-basic :audit-app}
     (mt/with-prometheus-system! [_ _system]
-      (mt/with-temp [:model/Transform    {transform-id :id} {}
-                     :model/TransformRun {stale-id :id}     {:transform_id   transform-id
-                                                             :status         :started
-                                                             :is_active      true
-                                                             :run_method     :manual
-                                                             :start_time     (minutes-ago 10)
-                                                             :last_heartbeat (minutes-ago 10)}
-                     :model/TransformRun {fresh-id :id}     {:transform_id   transform-id
-                                                             :status         :started
-                                                             :is_active      true
-                                                             :run_method     :manual
-                                                             :start_time     (minutes-ago 10)
-                                                             :last_heartbeat (minutes-ago 1)}]
+      (mt/with-temp [:model/Transform    {t1 :id}          {}
+                     :model/Transform    {t2 :id}          {}
+                     :model/TransformRun {stale-id :id}    {:transform_id   t1
+                                                            :status         :started
+                                                            :is_active      true
+                                                            :run_method     :manual
+                                                            :start_time     (minutes-ago 10)
+                                                            :last_heartbeat (minutes-ago 10)}
+                     :model/TransformRun {fresh-id :id}    {:transform_id   t2
+                                                            :status         :started
+                                                            :is_active      true
+                                                            :run_method     :manual
+                                                            :start_time     (minutes-ago 10)
+                                                            :last_heartbeat (minutes-ago 1)}]
         (testing "reaps only the run whose heartbeat is older than the threshold"
           (let [reaped (transform-run/reap-orphaned-runs! 5)]
             (is (= [stale-id] (mapv :id reaped)))

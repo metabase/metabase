@@ -45,11 +45,13 @@
 (deftest reap-rows!-is-active-test
   (testing "is_active-based active guard: reaps and returns only the stale active row"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Transform    {tid :id}   {}
-                     :model/TransformRun {stale :id} {:transform_id tid :status :started :is_active true
+      ;; one active run per transform is allowed (unique index), so use a distinct transform per active run
+      (mt/with-temp [:model/Transform    {t1 :id}    {}
+                     :model/Transform    {t2 :id}    {}
+                     :model/TransformRun {stale :id} {:transform_id t1 :status :started :is_active true
                                                       :run_method :manual :start_time (minutes-ago 10)
                                                       :last_heartbeat (minutes-ago 10)}
-                     :model/TransformRun {fresh :id} {:transform_id tid :status :started :is_active true
+                     :model/TransformRun {fresh :id} {:transform_id t2 :status :started :is_active true
                                                       :run_method :manual :start_time (minutes-ago 10)
                                                       :last_heartbeat (minutes-ago 1)}]
         (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
@@ -99,14 +101,16 @@
 
 (deftest heartbeat-ids!-test
   (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temp [:model/Transform    {tid :id}  {}
-                   :model/TransformRun {beat :id} {:transform_id tid :status :started :is_active true
+    (mt/with-temp [:model/Transform    {t1 :id}   {}
+                   :model/Transform    {t2 :id}   {}
+                   :model/TransformRun {beat :id} {:transform_id t1 :status :started :is_active true
                                                    :run_method :manual :start_time (minutes-ago 10)
                                                    :last_heartbeat (minutes-ago 10)}
-                   :model/TransformRun {skip :id} {:transform_id tid :status :started :is_active true
+                   :model/TransformRun {skip :id} {:transform_id t2 :status :started :is_active true
                                                    :run_method :manual :start_time (minutes-ago 10)
                                                    :last_heartbeat (minutes-ago 10)}
-                   :model/TransformRun {done :id} {:transform_id tid :status :succeeded :is_active nil
+                   ;; inactive run can share a transform with an active one (unique index is on active rows)
+                   :model/TransformRun {done :id} {:transform_id t1 :status :succeeded :is_active nil
                                                    :run_method :manual :start_time (minutes-ago 10)
                                                    :last_heartbeat (minutes-ago 10)}]
       (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat [beat done])
