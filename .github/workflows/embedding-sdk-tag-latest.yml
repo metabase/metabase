@@ -1,0 +1,32 @@
+name: Tag Embedding SDK npm release as latest
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "npm version to tag as latest, e.g. 0.61.5"
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      version:
+        description: "npm version to tag as latest, e.g. 0.61.5"
+        type: string
+        required: true
+    secrets:
+      NPM_RELEASE_TOKEN:
+        required: true
+
+jobs:
+  tag-latest:
+    name: Tag npm release as latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Add `latest` dist-tag to npm release
+        run: |
+          echo //registry.npmjs.org/:_authToken="${NPM_RELEASE_TOKEN}" > .npmrc
+          npm dist-tag add @metabase/embedding-sdk-react@${{ inputs.version }} latest
+          echo "Tagged @metabase/embedding-sdk-react@${{ inputs.version }} as latest" >> $GITHUB_STEP_SUMMARY
+        env:
+          NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
