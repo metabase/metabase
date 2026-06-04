@@ -129,6 +129,42 @@
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/read-check (data-app/select-one-non-blob :name slug)))
 
+(api.macros/defendpoint :put ["/:slug" :slug #"[^/]+"] :- DataAppResponse
+  "Update an existing data app. Multipart body may include `file` (replaces the
+   bundle) and/or `display_name`. The `name` (URL slug) is the identity and
+   cannot be renamed via this endpoint."
+  {:multipart {:max-file-size max-bundle-bytes}}
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   _body
+   {{file "file" display-name "display_name"} :multipart-params, :as _request}
+   :- [:map
+       [:multipart-params
+        [:map
+         ["display_name" {:optional true} ms/NonBlankString]
+         ["file" {:optional true}
+          [:map
+           [:filename :string]
+           [:tempfile (ms/InstanceOfClass File)]]]]]]]
+  (api/check-superuser)
+  (let [existing (api/write-check (data-app/select-one-non-blob :name slug))
+        bundle-fields (when file
+                        (let [tempfile (check-upload! file)]
+                          (try
+                            (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))]
+                              {:bundle      bundle-bytes
+                               :bundle_hash (bytes-hash bundle-bytes)})
+                            (finally
+                              (try (.delete tempfile) (catch Exception _))))))
+        update-map (cond-> {}
+                     display-name  (assoc :display_name display-name)
+                     bundle-fields (merge bundle-fields))]
+    (api/check-400 (seq update-map) "Nothing to update.")
+    (t2/update! :model/DataApp (:id existing) update-map)
+    (log/warnf "[data-app] updated name=%s id=%s fields=%s"
+               slug (:id existing) (vec (keys update-map)))
+    (data-app/select-one-non-blob :id (:id existing))))
+
 (api.macros/defendpoint :delete ["/:slug" :slug #"[^/]+"] :- :nil
   "Delete a data app and its bundle by name (slug)."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]

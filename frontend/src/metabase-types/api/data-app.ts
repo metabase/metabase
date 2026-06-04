@@ -15,3 +15,10 @@ export interface CreateDataAppRequest {
   display_name: string;
   file: File;
 }
+
+export interface UpdateDataAppRequest {
+  /** The existing app's slug (URL identity); cannot be renamed. */
+  name: string;
+  display_name?: string;
+  file?: File;
+}
