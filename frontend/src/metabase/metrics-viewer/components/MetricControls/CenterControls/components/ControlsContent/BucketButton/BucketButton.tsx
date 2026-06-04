@@ -13,7 +13,7 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
-import S from "../MetricControls.module.css";
+import S from "../../../CenterControls.module.css";
 
 type BucketButtonProps = {
   definition: MetricDefinition;

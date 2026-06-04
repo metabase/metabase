@@ -1,51 +1,65 @@
 import cx from "classnames";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { trackStackedSeriesEnabled } from "metabase/metrics-viewer/analytics";
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDisplayType } from "metabase/metrics-viewer/types";
-import type { ChartTypeOption } from "metabase/metrics-viewer/utils";
+import { getDimensionBreakoutConfig } from "metabase/metrics-viewer/utils";
 import { ActionIcon, Box, Flex, Icon, Menu } from "metabase/ui";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { ChartLayoutPicker } from "./ChartLayoutPicker";
 import { ChartTypePicker } from "./ChartTypePicker";
-import S from "./MetricControls.module.css";
+import S from "./LeftControls.module.css";
+import {
+  getDisplayTypeLabel,
+  isValidDisplayTypeForDimensionBreakout,
+} from "./utils";
 
 type LeftControlsProps = {
-  chartTypes: ChartTypeOption[];
-  value: MetricsViewerDisplayType;
   showStackSeries?: boolean;
-  isStacked: boolean;
-  onDisplayTypeChange: (displayType: MetricsViewerDisplayType) => void;
-  onStackedChange: (stacked: boolean) => void;
 };
 
-function getDisplayTypeLabel(type: MetricsViewerDisplayType) {
-  switch (type) {
-    case "line":
-      return t`Line chart`;
-    case "area":
-      return t`Area chart`;
-    case "bar":
-      return t`Bar chart`;
-    case "map":
-      return t`Map`;
-    case "scatter":
-      return t`Scatter plot`;
-    case "scalar":
-      return t`Scalar`;
-    default:
-      return type;
-  }
-}
+export function LeftControls({ showStackSeries }: LeftControlsProps) {
+  const {
+    activeDimensionBreakout: dimensionBreakout,
+    updateActiveDimensionBreakout,
+  } = useMetricsViewerContext();
 
-export function LeftControls({
-  chartTypes,
-  value,
-  showStackSeries,
-  isStacked,
-  onDisplayTypeChange,
-  onStackedChange,
-}: LeftControlsProps) {
+  const handleDisplayTypeChange = useCallback(
+    (display: MetricsViewerDisplayType) => {
+      updateActiveDimensionBreakout({ display });
+    },
+    [updateActiveDimensionBreakout],
+  );
+
+  const handleVisualizationSettingsChange = useCallback(
+    (updates: Partial<VisualizationSettings>) => {
+      updateActiveDimensionBreakout({
+        visualizationSettings: {
+          ...dimensionBreakout?.visualizationSettings,
+          ...updates,
+        },
+      });
+    },
+    [updateActiveDimensionBreakout, dimensionBreakout?.visualizationSettings],
+  );
+
+  if (!dimensionBreakout || dimensionBreakout.type === "scalar") {
+    return null;
+  }
+
+  const config = getDimensionBreakoutConfig(dimensionBreakout.type);
+  const chartTypes = config.availableDisplayTypes;
+  const value = isValidDisplayTypeForDimensionBreakout(
+    dimensionBreakout.display,
+    dimensionBreakout.type,
+  )
+    ? dimensionBreakout.display
+    : config.defaultDisplayType;
+  const isStacked =
+    !!dimensionBreakout.visualizationSettings?.["graph.split_panels"];
   const selectedChartType = chartTypes.find(({ type }) => type === value);
 
   return (
@@ -58,12 +72,16 @@ export function LeftControls({
         <ChartTypePicker
           chartTypes={chartTypes}
           value={value}
-          onChange={onDisplayTypeChange}
+          onChange={handleDisplayTypeChange}
         />
         {showStackSeries && (
           <ChartLayoutPicker
             isStacked={isStacked}
-            onToggle={(stacked) => onStackedChange(stacked)}
+            onToggle={(stacked) =>
+              handleVisualizationSettingsChange({
+                "graph.split_panels": stacked,
+              })
+            }
           />
         )}
       </Flex>
@@ -98,7 +116,7 @@ export function LeftControls({
                     c={value === type ? "brand" : "text-primary"}
                   />
                 }
-                onClick={() => onDisplayTypeChange(type)}
+                onClick={() => handleDisplayTypeChange(type)}
               >
                 {getDisplayTypeLabel(type)}
               </Menu.Item>
@@ -120,7 +138,11 @@ export function LeftControls({
                       c={!isStacked ? "brand" : "text-primary"}
                     />
                   }
-                  onClick={() => onStackedChange(false)}
+                  onClick={() =>
+                    handleVisualizationSettingsChange({
+                      "graph.split_panels": false,
+                    })
+                  }
                 >
                   {t`Default`}
                 </Menu.Item>
@@ -136,7 +158,9 @@ export function LeftControls({
                     />
                   }
                   onClick={() => {
-                    onStackedChange(true);
+                    handleVisualizationSettingsChange({
+                      "graph.split_panels": true,
+                    });
                     trackStackedSeriesEnabled();
                   }}
                 >

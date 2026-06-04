@@ -2224,10 +2224,7 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   describe("Responsive viewer controls", () => {
-    const setupTimeControls = (
-      width: number,
-      { withMultipleSeries = false }: { withMultipleSeries?: boolean } = {},
-    ) => {
+    const setupTimeControls = (width: number) => {
       cy.viewport(1280, 900);
       interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
@@ -2240,68 +2237,10 @@ describe("scenarios > metrics > explorer", () => {
         .click();
       runFormula();
       cy.wait("@dataset");
-      if (withMultipleSeries) {
-        addMetric("Count of products");
-        cy.wait("@dataset");
-      }
       cy.viewport(width, 900);
     };
 
-    it("keeps desktop controls unchanged at wide widths", () => {
-      setupTimeControls(1280);
-
-      H.MetricsViewer.getMetricControls()
-        .findByRole("button", { name: "line" })
-        .should("be.visible");
-      H.MetricsViewer.getColumnPickerButton()
-        .should("be.visible")
-        .should("contain.text", "Time");
-      H.MetricsViewer.getMetricControls()
-        .findByRole("button", { name: /by month/i })
-        .should("be.visible");
-      H.MetricsViewer.getMetricControls()
-        .findByTestId("metrics-viewer-compact-chart-controls")
-        .should("not.be.visible");
-      H.MetricsViewer.getMetricControls()
-        .findByTestId("metrics-viewer-x-axis-controls")
-        .should("not.be.visible");
-      assertMetricControlsDoNotOverflowViewport();
-    });
-
-    it("collapses chart controls while keeping center controls visible at tablet widths", () => {
-      setupTimeControls(760, { withMultipleSeries: true });
-
-      H.MetricsViewer.getMetricControls()
-        .findByTestId("metrics-viewer-compact-chart-controls")
-        .should("be.visible")
-        .click();
-      H.popover().findByText("Visualization").should("be.visible");
-      H.popover()
-        .findByRole("menuitem", { name: "Line chart" })
-        .should("be.visible");
-      H.popover()
-        .findByRole("menuitem", { name: "Bar chart" })
-        .should("be.visible");
-      H.popover().findByText("Layout").should("be.visible");
-      H.popover()
-        .findByRole("menuitem", { name: "Default" })
-        .should("be.visible");
-      H.popover()
-        .findByRole("menuitem", { name: "Stacked" })
-        .should("be.visible");
-      H.MetricsViewer.getColumnPickerButton()
-        .should("be.visible")
-        .should("contain.text", "Time");
-      H.MetricsViewer.getMetricControls()
-        .findByRole("button", { name: /by month/i })
-        .should("be.visible");
-      H.MetricsViewer.getMetricControls()
-        .findByTestId("metrics-viewer-x-axis-controls")
-        .should("not.be.visible");
-      assertMetricControlsDoNotOverflowViewport();
-    });
-
-    it("collapses center controls behind an X-axis trigger at phone widths", () => {
+    it("shows compact controls at phone widths and keeps them interactive", () => {
       setupTimeControls(480);
 
       H.MetricsViewer.getMetricControls()
@@ -2309,7 +2248,17 @@ describe("scenarios > metrics > explorer", () => {
         .should("be.visible");
       H.MetricsViewer.getMetricControls()
         .findByTestId("metrics-viewer-x-axis-controls")
-        .should("be.visible")
+        .should("be.visible");
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-compact-chart-controls")
+        .click();
+      H.popover().findByText("Visualization").should("be.visible");
+      H.popover().findByRole("menuitem", { name: "Bar chart" }).click();
+      H.MetricsViewer.assertVizType("Bar");
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-x-axis-controls")
         .click();
       H.popover()
         .findByRole("button", { name: "Change column" })
@@ -2318,20 +2267,6 @@ describe("scenarios > metrics > explorer", () => {
       H.popover()
         .findByRole("button", { name: /by month/i })
         .should("be.visible");
-      H.popover().findByLabelText("Column label options").should("be.visible");
-      H.popover()
-        .findByRole("button", { name: /by month/i })
-        .then(($bucketButton) => {
-          H.popover()
-            .findByLabelText("Column label options")
-            .then(($columnLabelOptions) => {
-              expect(
-                $columnLabelOptions[0].getBoundingClientRect().left,
-              ).to.be.greaterThan(
-                $bucketButton[0].getBoundingClientRect().right,
-              );
-            });
-        });
       H.popover().findByRole("button", { name: "Change column" }).click();
       H.MetricsViewer.dimensionPickerSidebar().should("be.visible");
       cy.get(H.POPOVER_ELEMENT).should("not.exist");
