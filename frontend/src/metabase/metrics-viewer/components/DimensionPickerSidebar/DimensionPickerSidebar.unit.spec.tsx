@@ -1153,6 +1153,69 @@ describe("DimensionPickerSidebar", () => {
     expect(
       screen.getByLabelText("Select dimension for Feedback, Count"),
     ).toHaveValue("Time");
+    expect(screen.getByText("Revenue")).toBeInTheDocument();
+    expect(screen.getByText("Feedback, Count")).toBeInTheDocument();
+  });
+
+  it("shows expression occurrence counts in dropdown rows and See all accordions", async () => {
+    setup({
+      dimensionBreakout: {
+        ...timeDimensionBreakout,
+        dimensionMapping: {
+          0: "dim-first-revenue-created-at",
+          1: "dim-second-revenue-created-at",
+        },
+      },
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Time",
+                dimensionMapping: {
+                  0: "dim-first-revenue-created-at",
+                  1: "dim-second-revenue-created-at",
+                },
+              },
+            },
+          ],
+        },
+      },
+      slots: [
+        {
+          slotIndex: 0,
+          entityIndex: 0,
+          sourceId: SOURCE_ID,
+          tokenPosition: 0,
+          occurrenceCount: 1,
+        },
+        {
+          slotIndex: 1,
+          entityIndex: 0,
+          sourceId: SOURCE_ID,
+          tokenPosition: 2,
+          occurrenceCount: 2,
+        },
+      ],
+      sourceOrder: [SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+      },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Configure Time" }),
+    );
+
+    expect(screen.getByText("2")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    expect(screen.getAllByText("Revenue")).toHaveLength(2);
+    expect(screen.getByText("2")).toBeInTheDocument();
   });
 
   it("uses the active time mapping for column select values", async () => {

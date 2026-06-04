@@ -500,6 +500,91 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
 
     expect(rows.map((row) => row.isExpressionToken)).toEqual([true, true]);
   });
+
+  it("preserves expression token occurrence counts", () => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions: {
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Time",
+                dimensionMapping: {
+                  0: "dim-first-revenue-created-at",
+                  1: "dim-second-revenue-created-at",
+                },
+              },
+            },
+          ],
+        },
+      },
+      sourceOrder: [REVENUE_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+      },
+      metricSlots: [
+        {
+          slotIndex: 0,
+          entityIndex: 0,
+          sourceId: REVENUE_SOURCE_ID,
+          tokenPosition: 0,
+          occurrenceCount: 1,
+        },
+        {
+          slotIndex: 1,
+          entityIndex: 0,
+          sourceId: REVENUE_SOURCE_ID,
+          tokenPosition: 2,
+          occurrenceCount: 2,
+        },
+      ],
+    });
+    const timeCategory = categories.find(
+      (category) => category.name === "Time",
+    );
+
+    expect(timeCategory).toBeDefined();
+
+    const rows = buildDimensionPickerSidebarCategorySelectRows({
+      category: timeCategory!,
+      activeDimensionBreakout: {
+        id: "time",
+        type: "time",
+        label: "Time",
+        display: "line",
+        dimensionMapping: {
+          0: "dim-first-revenue-created-at",
+          1: "dim-second-revenue-created-at",
+        },
+        projectionConfig: {},
+      },
+      metricSlots: [
+        {
+          slotIndex: 0,
+          entityIndex: 0,
+          sourceId: REVENUE_SOURCE_ID,
+          tokenPosition: 0,
+          occurrenceCount: 1,
+        },
+        {
+          slotIndex: 1,
+          entityIndex: 0,
+          sourceId: REVENUE_SOURCE_ID,
+          tokenPosition: 2,
+          occurrenceCount: 2,
+        },
+      ],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+      },
+      sourceColors: { 0: ["#509ee3"] },
+    });
+
+    expect(rows.map((row) => row.occurrenceCount)).toEqual([1, 2]);
+  });
 });
 
 describe("getComparableDimensionMapping", () => {
