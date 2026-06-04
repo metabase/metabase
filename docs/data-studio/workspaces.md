@@ -9,11 +9,11 @@ Workspaces are Metabase configurations that remap tables so you can test out new
 
 ## How workspaces work
 
-The remapping of tables is the neat part here. When your devolopment Metabase is in a workspace, it'll look like it's creating tables in production, and you can build dashboards, questions, and documents on top of those tables. But under the hood, transforms will write those tables to an isolated schema, so you (or an agent) are free to experiment.
+When your development Metabase is in a workspace, it'll look like it's creating tables in production, and you can build dashboards, questions, and documents on top of those tables. But under the hood, transforms will write those tables to an isolated schema, so you (or an agent) are free to experiment.
 
 Once you're happy with your transforms and content, you can use remote sync to push your changes to production, and everything will just work. Your transforms will target your production schema, and any content you built in the workspace will know to query those tables.
 
-# Create a workspace
+## Create a workspace
 
 To create a workspace, go to your production Metabase.
 
@@ -40,7 +40,7 @@ You'll need to have the following set up:
 
 - [Remote sync](../installation-and-operation/remote-sync.md) set up on your production Metabase.
 - Remote sync set up on your dev Metabase, pointing to the same repo.
-- The [Metabase CLI](TODO link) installed and logged into your dev Metabase.
+- The Metabase CLI installed and logged into your dev Metabase.
 - The `/metabase-cli` skill installed (from [Metabase skills](https://github.com/metabase/agent-skills)).
 - An admin connection to your data warehouse.
 
