@@ -70,30 +70,37 @@
 
 ;;; Logic
 
+(def ^:private serialization-logger-prefixes
+  "log4j2 logger-name prefixes whose logs are forked into the `export.log`/`import.log` files inside the archive.
+  These are not loaded namespaces; each prefix captures every logger nested under it (e.g.
+  `metabase-enterprise.serialization` captures `metabase-enterprise.serialization.v2.extract`)."
+  ['metabase-enterprise.serialization
+   'metabase.models.serialization])
+
 (defn- serialize-to-stream!
-  "Serialize directly to an OutputStream as streaming tar.gz. Returns result map."
-  [^java.io.OutputStream output ^String dirname entities {:keys [full-stacktrace]}]
-  (let [log-output (ByteArrayOutputStream.)
-        writer     (v2.storage.tar/tar-writer output dirname)
-        error      (atom nil)
-        report     (with-open [_logger (logger/for-ns log-output ['metabase-enterprise.serialization
-                                                                  'metabase.models.serialization]
-                                                      {:additive *additive-logging*})]
-                     (try
-                       (let [report (serdes/with-cache
-                                      (v2.storage/store! entities writer))]
-                         (v2.protocols/store-log! writer (.toByteArray log-output))
-                         (v2.protocols/finish! writer)
-                         report)
-                       (catch Exception e
-                         (reset! error e)
-                         (if full-stacktrace
-                           (log/error e "Error during serialization export")
-                           (log/error (u/strip-error e "Error during serialization export")))
-                         (try
-                           (v2.protocols/store-log! writer (.toByteArray log-output))
-                           (v2.protocols/finish! writer)
-                           (catch Exception _)))))]
+  "Serialize directly to an OutputStream as streaming tar.gz. Returns result map.
+
+  Storage logs are appended to `log-output`, whose full contents are then written to `export.log` inside the
+  archive."
+  [^java.io.OutputStream output ^String dirname entities ^ByteArrayOutputStream log-output {:keys [full-stacktrace]}]
+  (let [writer (v2.storage.tar/tar-writer output dirname)
+        error  (atom nil)
+        report (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
+                                                  {:additive *additive-logging*})]
+                 (try
+                   (serdes/with-cache
+                     (v2.storage/store! entities writer))
+                   (catch Exception e
+                     (reset! error e)
+                     (if full-stacktrace
+                       (log/error e "Error during serialization export")
+                       (log/error (u/strip-error e "Error during serialization export")))
+                     nil)))]
+    ;; Read the buffer and write the log after the appender has closed (and thus flushed) so nothing is lost.
+    (try
+      (v2.protocols/store-log! writer (.toByteArray log-output))
+      (v2.protocols/finish! writer)
+      (catch Exception _))
     {:report        report
      :success       (nil? @error)
      :error-message (when @error
@@ -119,8 +126,7 @@
         log-file (io/file dst "import.log")
         err      (atom nil)
         reindex? (if (nil? reindex?) true reindex?)
-        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
-                                                              'metabase.models.serialization]
+        report   (with-open [_logger (logger/for-ns log-file serialization-logger-prefixes
                                                     {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
@@ -231,13 +237,18 @@
                                    (u/slugify (appearance/site-name))
                                    (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
         ;; extract/extract runs eager setup (target resolution, escape analysis) which can throw
-        ;; for invalid inputs (e.g. bad collection ID). This must happen before streaming starts.
-        entities (extract/extract opts)]
+        ;; for invalid inputs (e.g. bad collection ID). This must happen before streaming starts so the error
+        ;; can set a non-200 status. Its eager logs (e.g. escape-analysis warnings) are captured into `log-output`
+        ;; so they end up in export.log alongside the storage logs captured later.
+        log-output (ByteArrayOutputStream.)
+        entities (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
+                                                    {:additive *additive-logging*})]
+                   (extract/extract opts))]
     (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
       (sr/set-header! "Content-Disposition"
                       (format "attachment; filename=\"%s.tar.gz\"" export-dirname))
       (let [start  (System/nanoTime)
-            result (serialize-to-stream! output export-dirname entities opts)]
+            result (serialize-to-stream! output export-dirname entities log-output opts)]
         (track-export-event! collection opts start result)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
