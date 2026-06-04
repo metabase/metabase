@@ -342,7 +342,8 @@
          :name        (:name c)
          :description (:description c)
          :database_id (:database_id c)
-         :verified    (boolean (contains? (set verified) (:id c)))
+         ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
+         :verified    (contains? verified (:id c))
          :collection  (when coll (select-keys coll [:id :name :authority_level]))}))))
 
 (defn ref-model->entity-type

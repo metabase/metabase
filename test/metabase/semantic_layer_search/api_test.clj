@@ -95,6 +95,16 @@
         (is (=? {:usage_instructions "Join orders to customers on customer_id."
                  :entity             {:model "model" :id 7}}
                 updated))))
+    (testing "an explicit null clears usage_instructions"
+      (let [updated (mt/user-http-request :crowberto :put 200
+                                          (str "semantic-layer-search/" (:id entry))
+                                          {:usage_instructions nil})]
+        (is (nil? (:usage_instructions updated)))))
+    (testing "the non-nullable fields reject an explicit null"
+      (mt/user-http-request :crowberto :put 400 (str "semantic-layer-search/" (:id entry))
+                            {:entity nil})
+      (mt/user-http-request :crowberto :put 400 (str "semantic-layer-search/" (:id entry))
+                            {:verified nil}))
     (testing "returns 404 for unknown id"
       (mt/user-http-request :crowberto :put 404 "semantic-layer-search/0" {:search_prompt "x"}))
     (testing "non-superuser gets 403"

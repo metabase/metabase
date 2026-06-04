@@ -84,13 +84,18 @@
           embedding (embedding/get-embedding model user-search-prompt
                                              {:type :query :record-tokens? true})
           lit       (index-table/format-embedding embedding)
+          ;; the LIMIT must apply to the blended ranking, not raw distance, or a verified row whose
+          ;; boost would lift it into the top N gets cut before scoring. Minimizing
+          ;; distance - verified-boost is equivalent to maximizing the blended score below.
+          ranking   (format "(embedding <=> %s) - (CASE WHEN verified THEN %s ELSE 0.0 END)"
+                            lit verified-weight)
           rows      (try
                       (jdbc/execute!
                        pgvector
                        (-> (sql.helpers/select :search_prompt :usage_instructions :entity :verified
                                                [[:raw (str "embedding <=> " lit)] :distance])
                            (sql.helpers/from (keyword index-table/*vectors-table*))
-                           (sql.helpers/order-by [[:raw (str "embedding <=> " lit)] :asc])
+                           (sql.helpers/order-by [[:raw ranking] :asc])
                            (sql.helpers/limit limit)
                            (sql/format {:quoted true}))
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})

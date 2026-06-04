@@ -50,6 +50,36 @@
             (mirror/request-sync!)
             (is (= [semantic-layer-search.core/sync-job-key] @triggered))))))))
 
+(deftest ^:sequential verified-boost-applies-before-limit-test
+  (testing "the SQL LIMIT ranks by blended score: a verified row slightly farther by raw distance still wins top-1"
+    (when semantic.db.datasource/db-url
+      (let [suffix  (System/nanoTime)
+            ds      (semantic.db.datasource/ensure-initialized-data-source!)
+            p-verif "verified entry"
+            p-plain "plain entry"
+            q       "the query"]
+        (mt/with-premium-features #{:semantic-search}
+          (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                      (constantly semantic.tu/mock-embedding-model)]
+            (binding [index-table/*vectors-table* (str "semantic_layer_index_vectors_test_" suffix)
+                      index-table/*meta-table*    (str "semantic_layer_index_meta_test_" suffix)]
+              ;; plain ties the query exactly (distance 0); verified sits at distance ~0.006, within its
+              ;; 0.1 boost. A raw-distance LIMIT 1 would keep only the plain row.
+              (semantic.tu/with-mock-embeddings {q       [1.0 0.0 0.0 0.0]
+                                                 p-plain [1.0 0.0 0.0 0.0]
+                                                 p-verif [0.9 0.1 0.0 0.0]}
+                (mt/with-temp [:model/SemanticLayerIndex _
+                               {:search_prompt p-plain :entity {:model "table" :id 1}}
+                               :model/SemanticLayerIndex _
+                               {:search_prompt p-verif :verified true :entity {:model "table" :id 2}}]
+                  (try
+                    (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
+                    (is (= [p-verif] (mapv :saved_search_prompt (mirror/search q 1))))
+                    (finally
+                      (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
+                                              index-table/*vectors-table* ", "
+                                              index-table/*meta-table*)]))))))))))))
+
 (defn- create-entry!
   "POST an entry through the CRUD API; returns the created row's id."
   [search-prompt entity verified]

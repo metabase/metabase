@@ -13,7 +13,7 @@
   read_resource), plus plain \"card\"."
   [:map
    [:model [:enum "table" "card" "model" "metric" "question"]]
-   [:id    :int]
+   [:id    ms/PositiveInt]
    [:name  {:optional true} :string]])
 
 (def ^:private EntityRefOut
@@ -83,22 +83,25 @@
 
 (api.macros/defendpoint :put "/:id"
   :- Entry
-  "Update a semantic layer entry by ID. Only the provided fields are changed."
+  "Update a semantic layer entry by ID. Only the provided fields are changed; sending a null
+  usage_instructions clears it."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [search_prompt usage_instructions entity verified]}
+   ;; patch semantics: presence of a key (not nil-ness of its value) decides what changes, so an explicit
+   ;; null can clear the nullable usage_instructions. The non-nullable fields reject null in the schema.
+   {:keys [search_prompt usage_instructions entity verified] :as body}
    :- [:map
        [:search_prompt      {:optional true} :string]
        [:usage_instructions {:optional true} [:maybe :string]]
-       [:entity             {:optional true} [:maybe EntityRef]]
-       [:verified           {:optional true} [:maybe :boolean]]]]
+       [:entity             {:optional true} EntityRef]
+       [:verified           {:optional true} :boolean]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/SemanticLayerIndex :id id))
   (let [changes (cond-> {}
-                  (some? search_prompt)      (assoc :search_prompt search_prompt)
-                  (some? usage_instructions) (assoc :usage_instructions usage_instructions)
-                  (some? entity)             (assoc :entity entity)
-                  (some? verified)           (assoc :verified (boolean verified)))]
+                  (contains? body :search_prompt)      (assoc :search_prompt search_prompt)
+                  (contains? body :usage_instructions) (assoc :usage_instructions usage_instructions)
+                  (contains? body :entity)             (assoc :entity entity)
+                  (contains? body :verified)           (assoc :verified verified))]
     (when (seq changes)
       (t2/update! :model/SemanticLayerIndex id changes)))
   (t2/select-one :model/SemanticLayerIndex :id id))

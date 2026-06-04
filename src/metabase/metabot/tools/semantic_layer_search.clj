@@ -56,11 +56,13 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-limit :description limit-desc}]]]])
 
 (def ^:private instructions
-  (str "Each <match> is a curated entry: a saved prompt, its usage_instructions, and the entity to use "
-       "(already hydrated with the ids, names and portable references you need). `similarity` is the raw "
-       "cosine match strength; a match flagged confidence=\"weak\" (or a leading <note>) means nothing in "
-       "the curated layer clearly matches — don't build on it blindly; prefer asking the user to clarify "
-       "or narrow the request."))
+  ;; refers to the match/note elements by name only — literal angle-bracket tags here would make the
+  ;; surrounding <instructions> element malformed
+  (str "Each match element is a curated entry: a saved prompt, its usage_instructions, and the entity to "
+       "use (already hydrated with the ids, names and portable references you need). similarity is the "
+       "raw cosine match strength; a match flagged confidence=\"weak\" (or a leading note element) means "
+       "nothing in the curated layer clearly matches — don't build on it blindly; prefer asking the user "
+       "to clarify or narrow the request."))
 
 (defn- similarity
   "Raw cosine similarity (1 - distance) for a match, from its score breakdown."
