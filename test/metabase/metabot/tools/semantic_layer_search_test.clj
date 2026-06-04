@@ -65,6 +65,18 @@
     (testing "no leading weak <note> when the top match is strong"
       (is (not (str/starts-with? out "<note>"))))))
 
+(deftest xml-escaping-test
+  (let [format-output (var-get #'semantic-layer-search/format-output)
+        matches [{:saved_search_prompt "P&L by quarter <2026>"
+                  :usage_instructions  "Profit & loss; values < 0 are losses."
+                  :similarity 0.7 :weak? false
+                  :score {:total_score 0.7}
+                  :entity {:type "table" :id 1 :name "FINANCE" :database_id 1}}]
+        out (format-output matches)]
+    (testing "curator-entered text is escaped in the XML output"
+      (is (str/includes? out "<saved_search_prompt>P&amp;L by quarter &lt;2026&gt;</saved_search_prompt>"))
+      (is (str/includes? out "<usage_instructions>Profit &amp; loss; values &lt; 0 are losses.</usage_instructions>")))))
+
 (deftest weak-match-note-test
   (let [format-output (var-get #'semantic-layer-search/format-output)
         matches [{:saved_search_prompt "something only loosely related"

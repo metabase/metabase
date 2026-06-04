@@ -27,6 +27,14 @@
                          (assoc row :verified true)]]
           (is (not= h (reconcile/content-hash variant)) (pr-str variant)))))))
 
+(deftest format-embedding-rejects-non-finite-test
+  (testing "NaN and infinities are rejected before they reach a raw SQL literal"
+    (doseq [bad [Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY "0.1"]]
+      (is (thrown-with-msg? Exception #"non-finite"
+                            (index-table/format-embedding [0.1 bad 0.3]))
+          (pr-str bad)))
+    (is (string? (index-table/format-embedding [0.1 -0.2 0.3])))))
+
 (defmacro ^:private with-isolated-mirror
   "Run `body` with isolated pgvector tables bound and dropped afterwards, binding `ds-sym` to the
   pgvector datasource. Skips the body entirely when no pgvector store is configured."

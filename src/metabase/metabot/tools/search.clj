@@ -345,19 +345,25 @@
          :verified    (boolean (contains? (set verified) (:id c)))
          :collection  (when coll (select-keys coll [:id :name :authority_level]))}))))
 
+(defn ref-model->entity-type
+  "Normalize an entity ref's `:model` string to the agent-facing entity type: plain cards are
+  `\"question\"` everywhere the agent sees them (`read_resource` URIs, search results)."
+  [model]
+  (if (= model "card") "question" model))
+
 (defn entity-refs->search-results
   "Hydrate semantic-layer entity refs into the enriched search-result shape that
   [[metabase.metabot.tools.shared.llm-shape/search-results->xml]] and the `search` tool consume.
 
-  `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"card\"`,
-  `\"model\"`, `\"metric\"`, or `\"question\"` (the names the agent uses with `read_resource`). Returns
-  records carrying `:portable_entity_id`, `:database_name`, fully-qualified names, metric base tables,
-  etc. — everything the LLM needs to build a query without an extra round-trip. Refs whose entity no
-  longer exists are dropped."
+  `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"model\"`,
+  `\"metric\"`, or `\"question\"` (the names the agent uses with `read_resource`); `\"card\"` is accepted
+  and normalized to `\"question\"`. Returns records carrying `:portable_entity_id`, `:database_name`,
+  fully-qualified names, metric base tables, etc. — everything the LLM needs to build a query without an
+  extra round-trip. Refs whose entity no longer exists are dropped."
   [refs]
-  (let [by-model  (group-by :model refs)
+  (let [by-model  (group-by (comp ref-model->entity-type :model) refs)
         table-ids (distinct (map :id (get by-model "table")))
-        card-refs (for [m ["card" "model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})]
+        card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})]
     (->> (concat (table-refs->results table-ids)
                  (card-refs->results (distinct card-refs)))
          enrich-with-collection-descriptions

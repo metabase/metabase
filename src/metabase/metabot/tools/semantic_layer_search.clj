@@ -89,7 +89,9 @@
         by-key  (into {} (map (juxt (juxt :type :id) identity))
                       (tools.search/entity-refs->search-results (distinct (map :entity top))))]
     (for [{:keys [saved_search_prompt usage_instructions entity score]} top
-          :let [resolved (get by-key [(:model entity) (:id entity)])
+          ;; hydrated records use the agent-facing entity type, so normalize the ref's model to match
+          ;; (plain "card" refs hydrate as "question")
+          :let [resolved (get by-key [(tools.search/ref-model->entity-type (:model entity)) (:id entity)])
                 sim      (similarity score)]
           :when resolved]
       {:saved_search_prompt saved_search_prompt
@@ -99,12 +101,20 @@
        :weak?               (< sim weak-similarity-threshold)
        :entity              resolved})))
 
+(defn- escape-xml
+  "Escape curator-entered text for the XML-ish tool output."
+  [s]
+  (-> s
+      (str/replace "&" "&amp;")
+      (str/replace "<" "&lt;")
+      (str/replace ">" "&gt;")))
+
 (defn- match->xml [{:keys [saved_search_prompt usage_instructions score similarity weak? entity]}]
   (str (format "<match score=\"%.3f\" similarity=\"%.3f\" confidence=\"%s\">\n"
                (double (:total_score score)) (double similarity) (if weak? "weak" "strong"))
-       "<saved_search_prompt>" saved_search_prompt "</saved_search_prompt>\n"
+       "<saved_search_prompt>" (escape-xml saved_search_prompt) "</saved_search_prompt>\n"
        (when-not (str/blank? usage_instructions)
-         (str "<usage_instructions>" usage_instructions "</usage_instructions>\n"))
+         (str "<usage_instructions>" (escape-xml usage_instructions) "</usage_instructions>\n"))
        (llm-shape/search-result->xml entity)
        "\n</match>"))
 

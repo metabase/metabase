@@ -430,20 +430,28 @@
                       :database_id (mt/id) :table_id (mt/id :orders)
                       :dataset_query {:database (mt/id) :type :query
                                       :query {:source-table (mt/id :orders)}}}]
-        (let [results (search/entity-refs->search-results
-                       [{:model "model" :id m-id}
-                        {:model "table" :id (mt/id :orders)}
-                        {:model "model" :id Integer/MAX_VALUE}]) ; nonexistent → dropped
-              by-id   (into {} (map (juxt (juxt :type :id) identity)) results)]
-          (testing "model ref hydrates with type, name, and portable_entity_id"
-            (is (=? {:type "model" :name "Hydrate Sample Model" :portable_entity_id m-eid
-                     :database_id (mt/id)}
-                    (get by-id ["model" m-id]))))
-          (testing "table ref hydrates with type table and a database name"
-            (is (=? {:type "table" :database_id (mt/id) :database_name string?}
-                    (get by-id ["table" (mt/id :orders)]))))
-          (testing "refs whose entity no longer exists are dropped"
-            (is (= 2 (count results)))))))))
+        (mt/with-temp [:model/Card {q-id :id} {:name "Hydrate Sample Question"
+                                               :database_id (mt/id) :table_id (mt/id :orders)
+                                               :dataset_query {:database (mt/id) :type :query
+                                                               :query {:source-table (mt/id :orders)}}}]
+          (let [results (search/entity-refs->search-results
+                         [{:model "model" :id m-id}
+                          {:model "table" :id (mt/id :orders)}
+                          {:model "card" :id q-id}              ; normalized to "question"
+                          {:model "model" :id Integer/MAX_VALUE}]) ; nonexistent → dropped
+                by-id   (into {} (map (juxt (juxt :type :id) identity)) results)]
+            (testing "model ref hydrates with type, name, and portable_entity_id"
+              (is (=? {:type "model" :name "Hydrate Sample Model" :portable_entity_id m-eid
+                       :database_id (mt/id)}
+                      (get by-id ["model" m-id]))))
+            (testing "table ref hydrates with type table and a database name"
+              (is (=? {:type "table" :database_id (mt/id) :database_name string?}
+                      (get by-id ["table" (mt/id :orders)]))))
+            (testing "a card ref hydrates as the agent-facing type question"
+              (is (=? {:type "question" :name "Hydrate Sample Question"}
+                      (get by-id ["question" q-id]))))
+            (testing "refs whose entity no longer exists are dropped"
+              (is (= 3 (count results))))))))))
 
 (deftest enrich-with-metric-base-tables-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
