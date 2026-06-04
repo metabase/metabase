@@ -924,7 +924,12 @@ function withAvailableModels(WrappedComponent) {
 function withSavedDatabasesPrefetch(WrappedComponent) {
   return function DataSelectorWithSavedDatabasesPrefetch(props) {
     const { isLoading } = useListDatabasesQuery({ saved: true });
-    return <WrappedComponent {...props} allLoading={isLoading} />;
+    return (
+      <WrappedComponent
+        {...props}
+        allLoading={isLoading || (props.allLoading ?? false)}
+      />
+    );
   };
 }
 
