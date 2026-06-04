@@ -321,6 +321,17 @@ describe("ExplorationSidebar", () => {
   });
 
   describe("thread menu", () => {
+    // A canceled thread is stamped with both timestamps by the cancel endpoint.
+    const canceledThread = {
+      canceled_at: "2026-04-30T00:01:00Z",
+      completed_at: "2026-04-30T00:01:00Z",
+    };
+
+    const findThreadMenuButton = () =>
+      screen
+        .getAllByRole("group", { name: /Initial investigation/ })
+        .find((el) => within(el).queryByRole("button"));
+
     it("calls cancel when Stop running is clicked on a running thread", async () => {
       fetchMock.post("path:/api/exploration/thread/1/cancel", {
         id: 1,
@@ -330,9 +341,7 @@ describe("ExplorationSidebar", () => {
 
       setup({ queries: [pendingQuery] });
 
-      const threadHeading = screen
-        .getAllByRole("group", { name: /Initial investigation/ })
-        .find((el) => within(el).queryByRole("button"));
+      const threadHeading = findThreadMenuButton();
       expect(threadHeading).toBeDefined();
 
       await userEvent.click(within(threadHeading!).getByRole("button"));
@@ -351,19 +360,28 @@ describe("ExplorationSidebar", () => {
         ).toBe(true);
       });
     });
-  });
 
-  describe("restart menu item", () => {
-    // A canceled thread is stamped with both timestamps by the cancel endpoint.
-    const canceledThread = {
-      canceled_at: "2026-04-30T00:01:00Z",
-      completed_at: "2026-04-30T00:01:00Z",
-    };
+    it("does not offer Stop running when the thread is already canceled", async () => {
+      setup({ queries: [pendingQuery], thread: canceledThread });
 
-    const findThreadMenuButton = () =>
-      screen
-        .getAllByRole("group", { name: /Initial investigation/ })
-        .find((el) => within(el).queryByRole("button"));
+      const threadHeading = findThreadMenuButton();
+      expect(threadHeading).toBeDefined();
+
+      await userEvent.click(within(threadHeading!).getByRole("button"));
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Stop running/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /Restart/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not offer Stop running when the user lacks write access", () => {
+      setup({ queries: [pendingQuery], canWrite: false });
+
+      expect(findThreadMenuButton()).toBeUndefined();
+    });
 
     it("calls restart when Restart is clicked on a canceled thread", async () => {
       fetchMock.post("path:/api/exploration/1/restart", {

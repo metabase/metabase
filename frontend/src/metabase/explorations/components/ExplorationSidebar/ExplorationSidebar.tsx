@@ -309,6 +309,8 @@ function ExplorationThreadMenu({
       if (error) {
         sendToast({
           message: t`Failed to stop`,
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
         });
         return;
       }
@@ -322,7 +324,7 @@ function ExplorationThreadMenu({
       const { error } = await restartExploration(explorationId);
       if (error) {
         sendToast({
-          message: t`Failed to restart analysis`,
+          message: t`Failed to restart`,
           icon: "warning_triangle_filled",
           iconColor: "warning",
         });
@@ -339,7 +341,7 @@ function ExplorationThreadMenu({
   const { explorationId, thread } = item.data;
   const menuItems = [];
 
-  if (thread.completed_at == null) {
+  if (canWrite && thread.completed_at == null) {
     menuItems.push(
       <Menu.Item
         key="stop"
@@ -350,8 +352,6 @@ function ExplorationThreadMenu({
     );
   }
 
-  // Restart re-runs the thread in place, so it's only offered once the run is stopped — i.e. the
-  // thread was canceled. A completed or still-running thread doesn't get the option.
   if (canWrite && thread.canceled_at != null) {
     menuItems.push(
       <Menu.Item key="restart" onClick={() => handleRestart(explorationId)}>
