@@ -347,7 +347,7 @@
                             (try
                               ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/delete-sa-direct!)
                                iam pid {:id ws-id})
-                              (finally (.close ^com.google.cloud.iam.admin.v1.IAMClient iam)))))
+                              (finally (.close ^java.lang.AutoCloseable iam)))))
                         ;; --- Stage 1: provision via the workspace provisioning entrypoint.
                         ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
                         ;; multimethods, but through `provisioning/provision-single!`, which writes
