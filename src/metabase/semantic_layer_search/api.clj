@@ -9,9 +9,18 @@
    [toucan2.core :as t2]))
 
 (def ^:private EntityRef
+  "Entity ref as accepted on writes: the model must be a known agent-facing entity type (as used with
+  read_resource), plus plain \"card\"."
   [:map
-   ;; the agent-facing entity types (as used with read_resource), plus plain "card"
    [:model [:enum "table" "card" "model" "metric" "question"]]
+   [:id    :int]
+   [:name  {:optional true} :string]])
+
+(def ^:private EntityRefOut
+  "Entity ref as returned on reads. `:model` is any string: rows can predate a model string's retirement
+  (serdes tolerates those too), and one legacy row must not fail response validation for a whole list."
+  [:map
+   [:model :string]
    [:id    :int]
    [:name  {:optional true} :string]])
 
@@ -20,7 +29,7 @@
    [:id                 ms/PositiveInt]
    [:search_prompt      :string]
    [:usage_instructions {:optional true} [:maybe :string]]
-   [:entity             EntityRef]
+   [:entity             EntityRefOut]
    [:verified           :boolean]])
 
 (def ^:private default-limit 50)

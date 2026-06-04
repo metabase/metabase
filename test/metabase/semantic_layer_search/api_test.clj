@@ -27,7 +27,11 @@
         (is (contains? response :total))
         (is (some #(= (:id entry) (:id %)) (:data response)))))
     (testing "non-superuser gets 403"
-      (mt/user-http-request :rasta :get 403 "semantic-layer-search/"))))
+      (mt/user-http-request :rasta :get 403 "semantic-layer-search/"))
+    (testing "a legacy row whose entity model is no longer in the write enum still reads back fine"
+      (with-test-entry [legacy {:entity {:model "retired-model-string" :id 7}}]
+        (is (some #(= (:id legacy) (:id %))
+                  (:data (mt/user-http-request :crowberto :get 200 "semantic-layer-search/"))))))))
 
 (deftest get-test
   (with-test-entry [entry {:search_prompt "find customers" :verified true}]
