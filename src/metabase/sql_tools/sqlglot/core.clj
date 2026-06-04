@@ -34,7 +34,6 @@
   (case driver
     nil                  nil
     :postgres            "postgres"
-    :postgres-mbql5      "postgres"
     :mysql               "mysql"
     :snowflake           "snowflake"
     :bigquery            "bigquery"

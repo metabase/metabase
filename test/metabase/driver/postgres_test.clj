@@ -2279,32 +2279,28 @@
 
 (deftest set-network-timeout-test
   (mt/test-driver :postgres
-    (let [db-name (u/lower-case-en (format "network-timeout-%s-%s" (name driver/*driver*) (mt/random-name)))
-          spec    (sql-jdbc.conn/connection-details->spec
-                   driver/*driver*
-                   (mt/dbdef->connection-details driver/*driver* :db {:database-name db-name}))]
-      (tx/with-temp-database! driver/*driver* db-name
-        ;; Use a raw spec against a unique DB; the shared test-data DB can be created/dropped by concurrent
-        ;; :postgres and :postgres-mbql5 test setup.
-        (letfn [(run-pg-sleep []
-                  (sql-jdbc.execute/do-with-connection-with-options
-                   driver/*driver* spec nil
-                   (fn [^Connection conn]
-                     (with-open [stmt (.createStatement conn)]
-                       (.execute stmt "SELECT pg_sleep(6)")))))]
-          (testing "network hangs are interrupted after *network-timeout-ms*"
-            (binding [driver.settings/*network-timeout-ms* 3000]
-              (is (thrown-with-msg?
-                   org.postgresql.util.PSQLException
-                   #"An I/O error occurred while sending to the backend"
-                   (try
-                     (run-pg-sleep)
-                     (catch Exception e
-                       (is (true? (some #(instance? java.net.SocketTimeoutException %)
-                                        (u/full-exception-chain e))))
-                       (throw e)))))))
-          (testing "network hangs are not interrupted before *network-timeout-ms*"
-            (is (true? (run-pg-sleep)))))))))
+    (testing "network hangs are interrupted after *network-timeout-ms*"
+      (binding [driver.settings/*network-timeout-ms* 3000]
+        (is (thrown-with-msg?
+             org.postgresql.util.PSQLException
+             #"An I/O error occurred while sending to the backend"
+             (try
+               (sql-jdbc.execute/do-with-connection-with-options
+                driver/*driver* (mt/id) nil
+                (fn [^Connection conn]
+                  (with-open [stmt (.createStatement conn)]
+                    (.execute stmt "SELECT pg_sleep(6)"))))
+               (catch Exception e
+                 (is (true? (some #(instance? java.net.SocketTimeoutException %)
+                                  (u/full-exception-chain e))))
+                 (throw e)))))))
+    (testing "network hangs are not interrupted before *network-timeout-ms*"
+      (is (true?
+           (sql-jdbc.execute/do-with-connection-with-options
+            driver/*driver* (mt/id) nil
+            (fn [^Connection conn]
+              (with-open [stmt (.createStatement conn)]
+                (.execute stmt "SELECT pg_sleep(6)")))))))))
 
 (deftest ^:parallel parse-final-identifier-test
   (mt/test-driver :postgres
