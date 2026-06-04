@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.resources :as read-resource]
@@ -424,6 +425,43 @@
                 "items must be capped at max-list-items")
             (is (true? (:truncated so))
                 "truncated must be true when readable count exceeds the cap")))))))
+
+(deftest tables-with-duplicate-names-across-schemas-test
+  (testing "two tables sharing a name in different schemas both appear (no serdes-path collision)"
+    ;; extract-readable re-correlates extracted MBRs to instances by full serdes
+    ;; path. A Table's leaf serdes id is its bare name, so keying on `last :id`
+    ;; would collapse same-named tables across schemas into one. The full path
+    ;; carries the schema, keeping them distinct.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table _ {:db_id db-id :name "events" :schema "public"  :active true}
+                     :model/Table _ {:db_id db-id :name "events" :schema "staging" :active true}]
+        (let [result (read-resource/read-resource
+                      {:uris [(str "metabase://database/" db-id "/tables")]})
+              so     (get-in result [:resources 0 :content :structured-output])]
+          (is (= 2 (:total so))
+              "both same-named tables must be counted")
+          (is (= 2 (count (:items so)))
+              "both same-named tables must appear in items — no collision drop")
+          (is (= 2 (count (distinct (:items so))))
+              "the two items must be distinct tables, not the same MBR twice"))))))
+
+(deftest collections-tree-includes-personal-collection-test
+  (testing "a readable personal collection appears in the tree list and total == count items"
+    ;; Bug A regression: extract-readable for Collection must scope via
+    ;; :collection-set, not :where — the latter inherits extract-query's
+    ;; `personal_owner_id IS NULL` policy filter and silently drops personal
+    ;; collections the user can read, making :total > (count items).
+    (mt/with-current-user (mt/user->id :crowberto)
+      ;; Ensure crowberto's personal collection exists (created lazily otherwise).
+      (let [personal (collection/user->personal-collection (mt/user->id :crowberto))
+            result   (read-resource/read-resource {:uris ["metabase://collections?tree=true"]})
+            so       (get-in result [:resources 0 :content :structured-output])
+            eids     (set (keep :entity_id (:items so)))]
+        (is (= (:total so) (count (:items so)))
+            "no readable collection may be counted in :total yet dropped from :items")
+        (is (contains? eids (:entity_id personal))
+            "crowberto's readable personal collection must appear in the tree list")))))
 
 (deftest list-filters-dashboard-items-by-can-read-test
   (testing "metabase://dashboard/{id}/items hides cards the user can't read"

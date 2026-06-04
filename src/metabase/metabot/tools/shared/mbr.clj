@@ -168,6 +168,25 @@
   (api/read-check instance)
   (->mbr model instance))
 
+(defn- extract-opts
+  "Scope a `serdes/extract-all` call to the given numeric `ids` for `model`.
+
+   Most models scope cleanly via `:where [:in :id ids]`. Collection is the
+   exception: its `extract-query` override ANDs `[:= :personal_owner_id nil]`
+   onto any `:where` (the export-policy default of dropping personal
+   collections), which would silently drop readable personal collections the
+   caller intends to show. Passing `:collection-set` instead takes the override's
+   id-scoped branch, which has no personal-owner filter — so a `can-read?`
+   personal collection survives extraction.
+
+   `ids` must be non-empty: `[:in :id nil]`/`[:in :id []]` are invalid SQL, and
+   an empty `:collection-set` would take the wrong (personal-dropping) branch."
+  [model ids]
+  (assert (seq ids) "extract-opts requires a non-empty id seq")
+  (if (= model "Collection")
+    {:collection-set (set ids)}
+    {:where [:in :id ids]}))
+
 (defn extract-readable
   "Map MBR over a sequence of `instances`, dropping any the current user cannot read.
 
@@ -179,15 +198,13 @@
   the count of readable instances before the limit, so the caller can report
   honest truncation even though only `n` were extracted.
 
-  Maintains input order using the input's numeric `:id` to look up the extracted
-  MBR.
+  Maintains input order by re-correlating each instance to its extracted MBR via
+  the full serdes path tuple (see the comment in the body).
 
   Batched: one `extract-all` call against the union of (possibly limited) readable
   ids, not one per instance. This matters for collection list endpoints where a
   single response may extract dozens of cards/dashboards — N+1 nested-hydration
-  roundtrips would be a noticeable perf cliff. `extract-all`'s pipeline strips
-  numeric `:id` from the MBR, so we re-fetch by id from the readable seq to
-  re-correlate."
+  roundtrips would be a noticeable perf cliff."
   ([model instances]
    (extract-readable model instances nil))
   ([model instances {:keys [limit]}]
@@ -197,24 +214,27 @@
          ids      (mapv :id sliced)
          mbrs     (if (empty? ids)
                     []
-                    ;; Run extract-all then zip back to original order. The
-                    ;; pipeline drops :id, so we trust `extract-all`'s order
-                    ;; matches the SQL `:in` filter — which we can't guarantee.
-                    ;; Re-fetch via :id is the safe play: query with order
-                    ;; matching `ids`, then map by position.
-                    (let [extract (fn [] (into {}
-                                               (map (fn [m]
-                                                      (let [eid (some-> m :serdes/meta last :id)]
-                                                        [eid m])))
-                                               (serdes/extract-all model {:where [:in :id ids]})))
-                          extracted-by-id (if (= model "Database")
-                                            (binding [warehouses.database/*include-h2-in-extract?* true]
-                                              (extract))
-                                            (extract))]
+                    ;; Run extract-all, then re-correlate each sliced instance to
+                    ;; its hydrated MBR. The pipeline strips numeric :id, so we
+                    ;; key by the full serdes path tuple (`serdes/meta` on the
+                    ;; extracted side, `generate-path` on the instance side).
+                    ;;
+                    ;; Keying on the *whole* path — not its last `:id` — matters
+                    ;; for name-keyed models: a Table's leaf id is its bare name,
+                    ;; so two same-named tables in different schemas would collide
+                    ;; on `last :id`. The full path carries the schema and keeps
+                    ;; them distinct. For entity_id models the path is a single
+                    ;; segment, so this is identical to the old behavior.
+                    (let [extract (fn []
+                                    (into {}
+                                          (map (fn [m] [(:serdes/meta m) m]))
+                                          (serdes/extract-all model (extract-opts model ids))))
+                          extracted-by-path (if (= model "Database")
+                                              (binding [warehouses.database/*include-h2-in-extract?* true]
+                                                (extract))
+                                              (extract))]
                       (into [] (keep (fn [inst]
-                                       (let [eid (or (:entity_id inst)
-                                                     (some-> (serdes/generate-path model inst) last :id))]
-                                         (get extracted-by-id eid))))
+                                       (get extracted-by-path (serdes/generate-path model inst))))
                             sliced)))]
      (if limit
        {:items mbrs :total total}
