@@ -11,7 +11,7 @@
   [[sym attrs] & body]
   `(let [~sym (t2/insert-returning-instance! :model/SemanticLayerIndex
                                              (merge {:search_prompt "find orders"
-                                                     :entities      [{:model "table" :id 1}]
+                                                     :entity        {:model "table" :id 1}
                                                      :verified      false}
                                                     ~attrs))]
      (try
@@ -29,29 +29,12 @@
     (testing "non-superuser gets 403"
       (mt/user-http-request :rasta :get 403 "semantic-layer-search/"))))
 
-(deftest list-type-filter-test
-  (with-test-entry [sources-entry {:type "sources"}]
-    (with-test-entry [canonical-entry {:type "canonical"}]
-      (testing "filtering by type=sources returns only sources entries"
-        (let [response (mt/user-http-request :crowberto :get 200 "semantic-layer-search/" :type "sources")]
-          (is (some #(= (:id sources-entry) (:id %)) (:data response)))
-          (is (not (some #(= (:id canonical-entry) (:id %)) (:data response))))
-          (is (every? #(= "sources" (:type %)) (:data response)))))
-      (testing "filtering by type=canonical returns only canonical entries"
-        (let [response (mt/user-http-request :crowberto :get 200 "semantic-layer-search/" :type "canonical")]
-          (is (some #(= (:id canonical-entry) (:id %)) (:data response)))
-          (is (not (some #(= (:id sources-entry) (:id %)) (:data response))))
-          (is (every? #(= "canonical" (:type %)) (:data response)))))
-      (testing "total reflects filtered count"
-        (let [response (mt/user-http-request :crowberto :get 200 "semantic-layer-search/" :type "canonical")]
-          (is (= (:total response) (count (:data response)))))))))
-
 (deftest get-test
   (with-test-entry [entry {:search_prompt "find customers" :verified true}]
     (testing "superuser can fetch a semantic layer entry by id"
       (is (=? {:id            (:id entry)
                :search_prompt "find customers"
-               :entities      [{:model "table" :id 1}]
+               :entity        {:model "table" :id 1}
                :verified      true}
               (mt/user-http-request :crowberto :get 200 (str "semantic-layer-search/" (:id entry))))))
     (testing "returns 404 for unknown id"
@@ -64,12 +47,11 @@
     (let [response (mt/user-http-request :crowberto :post 200 "semantic-layer-search/"
                                          {:search_prompt      "find revenue"
                                           :usage_instructions "Use the Revenue card."
-                                          :entities           [{:model "card" :id 42}]})]
+                                          :entity             {:model "card" :id 42}})]
       (try
         (is (=? {:search_prompt      "find revenue"
                  :usage_instructions "Use the Revenue card."
-                 :type               "sources"
-                 :entities           [{:model "card" :id 42}]
+                 :entity             {:model "card" :id 42}
                  :verified           false}
                 response))
         (finally
@@ -77,24 +59,18 @@
   (testing "verified defaults to false and usage_instructions to nil when omitted"
     (let [response (mt/user-http-request :crowberto :post 200 "semantic-layer-search/"
                                          {:search_prompt "find users"
-                                          :entities      [{:model "table" :id 1}]})]
+                                          :entity        {:model "table" :id 1}})]
       (try
         (is (false? (:verified response)))
         (is (nil? (:usage_instructions response)))
         (finally
           (t2/delete! :model/SemanticLayerIndex :id (:id response))))))
-  (testing "entities must be non-empty"
-    (is (= "A semantic layer entry must reference at least one entity."
-           (mt/user-http-request :crowberto :post 400 "semantic-layer-search/"
-                                 {:search_prompt "find users" :entities []}))))
-  (testing "a canonical entry must reference exactly one entity"
-    (is (= "A canonical semantic layer entry must reference exactly one entity."
-           (mt/user-http-request :crowberto :post 400 "semantic-layer-search/"
-                                 {:search_prompt "find users" :type "canonical"
-                                  :entities      [{:model "table" :id 1} {:model "card" :id 2}]}))))
+  (testing "entity is required"
+    (mt/user-http-request :crowberto :post 400 "semantic-layer-search/"
+                          {:search_prompt "find users"}))
   (testing "non-superuser gets 403"
     (mt/user-http-request :rasta :post 403 "semantic-layer-search/"
-                          {:search_prompt "find orders" :entities [{:model "table" :id 1}]})))
+                          {:search_prompt "find orders" :entity {:model "table" :id 1}})))
 
 (deftest update-test
   (with-test-entry [entry {}]
@@ -103,16 +79,14 @@
                                           (str "semantic-layer-search/" (:id entry))
                                           {:search_prompt "updated prompt"})]
         (is (= "updated prompt" (:search_prompt updated)))))
-    (testing "superuser can update usage_instructions"
+    (testing "superuser can update usage_instructions and the entity"
       (let [updated (mt/user-http-request :crowberto :put 200
                                           (str "semantic-layer-search/" (:id entry))
-                                          {:usage_instructions "Join orders to customers on customer_id."})]
-        (is (= "Join orders to customers on customer_id." (:usage_instructions updated)))))
-    (testing "entities cannot be updated to empty"
-      (is (= "A semantic layer entry must reference at least one entity."
-             (mt/user-http-request :crowberto :put 400
-                                   (str "semantic-layer-search/" (:id entry))
-                                   {:entities []}))))
+                                          {:usage_instructions "Join orders to customers on customer_id."
+                                           :entity             {:model "model" :id 7}})]
+        (is (=? {:usage_instructions "Join orders to customers on customer_id."
+                 :entity             {:model "model" :id 7}}
+                updated))))
     (testing "returns 404 for unknown id"
       (mt/user-http-request :crowberto :put 404 "semantic-layer-search/0" {:search_prompt "x"}))
     (testing "non-superuser gets 403"

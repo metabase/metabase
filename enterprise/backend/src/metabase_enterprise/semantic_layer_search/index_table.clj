@@ -71,8 +71,7 @@
         [[:index_id :bigint [:primary-key]]
          [:search_prompt :text :not-null]
          [:usage_instructions :text :not-null]
-         [:entities :jsonb :not-null]
-         [:canonical :boolean :not-null]
+         [:entity :jsonb :not-null]
          [:verified :boolean [:default false] :not-null]
          [:content_hash :text :not-null]
          [:embedding [:raw (format "vector(%d)" dims)] :not-null]])

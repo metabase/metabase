@@ -2,9 +2,8 @@
   "Metabot `semantic_layer_search` tool, backed by the curated semantic layer.
 
   Instead of ranking the whole instance, it matches the user's request by vector similarity against a
-  hand-curated library of saved search prompts, each mapped to the entities that answer it — a canonical
-  entity that directly answers the request, or a set of source entities to build a query from. Each match
-  also carries `usage_instructions`: curator guidance on how to use those entities.
+  hand-curated library of saved search prompts, each mapped to the single entity that answers it. Each
+  match also carries `usage_instructions`: curator guidance on how to use that entity.
 
   The index has several prompts per entity, so raw vector hits are **deduped to distinct entities** and a
   small number returned. The matched entity refs are hydrated into the same enriched search-result shape
@@ -57,68 +56,56 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-limit :description limit-desc}]]]])
 
 (def ^:private instructions
-  (str "Each <match> is a curated entry: a saved prompt, its usage_instructions, and the entity/entities "
-       "to use (already hydrated with the ids, names and portable references you need). A canonical match "
-       "is a single entity that directly answers the request — prefer it. A sources match is a set of "
-       "entities to combine yourself. `similarity` is the raw cosine match strength; a match flagged "
-       "confidence=\"weak\" (or a leading <note>) means nothing in the curated layer clearly matches — "
-       "don't build on it blindly; prefer asking the user to clarify or narrow the request."))
+  (str "Each <match> is a curated entry: a saved prompt, its usage_instructions, and the entity to use "
+       "(already hydrated with the ids, names and portable references you need). `similarity` is the raw "
+       "cosine match strength; a match flagged confidence=\"weak\" (or a leading <note>) means nothing in "
+       "the curated layer clearly matches — don't build on it blindly; prefer asking the user to clarify "
+       "or narrow the request."))
 
 (defn- similarity
   "Raw cosine similarity (1 − distance) for a match, from its score breakdown."
   ^double [score]
   (or (some (fn [s] (when (= :similarity (:name s)) (double (:score s)))) (:scores score)) 0.0))
 
-(defn- canonical-match?
-  "True when the match's canonical score factor fired (a single directly-answering entity)."
-  [score]
-  (boolean (some (fn [s] (and (= :canonical (:name s)) (pos? (double (:score s)))))
-                 (:scores score))))
-
-(defn- entity-set-key [entities]
-  (->> entities (map (juxt :model :id)) sort vec))
-
 (defn- dedupe-by-entity
-  "Collapse raw per-prompt results (sorted best-first) to distinct entity sets, keeping the best-scoring
+  "Collapse raw per-prompt results (sorted best-first) to distinct entities, keeping the best-scoring
   prompt for each."
   [results]
   (->> results
        (reduce (fn [[seen acc] r]
-                 (let [k (entity-set-key (:entities r))]
+                 (let [k ((juxt :model :id) (:entity r))]
                    (if (seen k) [seen acc] [(conj seen k) (conj acc r)])))
                [#{} []])
        second))
 
 (defn- build-matches
-  "Fetch, dedupe to distinct entities, take `n`, and hydrate each match's entity refs into full search
-  records. Each match: {:saved_search_prompt :usage_instructions :canonical :score :similarity :weak?
-  :entities [hydrated-hits]}."
+  "Fetch, dedupe to distinct entities, take `n`, and hydrate each match's entity ref into a full search
+  record. Each match: {:saved_search_prompt :usage_instructions :score :similarity :weak? :entity
+  hydrated-hit}."
   [user-search-prompt n]
   (let [raw     (semantic-layer-search/search
                  user-search-prompt (min over-fetch-cap (* over-fetch-factor n)))
         top     (take n (dedupe-by-entity raw))
         by-key  (into {} (map (juxt (juxt :type :id) identity))
-                      (tools.search/entity-refs->search-results (distinct (mapcat :entities top))))]
-    (for [{:keys [saved_search_prompt usage_instructions entities score]} top
-          :let [resolved (keep (fn [{:keys [model id]}] (get by-key [model id])) entities)
+                      (tools.search/entity-refs->search-results (distinct (map :entity top))))]
+    (for [{:keys [saved_search_prompt usage_instructions entity score]} top
+          :let [resolved (get by-key [(:model entity) (:id entity)])
                 sim      (similarity score)]
-          :when (seq resolved)]
+          :when resolved]
       {:saved_search_prompt saved_search_prompt
        :usage_instructions  usage_instructions
-       :canonical           (canonical-match? score)
        :score               score
        :similarity          sim
        :weak?               (< sim weak-similarity-threshold)
-       :entities            (vec resolved)})))
+       :entity              resolved})))
 
-(defn- match->xml [{:keys [saved_search_prompt usage_instructions canonical score similarity weak? entities]}]
-  (str (format "<match score=\"%.3f\" similarity=\"%.3f\" kind=\"%s\" confidence=\"%s\">\n"
-               (double (:total_score score)) (double similarity)
-               (if canonical "canonical" "sources") (if weak? "weak" "strong"))
+(defn- match->xml [{:keys [saved_search_prompt usage_instructions score similarity weak? entity]}]
+  (str (format "<match score=\"%.3f\" similarity=\"%.3f\" confidence=\"%s\">\n"
+               (double (:total_score score)) (double similarity) (if weak? "weak" "strong"))
        "<saved_search_prompt>" saved_search_prompt "</saved_search_prompt>\n"
        (when-not (str/blank? usage_instructions)
          (str "<usage_instructions>" usage_instructions "</usage_instructions>\n"))
-       (str/join "\n" (map llm-shape/search-result->xml entities))
+       (llm-shape/search-result->xml entity)
        "\n</match>"))
 
 (defn- format-output [matches]
@@ -133,40 +120,30 @@
          "<instructions>" instructions "</instructions>")))
 
 (defn- flatten-data
-  "Flatten matches to a deduped, per-entity list (the `:result-type :search` shape), each entity record
-  annotated with its match's prompt, usage_instructions, canonical flag, similarity, confidence, and a
-  `:match_group` linking entities that came from the same sources match."
+  "Flatten matches to a per-entity list (the `:result-type :search` shape), each entity record annotated
+  with its match's prompt, usage_instructions, similarity and confidence."
   [matches]
-  (->> (for [[gi {:keys [saved_search_prompt usage_instructions canonical score similarity weak? entities]}]
-             (map-indexed vector matches)
-             hit entities]
-         (assoc hit
-                :saved_search_prompt saved_search_prompt
-                :usage_instructions  usage_instructions
-                :canonical           canonical
-                :score               score
-                :similarity          similarity
-                :confidence          (if weak? "weak" "strong")
-                :match_group         gi))
-       (reduce (fn [[seen acc] r]
-                 (let [k [(:type r) (:id r)]]
-                   (if (seen k) [seen acc] [(conj seen k) (conj acc r)])))
-               [#{} []])
-       second))
+  (mapv (fn [{:keys [saved_search_prompt usage_instructions score similarity weak? entity]}]
+          (assoc entity
+                 :saved_search_prompt saved_search_prompt
+                 :usage_instructions  usage_instructions
+                 :score               score
+                 :similarity          similarity
+                 :confidence          (if weak? "weak" "strong")))
+        matches))
 
 (mu/defn ^{:tool-name "semantic_layer_search"
            :scope     scope/agent-search}
   semantic-layer-search-tool
   "Find the best data to answer the user's request from the curated semantic layer — a vetted library of
-  saved prompts, each mapped to the entities that answer it. Phrase `user_search_prompt` as a full
+  saved prompts, each mapped to the entity that answers it. Phrase `user_search_prompt` as a full
   natural-language description of the data wanted (it is matched on meaning, not keywords).
 
   Returns a handful of distinct curated matches, best-first. Each match has `saved_search_prompt`, curator
-  `usage_instructions`, a raw `similarity`, and `entities` — full search records (name, type, database,
-  `portable_entity_id`, fully-qualified name) you can use directly. A `canonical` match has one entity
-  that DIRECTLY answers the request — prefer these. A `sources` match is one or more entities you combine
-  yourself. If the top match is flagged low-confidence (a leading <note> / confidence=\"weak\"), nothing in
-  the curated layer clearly matches — prefer asking the user to clarify rather than building on it."
+  `usage_instructions`, a raw `similarity`, and the `entity` — a full search record (name, type, database,
+  `portable_entity_id`, fully-qualified name) you can use directly. If the top match is flagged
+  low-confidence (a leading <note> / confidence=\"weak\"), nothing in the curated layer clearly matches —
+  prefer asking the user to clarify rather than building on it."
   [{:keys [user_search_prompt limit]} :- semantic-layer-search-schema]
   (try
     (let [n       (min max-limit (or limit default-limit))

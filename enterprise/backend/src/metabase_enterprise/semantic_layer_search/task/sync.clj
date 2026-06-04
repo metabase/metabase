@@ -18,26 +18,22 @@
    [metabase.util.log :as log])
   (:import
    (java.time Duration Instant)
-   (java.util Date)
-   (org.quartz DisallowConcurrentExecution)))
+   (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
-(deftype ^{DisallowConcurrentExecution true
-           :doc "Reconciles the semantic layer pgvector mirror with the appdb table."}
- SemanticLayerIndexSync []
-  org.quartz.Job
-  (execute [_ _]
-    (when (semantic-layer-search.core/available?)
-      (log/with-context {:quartz-job-type 'SemanticLayerIndexSync}
-        (try
-          (let [result (reconcile/reconcile! (semantic.db.datasource/ensure-initialized-data-source!)
-                                             (embedding/get-configured-model))]
-            (when (pos? (+ (:upserted result) (:deleted result)))
-              (log/info "semantic layer mirror reconciled" result)))
-          (catch Throwable e
-            ;; Log and move on: the next periodic run retries from the authoritative appdb table.
-            (log/error e "semantic layer mirror reconciliation failed")))))))
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
+               :doc "Reconciles the semantic layer pgvector mirror with the appdb table."}
+  SemanticLayerIndexSync [_ctx]
+  (when (semantic-layer-search.core/available?)
+    (try
+      (let [result (reconcile/reconcile! (semantic.db.datasource/ensure-initialized-data-source!)
+                                         (embedding/get-configured-model))]
+        (when (pos? (+ (:upserted result) (:deleted result)))
+          (log/info "semantic layer mirror reconciled" result)))
+      (catch Throwable e
+        ;; Log and move on: the next periodic run retries from the authoritative appdb table.
+        (log/error e "semantic layer mirror reconciliation failed")))))
 
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
 (def ^:private ^Duration run-frequency (Duration/parse "PT30S"))

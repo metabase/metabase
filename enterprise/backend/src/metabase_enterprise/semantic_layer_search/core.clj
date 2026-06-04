@@ -45,9 +45,8 @@
 
 ;; Weighted scorers, mirroring the regular search scoring shape (see metabase.search.scoring):
 ;; each factor contributes weight * score, and :total_score is their sum. Similarity (1 - cosine
-;; distance) is the primary signal; canonical and verified are flat 0/1 indicator boosts.
+;; distance) is the primary signal; verified is a flat 0/1 indicator boost.
 (def ^:private similarity-weight 1.0)
-(def ^:private canonical-weight 0.15)
 (def ^:private verified-weight 0.1)
 (def ^:private default-limit 10)
 
@@ -58,14 +57,13 @@
 (defn- score
   "Build a weighted-scorer breakdown for one row, shaped like regular search's scoring.
   Returns a `:scores` vector of `{:name :score :weight :contribution}` plus the weighted-sum `:total_score`."
-  [{:keys [distance canonical verified]}]
+  [{:keys [distance verified]}]
   (let [scores [(scorer :similarity (- 1.0 (double distance)) similarity-weight)
-                (scorer :canonical  (if canonical 1.0 0.0)     canonical-weight)
                 (scorer :verified   (if verified 1.0 0.0)      verified-weight)]]
     {:scores      scores
      :total_score (reduce + (map :contribution scores))}))
 
-(defn- decode-entities [v]
+(defn- decode-entity [v]
   (cond
     (instance? PGobject v) (json/decode (.getValue ^PGobject v) true)
     (string? v)            (json/decode v true)
@@ -73,8 +71,8 @@
 
 (defenterprise search
   "Find the saved prompts nearest to `user-search-prompt` by cosine distance, up to `limit`.
-  Results are ranked by blended score (similarity + canonical + verified boosts), each shaped
-  `{:saved_search_prompt :usage_instructions :entities :score}`.
+  Results are ranked by blended score (similarity + verified boost), each shaped
+  `{:saved_search_prompt :usage_instructions :entity :score}`.
   Returns [] when the pgvector store is unconfigured."
   :feature :semantic-search
   [user-search-prompt limit]
@@ -89,7 +87,7 @@
           rows      (try
                       (jdbc/execute!
                        pgvector
-                       (-> (sql.helpers/select :search_prompt :usage_instructions :entities :canonical :verified
+                       (-> (sql.helpers/select :search_prompt :usage_instructions :entity :verified
                                                [[:raw (str "embedding <=> " lit)] :distance])
                            (sql.helpers/from (keyword index-table/*vectors-table*))
                            (sql.helpers/order-by [[:raw (str "embedding <=> " lit)] :asc])
@@ -103,7 +101,7 @@
            (map (fn [row]
                   {:saved_search_prompt (:search_prompt row)
                    :usage_instructions  (:usage_instructions row)
-                   :entities            (decode-entities (:entities row))
+                   :entity              (decode-entity (:entity row))
                    :score               (score row)}))
            (sort-by (comp :total_score :score) >)
            vec))))

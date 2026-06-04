@@ -20,21 +20,16 @@
 (deftest score-shape-matches-regular-search-test
   (let [score (var-get #'semantic-layer-search.core/score)]
     (testing "weighted-scorer breakdown: per-factor {name score weight contribution} + total_score"
-      (is (=? {:scores [{:name :similarity :score (approx 0.8) :weight 1.0  :contribution (approx 0.8)}
-                        {:name :canonical  :score 1.0          :weight 0.15 :contribution (approx 0.15)}
-                        {:name :verified   :score 0.0          :weight 0.1  :contribution 0.0}]
-               :total_score (approx 0.95)}
-              (score {:distance 0.2 :canonical true :verified false}))))
-    (testing "verified-only and canonical+verified totals apply the right weights"
-      (is (=? {:total_score (approx 0.9)}  (score {:distance 0.2 :canonical false :verified true})))
-      (is (=? {:total_score (approx 1.05)} (score {:distance 0.2 :canonical true  :verified true})))
-      (is (=? {:total_score (approx 0.8)}  (score {:distance 0.2 :canonical false :verified false}))))
-    (testing "total_score = sum of contributions, and boosts strictly increase it"
-      (let [s (score {:distance 0.2 :canonical true :verified true})]
+      (is (=? {:scores [{:name :similarity :score (approx 0.8) :weight 1.0 :contribution (approx 0.8)}
+                        {:name :verified   :score 0.0          :weight 0.1 :contribution 0.0}]
+               :total_score (approx 0.8)}
+              (score {:distance 0.2 :verified false}))))
+    (testing "the verified boost applies its weight and strictly increases the total"
+      (is (=? {:total_score (approx 0.9)} (score {:distance 0.2 :verified true})))
+      (let [s (score {:distance 0.2 :verified true})]
         (is (=? (approx (reduce + (map :contribution (:scores s)))) (:total_score s))))
-      (is (> (:total_score (score {:distance 0.2 :canonical true :verified true}))
-             (:total_score (score {:distance 0.2 :canonical true :verified false}))
-             (:total_score (score {:distance 0.2 :canonical false :verified false})))))))
+      (is (> (:total_score (score {:distance 0.2 :verified true}))
+             (:total_score (score {:distance 0.2 :verified false})))))))
 
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
@@ -57,10 +52,9 @@
 
 (defn- create-entry!
   "POST an entry through the CRUD API; returns the created row's id."
-  [search-prompt type entities verified]
+  [search-prompt entity verified]
   (:id (mt/user-http-request :crowberto :post 200 "semantic-layer-search/"
-                             {:search_prompt search-prompt :type type
-                              :entities entities :verified verified})))
+                             {:search_prompt search-prompt :entity entity :verified verified})))
 
 (deftest ^:sequential crud-api-to-tool-end-to-end-test
   (testing "CRUD API write -> reconcile -> pgvector -> semantic_layer_search tool, end to end"
@@ -71,13 +65,11 @@
     (when semantic.db.datasource/db-url
       (let [suffix    (System/nanoTime)
             ds        (semantic.db.datasource/ensure-initialized-data-source!)
-            ent-1     [{:model "table" :id (mt/id :orders)}]
-            ent-2     [{:model "table" :id (mt/id :people)}]
-            ent-3     [{:model "table" :id (mt/id :products)}]
-            ;; All prompts + the query embed to the same vector, so cosine distance ties and the
-            ;; canonical (0.15) > verified (0.10) > plain (0.0) boosts alone decide the ranking.
+            ent-1     {:model "table" :id (mt/id :orders)}
+            ent-2     {:model "table" :id (mt/id :people)}
+            ;; Both prompts + the query embed to the same vector, so cosine distance ties and the
+            ;; verified boost (0.10) alone decides the ranking.
             vec1      [1.0 0.0 0.0 0.0]
-            p-canon   "revenue by region (canonical)"
             p-verif   "revenue by region (verified)"
             p-plain   "revenue by region (plain)"
             q         "monthly revenue per region"
@@ -89,30 +81,26 @@
                                       (constantly semantic.tu/mock-embedding-model)]
             (binding [index-table/*vectors-table* (str "semantic_layer_index_vectors_test_" suffix)
                       index-table/*meta-table*    (str "semantic_layer_index_meta_test_" suffix)]
-              (semantic.tu/with-mock-embeddings {p-canon vec1 p-verif vec1 p-plain vec1 q vec1}
+              (semantic.tu/with-mock-embeddings {p-verif vec1 p-plain vec1 q vec1}
                 (try
-                  (let [id-canon  (create-entry! p-canon "canonical" ent-1 false)
-                        id-verif  (create-entry! p-verif "sources" ent-2 true)
-                        id-plain  (create-entry! p-plain "sources" ent-3 false)
-                        _         (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
-                        results   (search!)]
-                    (testing "all three distinct entities mirrored and returned, ranked by boost"
-                      (is (= [p-canon p-verif p-plain] (mapv :saved_search_prompt results))))
-                    (testing "data is flat per-entity hydrated records; total_score reflects the boosts, similarity=1.0 (vectors tie)"
-                      (is (=? [{:type "table" :id (mt/id :orders)   :canonical true  :similarity (approx 1.0)
-                                :score {:total_score (approx 1.15)}}
-                               {:type "table" :id (mt/id :people)   :canonical false :similarity (approx 1.0)
+                  (let [id-verif (create-entry! p-verif ent-1 true)
+                        id-plain (create-entry! p-plain ent-2 false)
+                        _        (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
+                        results  (search!)]
+                    (testing "both distinct entities mirrored and returned, the verified one boosted first"
+                      (is (= [p-verif p-plain] (mapv :saved_search_prompt results))))
+                    (testing "data is per-entity hydrated records; total_score reflects the boost, similarity=1.0 (vectors tie)"
+                      (is (=? [{:type "table" :id (mt/id :orders) :similarity (approx 1.0)
                                 :score {:total_score (approx 1.1)}}
-                               {:type "table" :id (mt/id :products) :canonical false :similarity (approx 1.0)
+                               {:type "table" :id (mt/id :people) :similarity (approx 1.0)
                                 :score {:total_score (approx 1.0)}}]
                               results)))
                     (testing "deleting via the CRUD API + reconcile removes the row from search results"
-                      (mt/user-http-request :crowberto :delete 204 (str "semantic-layer-search/" id-canon))
+                      (mt/user-http-request :crowberto :delete 204 (str "semantic-layer-search/" id-verif))
                       (is (=? {:deleted 1} (reconcile/reconcile! ds semantic.tu/mock-embedding-model)))
-                      (is (= [p-verif p-plain] (mapv :saved_search_prompt (search!)))))
+                      (is (= [p-plain] (mapv :saved_search_prompt (search!)))))
                     ;; clean up the appdb rows we created
-                    (doseq [id [id-verif id-plain]]
-                      (mt/user-http-request :crowberto :delete 204 (str "semantic-layer-search/" id))))
+                    (mt/user-http-request :crowberto :delete 204 (str "semantic-layer-search/" id-plain)))
                   (finally
                     (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
                                             index-table/*vectors-table* ", "

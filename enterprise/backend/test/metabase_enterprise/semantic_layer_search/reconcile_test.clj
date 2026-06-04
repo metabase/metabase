@@ -13,8 +13,8 @@
 (set! *warn-on-reflection* true)
 
 (deftest content-hash-test
-  (let [row {:search_prompt "p" :usage_instructions "u" :entities [{:model "table" :id 1}]
-             :type :sources :verified false}]
+  (let [row {:search_prompt "p" :usage_instructions "u" :entity {:model "table" :id 1}
+             :verified false}]
     (testing "equal rows hash equal; nil and absent usage_instructions hash like empty"
       (is (= (reconcile/content-hash row) (reconcile/content-hash row)))
       (is (= (reconcile/content-hash (assoc row :usage_instructions nil))
@@ -23,8 +23,7 @@
       (let [h (reconcile/content-hash row)]
         (doseq [variant [(assoc row :search_prompt "p2")
                          (assoc row :usage_instructions "u2")
-                         (assoc row :entities [{:model "table" :id 2}])
-                         (assoc row :type :canonical)
+                         (assoc row :entity {:model "table" :id 2})
                          (assoc row :verified true)]]
           (is (not= h (reconcile/content-hash variant)) (pr-str variant)))))))
 
@@ -46,7 +45,7 @@
 
 (defn- mirror-rows [ds]
   (jdbc/execute! ds
-                 [(format "SELECT index_id, search_prompt, canonical, verified, content_hash FROM \"%s\" ORDER BY index_id"
+                 [(format "SELECT index_id, search_prompt, verified, content_hash FROM \"%s\" ORDER BY index_id"
                           index-table/*vectors-table*)]
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
@@ -54,17 +53,17 @@
   (with-isolated-mirror [ds]
     (let [model semantic.tu/mock-embedding-model]
       (mt/with-temp [:model/SemanticLayerIndex {id-1 :id}
-                     {:search_prompt "monthly revenue" :type :canonical
-                      :entities [{:model "table" :id 1}]}
+                     {:search_prompt "monthly revenue"
+                      :entity {:model "table" :id 1}}
                      :model/SemanticLayerIndex {id-2 :id}
-                     {:search_prompt "orders and customers" :type :sources :verified true
-                      :entities [{:model "table" :id 1} {:model "table" :id 2}]}]
+                     {:search_prompt "orders and customers" :verified true
+                      :entity {:model "table" :id 2}}]
         (let [appdb-total (t2/count :model/SemanticLayerIndex)]
           (testing "first run mirrors every appdb row"
             (is (=? {:upserted appdb-total :deleted 0 :unchanged 0}
                     (reconcile/reconcile! ds model)))
-            (is (=? {id-1 {:search_prompt "monthly revenue" :canonical true :verified false}
-                     id-2 {:search_prompt "orders and customers" :canonical false :verified true}}
+            (is (=? {id-1 {:search_prompt "monthly revenue" :verified false}
+                     id-2 {:search_prompt "orders and customers" :verified true}}
                     (-> (into {} (map (juxt :index_id identity)) (mirror-rows ds))
                         (select-keys [id-1 id-2])))))
           (testing "an unchanged second run embeds and writes nothing"
@@ -91,8 +90,8 @@
   (with-isolated-mirror [ds]
     (let [model semantic.tu/mock-embedding-model]
       (mt/with-temp [:model/SemanticLayerIndex _
-                     {:search_prompt "monthly revenue" :type :canonical
-                      :entities [{:model "table" :id 1}]}]
+                     {:search_prompt "monthly revenue"
+                      :entity {:model "table" :id 1}}]
         (let [appdb-total (t2/count :model/SemanticLayerIndex)]
           (testing "populate the mirror under the original model"
             (is (=? {:upserted appdb-total} (reconcile/reconcile! ds model))))

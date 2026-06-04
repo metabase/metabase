@@ -34,16 +34,9 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: entities
+                  name: entity
                   type: ${text.type}
-                  remarks: JSON array of entity refs ({model, id, name?})
-                  constraints:
-                    nullable: false
-              - column:
-                  name: type
-                  type: varchar(50)
-                  remarks: Discriminates the shape of entities — canonical (single entity) or sources (combinable set)
-                  defaultValue: sources
+                  remarks: JSON entity ref ({model, id, name?}) the prompt maps to
                   constraints:
                     nullable: false
               - column:

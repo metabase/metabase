@@ -32,13 +32,12 @@
 (defn content-hash
   "Hash of an appdb row's mirror-relevant fields.
   Stored on the mirror row at upsert time; a mismatch (or absence) marks the row stale."
-  [{:keys [search_prompt usage_instructions entities type verified]}]
+  [{:keys [search_prompt usage_instructions entity verified]}]
   (u/encode-base64-bytes
    (buddy-hash/sha1
     (json/encode (sorted-map :search_prompt      search_prompt
                              :usage_instructions (or usage_instructions "")
-                             :entities           entities
-                             :type               (name type)
+                             :entity             entity
                              :verified           (boolean verified))))))
 
 (defn- mirror-hashes
@@ -61,8 +60,7 @@
   {:index_id           (:id row)
    :search_prompt      (:search_prompt row)
    :usage_instructions (or (:usage_instructions row) "")
-   :entities           [:cast (json/encode (:entities row)) :jsonb]
-   :canonical          (= :canonical (some-> (:type row) keyword))
+   :entity             [:cast (json/encode (:entity row)) :jsonb]
    :verified           (boolean (:verified row))
    :content_hash       hash
    :embedding          [:raw (index-table/format-embedding embedding)]})
@@ -78,8 +76,8 @@
                    (-> (sql.helpers/insert-into (keyword index-table/*vectors-table*))
                        (sql.helpers/values (vec records))
                        (sql.helpers/on-conflict :index_id)
-                       (sql.helpers/do-update-set :search_prompt :usage_instructions :entities
-                                                  :canonical :verified :content_hash :embedding)
+                       (sql.helpers/do-update-set :search_prompt :usage_instructions :entity
+                                                  :verified :content_hash :embedding)
                        (sql/format {:quoted true})))
     (count rows)))
 
@@ -91,7 +89,7 @@
   [pgvector embedding-model]
   (index-table/ensure-tables! pgvector embedding-model)
   (let [appdb-rows (t2/select [:model/SemanticLayerIndex :id :search_prompt :usage_instructions
-                               :entities :type :verified])
+                               :entity :verified])
         mirrored   (mirror-hashes pgvector)
         stale      (remove #(= (content-hash %) (get mirrored (:id %))) appdb-rows)
         orphans    (remove (set (map :id appdb-rows)) (keys mirrored))

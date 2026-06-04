@@ -1,6 +1,6 @@
 (ns metabase-enterprise.serialization.v2.semantic-layer-index-test
-  "Round-trip serialization tests for `:model/SemanticLayerIndex`, whose `entities` column holds a
-  polymorphic list of Card/Table references that must survive export and import."
+  "Round-trip serialization tests for `:model/SemanticLayerIndex`, whose `entity` column holds a
+  polymorphic Card/Table reference that must survive export and import."
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
@@ -37,39 +37,55 @@
       (ingest-one [_ path] (get mapped (no-labels path)))
       (ingest-errors [_] []))))
 
-(deftest semantic-layer-index-round-trip-test
-  (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
-    (let [table-id (mt/id :venues)
-          entities [{:model "card" :id card-id}
-                    {:model "table" :id table-id}]]
-      (mt/with-temp [:model/SemanticLayerIndex {sli-id :id sli-eid :entity_id}
-                     {:search_prompt "best venues" :type :sources :verified true :entities entities
-                      :usage_instructions "Prefer the venues table."}]
-        (let [extracted (ts/extract-one "SemanticLayerIndex" sli-id)
-              [_card-ref table-ref] (:entities extracted)]
-          (testing "entity refs are exported as portable references"
-            (is (=? {:entity_id          sli-eid
-                     :search_prompt      "best venues"
-                     :usage_instructions "Prefer the venues table."
-                     :type               "sources"
-                     :verified           true
-                     :entities           [{:model "card"  :id card-eid}
-                                          {:model "table" :id vector?}]}
-                    extracted))
-            (is (= ["VENUES"] (take-last 1 (:id table-ref)))))
-          (testing "dependencies cover the referenced Card and the Table's Database"
-            (is (= #{[{:model "Card" :id card-eid}]
-                     [{:model "Database" :id (first (:id table-ref))}]}
-                   (serdes/dependencies extracted))))
-          (testing "importing resolves the refs back to local ids"
-            (t2/delete! :model/SemanticLayerIndex :id sli-id)
-            (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
-            (is (= entities
-                   (t2/select-one-fn :entities :model/SemanticLayerIndex :entity_id sli-eid)))))))))
+(deftest card-backed-entity-round-trip-test
+  (testing "every card-backed entity model exports as the Card's entity_id and imports back"
+    (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
+      (doseq [entity-model ["card" "model" "metric" "question"]]
+        (testing entity-model
+          (mt/with-temp [:model/SemanticLayerIndex {sli-id :id sli-eid :entity_id}
+                         {:search_prompt (str "find " entity-model) :verified true
+                          :usage_instructions "Use it directly."
+                          :entity {:model entity-model :id card-id}}]
+            (let [extracted (ts/extract-one "SemanticLayerIndex" sli-id)]
+              (testing "the entity ref is exported as a portable reference"
+                (is (=? {:entity_id          sli-eid
+                         :search_prompt      (str "find " entity-model)
+                         :usage_instructions "Use it directly."
+                         :verified           true
+                         :entity             {:model entity-model :id card-eid}}
+                        extracted)))
+              (testing "dependencies cover the referenced Card"
+                (is (= #{[{:model "Card" :id card-eid}]}
+                       (serdes/dependencies extracted))))
+              (testing "importing resolves the ref back to the local id"
+                (t2/delete! :model/SemanticLayerIndex :id sli-id)
+                (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+                (is (= {:model entity-model :id card-id}
+                       (t2/select-one-fn :entity :model/SemanticLayerIndex :entity_id sli-eid)))))))))))
+
+(deftest table-entity-round-trip-test
+  (let [table-id (mt/id :venues)]
+    (mt/with-temp [:model/SemanticLayerIndex {sli-id :id sli-eid :entity_id}
+                   {:search_prompt "best venues" :entity {:model "table" :id table-id}}]
+      (let [extracted (ts/extract-one "SemanticLayerIndex" sli-id)
+            table-ref (:entity extracted)]
+        (testing "the table ref is exported as a [db schema table] path"
+          (is (=? {:entity_id sli-eid
+                   :entity    {:model "table" :id vector?}}
+                  extracted))
+          (is (= ["VENUES"] (take-last 1 (:id table-ref)))))
+        (testing "dependencies cover the Table's Database (the Table is synthesized on import)"
+          (is (= #{[{:model "Database" :id (first (:id table-ref))}]}
+                 (serdes/dependencies extracted))))
+        (testing "importing resolves the ref back to the local id"
+          (t2/delete! :model/SemanticLayerIndex :id sli-id)
+          (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+          (is (= {:model "table" :id table-id}
+                 (t2/select-one-fn :entity :model/SemanticLayerIndex :entity_id sli-eid))))))))
 
 (deftest disk-export-import-round-trip-test
   (testing "SemanticLayerIndex survives a real on-disk export/import"
-    ;; The in-memory test above skips two layers that have silently dropped the model before:
+    ;; The in-memory tests above skip two layers that have silently dropped the model before:
     ;; `extract/model-set` (the default-export selection) and `ingest/legal-top-level-paths` (which
     ;; dirs the importer reads). This drives both through actual YAML on disk.
     (let [serialized (atom nil)
@@ -78,11 +94,9 @@
         (ts/with-db source-db
           (let [db  (ts/create! :model/Database :name "Prompt DB")
                 t1  (ts/create! :model/Table :name "ORDERS" :db_id (:id db) :schema "PUBLIC")
-                t2  (ts/create! :model/Table :name "PEOPLE" :db_id (:id db) :schema "PUBLIC")
                 sli (ts/create! :model/SemanticLayerIndex
-                                :search_prompt "orders and people" :type :sources :verified true
-                                :entities [{:model "table" :id (:id t1)}
-                                           {:model "table" :id (:id t2)}])]
+                                :search_prompt "orders" :verified true
+                                :entity {:model "table" :id (:id t1)})]
             (reset! sli-eid (:entity_id sli))
             ;; realize inside with-cache so the cached resolvers are actually used during extraction
             (reset! serialized (serdes/with-cache (into [] (extract/extract {}))))))
@@ -97,11 +111,10 @@
           (testing "ingest reads it back (guards ingest/legal-top-level-paths)"
             (is (contains? (set (serdes.ingest/ingest-list (serdes.ingest/ingest-yaml dump-dir)))
                            [{:model "SemanticLayerIndex" :id @sli-eid}])))
-          (testing "loads into a fresh appdb with table refs resolved"
+          (testing "loads into a fresh appdb with the table ref resolved"
             (ts/with-db dest-db
               (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
               (let [row (t2/select-one :model/SemanticLayerIndex :entity_id @sli-eid)]
-                (is (=? {:type :sources :verified true} row))
-                (is (= #{"ORDERS" "PEOPLE"}
-                       (set (t2/select-fn-vec :name :model/Table
-                                              :id [:in (map :id (:entities row))]))))))))))))
+                (is (=? {:verified true} row))
+                (is (= "ORDERS"
+                       (t2/select-one-fn :name :model/Table :id (get-in row [:entity :id]))))))))))))
