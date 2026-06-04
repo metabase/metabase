@@ -26,10 +26,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti check-permissions-for-model
+(defmulti ^:private check-permissions-for-model
   "Whether the current user (per `search-ctx`) may see `search-result`, applying the per-model post-query
   permission rules. The query already filters most rows out in SQL; this catches the archived-write check and the
-  table / indexed-entity special cases. Used both in the [[search]] pipeline and by [[metabase.search.debug]]."
+  table / indexed-entity special cases. Used in the [[search]] pipeline and, via [[check-result-permissions]], by
+  the search debug API."
   {:arglists '([search-ctx search-result])}
   (fn [_search-ctx search-result] ((comp keyword :model) search-result)))
 
