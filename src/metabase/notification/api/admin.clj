@@ -29,7 +29,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
-   [metabase.notification.api :as notification-api]
+   [metabase.notification.api.notification :as notification-api]
    [metabase.notification.models :as models.notification]
    [metabase.request.core :as request]
    [metabase.util :as u]
