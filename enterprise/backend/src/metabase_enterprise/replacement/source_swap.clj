@@ -171,6 +171,7 @@
         parameters    (or (:parameters dashboard) [])
         parameters'   (swap-parameter-source-card-id parameters old-source new-source)
         params-changed? (not= parameters parameters')]
+    (models.dependency/swap-dependency! :dashboard (:id dashboard) old-source new-source)
     (when params-changed?
       (t2/update! :model/Dashboard (:id dashboard) {:parameters parameters'}))
     (when (or any-dashcard-changed? params-changed?)
