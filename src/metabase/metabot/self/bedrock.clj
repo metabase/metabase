@@ -66,7 +66,7 @@
         signed    (sort (keys hdr-map))
         canon-hdrs (str (str/join "\n" (map #(str % ":" (get hdr-map %)) signed)) "\n")
         signed-str (str/join ";" signed)
-        canon-req  (str/join "\n" [(str/upper-case method)
+        canon-req  (str/join "\n" [(u/upper-case-en method)
                                    (canonical-uri path)
                                    ""
                                    canon-hdrs
@@ -229,18 +229,18 @@
              "contentBlockStart"
              (let [start      (:start data)
                    block-type (cond (:toolUse start) :tool_use
-                                    :else            :text)]
-               (let [chunk-id (or (get-in start [:toolUse :toolUseId]) (core/mkid))]
-                 (vreset! current-type block-type)
-                 (vreset! current-id chunk-id)
-                 (vreset! payload (case block-type
-                                    :text     {:id chunk-id}
-                                    :tool_use {:toolCallId chunk-id
-                                               :toolName   (get-in start [:toolUse :name])}))
-                 (rf result (merge (case block-type
-                                     :text     {:type :text-start}
-                                     :tool_use {:type :tool-input-start})
-                                   @payload))))
+                                    :else            :text)
+                   chunk-id   (or (get-in start [:toolUse :toolUseId]) (core/mkid))]
+               (vreset! current-type block-type)
+               (vreset! current-id chunk-id)
+               (vreset! payload (case block-type
+                                  :text     {:id chunk-id}
+                                  :tool_use {:toolCallId chunk-id
+                                             :toolName   (get-in start [:toolUse :name])}))
+               (rf result (merge (case block-type
+                                   :text     {:type :text-start}
+                                   :tool_use {:type :tool-input-start})
+                                 @payload)))
 
              "contentBlockDelta"
              (let [delta (:delta data)]
@@ -297,7 +297,7 @@
                                  :region            region
                                  :session-token     session-token
                                  :service           "bedrock"
-                                 :method            (str/upper-case (name method))
+                                 :method            (u/upper-case-en (name method))
                                  :host              host
                                  :path              path
                                  :body-bytes        body-bytes
