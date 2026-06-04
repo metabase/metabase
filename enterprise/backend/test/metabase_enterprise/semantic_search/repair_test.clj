@@ -99,7 +99,7 @@
           (semantic.tu/index-all!)
           (testing "repair table is cleaned up after successful repair"
             (let [test-repair-table-name "repair_table_cleanup_test"]
-              (with-redefs [semantic.repair/repair-table-name (constantly test-repair-table-name)]
+              (mt/with-dynamic-fn-redefs [semantic.repair/repair-table-name (constantly test-repair-table-name)]
                 (semantic.core/repair-index! [(create-test-document "card" 7 "New Test Card")])
                 (let [gate-contents (gate-table-contents pgvector gate-table)]
                   (is (tombstone? (gate-entry-by-id gate-contents "card_6")))

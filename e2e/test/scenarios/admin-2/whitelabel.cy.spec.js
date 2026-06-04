@@ -752,15 +752,34 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     });
 
     it("should validate the URL and persist only same-origin relative paths", () => {
+      // Clicking "Custom URL" fires a PUT to /api/setting (custom-homepage =
+      // false) AND mounts the URL field. On fetch (microtask resolution) the
+      // mount's landing-page read + the PUT response can land while we're in
+      // the middle of typing; LandingPageUrlField's useEffect would then
+      // overwrite the typed value. Wait for the PUT to land first.
+      cy.intercept("PUT", "/api/setting").as("modeChangePut");
       cy.findByTestId("homepage-setting")
         .findByRole("radio", { name: "Custom URL" })
         .click();
+      cy.wait("@modeChangePut");
 
-      urlInput().click().clear().type("/test-1").blur();
+      urlInput()
+        .click()
+        .clear()
+        .type("/test-1")
+        .should("have.value", "/test-1")
+        .blur();
+      cy.wait("@putLandingPage");
       H.undoToast().findByText("Changes saved").should("be.visible");
 
       // External URLs are rejected and the previous value is preserved.
-      urlInput().click().clear().type("https://google.com").blur();
+      urlInput()
+        .click()
+        .clear()
+        .should("have.value", "")
+        .type("https://google.com")
+        .should("have.value", "https://google.com")
+        .blur();
       cy.findByTestId("admin-layout-content")
         .findByText("This field must be a relative URL.")
         .should("be.visible");
