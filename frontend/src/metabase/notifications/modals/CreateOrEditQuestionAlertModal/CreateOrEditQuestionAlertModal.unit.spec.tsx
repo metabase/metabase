@@ -5,6 +5,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
@@ -16,11 +17,14 @@ import type {
   ChannelApiResponse,
   Notification,
   NotificationChannel,
+  UserListResult,
 } from "metabase-types/api";
 import {
   createMockCard,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserInfo,
+  createMockUserListResult,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import { createMockChannel } from "metabase-types/api/mocks/channel";
@@ -446,6 +450,87 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
 
     expect(onAlertUpdatedMock).toHaveBeenCalledTimes(1);
   });
+
+  const OWNER_BLOCK_TITLE = /who owns this alert\?/i;
+
+  it("should not show the owner picker when creating a new alert", async () => {
+    setup({ isAdmin: true, isEmailSetup: true });
+
+    expect(await screen.findByText("New alert")).toBeInTheDocument();
+    expect(screen.queryByText(OWNER_BLOCK_TITLE)).not.toBeInTheDocument();
+  });
+
+  it("should not show the owner picker for non-admins editing an alert", async () => {
+    setup({
+      isAdmin: false,
+      userCanAccessSettings: true,
+      isEmailSetup: true,
+      editingNotification: createMockNotification(),
+    });
+
+    expect(await screen.findByText("Edit alert")).toBeInTheDocument();
+    expect(screen.queryByText(OWNER_BLOCK_TITLE)).not.toBeInTheDocument();
+  });
+
+  it("should show the current owner when an admin edits an alert", async () => {
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      editingNotification: createMockNotification({
+        creator_id: 3,
+        creator: createMockUserInfo({ common_name: "Ann Admin" }),
+      }),
+    });
+
+    expect(await screen.findByText(OWNER_BLOCK_TITLE)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Select a user")).toHaveValue(
+      "Ann Admin",
+    );
+  });
+
+  it("should send the new creator_id when an admin changes the owner", async () => {
+    const notificationId = 42;
+    fetchMock.putOnce(`path:/api/notification/${notificationId}`, {
+      body: { id: notificationId },
+    });
+
+    const newOwner = createMockUserListResult({
+      id: 7,
+      common_name: "New Owner",
+    });
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      users: [newOwner],
+      editingNotification: createMockNotification({
+        id: notificationId,
+        creator_id: 3,
+        creator: createMockUserInfo({ common_name: "Ann Admin" }),
+      }),
+    });
+
+    await screen.findByText("Edit alert");
+
+    await userEvent.click(screen.getByPlaceholderText("Select a user"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "New Owner" }),
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /save changes/i }),
+    );
+
+    const calls = fetchMock.callHistory.calls(
+      `path:/api/notification/${notificationId}`,
+    );
+    expect(calls.length).toBe(1);
+
+    await waitFor(async () => {
+      const requestBody = await calls[0].options?.body;
+      expect(JSON.parse(requestBody as string).creator_id).toBe(7);
+    });
+  });
 });
 
 function setup({
@@ -459,6 +544,7 @@ function setup({
   onAlertCreatedMock = jest.fn(),
   onAlertUpdatedMock = jest.fn(),
   cardType = "question",
+  users = [],
 }: {
   userCanAccessSettings?: boolean;
   isAdmin?: boolean;
@@ -470,6 +556,7 @@ function setup({
   onAlertCreatedMock?: jest.Mock;
   onAlertUpdatedMock?: jest.Mock;
   cardType?: "question" | "model" | "metric";
+  users?: UserListResult[];
 }) {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
@@ -497,6 +584,7 @@ function setup({
 
   setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });
+  setupUsersEndpoints(users);
 
   const currentUser = createMockUser(
     isAdmin ? { is_superuser: true } : undefined,

@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
+import { embedApi, makePivotAwareQueryRunner, publicApi } from "metabase/api";
 import { applyParameters } from "metabase/common/utils/card";
 import { fetchDataOrError } from "metabase/dashboard/utils";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
@@ -16,7 +17,7 @@ import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { EmbedApi, PublicApi, maybeUsePivotEndpoint } from "metabase/services";
+import { EmbedApi, PublicApi } from "metabase/services";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -124,21 +125,22 @@ export const PublicOrEmbeddedQuestion = ({
     try {
       setResult(null);
 
-      let newResult: Dataset | { error: unknown };
+      const runQuery = makePivotAwareQueryRunner(dispatch);
+
+      let resultPromise: Promise<Dataset>;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = (await fetchDataOrError(
-          maybeUsePivotEndpoint(
-            EmbedApi.cardQuery,
-            card,
-            metadataRef.current,
-          )({
+        resultPromise = runQuery(
+          embedApi.endpoints.getEmbedCardQuery,
+          card,
+          metadataRef.current,
+          {
             token,
             parameters: JSON.stringify(
               getParameterValuesBySlug(parameters, parameterValues),
             ),
-          }),
-        )) as Dataset | { error: unknown };
+          },
+        );
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(
@@ -148,19 +150,22 @@ export const PublicOrEmbeddedQuestion = ({
           [],
           { sparse: true },
         );
-        newResult = (await fetchDataOrError(
-          maybeUsePivotEndpoint(
-            PublicApi.cardQuery,
-            card,
-            metadataRef.current,
-          )({
+        resultPromise = runQuery(
+          publicApi.endpoints.getPublicCardQuery,
+          card,
+          metadataRef.current,
+          {
             uuid,
             parameters: JSON.stringify(datasetQuery.parameters),
-          }),
-        )) as Dataset | { error: unknown };
+          },
+        );
       } else {
         throw { status: 404 };
       }
+
+      const newResult = (await fetchDataOrError(resultPromise)) as
+        | Dataset
+        | { error: unknown };
 
       // If error is object it is because it was a non-query error
       if (typeof newResult.error === "object") {

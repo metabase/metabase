@@ -13,7 +13,6 @@ import { reducer as downloads } from "metabase/redux/downloads";
 import { embed } from "metabase/redux/embed";
 import { reducer as embeddingDataPicker } from "metabase/redux/embedding-data-picker";
 import entities from "metabase/redux/entities";
-import { requestsReducer } from "metabase/redux/requests";
 import { settings } from "metabase/redux/settings";
 import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
@@ -28,7 +27,6 @@ export const commonReducers = {
   embed,
   embeddingDataPicker,
   currentUser,
-  requests: requestsReducer,
   settings,
   undo,
   entities,

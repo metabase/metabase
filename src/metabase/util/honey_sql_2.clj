@@ -438,7 +438,7 @@
   (case db-type
     :h2 (with-database-type-info :%now "timestamp")
     :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
-    :postgres (with-database-type-info :%now "timestamptz")))
+    (:postgres :postgres-mbql5) (with-database-type-info :%now "timestamptz")))
 
 (defn- format-postgres-interval
   "Generate a Postgres 'INTERVAL' literal.
@@ -492,6 +492,10 @@
     (let [hsql-form (->pg-timestamp hsql-form)]
       (-> (+ hsql-form (pg-interval amount unit))
           (with-type-info (type-info hsql-form))))))
+
+(defmethod add-interval-honeysql-form :postgres-mbql5
+  [db-type hsql-form amount unit]
+  ((get-method add-interval-honeysql-form :postgres) db-type hsql-form amount unit))
 
 (defmethod add-interval-honeysql-form :mysql
   [db-type hsql-form amount unit]
