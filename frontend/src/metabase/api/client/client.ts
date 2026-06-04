@@ -150,12 +150,15 @@ export class ApiClient extends EventEmitter<EventMap> {
       if (init.signal?.aborted) {
         throw error;
       }
-      // A raw `fetch` rejection (e.g. the server dropped the connection)
-      // surfaces as a plain Error here, indistinguishable from JS
-      // exceptions thrown elsewhere. Wrap it so downstream renderers can
-      // `isNetworkError`-check and route it to the connectivity error
-      // message.
-      if (error instanceof Error) {
+      // A genuine transport failure (server dropped the connection, DNS
+      // lookup failed, offline) is the one case where `fetch` itself rejects,
+      // and per the Fetch spec it always rejects with a `TypeError`. Wrap only
+      // that so downstream renderers can `isNetworkError`-check and route it to
+      // the connectivity error message. Any other `Error` here — notably a
+      // `SyntaxError` from `response.json()` on an empty or malformed body — is
+      // a response/parse problem, not a transport failure, so let it pass
+      // through unwrapped instead of misclassifying it as a NetworkError.
+      if (error instanceof TypeError) {
         throw new NetworkError(error.message);
       }
       throw error;
