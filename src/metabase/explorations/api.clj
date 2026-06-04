@@ -147,7 +147,7 @@
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator :can_write :collection
-                  [:threads :queries :documents])
+                  [:threads :queries :documents :timelines])
       (update :threads #(some->> % (mapv attach-thread-read-data)))))
 
 (defn- insert-thread-default-documents!
@@ -316,7 +316,13 @@
    [:ai_summary_document_id     {:optional true} [:maybe ms/PositiveInt]]
    [:queries                    {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
    [:groups                     {:optional true} [:maybe [:sequential ::ExplorationQueryGroup]]]
-   [:documents                  {:optional true} [:maybe [:sequential ::ExplorationDocument]]]])
+   [:documents                  {:optional true} [:maybe [:sequential ::ExplorationDocument]]]
+   [:timelines                  {:optional true}
+    [:maybe [:sequential
+             [:map
+              [:timeline_id ms/PositiveInt]
+              [:position    {:optional true} ms/IntGreaterThanOrEqualToZero]
+              [:timeline    {:optional true} [:maybe :map]]]]]]])
 
 (mr/def ::ExplorationQueryStreamResponse
   "Schema for `GET /query/:id`. On success the body is a streamed dataset (api/csv/json/xlsx),

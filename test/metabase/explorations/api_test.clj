@@ -281,6 +281,26 @@
           (is (= :default (:strategy (lib/binning brk)))
               "numeric dim with a usable fingerprint picks up default auto-binning"))))))
 
+(deftest exploration-get-hydrates-thread-timelines-test
+  (testing "GET /api/exploration/:id hydrates thread :timelines so the detail page can offer them"
+    (mt/with-temp [:model/User u {:email "tl-hydrate@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))
+                   :model/Timeline tl {:creator_id (:id u) :name "Releases"}]
+      (let [body      {:name         "Timeline hydrate"
+                       :metrics      [{:card_id (:id metric)
+                                       :dimension_mappings [{:dimension_id "d1"
+                                                             :table_id (mt/id :venues)
+                                                             :target ["field" {} (mt/id :venues :price)]}]}]
+                       :dimensions   [{:dimension_id "d1" :display_name "Price"
+                                       :effective_type "type/Number"}]
+                       :timeline_ids [(:id tl)]}
+            resp      (create-exploration! u body)
+            timelines (-> resp :threads first :timelines)]
+        (is (= 1 (count timelines)))
+        (is (= (:id tl) (-> timelines first :timeline_id)))
+        (is (= "Releases" (-> timelines first :timeline :name))
+            "nested :timeline is hydrated for the picker")))))
+
 (deftest exploration-create-persists-groups-verbatim-test
   (testing "POST / persists each :groups entry as its own ExplorationThreadGroup row — no dedup across groups"
     (mt/with-temp [:model/User u {:email "groups@example.com"}
