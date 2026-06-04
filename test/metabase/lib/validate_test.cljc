@@ -1,6 +1,6 @@
 (ns metabase.lib.validate-test
   (:require
-   [clojure.test :refer [deftest ^:parallel is testing]]
+   [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

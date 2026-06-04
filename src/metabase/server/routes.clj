@@ -77,7 +77,6 @@
   ;; hashes, so we serve them with far-future immutable cache headers.
   (GET ["/embedding-sdk/chunks/:filename" :filename #"[^/]+\.js"] [filename :as request]
     ((mw.embedding-sdk-bundle/serve-chunk-handler filename) request))
-
   ;; fall back to serving _all_ other files under /app, preferring
   ;; pre-compressed (.br, .gz) variants when the browser supports them
   (static/precompressed-resources "/" {:root "frontend_client/app"})
@@ -111,11 +110,9 @@
    (GET "/readyz" [] health-handler)
    ;; ^/livez -> Liveness probe (no DB access)
    (GET "/livez" [] livez-handler)
-
    ;; Handle CORS preflight requests for auth routes
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
-
    ;; ^/api/ -> All other API routes
    (context "/api" [] (api-handler api-routes))
    ;; ^/app/ -> static files under frontend_client/app

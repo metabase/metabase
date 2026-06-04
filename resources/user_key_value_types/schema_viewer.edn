@@ -1,0 +1,9 @@
+[:map
+ [:value [:or
+          ;; Per-database/schema preferences (key = "databaseId:schema")
+          [:map
+           [:table_ids {:optional true} [:sequential :int]]]
+          ;; Last opened database (key = "last_database")
+          [:map
+           [:databaseId :int]
+           [:schema {:optional true} :string]]]]]

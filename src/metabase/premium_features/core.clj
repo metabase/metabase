@@ -16,7 +16,6 @@
  [metabase.premium-features.defenterprise
   defenterprise
   defenterprise-schema]
-
  [metabase.premium-features.token-check
   ;; TODO: move airgap code to a dedicated namespace?
   assert-valid-airgap-user-count!
@@ -29,6 +28,9 @@
   has-any-features?
   has-feature?
   log-enabled?
+  query-transforms-enabled?
+  python-transforms-enabled?
+  any-transforms-enabled?
   max-users-allowed
   meters
   plan-alias
@@ -38,7 +40,6 @@
   token-check-url
   transform-metered-as
   transform-stats]
-
  (metabase.premium-features.settings
   active-users-count
   airgap-enabled
@@ -64,6 +65,7 @@
   enable-metabase-ai-managed?
   enable-metabot-v3?
   enable-dependencies?
+  enable-schema-viewer?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?

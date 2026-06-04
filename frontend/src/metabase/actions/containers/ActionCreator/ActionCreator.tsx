@@ -1,12 +1,12 @@
 import { useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
   useCreateActionMutation,
   useGetActionQuery,
+  useGetCardQuery,
   useListDatabasesQuery,
   useUpdateActionMutation,
 } from "metabase/api";
@@ -15,8 +15,7 @@ import { Modal } from "metabase/common/components/Modal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { Questions } from "metabase/entities/questions";
-import { connect } from "metabase/redux";
+import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
@@ -42,7 +41,7 @@ interface OwnProps {
   databaseId?: DatabaseId;
 
   action?: WritebackAction;
-  route: Route;
+  route?: Route;
 
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
@@ -201,8 +200,14 @@ function ActionCreatorWithContext({
   databaseId,
   action,
   ...props
-}: Props) {
+}: OwnProps & StateProps) {
   useListDatabasesQuery();
+  useGetCardQuery(props.modelId != null ? { id: props.modelId } : skipToken);
+  const model = useSelector((state) =>
+    props.modelId != null
+      ? (getMetadata(state).question(props.modelId) ?? undefined)
+      : undefined,
+  );
   const { data: initialAction } = useGetActionQuery(
     props.actionId != null ? { id: props.actionId } : skipToken,
   );
@@ -215,16 +220,15 @@ function ActionCreatorWithContext({
       databaseId={databaseId}
       metadata={metadata}
     >
-      <ActionCreator {...props} databaseId={databaseId} metadata={metadata} />
+      <ActionCreator
+        {...props}
+        model={model}
+        databaseId={databaseId}
+        metadata={metadata}
+      />
     </ActionContext>
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Questions.load({
-    id: (state: State, props: OwnProps) => props?.modelId,
-    entityAlias: "model",
-  }),
-  connect(mapStateToProps),
-)(ActionCreatorWithContext);
+export default connect(mapStateToProps)(ActionCreatorWithContext);

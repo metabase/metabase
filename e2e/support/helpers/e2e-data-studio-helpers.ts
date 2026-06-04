@@ -147,8 +147,6 @@ export const DataStudio = {
     noResults: () =>
       libraryPage().findByText("No tables, metrics, or snippets yet"),
     libraryPage,
-    metricItem: (name: string) =>
-      cy.findAllByTestId("metric-name").contains(name),
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>
       DataStudio.Library.allTableItems().contains(name),

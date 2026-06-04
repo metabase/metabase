@@ -76,7 +76,6 @@
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
-
                             ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid
                             ;; the `after-select` method on users, which calls an EE method that needs ... a token
                             ;; check :|
@@ -474,7 +473,6 @@
                     ;; Expired (> hard-ttl): synchronous refresh
                     :else
                     (do-refresh! token token-hash)))
-
                 ;; No local cache, no DB row, or hash mismatch: synchronous fetch
                 (do-refresh! token token-hash)))))
         (-clear-cache! [_]
@@ -713,6 +711,26 @@
   "Returns true when we should record audit data into the audit log."
   []
   (or (premium-features.settings/is-hosted?) (has-feature? :audit-app)))
+
+(defn query-transforms-enabled?
+  "Whether query (native/MBQL) transforms are available on this instance. Available on any non-hosted
+  instance (OSS intentionally gets query transforms without a license), or on hosted instances with the
+  `:transforms-basic` feature."
+  []
+  (or (not (premium-features.settings/is-hosted?))
+      (has-feature? :transforms-basic)))
+
+(defn python-transforms-enabled?
+  "Whether Python transforms are available on this instance. EE only; requires both `:transforms-basic`
+  and `:transforms-python`."
+  []
+  (and (has-feature? :transforms-basic)
+       (has-feature? :transforms-python)))
+
+(defn any-transforms-enabled?
+  "Whether any kind of transform is available on this instance."
+  []
+  (or (query-transforms-enabled?) (python-transforms-enabled?)))
 
 (defenterprise decode-airgap-token
   "In OSS, this returns an empty map."

@@ -1,19 +1,19 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
 describe("QuestionSharingMenu", () => {
   it("should not render anything if the question is a model", async () => {
-    setupQuestionSharingMenu({
+    await setupQuestionSharingMenu({
       question: { type: "model" },
     });
     expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
   });
 
-  it("should have a 'sharing' tooltip by default", () => {
-    setupQuestionSharingMenu({
+  it("should have a 'sharing' tooltip by default", async () => {
+    await setupQuestionSharingMenu({
       isAdmin: true,
     });
     expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
@@ -23,7 +23,7 @@ describe("QuestionSharingMenu", () => {
   });
 
   it("should not appear for archived questions", async () => {
-    setupQuestionSharingMenu({
+    await setupQuestionSharingMenu({
       isAdmin: true,
       question: { archived: true },
     });
@@ -32,7 +32,7 @@ describe("QuestionSharingMenu", () => {
   });
 
   it("should prompt you to save an unsaved question", async () => {
-    setupQuestionSharingMenu({
+    await setupQuestionSharingMenu({
       isAdmin: true,
       question: { id: undefined },
     });
@@ -46,7 +46,7 @@ describe("QuestionSharingMenu", () => {
   describe("public links", () => {
     describe("admins", () => {
       it('should show a "Create Public link" menu item if public sharing is enabled', async () => {
-        setupQuestionSharingMenu({
+        await setupQuestionSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: true,
         });
@@ -55,7 +55,7 @@ describe("QuestionSharingMenu", () => {
       });
 
       it("clicking the sharing button should open the public link popover", async () => {
-        setupQuestionSharingMenu({
+        await setupQuestionSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
@@ -64,15 +64,21 @@ describe("QuestionSharingMenu", () => {
         await userEvent.click(screen.getByText("Public link"));
 
         expect(
-          screen.getByTestId("public-link-popover-content"),
+          await screen.findByTestId("public-link-popover-content"),
         ).toBeInTheDocument();
-        expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
-          "http://localhost:3000/public/question/1337bad801",
-        );
+
+        // The PublicLinkPopover's useAsync hook flips its loading state after
+        // the popover mounts; wait for the input to receive the public link url
+        // so that state update stays wrapped in act.
+        await waitFor(() => {
+          expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
+            "http://localhost:3000/public/question/1337bad801",
+          );
+        });
       });
 
       it('should show a "Public link" menu item if public sharing is enabled and a public link exists already', async () => {
-        setupQuestionSharingMenu({
+        await setupQuestionSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
@@ -85,7 +91,7 @@ describe("QuestionSharingMenu", () => {
       });
 
       it('should show an "Enable" link if public sharing is disabled', async () => {
-        setupQuestionSharingMenu({
+        await setupQuestionSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: false,
         });
@@ -102,7 +108,7 @@ describe("QuestionSharingMenu", () => {
 
     describe("non-admins", () => {
       it('should show a "Public link" menu item if there is a public link for the question', async () => {
-        setupQuestionSharingMenu({
+        await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
@@ -112,7 +118,7 @@ describe("QuestionSharingMenu", () => {
       });
 
       it('should show an "Ask your admin to create a public link" menu item if there is no public link for the question', async () => {
-        setupQuestionSharingMenu({
+        await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: false,
@@ -128,7 +134,7 @@ describe("QuestionSharingMenu", () => {
   describe("embedding", () => {
     describe("non-admins", () => {
       it("should not show the 'Embed' menu item if embedding is enabled", async () => {
-        setupQuestionSharingMenu({
+        await setupQuestionSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: true,
         });
@@ -137,7 +143,7 @@ describe("QuestionSharingMenu", () => {
       });
 
       it("should not show the 'Embed' menu item if embedding is disabled", async () => {
-        setupQuestionSharingMenu({
+        await setupQuestionSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: false,
         });

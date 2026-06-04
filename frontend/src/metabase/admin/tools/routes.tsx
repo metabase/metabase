@@ -14,3 +14,5 @@ export const getTasksRoutes = () => (
     <Route path="runs/:runId" component={TaskRunDetailsPage} />
   </>
 );
+
+export { getRoutes as getNotificationsRoutes } from "./notifications/routes";

@@ -28,4 +28,5 @@ config:
       test-data (mysql):
         input_schemas:
         - prod_db
-        output_namespace: ws_alice
+        output:
+          db: ws_alice

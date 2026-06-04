@@ -51,27 +51,23 @@
                         coll-eid  :entity_id
                         coll-slug :slug}
                        {:name "Some Collection"}
-
                        :model/Collection
                        {child-id   :id
                         child-eid  :entity_id
                         child-slug :slug}
                        {:name     "Nested Collection"
                         :location (format "/%s/" coll-id)}
-
                        :model/User
                        {mark-id :id}
                        {:first_name "Mark"
                         :last_name  "Knopfler"
                         :email      "mark@direstrai.ts"}
-
                        :model/Collection
                        {pc-id   :id
                         pc-eid  :entity_id
                         pc-slug :slug}
                        {:name              "Mark's Personal Collection"
                         :personal_owner_id mark-id}]
-
       (testing "a top-level collection is extracted correctly"
         (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id coll-id))]
           (is (=? {:serdes/meta [{:model "Collection" :id coll-eid :label coll-slug}]}
@@ -80,7 +76,6 @@
           (is (not (contains? ser :parent_id)))
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
-
       (testing "a nested collection is extracted with the right parent_id"
         (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id child-id))]
           (is (=? {:serdes/meta [{:model "Collection" :id child-eid :label child-slug}]
@@ -89,7 +84,6 @@
           (is (not (contains? ser :personal_owner_id)))
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
-
       (testing "personal collections are extracted with email as key"
         (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id pc-id))]
           (is (=? {:serdes/meta       [{:model "Collection" :id pc-eid :label pc-slug}]
@@ -98,16 +92,13 @@
           (is (not (contains? ser :parent_id)))
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
-
       (testing "overall extraction returns the expected set"
         (testing "no user specified"
           (is (= #{coll-eid child-eid}
                  (ids-by-model "Collection" (extract/extract nil)))))
-
         (testing "valid user specified"
           (is (= #{coll-eid child-eid pc-eid}
                  (ids-by-model "Collection" (extract/extract {:user-id mark-id})))))
-
         (testing "invalid user specified"
           (is (= #{coll-eid child-eid}
                  (ids-by-model "Collection" (extract/extract {:user-id 218921})))))))))
@@ -119,52 +110,42 @@
                        {coll-id  :id
                         coll-eid :entity_id}
                        {:name "Some Collection"}
-
                        :model/User
                        {mark-id :id}
                        {:first_name "Mark"
                         :last_name  "Knopfler"
                         :email      "mark@direstrai.ts"}
-
                        :model/User
                        {dave-id :id}
                        {:first_name "David"
                         :last_name  "Knopfler"
                         :email      "david@direstrai.ts"}
-
                        :model/Collection
                        {mark-coll-eid :entity_id}
                        {:name              "MK Personal"
                         :personal_owner_id mark-id}
-
                        :model/Collection
                        {dave-coll-id  :id
                         dave-coll-eid :entity_id}
                        {:name              "DK Personal"
                         :personal_owner_id dave-id}
-
                        :model/Database
                        {db-id :id}
                        {:name "My Database"}
-
                        :model/Table
                        {no-schema-id :id}
                        {:name "Schemaless Table" :db_id db-id}
-
                        :model/Field
                        {field-id :id}
                        {:name "Some Field" :table_id no-schema-id}
-
                        :model/Table
                        {schema-id :id}
                        {:name   "Schema'd Table"
                         :db_id  db-id
                         :schema "PUBLIC"}
-
                        :model/Field
                        {field2-id :id}
                        {:name "Other Field" :table_id schema-id}
-
                        :model/Card
                        {c1-id  :id
                         c1-eid :entity_id}
@@ -178,7 +159,6 @@
                                                    :aggregation  [[:count]]}
                                         :type     :query
                                         :database db-id}}
-
                        :model/Card
                        {model-id :id}
                        {:name          "Some Model"
@@ -192,7 +172,6 @@
                                                    :aggregation  [[:count]]}
                                         :type     :query
                                         :database db-id}}
-
                        :model/Card
                        {c2-id  :id
                         c2-eid :entity_id}
@@ -206,7 +185,6 @@
                           :card_id      c1-id
                           :target       [:dimension [:field field-id
                                                      {:source-field field2-id}]]}]}
-
                        :model/Card
                        {c3-id  :id
                         c3-eid :entity_id}
@@ -236,7 +214,6 @@
                            :enabled  true}]
                          :column_settings
                          {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}
-
                        :model/Card       {c4-id  :id
                                           c4-eid :entity_id}        {:name          "Referenced Question"
                                                                      :database_id   db-id
@@ -261,14 +238,12 @@
                                     :aggregation  [[:count]]}
                          :type     :query
                          :database db-id}}
-
                        :model/Action
                        {action-id  :id
                         action-eid :entity_id}
                        {:name     "Some action"
                         :type     :query
                         :model_id model-id}
-
                        :model/Dashboard
                        {dash-id  :id
                         dash-eid :entity_id}
@@ -276,7 +251,6 @@
                         :collection_id coll-id
                         :creator_id    mark-id
                         :parameters    []}
-
                        :model/Dashboard
                        {other-dash-id :id
                         other-dash    :entity_id}
@@ -284,7 +258,6 @@
                         :collection_id dave-coll-id
                         :creator_id    mark-id
                         :parameters    []}
-
                        :model/Dashboard
                        {param-dash-id :id
                         param-dash    :entity_id}
@@ -298,7 +271,6 @@
                                          ;; card_id is in a different collection with dashboard's collection
                                          :values_source_config {:card_id     c1-id
                                                                 :value_field [:field field-id nil]}}]}
-
                        :model/DashboardCard
                        _
                        {:card_id           c1-id
@@ -309,7 +281,6 @@
                           :card_id      c1-id
                           :target       [:dimension [:field field-id
                                                      {:source-field field2-id}]]}]}
-
                        :model/DashboardCard
                        _
                        {:card_id      c2-id
@@ -332,12 +303,10 @@
                            :enabled  true}]
                          :column_settings
                          {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}
-
                        :model/DashboardCard
                        _
                        {:action_id    action-id
                         :dashboard_id other-dash-id}]
-
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c1-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c1-eid :label "some_question"}]
@@ -352,12 +321,10 @@
                    :created_at    string?}
                   ser))
           (is (not (contains? ser :id)))
-
           (testing "cards depend on their Collection and the query's Database (not the Tables/Fields it references)"
             (is (= #{[{:model "Database" :id "My Database"}]
                      [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser))))))
-
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c2-id))]
           (is (=? {:serdes/meta        [{:model "Card" :id c2-eid :label "second_question"}]
                    :creator_id         "mark@direstrai.ts"
@@ -372,13 +339,11 @@
           (is (not (contains? ser :id)))
           (is (not (contains? ser :table_id)) "table_id always skipped for cards — re-derived on import")
           (is (contains? ser :database_id) "database_id kept when query is empty")
-
           (testing "cards depend on their Database (kept because query is empty), Collection, and parameter_mappings card refs (not the Fields)"
             (is (= #{[{:model "Database" :id "My Database"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c1-eid}]}
                    (set (serdes/dependencies ser))))))
-
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c3-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c3-eid :label "third_question"}]
                    :creator_id    "mark@direstrai.ts"
@@ -408,12 +373,10 @@
                    :created_at    string?}
                   ser))
           (is (not (contains? ser :id)))
-
           (testing "cards depend on their Database (kept, query empty) and Collection (not the Fields in visualization_settings)"
             (is (= #{[{:model "Database" :id "My Database"}]
                      [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser)))))))
-
       (testing "Cards can be based on other cards"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c5-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c5-eid :label "dependent_question"}]
@@ -427,13 +390,11 @@
           (is (not (contains? ser :id)))
           (is (not (contains? ser :table_id)) "table_id stripped")
           (is (not (contains? ser :database_id)) "database_id stripped — derivable from query")
-
           (testing "and depend on their Collection, Database (from query), and the upstream Card"
             (is (= #{[{:model "Database" :id "My Database"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c4-eid}]}
                    (set (serdes/dependencies ser)))))))
-
       (testing "Dashboards include their Dashcards"
         (let [ser (ts/extract-one "Dashboard" other-dash-id)]
           (is (=? {:serdes/meta [{:model "Dashboard" :id other-dash :label "dave_s_dash"}]
@@ -461,14 +422,12 @@
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
-
           (testing "and depend on all referenced cards and actions, plus the Database of fields referenced in visualization_settings"
             (is (= #{[{:model "Card" :id c2-eid}]
                      [{:model "Action" :id action-eid}]
                      [{:model "Database" :id "My Database"}]
                      [{:model "Collection" :id dave-coll-eid}]}
                    (set (serdes/dependencies ser)))))))
-
       (testing "Dashboards with parameters where the source is a card"
         (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
@@ -486,7 +445,6 @@
                    ;; the parameter's value_field references a Field, but only its Database is a dependency
                    [{:model "Database", :id "My Database"}]}
                  (set (serdes/dependencies ser))))))
-
       (testing "Cards with parameters where the source is a card"
         (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
@@ -504,7 +462,6 @@
                    ;; the parameter's value_field references a Field, but only its Database is a dependency
                    [{:model "Database", :id "My Database"}]}
                  (set (serdes/dependencies ser))))))
-
       (testing "collection filtering based on :user option"
         (testing "only unowned collections are returned with no user"
           (is (= ["Some Collection"]
@@ -520,7 +477,6 @@
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Collection")
                       (ids-by-model "Collection"))))))
-
       (testing "dashboards are filtered based on :user"
         (testing "dashboards in unowned collections are always returned"
           (is (= #{dash-eid}
@@ -559,7 +515,6 @@
                                                        {:card_id c3-eid :position 1}])}
                                {:entity_id dc2-eid}]}
                   ser))
-
           (testing "and depend on all referenced cards, including cards from dashboard cards' series"
             (is (= #{[{:model "Card"       :id c1-eid}]
                      [{:model "Card"       :id c2-eid}]
@@ -609,15 +564,12 @@
                                        [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]]]]
                       ser))
           (is (not (contains? ser :id)))
-
           (testing "As of #27062 a Field can only have one Dimension. For historic reasons it comes back as a list"
             (is (= [dim1-eid]
                    (->> ser :dimensions (map :entity_id)))))
-
           (testing "depend only on the Database; the Table is synthesized on import if missing"
             (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/dependencies ser)))))))
-
       (testing "foreign key dimensions are inlined into their Fields"
         (let [ser (ts/extract-one "Field" fk-id)]
           (is (malli= [:map
@@ -633,12 +585,10 @@
                                               [:created_at              :string]]]]]
                       ser))
           (is (not (contains? ser :id)))
-
           (testing "dimensions are properly inlined"
             (is (=? [{:human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]
                       :created_at              string?}]
                     (:dimensions ser))))
-
           (testing "depend only on the Database; the Table, FK target and human-readable Fields are synthesized on import if missing"
             (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/dependencies ser))))))))))
@@ -658,7 +608,6 @@
                                                   s1-eid :entity_id}    {:name          "Snippet 1"
                                                                          :collection_id coll-id
                                                                          :creator_id    ann-id}
-
                        :model/NativeQuerySnippet {s2-id  :id
                                                   s2-eid :entity_id}    {:name          "Snippet 2"
                                                                          :collection_id nil
@@ -687,15 +636,12 @@
                      :created_at    string?}
                     ser))
             (is (not (contains? ser :id)))
-
             (testing "and depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
                      (set (serdes/dependencies ser)))))
-
             (testing "and will bring collection to extraction"
               (is (= {["Collection" coll-id] {"NativeQuerySnippet" s1-id}}
                      (serdes/required "NativeQuerySnippet" s1-id))))))
-
         (testing "or can be outside collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s2-id))]
             (is (malli= [:map
@@ -707,10 +653,8 @@
                          [:collection_id {:optional true} :nil]]
                         ser))
             (is (not (contains? ser :id)))
-
             (testing "and has no deps"
               (is (empty? (serdes/dependencies ser))))))
-
         (testing "Snippet collection is exported when snippet is exported as a card dep (#51901)"
           (is (= {["Collection" coll2-id]      nil
                   ["Card" card-id]             {"Collection" coll2-id}
@@ -741,7 +685,6 @@
             (is (contains? targets-with-skip ["Card" card-in-active-id]))
             (is (not (contains? targets-with-skip ["Card" card-in-archived-id]))
                 "cards in archived collections should not be included")))
-
         (testing "all collections and cards are included when skip-archived: false"
           (let [targets-without-skip (#'extract/resolve-targets {:targets       [["Collection" parent-id]]
                                                                  :skip-archived false} nil)]
@@ -767,7 +710,6 @@
                 card-ids   (into #{} (map (comp :id last :serdes/meta)) (by-model "Card" extraction))]
             (is (contains? card-ids (:entity_id (t2/select-one :model/Card :id active-card-id))))
             (is (not (contains? card-ids (:entity_id (t2/select-one :model/Card :id archived-card-id)))))))
-
         (testing "archived cards are included in extraction with skip-archived: false"
           (let [extraction (extract/extract {:targets       [["Collection" coll-id]]
                                              :skip-archived false})
@@ -782,27 +724,23 @@
                        {:first_name "Ann"
                         :last_name  "Wilson"
                         :email      "ann@heart.band"}
-
                        :model/Collection
                        {coll-id  :id
                         coll-eid :entity_id}
                        {:name              "Shared Collection"
                         :personal_owner_id nil}
-
                        :model/Timeline
                        {empty-id  :id
                         empty-eid :entity_id}
                        {:name          "Empty Timeline"
                         :collection_id coll-id
                         :creator_id    ann-id}
-
                        :model/Timeline
                        {line-id  :id
                         line-eid :entity_id}
                        {:name          "Populated Timeline"
                         :collection_id coll-id
                         :creator_id    ann-id}
-
                        :model/TimelineEvent
                        _
                        {:name        "First Event"
@@ -818,11 +756,9 @@
                      :created_at    string?}
                     ser))
             (is (not (contains? ser :id)))
-
             (testing "depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
                      (set (serdes/dependencies ser)))))))
-
         (testing "with events"
           (let [ser (ts/extract-one "Timeline" line-id)]
             (is (=? {:serdes/meta   [{:model "Timeline" :id line-eid :label "populated_timeline"}]
@@ -835,7 +771,6 @@
                     ser))
             (is (not (contains? ser :id)))
             (is (not (contains? (-> ser :events first) :id)))
-
             (testing "depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
                      (set (serdes/dependencies ser)))))))))))
@@ -848,7 +783,6 @@
                        :model/Database   {db-id :id}        {:name "My Database"}
                        :model/Table      {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
                        :model/Field      {field-id :id}     {:name "Some Field" :table_id no-schema-id}
-
                        :model/Segment
                        {s1-id  :id
                         s1-eid :entity_id}
@@ -1034,7 +968,6 @@
         (let [ser (ts/extract-one "Table" table-id)]
           (testing "is_published is omitted (default false)"
             (is (not (contains? ser :is_published))))
-
           (testing "collection_id is nil"
             (is (nil? (:collection_id ser)))))))))
 
@@ -1053,7 +986,6 @@
                            :query_type    :native
                            :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
-
                           {:keys [action-id]}
                           {:name       "My Action"
                            :type       :implicit
@@ -1090,7 +1022,6 @@
                            :query_type    :native
                            :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
-
                           {:keys [action-id]}
                           {:name          "My Action"
                            :type          :query
@@ -1114,7 +1045,6 @@
                          :model_id    card-eid-1}
                         ser))
                 (is (not (contains? ser :id)))
-
                 (testing "depends on the Model and Database"
                   (is (= #{[{:model "Database" :id "My Database"}]
                            [{:model "Card" :id card-eid-1}]}
@@ -1132,7 +1062,6 @@
                                                                                               :percent-email  0.0
                                                                                               :percent-state  0.0
                                                                                               :average-length 8.333333333333334}}}}
-
                        :model/FieldValues
                        {fv-id       :id
                         values      :values}
@@ -1156,7 +1085,6 @@
           (is (not (contains? ser :id)))
           (is (not (contains? ser :field_id))
               ":field_id is dropped; its implied by the path")
-
           (testing "depend only on the Database; the parent Field is synthesized on import if missing"
             (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/dependencies ser)))))))
@@ -1175,7 +1103,6 @@
     (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
                        :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
                        :model/Field    {field-id     :id} {:name "Some Field" :table_id no-schema-id}
-
                        :model/FieldUserSettings {description :description}
                        {:field_id              field-id
                         :description "Some custom Description"}]
@@ -1190,7 +1117,6 @@
                   ser))
           (is (not (contains? ser :field_id))
               ":field_id is dropped; its implied by the path")
-
           (testing "depend only on the Database; the parent Field is synthesized on import if missing"
             (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/dependencies ser)))))))
@@ -1210,12 +1136,10 @@
        :model/Table      {table-id :id}   {:name "Schemaless Table" :db_id db-id}
        :model/Field      {field-id :id}   {:name "A Field" :table_id table-id}
        :model/Collection {coll-id-1  :id} {:name "1st collection"}
-
        :model/Collection
        {coll-id-2  :id
         coll-eid-2 :entity_id}
        {:name "2nd collection"}
-
        :model/Card
        {card-id-1  :id
         card-eid-1 :entity_id}
@@ -1224,7 +1148,6 @@
         :table_id      table-id
         :collection_id coll-id-1
         :creator_id    mark-id}
-
        :model/Card
        {card-id-2  :id}
        {:name          "Card 2"
@@ -1273,7 +1196,6 @@
                        :model/Collection {coll3-id   :id
                                           coll3-eid  :entity_id}    {:name     "Grandchild Collection"
                                                                      :location (str "/" coll1-id "/" coll2-id "/")}
-
                        :model/Database   {db-id      :id}           {:name "My Database"}
                        :model/Table      {no-schema-id :id}         {:name "Schemaless Table" :db_id db-id}
                        :model/Field      _                          {:name "Some Field" :table_id no-schema-id}
@@ -1283,7 +1205,6 @@
                        :model/Field      {field-id :id}             {:name "Other Field" :table_id schema-id}
                        :model/Field      {field-id2 :id}            {:name "Field To Click 1" :table_id schema-id}
                        :model/Field      {field-id3 :id}            {:name "Field To Click 2" :table_id schema-id}
-
                        ;; One dashboard and three cards in each of the three collections:
                        ;; Two cards contained in the dashboard and one freestanding.
                        :model/Dashboard  {dash1-id     :id
@@ -1307,12 +1228,10 @@
                                                                      :table_id      schema-id
                                                                      :collection_id coll1-id
                                                                      :creator_id    mark-id}
-
                        :model/DashboardCard _                       {:card_id      c1-1-id
                                                                      :dashboard_id dash1-id}
                        :model/DashboardCard _                       {:card_id      c1-2-id
                                                                      :dashboard_id dash1-id}
-
                        ;; Second dashboard, in the middle collection.
                        :model/Dashboard  {dash2-id     :id
                                           dash2-eid    :entity_id}  {:name          "Dashboard 2"
@@ -1335,18 +1254,15 @@
                                                                      :table_id      schema-id
                                                                      :collection_id coll2-id
                                                                      :creator_id    mark-id}
-
                        :model/DashboardCard _                       {:card_id      c2-1-id
                                                                      :dashboard_id dash2-id}
                        :model/DashboardCard _                       {:card_id      c2-2-id
                                                                      :dashboard_id dash2-id}
-
                        ;; Third dashboard, in the grandchild collection.
                        :model/Dashboard  {dash3-id     :id
                                           dash3-eid    :entity_id}  {:name          "Dashboard 3"
                                                                      :collection_id coll3-id
                                                                      :creator_id    mark-id}
-
                        :model/Card       {c3-1-id  :id
                                           c3-1-eid :entity_id}      {:name          "Question 3-1"
                                                                      :database_id   db-id
@@ -1364,12 +1280,10 @@
                                                                      :table_id      schema-id
                                                                      :collection_id coll3-id
                                                                      :creator_id    mark-id}
-
                        :model/DashboardCard _                       {:card_id      c3-1-id
                                                                      :dashboard_id dash3-id}
                        :model/DashboardCard _                       {:card_id      c3-2-id
                                                                      :dashboard_id dash3-id}
-
                        ;; Fourth dashboard where its parameter's source is another card
                        :model/Collection   {coll4-id   :id
                                             _coll4-eid :entity_id}    {:name     "Forth collection"}
@@ -1386,7 +1300,6 @@
                                                                                         ;; card_id is in a different collection with dashboard's collection
                                                                                         :values_source_config {:card_id     c1-1-id
                                                                                                                :value_field [:field field-id nil]}}]}
-
                        :model/Dashboard    {dash4-id     :id
                                             dash4-eid    :entity_id}  {:name          "Dashboard 4"
                                                                        :collection_id coll4-id
@@ -1400,7 +1313,6 @@
                                                                                                                :value_field [:field field-id nil]}}]}
                        :model/DashboardCard _                       {:card_id      c4-id
                                                                      :dashboard_id dash4-id}
-
                        ;; Fifth dashboard which has :click_behavior defined.
                        :model/Collection    {coll5-id      :id}        {:name          "Fifth collection"}
                        :model/Dashboard     {clickdash-id  :id
@@ -1459,13 +1371,11 @@
                                                                                            :target {:type      "dimension"
                                                                                                     :id        mapping-id
                                                                                                     :dimension dimension}}}}})}}}]
-
       (testing "selecting a collection includes settings metabot and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "PythonLibrary" "Setting" "TransformTag" "TransformJob"}
                (->> (extract/extract {:targets [["Collection" coll1-id]]})
                     (map (comp :model first serdes/path))
                     set))))
-
       (testing "selecting a dashboard gets all cards its dashcards depend on"
         (testing "grandparent dashboard"
           (is (= #{[{:model "Dashboard" :id dash1-eid :label "dashboard_1"}]
@@ -1474,7 +1384,6 @@
                  (->> (extract/extract {:targets [["Dashboard" dash1-id]] :no-settings true :no-data-model true :no-transforms true})
                       (map serdes/path)
                       set))))
-
         (testing "middle dashboard"
           (is (= #{[{:model "Dashboard" :id dash2-eid :label "dashboard_2"}]
                    [{:model "Card"      :id c2-1-eid  :label "question_2_1"}]
@@ -1482,7 +1391,6 @@
                  (->> (extract/extract {:targets [["Dashboard" dash2-id]] :no-settings true :no-data-model true :no-transforms true})
                       (map serdes/path)
                       set))))
-
         (testing "grandchild dashboard"
           (is (= #{[{:model "Dashboard" :id dash3-eid :label "dashboard_3"}]
                    [{:model "Card"      :id c3-1-eid  :label "question_3_1"}]
@@ -1490,7 +1398,6 @@
                  (->> (extract/extract {:targets [["Dashboard" dash3-id]] :no-settings true :no-data-model true :no-transforms true})
                       (map serdes/path)
                       set))))
-
         (testing "a dashboard that has parameter source is another card"
           (is (=? #{[{:model "Dashboard"     :id dash4-eid :label "dashboard_4"}]
                     [{:model "Card"          :id c4-eid  :label "question_4_1"}]
@@ -1501,7 +1408,6 @@
                   (->> (extract/extract {:targets [["Dashboard" dash4-id]] :no-settings true :no-data-model true :no-transforms true})
                        (map serdes/path)
                        set)))))
-
       (testing "selecting a dashboard gets any dashboards or cards it links to when clicked"
         (is (=? #{[{:model "Dashboard"       :id clickdash-eid :label "dashboard_with_click_behavior"}]
                   [{:model "Card"            :id c3-1-eid      :label "question_3_1"}]    ; Visualized card
@@ -1513,7 +1419,6 @@
                 (->> (extract/extract {:targets [["Dashboard" clickdash-id]] :no-settings true :no-data-model true :no-transforms true})
                      (map serdes/path)
                      set))))
-
       (testing "selecting a collection gets all its contents"
         (let [grandchild-paths  #{[{:model "Collection"    :id coll1-eid :label "some_collection"}]
                                   [{:model "Collection"    :id coll2-eid :label "nested_collection"}]
@@ -1548,7 +1453,6 @@
                    (->> (extract/extract {:targets [["Collection" coll1-id]] :no-settings true :no-data-model true :no-transforms true})
                         (map serdes/path)
                         set))))
-
           (testing "depending on data from personal collections results in errors"
             (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
               (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true :no-transforms true})
@@ -1573,18 +1477,14 @@
                                                                      :schema      "PUBLIC"}
                        :model/Field      {field-id :id}             {:name "Other Field" :table_id schema-id}
                        :model/Field      {field-id3 :id}            {:name "Field To Click 2" :table_id schema-id}
-
                        :model/Card       {card-id  :id
                                           card-eid :entity_id}      {:name          "A Normal Question"
                                                                      :database_id   db-id
                                                                      :table_id      no-schema-id
                                                                      :collection_id coll-id
                                                                      :creator_id    mark-id}
-
                        :model/Card       {deleted-card-id :id}      {:collection_id coll-id}
-
                        :model/Dashboard  {deleted-dash-id :id}      {:collection_id coll-id}
-
                        :model/Dashboard     {clickdash-id  :id
                                              clickdash-eid :entity_id} {:name          "Dashboard"
                                                                         :collection_id coll-id
@@ -1612,7 +1512,6 @@
                                                                            {:type "link"
                                                                             :linkType "question"
                                                                             :targetId deleted-card-id}}}}}]
-
       (t2/delete! :model/Card deleted-card-id)
       (t2/delete! :model/Dashboard deleted-dash-id)
       (testing "the references to deleted cards and dashboards are ignored"
@@ -1652,11 +1551,9 @@
                        :model/Field      {nested-id      :id}        {:name "Nested Field"
                                                                       :table_id schema-id
                                                                       :parent_id other-field-id}]
-
       (testing "fields that reference foreign keys are properly exported as Field references"
         (is (= ["My Database" nil "Schemaless Table" "Some Field"]
                (:fk_target_field_id (ts/extract-one "Field" fk-id)))))
-
       (testing "Fields that reference parents are properly exported as Field references"
         (is (= ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]
                (:parent_id (ts/extract-one "Field" nested-id))))
@@ -1984,21 +1881,17 @@
       [:model/Card {model-id :id
                     model-eid :entity_id} {:name "AI Model"
                                            :type :model}
-
        :model/Collection {coll-id :id
                           coll-eid :entity_id} {:name "Metabot Collection"}
-
        :model/Metabot {metabot-id :id
                        metabot-eid :entity_id} {:name "Test Metabot"
                                                 :description "A test metabot"
                                                 :use_verified_content false
                                                 :collection_id coll-id}
-
        :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_id metabot-id
                                                              :prompt "A sample prompt"
                                                              :model :model
                                                              :card_id model-id}]
-
       (testing "metabot extraction"
         (let [ser (ts/extract-one "Metabot" metabot-id)]
           (is (=? {:serdes/meta [{:model "Metabot" :id metabot-eid}]
@@ -2017,12 +1910,10 @@
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :use_verified_content)))
-
           (testing "metabot depends on its model entities and collection"
             (is (= #{[{:model "Card" :id model-eid}]
                      [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser)))))
-
           (testing "metabot storage-path uses top-level metabots directory"
             (is (= [{:label "metabots"} {:label "Test Metabot" :key metabot-eid}]
                    (serdes/storage-path ser {})))))))))
@@ -2031,26 +1922,21 @@
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/Collection {model-id :id} {:name "AI Model"}
-
        :model/Card {card-id :id
                     card-eid :entity_id} {:name "AI Model"
                                           :type :model
                                           :collection_id model-id}
-
        :model/Collection {coll-id :id
                           coll-eid :entity_id} {:name "Metabot Collection"}
-
        :model/Metabot {metabot-id :id
                        metabot-eid :entity_id} {:name "Test Metabot"
                                                 :description "A test metabot"
                                                 :use_verified_content false
                                                 :collection_id coll-id}
-
        :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_id metabot-id
                                                              :prompt "A sample prompt"
                                                              :model :model
                                                              :card_id card-id}]
-
       (testing "metabot extraction"
         (let [ser (ts/extract-one "Metabot" metabot-id)]
           (is (=? {:serdes/meta [{:model "Metabot" :id metabot-eid}]
@@ -2069,7 +1955,6 @@
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :use_verified_content)))
-
           (testing "metabot depends on its prompts' cards and its collection"
             (is (= #{[{:model "Card" :id card-eid}]
                      [{:model "Collection" :id coll-eid}]}
@@ -2091,7 +1976,6 @@
                        :model/Card linked-card {:name "Linked Card"}
                        :model/Dashboard dashboard {:name "Smart Linked Dashboard"}
                        :model/Table table {:name "linked_table"}]
-
       (t2/update! :model/Document :id (u/the-id document) {:document {:type "doc"
                                                                       :content [{:type "cardEmbed"
                                                                                  :attrs {:id (u/the-id card)}}
@@ -2130,7 +2014,6 @@
           (is (not (contains? ser :archived)))
           (is (not (contains? ser :archived_directly)))
           (is (not (contains? ser :id)))
-
           (testing "depends on its collection, cardEmbeds and smarkLinks "
             (is (= #{[{:model "Collection" :id (:entity_id collection)}]
                      [{:model "Card" :id (:entity_id card)}]
@@ -2143,10 +2026,10 @@
   (testing "visualizer settings transform entity IDs <-> card IDs"
     (let [card-entity-id "WcMlLFNVcy0iO49mKW3WH"
           card-id 621]
-      (with-redefs [serdes/*import-fk* (fn [_entity-id _model]
-                                         card-id)
-                    serdes/*export-fk* (fn [_card-id _model]
-                                         card-entity-id)]
+      (mt/with-dynamic-fn-redefs [serdes/*import-fk* (fn [_entity-id _model]
+                                                       card-id)
+                                  serdes/*export-fk* (fn [_card-id _model]
+                                                       card-entity-id)]
         (testing "transforms sourceId in column mappings"
           (let [input {:visualization
                        {:columnValuesMapping
@@ -2162,7 +2045,6 @@
                             :DIMENSION [(str "$_card:" card-id "_name")]}}}
                 result (serdes/import-visualizer-settings input)]
             (is (= expected result))))
-
         (testing "transforms sourceId in column mappings"
           (let [input {:visualization
                        {:columnValuesMapping
@@ -2199,17 +2081,14 @@
                            {hourly-tag-id :id
                             hourly-tag-eid :entity_id}
                            {:name "hourly" :built_in_type "hourly"}
-
                            :model/TransformTag
                            {daily-tag-eid :entity_id}
                            {:name "daily" :built_in_type "daily"}
-
                            ;; Create custom tag
                            :model/TransformTag
                            {custom-tag-id :id
                             custom-tag-eid :entity_id}
                            {:name "custom-etl"}]
-
           (testing "built-in tags extract correctly"
             (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id hourly-tag-id) :tags))]
               (is (=? {:serdes/meta [{:model "TransformTag"
@@ -2220,7 +2099,6 @@
                       ser))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
-
           (testing "custom tags extract correctly"
             (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id custom-tag-id) :tags))]
               (is (=? {:serdes/meta [{:model "TransformTag"
@@ -2231,7 +2109,6 @@
               (is (not (contains? ser :built_in_type)))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
-
           (testing "all transform tags are extracted"
             (is (= #{hourly-tag-eid daily-tag-eid custom-tag-eid}
                    (ids-by-model "TransformTag" (extract/extract {}))))))))))
@@ -2245,36 +2122,29 @@
         (ts/with-temp-dpc [:model/Database
                            {db-id :id}
                            {:name "My Database"}
-
                            :model/Table
                            {table-id :id}
                            {:name "Schemaless Table" :db_id db-id}
-
                            :model/Field
                            {_field-id :id}
                            {:name "Some Field" :table_id table-id}
-
                            :model/Collection
                            {coll-id :id coll-eid :entity_id}
                            {:name "Transform Collection"
                             :namespace :transforms}
-
                            ;; Create tags for associations
                            :model/TransformTag
                            {hourly-tag-id :id
                             hourly-tag-eid :entity_id}
                            {:name "hourly" :built_in_type "hourly" :entity_id "hourlyhourlyhourlyxxx"}
-
                            :model/TransformTag
                            {daily-tag-id :id
                             daily-tag-eid :entity_id}
                            {:name "daily" :built_in_type "daily" :entity_id "dailydailydailydailyx"}
-
                            :model/TransformTag
                            {custom-tag-id :id
                             custom-tag-eid :entity_id}
                            {:name "custom-etl" :entity_id "custometlcustometlcus"}
-
                            ;; Create Transform
                            :model/Transform
                            {transform-id :id
@@ -2291,7 +2161,6 @@
                                      :type "table"
                                      :schema "public"
                                      :name "target_table"}}
-
                            ;; Python transform with source-tables
                            :model/Transform
                            {python-transform-id :id
@@ -2310,26 +2179,22 @@
                                      :type "table"
                                      :schema "public"
                                      :name "target_table"}}
-
                            ;; Create tag associations with specific positions
                            :model/TransformTransformTag
                            {}
                            {:transform_id transform-id
                             :tag_id hourly-tag-id
                             :position 0}
-
                            :model/TransformTransformTag
                            {}
                            {:transform_id transform-id
                             :tag_id custom-tag-id
                             :position 1}
-
                            :model/TransformTransformTag
                            {}
                            {:transform_id transform-id
                             :tag_id daily-tag-id
                             :position 2}]
-
           (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags))]
             (testing "basic Transform structure"
               (is (=? {:serdes/meta [{:model "Transform"
@@ -2339,21 +2204,18 @@
                        :created_at string?}
                       ser))
               (is (not (contains? ser :id))))
-
             (testing "source and target MBQL export"
               (is (=? {:source {:query {:database "My Database"
                                         :lib/type :mbql/query
                                         :stages [{:source-table ["My Database" nil "Schemaless Table"]}]}}
                        :target {:database "My Database" :type "table" :schema "public" :name "target_table"}}
                       (select-keys ser [:source :target]))))
-
             (testing "tag associations with preserved order"
               (is (= 3 (count (:tags ser))))
               (let [tag-ids (map :tag_id (:tags ser))
                     positions (map :position (:tags ser))]
                 (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
                 (is (= [0 1 2] positions))))
-
             (testing "dependencies include collection, source database, and tags (the source Table itself is not a dependency)"
               (let [deps (set (serdes/dependencies ser))]
                 (is (contains? deps [{:model "Collection" :id coll-eid}]))
@@ -2363,7 +2225,6 @@
                 (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
                 (is (contains? deps [{:model "TransformTag" :id custom-tag-eid}]))
                 (is (contains? deps [{:model "TransformTag" :id daily-tag-eid}])))))
-
           (testing "python transform source-tables export"
             (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id python-transform-id) :tags))]
               (is (=? {:source {:type :python
@@ -2375,7 +2236,6 @@
                                                  :table       "Schemaless Table"}]
                                 :body "df = ctx.source.orders"}}
                       ser))))
-
           (testing "transforms are extracted"
             (is (= #{transform-eid python-transform-eid}
                    (ids-by-model "Transform" (extract/extract {}))))))))))
@@ -2387,7 +2247,6 @@
         (ts/with-temp-dpc [:model/Database
                            {db-id :id}
                            {:name "My Database"}
-
                            :model/Transform
                            {transform-id :id
                             transform-eid :entity_id}
@@ -2401,7 +2260,6 @@
                                      :type "table"
                                      :schema "public"
                                      :name "transform_output"}}
-
                            :model/Table
                            {table-id :id}
                            {:name "transform_output"
@@ -2427,17 +2285,14 @@
                            {hourly-tag-id :id
                             hourly-tag-eid :entity_id}
                            {:name "hourly" :built_in_type "hourly"}
-
                            :model/TransformTag
                            {daily-tag-id :id
                             daily-tag-eid :entity_id}
                            {:name "daily" :built_in_type "daily"}
-
                            :model/TransformTag
                            {custom-tag-id :id
                             custom-tag-eid :entity_id}
                            {:name "custom-etl"}
-
                            ;; Create built-in TransformJob
                            :model/TransformJob
                            {hourly-job-id :id
@@ -2446,7 +2301,6 @@
                             :description "Executes transforms tagged with 'hourly' every hour"
                             :schedule "0 0 * * * ? *"
                             :built_in_type "hourly"}
-
                            ;; Create custom TransformJob
                            :model/TransformJob
                            {custom-job-id :id
@@ -2454,26 +2308,22 @@
                            {:name "Custom ETL Job"
                             :description "Custom data processing job"
                             :schedule "0 0 2 * * ? *"}
-
                            ;; Create job-tag associations
                            :model/TransformJobTransformTag
                            {}
                            {:job_id hourly-job-id
                             :tag_id hourly-tag-id
                             :position 0}
-
                            :model/TransformJobTransformTag
                            {}
                            {:job_id custom-job-id
                             :tag_id custom-tag-id
                             :position 0}
-
                            :model/TransformJobTransformTag
                            {}
                            {:job_id custom-job-id
                             :tag_id daily-tag-id
                             :position 1}]
-
           (testing "built-in job extracts correctly"
             (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob :id hourly-job-id) :job_tags))]
               (is (=? {:serdes/meta [{:model "TransformJob"
@@ -2492,7 +2342,6 @@
               (testing "dependencies include referenced tags"
                 (is (= #{[{:model "TransformTag" :id hourly-tag-eid}]}
                        (set (serdes/dependencies ser)))))))
-
           (testing "custom job extracts correctly"
             (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob :id custom-job-id) :job_tags))]
               (is (=? {:serdes/meta [{:model "TransformJob"
@@ -2514,7 +2363,6 @@
                 (is (= #{[{:model "TransformTag" :id custom-tag-eid}]
                          [{:model "TransformTag" :id daily-tag-eid}]}
                        (set (serdes/dependencies ser)))))))
-
           (testing "all transform jobs are extracted"
             (is (= #{hourly-job-eid custom-job-eid}
                    (ids-by-model "TransformJob" (extract/extract {}))))))))))
@@ -2615,7 +2463,6 @@
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
-
           (testing "has no dependencies"
             (is (empty? (serdes/dependencies ser)))))))))
 
@@ -2643,7 +2490,6 @@
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :status)))
-
           (testing "has no dependencies"
             (is (empty? (serdes/dependencies ser)))))))))
 
@@ -2771,7 +2617,6 @@
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :active)))))
-
       (testing "http channel extraction"
         (let [ser (ts/extract-one "Channel" http-id)]
           (is (=? {:serdes/meta [{:model "Channel" :id "HTTP Channel"}]
@@ -2783,7 +2628,6 @@
                              :auth-method "none"}
                    :created_at string?}
                   ser))))
-
       (testing "channel storage-path uses top-level channels directory"
         (let [ser (ts/extract-one "Channel" email-id)]
           (is (= [{:label "channels"} {:label "Email Channel" :key "Email Channel"}]
@@ -2900,7 +2744,6 @@
                         light-eid :entity_id}
                        {:name "Light"
                         :settings {}}
-
                        :model/EmbeddingTheme
                        {_dark-id  :id
                         dark-eid :entity_id}
@@ -2920,7 +2763,6 @@
           (is (not (contains? ser :id)))
           (testing "embedding themes have no dependencies"
             (is (empty? (serdes/dependencies ser))))))
-
       (testing "all embedding themes are extracted"
         (is (= #{light-eid dark-eid}
                (ids-by-model "EmbeddingTheme" (extract/extract {}))))))))

@@ -29,6 +29,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf :refer [some mapv select-keys empty?]])
   (:import
    (org.bson BsonBinarySubType)
@@ -733,7 +734,6 @@ function(bin) {
     (with-rvalue-temporal-bucketing
       {"$cond" [{"$eq" [{"$type" rvalue} "string"]}
                 {"$toDate" rvalue}
-
                 rvalue]}
       :day)))
 
@@ -1056,7 +1056,7 @@ function(bin) {
   "Rename :join-alias properties fields to ::join-local.
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
-  (driver-api/replace expr
+  (match/replace expr
     [:field _ {:join-alias (a :guard (= a alias))}]
     (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
@@ -1087,7 +1087,7 @@ function(bin) {
         source-field-mappings (get-field-mappings source-query projections)
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
-        own-fields (driver-api/match-many condition
+        own-fields (match/match-many condition
                      [:field _ (opts :guard (not= (:join-alias opts) alias))] &match)
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
@@ -1133,7 +1133,7 @@ function(bin) {
              :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
-  (driver-api/match-one ag
+  (match/match-one ag
     [:aggregation-options ag' _]
     (&recur ag')
 
@@ -1416,14 +1416,12 @@ function(bin) {
                    ;; if there is only one breakout, always use the user's sort order
                    (when (= (count id) 1)
                      (window-sort id user-sort))
-
                    ;; if we don't have a temporal breakout, sort by the last breakout, but
                    ;; use the user's sort direction if specified
                    (when-not finest-temporal-index
                      (->> user-sort
                           (filter #(= sort-name (first %)))
                           (window-sort id)))
-
                    default-sort)
 
         partition-expr (into {}
@@ -1473,7 +1471,7 @@ function(bin) {
    (fn [m field-clause]
      (assoc-in
       m
-      (driver-api/match-one field-clause
+      (match/match-one field-clause
         [:field (field-id :guard integer?) _]
         (str/split (field-alias field-clause) #"\.")
 
@@ -1682,7 +1680,7 @@ function(bin) {
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
   [query]
-  (driver-api/match-one query
+  (match/match-one query
     {:collection (collection :guard identity)}
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
     (when (and (some #{:source-query} &parents)
@@ -1780,7 +1778,7 @@ function(bin) {
                        source-alias)
                 [:field source-alias opts]
                 [:field id-or-name opts])))]
-    (driver-api/replace form
+    (match/replace form
       [:field & _]
       (update-field-ref &match)
 

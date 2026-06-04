@@ -547,6 +547,15 @@
                                                       [:size_x ms/PositiveInt]
                                                       [:size_y ms/PositiveInt]]]]])
 
+(defn- normalize-dataset-query-or-400
+  "Strictly normalize an incoming `:dataset_query` from an API request, converting any normalization
+  failure into a 400 Bad Request."
+  [query]
+  (try
+    (lib-be/normalize-query nil query {:strict? true})
+    (catch Throwable e
+      (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -557,8 +566,10 @@
    _query-params
    {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
   (let [card (-> card
-                 (update :dataset_query lib-be/normalize-query)
+                 (update :dataset_query normalize-dataset-query-or-400)
                  (cond-> (some? collection-id)
+                   ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
+                   ;; from being written into the DB (#74615).
                    (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
@@ -671,7 +682,9 @@
   [id :- ::lib.schema.id/card
    {metadata :result_metadata, card-type :type, :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
-  (let [card-updates (m/update-existing card-updates :dataset_query lib-be/normalize-query)
+  ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
+  ;; from being written into the DB (#74615).
+  (let [card-updates (m/update-existing card-updates :dataset_query normalize-dataset-query-or-400)
         query        (:dataset_query card-updates)]
     (check-if-card-can-be-saved query card-type)
     (when-some [query (:dataset_query card-updates)]
@@ -802,7 +815,6 @@
                                            :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
-
     ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
     ;; to be lazy and we're just going to discard the results
     (doall
@@ -839,7 +851,6 @@
       ;; ...and check that we have write permissions for the old collections if applicable
       (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
         (api/write-check :model/Collection old-collection-id))
-
       ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
@@ -849,7 +860,6 @@
         ;; are gone and update the position in the new collection
         (when-let [cards-with-position (seq (filter :collection_position cards))]
           (update-collection-positions! new-collection-id-or-nil cards-with-position))
-
         ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]

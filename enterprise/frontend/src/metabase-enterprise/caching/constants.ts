@@ -17,41 +17,41 @@ export const durationUnits = new Set(
   Object.values(CacheDurationUnit).map(String),
 );
 
-const scheduleStrategyValidationSchema = Yup.object({
-  type: Yup.string().equals(["schedule"]),
-  schedule: Yup.string()
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .required(t`A cron expression is required`)
-    .default(defaultCron),
-  refresh_automatically: Yup.boolean().nullable().default(false),
-});
+const getScheduleStrategyValidationSchema = () =>
+  Yup.object({
+    type: Yup.string().equals(["schedule"]),
+    schedule: Yup.string()
+      .required(t`A cron expression is required`)
+      .default(defaultCron),
+    refresh_automatically: Yup.boolean().nullable().default(false),
+  });
 
-const durationStrategyValidationSchema = Yup.object({
-  type: Yup.string().equals(["duration"]),
-  duration: getPositiveIntegerSchema().default(24),
-  unit: Yup.string().test(
-    "is-duration-unit",
-    "${path} is not a valid duration",
-    (value) => !!value && durationUnits.has(value),
-  ),
-  refresh_automatically: Yup.boolean().nullable().default(false),
-});
+const getDurationStrategyValidationSchema = () =>
+  Yup.object({
+    type: Yup.string().equals(["duration"]),
+    duration: getPositiveIntegerSchema().default(24),
+    unit: Yup.string().test(
+      "is-duration-unit",
+      "${path} is not a valid duration",
+      (value) => !!value && durationUnits.has(value),
+    ),
+    refresh_automatically: Yup.boolean().nullable().default(false),
+  });
 
-/** Caching strategies available on EE only */
+/** Caching strategies available on EE only. Labels are functions so ttag
+ * runs after the locale is set (see `StrategyLabel`). */
 export const enterpriseOnlyCachingStrategies: Record<string, StrategyData> = {
   schedule: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Schedule: pick when to regularly invalidate the cache`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    shortLabel: t`Scheduled`,
-    validationSchema: scheduleStrategyValidationSchema,
+    label: () => t`Schedule`,
+    description: () => t`Pick when to regularly invalidate the cache`,
+    shortLabel: () => t`Scheduled`,
+    validationSchema: getScheduleStrategyValidationSchema,
   },
   duration: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Duration: keep the cache for a number of hours`,
-    validationSchema: durationStrategyValidationSchema,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    shortLabel: t`Duration`,
+    label: () => t`Duration`,
+    description: () => t`Keep the cache for a number of hours`,
+    validationSchema: getDurationStrategyValidationSchema,
+    shortLabel: () => t`Duration`,
   },
 };
 

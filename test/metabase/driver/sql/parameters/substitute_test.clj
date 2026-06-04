@@ -25,8 +25,7 @@
 
 (defn- substitute [parsed param->value]
   (driver/with-driver :h2
-    (mt/with-metadata-provider meta/metadata-provider
-      (sql.params.substitute/substitute parsed param->value))))
+    (sql.params.substitute/substitute meta/metadata-provider parsed param->value)))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 ;; TIMEZONE FIXME
@@ -162,8 +161,7 @@
                             field-metadata
                             {:type  :string/=
                              :value ["banana"]})
-            [sql _args] (mt/with-metadata-provider metadata-provider
-                          (sql.params.substitute/substitute query {"tag" field-filter}))]
+            [sql _args] (sql.params.substitute/substitute metadata-provider query {"tag" field-filter})]
         (testing "The SQL identifier should include the parent field 'result' before 'tag_name'"
           (let [[exp-identifier] (sql.qp/format-honeysql driver/*driver*
                                                          (h2x/identifier :field "result" "tag_name"))]
@@ -390,8 +388,7 @@
 
 (defn- substitute-e2e [sql params]
   (let [[query params] (driver/with-driver :h2
-                         (mt/with-metadata-provider meta/metadata-provider
-                           (#'sql.params.substitute/substitute (lib/parse-parameters sql) (into {} params))))]
+                         (#'sql.params.substitute/substitute meta/metadata-provider (lib/parse-parameters sql) (into {} params)))]
     {:query query, :params (vec params)}))
 
 (deftest ^:parallel basic-substitution-test
@@ -408,7 +405,6 @@
             :params ["toucan"]}
            (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
                            {"toucans_are_cool" true, "bird_type" "toucan"}))))
-
   (testing "Should throw an Exception if a required param is missing"
     (is (thrown?
          Exception
@@ -422,115 +418,93 @@
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
                          {"toucans_are_cool" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool }}]]"
                          {"toucans_are_cool" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool }}]]"
                          {"toucans_are_cool" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool}}]]"
                          {"toucans_are_cool" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool_2}}]]"
                          {"toucans_are_cool_2" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = 'toucan'"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
                          {"toucans_are_cool" true})))
-
   (testing "Two parameters in an optional"
     (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
             :params ["toucan"]}
            (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
                            {"toucans_are_cool" true, "bird_type" "toucan"}))))
-
   (is (= {:query  "SELECT * FROM bird_facts"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
                          nil)))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" 5})))
-
   (testing "make sure nil gets substitute-e2ed in as `NULL`"
     (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > NULL"
             :params []}
            (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                            {"num_toucans" nil}))))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" true})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > FALSE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" false})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
           :params ["abc"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" "abc"})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
           :params ["yo' mama"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" "yo' mama"})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          nil)))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 2 AND total_birds > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"num_toucans" 2, "total_birds" 5})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE  AND total_birds > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"total_birds" 5})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 3"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"num_toucans" 3})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          nil)))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE bird_type = ? AND num_toucans > 2 AND total_birds > 5"
           :params ["toucan"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"bird_type" "toucan", "num_toucans" 2, "total_birds" 5})))
-
   (testing "should throw an Exception if a required param is missing"
     (is (thrown?
          Exception
          (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"num_toucans" 2, "total_birds" 5}))))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5 AND num_toucans < 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
                          {"num_toucans" 5})))
-
   (testing "Make sure that substitutions still work if the substitution contains brackets inside it (#3657)"
     (is (= {:query  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
             :params []}
@@ -1001,7 +975,7 @@
 (deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
-                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
+                  "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters.dates`, "
                   "which is fully-tested :D")
       (is (= [0]
              (mt/first-row
@@ -1031,7 +1005,7 @@
 (deftest ^:parallel e2e-exclude-date-parts-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::e2e-exclude-date-parts-test)
     (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion "
-                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
+                  "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters.dates`, "
                   "which is fully-tested :D")
       (doseq [[exclusion-string expected] {"exclude-months-Jan" 14
                                            "exclude-months-Jan-Feb" 13
@@ -1307,6 +1281,7 @@
       (is (= ["SELECT * FROM (SELECT * FROM table WHERE x LIKE ?)"
               ["G%"]]
              (sql.params.substitute/substitute
+              meta/metadata-provider
               ["SELECT * FROM " (lib/parsed-param "#1")]
               {"#1"
                (lib/parsed-referenced-card-query-param 1 "SELECT * FROM table WHERE x LIKE ?" ["G%"])}))))))
