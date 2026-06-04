@@ -530,6 +530,17 @@ The email address you want to use for the sender of emails from your custom SMTP
 
 The name you want to use for the sender of emails.
 
+### `MB_EMAIL_MAX_RECIPIENTS_PER_MESSAGE`
+
+- Type: integer
+- Default: `50`
+- [Exported as](../installation-and-operation/serialization.md): `email-max-recipients-per-message`.
+- [Configuration file name](./config-file.md): `email-max-recipients-per-message`
+
+The maximum number of recipients allowed on a single email. Notifications with more recipients than
+                this are split into multiple messages. This guards against SMTP providers (e.g. Amazon SES) that reject
+                any message exceeding their per-message recipient cap. Defaults to 50; set to 0 to disable batching.
+
 ### `MB_EMAIL_MAX_RECIPIENTS_PER_SECOND`
 
 - Type: integer

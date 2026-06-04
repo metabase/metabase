@@ -66,6 +66,51 @@ export function getURLForCardState(
   return Urls.card(card, options);
 }
 
+/**
+ * The clean `/table/:slug` URL (e.g. /table/2-orders) for a question that is
+ * still the pristine, unmodified default view of a table — otherwise `null`.
+ *
+ * This is what lets the QB show the canonical table URL on entry and fall back
+ * to the `/question#<hash>` form (via {@link getURLForCardState}) the moment the
+ * question is edited away from the table's default.
+ */
+export function getTableUrlForPristineQuestion(
+  question: Question,
+): string | null {
+  if (question.isSaved()) {
+    return null;
+  }
+
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+  if (isNative || Lib.stageCount(query) !== 1) {
+    return null;
+  }
+
+  // A card source (`card__123`) is a string id; only a real table qualifies.
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  if (typeof sourceTableId !== "number") {
+    return null;
+  }
+
+  const table = question.metadata().table(sourceTableId);
+  if (!table) {
+    return null;
+  }
+
+  const card = question.card();
+  const defaultCard = table.newQuestion().card();
+  const isPristine =
+    Lib.areLegacyQueriesEqual(card.dataset_query, defaultCard.dataset_query) &&
+    card.display === defaultCard.display &&
+    _.isEmpty(card.visualization_settings) &&
+    question.parameters().length === 0;
+
+  return isPristine
+    ? Urls.table({ id: sourceTableId, name: table.display_name })
+    : null;
+}
+
 export const isNavigationAllowed = ({
   destination,
   question,
