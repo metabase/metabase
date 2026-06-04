@@ -4,4 +4,5 @@
 // bundle. Types are erased at build time, so re-exporting them is safe.
 export type { EChartsRendererProps } from "./EChartsRenderer";
 export type { ResponsiveEChartsRendererProps } from "./ResponsiveEChartsRenderer";
+export { prefetchEChartsRenderer } from "./lazy";
 export { ResponsiveEChartsRenderer } from "./ResponsiveEChartsRenderer.styled";
