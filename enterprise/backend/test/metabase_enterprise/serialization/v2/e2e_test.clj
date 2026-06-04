@@ -962,30 +962,31 @@
                                                                                                               [:field %products.category {:join-alias "Products"}]]}]})}]
             ;; Populate the native source card's result_metadata the way the app does when a user runs and
             ;; saves the query. This is the state serdes must preserve across the round-trip.
-            (let [cols (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] native-id))
-                           (get-in [:data :results_metadata :columns]))]
-              (t2/update! :model/Card native-id {:result_metadata cols}))
-            (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-              (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
-            (ts/with-db dest-db
-              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                  "serdes ingest succeeded")
-              (let [imported-native (t2/select-one :model/Card :entity_id native-eid)
-                    imported-gui    (t2/select-one :model/Card :entity_id gui-eid)]
-                (testing "imported GUI question's query compiles without 'add alias info to join' errors"
-                  ;; Compile (not execute): the bug surfaces in add-alias-info during compilation, and serdes
-                  ;; strips warehouse connection details so the imported card can't actually be run here.
-                  (let [result (try
-                                 (qp.compile/compile (:dataset_query imported-gui))
-                                 (catch Throwable e
-                                   {:error (ex-message e)
-                                    :data  (ex-data e)}))]
-                    (is (not (and (map? result) (:error result)))
-                        (str "Expected query to compile but got error: "
-                             (when (map? result) (:error result))))))
-                (testing "(diagnostic) imported native card has result_metadata after import"
-                  (is (seq (:result_metadata imported-native))
-                      "Native source card lost result_metadata during serdes round-trip"))))))))))
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] native-id))
+                                   (get-in [:data :results_metadata :columns]))
+                  source-names (mapv :name source-cols)]
+              (t2/update! :model/Card native-id {:result_metadata source-cols})
+              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+                (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
+              (ts/with-db dest-db
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "serdes ingest succeeded")
+                (let [imported-native (t2/select-one :model/Card :entity_id native-eid)
+                      imported-gui    (t2/select-one :model/Card :entity_id gui-eid)]
+                  (testing "imported native card preserves its result_metadata columns"
+                    (is (= source-names (mapv :name (:result_metadata imported-native)))
+                        "Native source card lost result_metadata columns during serdes round-trip"))
+                  (testing "imported GUI question's query compiles without 'add alias info to join' errors"
+                    ;; Compile (not execute): the bug surfaces in add-alias-info during compilation, and serdes
+                    ;; strips warehouse connection details so the imported card can't actually be run here.
+                    (let [result (try
+                                   (qp.compile/compile (:dataset_query imported-gui))
+                                   (catch Throwable e
+                                     {:error (ex-message e)
+                                      :data  (ex-data e)}))]
+                      (is (not (and (map? result) (:error result)))
+                          (str "Expected query to compile but got error: "
+                               (when (map? result) (:error result)))))))))))))))
 
 (deftest schema-coercion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
