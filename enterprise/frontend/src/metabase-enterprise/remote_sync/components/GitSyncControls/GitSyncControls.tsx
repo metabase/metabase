@@ -85,11 +85,14 @@ export const GitSyncControls = () => {
       }
 
       if (!isNewBranch) {
+        if (currentBranch == null) {
+          return;
+        }
         // expected_branch is the branch we're switching away from: reject if another session already
         // moved off it, so we don't switch from a stale base.
         await importChanges({
           branch,
-          expected_branch: currentBranch ?? undefined,
+          expected_branch: currentBranch,
         });
 
         trackBranchSwitched({

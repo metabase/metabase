@@ -96,7 +96,7 @@ export type ImportFromBranchRequest = {
    * configured remote-sync-branch — i.e. another session switched branches. Differs from `branch`
    * on a branch switch, where `branch` is the target and this is the branch being switched away from.
    */
-  expected_branch?: string;
+  expected_branch: string;
 };
 
 export type ImportFromBranchResponse = {
