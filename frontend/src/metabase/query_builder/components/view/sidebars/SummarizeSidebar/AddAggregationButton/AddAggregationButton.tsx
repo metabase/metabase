@@ -37,6 +37,7 @@ export function AddAggregationButton({
           <Button
             className={AddAggregationButtonS.AddAggregationButtonRoot}
             variant="subtle"
+            size="sm"
             leftSection={<Icon name="add" />}
             onClick={() => setIsOpened(!isOpened)}
             aria-label={t`Add aggregation`}
