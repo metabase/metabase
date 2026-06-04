@@ -59,31 +59,9 @@
         basename (str (last resolved) ".yaml")]
     (str/join File/separator (concat dirnames [basename]))))
 
-(defn- ->file-spec
-  "Converts entity from serdes stream into file spec for source write-files!.
-
-  When `path-atom` is provided, records `{:model_type :entity_id :path}` for the entity so callers
-  can persist each exported entity's path. The path is computed once here and reused — calling
-  `remote-sync-path` twice on the same entity would advance the storage context's unique-name
-  generator and yield a different (wrong) path."
-  [task-id count opts idx path-atom entity]
-  (when (instance? Exception entity)
-    (throw entity))
-  (let [path (remote-sync-path opts entity)]
-    (when path-atom
-      (swap! path-atom conj {:model_type (-> entity :serdes/meta last :model)
-                             :entity_id  (:entity_id entity)
-                             :path       path}))
-    (u/prog1 {:path path
-              :content (yaml/generate-string (serialization/serialization-deep-sort entity)
-                                             {:dumper-options {:flow-style :block :split-lines false}})}
-      (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3))))))
-
 (defn entity->file-spec
-  "Serializes a single extracted entity into a `{:path :content}` file spec.
-
-  Takes a storage context `opts` (from `serdes/storage-base-context`) and an extracted entity.
-  Used by the incremental export fast-path, which serializes only changed entities.
+  "Serializes a single extracted entity into a `{:path :content}` file spec, using storage context
+  `opts` (from `serdes/storage-base-context`).
 
   Throws if `entity` is an Exception instance."
   [opts entity]
@@ -93,6 +71,15 @@
    :content (yaml/generate-string (serialization/serialization-deep-sort entity)
                                   {:dumper-options {:flow-style :block :split-lines false}})})
 
+(defn- entity-path-entry
+  "Returns `{:model_type :entity_id :path}` for an extracted entity given its already-computed path.
+  `path` must be reused from the entity's file spec — recomputing it would advance the storage
+  context's unique-name generator and yield a different path."
+  [entity path]
+  {:model_type (-> entity :serdes/meta last :model)
+   :entity_id  (:entity_id entity)
+   :path       path})
+
 (defn store!
   "Stores serialized entities from a stream to a remote source and commits the changes.
 
@@ -101,20 +88,21 @@
   identifier used to track progress updates), and a message (the commit message to use when writing
   files to the source).
 
-  When `path-atom` is provided, each exported entity's `{:model_type :entity_id :path}` is conj'd
-  onto it (so the caller can persist `file_path` on the RemoteSyncObject rows).
-
-  Returns the version written to the source.
+  Returns `{:version <written-version> :entries [{:model_type :entity_id :path} ...]}`.
 
   Throws Exception if any entity in the stream is an Exception instance."
-  ([stream snapshot task-id message]
-   (store! stream snapshot task-id message nil))
-  ([stream snapshot task-id message path-atom]
-   (let [opts (serdes/storage-base-context)
-         stream-count (bounded-count 10000 stream)]
-     (->> stream
-          (map-indexed #(->file-spec task-id stream-count opts %1 path-atom %2))
-          (source.p/write-files! snapshot message)))))
+  [stream snapshot task-id message]
+  (let [opts         (serdes/storage-base-context)
+        stream-count (bounded-count 10000 stream)
+        entries      (volatile! [])
+        version      (->> stream
+                          (map-indexed (fn [idx entity]
+                                         (u/prog1 (entity->file-spec opts entity)
+                                           (vswap! entries conj (entity-path-entry entity (:path <>)))
+                                           (remote-sync.task/update-progress!
+                                            task-id (-> (inc idx) (/ stream-count) (* 0.65) (+ 0.3))))))
+                          (source.p/write-files! snapshot message))]
+    {:version version :entries @entries}))
 
 (defn source-from-settings
   "Creates a git source from the current remote sync settings.

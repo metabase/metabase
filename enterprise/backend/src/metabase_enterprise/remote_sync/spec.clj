@@ -1146,18 +1146,15 @@
                 cat
                 (u/group-by first second (keys targets))))))
 
-(defn extract-dirty-entities-for-export
-  "Extracts ONLY the entities named by `dirty-rows` (raw RemoteSyncObject rows), grouped by
-   model type. Used by the incremental export fast-path to serialize just the changed entities
-   instead of the entire synced set.
-
-   Each row's `:model_type` is the serdes model name and `:model_id` is the local DB primary key.
-   Returns a lazy sequence of serialized entities, just like `extract-entities-for-export`."
-  [dirty-rows]
+(defn extract-entities-for-rows
+  "Serializes the entities named by `rows`, grouped by model type. Each row is a map with a
+   `:model_type` (the serdes model name) and a `:model_id` (the local DB primary key). Returns a lazy
+   sequence of serialized entities."
+  [rows]
   (let [by-model (reduce (fn [m {:keys [model_type model_id]}]
                            (update m model_type (fnil conj #{}) model_id))
                          {}
-                         dirty-rows)]
+                         rows)]
     (eduction (map (fn [[model ids]]
                      (serdes/extract-all model {:where [:in :id ids]
                                                 :skip-archived true})))

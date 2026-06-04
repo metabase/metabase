@@ -332,7 +332,7 @@
 (defn- extract-dirty-entity
   "Extracts the single entity named by a dirty RemoteSyncObject `row`, or nil if it no longer exists."
   [row]
-  (first (into [] (spec/extract-dirty-entities-for-export [row]))))
+  (first (into [] (spec/extract-entities-for-rows [row]))))
 
 (defn- path-free-for?
   "True if `path` in the repo is absent or already holds the entity with `entity-id` — i.e. writing
@@ -377,7 +377,7 @@
   (if (empty? dep-ids)
     []
     (let [rows     (map (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)
-          entities (into [] (spec/extract-dirty-entities-for-export rows))
+          entities (into [] (spec/extract-entities-for-rows rows))
           specs    (mapv (fn [e] [(source/entity->file-spec opts e) (:entity_id e)]) entities)]
       (when (every? (fn [[spec eid]] (path-free-for? snapshot (:path spec) eid)) specs)
         (mapv first specs)))))
@@ -551,12 +551,12 @@
               ;; Full export: re-serialize the entire synced set (first export, creates, name
               ;; collisions, collection or path-model changes, or missing file_path).
               (if-let [models (spec/extract-entities-for-export)]
-                (let [path-atom (atom [])]
+                (do
                   (remote-sync.task/update-progress! task-id 0.3)
-                  (let [written-version (source/store! models snapshot task-id message path-atom)]
-                    (remote-sync.task/set-version! task-id written-version))
-                  (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-                  (record-exported-paths! @path-atom)
+                  (let [{:keys [version entries]} (source/store! models snapshot task-id message)]
+                    (remote-sync.task/set-version! task-id version)
+                    (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                    (record-exported-paths! entries))
                   {:status :success
                    :version (source.p/version snapshot)})
                 {:status :error
