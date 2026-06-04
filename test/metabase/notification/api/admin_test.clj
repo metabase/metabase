@@ -780,21 +780,22 @@
                                                           :payload_id   nc2
                                                           :active       true
                                                           :creator_id   (mt/user->id :crowberto)}]
-      (let [resp (mt/user-http-request :crowberto :post 200 "notification/admin/bulk"
-                                       {:notification_ids [(:id n1) (:id n2)]
-                                        :action           "archive"})]
-        (is (= 2 (:updated resp)))
-        (is (false? (t2/select-one-fn :active :model/Notification (:id n1))))
-        (is (false? (t2/select-one-fn :active :model/Notification (:id n2))))
-        (testing "publishes :event/notification-update per notification so the admin action is audited"
-          (doseq [n [n1 n2]]
-            (is (= {:topic    :notification-update
-                    :user_id  (mt/user->id :crowberto)
-                    :model    "Notification"
-                    :model_id (:id n)
-                    :details  {:previous {:active true}
-                               :new      {:active false}}}
-                   (mt/latest-audit-log-entry :notification-update (:id n))))))))))
+      (mt/with-premium-features #{:audit-app}
+        (let [resp (mt/user-http-request :crowberto :post 200 "notification/admin/bulk"
+                                         {:notification_ids [(:id n1) (:id n2)]
+                                          :action           "archive"})]
+          (is (= 2 (:updated resp)))
+          (is (false? (t2/select-one-fn :active :model/Notification (:id n1))))
+          (is (false? (t2/select-one-fn :active :model/Notification (:id n2))))
+          (testing "publishes :event/notification-update per notification so the admin action is audited"
+            (doseq [n [n1 n2]]
+              (is (= {:topic    :notification-update
+                      :user_id  (mt/user->id :crowberto)
+                      :model    "Notification"
+                      :model_id (:id n)
+                      :details  {:previous {:active true}
+                                 :new      {:active false}}}
+                     (mt/latest-audit-log-entry :notification-update (:id n)))))))))))
 
 (deftest bulk-change-owner-test
   (testing "POST /bulk with action=change-creator sets :creator_id to creator_id for each id"
