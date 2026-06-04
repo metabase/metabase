@@ -63,9 +63,12 @@ describe("snapshots", () => {
         );
       });
 
-      // Load an H2-backed copy of the sample data as a second database, and duplicate the example
-      // content against it. Tests coupled to H2-specific behavior opt in via withH2SampleDatabase /
-      // H2_SAMPLE_DB_ID; everything else keeps using the canonical SQLite Sample Database (id 1).
+      snapshot("default");
+
+      // Load an H2-backed copy of the sample data as a second database into a SEPARATE snapshot.
+      // Keeping it out of the default snapshot prevents its duplicate table/entity names (Orders,
+      // "Sample Database", etc.) from colliding with name/entity selectors across the whole suite.
+      // Tests coupled to H2-specific sample-data behavior opt in via restore("default-with-h2").
       addH2SampleDatabase();
       withH2SampleDatabase((H2_SAMPLE_DATABASE) => {
         hideNewSampleTables(H2_SAMPLE_DATABASE);
@@ -76,9 +79,9 @@ describe("snapshots", () => {
         );
       });
 
-      snapshot("default");
+      snapshot("default-with-h2");
 
-      // we need to do this after the snapshot because hitting the API populates the audit log
+      // we need to do this after the snapshots because hitting the API populates the audit log
       const instanceData = getDefaultInstanceData();
       cy.writeFile(
         "e2e/support/cypress_sample_instance_data.json",

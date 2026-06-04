@@ -19,7 +19,7 @@ describe("issue 4482", () => {
   const { PRODUCTS_ID: H2_PRODUCTS_ID } = H2_SAMPLE_DATABASE;
 
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     cy.signInAsAdmin();
 
     H.openTable({

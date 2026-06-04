@@ -14,7 +14,7 @@ describe("better onboarding via sidebar", { tags: "@external" }, () => {
   describe("Add data modal analytics", () => {
     beforeEach(() => {
       H.resetSnowplow();
-      H.restore();
+      H.restore("default-with-h2");
 
       cy.signInAsAdmin();
       H.enableTracking();
@@ -122,7 +122,7 @@ describe("better onboarding via sidebar", { tags: "@external" }, () => {
 
 describe("Add data modal", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
   });
 
   it("should hide Getting Started but still offer to add data for white labeled instances", () => {

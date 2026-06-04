@@ -11,7 +11,7 @@ const { ORDERS_ID } = H2_SAMPLE_DATABASE;
  */
 describe("scenarios > sample database engines", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     cy.signInAsAdmin();
   });
 
