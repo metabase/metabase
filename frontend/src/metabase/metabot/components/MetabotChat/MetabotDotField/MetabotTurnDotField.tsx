@@ -58,6 +58,25 @@ const clearRowsInRange = (
   }
 };
 
+const syncCanvasHeight = (canvas: HTMLCanvasElement) => {
+  const parent = canvas.parentElement;
+  if (!parent) {
+    return;
+  }
+
+  const height = Math.ceil(
+    Math.max(parent.scrollHeight, parent.getBoundingClientRect().height),
+  );
+  if (height <= 0) {
+    return;
+  }
+
+  const currentHeight = Number.parseFloat(canvas.style.height);
+  if (!Number.isFinite(currentHeight) || Math.abs(currentHeight - height) > 1) {
+    canvas.style.height = `${height}px`;
+  }
+};
+
 // Cheap deterministic per-dot noise in [0,1) — stable across frames without
 // needing to size/track an array as the field grows.
 const dotNoise = (row: number, col: number): number => {
@@ -114,6 +133,7 @@ export const MetabotTurnDotField = ({
     let raf = 0;
 
     const draw = () => {
+      syncCanvasHeight(canvas);
       const rect = canvas.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = Math.round(rect.width);
@@ -175,7 +195,7 @@ export const MetabotTurnDotField = ({
         lastFrontierYRef.current = frontierY;
       }
       const fieldTopY = thinkingFieldRect
-        ? thinkingFieldRect.top - rect.top - THINKING_FIELD_PADDING
+        ? thinkingFieldRect.top - rect.top
         : null;
       const fieldBottomY = thinkingFieldRect
         ? thinkingFieldRect.bottom - rect.top + THINKING_FIELD_PADDING
@@ -192,10 +212,8 @@ export const MetabotTurnDotField = ({
           : loaderBottomY +
             THINKING_FIELD_PADDING +
             THINKING_FALLBACK_ROWS_BELOW * DOT_PITCH;
-      const protectedTopY = Math.min(
-        fieldTopY ?? Number.POSITIVE_INFINITY,
-        loaderProtectedTopY ?? Number.POSITIVE_INFINITY,
-      );
+      const protectedTopY =
+        fieldTopY ?? loaderProtectedTopY ?? Number.POSITIVE_INFINITY;
       const protectedBottomY = Math.max(
         fieldBottomY ?? Number.NEGATIVE_INFINITY,
         loaderProtectedBottomY ?? Number.NEGATIVE_INFINITY,

@@ -19,7 +19,6 @@
   width: var(--mb-dot-field-width);
   min-height: 180px;
   margin-left: calc(50% - 50cqi - var(--mb-dot-field-bleed));
-  transition: transform 260ms cubic-bezier(0.2, 0, 0, 1);
   will-change: transform;
 }
 
@@ -100,7 +99,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .field {
-    transition: none;
     will-change: auto;
   }
 }

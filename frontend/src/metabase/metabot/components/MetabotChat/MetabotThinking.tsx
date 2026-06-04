@@ -37,7 +37,9 @@ const TOOL_MASK_BY_NAME: Record<string, MetabotLoaderMask> = {
 const getToolMask = (toolName: string) =>
   TOOL_MASK_BY_NAME[toolName] ?? METABOT_TOOL_MASKS.tool;
 
-const POSITION_ANIMATION_MS = 260;
+const POSITION_MAX_PX_PER_SECOND = 900;
+const POSITION_MAX_FRAME_MS = 30;
+const POSITION_EPSILON_PX = 0.5;
 export const METABOT_THINKING_EXIT_MS = REVEAL_TIMELINES.text.duration;
 
 type LayoutPosition = {
@@ -50,11 +52,84 @@ const getLayoutPosition = (element: HTMLElement): LayoutPosition => ({
   top: element.offsetTop,
 });
 
+const distance = (a: LayoutPosition, b: LayoutPosition) =>
+  Math.hypot(b.left - a.left, b.top - a.top);
+
+const setVisualPosition = (
+  element: HTMLElement,
+  visual: LayoutPosition,
+  target: LayoutPosition,
+) => {
+  const dx = visual.left - target.left;
+  const dy = visual.top - target.top;
+  if (
+    Math.abs(dx) < POSITION_EPSILON_PX &&
+    Math.abs(dy) < POSITION_EPSILON_PX
+  ) {
+    element.style.transform = "";
+  } else {
+    element.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+  }
+};
+
 const useAnimatedPosition = () => {
   const elementRef = useRef<HTMLDivElement>(null);
-  const previousPositionRef = useRef<LayoutPosition>();
-  const isAnimatingRef = useRef(false);
-  const animationTimeoutRef = useRef<number>();
+  const visualPositionRef = useRef<LayoutPosition>();
+  const rafRef = useRef<number>();
+  const lastAnimationTimeRef = useRef<number>();
+  const syncVisualToLayoutRef = useRef<() => void>(() => {});
+
+  const animate = (ts: number) => {
+    const element = elementRef.current;
+    const visual = visualPositionRef.current;
+    if (!element || !visual) {
+      rafRef.current = undefined;
+      lastAnimationTimeRef.current = undefined;
+      return;
+    }
+
+    const previousTs = lastAnimationTimeRef.current ?? ts;
+    const dt = Math.min(POSITION_MAX_FRAME_MS, Math.max(0, ts - previousTs));
+    lastAnimationTimeRef.current = ts;
+
+    const target = getLayoutPosition(element);
+    const remaining = distance(visual, target);
+    if (remaining <= POSITION_EPSILON_PX) {
+      visualPositionRef.current = target;
+      element.style.transform = "";
+      rafRef.current = requestAnimationFrame(animate);
+      return;
+    }
+
+    const step = Math.min(remaining, (POSITION_MAX_PX_PER_SECOND * dt) / 1000);
+    const progress = step / remaining;
+    const nextVisual = {
+      left: visual.left + (target.left - visual.left) * progress,
+      top: visual.top + (target.top - visual.top) * progress,
+    };
+
+    visualPositionRef.current = nextVisual;
+    setVisualPosition(element, nextVisual, target);
+    rafRef.current = requestAnimationFrame(animate);
+  };
+
+  const startAnimation = () => {
+    if (rafRef.current == null) {
+      lastAnimationTimeRef.current = undefined;
+      rafRef.current = requestAnimationFrame(animate);
+    }
+  };
+
+  syncVisualToLayoutRef.current = () => {
+    const element = elementRef.current;
+    const visual = visualPositionRef.current;
+    if (!element || !visual) {
+      return;
+    }
+
+    setVisualPosition(element, visual, getLayoutPosition(element));
+    startAnimation();
+  };
 
   useLayoutEffect(() => {
     const element = elementRef.current;
@@ -63,45 +138,59 @@ const useAnimatedPosition = () => {
     }
 
     const nextPosition = getLayoutPosition(element);
-    const previousPosition = previousPositionRef.current;
-    previousPositionRef.current = nextPosition;
-
     const prefersReducedMotion =
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-    if (prefersReducedMotion || !previousPosition) {
+    if (prefersReducedMotion) {
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = undefined;
+      }
+      visualPositionRef.current = nextPosition;
+      element.style.transform = "";
       return;
     }
 
-    const deltaX = previousPosition.left - nextPosition.left;
-    const deltaY = previousPosition.top - nextPosition.top;
-    if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) {
+    if (!visualPositionRef.current) {
+      visualPositionRef.current = nextPosition;
+      element.style.transform = "";
+      startAnimation();
       return;
     }
 
-    if (animationTimeoutRef.current) {
-      window.clearTimeout(animationTimeoutRef.current);
-    }
-
-    isAnimatingRef.current = true;
-    element.style.transition = "none";
-    element.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
-
-    // Force the inverted transform to apply before restoring the transition.
-    void element.offsetHeight;
-
-    element.style.transition = "";
-    element.style.transform = "";
-
-    animationTimeoutRef.current = window.setTimeout(() => {
-      isAnimatingRef.current = false;
-      animationTimeoutRef.current = undefined;
-    }, POSITION_ANIMATION_MS);
+    setVisualPosition(element, visualPositionRef.current, nextPosition);
+    startAnimation();
   });
+
+  useLayoutEffect(() => {
+    const parent = elementRef.current?.parentElement;
+    if (
+      !parent ||
+      typeof ResizeObserver === "undefined" ||
+      typeof MutationObserver === "undefined"
+    ) {
+      return;
+    }
+
+    const syncVisualToLayout = () => syncVisualToLayoutRef.current();
+    const resizeObserver = new ResizeObserver(syncVisualToLayout);
+    const mutationObserver = new MutationObserver(syncVisualToLayout);
+    resizeObserver.observe(parent);
+    mutationObserver.observe(parent, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
-      if (animationTimeoutRef.current) {
-        window.clearTimeout(animationTimeoutRef.current);
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current);
       }
     };
   }, []);

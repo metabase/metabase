@@ -81,6 +81,7 @@
 .message {
   font-size: 0.875rem;
   line-height: 1.4 !important;
+  min-height: 1.5em;
   min-width: 0;
 }
 
@@ -95,7 +96,7 @@
 .messageActions {
   opacity: 0;
   transition: all 150ms linear;
-  min-height: 1rem;
+  min-height: 1.75rem;
 }
 
 .messageContainer:hover .messageActions,
