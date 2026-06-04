@@ -391,6 +391,11 @@
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
+(deftest current-task-requires-superuser-test
+  (testing "GET /api/ee/remote-sync/current-task requires superuser permissions (GHY-3804)"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "ee/remote-sync/current-task")))))
+
 (deftest current-task-returns-nil-when-no-tasks-test
   (testing "GET /api/ee/remote-sync/current-task returns nil when there are no tasks"
     (is (nil? (mt/user-http-request :crowberto :get 204 "ee/remote-sync/current-task")))))
@@ -436,6 +441,16 @@
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
+
+(deftest cancel-task-requires-superuser-test
+  (testing "POST /api/ee/remote-sync/current-task/cancel requires superuser permissions (GHY-3804)"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                   :last_progress_report_at :%now
+                                                   :started_at :%now}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "ee/remote-sync/current-task/cancel")))
+      (testing "task is not cancelled by the non-superuser request"
+        (is (not (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id))))))))
 
 (deftest cancel-task-errors-when-no-tasks-test
   (testing "POST /api/ee/remote-sync/current-task/cancel errors when there are no tasks"
