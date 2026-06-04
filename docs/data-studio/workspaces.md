@@ -98,7 +98,7 @@ If you've (wisely) connected Metabase to your data warehouse using a user with l
 
 4. If you created any transforms, you'll need to run those transforms in production to create the tables. The transforms in production will write to the tables they target (not to an isolated schema, since prod isn't—and shouldn't be—in a workspace). See [transforms](./transforms/transforms-overview.md#run-a-transform).
 
-## Cleaning up a workspace
+## Deleting a workspace
 
 When you leave a workspace, the database connection will remain, but Metabase will stop remapping tables.
 
