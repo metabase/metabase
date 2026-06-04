@@ -1,3 +1,10 @@
+---
+id: write-transform-python
+title: Writing Python transforms
+description: Creating or editing a Python transform with write_transform_python — load for the edit/replace modes, required source_tables fields when creating, the shared library convention, and safety rules.
+tools: [write_transform_python]
+priority: 50
+---
 Write new Python code or edit existing code using exact string matching with safety checks for ambiguous edits.
 
 It is useful for modifying or fixing Python code based on user requests, e.g. when modifying a Python-based transform.

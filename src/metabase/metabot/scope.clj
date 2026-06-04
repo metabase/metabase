@@ -147,6 +147,12 @@
   consumers should fall back to `perm-type-defaults`."
   nil)
 
+(def ^:dynamic *current-user-capabilities*
+  "The request's capabilities (strings/keywords as sent by the API). Bound in the request path
+  alongside `*current-user-scope*` so capability-gated checks (e.g. which skills are loadable)
+  match the manifest, which is built from the same capabilities. Defaults to `#{}`."
+  #{})
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Permission → Scope mapping
 ;;; ──────────────────────────────────────────────────────────────────

@@ -12,7 +12,8 @@
     (prompts/build-system-message-content
      {:prompt-template "internal.selmer"}
      {:current_time "2026-03-25T12:00:00Z"}
-     {})))
+     {}
+     [])))
 
 (def ^:private all-yes-perms
   {:permission/metabot-sql-generation :yes
@@ -143,7 +144,8 @@
     (prompts/build-system-message-content
      {:prompt-template "slackbot.selmer"}
      {:current_time "2026-03-25T12:00:00Z"}
-     {})))
+     {}
+     [])))
 
 (deftest ^:parallel slackbot-nlq-sections-gated-test
   (let [with-nlq    (render-slackbot-template all-yes-perms)
@@ -208,7 +210,8 @@
     (prompts/build-system-message-content
      {:prompt-template template-name}
      {:current_time "2026-03-25T12:00:00Z"}
-     {})))
+     {}
+     [])))
 
 (deftest custom-chat-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}

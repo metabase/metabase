@@ -84,6 +84,17 @@
         (str/replace ">" "&gt;")
         (str/replace "\"" "&quot;"))))
 
+(defn- escape-xml-content
+  "Like `escape-xml` but leaves double-quotes intact. Safe for element/table-cell *content*
+  (only `& < >` are structural there), so a value such as a JSON portable-FK array renders
+  readably instead of with `&quot;` noise."
+  [s]
+  (when s
+    (-> (str s)
+        (str/replace "&" "&amp;")
+        (str/replace "<" "&lt;")
+        (str/replace ">" "&gt;"))))
+
 (defn- database-type-or-unknown
   "Return database type or 'unknown' if nil."
   [database-type]
@@ -175,8 +186,11 @@
   (render-llm-template
    :field
    {:field_id            field_id
-    ;; Uses |safe in template to preserve literal \" quotes, so we escape the name for XML safety
-    :field_name_quoted   (str "\\\"" (escape-xml name) "\\\"")
+    ;; The bare physical column name — emitted unquoted so the LLM copies it verbatim into a
+    ;; portable field reference (`[db schema table COL]`). Wrapping it in quotes here caused the
+    ;; model to paste `"COL"` into MBQL field refs, which the resolver rejects. Uses |safe in the
+    ;; template, so escape for XML safety here.
+    :field_name          (escape-xml name)
     :field_display_name  (or display_name name)
     :field_base_type     (when type (clojure.core/name type))
     :field_database_type (database-type-or-unknown database_type)
@@ -238,6 +252,43 @@
     :related_table_fqn           fully_qualified_name
     :related_table_fields_xml    (when (seq fields) (str/join "\n" (map field->xml fields)))}))
 
+(defn- dimension-source-table
+  "Human-readable `schema.table` for a queryable dimension, derived from its portable FK, plus
+  the join label when the dimension is reached through an FK from the base table."
+  [{:keys [portable_fk table_reference]}]
+  (when (and (vector? portable_fk) (>= (count portable_fk) 3))
+    (let [[_db schema table] portable_fk
+          fqn (fully-qualified-name schema table)]
+      (if (not-empty table_reference)
+        (str fqn " (via " table_reference ")")
+        fqn))))
+
+(defn format-metric-dimensions-table
+  "Render a metric's queryable dimensions as a markdown table that names the **source table**
+  each dimension comes from and the exact **portable FK** to copy into a `field` clause.
+
+  A metric's dimensions span its base table and every FK-reachable table, so a bare field list
+  is ambiguous: the LLM can't tell which table a name like `name` lives on, and duplicate names
+  across joined tables (e.g. several `campaign_id`/`id` columns) are indistinguishable. The
+  `Source table` and `Reference` columns remove that ambiguity."
+  [dims]
+  (te/markdown-table
+   (map (fn [d]
+          (assoc d
+                 :source    (dimension-source-table d)
+                 :reference (when (vector? (:portable_fk d)) (json/encode (:portable_fk d)))))
+        dims)
+   {:name "Field Name" :field_id "Field ID" :type "Type"
+    :source "Source table" :reference "Reference (copy into a field clause)"}
+   {:value-fn (fn [k v]
+                (cond
+                  (nil? v)         ""
+                  (keyword? v)     (clojure.core/name v)
+                  ;; `reference` is a JSON array the LLM copies verbatim — escape only the XML
+                  ;; structural characters, never the surrounding quotes.
+                  (= k :reference) (escape-xml-content v)
+                  :else            (escape-xml (str v))))}))
+
 (defn metric->xml
   "Format metric for LLM consumption.
    Matches Python Metric.get_llm_representation exactly, except we additionally surface
@@ -263,7 +314,7 @@
     :metric_collection_xml         (when collection (collection->xml collection))
     :metric_default_time_dimension (:name default_time_dimension_field)
     :metric_dimensions_table       (when (seq queryable-dimensions)
-                                     (format-fields-table queryable-dimensions))}))
+                                     (format-metric-dimensions-table queryable-dimensions))}))
 
 (defn table->xml
   "Format table for LLM consumption.
@@ -636,11 +687,16 @@
 
 (defn field-metadata->xml
   "Format field metadata for LLM consumption.
-   Matches Python GetFieldMetadataResultSchema.llm_representation exactly."
-  [{:keys [field_id value_metadata]}]
+   Matches Python GetFieldMetadataResultSchema.llm_representation exactly, plus an optional
+   `source table` + `reference` (portable FK) when the caller supplies them — so a drilled-into
+   field/dimension detail tells the LLM exactly how to reference the column."
+  [{:keys [field_id value_metadata portable_fk table_reference]}]
   (render-llm-template
    :field_metadata
    {:field_metadata_field_id field_id
+    :field_metadata_source    (dimension-source-table {:portable_fk portable_fk
+                                                       :table_reference table_reference})
+    :field_metadata_reference (when (vector? portable_fk) (json/encode portable_fk))
     :field_metadata_value_xml (when value_metadata
                                 (field-values-metadata->xml value_metadata))}))
 

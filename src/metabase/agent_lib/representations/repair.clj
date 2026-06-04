@@ -167,6 +167,53 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.75 -- strip stray double-quotes from portable-FK field references.
+;;;
+;;; The field metadata shown to the LLM historically rendered column names wrapped in
+;;; double quotes (`<field name="\"col\"">`), and LLMs are SQL-trained to quote identifiers,
+;;; so the model frequently emits a portable field reference whose column segment carries
+;;; literal surrounding quotes:
+;;;
+;;;   ["field" {} ["DB" "SCH" "TBL" "\"col\""]]   (portable-FK column segment)
+;;;
+;;; The resolver rejects `"col"` as `:unknown-field`. A double-quote never legitimately wraps
+;;; a portable identifier segment, so we strip a single balanced pair from each string segment
+;;; of the **portable-FK vector** target. We only touch a `field` clause's target vector (never
+;;; arbitrary strings), so filter literals such as `["=" {} <field> "\"paid\""]` are left
+;;; untouched. Cross-stage *string* targets (`["field" {} "\"col\""]`) are deliberately left to
+;;; the resolution-aware [[match-cross-stage-column]] pass, which only strips when the result
+;;; matches a real previous-stage column.
+;;; ============================================================
+
+(defn- dequote-identifier
+  "Strip one balanced pair of surrounding ASCII double-quotes from `s`. Idempotent; returns
+  non-strings and unquoted strings unchanged."
+  [s]
+  (if (and (string? s)
+           (>= (count s) 2)
+           (str/starts-with? s "\"")
+           (str/ends-with? s "\""))
+    (subs s 1 (dec (count s)))
+    s))
+
+(defn- dequote-field-target
+  "Dequote each string segment of a `field` clause's portable-FK vector target. Non-vector
+  targets (cross-stage column-name strings) are returned unchanged."
+  [target]
+  (if (vector? target)
+    (mapv #(if (string? %) (dequote-identifier %) %) target)
+    target))
+
+(defn- dequote-field-targets*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (field-clause-shape? node)
+       (assoc node 2 (dequote-field-target (nth node 2)))
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.81 -- canonicalise common operator-name aliases.
 ;;;
 ;;; LLMs are heavily-trained on shell scripts, Python comparison protocols, and SQL-ish
@@ -2094,24 +2141,45 @@
         (second (re-matches #"\"(.*)\"" s)))
       s))
 
+(defn- normalize-col-key
+  "Loose matching key for an LLM-authored cross-stage column name: lowercased, with hyphens and
+  whitespace folded to underscores. Lets the natural `count-where` (or `Count Where`) the LLM
+  tends to write match the canonical `count_where` that lib emits as an aggregation's output
+  column name - so the model doesn't have to memorise the hyphen-vs-underscore output-naming
+  rule."
+  [s]
+  (when (string? s)
+    (-> s u/lower-case-en (str/replace #"[-\s]+" "_"))))
+
 (defn- match-cross-stage-column
   "Find the canonical column entry in `name->types` for `col-name`. Returns `[canonical-name
   types]` or `nil` when no column matches.
 
-  Prefers an exact match. Falls back to the double-quote-stripped name, but only when stripping
-  actually resolves to a real column - so a column whose name legitimately contains surrounding
-  quotes (vanishingly rare) is never clobbered, and unmatched names are left for the resolver to
-  report with a better message."
-  [name->types col-name]
-  (cond
-    (contains? name->types col-name)
-    [col-name (get name->types col-name)]
+  Tries, in order:
+    1. an exact match;
+    2. the double-quote-stripped name (only when stripping actually resolves);
+    3. a loose match that folds case and hyphens/whitespace to underscores, but **only when
+       exactly one** real column matches - so `count-where` resolves to `count_where` while
+       genuine ambiguity is left for the resolver to report.
 
-    :else
-    (let [stripped (strip-surrounding-double-quotes col-name)]
-      (when (and (not= stripped col-name)
-                 (contains? name->types stripped))
-        [stripped (get name->types stripped)]))))
+  A column whose name legitimately needs quotes (vanishingly rare) is never clobbered, and
+  unmatched names are passed through for the resolver to surface with a better message."
+  [name->types col-name]
+  (let [stripped (strip-surrounding-double-quotes col-name)]
+    (cond
+      (contains? name->types col-name)
+      [col-name (get name->types col-name)]
+
+      (and (not= stripped col-name) (contains? name->types stripped))
+      [stripped (get name->types stripped)]
+
+      :else
+      (let [target (normalize-col-key stripped)
+            hits   (when target
+                     (filter #(= target (normalize-col-key %)) (keys name->types)))]
+        (when (= 1 (count hits))
+          (let [canon (first hits)]
+            [canon (get name->types canon)]))))))
 
 (defn- maybe-fill-cross-stage-types
   "Given a cross-stage field clause and a name→types map, return the clause with its column name
@@ -2440,6 +2508,7 @@
       ensure-clause-options*
       unwrap-boolean-wrappers*
       unwrap-nested-field-clauses*
+      dequote-field-targets*
       rewrite-operator-name-aliases*
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
@@ -2466,6 +2535,8 @@
     1.5. normalise `expressions:` shape - accept map form `{Name: clause, …}` or the
        canonical sequential form, always output sequential with `lib/expression-name`
        stamped into each clause's options from the map key when missing;
+    1.75. strip stray surrounding double-quotes from `field` clause targets (portable-FK
+       column segments and cross-stage column-name refs), e.g. `\"col\"` → `col`;
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query and stages;

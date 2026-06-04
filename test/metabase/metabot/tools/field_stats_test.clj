@@ -27,14 +27,19 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                             (metabot.tools.field-stats/field-values
                              {:entity-type "table", :entity-id people-id, :field-id state-id, :limit 5}))))
+    (testing "A table field detail surfaces its portable FK so the LLM can reference it directly."
+      (mt/as-admin
+        (is (=? {:structured-output {:portable_fk ["test-data (h2)" "PUBLIC" "PRODUCTS" "CATEGORY"]}}
+                (metabot.tools.field-stats/field-values
+                 {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5})))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
         (are [table-id field-id value-metadata]
-             (= {:structured-output {:result-type    :field-metadata
-                                     :field_id       field-id
-                                     :value_metadata value-metadata}}
-                (metabot.tools.field-stats/field-values
-                 {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
+             (=? {:structured-output {:result-type    :field-metadata
+                                      :field_id       field-id
+                                      :value_metadata value-metadata}}
+                 (metabot.tools.field-stats/field-values
+                  {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
           people-id   birth-date-id {:statistics
                                      {:distinct-count 2308
                                       :percent-null   0.0

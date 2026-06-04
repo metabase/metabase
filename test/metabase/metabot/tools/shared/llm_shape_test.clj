@@ -25,9 +25,12 @@
                  :database_type "INTEGER"
                  :description "The user identifier"}
           xml (llm-shape/field->xml field)]
-      ;; Python format: name="\"user_id\""
+      ;; The column name is emitted bare (unquoted) so the LLM copies it verbatim into a
+      ;; portable field reference; wrapping it in quotes made the model paste `"user_id"`
+      ;; into MBQL field refs, which the resolver rejected.
       (is (str/includes? xml "id=\"f1\""))
-      (is (str/includes? xml "name=\"\\\"user_id\\\"\""))
+      (is (str/includes? xml "name=\"user_id\""))
+      (is (not (str/includes? xml "name=\"\\\"user_id\\\"\"")))
       (is (str/includes? xml "display_name=\"User ID\""))
       (is (str/includes? xml "type=\"integer\""))
       (is (str/includes? xml "database_type=\"INTEGER\""))
@@ -37,7 +40,7 @@
     (let [field {:field_id "f1" :name "test"}
           xml (llm-shape/field->xml field)]
       (is (str/includes? xml "id=\"f1\""))
-      (is (str/includes? xml "name=\"\\\"test\\\"\""))
+      (is (str/includes? xml "name=\"test\""))
       (is (str/includes? xml "database_type=\"unknown\""))))
   (testing "FK columns expose `fk_target_fully_qualified_name` so the LLM can join via the target table"
     ;; Regression: earlier the `<field>` element rendered no FK hint, so a bare `customer_id`
@@ -97,6 +100,45 @@
           xml (llm-shape/metric->xml metric)]
       (is (str/includes? xml "is_verified=\"false\""))
       (is (not (str/includes? xml "### Dimensions"))))))
+
+(deftest ^:parallel format-metric-dimensions-table-test
+  (testing "dimensions carry their source table + a copy-paste portable FK, disambiguating
+           duplicate names across the metric's joined tables"
+    (let [dims  [{:name "campaign_id" :field_id 757 :type "number"
+                  :portable_fk ["Analytics" "customerio_enriched" "int_customerio_engagement_facts" "campaign_id"]}
+                 {:name "name" :field_id 722 :type "string"
+                  :portable_fk ["Analytics" "customerio_data" "campaign" "name"]
+                  :table_reference "Campaign"}
+                 {:name "campaign_id" :field_id 887 :type "number"
+                  :portable_fk ["Analytics" "customerio_data" "campaign" "id"]
+                  :table_reference "Campaign"}]
+          table (llm-shape/format-metric-dimensions-table dims)]
+      (testing "attribution columns are present"
+        (is (str/includes? table "Source table"))
+        (is (str/includes? table "Reference")))
+      (testing "each dimension shows its owning table (with join label when joined in)"
+        (is (str/includes? table "customerio_enriched.int_customerio_engagement_facts"))
+        (is (str/includes? table "customerio_data.campaign (via Campaign)")))
+      (testing "reference is the exact, unescaped portable FK to copy"
+        (is (str/includes? table "[\"Analytics\",\"customerio_data\",\"campaign\",\"name\"]")))
+      (testing "the two campaign_id dimensions are distinguishable by table + reference"
+        (is (str/includes? table "[\"Analytics\",\"customerio_enriched\",\"int_customerio_engagement_facts\",\"campaign_id\"]"))
+        (is (str/includes? table "[\"Analytics\",\"customerio_data\",\"campaign\",\"id\"]"))))))
+
+(deftest ^:parallel field-metadata->xml-reference-test
+  (testing "a drilled-into field detail surfaces the source table + portable FK when provided"
+    (let [xml (llm-shape/field-metadata->xml
+               {:field_id 722
+                :value_metadata {:field_values ["Onboarding" "Welcome Series"]}
+                :portable_fk ["Analytics" "customerio_data" "campaign" "name"]
+                :table_reference "Campaign"})]
+      (is (str/includes? xml "Source table: customerio_data.campaign (via Campaign)"))
+      (is (str/includes? xml "[\"Analytics\",\"customerio_data\",\"campaign\",\"name\"]"))))
+  (testing "without a portable FK the detail is unchanged (backward compatible)"
+    (let [xml (llm-shape/field-metadata->xml
+               {:field_id 1 :value_metadata {:field_values ["x"]}})]
+      (is (not (str/includes? xml "Source table:")))
+      (is (not (str/includes? xml "Reference (copy"))))))
 
 (deftest ^:parallel measure->xml-test
   (testing "formats measure with all attributes"

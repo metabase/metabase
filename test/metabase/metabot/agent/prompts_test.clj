@@ -27,24 +27,6 @@
       (is (str/includes? prompt "Sample Database"))
       (is (not (re-find #"\[Sample\s*," prompt))))))
 
-(deftest ^:parallel load-dialect-instructions-test
-  (testing "loads postgresql dialect"
-    (let [instructions (prompts/load-dialect-instructions "postgresql")]
-      (is (some? instructions))
-      (is (string? instructions))
-      (is (re-find #"PostgreSQL" instructions))))
-  (testing "loads mysql dialect"
-    (let [instructions (prompts/load-dialect-instructions "mysql")]
-      (is (some? instructions))
-      (is (string? instructions))
-      (is (re-find #"MySQL" instructions))))
-  (testing "returns nil for non-existent dialect"
-    (let [instructions (prompts/load-dialect-instructions "non-existent")]
-      (is (nil? instructions))))
-  (testing "returns nil for nil dialect"
-    (let [instructions (prompts/load-dialect-instructions nil)]
-      (is (nil? instructions)))))
-
 (deftest ^:parallel render-system-prompt-test
   (testing "renders template with variables"
     (let [template "Hello {{name}}, today is {{day}}"
@@ -81,30 +63,14 @@
       ;; Load again - should return from cache
       (let [template2 (prompts/get-cached-system-prompt "internal.selmer")]
         (is (= template1 template2)))))
-  (testing "caches dialect instructions"
-    ;; Clear cache first
-    (prompts/clear-cache!)
-    ;; Load dialect - should cache it
-    (let [dialect1 (prompts/get-cached-dialect-instructions "postgresql")]
-      (is (some? dialect1))
-      ;; Load again - should return from cache
-      (let [dialect2 (prompts/get-cached-dialect-instructions "postgresql")]
-        (is (= dialect1 dialect2)))))
   (testing "clear-cache! removes all cached templates"
     ;; Load some templates
     (prompts/get-cached-system-prompt "internal.selmer")
-    (prompts/get-cached-dialect-instructions "postgresql")
     ;; Clear cache
     (prompts/clear-cache!)
     ;; Cache should be empty (we can't directly test this, but we can reload)
     (let [template (prompts/get-cached-system-prompt "internal.selmer")]
       (is (some? template)))))
-
-(deftest ^:parallel extract-tool-instructions-test
-  (testing "finds correct instructions"
-    (is (=? [{:tool_name "read_resource"
-              :instructions #(str/includes? % "you have access to a unified interface")}]
-            (prompts/extract-tool-instructions {"read_resource" identity})))))
 
 (deftest ^:parallel build-system-message-content-test
   (testing "builds complete system message"
@@ -113,7 +79,7 @@
                    :first_day_of_week "Sunday"
                    :sql-dialect "postgresql"}
           tools {}
-          content (prompts/build-system-message-content profile context tools)]
+          content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))
       (is (string? content))
       (is (> (count content) 100))
@@ -126,7 +92,7 @@
           context {:current_time "2024-01-15 14:30:00"
                    :sql-dialect "postgresql"}
           tools {}
-          content (prompts/build-system-message-content profile context tools)]
+          content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))
       ;; Note: The embedding template might not reference dialect instructions,
       ;; but they should be available in the template context
@@ -137,7 +103,7 @@
     (let [profile {:prompt-template "non-existent.selmer"}
           context {}
           tools {}
-          content (prompts/build-system-message-content profile context tools)]
+          content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))
       (is (= "You are Metabot, a data analysis assistant for Metabase." content)))))
 
@@ -146,7 +112,7 @@
     (let [profile {}
           context {:current_time "2024-01-15 14:30:00"}
           tools {}
-          content (prompts/build-system-message-content profile context tools)]
+          content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))
       (is (string? content))
       (is (> (count content) 1000)))))
@@ -157,7 +123,7 @@
           context {:current_time "2024-01-15 14:30:00"
                    :sql-dialect "postgresql"}
           tools {}
-          content (prompts/build-system-message-content profile context tools)]
+          content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))
       (is (string? content))
       (is (str/includes? content "{{#model_id-short-slug}}"))
@@ -173,7 +139,7 @@
           context {:current_time "2024-01-15 14:30:00"
                    :current_user_info "<user><name>Jane Doe</name></user>"}
           tools {}
-          content (prompts/build-system-message-content profile context tools)]
+          content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))
       (is (not (str/includes? content "Here is some information about the user:")))
       (is (not (str/includes? content "<user><name>Jane Doe</name></user>"))))))
