@@ -8,6 +8,10 @@
   - a single-row meta table recording the embedding model identity and schema version the vectors table
     was built for.
 
+  There is deliberately no HNSW index: the search path orders by the blended score (distance minus the
+  verified boost), which an HNSW index can't accelerate anyway, and an exact scan over a curated table
+  of this size is microseconds.
+
   [[ensure-tables!]] is the only entry point: it idempotently creates both tables and, when the
   configured embedding model or the schema version no longer matches the meta row, drops and recreates
   the vectors table so the next reconcile re-embeds everything.
@@ -40,8 +44,6 @@
 ;; Advisory lock serializing concurrent ensure-tables! calls (e.g. several cluster nodes starting at
 ;; once). Arbitrary app-wide-unique constant; semantic-search's migration lock uses 19991.
 (def ^:private ensure-lock-id 20011)
-
-(defn- hnsw-index-name [] (str *vectors-table* "_embedding_hnsw_idx"))
 
 (defn- sql-format-quoted [honey-sql]
   (sql/format honey-sql {:quoted true}))
@@ -79,12 +81,6 @@
          [:embedding [:raw (format "vector(%d)" dims)] :not-null]])
       sql-format-quoted))
 
-(defn- create-hnsw-index-sql []
-  (-> (sql.helpers/create-index
-       [(keyword (hnsw-index-name)) :if-not-exists]
-       [(keyword *vectors-table*) :using-hnsw [[:raw "embedding vector_cosine_ops"]]])
-      sql-format-quoted))
-
 (defn- model-identity
   "The part of the meta row that identifies what the vectors table was built for."
   [embedding-model]
@@ -113,8 +109,7 @@
                        sql-format-quoted))))
 
 (defn- create-tables! [tx dims]
-  (jdbc/execute! tx (create-vectors-table-sql dims))
-  (jdbc/execute! tx (create-hnsw-index-sql)))
+  (jdbc/execute! tx (create-vectors-table-sql dims)))
 
 (defn ensure-tables!
   "Idempotently create the vectors + meta tables for `embedding-model`, rebuilding on model change.

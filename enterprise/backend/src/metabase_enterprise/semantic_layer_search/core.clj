@@ -87,6 +87,8 @@
           ;; the LIMIT must apply to the blended ranking, not raw distance, or a verified row whose
           ;; boost would lift it into the top N gets cut before scoring. Minimizing
           ;; distance - verified-boost is equivalent to maximizing the blended score below.
+          ;; An HNSW index couldn't accelerate this expression anyway, so the table has none and this is
+          ;; an exact scan — intentional, and microseconds at curated-table scale.
           ranking   (format "(embedding <=> %s) - (CASE WHEN verified THEN %s ELSE 0.0 END)"
                             lit verified-weight)
           rows      (try
