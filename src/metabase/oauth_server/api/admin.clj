@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.request.current :as request]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -11,9 +12,13 @@
 
 (defn- present-event
   [row]
-  (select-keys row [:id :oauth_client_id :client_id :event_type :created_at
-                    :client_name :client_uri :registration_type :application_type
-                    :user_id :user_email :user_first_name :user_last_name]))
+  ;; `redirect_uris` is stored as a JSON array but selected via raw SQL here, so the model's
+  ;; JSON transform doesn't apply — decode it ourselves into a vector (nil for deleted clients).
+  (-> row
+      (select-keys [:id :oauth_client_id :client_id :event_type :created_at
+                    :client_name :client_uri :registration_type :application_type :redirect_uris
+                    :user_id :user_email :user_first_name :user_last_name])
+      (update :redirect_uris #(some-> % json/decode))))
 
 (defn- event-where-clause
   [client-id event-type]
@@ -49,6 +54,7 @@
                                                [:c.client_uri :client_uri]
                                                [:c.registration_type :registration_type]
                                                [:c.application_type :application_type]
+                                               [:c.redirect_uris :redirect_uris]
                                                [:u.email :user_email]
                                                [:u.first_name :user_first_name]
                                                [:u.last_name :user_last_name]]

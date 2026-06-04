@@ -34,8 +34,8 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
     cy.visit(PATH);
 
     // Every client's registration row renders, and each decision event lands in the same row as
-    // its client (and the deciding user).
-    assertEventRow("E2E MCP Client A", "Registered");
+    // its client (and the deciding user). Client A's row also shows the registered redirect URI.
+    assertEventRow("E2E MCP Client A", "Registered", REDIRECT_URI);
     assertEventRow("E2E MCP Client B", "Registered");
     assertEventRow("E2E MCP Client C", "Registered");
     assertEventRow("E2E MCP Client B", "Approved", USERS.admin.email);

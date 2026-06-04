@@ -15,6 +15,7 @@ export interface OAuthAuthorization {
   client_uri: string | null;
   registration_type: string | null;
   application_type: string | null;
+  redirect_uris: string[] | null;
   user_email: string | null;
   user_first_name: string | null;
   user_last_name: string | null;

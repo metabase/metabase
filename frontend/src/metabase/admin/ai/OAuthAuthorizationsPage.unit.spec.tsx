@@ -111,6 +111,29 @@ describe("OAuthAuthorizationsPage", () => {
     expect(within(table).getByText("Approved")).toBeInTheDocument();
   });
 
+  it("renders the client's redirect URIs", async () => {
+    setup({
+      response: createMockListOAuthAuthorizationsResponse({
+        data: [
+          createMockOAuthAuthorization({
+            redirect_uris: [
+              "https://app.example.com/cb",
+              "https://app.example.com/cb2",
+            ],
+          }),
+        ],
+        total: 1,
+      }),
+    });
+
+    const table = await screen.findByTestId("oauth-authorizations-table");
+    expect(
+      within(table).getByText(
+        "https://app.example.com/cb, https://app.example.com/cb2",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("renders a registration event with no deciding user", async () => {
     setup({
       response: createMockListOAuthAuthorizationsResponse({

@@ -16,6 +16,7 @@ export const createMockOAuthAuthorization = (
   client_uri: "https://claude.ai",
   registration_type: "dynamic",
   application_type: "native",
+  redirect_uris: ["https://claude.ai/oauth/callback"],
   user_email: "user@example.com",
   user_first_name: "Test",
   user_last_name: "User",

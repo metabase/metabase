@@ -57,6 +57,8 @@
         (doseq [row (:data response)]
           (is (= "My MCP Client" (:client_name row)))
           (is (= "https://mcp.example.com" (:client_uri row)))
+          (is (= ["https://example.com/callback"] (:redirect_uris row))
+              "redirect_uris is decoded from JSON into a vector")
           (is (= (:client_id client) (:client_id row)))
           (is (= (:id client) (:oauth_client_id row))))))))
 
@@ -139,7 +141,8 @@
         (is (= "registered" (:event_type row)))
         (is (nil? (:oauth_client_id row)))
         (is (nil? (:client_id row)))
-        (is (nil? (:client_name row)))))))
+        (is (nil? (:client_name row)))
+        (is (nil? (:redirect_uris row)))))))
 
 (deftest authorizations-does-not-leak-sensitive-fields-test
   (testing "Response does not include secrets or token-endpoint auth details"

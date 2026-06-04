@@ -103,7 +103,7 @@ export const OAuthAuthorizationsPage = ({ location }: WithRouterProps) => {
       h="100%"
       mih={0}
       w="100%"
-      maw="50rem"
+      maw="60rem"
       mx="auto"
       p="xl"
     >
@@ -163,6 +163,15 @@ function getAuthorizationColumns(): TreeTableColumnDef<OAuthAuthorization>[] {
       width: "auto",
       maxAutoWidth: 280,
       accessorFn: (auth) => auth.user_email ?? "—",
+      cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
+    },
+    {
+      id: "redirect-uri",
+      header: t`Redirect URI`,
+      width: "auto",
+      maxAutoWidth: 380,
+      accessorFn: (auth) =>
+        auth.redirect_uris?.length ? auth.redirect_uris.join(", ") : "—",
       cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
     },
     {
