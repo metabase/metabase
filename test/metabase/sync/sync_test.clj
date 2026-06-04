@@ -94,7 +94,7 @@
     #{{:fk-table-name   "movie"
        :fk-table-schema (when *supports-schemas?* "public")
        :fk-column-name  "studio"
-       :pk-table-name   "stuido"
+       :pk-table-name   "studio"
        :pk-table-schema (when *supports-schemas?* "public")
        :pk-column-name  "studio"}}
     #{}))
