@@ -27,10 +27,10 @@
                          (assoc row :verified true)]]
           (is (not= h (reconcile/content-hash variant)) (pr-str variant)))))))
 
-(deftest format-embedding-rejects-non-finite-test
-  (testing "NaN and infinities are rejected before they reach a raw SQL literal"
+(deftest format-embedding-rejects-invalid-values-test
+  (testing "non-numbers, NaN and infinities are rejected before they reach a raw SQL literal"
     (doseq [bad [Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY "0.1"]]
-      (is (thrown-with-msg? Exception #"non-finite"
+      (is (thrown-with-msg? Exception #"invalid value"
                             (index-table/format-embedding [0.1 bad 0.3]))
           (pr-str bad)))
     (is (string? (index-table/format-embedding [0.1 -0.2 0.3])))))

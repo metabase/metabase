@@ -63,6 +63,16 @@
                 (is (= {:model entity-model :id card-id}
                        (t2/select-one-fn :entity :model/SemanticLayerIndex :entity_id sli-eid)))))))))))
 
+(deftest unmapped-entity-model-passes-through-test
+  (testing "an unrecognized entity model exports as-is (raw id, no deps) instead of aborting the export"
+    ;; The CRUD API rejects unknown models, but rows written before a model string was retired (or by
+    ;; direct appdb writes) shouldn't take down a whole export.
+    (mt/with-temp [:model/SemanticLayerIndex {sli-id :id}
+                   {:search_prompt "legacy" :entity {:model "garbage" :id 5}}]
+      (let [extracted (ts/extract-one "SemanticLayerIndex" sli-id)]
+        (is (=? {:entity {:model "garbage" :id 5}} extracted))
+        (is (= #{} (serdes/dependencies extracted)))))))
+
 (deftest table-entity-round-trip-test
   (let [table-id (mt/id :venues)]
     (mt/with-temp [:model/SemanticLayerIndex {sli-id :id sli-eid :entity_id}

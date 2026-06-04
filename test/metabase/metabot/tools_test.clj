@@ -70,7 +70,7 @@
 (deftest ^:parallel get-tools-for-nlq-profile-test
   (let [tools (tools-for-profile :nlq)]
     (is (map? tools))
-    (is (contains? tools "search"))
+    (is (contains? tools "semantic_layer_search"))
     (is (contains? tools "construct_notebook_query"))
     (is (contains? tools "create_chart"))))
 

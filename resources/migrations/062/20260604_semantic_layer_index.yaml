@@ -1,5 +1,9 @@
-## semantic_layer_index: curated saved-search-prompt -> entity-refs rows. The table is authoritative;
+## semantic_layer_index: curated saved-search-prompt -> entity rows. The table is authoritative;
 ## an enterprise pgvector mirror (one embedding per row) backs the `semantic_layer_search` Metabot tool.
+##
+## NOTE: this changeset was edited in place on the (unreleased) feature branch — an earlier revision had
+## `entities` + `type` columns. If you ran that revision locally, drop the table and its
+## databasechangelog row before restarting, or Liquibase will fail checksum validation.
 
 databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml

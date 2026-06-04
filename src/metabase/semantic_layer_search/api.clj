@@ -10,7 +10,8 @@
 
 (def ^:private EntityRef
   [:map
-   [:model :string]
+   ;; the agent-facing entity types (as used with read_resource), plus plain "card"
+   [:model [:enum "table" "card" "model" "metric" "question"]]
    [:id    :int]
    [:name  {:optional true} :string]])
 

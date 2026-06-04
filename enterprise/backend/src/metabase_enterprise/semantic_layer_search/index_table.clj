@@ -48,11 +48,12 @@
 
 (defn format-embedding
   "Format a float-array embedding as a pgvector SQL literal, validating numerics.
-  Rejects NaN/Infinity too — they satisfy `number?` but produce SQL literals pgvector chokes on."
+  Rejects non-numbers and NaN/Infinity — the latter satisfy `number?` but produce SQL literals pgvector
+  chokes on."
   [embedding]
   (doseq [v embedding]
     (when-not (and (number? v) (Double/isFinite (double v)))
-      (throw (ex-info "Embedding contains non-finite value" {:invalid-value v}))))
+      (throw (ex-info "Embedding contains invalid value" {:invalid-value v}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
 (defn- create-meta-table-sql []

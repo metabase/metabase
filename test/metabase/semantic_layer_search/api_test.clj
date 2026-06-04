@@ -68,6 +68,10 @@
   (testing "entity is required"
     (mt/user-http-request :crowberto :post 400 "semantic-layer-search/"
                           {:search_prompt "find users"}))
+  (testing "an unknown entity model is rejected"
+    (mt/user-http-request :crowberto :post 400 "semantic-layer-search/"
+                          {:search_prompt "find users"
+                           :entity        {:model "garbage" :id 1}}))
   (testing "non-superuser gets 403"
     (mt/user-http-request :rasta :post 403 "semantic-layer-search/"
                           {:search_prompt "find orders" :entity {:model "table" :id 1}})))
