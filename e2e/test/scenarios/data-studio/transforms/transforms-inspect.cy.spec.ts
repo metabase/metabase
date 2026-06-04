@@ -359,11 +359,11 @@ describe("scenarios > data-studio > transforms > inspect", () => {
       colDistTab().click();
 
       cy.log(
-        "the previous tab does not get stuck — it reverts to the warning icon",
+        "the previous tab does not get stuck — the fast Summary lens reverts to no indicator",
       );
       summaryTab().within(() => {
         cy.findByTestId("lens-tab-loader").should("not.exist");
-        cy.findByLabelText(/clock icon/i).should("be.visible");
+        cy.findByLabelText(/clock icon/i).should("not.exist");
       });
 
       cy.log("the newly active tab now shows the spinner");
