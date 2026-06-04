@@ -614,11 +614,11 @@
                         (vswap! acc update alias (fnil conj #{}) id))))
                   nil)]
     (lib.walk/walk-clauses-in-stage (lib.util/query-stage query -1) collect)
-    (doseq [a-join (lib/joins query)]
-      (run! #(lib.walk/walk-clause % collect) (lib/join-conditions a-join))
-      (let [outer-fields (lib/join-fields a-join)]
-        (when (sequential? outer-fields)
-          (run! #(lib.walk/walk-clause % collect) outer-fields))))
+    (doseq [a-join (lib/joins query)
+            clause (concat (lib/join-conditions a-join)
+                           (let [outer-fields (lib/join-fields a-join)]
+                             (when (sequential? outer-fields) outer-fields)))]
+      (lib.walk/walk-clause clause collect))
     @acc))
 
 (defn- inner-projection-field-ids
