@@ -2,6 +2,7 @@ import { Route } from "react-router";
 
 import { setupDocumentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockDocument,
   createMockDocumentContent,
@@ -17,6 +18,35 @@ jest.mock("metabase/documents/components/Editor", () => ({
   ),
 }));
 
+const AGENT_ID = "chat_doc";
+
+function seededMetabotState() {
+  return {
+    conversations: {
+      [AGENT_ID]: {
+        conversationId: "doc",
+        prompt: "",
+        promptFocusToken: 0,
+        isProcessing: false,
+        title: "Seed chat",
+        messages: [],
+        queuedMessages: [],
+        visible: false,
+        history: [],
+        state: {},
+        activeToolCalls: [],
+        modelOverride: undefined,
+        profileOverride: undefined,
+        selectedDatabaseId: undefined,
+        pendingMessageExternalId: undefined,
+        experimental: { developerMessage: "", metabotReqIdOverride: undefined },
+      },
+    },
+    reactions: { suggestedCodeEdits: {}, suggestedTransforms: [] },
+    debugMode: false,
+  };
+}
+
 function setup() {
   const document = createMockDocument({
     id: 99,
@@ -30,19 +60,28 @@ function setup() {
   return renderWithProviders(
     <Route
       path="/"
-      component={() => <AgentDocumentMessage documentId={99} />}
+      component={() => (
+        <AgentDocumentMessage documentId={99} agentId={AGENT_ID} />
+      )}
     />,
-    { withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: createMockState({
+        metabot: seededMetabotState() as any,
+      }),
+    },
   );
 }
 
 describe("AgentDocumentMessage", () => {
-  it("renders the document read-only with a link to open it", async () => {
+  it("renders the canvas with the document read-only and an ask-for-changes prompt", async () => {
     setup();
 
     const editor = await screen.findByTestId("document-editor");
+    // Read-only until the user toggles editing.
     expect(editor).toHaveAttribute("data-editable", "false");
 
+    expect(screen.getByPlaceholderText("Ask for changes")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /Open document/ });
     expect(link).toHaveAttribute("href", "/document/99");
   });

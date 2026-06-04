@@ -377,6 +377,28 @@ export interface MetabotGenerateContentResponse {
   error: string | null;
 }
 
+export interface MetabotEditDocumentRequest {
+  /** Natural-language description of the edit the user wants. */
+  instructions: string;
+  /** The current document body as Markdown (with `[[chart:N]]` placeholders). */
+  current_document: string;
+  /**
+   * The originating conversation, so the ephemeral edit turn reuses its context.
+   * These never persist to the conversation.
+   */
+  history?: MetabotHistory;
+  state?: Record<string, unknown>;
+  references?: Record<string, string>;
+  metabot_id?: string;
+}
+
+export interface MetabotEditDocumentResponse {
+  /** The complete revised document body (Markdown), or null on failure. */
+  content: string | null;
+  title: string | null;
+  error: string | null;
+}
+
 /* Metabot v3 - Data Part Types */
 
 export type MetabotTodoItem = {

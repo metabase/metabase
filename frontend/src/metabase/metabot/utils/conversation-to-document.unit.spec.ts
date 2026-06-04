@@ -3,7 +3,10 @@ import { createMockCard } from "metabase-types/api/mocks";
 
 import type { MetabotChatMessage } from "../state/types";
 
-import { conversationToDocument } from "./conversation-to-document";
+import {
+  conversationToDocument,
+  modelAuthoredDocument,
+} from "./conversation-to-document";
 
 const userText = (message: string): MetabotChatMessage => ({
   id: "u1",
@@ -17,6 +20,13 @@ const agentText = (message: string): MetabotChatMessage => ({
   role: "agent",
   type: "text",
   message,
+});
+
+const staticViz = (id: string, entityId: number): MetabotChatMessage => ({
+  id,
+  role: "agent",
+  type: "data_part",
+  part: { type: "static_viz", version: 1, value: { entity_id: entityId } },
 });
 
 describe("conversationToDocument", () => {
@@ -235,5 +245,60 @@ describe("conversationToDocument", () => {
       },
     ]);
     expect(document.content).toEqual([{ type: "paragraph" }]);
+  });
+});
+
+describe("modelAuthoredDocument", () => {
+  it("turns the authored markdown into document blocks (not a chat transcript)", () => {
+    const { document } = modelAuthoredDocument(
+      "# Sales\n\nRevenue is **up**.",
+      [userText("show sales"), agentText("ok")],
+    );
+    expect(document.content).toEqual([
+      {
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: "Sales" }],
+      },
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Revenue is " },
+          { type: "text", text: "up", marks: [{ type: "bold" }] },
+          { type: "text", text: "." },
+        ],
+      },
+    ]);
+  });
+
+  it("resolves a [[chart:N]] placeholder to the Nth chart in conversation order", () => {
+    const { document } = modelAuthoredDocument(
+      "Intro.\n\n[[chart:2]]\n\nOutro.",
+      [staticViz("c1", 11), agentText("note"), staticViz("c2", 22)],
+    );
+    expect(document.content).toEqual([
+      { type: "paragraph", content: [{ type: "text", text: "Intro." }] },
+      {
+        type: "resizeNode",
+        content: [{ type: "cardEmbed", attrs: { id: 22 } }],
+      },
+      { type: "paragraph", content: [{ type: "text", text: "Outro." }] },
+    ]);
+  });
+
+  it("drops placeholders that reference a chart that doesn't exist", () => {
+    const { document } = modelAuthoredDocument("[[chart:5]]\n\nText.", [
+      staticViz("c1", 11),
+    ]);
+    expect(document.content).toEqual([
+      { type: "paragraph", content: [{ type: "text", text: "Text." }] },
+    ]);
+  });
+
+  it("returns a single empty paragraph when content is blank", () => {
+    expect(modelAuthoredDocument("", []).document).toEqual({
+      type: "doc",
+      content: [{ type: "paragraph" }],
+    });
   });
 });

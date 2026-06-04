@@ -41,7 +41,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./MetabotPage.module.css";
 
@@ -61,17 +60,9 @@ const getTitleText = () =>
     t`What are you looking to learn?`,
   ]);
 
-type HeaderAction = {
-  icon: IconName;
-  label: string;
-  testId: string;
-  onClick: () => void;
-};
-
 type MetabotConversationViewProps = {
   agentId: MetabotAgentId;
   isNewConversation: boolean;
-  headerAction?: HeaderAction;
   onAfterSubmit?: () => void;
   alwaysShowConversation?: boolean;
 };
@@ -79,7 +70,6 @@ type MetabotConversationViewProps = {
 export const MetabotConversationView = ({
   agentId,
   isNewConversation,
-  headerAction,
   onAfterSubmit,
   alwaysShowConversation = false,
 }: MetabotConversationViewProps) => {
@@ -138,6 +128,10 @@ export const MetabotConversationView = ({
   ] = useDisclosure(false);
 
   const hasMessages = messages.length > 0;
+  // Clicking the header button doesn't convert the chat directly — it asks the
+  // agent to do it. The agent then calls `convert_conversation_to_doc`, which
+  // authors a real document and renders it inline as an editable canvas.
+  const convertToDocumentMessage = t`Turn this conversation into a document`;
   const showConversation =
     hasMessages ||
     isDoingScience ||
@@ -442,13 +436,18 @@ export const MetabotConversationView = ({
           >
             {conversationTitle}
           </Text>
-          {headerAction && (
-            <Tooltip label={headerAction.label} position="bottom">
+          {hasMessages && (
+            <Tooltip label={convertToDocumentMessage} position="bottom">
               <ActionIcon
-                onClick={headerAction.onClick}
-                data-testid={headerAction.testId}
+                onClick={() =>
+                  submitInput(convertToDocumentMessage, {
+                    preventOpenSidebar: true,
+                  })
+                }
+                disabled={isDoingScience}
+                data-testid="metabot-convert-to-document"
               >
-                <Icon c="text-primary" name={headerAction.icon} />
+                <Icon c="text-primary" name="document" />
               </ActionIcon>
             </Tooltip>
           )}

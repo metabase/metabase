@@ -2,6 +2,8 @@ import type {
   DeleteSuggestedMetabotPromptRequest,
   ListMetabotChatConversationsResponse,
   MetabotConversationDetail,
+  MetabotEditDocumentRequest,
+  MetabotEditDocumentResponse,
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
@@ -123,6 +125,16 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
+    metabotEditDocument: builder.mutation<
+      MetabotEditDocumentResponse,
+      MetabotEditDocumentRequest
+    >({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/metabot/document/edit",
+        body: params,
+      }),
+    }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
@@ -193,6 +205,7 @@ export const {
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
+  useMetabotEditDocumentMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,

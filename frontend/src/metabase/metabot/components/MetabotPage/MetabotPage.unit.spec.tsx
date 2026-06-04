@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
@@ -16,7 +15,6 @@ import {
 import { MetabotProvider } from "metabase/metabot/context";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { createMockState } from "metabase/redux/store/mocks";
-import { createMockDocument } from "metabase-types/api/mocks";
 
 import { MetabotPage } from "./MetabotPage";
 
@@ -451,11 +449,8 @@ describe("MetabotPage convert to document", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("creates a document from the conversation and navigates to it", async () => {
-    const createdDocument = createMockDocument({ id: 99, name: "Seed chat" });
-    fetchMock.post("path:/api/document", createdDocument);
-
-    const { history } = setup({
+  it("asks the agent to turn the conversation into a document", async () => {
+    setup({
       initialRoute: "/chat/live-id",
       seedAgentId: "chat_live-id",
       seedMessages: [
@@ -473,21 +468,11 @@ describe("MetabotPage convert to document", () => {
 
     await userEvent.click(screen.getByTestId("metabot-convert-to-document"));
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/document", { method: "POST" }),
-      ).toBe(true);
-    });
-
-    const request = fetchMock.callHistory.lastCall("path:/api/document", {
-      method: "POST",
-    })?.request;
-    const body = await request?.json();
-    expect(body.name).toBe("Seed chat");
-    expect(body.document.type).toBe("doc");
-
-    await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe("/document/99");
-    });
+    // The button no longer converts directly — it sends a chat message so the
+    // agent can author the document via the `convert_conversation_to_doc` tool.
+    await waitFor(() => expect(submitInputThunkSpy).toHaveBeenCalledTimes(1));
+    const [arg] = submitInputThunkSpy.mock.calls[0];
+    expect(arg.agentId).toBe("chat_live-id");
+    expect(arg.message).toBe("Turn this conversation into a document");
   });
 });

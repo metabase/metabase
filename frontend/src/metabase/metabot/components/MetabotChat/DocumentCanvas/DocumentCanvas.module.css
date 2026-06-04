@@ -1,0 +1,51 @@
+.embed {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+}
+
+.toolbar {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.paper {
+  background: var(--mb-color-background-primary);
+  padding: var(--mantine-spacing-lg);
+  max-height: 460px;
+  overflow-y: auto;
+  transition: opacity 0.15s ease;
+}
+
+.footer {
+  padding: var(--mantine-spacing-sm);
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.fullscreenColumn {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+}
+
+.fullscreenScroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.fullscreenPage {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--mantine-spacing-xl) var(--mantine-spacing-md);
+  transition: opacity 0.15s ease;
+}
+
+.fullscreenFooter {
+  border-top: 1px solid var(--mb-color-border);
+  padding: var(--mantine-spacing-md);
+}
+
+.describeInput {
+  max-width: 720px;
+  margin: 0 auto;
+}

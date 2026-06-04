@@ -1,0 +1,45 @@
+.added {
+  color: var(--mb-color-brand);
+  background-color: color-mix(in srgb, var(--mb-color-brand) 12%, transparent);
+}
+
+.removed {
+  color: var(--mb-color-error);
+  background-color: color-mix(in srgb, var(--mb-color-error) 10%, transparent);
+  text-decoration: line-through;
+}
+
+.controls {
+  display: inline-flex;
+  gap: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 4px;
+  background: var(--mb-color-background-primary);
+  cursor: pointer;
+}
+
+.controls button:hover {
+  background: var(--mb-color-background-secondary);
+}
+
+.accept {
+  color: var(--mb-color-success);
+}
+
+.reject {
+  color: var(--mb-color-error);
+}

@@ -2,25 +2,18 @@ import { useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  useCreateDocumentMutation,
-  useGetMetabotChatConversationQuery,
-} from "metabase/api";
+import { useGetMetabotChatConversationQuery } from "metabase/api";
 import {
   type MetabotAgentId,
   createAgent,
   discardConversationIfEmpty,
   getActiveMetabotAgentIds,
-  getConversationTitle,
-  getMessages,
   hydrateChatConversation,
 } from "metabase/metabot/state";
-import { conversationToDocument } from "metabase/metabot/utils/conversation-to-document";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Box, Center, Text } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { uuid } from "metabase/utils/uuid";
 
 import { MetabotConversationView } from "./MetabotConversationView";
@@ -68,26 +61,6 @@ export const MetabotPage = ({ params }: Props) => {
     },
     [dispatch, agentId],
   );
-
-  // The conversation selectors throw when no agent exists yet (the agent is
-  // created in an effect, one render later), so guard on `agentExists`.
-  const messages = useSelector((state) =>
-    agentExists ? getMessages(state, agentId) : [],
-  );
-  const title = useSelector((state) =>
-    agentExists ? getConversationTitle(state, agentId) : "",
-  );
-  const [createDocument] = useCreateDocumentMutation();
-
-  const handleConvertToDocument = async () => {
-    const { document, cards } = conversationToDocument(messages);
-    const doc = await createDocument({
-      name: title || t`Metabot chat`,
-      document,
-      cards: Object.keys(cards).length > 0 ? cards : undefined,
-    }).unwrap();
-    dispatch(push(Urls.document(doc)));
-  };
 
   const conversationQuery = useGetMetabotChatConversationQuery(
     urlConversationId ?? "",
@@ -146,16 +119,6 @@ export const MetabotPage = ({ params }: Props) => {
       onAfterSubmit={
         isNewConversation
           ? () => dispatch(push(`/chat/${conversationId}`))
-          : undefined
-      }
-      headerAction={
-        messages.length > 0
-          ? {
-              icon: "document",
-              label: t`Convert to document`,
-              testId: "metabot-convert-to-document",
-              onClick: handleConvertToDocument,
-            }
           : undefined
       }
     />

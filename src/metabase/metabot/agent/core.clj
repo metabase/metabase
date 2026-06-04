@@ -165,7 +165,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content :slackbot])
+  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content :document-edit :slackbot])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -671,7 +671,8 @@
   {:sql                       :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
    :transforms_codegen        :permission/metabot-sql-generation
-   :document-generate-content :permission/metabot-other-tools})
+   :document-generate-content :permission/metabot-other-tools
+   :document-edit             :permission/metabot-other-tools})
 
 (defn- check-metabot-access!
   "Throw a 403 if the user's metabot permissions do not grant access to the

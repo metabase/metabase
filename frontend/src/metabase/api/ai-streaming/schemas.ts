@@ -55,7 +55,14 @@ export type KnownDataPart =
       value: AutomagicDashboardValue;
     }
   | { type: "conversation_title"; version: 1; value: string }
-  | { type: "convert_to_document"; version: 1; value: { title?: string } };
+  | {
+      type: "convert_to_document";
+      version: 1;
+      // `content` is the model-authored document body (Markdown, possibly with
+      // `[[chart:N]]` embed placeholders). Optional so older signals that only
+      // carried a title still fall back to the mechanical converter.
+      value: { title?: string; content?: string };
+    };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),

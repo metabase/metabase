@@ -33,7 +33,10 @@ import type {
 } from "metabase-types/api";
 
 import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
-import { conversationToDocument } from "../utils/conversation-to-document";
+import {
+  conversationToDocument,
+  modelAuthoredDocument,
+} from "../utils/conversation-to-document";
 
 import { metabot } from "./reducer";
 import {
@@ -399,20 +402,27 @@ const findCodeEditBuffer = (
   return buffers.find((buffer) => buffer.id === bufferId);
 };
 
-// Hack flow for the `convert_conversation_to_doc` tool: the backend only emits
-// a `convert_to_document` signal, and the client builds the document from the
-// live conversation (reusing the same converter the header button uses), then
-// appends a read-only `document` message to the chat.
+// Flow for the `convert_conversation_to_doc` tool: the backend emits a
+// transient `convert_to_document` signal carrying the model-authored Markdown
+// (`content`). The client turns that into a real Metabase document — resolving
+// `[[chart:N]]` placeholders into the live charts it already holds in the store
+// — then appends a `document` message that renders the editable canvas inline.
+// If `content` is missing we fall back to mechanically transcribing the chat.
 export const convertConversationToDocument = createAsyncThunk(
   "metabase/metabot/convertConversationToDocument",
   async (
-    { agentId, title }: { agentId: MetabotAgentId; title?: string },
+    {
+      agentId,
+      title,
+      content,
+    }: { agentId: MetabotAgentId; title?: string; content?: string },
     { dispatch, getState },
   ) => {
     const state = getState() as State;
-    const { document, cards } = conversationToDocument(
-      getMessages(state, agentId),
-    );
+    const messages = getMessages(state, agentId);
+    const { document, cards } = content
+      ? modelAuthoredDocument(content, messages)
+      : conversationToDocument(messages);
 
     try {
       const doc = await dispatch(
@@ -547,6 +557,7 @@ export const sendAgentRequest = createAsyncThunk<
                   convertConversationToDocument({
                     agentId,
                     title: part.value.title,
+                    content: part.value.content,
                   }),
                 );
               })

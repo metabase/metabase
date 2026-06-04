@@ -30,6 +30,46 @@
                                    :post 200 "metabot/document/generate-content"
                                    {:instructions "Show me sales data"}))))))
 
+(deftest edit-document-test
+  (testing "POST /metabot/document/edit returns the revised document the model authored"
+    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (fn [_]
+                                    (mut/mock-llm-response
+                                     [{:type :start :id "msg-1"}
+                                      {:type      :tool-input
+                                       :id        "call-1"
+                                       :function  "write_document_content"
+                                       :arguments {:title   "Revised report"
+                                                   :content "# Revised report\n\nA punchier intro.\n\n[[chart:1]]"}}
+                                      {:type :usage :usage {:promptTokens 80 :completionTokens 15}
+                                       :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
+        (is (= {:content "# Revised report\n\nA punchier intro.\n\n[[chart:1]]"
+                :title   "Revised report"
+                :error   nil}
+               (mt/user-http-request :crowberto
+                                     :post 200 "metabot/document/edit"
+                                     {:instructions     "make the intro punchier"
+                                      :current_document "# Report\n\nA boring intro.\n\n[[chart:1]]"})))))))
+
+(deftest edit-document-error-test
+  (testing "POST /metabot/document/edit surfaces an error when the model never writes the document"
+    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (fn [_]
+                                    (mut/mock-llm-response
+                                     [{:type :start :id "msg-1"}
+                                      {:type :text :text "I can't edit that."}
+                                      {:type :usage :usage {:promptTokens 10 :completionTokens 5}
+                                       :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
+        (is (= {:content nil
+                :title   nil
+                :error   "I can't edit that."}
+               (mt/user-http-request :crowberto
+                                     :post 200 "metabot/document/edit"
+                                     {:instructions     "do something impossible"
+                                      :current_document "# Report"})))))))
+
 (deftest generate-content-prometheus-test
   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
     (mt/with-prometheus-system! [_ system]

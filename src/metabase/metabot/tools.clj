@@ -18,6 +18,7 @@
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
    [metabase.metabot.tools.custom-viz :as tools.custom-viz]
    [metabase.metabot.tools.document :as tools.document]
+   [metabase.metabot.tools.edit-document :as tools.edit-document]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.query-results :as query-results]
    [metabase.metabot.tools.resources :as tools.resources]
@@ -88,6 +89,8 @@
   static-viz-tool]
  [tools.convert-document
   convert-conversation-to-doc-tool]
+ [tools.edit-document
+  write-document-content-tool]
  [tools.create-alert
   create-alert-tool]
  [tools.create-dashboard-subscription

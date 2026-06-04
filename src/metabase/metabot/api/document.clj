@@ -7,6 +7,8 @@
    [metabase.metabot.agent.core :as metabot.agent]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.envelope :as metabot.envelope]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.util.malli.schema :as ms]))
 
@@ -117,6 +119,75 @@
          :description nil
          :error       (or (last-agent-message parts)
                           "Unable to generate chart content.")}))))
+
+(def ^:private edit-body-schema
+  [:map
+   [:instructions ms/NonBlankString]
+   [:current_document ms/NonBlankString]
+   ;; The originating conversation, supplied by the client (same shape the
+   ;; streaming endpoint accepts) so the edit turn reuses its context without
+   ;; touching — or persisting to — the main conversation.
+   [:history {:optional true} [:maybe ::metabot.schema/messages]]
+   [:state {:optional true} [:maybe :map]]
+   [:context {:optional true} [:maybe ::metabot.context/context]]
+   [:references {:optional true} ms/Map]
+   [:metabot_id {:optional true} [:maybe :string]]])
+
+(def ^:private edit-response-schema
+  [:map
+   [:content [:maybe ms/NonBlankString]]
+   [:title [:maybe ms/NonBlankString]]
+   [:error [:maybe ms/NonBlankString]]])
+
+(defn- latest-document-output
+  "The most recent `write_document_content` structured output among `parts`."
+  [parts]
+  (->> parts
+       (filter #(= :tool-output (:type %)))
+       (keep part->structured-output)
+       (filter map?)
+       (filter :content)
+       last))
+
+(api.macros/defendpoint :post "/edit" :- edit-response-schema
+  "Rewrite a document from a natural-language edit instruction, using the
+  originating conversation as context. Runs an ephemeral agent turn that does
+  NOT persist to the conversation — it returns the complete revised document
+  body (Markdown with `[[chart:N]]` placeholders) for the client to diff and
+  apply."
+  [_route-params
+   _query-params
+   {:keys [instructions current_document history state context references metabot_id]}
+   :- edit-body-schema]
+  (let [metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)]
+    (metabot.config/check-metabot-enabled! metabot-id)
+    (metabot.usage/check-metabase-managed-free-limit!)
+    (let [enriched-context (cond-> (if context
+                                     (metabot.context/create-context context {:metabot-id metabot-id})
+                                     (metabot.context/create-context {:capabilities #{}}))
+                             references (assoc :references references))
+          edit-prompt      (str "Here is the current document:\n\n<document>\n"
+                                current_document
+                                "\n</document>\n\nApply this edit and return the complete revised document:\n\n"
+                                instructions)
+          messages         (concat (or history [])
+                                   [(metabot.envelope/user-message edit-prompt)])
+          parts            (into [] (metabot.agent/run-agent-loop
+                                     {:messages      messages
+                                      :metabot-id    metabot-id
+                                      :profile-id    :document-edit
+                                      :state         (or state {})
+                                      :context       enriched-context
+                                      :tracking-opts {:source "document_edit"}}))
+          output           (latest-document-output parts)]
+      (if output
+        {:content (:content output)
+         :title   (:title output)
+         :error   nil}
+        {:content nil
+         :title   nil
+         :error   (or (last-agent-message parts)
+                      "Unable to edit the document.")}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/document` routes."

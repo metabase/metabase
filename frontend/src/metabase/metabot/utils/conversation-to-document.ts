@@ -249,17 +249,18 @@ function codeBlockNodes(code: string): JSONContent[] {
   ];
 }
 
-/**
- * Turns a Metabot conversation (the redux `messages` array) into a TipTap
- * document AST plus the draft cards it references. User prompts become
- * blockquotes, agent markdown becomes body text, saved charts (`static_viz`)
- * embed by id, and ad-hoc charts (`adhoc_viz`) are decoded into draft cards and
- * embedded as live previews. Chat-only messages (tool calls, aborts, errors)
- * are dropped.
- */
-export function conversationToDocument(
-  messages: MetabotChatMessage[],
-): ConversationDocument {
+type ChartEmbedder = {
+  // Draft cards (negative ids) accumulated as ad-hoc charts are embedded.
+  cards: Record<number, Card>;
+  // Turn a data part into document nodes, decoding ad-hoc charts into draft
+  // cards (mutating `cards`) along the way.
+  dataPartToNodes: (part: MetabotDataPart) => JSONContent[];
+};
+
+// Stateful embedder shared by both converters: it owns the draft-card map and
+// the descending draft-id counter so that every ad-hoc chart it decodes gets a
+// unique negative id that `POST /api/document` later materializes.
+function createChartEmbedder(): ChartEmbedder {
   const cards: Record<number, Card> = {};
   let nextDraftId = -1;
 
@@ -299,6 +300,74 @@ export function conversationToDocument(
       .with({ type: "transform_suggestion" }, () => [])
       .exhaustive();
 
+  return { cards, dataPartToNodes };
+}
+
+// The data parts that represent an embeddable chart/table, in the order they
+// appeared in the conversation. This is the numbering the model references with
+// `[[chart:N]]` (1-based): the Nth entry here is chart N.
+export function chartPartsInOrder(
+  messages: MetabotChatMessage[],
+): MetabotDataPart[] {
+  return messages.flatMap((message) =>
+    message.role === "agent" &&
+    message.type === "data_part" &&
+    (message.part.type === "static_viz" || message.part.type === "adhoc_viz")
+      ? [message.part]
+      : [],
+  );
+}
+
+const CHART_PLACEHOLDER_RE = /^\[\[chart:(\d+)\]\]$/;
+
+// Parse Markdown into document nodes, but treat a line consisting solely of a
+// `[[chart:N]]` placeholder as a request to embed chart N (resolved by
+// `resolveChart`). Everything else is parsed as ordinary Markdown.
+export function markdownWithChartsToNodes(
+  markdown: string,
+  resolveChart: (n: number) => JSONContent[],
+): JSONContent[] {
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  const blocks: JSONContent[] = [];
+  let buffer: string[] = [];
+
+  const flush = () => {
+    if (buffer.length > 0) {
+      blocks.push(...markdownToNodes(buffer.join("\n")));
+      buffer = [];
+    }
+  };
+
+  for (const line of lines) {
+    const match = line.trim().match(CHART_PLACEHOLDER_RE);
+    if (match) {
+      flush();
+      blocks.push(...resolveChart(Number(match[1])));
+    } else {
+      buffer.push(line);
+    }
+  }
+  flush();
+
+  return blocks;
+}
+
+/**
+ * Turns a Metabot conversation (the redux `messages` array) into a TipTap
+ * document AST plus the draft cards it references. User prompts become
+ * blockquotes, agent markdown becomes body text, saved charts (`static_viz`)
+ * embed by id, and ad-hoc charts (`adhoc_viz`) are decoded into draft cards and
+ * embedded as live previews. Chat-only messages (tool calls, aborts, errors)
+ * are dropped.
+ *
+ * This is the mechanical transcription used as a fallback; the agent normally
+ * authors the document and we build it with `modelAuthoredDocument`.
+ */
+export function conversationToDocument(
+  messages: MetabotChatMessage[],
+): ConversationDocument {
+  const { cards, dataPartToNodes } = createChartEmbedder();
+
   const content = messages.flatMap((message) =>
     match(message)
       .with({ role: "user", type: "text" }, ({ message }) => {
@@ -318,6 +387,37 @@ export function conversationToDocument(
     document: {
       type: "doc",
       content: content.length > 0 ? content : [{ type: "paragraph" }],
+    },
+    cards,
+  };
+}
+
+/**
+ * Build a document from a model-authored Markdown body. The agent writes the
+ * narrative and marks where charts go with `[[chart:N]]` placeholder lines,
+ * where N is the 1-based index of the chart in the conversation (see
+ * `chartPartsInOrder`). Each placeholder is resolved to a live chart embed,
+ * decoding ad-hoc charts into draft cards just like `conversationToDocument`.
+ * Placeholders referencing a chart that doesn't exist are dropped.
+ */
+export function modelAuthoredDocument(
+  content: string,
+  messages: MetabotChatMessage[],
+): ConversationDocument {
+  const { cards, dataPartToNodes } = createChartEmbedder();
+  const charts = chartPartsInOrder(messages);
+
+  const resolveChart = (n: number): JSONContent[] => {
+    const part = charts[n - 1];
+    return part ? dataPartToNodes(part) : [];
+  };
+
+  const nodes = markdownWithChartsToNodes(content, resolveChart);
+
+  return {
+    document: {
+      type: "doc",
+      content: nodes.length > 0 ? nodes : [{ type: "paragraph" }],
     },
     cards,
   };

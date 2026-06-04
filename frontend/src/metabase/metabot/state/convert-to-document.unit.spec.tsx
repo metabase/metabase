@@ -82,6 +82,42 @@ describe("convertConversationToDocument", () => {
     });
   });
 
+  it("builds the document from model-authored content, embedding referenced charts", async () => {
+    fetchMock.post("path:/api/document", createMockDocument({ id: 5 }));
+
+    const store = setup([
+      { id: "u1", role: "user", type: "text", message: "show sales" },
+      {
+        id: "a1",
+        role: "agent",
+        type: "data_part",
+        part: { type: "static_viz", version: 1, value: { entity_id: 7 } },
+      },
+    ]);
+
+    await store.dispatch(
+      convertConversationToDocument({
+        agentId: AGENT_ID,
+        title: "Sales report",
+        content: "# Sales\n\nRevenue is up.\n\n[[chart:1]]\n\nNice.",
+      }) as any,
+    );
+
+    const call = fetchMock.callHistory.lastCall("path:/api/document", {
+      method: "POST",
+    });
+    const body = await call?.request?.json();
+    expect(body.name).toBe("Sales report");
+    // The authored prose becomes headings/paragraphs and `[[chart:1]]` resolves
+    // to a live embed of the conversation's first chart (entity_id 7), rather
+    // than transcribing the chat.
+    expect(body.document.content[0]).toMatchObject({ type: "heading" });
+    const json = JSON.stringify(body.document);
+    expect(json).toContain('"cardEmbed"');
+    expect(json).toContain("Revenue is up.");
+    expect(json).not.toContain("show sales");
+  });
+
   it("falls back to the conversation title when no title is given", async () => {
     fetchMock.post("path:/api/document", createMockDocument({ id: 1 }));
 

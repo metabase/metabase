@@ -22,6 +22,7 @@
 (def ^:private known-sources
   #{"metabot_agent"
     "document_generate_content"
+    "document_edit"
     "example_question_generation_batch"
     "slack"
     "slackbot"
@@ -38,7 +39,8 @@
     "sql"
     "slackbot"
     "transforms_codegen"
-    "document-generate-content"})
+    "document-generate-content"
+    "document-edit"})
 
 (defenterprise log-ai-usage!
   "Record an LLM API call in the ai_usage_log table."

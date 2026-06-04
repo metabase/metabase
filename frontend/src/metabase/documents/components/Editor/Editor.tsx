@@ -1,6 +1,10 @@
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
+import type {
+  AnyExtension,
+  JSONContent,
+  Editor as TiptapEditor,
+} from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import React, { useEffect, useMemo } from "react";
@@ -91,6 +95,12 @@ export interface EditorProps {
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
+  /**
+   * Extra TipTap extensions appended to the default set. Must be stable across
+   * renders (the editor is created once). Used by the Metabot document canvas to
+   * inject tracked-changes diff marks.
+   */
+  extraExtensions?: AnyExtension[];
 }
 
 export const Editor: React.FC<EditorProps> = React.memo(
@@ -103,6 +113,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
     onQuestionSelect,
     isLoading = false,
     editorContainerRef,
+    extraExtensions,
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const { getState } = useStore();
@@ -161,8 +172,9 @@ export const Editor: React.FC<EditorProps> = React.memo(
         }),
         ResizeNode,
         HandleEditorDrop,
+        ...(extraExtensions ?? []),
       ],
-      [siteUrl, getState],
+      [siteUrl, getState, extraExtensions],
     );
 
     const editor = useEditor(

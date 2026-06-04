@@ -267,7 +267,7 @@ export const AgentMessage = ({
       <AgentErroredTurnAlert message={m} debug={debug} />
     ))
     .with({ type: "document" }, (m) => (
-      <AgentDocumentMessage documentId={m.documentId} />
+      <AgentDocumentMessage documentId={m.documentId} agentId={agentId} />
     ))
     .exhaustive();
 

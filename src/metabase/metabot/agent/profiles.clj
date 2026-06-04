@@ -165,6 +165,19 @@
                     #'tools/document-construct-model-chart-tool
                     #'tools/document-construct-sql-chart-tool]})
 
+;; Ephemeral, non-persisted turn that rewrites a document in place (the canvas
+;; "Ask for changes" / "Describe edits" flow). The model receives the current
+;; document plus the parent conversation's context and returns the complete
+;; revised body through `write_document_content`. Text-level editing only in v1
+;; — no chart-creation tools — so the single required tool ends the turn.
+(register-profile!
+ {:name            :document-edit
+  :prompt-template "document-edit.selmer"
+  :max-iterations  3
+  :temperature     0.3
+  :required-tool-call? true
+  :tools           [#'tools/write-document-content-tool]})
+
 (register-profile!
  {:name            :slackbot
   :prompt-template "slackbot.selmer"
