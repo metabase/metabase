@@ -56,6 +56,7 @@ import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { DataStudioNavSection } from "./DataStudioNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
+import { MetabotArtifactsSection } from "./MetabotArtifactsSection";
 import { MetabotThreadsSection } from "./MetabotThreadsSection";
 
 type Props = {
@@ -241,6 +242,7 @@ export function MainNavbarView({
         {activeTab === "chats" && (
           <div>
             <MetabotThreadsSection onItemSelect={onItemSelect} />
+            <MetabotArtifactsSection onItemSelect={onItemSelect} />
           </div>
         )}
 

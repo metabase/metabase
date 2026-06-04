@@ -26,11 +26,11 @@ export const getMetabotQuickLinks = () => {
             return;
           }
 
-          dispatch(replace("/"));
-
           if (prompt && canUseMetabot) {
-            void askMetabotInNewTab(prompt);
+            void askMetabotInNewTab(prompt, { navigate: "replace" });
             setHasSubmitted(true);
+          } else {
+            dispatch(replace("/"));
           }
         }, [
           isLoading,

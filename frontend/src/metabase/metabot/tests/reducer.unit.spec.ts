@@ -365,7 +365,6 @@ describe("metabot reducer", () => {
       // the fork gets its own conversation id; the route owns fullscreen presentation
       expect(fork.conversationId).not.toBe("source-convo-id");
       expect(fork.visible).toBe(false);
-      expect(fork.inBar).toBe(false);
     });
 
     it("keeps the full conversation when forking from the last turn", async () => {

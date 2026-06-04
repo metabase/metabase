@@ -1,11 +1,11 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import {
-  breakpointMaxSmall,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
+  NAV_SIDEBAR_COLLAPSED_WIDTH,
+  NAV_SIDEBAR_WIDTH,
+} from "metabase/nav/constants";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
 import { Box, type BoxProps } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";
@@ -16,22 +16,28 @@ export const Sidebar = styled.aside<{
   side: "left" | "right";
   width?: string;
 }>`
-  ${({ isOpen }) => (isOpen ? "" : "display: none")};
-
   height: 100%;
   position: relative;
   flex-shrink: 0;
   align-items: center;
   background-color: var(--mb-color-background-primary);
   z-index: 4;
-  width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
+  width: ${(props) =>
+    props.isOpen
+      ? (props.width ?? NAV_SIDEBAR_WIDTH)
+      : NAV_SIDEBAR_COLLAPSED_WIDTH};
+  transition: width 0.2s ease;
 
   ${breakpointMaxSmall} {
+    ${(props) =>
+      props.isOpen
+        ? `
     width: 90vw;
     position: absolute;
     top: 0;
-    ${(props) =>
-      props.side === "left" ? "inset-inline-start: 0;" : "inset-inline-end: 0;"}
+    ${props.side === "left" ? "inset-inline-start: 0;" : "inset-inline-end: 0;"}
+    `
+        : `width: ${NAV_SIDEBAR_COLLAPSED_WIDTH};`}
   }
 `;
 
@@ -40,16 +46,13 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   flex-direction: column;
   box-sizing: border-box;
   height: 100%;
+  width: 100%;
   background-color: transparent;
   overflow-x: hidden;
   overflow-y: auto;
 
-  ${breakpointMinSmall} {
-    width: ${(props) => (props.isOpen ? "100%" : 0)};
-  }
-
   ${breakpointMaxSmall} {
-    width: ${(props) => (props.isOpen ? "90vw" : 0)};
+    width: ${(props) => (props.isOpen ? "90vw" : "100%")};
   }
 `;
 

@@ -6,13 +6,17 @@
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  padding: 10px 10px 4px 10px;
+  padding: 10px;
   gap: 4px;
 }
 
 .shellBare {
   padding: 0;
   gap: 0;
+}
+
+.shellNavCollapsed {
+  padding-left: 0;
 }
 
 .contentArea {
@@ -32,46 +36,12 @@
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-background-primary);
-  /* the scaleX inset (applied inline) is a fixed pixel amount per side; using
-     a transform keeps the page content from reflowing */
-  transition: transform 220ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .content {
-    transition: none;
-  }
-}
-
-.overlay {
-  position: absolute;
-  top: 8px;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
-  background-color: var(--mb-color-background-primary);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transform-origin: bottom right;
-  will-change: transform, opacity;
 }
 
 .contentBare {
   border: none;
   border-radius: 0;
   background-color: transparent;
-}
-
-.bottomBar {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
 }
 
 @media print {

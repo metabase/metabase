@@ -26,7 +26,6 @@ import {
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
-  MetabotAgentId,
   MetabotChatMessage,
   MetabotToolCall,
   MetabotUserChatMessage,
@@ -42,7 +41,6 @@ export const metabot = createSlice({
       state,
       action: ConvoPayloadAction<{
         visible?: boolean;
-        inBar?: boolean;
         conversationId?: string;
         selectedDatabaseId?: number;
       }>,
@@ -88,16 +86,7 @@ export const metabot = createSlice({
     destroyAgent: (state, action: ConvoPayloadAction) => {
       const { agentId } = action.payload;
       delete state.conversations[agentId];
-      if (state.overlayAgentId === agentId) {
-        state.overlayAgentId = null;
-      }
       resetReactionState(state, agentId);
-    },
-    setOverlayAgentId: (
-      state,
-      action: PayloadAction<{ agentId: MetabotAgentId | null }>,
-    ) => {
-      state.overlayAgentId = action.payload.agentId;
     },
     resetConversation: (state, action: ConvoPayloadAction) => {
       const { agentId } = action.payload;
@@ -253,11 +242,6 @@ export const metabot = createSlice({
         if (action.payload.visible) {
           state.hasUnreadResponse = false;
         }
-      },
-    ),
-    setInBar: convoReducer(
-      (state, action: ConvoPayloadAction<{ inBar: boolean }>) => {
-        state.inBar = action.payload.inBar;
       },
     ),
     setPrompt: convoReducer(

@@ -1,6 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EditorState } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { createRef } from "react";
 
 import {
@@ -19,7 +20,15 @@ import {
   createMockDatabase,
 } from "metabase-types/api/mocks";
 
-import { MetabotPromptInput } from "./MetabotPromptInput";
+import {
+  ARTIFACT_DND_MIME,
+  setArtifactDragData,
+} from "../MetabotBar/artifactDragData";
+
+import {
+  MetabotPromptInput,
+  handleArtifactMentionDrop,
+} from "./MetabotPromptInput";
 
 const defaultProps = {
   value: "",
@@ -104,6 +113,83 @@ describe("MetabotPromptInput", () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
+    });
+  });
+});
+
+function createMockDataTransfer(): DataTransfer {
+  const store = new Map<string, string>();
+  const dt = {
+    effectAllowed: "none",
+    dropEffect: "none",
+    get types() {
+      return [...store.keys()];
+    },
+    setData: (type: string, value: string) => {
+      store.set(type, value);
+    },
+    getData: (type: string) => store.get(type) ?? "",
+  };
+  return dt as unknown as DataTransfer;
+}
+
+function createMockDropEvent(dataTransfer: DataTransfer) {
+  return {
+    dataTransfer,
+    clientX: 10,
+    clientY: 20,
+    preventDefault: jest.fn(),
+  };
+}
+
+describe("handleArtifactMentionDrop", () => {
+  // run against the real editor so the prosemirror schema/transaction is genuine
+  const setupView = () => {
+    const ref = createRef<MetabotPromptInputRef>();
+    setup({ ref });
+    const view = (ref.current as unknown as { view: EditorView }).view;
+    return view;
+  };
+
+  it("inserts a card smartLink mention and claims the drop", () => {
+    const view = setupView();
+    const dataTransfer = createMockDataTransfer();
+    setArtifactDragData(dataTransfer, { model: "card", id: 22 });
+    const event = createMockDropEvent(dataTransfer);
+
+    const handled = handleArtifactMentionDrop(
+      view,
+      event as unknown as DragEvent,
+    );
+
+    expect(handled).toBe(true);
+    expect(event.preventDefault).toHaveBeenCalled();
+
+    let mention: { attrs: Record<string, unknown> } | undefined;
+    view.state.doc.descendants((node) => {
+      if (node.type.name === "smartLink") {
+        mention = node as unknown as { attrs: Record<string, unknown> };
+      }
+    });
+    expect(mention?.attrs).toMatchObject({ entityId: 22, model: "card" });
+  });
+
+  it("ignores drops without an artifact payload", () => {
+    const view = setupView();
+    const dataTransfer = createMockDataTransfer();
+    dataTransfer.setData("text/plain", "hello");
+    const event = createMockDropEvent(dataTransfer);
+
+    const handled = handleArtifactMentionDrop(
+      view,
+      event as unknown as DragEvent,
+    );
+
+    expect(handled).toBe(false);
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(dataTransfer.types).not.toContain(ARTIFACT_DND_MIME);
+    view.state.doc.descendants((node) => {
+      expect(node.type.name).not.toBe("smartLink");
     });
   });
 });

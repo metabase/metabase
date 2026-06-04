@@ -1,0 +1,65 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  padding-top: 6px;
+  padding-bottom: 10px;
+  padding-inline: 0;
+}
+
+.logoToggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: var(--mantine-spacing-lg);
+  padding: 0;
+  border: none;
+  border-radius: var(--mantine-radius-md);
+  background: transparent;
+  cursor: pointer;
+}
+
+.logoToggle:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.logoDefault,
+.logoHover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mb-color-text-primary);
+  transition: opacity 0.15s ease;
+}
+
+.logoHover {
+  opacity: 0;
+}
+
+.logoToggle:hover .logoDefault,
+.logoToggle:focus-visible .logoDefault {
+  opacity: 0;
+}
+
+.logoToggle:hover .logoHover,
+.logoToggle:focus-visible .logoHover {
+  opacity: 1;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.spacer {
+  flex: 1;
+}

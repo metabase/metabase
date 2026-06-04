@@ -11,7 +11,6 @@ import {
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { metabotApi } from "metabase/api/metabot";
 import { listTag } from "metabase/api/tags";
-import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
@@ -86,8 +85,6 @@ export const {
   hydrateChatConversation,
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
-  setInBar,
-  setOverlayAgentId,
   setHasUnreadResponse,
 } = metabot.actions;
 
@@ -103,9 +100,7 @@ function markUnreadIfUnfocused(
 
   const pathname = getLocation(state).pathname ?? "";
   const isFocused =
-    convo.visible ||
-    getMetabotState(state).overlayAgentId === agentId ||
-    pathname === `/chat/${convo.conversationId}`;
+    convo.visible || pathname === `/chat/${convo.conversationId}`;
 
   if (!isFocused) {
     dispatch(setHasUnreadResponse({ agentId, hasUnreadResponse: true }));
@@ -179,28 +174,6 @@ export const setVisible =
     }
 
     dispatch(metabot.actions.setVisible(payload));
-  };
-
-export const expandConversation =
-  ({ agentId }: { agentId: MetabotAgentId }) =>
-  (dispatch: Dispatch) => {
-    dispatch(metabot.actions.setVisible({ agentId, visible: false }));
-    dispatch(metabot.actions.setOverlayAgentId({ agentId }));
-  };
-
-export const collapseConversation =
-  ({ agentId }: { agentId: MetabotAgentId }) =>
-  (dispatch: Dispatch) => {
-    dispatch(metabot.actions.setOverlayAgentId({ agentId: null }));
-    dispatch(metabot.actions.setVisible({ agentId, visible: true }));
-  };
-
-export const minimizeConversation =
-  ({ agentId }: { agentId: MetabotAgentId }) =>
-  (dispatch: Dispatch) => {
-    dispatch(metabot.actions.setOverlayAgentId({ agentId: null }));
-    dispatch(metabot.actions.setInBar({ agentId, inBar: true }));
-    dispatch(metabot.actions.setVisible({ agentId, visible: true }));
   };
 
 export const executeSlashCommand = createAsyncThunk<
@@ -749,13 +722,10 @@ export const forkConversation = createAsyncThunk<
       }),
     );
 
-    // Open the fork in the full-page chat view and keep the original chat
-    // available as a background tab if it came from the bar/overlay.
+    // Open the fork in the full-page chat view, closing the source chat's
+    // pop-up if it was open (the omnibot/SDK surface).
     if (source.visible) {
       dispatch(setVisible({ agentId, visible: false }));
-    }
-    if (getMetabotState(state).overlayAgentId === agentId) {
-      dispatch(setOverlayAgentId({ agentId: null }));
     }
     dispatch(push(`/chat/${conversationId}`) as any);
 
@@ -785,36 +755,5 @@ export const discardConversationIfEmpty = createAsyncThunk(
       }
       dispatch(destroyAgent({ agentId }));
     }
-  },
-);
-
-export const resumeChatConversation = createAsyncThunk<
-  { agentId: MetabotAgentId },
-  { conversationId: string }
->(
-  "metabase/metabot/resumeChatConversation",
-  async ({ conversationId }, { dispatch, getState }) => {
-    const agentId: MetabotAgentId = `chat_${conversationId}`;
-    const alreadyMounted = !!getMetabotState(getState()).conversations[agentId];
-    if (!alreadyMounted) {
-      const detail = await dispatch(
-        metabotApi.endpoints.getMetabotChatConversation.initiate(
-          conversationId,
-        ),
-      ).unwrap();
-      dispatch(
-        hydrateChatConversation({
-          agentId,
-          conversationId: detail.conversation_id,
-          title: detail.title,
-          messages: normalizeFetchedChatMessages(detail.chat_messages ?? []),
-          history: detail.history,
-          state: detail.state,
-        }),
-      );
-    }
-    dispatch(setInBar({ agentId, inBar: true }));
-    dispatch(setVisible({ agentId, visible: true }));
-    return { agentId };
   },
 );

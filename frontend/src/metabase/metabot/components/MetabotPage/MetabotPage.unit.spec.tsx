@@ -106,7 +106,6 @@ function setup({
       messages: seedMessages,
       queuedMessages: seedQueuedMessages,
       visible: false,
-      inBar: false,
       history: [],
       state: {},
       activeToolCalls: [],
@@ -291,26 +290,6 @@ describe("MetabotPage at /chat/:conversationId", () => {
     expect(lastCall?.[1]).toEqual({ skip: true });
   });
 
-  it("minimize docks the conversation into the bar and navigates home", async () => {
-    const { store } = setup({
-      initialRoute: "/chat/live-id",
-      seedAgentId: "chat_live-id",
-      seedMessages: [{ id: "m1", role: "user", type: "text", message: "hi" }],
-      conversationQuery: { isLoading: true },
-    });
-
-    await userEvent.click(screen.getByTestId("metabot-minimize-chat"));
-
-    const convo = (store.getState() as any).metabot.conversations[
-      "chat_live-id"
-    ];
-    expect(convo.inBar).toBe(true);
-    expect(convo.visible).toBe(true);
-    expect(
-      (store.getState() as any).routing.locationBeforeTransitions.pathname,
-    ).toBe("/");
-  });
-
   it("shows the fork action for agent messages and opens the fork in fullscreen", async () => {
     const { history, store } = setup({
       initialRoute: "/chat/live-id",
@@ -338,7 +317,6 @@ describe("MetabotPage at /chat/:conversationId", () => {
     expect(history?.getCurrentLocation().pathname).toBe(
       `/chat/${forkAgentId!.replace("chat_", "")}`,
     );
-    expect(conversations[forkAgentId!].inBar).toBe(false);
     expect(conversations[forkAgentId!].visible).toBe(false);
     expect(conversations[forkAgentId!].messages.map((m: any) => m.id)).toEqual([
       "u1",

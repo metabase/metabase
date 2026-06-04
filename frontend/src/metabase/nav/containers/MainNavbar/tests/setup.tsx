@@ -167,6 +167,14 @@ export async function setup({
     collection: createMockCollection(OUR_ANALYTICS),
     collectionItems: [],
   });
+  // the Chats tab's Artifacts section lists ai_generated cards in the personal
+  // collection
+  if (personalCollection) {
+    setupCollectionItemsEndpoint({
+      collection: personalCollection,
+      collectionItems: [],
+    });
+  }
 
   setupSettingEndpoint({
     settingKey: "version-info",

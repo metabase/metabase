@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
 import { Route } from "react-router";
 
 import {
@@ -18,11 +19,13 @@ import { createMockUser } from "metabase-types/api/mocks";
 
 import { MetabotThreadsSection } from "./MetabotThreadsSection";
 
+// keep the shared fixtures recent (within the last 24h) so they land in the
+// always-visible "Recent Chats" section
 const CONVERSATIONS: MetabotChatConversationSummary[] = [
   {
     conversation_id: "conv-1",
-    created_at: "2026-05-01T10:00:00Z",
-    last_message_at: "2026-05-02T10:00:00Z",
+    created_at: dayjs().subtract(3, "hour").toISOString(),
+    last_message_at: dayjs().subtract(2, "hour").toISOString(),
     summary: "First summary",
     title: "Revenue by category",
     user_id: 1,
@@ -30,7 +33,7 @@ const CONVERSATIONS: MetabotChatConversationSummary[] = [
   },
   {
     conversation_id: "conv-2",
-    created_at: "2026-04-01T10:00:00Z",
+    created_at: dayjs().subtract(5, "hour").toISOString(),
     last_message_at: null,
     summary: null,
     title: "Top customers",
@@ -99,7 +102,7 @@ describe("MetabotThreadsSection", () => {
 
     const section = await screen.findByRole("section", { name: "Metabot" });
     expect(
-      within(section).getByRole("heading", { name: "Metabot" }),
+      within(section).getByRole("heading", { name: "Recent Chats" }),
     ).toBeInTheDocument();
     expect(
       within(section).getByRole("button", { name: "New chat" }),
@@ -113,6 +116,48 @@ describe("MetabotThreadsSection", () => {
       "href",
       "/chat/conv-2",
     );
+  });
+
+  it("groups chats older than 24h under a collapsed Past chats section", async () => {
+    setup({
+      conversations: [
+        {
+          conversation_id: "recent-1",
+          created_at: dayjs().subtract(1, "hour").toISOString(),
+          last_message_at: dayjs().subtract(1, "hour").toISOString(),
+          summary: null,
+          title: "Recent chat",
+          user_id: 1,
+          message_count: 1,
+        },
+        {
+          conversation_id: "old-1",
+          created_at: "2020-01-01T10:00:00Z",
+          last_message_at: "2020-01-02T10:00:00Z",
+          summary: null,
+          title: "Old chat",
+          user_id: 1,
+          message_count: 1,
+        },
+      ],
+    });
+
+    // recent chat is visible immediately
+    expect(
+      await screen.findByRole("link", { name: /Recent chat/ }),
+    ).toBeInTheDocument();
+
+    // the old chat lives in the collapsed "Past chats" section
+    expect(screen.getByText("Past chats")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Old chat/ }),
+    ).not.toBeInTheDocument();
+
+    // expanding the section reveals it
+    await userEvent.click(screen.getByText("Past chats"));
+    expect(
+      await screen.findByRole("link", { name: /Old chat/ }),
+    ).toBeInTheDocument();
   });
 
   it("marks the conversation matching the current route as selected", async () => {
@@ -132,7 +177,7 @@ describe("MetabotThreadsSection", () => {
   it("shows an empty state when there are no chats", async () => {
     setup({ conversations: [] });
 
-    expect(await screen.findByText("No chats yet")).toBeInTheDocument();
+    expect(await screen.findByText("No recent chats")).toBeInTheDocument();
   });
 
   it("selects the inline draft on the new-chat home page", async () => {

@@ -34,33 +34,11 @@ export const getActiveMetabotAgentIds = createSelector(
   (state) => Object.keys(state.conversations) as MetabotAgentId[],
 );
 
-export const getBarChatAgentIds = createSelector(getMetabotState, (state) =>
-  (
-    Object.entries(state.conversations) as Array<
-      [MetabotAgentId, (typeof state.conversations)[MetabotAgentId]]
-    >
-  )
-    .filter(
-      ([id, convo]) =>
-        id.startsWith("chat_") &&
-        convo?.inBar === true &&
-        id !== state.overlayAgentId,
-    )
-    .map(([id]) => id),
-);
-
-export const getOverlayAgentId = createSelector(
-  getMetabotState,
-  (state) => state.overlayAgentId,
-);
-
 export type ActiveChatConversation = {
   conversationId: string;
   title: string | null;
   isProcessing: boolean;
   hasUnreadResponse: boolean;
-  isVisible: boolean;
-  isExpanded: boolean;
 };
 
 /** Lightweight projection of the in-memory chat conversations, used by the
@@ -80,25 +58,7 @@ export const getActiveChatConversations = createSelector(
         title: convo?.title ?? null,
         isProcessing: convo?.isProcessing ?? false,
         hasUnreadResponse: convo?.hasUnreadResponse ?? false,
-        isVisible: convo?.visible ?? false,
-        isExpanded: state.overlayAgentId === id,
       })),
-);
-
-export const getVisibleAgentId = createSelector(
-  getMetabotState,
-  (state): MetabotAgentId | null => {
-    const entries = Object.entries(state.conversations) as Array<
-      [MetabotAgentId, (typeof state.conversations)[MetabotAgentId]]
-    >;
-    const visible = entries.find(([id, convo]) => {
-      if (!convo?.visible || !convo?.inBar) {
-        return false;
-      }
-      return id.startsWith("chat_");
-    });
-    return visible ? visible[0] : null;
-  },
 );
 
 export const getMetabotId = () =>

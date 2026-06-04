@@ -26,8 +26,8 @@ export function NavbarTabBar({
   showDataStudioTab = true,
 }: Props) {
   const tabs: TabConfig[] = [
-    { value: "chats", label: t`Chats`, icon: "comment" },
     { value: "app", label: t`App`, icon: "dashboard" },
+    { value: "chats", label: t`Chats`, icon: "comment" },
     ...(showDataStudioTab
       ? [
           {

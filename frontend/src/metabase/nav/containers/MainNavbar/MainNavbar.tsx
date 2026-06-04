@@ -17,6 +17,7 @@ import type { CollectionId } from "metabase-types/api";
 
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 import MainNavbarContainer from "./MainNavbarContainer";
+import { NavbarRail } from "./NavbarRail";
 import {
   getSelectedItems,
   isCollectionPath,
@@ -118,22 +119,27 @@ function MainNavbarInner({
     <Sidebar
       isOpen={isOpen}
       side="left"
-      aria-hidden={!isOpen}
       data-testid="main-navbar-root"
       data-element-id="navbar-root"
     >
       <NavRoot isOpen={isOpen}>
-        <MainNavbarContainer
-          isOpen={isOpen}
-          location={location}
-          params={params}
-          selectedItems={selectedItems}
-          openNavbar={openNavbar}
-          closeNavbar={closeNavbar}
-          onChangeLocation={onChangeLocation}
-          {...props}
-        />
-        <NavbarPromoSlot />
+        {isOpen ? (
+          <>
+            <MainNavbarContainer
+              isOpen={isOpen}
+              location={location}
+              params={params}
+              selectedItems={selectedItems}
+              openNavbar={openNavbar}
+              closeNavbar={closeNavbar}
+              onChangeLocation={onChangeLocation}
+              {...props}
+            />
+            <NavbarPromoSlot />
+          </>
+        ) : (
+          <NavbarRail onOpenSidebar={openNavbar} />
+        )}
       </NavRoot>
     </Sidebar>
   );

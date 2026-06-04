@@ -132,7 +132,6 @@ export interface MetabotConverstationState {
   messages: MetabotChatMessage[];
   queuedMessages: MetabotQueuedMessage[];
   visible: boolean;
-  inBar: boolean;
   history: MetabotHistory;
   state: any;
   activeToolCalls: MetabotToolCall[];
@@ -161,7 +160,6 @@ export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
   debugMode: boolean;
-  overlayAgentId: MetabotAgentId | null;
 }
 
 export interface SlashCommand {

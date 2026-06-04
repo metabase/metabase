@@ -1,68 +1,74 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import type { MetabotAgentId } from "metabase/metabot/state";
-import { createMockState } from "metabase/redux/store/mocks";
-
-import { getMetabotInitialState } from "../../state/reducer-utils";
 
 import { AppContentShell } from "./AppContentShell";
 
-jest.mock("../MetabotBar/MetabotBar", () => ({
-  MetabotBar: () => <div data-testid="metabot-bar" />,
+let keyHandlers: Record<string, (e: KeyboardEvent) => void> = {};
+jest.mock("tinykeys", () => ({
+  tinykeys: (_target: unknown, handlers: typeof keyHandlers) => {
+    keyHandlers = handlers;
+    return () => {
+      keyHandlers = {};
+    };
+  },
 }));
 
-jest.mock(
-  "metabase/metabot/components/MetabotPage/MetabotConversationView",
-  () => ({
-    MetabotConversationView: ({ agentId }: { agentId: string }) => (
-      <div data-testid="mock-metabot-conversation">{agentId}</div>
-    ),
+const pushMock = jest.fn((..._args: unknown[]) => ({ type: "MOCK_PUSH" }));
+jest.mock("react-router-redux", () => ({
+  push: (...args: unknown[]) => pushMock(...args),
+}));
+
+const hasMetabotAccessMock = jest.fn();
+jest.mock("metabase/metabot/hooks", () => ({
+  useUserMetabotPermissions: () => ({
+    hasMetabotAccess: hasMetabotAccessMock(),
   }),
-);
+}));
+
+jest.mock("metabase/metabot/analytics", () => ({
+  trackMetabotChatOpened: jest.fn(),
+}));
 
 function setup({
-  overlayAgentId = null,
   showChrome = true,
-}: {
-  overlayAgentId?: MetabotAgentId | null;
-  showChrome?: boolean;
-} = {}) {
+  hasMetabotAccess = true,
+}: { showChrome?: boolean; hasMetabotAccess?: boolean } = {}) {
+  hasMetabotAccessMock.mockReturnValue(hasMetabotAccess);
   renderWithProviders(
     <AppContentShell showChrome={showChrome}>
       <div data-testid="page-content" />
     </AppContentShell>,
-    {
-      storeInitialState: createMockState({
-        metabot: { ...getMetabotInitialState(), overlayAgentId },
-      }),
-    },
   );
 }
 
 describe("AppContentShell", () => {
-  it("renders children and the MetabotBar with no overlay by default", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    keyHandlers = {};
+  });
+
+  it("renders children with chrome", () => {
     setup();
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
-    expect(screen.getByTestId("metabot-bar")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("metabot-expanded-chat"),
-    ).not.toBeInTheDocument();
   });
 
-  it("renders the expanded overlay over the content while keeping the bar mounted", () => {
-    setup({ overlayAgentId: "chat_a" });
-    expect(screen.getByTestId("metabot-expanded-chat")).toBeInTheDocument();
-    expect(screen.getByTestId("mock-metabot-conversation")).toHaveTextContent(
-      "chat_a",
-    );
-    expect(screen.getByTestId("metabot-bar")).toBeInTheDocument();
-  });
-
-  it("renders no bar or overlay in bare-chrome mode", () => {
-    setup({ overlayAgentId: "chat_a", showChrome: false });
+  it("renders children in bare-chrome mode", () => {
+    setup({ showChrome: false });
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
-    expect(screen.queryByTestId("metabot-bar")).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId("metabot-expanded-chat"),
-    ).not.toBeInTheDocument();
+  });
+
+  it("navigates home on the metabot shortcut when chrome and access are present", () => {
+    setup({ showChrome: true, hasMetabotAccess: true });
+    keyHandlers["$mod+e"]?.(new KeyboardEvent("keydown"));
+    expect(pushMock).toHaveBeenCalledWith("/");
+  });
+
+  it("does not register the shortcut without metabot access", () => {
+    setup({ showChrome: true, hasMetabotAccess: false });
+    expect(keyHandlers["$mod+e"]).toBeUndefined();
+  });
+
+  it("does not register the shortcut in bare-chrome mode", () => {
+    setup({ showChrome: false, hasMetabotAccess: true });
+    expect(keyHandlers["$mod+e"]).toBeUndefined();
   });
 });

@@ -31,7 +31,6 @@ import {
 import {
   type MetabotAgentId,
   discardConversationIfEmpty,
-  expandConversation,
   isChatAgentId,
 } from "../../state";
 
@@ -114,11 +113,6 @@ export const MetabotChat = ({
     dispatch(discardConversationIfEmpty({ agentId }));
   };
 
-  const canExpand = isChatAgentId(agentId);
-  const handleExpand = () => {
-    dispatch(expandConversation({ agentId }));
-  };
-
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
 
   return (
@@ -132,16 +126,6 @@ export const MetabotChat = ({
         </Flex>
 
         <Flex gap="xs">
-          {canExpand && (
-            <Tooltip label={t`Expand`} position="bottom">
-              <ActionIcon
-                onClick={handleExpand}
-                data-testid="metabot-expand-chat"
-              >
-                <Icon c="text-primary" name="expand" />
-              </ActionIcon>
-            </Tooltip>
-          )}
           {!config?.preventClose && (
             <Tooltip label={t`Minimize`} position="bottom">
               <ActionIcon

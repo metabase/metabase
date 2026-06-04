@@ -1267,16 +1267,20 @@ describe("admin > custom visualizations", () => {
     });
 
     it("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
-      // Some routes (/search, dashboard edit mode) collapse the nav sidebar.
-      // Call this before any nav-sidebar interaction so we open it only when
-      // it's actually hidden — `H.openNavigationSidebar` toggles, so calling
-      // it unconditionally would close an already-open sidebar.
+      // Some routes (/search, dashboard edit mode) collapse the nav sidebar to
+      // a slim rail. Call this before any nav-sidebar interaction so we expand
+      // it only when it's actually collapsed — `H.openNavigationSidebar`
+      // toggles, so calling it unconditionally would close an already-open
+      // sidebar.
       const ensureNavigationSidebarOpen = () => {
         cy.get("body").then(($body) => {
-          const visible = $body.find(
+          const collapsed = $body.find(
+            '[data-testid="navbar-rail"]:visible',
+          ).length;
+          const navVisible = $body.find(
             '[data-testid="main-navbar-root"]:visible',
           ).length;
-          if (!visible) {
+          if (collapsed || !navVisible) {
             H.openNavigationSidebar();
           }
         });

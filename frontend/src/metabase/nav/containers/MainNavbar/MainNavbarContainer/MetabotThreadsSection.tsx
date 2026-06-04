@@ -1,15 +1,16 @@
+import dayjs from "dayjs";
 import { useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListMetabotChatConversationsQuery } from "metabase/api/metabot";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import {
   type ActiveChatConversation,
   type MetabotAgentId,
   getActiveChatConversations,
-  getVisibleAgentId,
   setHasUnreadResponse,
 } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -17,7 +18,7 @@ import { getLocation } from "metabase/selectors/routing";
 import {
   ActionIcon,
   Box,
-  Flex,
+  Button,
   Icon,
   Loader,
   Text,
@@ -27,8 +28,15 @@ import {
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 
 const NEW_CHAT_URL = "/";
-const RECENT_CONVERSATIONS_LIMIT = 25;
+// fetch enough history that chats older than 24h are available for the "Past
+// chats" section, not just the most recent handful
+const CONVERSATIONS_LIMIT = 100;
 const UNREAD_DOT_SIZE = 8;
+// chats created within this window stay in "Recent Chats"; older ones drop into
+// the collapsed "Past chats" section
+const RECENT_WINDOW_HOURS = 24;
+// recent chats collapse to this many rows until the user expands the section
+const MAX_VISIBLE_ROWS = 10;
 
 type ThreadRow = {
   conversationId: string;
@@ -36,6 +44,8 @@ type ThreadRow = {
   summary: string | null;
   isProcessing: boolean;
   hasUnreadResponse: boolean;
+  // null for in-memory conversations not yet persisted — always treated as recent
+  createdAt: string | null;
 };
 
 // The selector returns a fresh array on every metabot state change (e.g. each
@@ -53,9 +63,7 @@ function areActiveConversationsEqual(
       conv.conversationId === other.conversationId &&
       conv.title === other.title &&
       conv.isProcessing === other.isProcessing &&
-      conv.hasUnreadResponse === other.hasUnreadResponse &&
-      conv.isVisible === other.isVisible &&
-      conv.isExpanded === other.isExpanded
+      conv.hasUnreadResponse === other.hasUnreadResponse
     );
   });
 }
@@ -70,16 +78,16 @@ export function MetabotThreadsSection({ onItemSelect }: Props) {
   const [unreadConversationIds, setUnreadConversationIds] = useState(
     () => new Set<string>(),
   );
+  const [showAllRecent, setShowAllRecent] = useState(false);
   const { hasMetabotAccess } = useUserMetabotPermissions();
   const pathname = useSelector((state) => getLocation(state).pathname) ?? "";
-  const visibleAgentId = useSelector(getVisibleAgentId);
   const activeConversations = useSelector(
     getActiveChatConversations,
     areActiveConversationsEqual,
   );
 
   const { data, isLoading } = useListMetabotChatConversationsQuery(
-    { limit: RECENT_CONVERSATIONS_LIMIT },
+    { limit: CONVERSATIONS_LIMIT },
     { skip: !hasMetabotAccess },
   );
 
@@ -103,6 +111,7 @@ export function MetabotThreadsSection({ onItemSelect }: Props) {
       summary: null,
       isProcessing: c.isProcessing,
       hasUnreadResponse: c.hasUnreadResponse,
+      createdAt: null,
     }));
 
   const apiRows: ThreadRow[] = apiConversations.map((c) => ({
@@ -111,22 +120,25 @@ export function MetabotThreadsSection({ onItemSelect }: Props) {
     summary: c.summary,
     isProcessing: processingById.get(c.conversation_id) ?? false,
     hasUnreadResponse: unreadById.get(c.conversation_id) ?? false,
+    createdAt: c.created_at,
   }));
 
   const rows = [...pendingRows, ...apiRows];
   const rowConversationIds = rows.map((row) => row.conversationId);
 
-  // The selected thread is the one the user is currently in: the open popup
-  // chat, the conversation in the URL, or — on the new-chat home page — the
-  // inline draft (so a freshly opened "New chat" reads as selected).
-  const visibleChatId = visibleAgentId?.replace(/^chat_/, "");
+  const recentCutoff = dayjs().subtract(RECENT_WINDOW_HOURS, "hour");
+  const isRecent = (row: ThreadRow) =>
+    row.createdAt == null || dayjs(row.createdAt).isAfter(recentCutoff);
+  const recentRows = rows.filter(isRecent);
+  const pastRows = rows.filter((row) => !isRecent(row));
+
+  // The selected thread is the one the user is currently in: the conversation
+  // in the URL, or — on the new-chat home page — the inline draft (so a freshly
+  // opened "New chat" reads as selected).
   const urlChatId = pathname.match(/^\/chat\/([^/]+)/)?.[1];
   const homeDraftId =
-    pathname === NEW_CHAT_URL
-      ? pendingRows.find((row) => row.conversationId !== visibleChatId)
-          ?.conversationId
-      : undefined;
-  const activeConversationId = visibleChatId ?? urlChatId ?? homeDraftId;
+    pathname === NEW_CHAT_URL ? pendingRows[0]?.conversationId : undefined;
+  const activeConversationId = urlChatId ?? homeDraftId;
 
   useEffect(() => {
     setUnreadConversationIds((currentIds) => {
@@ -136,12 +148,7 @@ export function MetabotThreadsSection({ onItemSelect }: Props) {
       );
       const visibleRowConversationIds = new Set(rowConversationIds);
 
-      const isConversationFocused = (
-        conversationId: string,
-        conversation?: ActiveChatConversation,
-      ) =>
-        conversation?.isVisible ||
-        conversationId === visibleChatId ||
+      const isConversationFocused = (conversationId: string) =>
         conversationId === urlChatId ||
         (pathname === NEW_CHAT_URL && conversationId === homeDraftId);
 
@@ -149,10 +156,7 @@ export function MetabotThreadsSection({ onItemSelect }: Props) {
         const wasProcessing =
           previousProcessingById.current.get(conversation.conversationId) ??
           false;
-        const isFocused = isConversationFocused(
-          conversation.conversationId,
-          conversation,
-        );
+        const isFocused = isConversationFocused(conversation.conversationId);
 
         if (wasProcessing && !conversation.isProcessing && !isFocused) {
           nextIds = nextIds === currentIds ? new Set(currentIds) : nextIds;
@@ -209,7 +213,6 @@ export function MetabotThreadsSection({ onItemSelect }: Props) {
     pathname,
     rowConversationIds,
     urlChatId,
-    visibleChatId,
   ]);
 
   if (!hasMetabotAccess) {
@@ -221,67 +224,116 @@ export function MetabotThreadsSection({ onItemSelect }: Props) {
     dispatch(push(NEW_CHAT_URL));
   };
 
+  const renderRow = (row: ThreadRow) => {
+    const url = `/chat/${row.conversationId}`;
+    const label = row.title ?? row.summary ?? t`Untitled chat`;
+    return (
+      <PaddedSidebarLink
+        key={row.conversationId}
+        icon="comment"
+        url={url}
+        isSelected={row.conversationId === activeConversationId}
+        onClick={onItemSelect}
+        aria-label={label}
+        right={
+          row.isProcessing ? (
+            <Loader size="xs" data-testid="metabot-thread-loader" />
+          ) : row.hasUnreadResponse ||
+            unreadConversationIds.has(row.conversationId) ? (
+            <Box
+              aria-hidden
+              data-testid="metabot-thread-unread-dot"
+              style={{
+                backgroundColor: "var(--mb-color-brand)",
+                borderRadius: "50%",
+                flex: "0 0 auto",
+                height: UNREAD_DOT_SIZE,
+                width: UNREAD_DOT_SIZE,
+              }}
+            />
+          ) : undefined
+        }
+      >
+        {label}
+      </PaddedSidebarLink>
+    );
+  };
+
+  const newChatAction = (
+    <Tooltip label={t`New chat`}>
+      <ActionIcon
+        aria-label={t`New chat`}
+        color="text-secondary"
+        onClick={handleNewChat}
+      >
+        <Icon name="add" />
+      </ActionIcon>
+    </Tooltip>
+  );
+
+  const visibleRecentRows = showAllRecent
+    ? recentRows
+    : recentRows.slice(0, MAX_VISIBLE_ROWS);
+
   return (
-    <Box role="section" aria-label={t`Metabot`} mt="sm" pl="md" pr="6px">
+    <Box
+      role="section"
+      aria-label={t`Metabot`}
+      mt="sm"
+      pl="md"
+      pr="6px"
+      data-testid="metabot-threads-section"
+    >
       <ErrorBoundary>
-        <Flex align="center" justify="space-between" mb="xs">
-          <SidebarHeading>{t`Metabot`}</SidebarHeading>
-          <Tooltip label={t`New chat`}>
-            <ActionIcon
-              aria-label={t`New chat`}
-              color="text-secondary"
-              onClick={handleNewChat}
-            >
-              <Icon name="add" />
-            </ActionIcon>
-          </Tooltip>
-        </Flex>
-        <Box data-testid="metabot-threads-section">
+        <CollapseSection
+          header={<SidebarHeading>{t`Recent Chats`}</SidebarHeading>}
+          initialState="expanded"
+          iconPosition="right"
+          iconSize={8}
+          rightAction={newChatAction}
+          role="section"
+          aria-label={t`Recent Chats`}
+        >
           {isLoading && rows.length === 0 ? (
-            <Box pl="12px" py="xs">
+            <Box pl="md" py="xs">
               <Loader size="xs" />
             </Box>
-          ) : rows.length === 0 ? (
-            <Text pl="12px" py="xs" c="text-secondary" fz="sm">
-              {t`No chats yet`}
+          ) : recentRows.length === 0 ? (
+            <Text pl="md" py="xs" c="text-secondary" fz="sm">
+              {t`No recent chats`}
             </Text>
           ) : (
-            rows.map((row) => {
-              const url = `/chat/${row.conversationId}`;
-              const label = row.title ?? row.summary ?? t`Untitled chat`;
-              return (
-                <PaddedSidebarLink
-                  key={row.conversationId}
-                  icon="comment"
-                  url={url}
-                  isSelected={row.conversationId === activeConversationId}
-                  onClick={onItemSelect}
-                  aria-label={label}
-                  right={
-                    row.isProcessing ? (
-                      <Loader size="xs" data-testid="metabot-thread-loader" />
-                    ) : row.hasUnreadResponse ||
-                      unreadConversationIds.has(row.conversationId) ? (
-                      <Box
-                        aria-hidden
-                        data-testid="metabot-thread-unread-dot"
-                        style={{
-                          backgroundColor: "var(--mb-color-brand)",
-                          borderRadius: "50%",
-                          flex: "0 0 auto",
-                          height: UNREAD_DOT_SIZE,
-                          width: UNREAD_DOT_SIZE,
-                        }}
-                      />
-                    ) : undefined
-                  }
+            <>
+              {visibleRecentRows.map(renderRow)}
+              {recentRows.length > MAX_VISIBLE_ROWS && (
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  fz="xs"
+                  c="text-secondary"
+                  pl="16px"
+                  onClick={() => setShowAllRecent((v) => !v)}
                 >
-                  {label}
-                </PaddedSidebarLink>
-              );
-            })
+                  {showAllRecent ? t`Show less` : t`Show more`}
+                </Button>
+              )}
+            </>
           )}
-        </Box>
+        </CollapseSection>
+        {pastRows.length > 0 && (
+          <Box mt="sm">
+            <CollapseSection
+              header={<SidebarHeading>{t`Past chats`}</SidebarHeading>}
+              initialState="collapsed"
+              iconPosition="right"
+              iconSize={8}
+              role="section"
+              aria-label={t`Past chats`}
+            >
+              {pastRows.map(renderRow)}
+            </CollapseSection>
+          </Box>
+        )}
       </ErrorBoundary>
     </Box>
   );

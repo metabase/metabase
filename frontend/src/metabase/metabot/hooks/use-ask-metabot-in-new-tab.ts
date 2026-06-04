@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { push, replace } from "react-router-redux";
 
 import { useMetabotContext } from "metabase/metabot";
 import { useDispatch } from "metabase/redux";
@@ -15,9 +16,12 @@ export const useAskMetabotInNewTab = () => {
   const { getChatContext } = useMetabotContext();
 
   return useCallback(
-    async (prompt: string) => {
-      const agentId: MetabotAgentId = `chat_${uuid()}`;
-      dispatch(createAgent({ agentId, visible: true, inBar: true }));
+    async (prompt: string, options?: { navigate?: "push" | "replace" }) => {
+      const conversationId = uuid();
+      const agentId: MetabotAgentId = `chat_${conversationId}`;
+      dispatch(createAgent({ agentId, conversationId }));
+      const navigate = options?.navigate === "replace" ? replace : push;
+      dispatch(navigate(`/chat/${conversationId}`));
       const context = await getChatContext();
       await dispatch(
         submitInputAction({

@@ -11,6 +11,10 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
+import {
+  isArtifactDrag,
+  readArtifactDragData,
+} from "metabase/metabot/components/MetabotBar/artifactDragData";
 import { useSelector } from "metabase/redux";
 import {
   MetabotMentionExtension,
@@ -98,6 +102,8 @@ export const MetabotPromptInput = forwardRef<
         onChange(serializedRef.current);
       },
       editorProps: {
+        handleDrop: (view, event) =>
+          handleArtifactMentionDrop(view, event as DragEvent),
         handleDOMEvents: {
           copy: (view: EditorView, e: ClipboardEvent) => {
             e.preventDefault();
@@ -189,6 +195,28 @@ export const MetabotPromptInput = forwardRef<
       });
     }, [editor]);
 
+    // Cancel dragover for artifact drags so the browser actually fires `drop`
+    // (which ProseMirror routes to the handleDrop prop above). Done with a
+    // native listener because editorProps.handleDOMEvents doesn't reliably
+    // intercept the external drag.
+    useEffect(() => {
+      const dom = editor?.view.dom;
+      if (!dom) {
+        return;
+      }
+      const onDragOver = (e: DragEvent) => {
+        if (!isArtifactDrag(e.dataTransfer)) {
+          return;
+        }
+        e.preventDefault();
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = "copy";
+        }
+      };
+      dom.addEventListener("dragover", onDragOver);
+      return () => dom.removeEventListener("dragover", onDragOver);
+    }, [editor]);
+
     // Sync external value changes to editor
     useEffect(() => {
       if (value !== serializedRef.current) {
@@ -214,3 +242,37 @@ export const MetabotPromptInput = forwardRef<
 
 // @ts-expect-error - must set a displayName
 MetabotPromptInput.displayName = "MetabotPromptInput";
+
+// Artifacts dragged in from the Metabot popover arrive as a native drop carrying
+// our custom MIME payload — insert them as a smartLink mention of the card.
+export const handleArtifactMentionDrop = (
+  view: EditorView,
+  event: DragEvent,
+): boolean => {
+  const artifact = readArtifactDragData(event.dataTransfer);
+  if (artifact?.model !== "card") {
+    return false;
+  }
+
+  const coordsPos = view.posAtCoords({
+    left: event.clientX,
+    top: event.clientY,
+  })?.pos;
+  const pos = coordsPos ?? view.state.selection.from;
+
+  const { schema } = view.state;
+  const mention = schema.nodes.smartLink.create({
+    entityId: artifact.id,
+    model: "card",
+    label: null,
+  });
+
+  // insert the mention followed by a trailing space, matching how the
+  // @-suggestion command finishes a mention
+  const tr = view.state.tr.replaceWith(pos, pos, [mention, schema.text(" ")]);
+  tr.setSelection(TextSelection.create(tr.doc, pos + mention.nodeSize + 1));
+  view.dispatch(tr);
+
+  event.preventDefault();
+  return true;
+};

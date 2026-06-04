@@ -71,7 +71,6 @@ export const createConversation = (
     messages: [],
     queuedMessages: [],
     visible: false,
-    inBar: false,
     history: [],
     state: {},
     activeToolCalls: [],
@@ -181,6 +180,5 @@ export const getMetabotInitialState = (): MetabotState => {
       suggestedTransforms: [],
     },
     debugMode: false,
-    overlayAgentId: null,
   };
 };
