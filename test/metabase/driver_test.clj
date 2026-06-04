@@ -445,7 +445,7 @@
           (is (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
               (str driver/*driver* " must support :describe-is-nullable to support :actions/data-editing"))))))
 
-(deftest ^:parallel query-driver-success-metrics-test
+(deftest query-driver-success-metrics-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "the number of successful and failed queries should be tracked correctly"
       (let [success-query (assoc-in (mt/mbql-query venues) [:middleware :userland-query?] true)
@@ -464,7 +464,7 @@
           (is (= 3.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))
           (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "failure"}))))))))
 
-(deftest ^:parallel python-transform-drivers-multimethods-support
+(deftest python-transform-drivers-multimethods-support
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (let [driver driver/*driver*]
       (is (get-method driver/create-table! driver))
