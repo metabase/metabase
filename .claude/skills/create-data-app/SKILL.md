@@ -607,7 +607,17 @@ Set on `globalThis` by the host in production and by `src/dev-globals.tsx` in de
 | `CollectionBrowser` | Collection picker. |
 | `useQuestionQuery` | Hook that runs a saved question and returns its dataset (`{ data, isLoading, error, refetch }`). Use when you want to read raw query results (rows, columns, metadata) and render your own UI from them instead of dropping in a `StaticQuestion` / `InteractiveQuestion`. **Signature:** `useQuestionQuery(questionId, options?)` — the first arg is the bare numeric id, NOT an object. The optional second arg is `{ initialSqlParameters?, enabled? }`. Must be called from inside a component rendered under `MetabaseProvider`. |
 
-Network APIs (`fetch`, `XMLHttpRequest`, `WebSocket`, etc.) are blocked by the sandbox in production. Never make direct network requests from the bundle — let the SDK components do the talking.
+### Blocked APIs
+
+The Near Membrane sandbox throws at runtime on these globals. Use the endowed alternative instead:
+
+- **Network** (`fetch`, `XMLHttpRequest`, `WebSocket`) → the data hooks for reads, `useAction` for writes. No raw network from the bundle, ever.
+- **UI dialogs** (`alert`, `confirm`, `prompt`) → render a React modal in your own tree.
+- **Storage** (`localStorage`, `sessionStorage`, `indexedDB`, `document.cookie`) → treat the Data App as stateless across reloads; persist via a Metabase action.
+- **Window / history navigation** (`window.open`, `history.pushState`, `history.replaceState`) → `useDataAppNavigate()` for in-app, `<a target="_blank" rel="noopener">` for external.
+- **`navigator.*` device APIs** (`clipboard`, `geolocation`, etc.) → not available.
+
+**Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + SDK components + data hooks + `useAction` + DataAppRouter) covers every routine need; anything outside it is intentionally unreachable.
 
 ### When to use `useQuestionQuery` vs a `StaticQuestion` / `InteractiveQuestion`
 
