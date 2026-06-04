@@ -112,10 +112,10 @@ export const runDirtyQuestionQuery =
     return dispatch(runQuestionQuery({ shouldUpdateUrl }));
   };
 
-// Cancel deferred for any in-progress background stale refresh. Resolved when
+// AbortController for any in-progress background stale refresh. Aborted when
 // the user triggers a new explicit run so the stale refresh doesn't clobber
 // the running state.
-let _staleRefreshCancelDeferred: ReturnType<typeof defer> | null = null;
+let _staleRefreshAbortController: AbortController | null = null;
 
 /**
  * Queries the result for the currently active question or alternatively for the card question provided in `overrideWithQuestion`.
@@ -132,9 +132,9 @@ export const runQuestionQuery = ({
 } = {}) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     // Cancel any silent background stale refresh before showing the running overlay.
-    if (_staleRefreshCancelDeferred) {
-      _staleRefreshCancelDeferred.resolve();
-      _staleRefreshCancelDeferred = null;
+    if (_staleRefreshAbortController) {
+      _staleRefreshAbortController.abort();
+      _staleRefreshAbortController = null;
     }
     dispatch(loadStartUIControls());
 
@@ -267,25 +267,26 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
 // result.stale while the fresh query is in flight.
 const refreshStaleQueryResult =
   (question: Question) => async (dispatch: Dispatch) => {
-    _staleRefreshCancelDeferred?.resolve();
-    const cancelDeferred = defer();
-    _staleRefreshCancelDeferred = cancelDeferred;
+    _staleRefreshAbortController?.abort();
+    const controller = new AbortController();
+    _staleRefreshAbortController = controller;
 
     try {
       const freshResults = await apiRunQuestionQuery(question, {
-        cancelDeferred,
+        dispatch,
+        signal: controller.signal,
         ignoreCache: true,
         isDirty: false,
       });
-      if (_staleRefreshCancelDeferred === cancelDeferred) {
-        _staleRefreshCancelDeferred = null;
+      if (_staleRefreshAbortController === controller) {
+        _staleRefreshAbortController = null;
       }
       // Guard against infinite loop if the server still returns stale data.
       if (!freshResults[0]?.stale) {
         dispatch(queryCompleted(question, freshResults));
       }
     } catch (error) {
-      if (!(error as { isCancelled?: boolean }).isCancelled) {
+      if (!isAbortError(error)) {
         console.error("Background stale refresh failed:", error);
       }
     }
