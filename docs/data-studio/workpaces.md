@@ -83,15 +83,15 @@ The goal: a setup where you prompt an agent to create a semantic layer for you. 
 
 You'll need to have the following set up:
 
-- [Remote Sync](TODO) set up on your production Metabase.
+- [Remote Sync](../installation-and-operation/remote-sync.md) set up on your production Metabase.
 - Remote Sync set up on your Metabase pointing to the same repo.
 - Metabase CLI installed and logged into your development Metabase.
 - The `/metabase-cli` installed.
 - [Metabase skills](https://github.com/metabase/agent-skills) (you'll need the `metabase-cli` skill in particular).
 
-1. In your dev Metabase, [create a new branch](TODO link to remote sync docs).
+1. In your dev Metabase, [create a new branch](../installation-and-operation/remote-sync.md#creating-a-branch).
 
-1. In your dev instance, [create an API key](TODO Link to API key docs). Assign the key to the Admin group.
+1. In your dev instance, [create an API key](../people-and-groups/api-keys.md#create-an-api-key). Assign the key to the Admin group.
 
 2. Authenticate Metabase CLI ro your dev Metabase. In a terminal, run:
 
@@ -127,7 +127,7 @@ If you look at any questions built on top of one of these tables, it'll look lik
 
 9. Pull the changes to main into your production Metabase.
 
-10. If you created any transforms, you'll need to run those transforms in production to create the tables. The transforms in production will write to the tables they target (not to an isolated schema, since prod isn't---and shouldn't be---in a workspace). See [transforms](TODO Link)
+10. If you created any transforms, you'll need to run those transforms in production to create the tables. The transforms in production will write to the tables they target (not to an isolated schema, since prod isn't---and shouldn't be---in a workspace). See [transforms](./transforms/transforms-overview.md#run-a-transform).
 
 ## Cleaning up a workspace
 
