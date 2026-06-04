@@ -27,14 +27,15 @@
 
 (def ^:private ^:const complexity->char-type->min
   "Minimum counts of each class of character a password should have for a given password complexity level."
-  {:weak   {:total   6} ; total here effectively means the same thing as a minimum password length
-   :normal {:total   6
-            :digit   1}
-   :strong {:total   8
-            :lower   2
-            :upper   2
-            :digit   1
-            :special 1}})
+  {:weak          {:total 6} ; total here effectively means the same thing as a minimum password length
+   :normal        {:total 6
+                   :digit 1}
+   :strong        {:total 8
+                   :lower   2
+                   :upper   2
+                   :digit   1
+                   :special 1}
+   :strong-enough {:total 15}})
 
 (defn- password-has-char-counts?
   "Check that PASSWORD satisfies the minimum count requirements for each character class.
