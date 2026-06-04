@@ -10,7 +10,11 @@ import type {
 
 export type MetabotDataPart = Exclude<
   KnownDataPart,
-  { type: "state" } | { type: "conversation_title" }
+  | { type: "state" }
+  | { type: "conversation_title" }
+  // A control signal handled in the data-part dispatcher, not chart content to
+  // embed in a `data_part` message.
+  | { type: "convert_to_document" }
 >;
 
 export type MetabotDataPartMetadata = {
@@ -81,12 +85,24 @@ export type MetabotAgentTurnErroredMessage = {
   externalId?: string;
 };
 
+// A document built from the conversation (via `convert_conversation_to_doc`).
+// Rendered read-only inline in the chat. Session-only — not persisted as a chat
+// message, so it does not survive a conversation reload.
+export type MetabotAgentDocumentMessage = {
+  id: string;
+  role: "agent";
+  type: "document";
+  documentId: number;
+  externalId?: string;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentDataPartMessage
   | MetabotDebugToolCallMessage
   | MetabotAgentTurnAbortedMessage
-  | MetabotAgentTurnErroredMessage;
+  | MetabotAgentTurnErroredMessage
+  | MetabotAgentDocumentMessage;
 
 export type MetabotUserChatMessage = MetabotUserTextChatMessage;
 

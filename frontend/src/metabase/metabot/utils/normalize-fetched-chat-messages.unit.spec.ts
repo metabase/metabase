@@ -82,5 +82,23 @@ describe("normalizeFetchedChatMessages", () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({ type: "text", message: "hello" });
     });
+
+    it("drops persisted convert_to_document control-signal parts", () => {
+      const result = normalizeFetchedChatMessages([
+        agentText("a1", "hello", { finished: true }),
+        {
+          id: "a2",
+          role: "agent",
+          type: "data_part",
+          part: {
+            type: "convert_to_document",
+            version: 1,
+            value: { title: "Report" },
+          },
+        } as unknown as FetchedChatMessage,
+      ]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ type: "text", message: "hello" });
+    });
   });
 });

@@ -22,16 +22,23 @@
 (def automagic-dashboard-type "AI-SDK data type for automagic (X-ray) dashboards rendered inline." "automagic_dashboard")
 (def conversation-title-type "AI-SDK data type for the conversation's display title." "conversation_title")
 (def navigate-to-type "AI-SDK data type for navigating the client to a URL." "navigate_to")
+(def convert-to-document-type "AI-SDK data type signalling the client to turn the conversation into a document." "convert_to_document")
+
+(def ^:private non-persistable-data-types
+  "Data-part types that are transient control signals, not message content, so
+  they are never written to MetabotMessage.data. `state` is salvaged separately
+  into MetabotConversation.state; `convert_to_document` only tells the client to
+  build a document and would have no renderable message on reload."
+  #{state-type convert-to-document-type})
 
 (defn persistable-data-part?
-  "True if `part` should be written to MetabotMessage.data. `state` parts are
-  skipped because their value is salvaged separately into MetabotConversation.state;
-  duplicating the blob in every message would bloat storage. Non-data parts are
+  "True if `part` should be written to MetabotMessage.data. See
+  `non-persistable-data-types` for the parts skipped here. Non-data parts are
   always persistable here; the caller is responsible for filtering stream-level
   metadata (`:start`, `:usage`, `:finish`) separately."
   [part]
   (not (and (= :data (:type part))
-            (= state-type (:data-type part)))))
+            (contains? non-persistable-data-types (:data-type part)))))
 
 ;;; Query URL Encoding
 
@@ -158,6 +165,16 @@
    :data-type navigate-to-type
    :version 1
    :data {:url url}})
+
+(defn convert-to-document-part
+  "Create a CONVERT_TO_DOCUMENT data part for streaming. The client reacts by
+  building a document from the conversation and rendering it inline.
+  `value` is a map the client uses to name the document (e.g. {:title ...})."
+  [value]
+  {:type :data
+   :data-type convert-to-document-type
+   :version 1
+   :data value})
 
 ;;; Stream Processing Transducers
 

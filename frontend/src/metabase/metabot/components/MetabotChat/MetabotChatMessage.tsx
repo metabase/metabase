@@ -43,6 +43,7 @@ import type { IconName, MetabotFeedback } from "metabase-types/api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
+import { AgentDocumentMessage } from "./MetabotAgentDocumentMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotRevealBlock } from "./MetabotDotField/MetabotRevealBlock";
@@ -81,6 +82,7 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
     .with({ type: "tool_call" }, () => false)
     .with({ type: "turn_aborted" }, () => true)
     .with({ type: "turn_errored" }, () => true)
+    .with({ type: "document" }, () => true)
     .exhaustive();
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
@@ -263,6 +265,9 @@ export const AgentMessage = ({
     ))
     .with({ type: "turn_errored" }, (m) => (
       <AgentErroredTurnAlert message={m} debug={debug} />
+    ))
+    .with({ type: "document" }, (m) => (
+      <AgentDocumentMessage documentId={m.documentId} />
     ))
     .exhaustive();
 

@@ -13,6 +13,7 @@
    [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.clarification :as tools.clarification]
    [metabase.metabot.tools.construct :as tools.construct]
+   [metabase.metabot.tools.convert-document :as tools.convert-document]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
    [metabase.metabot.tools.custom-viz :as tools.custom-viz]
@@ -85,6 +86,8 @@
   slackbot-construct-notebook-query-tool]
  [tools.static-viz
   static-viz-tool]
+ [tools.convert-document
+  convert-conversation-to-doc-tool]
  [tools.create-alert
   create-alert-tool]
  [tools.create-dashboard-subscription
