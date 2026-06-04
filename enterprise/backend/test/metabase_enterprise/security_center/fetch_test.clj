@@ -27,7 +27,7 @@
 
 (deftest sync-advisories-inserts-new-test
   (mt/with-model-cleanup [:model/SecurityAdvisory]
-    (with-redefs [fetch/fetch-advisories-from-store (constantly [(make-advisory "SC-FETCH-001")])]
+    (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store (constantly [(make-advisory "SC-FETCH-001")])]
       (fetch/sync-advisories!)
       (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-001")]
         (is (some? row))
@@ -40,8 +40,8 @@
   (mt/with-temp [:model/SecurityAdvisory _existing
                  (make-advisory "SC-FETCH-002" :severity "low" :title "Old title" :match_status "active"
                                 :published_at #t "2026-03-24T00:00:00Z" :updated_at #t "2026-03-24T00:00:00Z")]
-    (with-redefs [fetch/fetch-advisories-from-store
-                  (constantly [(make-advisory "SC-FETCH-002" :title "New title" :severity "critical")])]
+    (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store
+                                (constantly [(make-advisory "SC-FETCH-002" :title "New title" :severity "critical")])]
       (fetch/sync-advisories!)
       (is (=? {:title        "New title"
                :severity     :critical
@@ -57,8 +57,8 @@
                                 :updated_at      #t "2026-03-24T00:00:00Z"
                                 :acknowledged_by user-id
                                 :acknowledged_at #t "2026-03-25T00:00:00Z")]
-    (with-redefs [fetch/fetch-advisories-from-store
-                  (constantly [(make-advisory "SC-FETCH-003" :title "Updated title")])]
+    (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store
+                                (constantly [(make-advisory "SC-FETCH-003" :title "Updated title")])]
       (fetch/sync-advisories!)
       (is (=? {:title           "Updated title"
                :acknowledged_by some?
@@ -108,8 +108,8 @@
 
 (deftest sync-advisories-stores-updated-at-test
   (mt/with-model-cleanup [:model/SecurityAdvisory]
-    (with-redefs [fetch/fetch-advisories-from-store
-                  (constantly [(make-advisory "SC-UPD-001" :updated_at #t "2026-04-01T12:00:00Z")])]
+    (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store
+                                (constantly [(make-advisory "SC-UPD-001" :updated_at #t "2026-04-01T12:00:00Z")])]
       (fetch/sync-advisories!)
       (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-001")]
         (is (some? (:updated_at row)))
@@ -119,8 +119,8 @@
   (testing "updated_at is refreshed when an existing advisory is re-synced"
     (mt/with-temp [:model/SecurityAdvisory _
                    (make-advisory "SC-UPD-003" :match_status "unknown" :published_at #t "2026-03-24T00:00:00Z" :updated_at #t "2026-03-24T00:00:00Z")]
-      (with-redefs [fetch/fetch-advisories-from-store
-                    (constantly [(make-advisory "SC-UPD-003" :updated_at #t "2026-04-02T08:00:00Z")])]
+      (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store
+                                  (constantly [(make-advisory "SC-UPD-003" :updated_at #t "2026-04-02T08:00:00Z")])]
         (fetch/sync-advisories!)
         (is (=? {:updated_at some?}
                 (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-003")))
@@ -164,15 +164,15 @@
 
 (deftest sync-advisories-handles-fetch-error-test
   (testing "network error doesn't throw"
-    (with-redefs [fetch/fetch-advisories-from-store (fn [] (throw (Exception. "connection refused")))]
+    (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store (fn [] (throw (Exception. "connection refused")))]
       (is (nil? (fetch/sync-advisories!))))))
 
 (deftest sync-advisories-handles-upsert-error-test
   (testing "error on one advisory doesn't block others"
     (mt/with-model-cleanup [:model/SecurityAdvisory]
-      (with-redefs [fetch/fetch-advisories-from-store
-                    (constantly [(make-advisory "SC-FETCH-BAD" :severity "not-a-valid-severity!!!")
-                                 (make-advisory "SC-FETCH-GOOD")])]
+      (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store
+                                  (constantly [(make-advisory "SC-FETCH-BAD" :severity "not-a-valid-severity!!!")
+                                               (make-advisory "SC-FETCH-GOOD")])]
         (fetch/sync-advisories!)
         (testing "good advisory was still inserted"
           (is (some? (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-GOOD"))))))))

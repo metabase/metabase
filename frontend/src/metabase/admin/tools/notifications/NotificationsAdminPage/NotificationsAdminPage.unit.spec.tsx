@@ -74,7 +74,7 @@ const setup = ({
   cardDelay,
   detailDelay,
 }: SetupOpts = {}) => {
-  fetchMock.get("path:/api/ee/notifications", (call) => {
+  fetchMock.get("path:/api/notification/admin", (call) => {
     const params = new URL(call.url).searchParams;
     if (
       params.get("limit") === "1" &&
@@ -119,7 +119,7 @@ const setup = ({
 
 const getListCalls = () =>
   fetchMock.callHistory
-    .calls("path:/api/ee/notifications")
+    .calls("path:/api/notification/admin")
     .filter(
       (call) =>
         new URL(call.url).searchParams.get("limit") === String(PAGE_SIZE),
@@ -127,7 +127,7 @@ const getListCalls = () =>
 
 const getBulkPosts = async () =>
   (await findRequests("POST")).filter((request) =>
-    request.url.includes("/api/ee/notifications/bulk"),
+    request.url.includes("/api/notification/admin/bulk"),
   );
 
 describe("NotificationsAdminPage", () => {

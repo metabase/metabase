@@ -31,12 +31,12 @@
                                              401 "Could not establish a connection to Metabase Cloud."
                                              400 "Could not purchase this add-on."}]
           (testing (format "passes through HTTP status %d from Store API" status-code)
-            (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
+            (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
               (is (=? error-message
                       (mt/user-http-request :crowberto :post status-code "ee/cloud-add-ons/metabase-ai"
                                             {:terms_of_service true}))))))
         (testing "responds with HTTP status 500 for other errors from Store API"
-          (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {})))]
+          (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {})))]
             (is (=? "Unexpected error"
                     (mt/user-http-request :crowberto :post 500 "ee/cloud-add-ons/metabase-ai"
                                           {:terms_of_service true})))))
@@ -100,11 +100,11 @@
                                              401 "Could not establish a connection to Metabase Cloud."
                                              400 "Could not remove this add-on."}]
           (testing (format "passes through HTTP status %d from Store API" status-code)
-            (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
+            (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
               (is (=? error-message
                       (mt/user-http-request :crowberto :delete status-code "ee/cloud-add-ons/metabase-ai-managed"))))))
         (testing "responds with HTTP status 500 for other errors from Store API"
-          (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {})))]
+          (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {})))]
             (is (=? "Unexpected error"
                     (mt/user-http-request :crowberto :delete 500 "ee/cloud-add-ons/metabase-ai-managed")))))
         (testing "succeeds"
