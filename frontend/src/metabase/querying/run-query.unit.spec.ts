@@ -25,7 +25,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { runQuestionQuery } from "./services";
+import { runQuestionQuery } from "./run-query";
 
 const MOCK_QUERY = createMockStructuredDatasetQuery({
   database: SAMPLE_DB_ID,
@@ -103,7 +103,7 @@ async function setupRunQuestionQuery(question: Question) {
   return { result, mockResult };
 }
 
-describe("metabase/services > runQuestionQuery", () => {
+describe("metabase/querying/run-query > runQuestionQuery", () => {
   describe("saved questions", () => {
     it("should use the card query endpoint", async () => {
       const question = createMockSavedQuestion();
@@ -212,6 +212,25 @@ describe("metabase/services > runQuestionQuery", () => {
       const { result, mockResult } = await setupRunQuestionQuery(question);
       expect(result).toEqual([mockResult]);
     });
+
+    it("runs `internal` queries (e.g. audit pages) without throwing in the pivot check", async () => {
+      // `internal` queries aren't supported by Lib, so `question.database()`
+      // throws for them. The pivot-endpoint check must not call it for a
+      // non-pivot card, otherwise the query never reaches `/api/dataset` (the
+      // audit "Erroring Questions" table renders nothing).
+      const question = createMockAdHocQuestion({
+        dataset_query: {
+          type: "internal",
+          fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
+          args: [null, null, null, "last_run_at", "desc"],
+        } as unknown as UnsavedCard["dataset_query"],
+      });
+
+      const { result, mockResult } = await setupRunQuestionQuery(question);
+
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
+      expect(result).toEqual([mockResult]);
+    });
   });
 
   describe("error handling", () => {
@@ -298,6 +317,58 @@ describe("metabase/services > runQuestionQuery", () => {
       controller.abort();
 
       await expect(runPromise).rejects.toMatchObject({ name: "AbortError" });
+    });
+
+    it("rejects with AbortError when the signal aborts (saved question)", async () => {
+      // The saved-card path dispatches an RTK Query endpoint; aborting the
+      // signal must abort the underlying `/api/card/:id/query` request and
+      // reject with the standard `DOMException` AbortError that `queryErrored`
+      // and other callers identify via `isAbortError`.
+      const question = createMockSavedQuestion();
+      fetchMock.post(
+        getQueryEndpointPath(question),
+        new Promise(() => undefined),
+      );
+
+      const controller = new AbortController();
+      const runPromise = runQuestionQuery(question, {
+        dispatch: getRtkStore().dispatch,
+        signal: controller.signal,
+      });
+
+      controller.abort();
+
+      await expect(runPromise).rejects.toMatchObject({ name: "AbortError" });
+    });
+
+    it("isolates concurrent identical saved-card queries so cancelling one doesn't abort the other", async () => {
+      // Two callers running the same saved card must not co-subscribe to a
+      // single RTK Query request: otherwise one caller aborting (e.g. the SDK
+      // cancelling the previous run on every re-run) would abort the other's
+      // query too, hanging/blanking the result. A unique `_refetchDeps` per
+      // call keeps the cache keys — and therefore the requests — distinct.
+      const question = createMockSavedQuestion();
+      const path = getQueryEndpointPath(question);
+      fetchMock.post(path, createMockDataset(), { delay: 50 });
+      const { dispatch } = getRtkStore();
+
+      const abortController = new AbortController();
+      const cancelledRun = runQuestionQuery(question, {
+        dispatch,
+        signal: abortController.signal,
+      }).catch((error) => error);
+      const liveRun = runQuestionQuery(question, {
+        dispatch,
+        signal: new AbortController().signal,
+      });
+
+      abortController.abort();
+
+      await expect(liveRun).resolves.toHaveLength(1);
+      await cancelledRun;
+
+      // Independent cache keys ⇒ two real requests, not one shared (deduped) one.
+      expect(fetchMock.callHistory.calls(path)).toHaveLength(2);
     });
 
     it("normalizes plain-text 4xx error bodies into a structured error result (EMB-1659)", async () => {

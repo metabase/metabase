@@ -34,7 +34,7 @@
 
 (deftest sync-data-analyst-group-for-oss!-ee-noop-test
   (testing "When we canonically have the feature, sync-data-analyst-group-for-oss! does nothing"
-    (with-redefs [token-check/canonically-has-feature? (constantly true)]
+    (mt/with-dynamic-fn-redefs [token-check/canonically-has-feature? (constantly true)]
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {user-id :id} {}]
           (perms/add-user-to-group! user-id data-analyst-group-id)
@@ -49,7 +49,7 @@
 
 (deftest sync-data-analyst-group-for-oss!-converts-with-members-test
   (testing "When canonically lacking the feature, sync-data-analyst-group-for-oss! converts the Data Analysts group when it has members"
-    (with-redefs [token-check/canonically-has-feature? (constantly false)]
+    (mt/with-dynamic-fn-redefs [token-check/canonically-has-feature? (constantly false)]
       (with-reset-data-analyst-group!
         (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           (mt/with-temp [:model/User {user-id :id} {}]
@@ -72,7 +72,7 @@
 
 (deftest sync-data-analyst-group-for-oss!-preserves-name-test
   (testing "When the magic group has a non-default name (e.g. from a migration conflict), the new magic group keeps that name"
-    (with-redefs [token-check/canonically-has-feature? (constantly false)]
+    (mt/with-dynamic-fn-redefs [token-check/canonically-has-feature? (constantly false)]
       (with-reset-data-analyst-group!
         (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           ;; Simulate the migration conflict scenario: rename the magic group to the fallback name
@@ -92,7 +92,7 @@
 
 (deftest sync-data-analyst-group-for-oss!-idempotent-empty-test
   (testing "Sync is idempotent when magic group is empty (no members to convert)"
-    (with-redefs [token-check/canonically-has-feature? (constantly false)]
+    (mt/with-dynamic-fn-redefs [token-check/canonically-has-feature? (constantly false)]
       (with-reset-data-analyst-group!
         (let [group-count-before (t2/count :model/PermissionsGroup)
               data-analyst-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]

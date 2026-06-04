@@ -90,7 +90,7 @@
                                         db-id))]
         (is (not (db-has-sync-job-trigger? audit/audit-db-id)))))
     (testing "Audit DB doesn't get re-installed unless the engine changes"
-      (with-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
+      (mt/with-dynamic-fn-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
         (t2/update! :model/Database :is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
@@ -133,7 +133,7 @@
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync scheduled after installation")
-      (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
+      (mt/with-dynamic-fn-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot sync Database: It is the audit db."
@@ -167,7 +167,7 @@
     (t2/delete! :model/Database :is_audit true)
     (testing "If audit content loading throws an exception, the checksum should not be stored"
       (audit/last-analytics-checksum! 0)
-      (with-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
+      (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
         (is (thrown-with-msg? Exception
                               #"Audit loading failed"
                               (ee-audit/ensure-audit-db-installed!)))
@@ -201,9 +201,9 @@
           (.putNextEntry out (JarEntry. (str resource "/" rel)))
           (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
           (.closeEntry out)))
-      (with-redefs [io/resource (fn [path]
-                                  (when (= path resource)
-                                    jar-url))]
+      (mt/with-dynamic-fn-redefs [io/resource (fn [path]
+                                                (when (= path resource)
+                                                  jar-url))]
         (is (= expected (#'ee-audit/views-checksum))))
       (finally
         (Files/deleteIfExists jar-path)))))
@@ -226,9 +226,9 @@
           [jar-a url-a] (make-jar [["a.sql" "select 1;"]])
           [jar-b url-b] (make-jar [["b.sql" "select 1;"]])]
       (try
-        (let [checksum-a (with-redefs [io/resource (constantly url-a)]
+        (let [checksum-a (mt/with-dynamic-fn-redefs [io/resource (constantly url-a)]
                            (#'ee-audit/views-checksum))
-              checksum-b (with-redefs [io/resource (constantly url-b)]
+              checksum-b (mt/with-dynamic-fn-redefs [io/resource (constantly url-b)]
                            (#'ee-audit/views-checksum))]
           (is (not= checksum-a checksum-b)))
         (finally
@@ -239,9 +239,9 @@
   (mt/with-temp [:model/Database audit-db {:engine "h2" :is_audit true}]
     (let [checksum 12345]
       (ee.audit.settings/last-analytics-views-checksum! 0)
-      (with-redefs [ee-audit/views-checksum (constantly checksum)
-                    sync/sync-database! (fn [& _]
-                                          (throw (Exception. "sync failed")))]
+      (mt/with-dynamic-fn-redefs [ee-audit/views-checksum (constantly checksum)
+                                  sync/sync-database! (fn [& _]
+                                                        (throw (Exception. "sync failed")))]
         (is (nil? (#'ee-audit/maybe-sync-audit-db! audit-db false)))
         (is (= 0 (ee.audit.settings/last-analytics-views-checksum)))))))
 
