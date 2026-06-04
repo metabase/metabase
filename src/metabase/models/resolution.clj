@@ -111,6 +111,7 @@
     :model/Secret                            metabase.secrets.models.secret
     :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
+    :model/SemanticLayerIndex                metabase.semantic-layer-search.models.semantic-layer-index
     :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
