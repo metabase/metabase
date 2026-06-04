@@ -1,0 +1,13 @@
+.copyButton {
+  position: relative;
+  top: 2px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.removeLink {
+  white-space: nowrap;
+}

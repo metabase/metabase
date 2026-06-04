@@ -42,7 +42,6 @@ export const LeafletChoropleth = ({
   onRenderError = () => {},
 }: LeafletChoroplethProps) => (
   <CardRenderer
-    card={{ display: "map" }}
     series={series}
     className={CS.spread}
     renderer={(element: HTMLElement) => {

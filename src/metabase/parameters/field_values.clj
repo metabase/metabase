@@ -101,20 +101,22 @@
 
 (defn- fetch-advanced-field-values
   [field constraints]
-  (if (seq constraints)
-    (do
-      (classloader/require 'metabase.parameters.chain-filter)
-      (let [{:keys [values has_more_values]} ((resolve 'metabase.parameters.chain-filter/unremapped-chain-filter)
-                                              (:id field) constraints {})
-            ;; we have a hard limit for how many values we want to store in FieldValues,
-            ;; let's make sure we respect that limit here.
-            ;; For a more detailed docs on this limit check out [[field-values/distinct-values]]
-            limited-values                   (field-values/take-by-length field-values/*total-max-length* values)]
-        {:values          limited-values
-         :has_more_values (or (> (count values)
-                                 (count limited-values))
-                              has_more_values)}))
-    (field-values/distinct-values field)))
+  (let [{:keys [values has_more_values]}
+        (if (seq constraints)
+          (do
+            (classloader/require 'metabase.parameters.chain-filter)
+            ((resolve 'metabase.parameters.chain-filter/unremapped-chain-filter)
+             (:id field) constraints {}))
+          ;; No constraints: pull the raw distinct values. `distinct-values` row-caps at
+          ;; `*distinct-limit*`; we treat hitting that as `has_more_values`.
+          (let [rows (-> (field-values/distinct-values field) :values)]
+            {:values          rows
+             :has_more_values (= (count rows) field-values/*distinct-limit*)}))
+        ;; Apply the char-length cap and update `has_more_values` if it fires.
+        limited-values (field-values/take-by-length field-values/*total-max-length* values)]
+    {:values          limited-values
+     :has_more_values (or (> (count values) (count limited-values))
+                          has_more_values)}))
 
 (defn prepare-advanced-field-values
   "Fetch and construct the FieldValues for `field` with type `fv-type`. This does not do any insertion.

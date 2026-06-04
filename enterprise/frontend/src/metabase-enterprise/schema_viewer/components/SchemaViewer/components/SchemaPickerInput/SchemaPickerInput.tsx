@@ -52,6 +52,7 @@ export function SchemaPickerInput({
       opened={opened}
       onClose={() => setOpened(false)}
       models={["schema"]}
+      includeHiddenSchemas
       onChange={handleChange}
       menuProps={{
         // This allows to toggle menu by clicking the trigger button.
