@@ -8,7 +8,6 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { useHasTokenFeature } from "metabase/common/hooks";
 import * as Urls from "metabase/urls";
 
 type ToolsAppProps = {
@@ -17,8 +16,6 @@ type ToolsAppProps = {
 };
 
 export function ToolsApp({ location, children }: ToolsAppProps) {
-  const hasAuditApp = useHasTokenFeature("audit_app");
-
   return (
     <AdminSettingsLayout
       maw="100rem"
@@ -61,14 +58,12 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
             icon="database"
             location={location}
           />
-          {hasAuditApp && (
-            <ToolsNavItem
-              label={t`Alerts management`}
-              path={Urls.adminToolsNotifications()}
-              icon="bell"
-              location={location}
-            />
-          )}
+          <ToolsNavItem
+            label={t`Alerts management`}
+            path={Urls.adminToolsNotifications()}
+            icon="bell"
+            location={location}
+          />
         </AdminNavWrapper>
       }
     >
