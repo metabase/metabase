@@ -32,6 +32,7 @@
   Prototype limitations: link/iframe/placeholder virtual cards are skipped; a card taller than a
   full page is scaled down to fit."
   (:require
+   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
@@ -43,21 +44,27 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (com.google.common.net InetAddresses)
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock
-                             HardLineBreak Heading IndentedCodeBlock Link MailLink OrderedList
+                             HardLineBreak Heading Image IndentedCodeBlock Link MailLink OrderedList
                              Paragraph SoftLineBreak StrongEmphasis Text ThematicBreak)
    (com.vladsch.flexmark.ext.autolink AutolinkExtension)
    (com.vladsch.flexmark.parser Parser)
    (com.vladsch.flexmark.util.ast Node)
    (com.vladsch.flexmark.util.data MutableDataSet)
    (java.awt Color)
-   (java.io ByteArrayOutputStream)
+   (java.awt.image BufferedImage)
+   (java.io ByteArrayInputStream ByteArrayOutputStream InputStream)
+   (java.net Inet6Address InetAddress URL)
+   (javax.imageio ImageIO ImageReader)
    (org.apache.fontbox.ttf CmapLookup TrueTypeFont TTFParser)
+   (org.apache.http.conn DnsResolver)
+   (org.apache.http.impl.conn SystemDefaultDnsResolver)
    (org.apache.pdfbox.io RandomAccessReadBuffer)
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
    (org.apache.pdfbox.pdmodel.common PDRectangle)
    (org.apache.pdfbox.pdmodel.font PDFont PDType0Font)
-   (org.apache.pdfbox.pdmodel.graphics.image PDImageXObject)))
+   (org.apache.pdfbox.pdmodel.graphics.image LosslessFactory PDImageXObject)))
 
 (set! *warn-on-reflection* true)
 
@@ -77,6 +84,10 @@
 (def ^:private chart-title-pt 11.0)
 (def ^:private chart-desc-pt 9.0)
 (def ^:private line-height-factor 1.3)
+(def ^:private ruby-scale
+  "Furigana (ruby) reading font size as a fraction of the base text size; the reading is drawn
+  centered above the base, e.g. {kanji|reading}."
+  0.55)
 (def ^:private header-pad-pt 6.0)
 
 (def ^:private dpi
@@ -363,6 +374,124 @@
   (draw-text-block! cs face font-pt nil x top-y cell-w cell-h text))
 
 ;; --------------------------------------------------------------------------------------------
+;; Markdown image fetching (SSRF-hardened). Markdown text cards can reference remote images, which
+;; means fetching user-provided URLs server-side -- the classic SSRF risk. Defenses:
+;;  - HTTPS only; reject IP-literal hosts and localhost/metadata/internal hostnames.
+;;  - Validate every *resolved* IP is a public unicast address via a custom DnsResolver -- this
+;;    runs inside the connection the client actually opens, closing the DNS-rebinding TOCTOU gap.
+;;    It rejects loopback, link-local (incl. cloud metadata 169.254.169.254), site-local (RFC1918),
+;;    any-local, multicast, IPv6 ULA (fc00::/7), and IPv4 CGNAT (100.64/10).
+;;  - No redirects (a 3xx would be a bypass vector; here it just fails -> link fallback).
+;;  - No cookies/credentials (a fresh clj-http GET carries no Metabase session).
+;;  - Cap the download at 20 MB; only raster image content-types; check dimensions before decoding
+;;    (decompression-bomb guard). Any failure returns nil and the caller renders a Markdown link.
+;; --------------------------------------------------------------------------------------------
+
+(def ^:private image-fetch-timeout-ms 8000)
+(def ^:private image-max-bytes (* 20 1024 1024))
+(def ^:private image-max-megapixels 24)
+(def ^:private allowed-image-content-types #{"image/png" "image/jpeg" "image/gif"})
+(def ^:private blocked-image-hosts #{"localhost" "metadata" "metadata.google.internal"})
+(def ^:private blocked-image-host-suffixes [".localhost" ".local" ".internal" ".lan" ".home.arpa"])
+
+(defn- public-address?
+  "True only for globally-routable unicast addresses."
+  [^InetAddress addr]
+  (let [b (.getAddress addr)]
+    (not (or (.isLoopbackAddress addr)
+             (.isLinkLocalAddress addr)
+             (.isSiteLocalAddress addr)
+             (.isAnyLocalAddress addr)
+             (.isMulticastAddress addr)
+             (and (instance? Inet6Address addr)              ; IPv6 unique-local fc00::/7
+                  (= 0xfc (bit-and (aget b 0) 0xfe)))
+             (and (= 4 (alength b))                          ; IPv4 CGNAT 100.64.0.0/10
+                  (= 100 (bit-and (aget b 0) 0xff))
+                  (<= 64 (bit-and (aget b 1) 0xff) 127))))))
+
+(def ^DnsResolver ^:private ssrf-safe-dns-resolver
+  (let [system (SystemDefaultDnsResolver.)]
+    (reify DnsResolver
+      (^"[Ljava.net.InetAddress;" resolve [_ ^String host]
+        (let [addrs (.resolve system host)]
+          (if (every? public-address? addrs)
+            addrs
+            (throw (ex-info "Refusing to fetch from a non-public address" {:ssrf true}))))))))
+
+(defn- safe-image-url?
+  "HTTPS scheme, no userinfo, and a real DNS hostname (not an IP literal, not
+  localhost/metadata/internal)."
+  [^String url]
+  (try
+    (let [u    (URL. url)
+          host (some-> (.getHost u) str/lower-case (str/replace #"^\[|\]$" ""))]
+      (and (= "https" (str/lower-case (str (.getProtocol u))))
+           (str/blank? (str (.getUserInfo u)))
+           (not (str/blank? host))
+           (boolean (re-find #"[a-z]" host))    ; a real hostname has a letter; blocks decimal/octal IP forms
+           (not (InetAddresses/isInetAddress host))
+           (not (contains? blocked-image-hosts host))
+           (not (some #(str/ends-with? host %) blocked-image-host-suffixes))))
+    (catch Throwable _ false)))
+
+(defn- read-bounded
+  "Read up to `max` bytes from `in`; returns the byte[] or nil if the stream exceeds `max`."
+  ^bytes [^InputStream in max]
+  (let [out (ByteArrayOutputStream.)
+        buf (byte-array 8192)]
+    (loop [total 0]
+      (let [n (.read in buf)]
+        (cond
+          (neg? n)            (.toByteArray out)
+          (> (+ total n) max) nil
+          :else               (do (.write out buf 0 n) (recur (+ total n))))))))
+
+(defn- fetch-image-bytes
+  "SSRF-hardened GET of `url`. Returns image bytes with an allowed raster content-type, or nil."
+  ^bytes [url]
+  (when (safe-image-url? url)
+    (try
+      (let [resp  (http/get url {:as                 :stream
+                                 :redirect-strategy  :none
+                                 :socket-timeout     image-fetch-timeout-ms
+                                 :connection-timeout image-fetch-timeout-ms
+                                 :throw-exceptions   false
+                                 :dns-resolver       ssrf-safe-dns-resolver})
+            ctype (some-> (get-in resp [:headers :content-type])
+                          (str/split #";") first str/trim str/lower-case)
+            ^InputStream body (:body resp)]
+        (try
+          (when (and (= 200 (:status resp)) (contains? allowed-image-content-types ctype))
+            (read-bounded body image-max-bytes))
+          (finally (some-> body .close))))
+      (catch Throwable _ nil))))
+
+(defn- decode-image
+  "Decode `bytes` into a `PDImageXObject` embedded in `doc`, rejecting images over the megapixel cap
+  (decompression-bomb guard) by reading dimensions before the full decode. Returns nil on failure."
+  [^PDDocument doc ^bytes bytes]
+  (try
+    (with-open [iis (ImageIO/createImageInputStream (ByteArrayInputStream. bytes))]
+      (let [readers (ImageIO/getImageReaders iis)]
+        (when (.hasNext readers)
+          (let [^ImageReader rdr (.next readers)]
+            (try
+              (.setInput rdr iis)
+              (let [w (.getWidth rdr 0), h (.getHeight rdr 0)]
+                (when (and (pos? w) (pos? h)
+                           (<= (* (long w) (long h)) (* image-max-megapixels 1000000)))
+                  (let [^BufferedImage bi (.read rdr 0)]
+                    (LosslessFactory/createFromImage doc bi))))
+              (finally (.dispose rdr)))))))
+    (catch Throwable _ nil)))
+
+(defn- fetch-image!
+  "Fetch + decode a remote image URL into a `PDImageXObject`, or nil if anything fails."
+  [^PDDocument doc url]
+  (when-let [bytes (fetch-image-bytes url)]
+    (decode-image doc bytes)))
+
+;; --------------------------------------------------------------------------------------------
 ;; Markdown -> styled runs (text cards). We parse with flexmark (the same library the email
 ;; pipeline uses) but walk the AST ourselves, emitting block + inline-run structure that maps to
 ;; PDFBox fonts/colors -- since PDFBox has no HTML engine, the email's HTML output is no use here.
@@ -383,27 +512,68 @@
   [s]
   (str/replace (str s) #"\\(\p{Punct})" "$1"))
 
+(declare inline-runs)
+
+(defn- parse-ruby
+  "Split plain text into runs, turning `{base|reading}` furigana shorthand into ruby runs
+  (`{:ruby? true :base … :reading …}`) and leaving the rest as ordinary text runs."
+  [text style href]
+  (let [s (str text)
+        m (re-matcher #"\{([^{}|]+)\|([^{}|]+)\}" s)]
+    (loop [last 0, out []]
+      (if (.find m)
+        (recur (.end m)
+               (cond-> out
+                 (< last (.start m)) (conj (assoc style :text (subs s last (.start m)) :href href))
+                 true                (conj (assoc style :ruby? true :base (.group m 1)
+                                                  :reading (.group m 2) :href href))))
+        (cond-> out
+          (< last (count s)) (conj (assoc style :text (subs s last) :href href)))))))
+
+(defn- inline-node->runs
+  "Convert a single inline node into styled runs. Images nested in inline content degrade to their
+  alt text; top-level paragraph images are pulled out as `:image` blocks (see `paragraph->blocks`)."
+  [^Node c style href]
+  (condp instance? c
+    Text           (parse-ruby (md-unescape (.getChars c)) style href)
+    StrongEmphasis (inline-runs c (assoc style :bold? true) href)
+    Emphasis       (inline-runs c (assoc style :italic? true) href)
+    Code           [(assoc style :code? true :text (str (.getText ^Code c)) :href href)]
+    Link           (inline-runs c style (str (.getUrl ^Link c)))
+    AutoLink       (let [u (str (.getText ^AutoLink c))] [(assoc style :text u :href u)])
+    MailLink       (let [u (str (.getText ^MailLink c))] [(assoc style :text u :href (str "mailto:" u))])
+    Image          (let [alt (str (.getText ^Image c))]
+                     [(assoc style :text (if (str/blank? alt) "[image]" alt)
+                             :href (str (.getUrl ^Image c)))])
+    SoftLineBreak  [{:text " " :space? true}]
+    HardLineBreak  [{:break? true}]
+    (if (.getFirstChild c)
+      (inline-runs c style href)
+      (parse-ruby (md-unescape (.getChars c)) style href))))
+
 (defn- inline-runs
-  "Flatten a block node's inline children into styled runs: each is `{:text :bold? :italic?
-  :code? :href}`, plus `{:break? true}` for a hard line break."
+  "Flatten a block node's inline children into styled runs: each is `{:text :bold? :italic? :code?
+  :href}`, plus `{:break? true}` for a hard line break."
   ([^Node node] (inline-runs node {} nil))
   ([^Node node style href]
-   (vec (mapcat
-         (fn [^Node c]
-           (condp instance? c
-             Text           [(assoc style :text (md-unescape (.getChars c)) :href href)]
-             StrongEmphasis (inline-runs c (assoc style :bold? true) href)
-             Emphasis       (inline-runs c (assoc style :italic? true) href)
-             Code           [(assoc style :code? true :text (str (.getText ^Code c)) :href href)]
-             Link           (inline-runs c style (str (.getUrl ^Link c)))
-             AutoLink       (let [u (str (.getText ^AutoLink c))] [(assoc style :text u :href u)])
-             MailLink       (let [u (str (.getText ^MailLink c))] [(assoc style :text u :href (str "mailto:" u))])
-             SoftLineBreak  [{:text " " :space? true}]
-             HardLineBreak  [{:break? true}]
-             (if (.getFirstChild c)
-               (inline-runs c style href)
-               [(assoc style :text (md-unescape (.getChars c)) :href href)])))
-         (node-children node)))))
+   (vec (mapcat #(inline-node->runs % style href) (node-children node)))))
+
+(defn- paragraph->blocks
+  "A paragraph normally becomes one `:paragraph` block, but top-level images are pulled out as
+  standalone `:image` blocks, interleaved with the surrounding text."
+  [^Node node]
+  (loop [children (node-children node), runs [], out []]
+    (if (empty? children)
+      (cond-> out (seq runs) (conj {:kind :paragraph :runs runs}))
+      (let [^Node c (first children)]
+        (if (instance? Image c)
+          (recur (rest children) []
+                 (cond-> out
+                   (seq runs) (conj {:kind :paragraph :runs runs})
+                   true       (conj {:kind :image
+                                     :src  (str (.getUrl ^Image c))
+                                     :alt  (str (.getText ^Image c))})))
+          (recur (rest children) (into runs (inline-node->runs c {} nil)) out))))))
 
 (declare block->blocks)
 
@@ -426,7 +596,7 @@
   [^Node node depth]
   (condp instance? node
     Heading           [{:kind :heading :level (.getLevel ^Heading node) :runs (inline-runs node)}]
-    Paragraph         [{:kind :paragraph :runs (inline-runs node)}]
+    Paragraph         (paragraph->blocks node)
     BulletList        (list->blocks node depth false)
     OrderedList       (list->blocks node depth true)
     FencedCodeBlock   [{:kind :code-block :text (str (.getContentChars ^FencedCodeBlock node))}]
@@ -459,12 +629,21 @@
   (loop [runs runs, pending false, out []]
     (if (empty? runs)
       out
-      (let [r (first runs)]
-        (if (:break? r)
+      (let [r     (first runs)
+            style (cond-> (dissoc r :text :base :reading :ruby? :space? :break? :href)
+                    (:href r) (assoc :link? true))]
+        (cond
+          (:break? r)
           (recur (rest runs) false (conj out {:break? true}))
-          (let [style (dissoc r :text :space? :break? :href)
-                style (cond-> style (:href r) (assoc :link? true))
-                [out2 pend2] (tokenize-units (str (:text r "")) {:style style} pending out)]
+
+          ;; a furigana group is one atomic break-unit (never split between base and reading)
+          (:ruby? r)
+          (recur (rest runs) false
+                 (conj out {:ruby? true :base (:base r) :reading (:reading r)
+                            :style style :space-before? pending}))
+
+          :else
+          (let [[out2 pend2] (tokenize-units (str (:text r "")) {:style style} pending out)]
             (recur (rest runs) pend2 out2)))))))
 
 (defn- words->lines
@@ -475,8 +654,31 @@
     (if (empty? ws)
       (if (seq line) (conj lines line) lines)
       (let [w (first ws)]
-        (if (:break? w)
+        (cond
+          (:break? w)
           (recur (rest ws) [] 0.0 (conj lines line))
+
+          ;; furigana group: base text with a smaller reading centered above; width is the wider of
+          ;; the two, and the item is atomic (the reading must not wrap away from its base).
+          (:ruby? w)
+          (let [style      (:style w)
+                font       (run-font (cond-> style heading? (assoc :bold? true)))
+                ruby-pt    (* base-pt ruby-scale)
+                bw         (text-width font base-pt (:base w))
+                rw         (text-width font ruby-pt (:reading w))
+                ww         (max bw rw)
+                sp         (text-width font base-pt " ")
+                color      (cond (:link? style) link-color (:code? style) code-color :else Color/BLACK)
+                add-space? (boolean (and (seq line) (:space-before? w)))
+                advance    (+ (if add-space? sp 0.0) ww)
+                item       {:ruby? true :base (:base w) :reading (:reading w) :font font
+                            :pt base-pt :ruby-pt ruby-pt :base-ww bw :reading-ww rw :color color
+                            :ww ww :sp sp :space-before? add-space?}]
+            (if (and (seq line) (> (+ line-w advance) max-w))
+              (recur ws [] 0.0 (conj lines line))
+              (recur (rest ws) (conj line item) (+ line-w advance) lines)))
+
+          :else
           (let [style      (:style w)
                 font       (run-font (cond-> style heading? (assoc :bold? true)))
                 txt        (:text w)
@@ -498,11 +700,18 @@
               :else
               (recur (rest ws) (conj line item) (+ line-w advance) lines))))))))
 
+(defn- line-extra
+  "Extra vertical space a line needs above its base text -- the furigana band, if it has any ruby."
+  [line base-pt]
+  (if (some :ruby? line) (* base-pt ruby-scale 1.2) 0.0))
+
 (defn- block-height
   "Vertical points a block consumes when laid out at `scale` (mirrors `draw-block!`)."
   [block cell-w scale]
   (case (:kind block)
     :hr (* 10.0 scale)
+    ;; we don't know an image's aspect without fetching; estimate ~0.6x width for fit-scale
+    :image (* 0.6 cell-w)
     :code-block (let [pt (* 9.0 scale)
                       lh (* pt line-height-factor)]
                   (+ (* (count (str/split-lines (str (:text block)))) lh) 2.0))
@@ -511,8 +720,9 @@
           marker   (:marker block)
           marker-w (if marker (text-width (regular-font) base-pt marker) 0.0)
           content-w (- cell-w (* (long (or (:indent block) 0)) 14.0) marker-w)
-          lines    (words->lines (runs->words (:runs block)) base-pt heading? content-w)]
-      (* (count lines) (* base-pt line-height-factor)))))
+          lines    (words->lines (runs->words (:runs block)) base-pt heading? content-w)
+          lh       (* base-pt line-height-factor)]
+      (reduce (fn [acc line] (+ acc lh (line-extra line base-pt))) 0.0 lines))))
 
 (defn- markdown-total-height [blocks cell-w scale]
   (reduce (fn [acc b] (+ acc (block-height b cell-w scale) (* 4.0 scale))) 0.0 blocks))
@@ -532,7 +742,14 @@
       (let [it  (first items)
             cx2 (+ cx (if (:space-before? it) (:sp it) 0.0))]
         (.setNonStrokingColor cs ^Color (:color it))
-        (draw-line! cs (:font it) (:pt it) cx2 baseline (:text it))
+        (if (:ruby? it)
+          ;; base centered in the unit at the baseline; reading centered just above it
+          (let [ww     (:ww it)
+                base-x (+ cx2 (/ (- ww (:base-ww it)) 2.0))
+                read-x (+ cx2 (/ (- ww (:reading-ww it)) 2.0))]
+            (draw-line! cs (:font it) (:pt it) base-x baseline (:base it))
+            (draw-line! cs (:font it) (:ruby-pt it) read-x (+ baseline (:pt it) 1.0) (:reading it)))
+          (draw-line! cs (:font it) (:pt it) cx2 baseline (:text it)))
         (recur (rest items) (+ cx2 (:ww it))))))
   (.setNonStrokingColor cs Color/BLACK))
 
@@ -550,10 +767,33 @@
       (.setNonStrokingColor cs Color/BLACK)
       (- y 2.0))))
 
+(defn- draw-image-block!
+  "Draw a Markdown image: securely fetch + embed it scaled to the cell width (clamped to the
+  remaining height). If the fetch fails for any reason, fall back to a Markdown link (the alt text
+  or URL, in link color). Returns the y below the block."
+  [^PDDocument doc ^PDPageContentStream cs block x top-y cell-w bottom scale]
+  (if-let [^PDImageXObject img (fetch-image! doc (:src block))]
+    (let [iw      (double (.getWidth img))
+          ih      (double (.getHeight img))
+          avail-h (- (double top-y) bottom)
+          draw-w  cell-w
+          draw-h  (* draw-w (/ ih iw))
+          [draw-w draw-h] (if (> draw-h avail-h)
+                            [(* avail-h (/ iw ih)) avail-h]
+                            [draw-w draw-h])
+          y       (- (double top-y) draw-h)]
+      (.drawImage cs img (float x) (float y) (float draw-w) (float draw-h))
+      (- y 4.0))
+    (let [pt   (* text-card-pt scale)
+          txt  (let [alt (:alt block)] (if (str/blank? alt) (:src block) alt))
+          used (draw-text-block! cs (face :regular) pt link-color x top-y cell-w
+                                 (- (double top-y) bottom) txt)]
+      (- (double top-y) used 4.0))))
+
 (defn- draw-block!
   "Draw one markdown block within `[x, top-y]` of `cell-w`, clipping at `bottom`. Returns the y
   below the block (top of the next)."
-  [^PDPageContentStream cs block x top-y cell-w bottom scale]
+  [^PDDocument doc ^PDPageContentStream cs block x top-y cell-w bottom scale]
   (case (:kind block)
     :hr (let [y (- (double top-y) (* 5.0 scale))]
           (.setStrokingColor cs ^Color desc-color)
@@ -562,6 +802,7 @@
           (.stroke cs)
           (.setStrokingColor cs Color/BLACK)
           (- y (* 5.0 scale)))
+    :image (draw-image-block! doc cs block x top-y cell-w bottom scale)
     :code-block (draw-code-block! cs block x top-y cell-w bottom scale)
     ;; heading / paragraph / list-item
     (let [heading?    (= :heading (:kind block))
@@ -576,25 +817,32 @@
           content-w   (- (+ (double x) cell-w) content-x)
           lines       (words->lines (runs->words (:runs block)) base-pt heading? content-w)]
       (loop [lines lines, y (double top-y), first? true]
-        (if (or (empty? lines) (< (- y lh) bottom))
+        (if (empty? lines)
           y
-          (do
-            (when (and first? marker)
-              (draw-line! cs marker-font base-pt indent-x (- y base-pt) marker))
-            (draw-md-line! cs content-x (- y base-pt) (first lines))
-            (recur (rest lines) (- y lh) false)))))))
+          ;; lines with furigana need extra space above the base for the reading; lower the baseline
+          ;; into that band and grow the line advance to match.
+          (let [extra    (line-extra (first lines) base-pt)
+                baseline (- y extra base-pt)
+                adv      (+ lh extra)]
+            (if (< (- y adv) bottom)
+              y
+              (do
+                (when (and first? marker)
+                  (draw-line! cs marker-font base-pt indent-x baseline marker))
+                (draw-md-line! cs content-x baseline (first lines))
+                (recur (rest lines) (- y adv) false)))))))))
 
 (defn- draw-markdown-in-cell!
   "Render markdown `text` top-down within a cell rectangle. Shrinks the font (down to a floor)
   so the content fits the cell height instead of clipping; clips only if even the floor overflows."
-  [^PDPageContentStream cs x top-y cell-w cell-h text]
+  [^PDDocument doc ^PDPageContentStream cs x top-y cell-w cell-h text]
   (let [blocks (parse-markdown-blocks text)
         scale  (fit-scale blocks cell-w cell-h)
         bottom (- (double top-y) cell-h)]
     (loop [blocks blocks, y (double top-y)]
       (when (and (seq blocks) (> y (+ bottom 2.0)))
         (recur (rest blocks)
-               (- (draw-block! cs (first blocks) x y cell-w bottom scale) (* 4.0 scale)))))))
+               (- (draw-block! doc cs (first blocks) x y cell-w bottom scale) (* 4.0 scale)))))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Cell building -- turn dashcards into renderable cells, preserving grid geometry
@@ -725,11 +973,11 @@
 
 (defn- text-block-height
   "Vertical points a wrapped text block would consume (without drawing), bounded by `max-h`."
-  [^PDType1Font font font-pt max-w max-h text]
+  [face font-pt max-w max-h text]
   (if (str/blank? (str text))
     0.0
     (let [lh    (* font-pt line-height-factor)
-          lines (count (wrap-text font font-pt text max-w))
+          lines (count (wrap-text face font-pt text max-w))
           fit   (long (Math/floor (/ (double max-h) lh)))]
       (* (min lines (max 0 fit)) lh))))
 
@@ -801,7 +1049,7 @@
             (case (:kind cell)
               :card    (render-card-cell! doc cs timezone (:part cell) x top-y cell-w cell-h)
               :heading (draw-text-in-cell! cs (bold-font) heading-card-pt x top-y cell-w cell-h (:text cell))
-              :text    (draw-markdown-in-cell! cs x top-y cell-w cell-h (:text cell))
+              :text    (draw-markdown-in-cell! doc cs x top-y cell-w cell-h (:text cell))
               nil)
             (catch Throwable e
               (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
