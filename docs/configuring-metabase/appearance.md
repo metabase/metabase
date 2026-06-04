@@ -162,7 +162,7 @@ What people see when Metabase prompts them to log in.
 
 ### Landing page
 
-The illustration people see on landing page when they log in. To choose what page people land on, see [Homepage](./settings.md#homepage).
+The illustration people see on the landing page when they log in. To choose which page people land on, see [Homepage](./settings.md#homepage).
 
 - Lighthouse
 - No illustration

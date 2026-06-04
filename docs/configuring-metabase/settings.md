@@ -31,13 +31,11 @@ For example, say you enable HTTPS redirect for a Metabase instance at the site U
 
 ## Homepage
 
-Set what people see when they land on your Metabase. Choose between:
+Set the page people see when they first log in to your Metabase. Choose between:
 
 - **Default Metabase home**: The standard Metabase homepage.
 - **Dashboard**: Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
-- **Custom URL**: Send people to a specific URL (a collection, question, dashboard, or other page). Make sure people have access to the URL.
-
-> The **Custom URL** option is only available on Pro and Enterprise plans with whitelabeling enabled.
+- **Custom URL**: Send people to a specific URL (a collection, question, dashboard, or other page). Make sure people have access to the URL. This option is only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 ## Email address for help requests
 
