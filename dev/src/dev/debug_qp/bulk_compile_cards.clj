@@ -1,13 +1,24 @@
 (ns dev.debug-qp.bulk-compile-cards
   (:require
    [clojure.java.io :as io]
-   [metabase.query-processor :as qp]
+   [clojure.java.shell :as shell]
+   [clojure.string :as str]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Executors Callable)))
+
+(set! *warn-on-reflection* true)
+
+(defn- get-card-ids [engine limit]
+  (t2/query {:select [:rc.id :rc.database_id]
+             :from   [[:report_card :rc]]
+             :join   [[:metabase_database :md] [:= :rc.database_id :md.id]]
+             :where  [:and [:= :md.engine engine] [:not= :rc.query_type "native"]]
+             :order-by [[:md.id :asc] [:rc.id :asc]]
+             :limit  limit}))
 
 (defn- save-card-compilation-results
   [card-ids output-file]
@@ -27,28 +38,62 @@
                                                 :params params}
                                          error (assoc :error error)))
                                      (catch Throwable e
-                                       {:card-id card-id
+                                       {:db_id db-id
+                                        :card_id card-id
                                         :error (ex-message e)})))))
                       card-ids)]
     (try
-      (with-open [w (io/writer output-file :append true)]
+      (with-open [w (io/writer (str "dev/src/dev/debug_qp/" output-file) :append true)]
         (doseq [f futures]
           (.write w (json/encode (.get f)))
           (.write w "\n")))
       (finally
         (.shutdown pool)))))
 
-(defn- get-card-rows [card-id]
-  (let [{:keys [dataset_query]} (t2/select-one :model/Card card-id)]
-    (mt/rows (qp/process-query dataset_query))))
+(defn- load-jsonl-by-card-id [filepath]
+  (with-open [rdr (io/reader filepath)]
+    (into {}
+          (comp (map str/trim)
+                (remove str/blank?)
+                (map #(json/decode % keyword))
+                (map (fn [data] [(:card_id data) data])))
+          (line-seq rdr))))
 
-(defn- get-card-ids [engine limit]
-  (t2/query {:select [:rc.id :rc.database_id]
-             :from   [[:report_card :rc]]
-             :join   [[:metabase_database :md] [:= :rc.database_id :md.id]]
-             :where  [:and [:= :md.engine engine] [:not= :rc.query_type "native"]]
-             :order-by [[:md.id :asc] [:rc.id :asc]]
-             :limit  limit}))
+(defn- get-compilation-diffs [diff-folder mbql4-file mbql5-file]
+  (let [_ (.mkdirs (io/file diff-folder))
+        mbql4-results (load-jsonl-by-card-id mbql4-file)
+        mbql5-results (load-jsonl-by-card-id mbql5-file)
+        _ (assert (= (set (keys mbql4-results)) (set (keys mbql5-results))))
+        card-ids (sort (keys mbql4-results))
+        query-diffs (vec
+                     (for [card-id card-ids
+                           :let [mbql4-sql (get-in mbql4-results [card-id :query] "")
+                                 mbql5-sql (get-in mbql5-results [card-id :query] "")]
+                           :when (not= mbql4-sql mbql5-sql)]
+                       [card-id (sql.u/format-sql :sql mbql4-sql) (sql.u/format-sql :sql mbql5-sql)]))
+        error-diffs (vec
+                     (for [card-id card-ids
+                           :let [mbql4-err (get-in mbql4-results [card-id :error])
+                                 mbql5-err (get-in mbql5-results [card-id :error])]
+                           :when (not= mbql4-err mbql5-err)]
+                       [card-id mbql4-err mbql5-err]))]
+    (when (seq query-diffs)
+      (with-open [^java.io.Writer diff-file (io/writer (io/file diff-folder "query_diffs.txt"))]
+        (doseq [[card-id mbql4-sql mbql5-sql] query-diffs]
+          (doseq [[version sql] [["mbql4" mbql4-sql] ["mbql5" mbql5-sql]]]
+            (spit (io/file diff-folder (str "card_" card-id "_" version ".sql"))
+                  (str sql "\n")))
+          (let [result (shell/sh "diff" "-w" "-u"
+                                 (str (io/file diff-folder (str "card_" card-id "_mbql4.sql")))
+                                 (str (io/file diff-folder (str "card_" card-id "_mbql5.sql"))))]
+            (.write diff-file (:out result))
+            (.write diff-file "\n")))))
+    (when (seq error-diffs)
+      (with-open [^java.io.Writer f (io/writer (io/file diff-folder "error_diffs.jsonl"))]
+        (doseq [[card-id mbql4-err mbql5-err] error-diffs]
+          (.write f (str (json/encode {:card_id card-id}) "\n"))
+          (.write f (str (json/encode {:mbql4_error mbql4-err}) "\n"))
+          (.write f (str (json/encode {:mbql5_error mbql5-err}) "\n")))))))
 
 (comment
 
@@ -60,4 +105,9 @@
   (def postgres-card-ids (get-card-ids "postgres" 16600))
 
   (time
-   (save-card-compilation-results postgres-card-ids "postgres_mbql5_results.jsonl")))
+   (save-card-compilation-results postgres-card-ids "postgres_mbql5_results.jsonl"))
+
+  (get-compilation-diffs
+   "dev/src/dev/debug_qp/postgres_4_to_5"
+   "dev/src/dev/debug_qp/postgres_mbql4_results.jsonl"
+   "dev/src/dev/debug_qp/postgres_mbql5_results.jsonl"))
