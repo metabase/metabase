@@ -605,22 +605,27 @@
   inner stages or any nested query — aliases are stage-scoped, so merging refs across scopes would silently
   mis-attribute fields to the wrong join."
   [query]
-  (let [acc       (volatile! (transient {}))
-        collect   (fn [clause]
-                    (when (lib.util/clause-of-type? clause :field)
-                      (let [[_ opts id] clause
-                            alias       (:join-alias opts)]
-                        (when (and alias (pos-int? id))
-                          (vswap! acc assoc! alias (conj (get @acc alias #{}) id)))))
-                    nil)
-        top-stage (lib.util/query-stage query -1)]
-    (lib.walk/walk-clauses-in-stage top-stage collect)
+  (let [acc     (volatile! {})
+        collect (fn [clause]
+                  (when (lib.util/clause-of-type? clause :field)
+                    (let [[_ opts id] clause
+                          alias       (:join-alias opts)]
+                      (when (and alias (pos-int? id))
+                        (vswap! acc update alias (fnil conj #{}) id))))
+                  nil)]
+    (lib.walk/walk-clauses-in-stage (lib.util/query-stage query -1) collect)
     (doseq [a-join (lib/joins query)]
       (run! #(lib.walk/walk-clause % collect) (lib/join-conditions a-join))
       (let [outer-fields (lib/join-fields a-join)]
         (when (sequential? outer-fields)
           (run! #(lib.walk/walk-clause % collect) outer-fields))))
-    (persistent! @acc)))
+    @acc))
+
+(defn- inner-projection-field-ids
+  "Set of field-ids that `a-join`'s inner-stage `:fields` projects. Structural read: the projection list is the thing
+  under test."
+  [a-join]
+  (into #{} (mapcat lib/all-field-ids) (:fields (first (:stages a-join)))))
 
 (defn- inner-projection-by-join-alias
   "Return `{alias #{field-id ...}}` — the field-ids each join's inner-stage `:fields` projects, keyed by the join's
@@ -630,12 +635,7 @@
         (for [a-join (lib/joins query)
               :let [a-alias (lib/current-join-alias a-join)]
               :when a-alias]
-          ;; Structural read into the inner stage: the projection list is the thing under test.
-          [a-alias (set (keep (fn [clause]
-                                (when (lib.util/clause-of-type? clause :field)
-                                  (let [id (last clause)]
-                                    (when (pos-int? id) id))))
-                              (:fields (first (:stages a-join)))))])))
+          [a-alias (inner-projection-field-ids a-join)])))
 
 (defn- projection-violations
   "Return a seq of diagnostic maps (one per offending join's alias) or nil if the invariant holds: each join's
@@ -681,14 +681,9 @@
                           {}
                           (sql-tools/referenced-fields driver nq))
         mbql-proj (reduce (fn [m a-join]
-                            (let [tid (:id (lib/joined-thing query a-join))
-                                  fields (set (keep (fn [clause]
-                                                      (when (lib.util/clause-of-type? clause :field)
-                                                        (let [id (last clause)]
-                                                          (when (pos-int? id) id))))
-                                                    (:fields (first (:stages a-join)))))]
+                            (let [tid (:id (lib/joined-thing query a-join))]
                               (cond-> m
-                                tid (update tid (fnil into #{}) fields))))
+                                tid (update tid (fnil into #{}) (inner-projection-field-ids a-join)))))
                           {} (lib/joins query))]
     (not-empty
      (into {}
@@ -757,8 +752,9 @@
             "tighten must not modify :fields on a card-source join's inner stage")))))
 
 (defn- find-partition-filter
-  "Return the `[:>  ... [:field {:join-alias A} partition-fid] _]` clause from `query`'s outer-stage `:filters`, or
-  nil if none. Matches both join-aliased and source-table refs."
+  "Return the `[:> [:field {:join-alias join-alias} partition-fid] _]` clause from `query`'s outer-stage `:filters`,
+  or nil if none. `:join-alias` on the field ref must equal `join-alias` exactly (pass `nil` to match a source-table
+  ref with no `:join-alias`)."
   [query partition-fid join-alias]
   (some (fn [clause]
           (and (vector? clause)

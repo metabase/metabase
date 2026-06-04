@@ -406,30 +406,32 @@
 
 (mu/defn- tighten-join-projections :- ::lib.schema/query
   "Narrow each join's inner-stage `:fields` to exactly the field-ids `query` references whose `:table-id` matches the
-  join's source table."
+  join's source table.
+
+  Assumes no two joins in stage 0 target the same `:table-id` (true for chain-filter's `joined-table-alias`
+  convention). If that ever breaks, both joins get the union of fields — still correct, only over-projection."
   [query :- ::lib.schema/query]
-  (let [joins (lib/joins query)]
-    (if (empty? joins)
-      query
-      ;; Bucket by `:table-id`, not by join alias: aliases are stage-scoped and the same string can recur in nested
-      ;; scopes referring to different things. Table-id is the field's natural grain.
-      (let [field-ids   (lib/all-field-ids query)
-            cols        (lib.metadata/bulk-metadata query :metadata/column field-ids)
-            cols-by-tid (group-by :table-id cols)]
-        (lib.util/update-query-stage
-         query 0
-         update :joins
-         (fn [joins]
-           (mapv (fn [a-join]
-                   (let [thing (lib/joined-thing query a-join)
-                         tid   (when (= :metadata/table (:lib/type thing))
-                                 (:id thing))]
-                     (if tid
-                       (lib/with-join-source-fields a-join (get cols-by-tid tid))
-                       ;; Non-Table source (e.g. Card): leave alone — projecting by table-id isn't meaningful and
-                       ;; dropping the existing `:fields` would re-expose the original bug.
-                       a-join)))
-                 joins)))))))
+  (if (empty? (lib/joins query))
+    query
+    ;; Bucket by `:table-id`, not by join alias: aliases are stage-scoped and the same string can recur in nested
+    ;; scopes referring to different things. Table-id is the field's natural grain.
+    (let [field-ids   (lib/all-field-ids query)
+          cols        (lib.metadata/bulk-metadata query :metadata/column field-ids)
+          cols-by-tid (group-by :table-id cols)]
+      (lib.util/update-query-stage
+       query 0
+       update :joins
+       (fn [the-joins]
+         (mapv (fn [a-join]
+                 (let [thing (lib/joined-thing query a-join)
+                       tid   (when (= :metadata/table (:lib/type thing))
+                               (:id thing))]
+                   (if tid
+                     (lib/with-join-source-fields a-join (get cols-by-tid tid))
+                     ;; Non-Table source (e.g. Card): leave alone — projecting by table-id isn't meaningful and
+                     ;; dropping the existing `:fields` would re-expose the original bug.
+                     a-join)))
+               the-joins))))))
 
 (mr/def ::options
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.

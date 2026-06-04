@@ -1034,11 +1034,11 @@
     - the join's first stage must be an MBQL stage. Native-stage inner has no `:fields` semantics; passing one throws.
     - `cols` must come from the join's source. Mismatched cols produce refs the source can't resolve.
 
-  Sets what the inner subquery SELECTs. For what the join EXPOSES to its outer stage, see [[with-join-fields]].
+  For what the join EXPOSES to its outer stage, see [[with-join-fields]].
 
   **Code Health:** Healthy. This is a core API."
   [a-join :- ::lib.join.util/partial-join
-   cols   :- [:maybe [:sequential some?]]]
+   cols   :- [:maybe [:sequential some?]]] ; ideally [:sequential ::lib.schema.metadata/column] once the surface is uniformly typed
   (lib.join/with-join-source-fields a-join cols))
 
 (mu/defn join-fieldable-columns :- ::lib.metadata.calculation/visible-columns
