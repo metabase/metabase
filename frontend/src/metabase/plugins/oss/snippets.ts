@@ -53,11 +53,10 @@ export type SnippetFoldersPlugin = {
 
 export const getDefaultPluginSnippetFolders = () => ({
   isEnabled: false,
-  CollectionPickerModal:
-    PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
+  CollectionPickerModal: PluginPlaceholder<SnippetCollectionPickerModalProps>,
   CollectionPermissionsModal:
-    PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
-  MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,
+    PluginPlaceholder<SnippetCollectionPermissionsModalProps>,
+  MoveSnippetModal: PluginPlaceholder<MoveSnippetModalProps>,
 });
 
 export const PLUGIN_SNIPPET_FOLDERS = getDefaultPluginSnippetFolders();

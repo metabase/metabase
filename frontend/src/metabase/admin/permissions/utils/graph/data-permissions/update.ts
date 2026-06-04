@@ -397,16 +397,15 @@ function inferEntityPermissionValueFromChildTables(
     .map(metadataTableToTableEntityId)
     .value();
 
-  const entityIdsByPermValue = _.chain(entityIdsForDescendantTables)
+  const permissionValues = _.chain(entityIdsForDescendantTables)
     .map((id) => getFieldsPermission(permissions, groupId, id, permission))
-    .groupBy(_.identity)
+    .uniq()
     .value();
 
-  const keys = Object.keys(entityIdsByPermValue) as DataPermissionValue[];
-  const allTablesHaveSamePermissions = keys.length === 1;
+  const allTablesHaveSamePermissions = permissionValues.length === 1;
 
   if (allTablesHaveSamePermissions) {
-    return keys[0];
+    return permissionValues[0];
   } else {
     return DataPermissionValue.CONTROLLED;
   }

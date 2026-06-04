@@ -278,8 +278,8 @@ describe("useEmbeddingThemeEditor", () => {
       expect(undo.actionLabel).toBe("Undo");
 
       await act(async () => {
-        // performUndo is a thunk; the test store wires thunk middleware at runtime.
-        store.dispatch(performUndo(undo.id) as never);
+        const undoThunk = performUndo(undo.id);
+        await undoThunk(store.dispatch, store.getState);
       });
 
       expect(result.current.currentTheme?.settings.colors?.filter).toBe(
@@ -383,8 +383,8 @@ describe("useEmbeddingThemeEditor", () => {
       const undo = store.getState().undo[0];
 
       await act(async () => {
-        // performUndo is a thunk; the test store wires thunk middleware at runtime.
-        store.dispatch(performUndo(undo.id) as never);
+        const undoThunk = performUndo(undo.id);
+        await undoThunk(store.dispatch, store.getState);
       });
 
       expect(result.current.currentTheme?.settings.colors?.brand).toBe(

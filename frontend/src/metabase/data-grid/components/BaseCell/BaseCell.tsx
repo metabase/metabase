@@ -16,6 +16,11 @@ export type BaseCellProps = {
   hasHover?: boolean;
 } & React.HTMLProps<HTMLDivElement>;
 
+type BaseCellStyle = React.CSSProperties &
+  Partial<
+    Record<"--cell-bg-color" | "--cell-hover-bg-color", string | undefined>
+  >;
+
 export const BaseCell = memo(function BaseCell({
   align = "left",
   isSelected,
@@ -25,21 +30,21 @@ export const BaseCell = memo(function BaseCell({
   children,
   ...rest
 }: BaseCellProps) {
-  const cellStyle = useMemo(() => {
+  const cellStyle = useMemo<BaseCellStyle>(() => {
     if (isSelected) {
       return {
         "--cell-bg-color": `color-mix(in srgb, var(--mb-color-brand), transparent 80%)`,
         "--cell-hover-bg-color": hasHover
           ? `color-mix(in srgb, var(--mb-color-brand), transparent 80%)`
           : undefined,
-      } as React.CSSProperties;
+      };
     }
     if (!backgroundColor) {
       return {
         "--cell-hover-bg-color": hasHover
           ? `color-mix(in srgb, var(--mb-color-brand), transparent 90%)`
           : undefined,
-      } as React.CSSProperties;
+      };
     }
 
     const isDarkColor = isDark(backgroundColor);
@@ -50,7 +55,7 @@ export const BaseCell = memo(function BaseCell({
     return {
       "--cell-bg-color": backgroundColor,
       "--cell-hover-bg-color": hasHover ? hoverColor : undefined,
-    } as React.CSSProperties;
+    };
   }, [backgroundColor, hasHover, isSelected]);
 
   return (

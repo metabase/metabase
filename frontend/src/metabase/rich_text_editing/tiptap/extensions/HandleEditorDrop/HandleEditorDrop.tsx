@@ -222,7 +222,16 @@ const handleCardDropOnParagraph = ({
 }: DroppedCardEmbedNodeData) => {
   const resolvedPos = dropToParentPos;
   // Get the DOM element of the paragraph.
-  const paragraphDOM = view.domAtPos(resolvedPos.start()).node as Element;
+  const paragraphNode = view.domAtPos(resolvedPos.start()).node;
+  const paragraphDOM =
+    paragraphNode instanceof Element
+      ? paragraphNode
+      : paragraphNode.parentElement;
+
+  if (!paragraphDOM) {
+    return false;
+  }
+
   const rect = paragraphDOM.getBoundingClientRect();
   // If dropping in the upper half of the paragraph, insert before; else, insert after.
   const insertBefore = event.clientY < rect.top + rect.height / 2;

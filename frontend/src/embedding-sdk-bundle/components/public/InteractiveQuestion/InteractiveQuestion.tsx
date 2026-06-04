@@ -1,5 +1,4 @@
-import type { FC } from "react";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
@@ -149,8 +148,13 @@ const _InteractiveQuestionWrapped = withPublicComponentWrapper(
   { supportsGuestEmbed: false },
 );
 
-export const InteractiveQuestion = Object.assign(
-  _InteractiveQuestionWrapped as FC<InteractiveQuestionProps>,
+type InteractiveQuestionComponent = ((
+  props: InteractiveQuestionProps,
+) => ReactNode) &
+  InteractiveQuestionComponents & { schema: typeof interactiveQuestionSchema };
+
+export const InteractiveQuestion: InteractiveQuestionComponent = Object.assign(
+  (props: InteractiveQuestionProps) => _InteractiveQuestionWrapped(props),
   subComponents,
   { schema: interactiveQuestionSchema },
 );
@@ -159,8 +163,12 @@ export const InteractiveQuestion = Object.assign(
  * Same runtime component as {@link InteractiveQuestion}, typed to accept the
  * internal `query` prop. This component is intended for internal use only.
  */
-export const InteractiveQuestionInternal = Object.assign(
-  _InteractiveQuestionWrapped as FC<InteractiveQuestionInternalProps>,
-  subComponents,
-  { schema: interactiveQuestionSchema },
-);
+type InteractiveQuestionInternalComponent = ((
+  props: InteractiveQuestionInternalProps,
+) => ReactNode) &
+  InteractiveQuestionComponents & { schema: typeof interactiveQuestionSchema };
+
+export const InteractiveQuestionInternal: InteractiveQuestionInternalComponent =
+  Object.assign(_InteractiveQuestionWrapped, subComponents, {
+    schema: interactiveQuestionSchema,
+  });

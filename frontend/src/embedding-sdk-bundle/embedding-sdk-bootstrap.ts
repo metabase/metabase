@@ -21,7 +21,9 @@ waitForAuthConfigAndStartEarlyAuthFlow();
 const manifest: { chunks: string[] } = "__SDK_CHUNK_MANIFEST__" as any;
 
 const scriptUrl =
-  (document.currentScript as HTMLScriptElement | null)?.src || "";
+  document.currentScript instanceof HTMLScriptElement
+    ? document.currentScript.src
+    : "";
 const baseUrl = new URL("./", scriptUrl).href;
 
 function loadScript(filename: string): Promise<string> {

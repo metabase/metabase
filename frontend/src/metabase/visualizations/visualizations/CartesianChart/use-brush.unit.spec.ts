@@ -25,16 +25,19 @@ class PointerEventPolyfill extends MouseEvent {
 }
 
 if (typeof globalThis.PointerEvent === "undefined") {
-  (globalThis as any).PointerEvent = PointerEventPolyfill;
+  Object.defineProperty(globalThis, "PointerEvent", {
+    configurable: true,
+    value: PointerEventPolyfill,
+  });
 }
 
 const createMockChartRef = () => {
   const dispatchAction = jest.fn();
   const trigger = jest.fn();
   const getZrender = jest.fn(() => ({ trigger }));
-  const chartRef = {
+  const chartRef: MutableRefObject<EChartsType | undefined> = {
     current: { dispatchAction, getZr: getZrender } as unknown as EChartsType,
-  } as MutableRefObject<EChartsType | undefined>;
+  };
 
   return { chartRef, dispatchAction, trigger };
 };
@@ -42,11 +45,11 @@ const createMockChartRef = () => {
 const createMockContainerRef = () => {
   const element = document.createElement("div");
 
-  element.getBoundingClientRect = jest.fn(
-    () => ({ left: 10, top: 20, width: 400, height: 300 }) as DOMRect,
+  element.getBoundingClientRect = jest.fn(() =>
+    DOMRect.fromRect({ x: 10, y: 20, width: 400, height: 300 }),
   );
 
-  const containerRef = { current: element } as RefObject<HTMLDivElement>;
+  const containerRef: RefObject<HTMLDivElement> = { current: element };
 
   return { containerRef, el: element };
 };
@@ -180,7 +183,7 @@ describe("use-brush", () => {
 
   describe("createZrenderMousedownEvent", () => {
     it("calculates correct offsets from client coords and rect", () => {
-      const rect = { left: 50, top: 100 } as DOMRect;
+      const rect = DOMRect.fromRect({ x: 50, y: 100 });
       const { offsetX, offsetY, target, event } = createZrenderMousedownEvent(
         { x: 150, y: 250 },
         rect,

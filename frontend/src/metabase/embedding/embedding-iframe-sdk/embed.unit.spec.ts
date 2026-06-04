@@ -3,9 +3,9 @@ import jwt from "jsonwebtoken";
 import { act } from "react-dom/test-utils";
 
 import {
-  type MetabaseDashboardElement,
+  MetabaseDashboardElement,
   MetabaseEmbedElement,
-  type MetabaseQuestionElement,
+  MetabaseQuestionElement,
 } from "./embed";
 
 const defineMetabaseConfig = (config: unknown) => {
@@ -20,6 +20,14 @@ const triggerIframeMessage = (iframe: HTMLIFrameElement, data: unknown) => {
   window.dispatchEvent(
     new MessageEvent("message", { data, source: iframe.contentWindow }),
   );
+};
+
+const getRequiredIframe = (embed: HTMLElement) => {
+  const iframe = embed.querySelector("iframe");
+  if (!(iframe instanceof HTMLIFrameElement)) {
+    throw new Error("Could not find embed iframe");
+  }
+  return iframe;
 };
 
 describe("embed.js script tag for sdk iframe embedding", () => {
@@ -98,8 +106,11 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     embed.setAttribute("dashboard-id", "1");
     document.body.appendChild(embed);
 
+    if (!(embed instanceof MetabaseEmbedElement)) {
+      throw new Error("Could not create dashboard embed element");
+    }
     // @ts-expect-error -- Simulate the embed being ready.
-    (embed as MetabaseEmbedElement)._isEmbedReady = true;
+    embed._isEmbedReady = true;
 
     // The handler should be called immediately.
     embed.addEventListener("ready", readyHandler);
@@ -247,7 +258,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       }
       document.body.appendChild(embed);
 
-      const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
+      const iframe = getRequiredIframe(embed);
       const iframePostMessageSpy = jest.spyOn(
         iframe.contentWindow!,
         "postMessage",
@@ -516,13 +527,14 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     const setupDashboard = () => {
       defineMetabaseConfig({ instanceUrl: "http://localhost:3000" });
 
-      const embed = document.createElement(
-        "metabase-dashboard",
-      ) as MetabaseDashboardElement;
+      const embed = document.createElement("metabase-dashboard");
+      if (!(embed instanceof MetabaseDashboardElement)) {
+        throw new Error("Could not create dashboard embed element");
+      }
       embed.setAttribute("dashboard-id", "1");
       document.body.appendChild(embed);
 
-      const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
+      const iframe = getRequiredIframe(embed);
       const iframePostMessageSpy = jest.spyOn(
         iframe.contentWindow!,
         "postMessage",
@@ -673,22 +685,24 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       const { iframe, embed, markReady } = setupDashboard();
       await markReady();
 
-      const handler = jest.fn();
-      embed.addEventListener("parameters-change", handler);
-
       const payload = {
         source: "manual-change" as const,
         parameters: { state: "NY" },
         defaultParameters: {},
         lastUsedParameters: {},
       };
+      const handler = jest.fn<void, [Event]>();
+      embed.addEventListener("parameters-change", handler);
       triggerIframeMessage(iframe, {
         type: "metabase.embed.parametersChange",
         data: payload,
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
-      const event = handler.mock.calls[0][0] as CustomEvent;
+      const event = handler.mock.calls[0][0];
+      if (!(event instanceof CustomEvent)) {
+        throw new Error("Expected parameters-change event");
+      }
       expect(event.detail).toEqual(payload);
     });
   });
@@ -697,13 +711,14 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     const setupQuestion = () => {
       defineMetabaseConfig({ instanceUrl: "http://localhost:3000" });
 
-      const embed = document.createElement(
-        "metabase-question",
-      ) as MetabaseQuestionElement;
+      const embed = document.createElement("metabase-question");
+      if (!(embed instanceof MetabaseQuestionElement)) {
+        throw new Error("Could not create question embed element");
+      }
       embed.setAttribute("question-id", "1");
       document.body.appendChild(embed);
 
-      const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
+      const iframe = getRequiredIframe(embed);
       const iframePostMessageSpy = jest.spyOn(
         iframe.contentWindow!,
         "postMessage",
@@ -760,21 +775,23 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       const { iframe, embed, markReady } = setupQuestion();
       await markReady();
 
-      const handler = jest.fn();
-      embed.addEventListener("sql-parameters-change", handler);
-
       const payload = {
         source: "manual-change" as const,
         parameters: { region: "EU" },
         defaultParameters: {},
       };
+      const handler = jest.fn<void, [Event]>();
+      embed.addEventListener("sql-parameters-change", handler);
       triggerIframeMessage(iframe, {
         type: "metabase.embed.sqlParametersChange",
         data: payload,
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
-      const event = handler.mock.calls[0][0] as CustomEvent;
+      const event = handler.mock.calls[0][0];
+      if (!(event instanceof CustomEvent)) {
+        throw new Error("Expected sql-parameters-change event");
+      }
       expect(event.detail).toEqual(payload);
     });
   });

@@ -22,13 +22,28 @@ describe("useIsParameterPanelSticky", () => {
   let mockObserve: jest.Mock;
   let mockDisconnect: jest.Mock;
   let intersectionCallback: IntersectionObserverCallback | null = null;
+  let intersectionObserver: IntersectionObserver | null = null;
+
+  const createIntersectionObserverEntry = (
+    isIntersecting: boolean,
+  ): IntersectionObserverEntry => ({
+    boundingClientRect: DOMRectReadOnly.fromRect(),
+    intersectionRatio: isIntersecting ? 1 : 0,
+    intersectionRect: DOMRectReadOnly.fromRect(),
+    isIntersecting,
+    rootBounds: null,
+    target: document.createElement("div"),
+    time: 0,
+  });
 
   const invokeIntersection = (isIntersecting: boolean) => {
     act(() => {
-      intersectionCallback?.(
-        [{ isIntersecting } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      );
+      if (intersectionObserver) {
+        intersectionCallback?.(
+          [createIntersectionObserverEntry(isIntersecting)],
+          intersectionObserver,
+        );
+      }
     });
   };
 
@@ -41,10 +56,12 @@ describe("useIsParameterPanelSticky", () => {
     mockDisconnect = jest.fn();
 
     intersectionCallback = null;
+    intersectionObserver = null;
 
     global.IntersectionObserver = class MockedIntersectionObserver implements IntersectionObserver {
       constructor(callback: IntersectionObserverCallback) {
         intersectionCallback = callback;
+        intersectionObserver = this;
       }
 
       observe = mockObserve;

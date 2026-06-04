@@ -21,13 +21,15 @@ import {
 
 import { MetabotPromptInput } from "./MetabotPromptInput";
 
+const suggestionModels: SuggestionModel[] = ["table", "database"];
+
 const defaultProps = {
   value: "",
   disabled: false,
   onChange: jest.fn(),
   onStop: jest.fn(),
   suggestionConfig: {
-    suggestionModels: ["table", "database"] as SuggestionModel[],
+    suggestionModels,
   },
 };
 

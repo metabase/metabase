@@ -205,12 +205,15 @@ export const getEventTarget = (
   // clientX/clientY directly — they live on individual Touch objects.
   let clientX: number;
   let clientY: number;
-  if ("changedTouches" in event && event.changedTouches?.length) {
+  if ("changedTouches" in event && event.changedTouches.length > 0) {
     clientX = event.changedTouches[0].clientX;
     clientY = event.changedTouches[0].clientY;
+  } else if ("clientX" in event) {
+    clientX = event.clientX;
+    clientY = event.clientY;
   } else {
-    clientX = (event as MouseEvent).clientX;
-    clientY = (event as MouseEvent).clientY;
+    clientX = 0;
+    clientY = 0;
   }
 
   target.style.left = clientX - 3 + "px";

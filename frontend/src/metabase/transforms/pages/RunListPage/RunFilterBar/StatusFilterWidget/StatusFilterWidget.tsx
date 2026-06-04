@@ -23,6 +23,11 @@ const STATUSES: TransformRunStatus[] = [
   "failed",
   "timeout",
 ];
+const STATUS_SET: ReadonlySet<string> = new Set(STATUSES);
+
+function isStatus(value: string): value is TransformRunStatus {
+  return STATUS_SET.has(value);
+}
 
 type StatusFilterWidgetProps = {
   label: string;
@@ -89,7 +94,7 @@ function StatusFilterForm({
   const isValid = statuses.length > 0;
 
   const handleChange = (values: string[]) => {
-    setStatuses(values as TransformRunStatus[]);
+    setStatuses(values.filter(isStatus));
   };
 
   const handleSubmit = (event: FormEvent) => {

@@ -48,6 +48,41 @@ type FormCollectionAuthorityLevelPicker = React.ComponentType<
   React.HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
 >;
 
+type PluginCollections = {
+  AUTHORITY_LEVEL: Record<string, CollectionAuthorityLevelConfig>;
+  COLLECTION_TYPES: Record<string, CollectionAuthorityLevelConfig>;
+  REGULAR_COLLECTION: CollectionAuthorityLevelConfig;
+  isRegularCollection: (data: Partial<Collection> | Bookmark) => boolean;
+  isSyncedCollection: (data: Partial<Collection>) => boolean;
+  getCollectionType: (
+    collection: Partial<Collection>,
+  ) => CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig;
+  useGetDefaultCollectionId: GetCollectionIdType | null;
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: BaseEntityId | "";
+  INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: string;
+  getAuthorityLevelMenuItems: (
+    collection: Collection,
+    onUpdate: (collection: Collection, values: Partial<Collection>) => void,
+  ) => React.ReactNode[];
+  useGetIcon: typeof useGetIconBase;
+  filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
+    items: Item[],
+  ) => Item[];
+  canCleanUp: (collection: Collection) => boolean;
+  useGetCleanUpMenuItems: (collection: Collection) => {
+    menuItems: JSX.Element[];
+  };
+  cleanUpRoute: React.ReactElement | null;
+  cleanUpAlert: (props: { collection: Collection }) => JSX.Element | null;
+};
+
+type PluginCollectionComponents = {
+  CollectionAuthorityLevelIcon: CollectionAuthorityLevelIcon;
+  FormCollectionAuthorityLevelPicker: FormCollectionAuthorityLevelPicker;
+  CollectionInstanceAnalyticsIcon: CollectionInstanceAnalyticsIcon;
+  CollectionAuthorityLevelDisplay: ComponentType<CollectionAuthorityLevelDisplayProps>;
+};
+
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
   get name() {
@@ -56,7 +91,7 @@ const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   icon: "folder",
 };
 
-const getDefaultPluginCollections = () => ({
+const getDefaultPluginCollections = (): PluginCollections => ({
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
@@ -70,8 +105,8 @@ const getDefaultPluginCollections = () => ({
     _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
-  useGetDefaultCollectionId: null as GetCollectionIdType | null,
-  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
+  useGetDefaultCollectionId: null,
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE:
     Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
@@ -81,31 +116,33 @@ const getDefaultPluginCollections = () => ({
   useGetIcon: useGetIconBase,
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
-  ) => items as Item[],
-  canCleanUp: (_collection: Collection) => false as boolean,
+  ) => items,
+  canCleanUp: (_collection: Collection) => false,
   useGetCleanUpMenuItems: (
     _collection: Collection,
   ): { menuItems: JSX.Element[] } => ({
     menuItems: [],
   }),
-  cleanUpRoute: null as React.ReactElement | null,
-  cleanUpAlert: (() => null) as (props: {
-    collection: Collection;
-  }) => JSX.Element | null,
+  cleanUpRoute: null,
+  cleanUpAlert: (_props) => null,
 });
 
 export const PLUGIN_COLLECTIONS = getDefaultPluginCollections();
 
-const getDefaultPluginCollectionComponents = () => ({
-  CollectionAuthorityLevelIcon:
-    PluginPlaceholder as CollectionAuthorityLevelIcon,
-  FormCollectionAuthorityLevelPicker:
-    PluginPlaceholder as FormCollectionAuthorityLevelPicker,
-  CollectionInstanceAnalyticsIcon:
-    PluginPlaceholder as CollectionInstanceAnalyticsIcon,
-  CollectionAuthorityLevelDisplay:
-    PluginPlaceholder as ComponentType<CollectionAuthorityLevelDisplayProps>,
-});
+const getDefaultPluginCollectionComponents =
+  (): PluginCollectionComponents => ({
+    CollectionAuthorityLevelIcon: PluginPlaceholder<
+      React.ComponentProps<CollectionAuthorityLevelIcon>
+    >,
+    FormCollectionAuthorityLevelPicker: PluginPlaceholder<
+      React.ComponentProps<FormCollectionAuthorityLevelPicker>
+    >,
+    CollectionInstanceAnalyticsIcon: PluginPlaceholder<
+      React.ComponentProps<CollectionInstanceAnalyticsIcon>
+    >,
+    CollectionAuthorityLevelDisplay:
+      PluginPlaceholder<CollectionAuthorityLevelDisplayProps>,
+  });
 
 export const PLUGIN_COLLECTION_COMPONENTS =
   getDefaultPluginCollectionComponents();

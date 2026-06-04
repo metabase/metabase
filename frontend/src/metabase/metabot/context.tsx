@@ -10,7 +10,6 @@ import {
   useRef,
   useState,
 } from "react";
-import _ from "underscore";
 
 import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -90,9 +89,7 @@ export const defaultContext: MetabotCtx = {
   setSuggestionActions: () => {},
 };
 
-export const MetabotContext = createContext<MetabotCtx>(
-  defaultContext as MetabotCtx,
-);
+export const MetabotContext = createContext<MetabotCtx>(defaultContext);
 
 export const useMetabotContext = () => {
   const context = useContext(MetabotContext);
@@ -168,12 +165,14 @@ export const MetabotProvider = ({
     let ctx: MetabotChatContext = {
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
-      capabilities: _.compact([
+      capabilities: [
         "frontend:navigate_user_v1",
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
         isAdmin && "permission:write_transforms",
-      ]) as string[],
+      ].filter(
+        (capability): capability is string => typeof capability === "string",
+      ),
     };
 
     for (const providerFn of providerFns) {

@@ -222,7 +222,7 @@ export const BaseChartSettings = ({
         </ChartSettingsListContainer>
       </Stack>
       <ChartSettingsWidgetPopover
-        anchor={popoverRef as HTMLElement}
+        anchor={popoverRef}
         widgets={[styleWidget, formattingWidget].filter(
           (widget): widget is Widget => !!widget,
         )}

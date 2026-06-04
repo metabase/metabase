@@ -20,7 +20,11 @@ describe("getAxisTransforms", () => {
     ])(
       "should have fromEChartsAxisValue as the inverse of toEChartsAxisValue for %d",
       (value) => {
-        const encoded = toEChartsAxisValue(value) as number;
+        const encoded = toEChartsAxisValue(value);
+        if (encoded == null) {
+          throw new Error("Expected axis value to be encoded");
+        }
+
         const decoded = fromEChartsAxisValue(encoded);
         expect(decoded).toBeCloseTo(value, 5);
       },

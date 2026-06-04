@@ -844,7 +844,10 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { query, fields } = getRecentJoin();
-      const columns = fields as Lib.ColumnMetadata[];
+      if (!Array.isArray(fields)) {
+        throw new Error("Expected join fields to be columns");
+      }
+      const columns = fields;
       const reviewer = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "REVIEWER",
       );
@@ -934,7 +937,10 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(picker).getByText("Vendor"));
 
       const { query, fields } = getRecentJoin();
-      const columns = fields as Lib.ColumnMetadata[];
+      if (!Array.isArray(fields)) {
+        throw new Error("Expected join fields to be columns");
+      }
+      const columns = fields;
       const vendor = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "VENDOR",
       );

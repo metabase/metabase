@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { JSX } from "react";
+import type { CSSProperties, JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
@@ -35,6 +35,8 @@ import { DashboardTabs } from "../DashboardTabs";
 import { DashboardTitle } from "../DashboardTitle";
 
 import S from "./DashboardHeaderView.module.css";
+
+type DashboardHeaderStyle = CSSProperties & Record<"--sidebar-width", string>;
 
 type DashboardHeaderViewProps = {
   editingTitle?: string;
@@ -100,6 +102,10 @@ export function DashboardHeaderView({
     return () => clearTimeout(timerId);
   }, [isLastEditInfoVisible]);
 
+  const dashboardHeaderStyle: DashboardHeaderStyle = {
+    "--sidebar-width": `${SIDEBAR_WIDTH}px`,
+  };
+
   return (
     <div className={S.DashboardHeader}>
       {isEditing && <EditBar title={editingTitle} buttons={editingButtons} />}
@@ -114,11 +120,7 @@ export function DashboardHeaderView({
           [S.offsetSidebar]:
             isSidebarOpen && !isInfoSidebarOpen && !isSettingsSidebarOpen,
         })}
-        style={
-          {
-            "--sidebar-width": `${SIDEBAR_WIDTH}px`,
-          } as React.CSSProperties
-        }
+        style={dashboardHeaderStyle}
       >
         {isDashboardHeaderVisible && (
           <FullWidthContainer

@@ -1,7 +1,9 @@
-import { type KeyboardShortcutId, shortcuts } from ".";
+import { getObjectKeys } from "metabase/utils/objects";
+
+import { shortcuts } from ".";
 
 const getShortcutsWithPrefix = (prefix: string) => {
-  const allIds = Object.keys(shortcuts) as KeyboardShortcutId[];
+  const allIds = getObjectKeys(shortcuts);
   return allIds
     .filter((id) => id.startsWith(prefix))
     .map((id) => ({ ...shortcuts[id], id }));

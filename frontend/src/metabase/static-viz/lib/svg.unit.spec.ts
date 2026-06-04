@@ -58,7 +58,11 @@ describe("patchDominantBaseline", () => {
     const patchedSvgElem = fromHtml(patchedSvgStr, {
       fragment: true,
       space: "svg",
-    }).children[0] as Element;
+    }).children[0];
+    expect(patchedSvgElem?.type).toBe("element");
+    if (patchedSvgElem?.type !== "element") {
+      throw new Error("Expected an SVG element");
+    }
 
     const nodes: Record<string, Element> = {};
     function recordNode(node: ElementContent) {

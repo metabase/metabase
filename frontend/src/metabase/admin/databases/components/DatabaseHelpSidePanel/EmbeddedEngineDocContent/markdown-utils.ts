@@ -16,7 +16,7 @@ const hideJekyllTemplateIncludes = (element: HTMLElement) => {
   element.querySelectorAll("p").forEach((element) => {
     // Check if the element's text content contains "{%" and it has no child elements
     if (element.textContent?.includes("{%") && element.children.length === 0) {
-      (element as HTMLElement).style.display = "none";
+      element.style.display = "none";
     }
   });
 };
@@ -29,22 +29,22 @@ const hideIntroductoryElements = (element: HTMLElement) => {
     h1Element.style.display = "none";
 
     // Hide everything before the h1
-    let prevSibling = h1Element.previousElementSibling as HTMLElement;
+    let prevSibling = h1Element.previousElementSibling;
 
-    while (prevSibling) {
+    while (prevSibling instanceof HTMLElement) {
       prevSibling.style.display = "none";
-      prevSibling = prevSibling.previousElementSibling as HTMLElement;
+      prevSibling = prevSibling.previousElementSibling;
     }
 
     // Hide blockquote and p elements after the h1 (and before the next heading)
-    let nextSibling = h1Element.nextElementSibling as HTMLElement;
+    let nextSibling = h1Element.nextElementSibling;
 
     while (
-      nextSibling?.tagName === "BLOCKQUOTE" ||
-      nextSibling?.tagName === "P"
+      nextSibling instanceof HTMLElement &&
+      (nextSibling.tagName === "BLOCKQUOTE" || nextSibling.tagName === "P")
     ) {
       nextSibling.style.display = "none";
-      nextSibling = nextSibling.nextElementSibling as HTMLElement;
+      nextSibling = nextSibling.nextElementSibling;
     }
   }
 };

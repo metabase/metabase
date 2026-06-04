@@ -130,14 +130,11 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   }),
   getCollectionPickerItems: () => undefined,
   getEntityPickerSyntheticLibraryItem: () => undefined,
-  CreateLibraryModal:
-    PluginPlaceholder as ComponentType<CreateLibraryModalProps>,
+  CreateLibraryModal: PluginPlaceholder<CreateLibraryModalProps>,
   CollectionPermissionsModal:
-    PluginPlaceholder as ComponentType<CollectionPermissionsModalProps>,
-  PublishTablesModal:
-    PluginPlaceholder as ComponentType<PublishTablesModalProps>,
-  UnpublishTablesModal:
-    PluginPlaceholder as ComponentType<UnpublishTablesModalProps>,
+    PluginPlaceholder<CollectionPermissionsModalProps>,
+  PublishTablesModal: PluginPlaceholder<PublishTablesModalProps>,
+  UnpublishTablesModal: PluginPlaceholder<UnpublishTablesModalProps>,
   useGetLibraryCollectionQuery:
     (() => []) as unknown as LibraryPlugin["useGetLibraryCollectionQuery"],
   getLibraryCollectionEmptyStateMessages: () => ({

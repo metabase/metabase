@@ -3,6 +3,13 @@ import type { ComponentType } from "react";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 
+type FileUploadErrorModalProps = {
+  onClose: () => void;
+  fileName?: string;
+  children: string;
+  opened?: boolean;
+};
+
 type GdriveConnectionModalProps = {
   isModalOpen: boolean;
   onClose: () => void;
@@ -13,15 +20,23 @@ type GdriveAddDataPanelProps = {
   onAddDataModalClose: () => void;
 };
 
-const getDefaultPluginUploadManagement = () => ({
-  FileUploadErrorModal: _FileUploadErrorModal,
+type PluginUploadManagement = {
+  FileUploadErrorModal: ComponentType<FileUploadErrorModalProps>;
+  UploadManagementTable: ComponentType;
+  GdriveSyncStatus: ComponentType;
+  GdriveConnectionModal: ComponentType<GdriveConnectionModalProps>;
+  GdriveDbMenu: ComponentType;
+  GdriveAddDataPanel: ComponentType<GdriveAddDataPanelProps>;
+};
+
+const getDefaultPluginUploadManagement = (): PluginUploadManagement => ({
+  FileUploadErrorModal: ({ opened = true, ...props }) =>
+    _FileUploadErrorModal({ ...props, opened }),
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
-  GdriveConnectionModal:
-    PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
+  GdriveConnectionModal: PluginPlaceholder<GdriveConnectionModalProps>,
   GdriveDbMenu: PluginPlaceholder,
-  GdriveAddDataPanel:
-    PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
+  GdriveAddDataPanel: PluginPlaceholder<GdriveAddDataPanelProps>,
 });
 
 export const PLUGIN_UPLOAD_MANAGEMENT = getDefaultPluginUploadManagement();

@@ -2,7 +2,13 @@ import { useMemo, useRef } from "react";
 
 import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, Dataset } from "metabase-types/api";
+import {
+  type CardDisplayType,
+  type Dataset,
+  type QueryVisualizationDisplayType,
+  isCardDisplayType,
+} from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import {
   type McpChartTypeEntry,
@@ -13,7 +19,7 @@ interface UseChartTypesResult {
   sensibleChartTypes: McpChartTypeEntry[];
   hasOnlyTable: boolean;
   selectedChartType: CardDisplayType | null;
-  handleDisplayChange: (type: CardDisplayType) => void;
+  handleDisplayChange: (type: QueryVisualizationDisplayType) => void;
 }
 
 export function useChartTypes(
@@ -45,14 +51,17 @@ export function useChartTypes(
 
   const sensibleChartTypes = getMcpChartTypes({
     defaultDisplay: defaultDisplayRef.current?.display ?? null,
-    sensibleVisualizations: sensibleVisualizations as CardDisplayType[],
+    sensibleVisualizations: sensibleVisualizations.filter(
+      (display): display is QueryVisualizationDisplayType =>
+        isCardDisplayType(display) || isCustomVizDisplay(display),
+    ),
     canShowTable: rowCount >= 2,
   });
 
   const hasOnlyTable =
     sensibleChartTypes.length === 1 && sensibleChartTypes[0].type === "table";
 
-  const handleDisplayChange = (type: CardDisplayType) => {
+  const handleDisplayChange = (type: QueryVisualizationDisplayType) => {
     if (!question) {
       return;
     }

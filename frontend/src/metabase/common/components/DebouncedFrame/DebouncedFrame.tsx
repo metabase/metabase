@@ -1,6 +1,6 @@
 import cx from "classnames";
-import type { ReactNode, Ref } from "react";
-import { Component, forwardRef } from "react";
+import type { ReactNode, RefCallback } from "react";
+import { Component, forwardRef, useImperativeHandle, useRef } from "react";
 import _ from "underscore";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -22,7 +22,7 @@ interface DebouncedFrameInnerProps {
   className?: string;
   style?: React.CSSProperties;
   children?: ReactNode;
-  forwardedRef?: Ref<HTMLDivElement>;
+  forwardedRef?: RefCallback<HTMLDivElement>;
 }
 
 interface DebouncedFrameInnerState {
@@ -130,15 +130,7 @@ class DebouncedFrameInner extends Component<
         data-testid="debounced-frame-root"
         ref={(r) => {
           const { forwardedRef } = this.props;
-          if (forwardedRef) {
-            if (typeof forwardedRef === "function") {
-              forwardedRef(r);
-            } else {
-              (
-                forwardedRef as React.MutableRefObject<HTMLDivElement | null>
-              ).current = r;
-            }
-          }
+          forwardedRef?.(r);
           this._container = r;
         }}
         className={cx(className, CS.relative)}
@@ -161,8 +153,25 @@ class DebouncedFrameInner extends Component<
 const DebouncedFrameForwardRef = forwardRef<
   HTMLDivElement,
   Omit<DebouncedFrameInnerProps, "forwardedRef">
->(function _DebouncedFrameRefWrapper(props, ref) {
-  return <DebouncedFrameInner {...props} forwardedRef={ref} />;
+>(function DebouncedFrameRefWrapper(props, ref) {
+  const innerRef = useRef<HTMLDivElement | null>(null);
+
+  useImperativeHandle(ref, () => {
+    if (innerRef.current == null) {
+      throw new Error("DebouncedFrame ref is not attached");
+    }
+
+    return innerRef.current;
+  });
+
+  return (
+    <DebouncedFrameInner
+      {...props}
+      forwardedRef={(element) => {
+        innerRef.current = element;
+      }}
+    />
+  );
 });
 
 // `as any` cast needed because ExplicitSize's HOC types inject width/height as

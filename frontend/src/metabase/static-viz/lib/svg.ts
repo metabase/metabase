@@ -1,4 +1,4 @@
-import type { Element, ElementContent } from "hast";
+import type { ElementContent } from "hast";
 import { fromHtml } from "hast-util-from-html";
 import { toHtml } from "hast-util-to-html";
 
@@ -49,8 +49,14 @@ function patchNode(node: ElementContent) {
  * supporting the `dominant-baseline` property.
  */
 export function patchDominantBaseline(svgString: string) {
-  const svgElem = fromHtml(svgString, { fragment: true, space: "svg" })
-    .children[0] as Element;
+  const svgElem = fromHtml(svgString, {
+    fragment: true,
+    space: "svg",
+  }).children[0];
+
+  if (svgElem?.type !== "element") {
+    return svgString;
+  }
 
   patchNode(svgElem);
 

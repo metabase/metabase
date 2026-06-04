@@ -15,6 +15,16 @@ import styles from "./FlexContainer.module.css";
 
 const COLUMN_MIN_WIDTH = 200;
 
+type FlexContentStyle = React.CSSProperties & {
+  "--mb-card-container-col-widths": string;
+};
+
+const getFlexContentStyle = (columnWidths: number[]): FlexContentStyle => ({
+  "--mb-card-container-col-widths": columnWidths
+    .map((width: number) => `minmax(${COLUMN_MIN_WIDTH}px, ${width}%)`)
+    .join(" "),
+});
+
 export interface FlexContainerAttributes {
   class?: string;
   columnWidths?: number[]; // Array of width percentages for each column
@@ -96,7 +106,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
       return currentWidths;
     }
     // Default to equal widths
-    return Array(columnCount).fill(100 / columnCount) as number[];
+    return Array.from({ length: columnCount }, () => 100 / columnCount);
   }, [currentWidths, columnCount]);
 
   const handleMouseDown = useCallback(
@@ -230,15 +240,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
       <Box h="100%" ref={containerRef}>
         <NodeViewContent
           className={styles.flexContent}
-          style={
-            {
-              "--mb-card-container-col-widths": columnWidths
-                .map(
-                  (width: number) => `minmax(${COLUMN_MIN_WIDTH}px, ${width}%)`,
-                )
-                .join(" "),
-            } as React.CSSProperties
-          }
+          style={getFlexContentStyle(columnWidths)}
         />
 
         {renderResizeHandles()}

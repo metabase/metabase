@@ -19,6 +19,7 @@ import { t } from "ttag";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Button, Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { getPieDimensions } from "metabase/visualizations/shared/settings/pie";
@@ -114,7 +115,7 @@ export function DimensionsWidget({
   const updateDimensions = (newDimensions: (string | undefined)[]) => {
     setDimensions(newDimensions);
     onChangeSettings({
-      "pie.dimension": newDimensions.filter((d) => d != null) as string[],
+      "pie.dimension": newDimensions.filter(isNotNull),
     });
   };
 
@@ -184,7 +185,7 @@ export function DimensionsWidget({
         sensors={[pointerSensor]}
       >
         <SortableContext
-          items={(dimensions.filter((d) => d != null) as string[]).map((d) => ({
+          items={dimensions.filter(isNotNull).map((d) => ({
             id: d,
           }))}
           strategy={verticalListSortingStrategy}

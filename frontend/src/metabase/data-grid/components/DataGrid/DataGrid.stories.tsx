@@ -19,7 +19,7 @@ import { Checkbox, Flex } from "metabase/ui";
 import { DataGrid } from "./DataGrid";
 import classes from "./DataGrid.module.css";
 
-export default {
+const meta: Meta<typeof DataGrid> = {
   title: "DataGrid/DataGrid",
   component: DataGrid,
   parameters: {
@@ -39,7 +39,9 @@ export default {
       </MetabaseReduxProvider>
     ),
   ],
-} as Meta<typeof DataGrid>;
+};
+
+export default meta;
 
 type Story = StoryFn<typeof DataGrid>;
 

@@ -199,5 +199,9 @@ async function assertNavLink(linkText: string, linkHref: string) {
   expect(link).toBeInTheDocument();
   expect(link).toHaveAttribute("href", linkHref);
 
-  return link as HTMLElement;
+  if (!(link instanceof HTMLElement)) {
+    throw new Error(`Expected ${linkText} to link to ${linkHref}`);
+  }
+
+  return link;
 }

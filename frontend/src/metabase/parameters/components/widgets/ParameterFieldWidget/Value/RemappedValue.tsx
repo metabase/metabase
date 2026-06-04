@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, isValidElement } from "react";
 
 import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
@@ -25,7 +25,7 @@ export type RemappedValueProps = {
 };
 
 const defaultRenderNormal: RenderNormal = ({ value }) => (
-  <span>{value as ReactNode}</span>
+  <span>{getRenderableValue(value)}</span>
 );
 
 const defaultRenderRemapped: RenderRemapped = ({
@@ -34,7 +34,7 @@ const defaultRenderRemapped: RenderRemapped = ({
   column,
 }) => (
   <span>
-    <span className={CS.textBold}>{displayValue as ReactNode}</span>
+    <span className={CS.textBold}>{getRenderableValue(displayValue)}</span>
     {/* Show the underlying ID for PK/FK */}
     {column?.isID() && <span style={{ opacity: 0.5 }}>{" - " + value}</span>}
   </span>
@@ -90,6 +90,24 @@ const getEffectiveDisplayValue = (
         remap: false,
       })
     : displayValue;
+
+function getRenderableValue(value: unknown): ReactNode {
+  if (
+    value == null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    isValidElement(value)
+  ) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(getRenderableValue);
+  }
+
+  return String(value);
+}
 
 export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 

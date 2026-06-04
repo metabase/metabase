@@ -45,18 +45,19 @@ const DashboardContextWithReduxProps = (
   );
 };
 
-const ConnectedDashboardContextWithReduxProps = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-  (stateProps, dispatchProps, ownProps) =>
-    // this is a bit of a hack to get the types to agree (since overridden functions of mapDispatch might
-    // have the correct type) and we have bigger fish to fry. so we can come back to this
-    ({
-      ...stateProps,
-      ...dispatchProps,
-      ...ownProps,
-    }) as unknown as DashboardContextReturned,
-)(DashboardContextWithReduxProps) as ComponentType<MockDashboardContextProps>;
+const ConnectedDashboardContextWithReduxProps: ComponentType<MockDashboardContextProps> =
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+    (stateProps, dispatchProps, ownProps) =>
+      // this is a bit of a hack to get the types to agree (since overridden functions of mapDispatch might
+      // have the correct type) and we have bigger fish to fry. so we can come back to this
+      ({
+        ...stateProps,
+        ...dispatchProps,
+        ...ownProps,
+      }) as unknown as DashboardContextReturned,
+  )(DashboardContextWithReduxProps);
 
 /*
  * NOTE: DO NOT USE THIS IN REAL COMPONENTS. This is specifically for the storybook stories for the

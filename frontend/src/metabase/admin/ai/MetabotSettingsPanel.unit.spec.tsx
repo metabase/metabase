@@ -32,7 +32,12 @@ import {
 } from "metabase/metabot/constants";
 import { reinitialize } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
-import type { MetabotId, MetabotInfo, RecentItem } from "metabase-types/api";
+import type {
+  Collection,
+  MetabotId,
+  MetabotInfo,
+  RecentItem,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockMetabotInfo,
@@ -55,40 +60,36 @@ const defaultMetabots = [
   }),
 ];
 
-const defaultSeedCollections = [
+const defaultSeedCollections: Collection[] = [
   createMockCollection({ id: "root", name: "Our Analytics" }),
-  {
+  createMockCollection({
     id: 21,
     name: "Collection Two",
-    model: "collection",
     can_write: true,
-    collection_name: "Collection Two Prime",
-    parent_collection: {
-      id: 3,
-      name: "Collection Beta Prime",
-    },
-  },
-  {
+  }),
+  createMockCollection({
     id: 31,
     name: "Collection Three",
-    model: "collection",
     can_write: true,
-    parent_collection: {
-      id: 3,
-      name: "Collection Delta Prime",
-    },
-  },
-  {
+  }),
+  createMockCollection({
     id: 32,
     name: "Collection Four",
-    model: "collection",
     can_write: true,
-    parent_collection: {
-      id: 3,
-      name: "Collection Sigma Prime",
-    },
-  },
+  }),
 ];
+
+const collectionToRecentItem = (collection: Collection): RecentItem => ({
+  id: typeof collection.id === "number" ? collection.id : 0,
+  name: collection.name,
+  model: "collection",
+  can_write: collection.can_write,
+  timestamp: "2024-01-01T00:00:00Z",
+  parent_collection: {
+    id: null,
+    name: "Our Analytics",
+  },
+});
 const setup = async (
   initialPathParam: MetabotId = 1,
   metabots: MetabotInfo[] = defaultMetabots,
@@ -99,13 +100,13 @@ const setup = async (
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupMetabotsEndpoints(metabots);
-  setupCollectionByIdEndpoint({
-    collections: seedCollections.map((c: any) => ({ id: c.model_id, ...c })),
-  });
+  setupCollectionByIdEndpoint({ collections: seedCollections });
   setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupCollectionsEndpoints({ collections: [] });
 
-  setupRecentViewsAndSelectionsEndpoints(seedCollections as RecentItem[]);
+  setupRecentViewsAndSelectionsEndpoints(
+    seedCollections.map(collectionToRecentItem),
+  );
   setupUpdateSettingEndpoint();
 
   metabots.forEach((mb) =>

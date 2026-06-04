@@ -35,8 +35,12 @@ import {
   storeInitialState,
 } from "./test-utils";
 
-const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
-const productVendors = PRODUCT_VENDOR_VALUES.values.flat() as string[];
+const productCategories = PRODUCT_CATEGORY_VALUES.values
+  .flat()
+  .filter((value): value is string => typeof value === "string");
+const productVendors = PRODUCT_VENDOR_VALUES.values
+  .flat()
+  .filter((value): value is string => typeof value === "string");
 
 function createQueryWithMultipleValuesFilter() {
   const query = createQuery();

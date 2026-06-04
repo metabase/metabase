@@ -21,68 +21,80 @@ export interface EmojiSuggestionOptions {
   suggestion: Partial<SuggestionOptions>;
 }
 
+interface EmojiSuggestionStorage {
+  isEmojiPopupOpen: boolean;
+}
+
+declare module "@tiptap/core" {
+  interface Storage {
+    emojiSuggestion?: EmojiSuggestionStorage;
+  }
+}
+
 export const EmojiSuggestionPluginKey = new PluginKey("emojiSuggestion");
 
 // TipTap extension to show EmojiPicker when typing :xx
-export const EmojiSuggestionExtension =
-  Extension.create<EmojiSuggestionOptions>({
-    name: "emojiSuggestion",
+export const EmojiSuggestionExtension = Extension.create<
+  EmojiSuggestionOptions,
+  EmojiSuggestionStorage
+>({
+  name: "emojiSuggestion",
 
-    addStorage() {
-      return {
-        isEmojiPopupOpen: false,
-      };
-    },
+  addStorage() {
+    return {
+      isEmojiPopupOpen: false,
+    };
+  },
 
-    addOptions() {
-      return {
-        suggestion: {
-          char: ":",
-          pluginKey: EmojiSuggestionPluginKey,
-          allowSpaces: false,
-          // Only allow when at least 1 char was typed after ':'
-          allow: ({ state, range }) => {
-            const text = state.doc.textBetween(range.from, range.to);
-            // Expect text like ":sm", so strip the leading ":" and measure the rest
-            const maybeQuery = text.startsWith(":") ? text.slice(1) : text;
-            return maybeQuery.length >= 1;
-          },
-          // We don't use items rendering from Suggestion; EmojiPicker handles filtering.
-          items: () => [],
-          render: renderEmojiPicker,
-          command: ({
-            editor,
-            range,
-            props,
-          }: {
-            editor: Editor;
-            range: Range;
-            props: { emoji?: string };
-          }) => {
-            const emoji = (props as any)?.emoji as string | undefined;
-            if (!emoji) {
-              return;
-            }
-            editor
-              .chain()
-              .focus()
-              .deleteRange(range)
-              .insertContent(emoji + " ")
-              .run();
-          },
+  addOptions() {
+    return {
+      suggestion: {
+        char: ":",
+        pluginKey: EmojiSuggestionPluginKey,
+        allowSpaces: false,
+        // Only allow when at least 1 char was typed after ':'
+        allow: ({ state, range }) => {
+          const text = state.doc.textBetween(range.from, range.to);
+          // Expect text like ":sm", so strip the leading ":" and measure the rest
+          const maybeQuery = text.startsWith(":") ? text.slice(1) : text;
+          return maybeQuery.length >= 1;
         },
-      };
-    },
+        // We don't use items rendering from Suggestion; EmojiPicker handles filtering.
+        items: () => [],
+        render: renderEmojiPicker,
+        command: ({
+          editor,
+          range,
+          props,
+        }: {
+          editor: Editor;
+          range: Range;
+          props: { emoji?: string };
+        }) => {
+          const { emoji } = props;
+          if (!emoji) {
+            return;
+          }
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertContent(emoji + " ")
+            .run();
+        },
+      },
+    };
+  },
 
-    addProseMirrorPlugins() {
-      return [
-        Suggestion({
-          editor: this.editor,
-          ...this.options.suggestion,
-        }),
-      ];
-    },
-  });
+  addProseMirrorPlugins() {
+    return [
+      Suggestion({
+        editor: this.editor,
+        ...this.options.suggestion,
+      }),
+    ];
+  },
+});
 
 function renderEmojiPicker() {
   let component: ReactRenderer<any>;
@@ -234,7 +246,7 @@ function renderEmojiPicker() {
 // Helpers
 function setEmojiPopupOpen(editor: Editor, isOpen: boolean) {
   try {
-    const storage = (editor.storage as any).emojiSuggestion;
+    const storage = editor.storage.emojiSuggestion;
     if (storage) {
       storage.isEmojiPopupOpen = isOpen;
     }
@@ -248,16 +260,12 @@ function getCaretVirtualElement(editor: Editor): VirtualElement {
       const { from } = state.selection;
       const coordinates = view.coordsAtPos(from);
 
-      return {
+      return DOMRect.fromRect({
         x: coordinates.left,
         y: coordinates.top,
         width: 0,
         height: coordinates.bottom - coordinates.top,
-        top: coordinates.top,
-        right: coordinates.left,
-        bottom: coordinates.bottom,
-        left: coordinates.left,
-      } as DOMRect;
+      });
     },
   };
 }

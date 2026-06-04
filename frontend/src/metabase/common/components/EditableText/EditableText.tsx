@@ -144,14 +144,14 @@ const EditableTextInner = forwardRef(function EditableText(
       data-testid="editable-text"
       tabIndex={isDisabled ? -1 : 0}
       // For a11y, allow typing to activate the textarea
-      onKeyDown={(e: React.KeyboardEvent) => {
+      onKeyDown={(e: React.KeyboardEvent<HTMLElement>) => {
         if (shouldPassKeyToTextarea(e.key)) {
-          (e.currentTarget as HTMLTextAreaElement).click();
+          e.currentTarget.click();
         }
       }}
-      onKeyUp={(e: React.KeyboardEvent) => {
+      onKeyUp={(e: React.KeyboardEvent<HTMLElement>) => {
         if (!shouldPassKeyToTextarea(e.key)) {
-          (e.currentTarget as HTMLTextAreaElement).click();
+          e.currentTarget.click();
         }
       }}
       lh={1.57}

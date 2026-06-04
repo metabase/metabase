@@ -1,6 +1,5 @@
 // Ensure the custom elements are registered
-import "metabase/embedding/embedding-iframe-sdk/embed";
-import type { MetabaseEmbedElement } from "metabase/embedding/embedding-iframe-sdk/embed";
+import { MetabaseEmbedElement } from "metabase/embedding/embedding-iframe-sdk/embed";
 
 import { createEmbeddedAnalyticsJsUsage } from "./analytics";
 import type { SdkIframeEmbedBaseSettings } from "./types/embed";
@@ -1121,9 +1120,11 @@ function createEmbeddedAnalyticsJsElement(
   componentName: Component,
   properties: Record<string, any> = {},
 ): MetabaseEmbedElement {
-  const component = document.createElement(
-    componentName,
-  ) as MetabaseEmbedElement;
+  const component = document.createElement(componentName);
+  if (!(component instanceof MetabaseEmbedElement)) {
+    throw new Error(`Could not create ${componentName} embed element`);
+  }
+
   Object.entries(properties).forEach(([key, value]) => {
     component.setAttribute(key, value);
   });

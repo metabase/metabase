@@ -24,19 +24,21 @@ import { createMockSearchResult } from "metabase-types/api/mocks/search";
 
 import { MetabotChatEditor } from "./MetabotChatEditor";
 
+const suggestionModels: SuggestionModel[] = [
+  "table",
+  "database",
+  "card",
+  "dashboard",
+  "collection",
+];
+
 const defaultProps = {
   value: "",
   onChange: jest.fn(),
   onSubmit: jest.fn(),
   onStop: jest.fn(),
   suggestionConfig: {
-    suggestionModels: [
-      "table",
-      "database",
-      "card",
-      "dashboard",
-      "collection",
-    ] as SuggestionModel[],
+    suggestionModels,
   },
 };
 
@@ -76,9 +78,14 @@ const setup = (
   );
 };
 
-const getEditor = () =>
+const getEditor = () => {
   // eslint-disable-next-line testing-library/no-node-access
-  document.querySelector('[contenteditable="true"]')! as HTMLElement;
+  const editor = document.querySelector('[contenteditable="true"]');
+  if (!(editor instanceof HTMLElement)) {
+    throw new Error("Could not find the metabot chat editor");
+  }
+  return editor;
+};
 const getPopup = () => screen.findByTestId("mini-picker");
 
 describe("MetabotChatEditor", () => {

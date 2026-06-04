@@ -1,5 +1,3 @@
-import type React from "react";
-
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
@@ -31,13 +29,16 @@ const getDefaultPluginModeration = () => ({
   getQuestionIcon: PluginPlaceholder,
   getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
     undefined,
-  getModerationTimelineEvents: (_reviews: any, _currentUser: BaseUser | null) =>
-    [] as RevisionOrModerationEvent[],
+  getModerationTimelineEvents: (
+    _reviews: any,
+    _currentUser: BaseUser | null,
+  ): RevisionOrModerationEvent[] => [],
   useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
   useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
   useCardMenuItems: (_model?: Card, _reload?: () => void) => [],
-  MetabotVerifiedContentConfigurationPane:
-    PluginPlaceholder as React.ComponentType<{ metabot: MetabotInfo }>,
+  MetabotVerifiedContentConfigurationPane: PluginPlaceholder<{
+    metabot: MetabotInfo;
+  }>,
 });
 
 export const PLUGIN_MODERATION = getDefaultPluginModeration();

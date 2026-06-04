@@ -916,7 +916,8 @@ export const getTimelineEventsHoverData = (
     timelineEventsModel,
     event,
   );
-  const element = event.event.event.target as Element;
+  const { target } = event.event.event;
+  const element = target instanceof Element ? target : undefined;
 
   return {
     element: element?.nodeName === "image" ? element : undefined,
@@ -929,7 +930,8 @@ export const getGoalLineHoverData = (
   event: EChartsSeriesMouseEvent,
   formatGoal?: AxisFormatter,
 ) => {
-  const element = event.event.event.target as Element;
+  const { target } = event.event.event;
+  const element = target instanceof Element ? target : undefined;
 
   if (element?.nodeName !== "text") {
     return null;

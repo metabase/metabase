@@ -1,3 +1,4 @@
+import { isNumber } from "metabase/utils/types";
 import { calculateFunnelSteps } from "metabase/visualizations/lib/funnel/utils";
 import type { RowValues } from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
@@ -65,10 +66,17 @@ describe("FunnelNormal row matching (metabase#71488)", () => {
     expect(sortedRows[2][dimensionIndex]).toBe("Nákup");
 
     // Metrics should still be correct
-    const metrics = sortedRows.map((row) => row[1]) as number[];
-    const funnelData = metrics.map(
-      (metric, i) => [i, metric] as [number, number],
-    );
+    const metrics = sortedRows.map((row) => {
+      const metric = row[1];
+      if (!isNumber(metric)) {
+        throw new Error("Expected metric to be a number");
+      }
+      return metric;
+    });
+    const funnelData: [number, number][] = metrics.map((metric, i) => [
+      i,
+      metric,
+    ]);
     expect(() => calculateFunnelSteps(funnelData, 1, 1)).not.toThrow();
   });
 

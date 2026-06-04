@@ -1,4 +1,4 @@
-import type { ComponentType, Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 import {
   getPerformanceTabMetadata,
@@ -51,21 +51,17 @@ const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
-  SidebarCacheSection:
-    PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
-  SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
-  InvalidateNowButton:
-    PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
+  SidebarCacheSection: PluginPlaceholder<SidebarCacheSectionProps>,
+  SidebarCacheForm: PluginPlaceholder<SidebarCacheFormProps>,
+  InvalidateNowButton: PluginPlaceholder<InvalidateNowButtonProps>,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
   strategies: strategies,
   DashboardAndQuestionCachingTab: PluginPlaceholder as any,
   StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
   getTabMetadata: getPerformanceTabMetadata,
-  PreemptiveCachingSwitch:
-    PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
-  MetricCachingModal:
-    PluginPlaceholder as ComponentType<MetricCachingModalProps>,
+  PreemptiveCachingSwitch: PluginPlaceholder<PreemptiveCachingSwitchProps>,
+  MetricCachingModal: PluginPlaceholder<MetricCachingModalProps>,
 });
 
 export const PLUGIN_CACHING = getDefaultPluginCaching();

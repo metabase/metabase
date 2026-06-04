@@ -10,6 +10,16 @@ import { getStore } from "metabase/store";
 
 import { useSetEmbedFont } from "./use-set-embed-font";
 
+const createLocation = (hash: string): Location => ({
+  hash,
+  pathname: "",
+  search: "",
+  query: {},
+  state: null,
+  action: "POP",
+  key: "",
+});
+
 const setup = ({ location }: { location: Location }) => {
   const store = getStore(mainReducers, undefined, createMockState());
 
@@ -31,13 +41,13 @@ const setup = ({ location }: { location: Location }) => {
 describe("useSetEmbedFont", () => {
   it("sets and updates font", () => {
     const { rerender, getEmbedOptionsState } = setup({
-      location: { hash: "#font=Roboto" } as Location,
+      location: createLocation("#font=Roboto"),
     });
 
     expect(getEmbedOptionsState().font).toBe("Roboto");
 
     rerender({
-      location: { hash: "" } as Location,
+      location: createLocation(""),
     });
 
     expect(getEmbedOptionsState().font).toBe(undefined);

@@ -10,19 +10,26 @@ import {
 import { permissionApi } from "metabase/api";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import type { Group, GroupId } from "metabase-types/api";
+import type { Group, GroupId, GroupInfo } from "metabase-types/api";
 
 const isPinnedGroup = (group: Group) =>
   isAdminGroup(group) || isDefaultGroup(group) || isDataAnalystGroup(group);
 
-const EMPTY_GROUP_LIST: Group[] = [];
+const EMPTY_GROUP_INFO_LIST: GroupInfo[] = [];
+
+const addEmptyMembers = (groups: GroupInfo[]): Group[] =>
+  groups.map((group) => ({ ...group, members: [] }));
 
 // The list endpoint returns groups without `members`, but the legacy entity
 // typed them as `Group[]`. Downstream code never reads `members` from list
-// results, so we cast to preserve the existing call signatures.
-export const selectGroupList = (state: State): Group[] =>
-  (permissionApi.endpoints.listPermissionsGroups.select({})(state).data ??
-    EMPTY_GROUP_LIST) as Group[];
+// results, so we add an empty `members` list to preserve the existing call
+// signatures.
+export const selectGroupList = createSelector(
+  (state: State) =>
+    permissionApi.endpoints.listPermissionsGroups.select({})(state).data ??
+    EMPTY_GROUP_INFO_LIST,
+  addEmptyMembers,
+);
 
 export const selectGroupById = (state: State, id: GroupId): Group | undefined =>
   permissionApi.endpoints.getPermissionsGroup.select(id)(state).data ??

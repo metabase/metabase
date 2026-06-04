@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import cx from "classnames";
 import {
   type HTMLAttributes,
@@ -33,51 +34,58 @@ function ParameterValueWidgetTriggerInner(
     hasPopover = false,
     ...htmlProps
   }: ParameterValueWidgetTriggerProps,
-  ref: Ref<HTMLButtonElement | HTMLButtonElement>,
+  ref: Ref<HTMLElement>,
 ) {
-  const attributes = hasPopover
-    ? {
-        // HACK: This is a hack to make typescript think we're rendering a button.
-        // UnstyledButton's styles are widened somewhere down the stack so that they
-        // are not compatible with Ref<HTMLButtonElement> and we need to cast it to "button"
-        // to sidestep this issue.
-        component: UnstyledButton as unknown as "button",
-        ref: ref as Ref<HTMLButtonElement>,
-        type: "button" as const,
-      }
-    : {
-        component: "div" as const,
-        ref: ref as Ref<HTMLDivElement>,
-      };
+  const elementRef = useMergedRef(ref);
 
   if (mimicMantine) {
-    return (
+    const flexProps = {
+      align: "center" as const,
+      pos: "relative" as const,
+      w: "100%",
+      className: cx(S.TriggerContainer, {
+        [S.hasValue]: hasValue,
+      }),
+      "aria-label": ariaLabel,
+      ...htmlProps,
+    };
+
+    return hasPopover ? (
       <Flex
-        align="center"
-        pos="relative"
-        w="100%"
-        className={cx(S.TriggerContainer, {
-          [S.hasValue]: hasValue,
-        })}
-        aria-label={ariaLabel}
-        {...htmlProps}
-        {...attributes}
+        {...flexProps}
+        renderRoot={(props) => (
+          <UnstyledButton {...props} ref={elementRef} type="button" />
+        )}
       >
+        {children}
+      </Flex>
+    ) : (
+      <Flex {...flexProps} component="div" ref={elementRef}>
         {children}
       </Flex>
     );
   }
 
-  return (
+  const boxProps = {
+    className: cx(S.parameter, className, {
+      [S.selected]: hasValue,
+    }),
+    "aria-label": ariaLabel,
+    maw: "100%",
+    ...htmlProps,
+  };
+
+  return hasPopover ? (
     <Box
-      className={cx(S.parameter, className, {
-        [S.selected]: hasValue,
-      })}
-      aria-label={ariaLabel}
-      maw="100%"
-      {...htmlProps}
-      {...attributes}
+      {...boxProps}
+      renderRoot={(props) => (
+        <UnstyledButton {...props} ref={elementRef} type="button" />
+      )}
     >
+      {children}
+    </Box>
+  ) : (
+    <Box {...boxProps} component="div" ref={elementRef}>
       {children}
     </Box>
   );

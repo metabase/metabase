@@ -17,7 +17,7 @@ import { getLocation } from "metabase/selectors/routing";
 import { Divider, Stack } from "metabase/ui";
 
 export function PeopleNav() {
-  const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
+  const shouldNudge = Boolean(useSelector(shouldNudgeToPro));
   const isUsingTenants = useSetting("use-tenants");
   const showTenantsUpsell = useSelector(shouldShowTenantsUpsell);
   const showTenantsUpsellNav = showTenantsUpsell && !isUsingTenants;

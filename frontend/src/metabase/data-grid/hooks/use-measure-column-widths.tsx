@@ -51,7 +51,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
         }
 
         const elementsMeasures = Array.from(
-          div.querySelectorAll("[data-measure-id]"),
+          div.querySelectorAll<HTMLElement>("[data-measure-id]"),
         )
           .map((element) => {
             const columnId = element.getAttribute("data-measure-id");
@@ -61,7 +61,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
               return null;
             }
 
-            const width = (element as HTMLElement).offsetWidth;
+            const width = element.offsetWidth;
             return { columnId, width, type };
           })
           .filter(isNotNull);

@@ -78,9 +78,7 @@ export const getTooltipBaseOption = (
         ? echartsTooltipContainerSelector
         : `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} ${echartsTooltipContainerSelector}`;
 
-      let container = document.querySelector(
-        containerSelector,
-      ) as HTMLDivElement;
+      let container = document.querySelector<HTMLDivElement>(containerSelector);
 
       if (!container) {
         container = document.createElement("div");

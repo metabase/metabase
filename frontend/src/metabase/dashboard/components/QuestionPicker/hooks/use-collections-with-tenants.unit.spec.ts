@@ -34,8 +34,8 @@ const createMockExpandedCollection = (
 
 function setupHook({
   useTenants = false,
-  sharedCollections = [] as Collection[],
-} = {}) {
+  sharedCollections = [],
+}: { useTenants?: boolean; sharedCollections?: Collection[] } = {}) {
   setupCollectionTreeEndpoint(sharedCollections);
 
   const baseRoot = createMockExpandedCollection({

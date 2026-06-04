@@ -396,13 +396,7 @@ const createDefaultArgs = ({
 };
 
 function getLastPopover() {
-  const lastPopover = Array.from(
-    document.documentElement.querySelectorAll(
-      '[data-element-id="mantine-popover"]',
-    ),
-  ).at(-1) as HTMLElement;
-
-  return within(lastPopover);
+  return within(getLastPopoverElement());
 }
 
 function getLastPopoverElement() {
@@ -410,9 +404,28 @@ function getLastPopoverElement() {
     document.documentElement.querySelectorAll(
       '[data-element-id="mantine-popover"]',
     ),
-  ).at(-1) as HTMLElement;
+  ).at(-1);
+
+  if (!(lastPopover instanceof HTMLElement)) {
+    throw new Error("Could not find popover");
+  }
 
   return lastPopover;
+}
+
+function getParentElement(element: HTMLElement) {
+  const { parentElement } = element;
+  if (!parentElement) {
+    throw new Error("Could not find parent element");
+  }
+  return parentElement;
+}
+
+function getInput(element: HTMLElement) {
+  if (!(element instanceof HTMLInputElement)) {
+    throw new Error("Expected input element");
+  }
+  return element;
 }
 
 export const LightThemeText = {
@@ -476,7 +489,7 @@ export const LightThemeParameterSearchWithValue = {
     await userEvent.type(searchInput, "g");
 
     const dropdown = getLastPopover();
-    (dropdown.getByText("Gadget").parentNode as HTMLElement).setAttribute(
+    getParentElement(dropdown.getByText("Gadget")).setAttribute(
       "data-hovered",
       "true",
     );
@@ -546,9 +559,11 @@ export const LightThemeParameterListWithValue = {
     const popover = getLastPopover();
     await userEvent.type(popover.getByPlaceholderText("Search the list"), "g");
     await userEvent.click(popover.getByText("Widget"));
-    const gizmo = popover.getByRole("checkbox", {
-      name: "Gizmo",
-    }) as HTMLInputElement;
+    const gizmo = getInput(
+      popover.getByRole("checkbox", {
+        name: "Gizmo",
+      }),
+    );
     gizmo.disabled = true;
   },
 };
@@ -594,9 +609,7 @@ export const LightThemeParameterListSingleWithValue = {
     );
     await userEvent.click(documentElement.getByText("Widget"));
     const popover = getLastPopover();
-    (popover.getByText("Gadget").parentNode as HTMLElement).classList.add(
-      "pseudo-hover",
-    );
+    getParentElement(popover.getByText("Gadget")).classList.add("pseudo-hover");
   },
 };
 
@@ -882,9 +895,7 @@ export const LightThemeUnitOfTime = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    (popover.getByText("Hour").parentNode as HTMLElement).classList.add(
-      "pseudo-hover",
-    );
+    getParentElement(popover.getByText("Hour")).classList.add("pseudo-hover");
   },
 };
 

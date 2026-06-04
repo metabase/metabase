@@ -1,10 +1,14 @@
 import { render, screen } from "@testing-library/react";
+import { type ReactNode, isValidElement } from "react";
 import { isElementOfType } from "react-dom/test-utils";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { formatEmail } from "./email";
+
+const isExternalLinkElement = (node: ReactNode) =>
+  isValidElement(node) && isElementOfType(node, ExternalLink);
 
 describe("formatEmail", () => {
   describe("email link generation", () => {
@@ -18,7 +22,7 @@ describe("formatEmail", () => {
         jsx: true,
         rich: true,
       });
-      expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
+      expect(isExternalLinkElement(result)).toBe(true);
 
       render(result);
 
@@ -36,7 +40,7 @@ describe("formatEmail", () => {
       "firstname.lastname@company.co.uk",
     ])("should handle complex valid email address: %s", (email) => {
       const result = formatEmail(email, { jsx: true, rich: true });
-      expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
+      expect(isExternalLinkElement(result)).toBe(true);
 
       render(result);
 
@@ -89,7 +93,7 @@ describe("formatEmail", () => {
         clicked,
       });
 
-      expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
+      expect(isExternalLinkElement(result)).toBe(true);
 
       render(result);
 
@@ -110,7 +114,7 @@ describe("formatEmail", () => {
         collapseNewlines: true,
       });
 
-      expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(false);
+      expect(isExternalLinkElement(result)).toBe(false);
       expect(result).toBe("test@example.com  extra text");
     });
 
@@ -130,7 +134,7 @@ describe("formatEmail", () => {
         collapseNewlines: true,
       });
 
-      expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
+      expect(isExternalLinkElement(result)).toBe(true);
 
       render(result);
 

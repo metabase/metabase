@@ -14,6 +14,11 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
+const StaticDashboardTestComponent: ComponentType<SdkDashboardProps> = ({
+  token,
+  ...props
+}) => <StaticDashboard {...props} />;
+
 const setupPremium = async (
   options: Omit<SetupSdkDashboardOptions, "component"> = {},
 ) => {
@@ -23,7 +28,7 @@ const setupPremium = async (
       embedding_sdk: true,
     },
     enterprisePlugins: ["sdk_notifications"],
-    component: StaticDashboard as ComponentType<SdkDashboardProps>,
+    component: StaticDashboardTestComponent,
   });
 };
 console.warn = () => {};

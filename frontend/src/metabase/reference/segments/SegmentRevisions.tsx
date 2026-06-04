@@ -117,7 +117,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
                             currentUser={user || {}}
                             userColor={
                               userColorAssignments[
-                                getIn(revision, ["user", "id"]) as string
+                                String(getIn(revision, ["user", "id"]))
                               ]
                             }
                           />

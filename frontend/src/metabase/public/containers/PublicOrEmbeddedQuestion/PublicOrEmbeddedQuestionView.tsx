@@ -75,7 +75,8 @@ export function PublicOrEmbeddedQuestionView({
       />
     ) : null;
 
-  const untranslatedRawSeries = [{ card, data: result?.data }] as RawSeries;
+  const untranslatedRawSeries: RawSeries =
+    result && card ? [{ card, data: result.data }] : [];
   const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
     untranslatedRawSeries,
   );

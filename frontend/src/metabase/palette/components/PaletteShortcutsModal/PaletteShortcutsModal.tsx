@@ -24,9 +24,11 @@ const groupedShortcuts = _.groupBy(
   "shortcutGroup",
 );
 
-const shortcutGroups = Object.keys(groupedShortcuts).filter(
-  (val) => !!val,
-) as ShortcutGroup[];
+const isShortcutGroup = (value: string): value is ShortcutGroup => {
+  return value in GROUP_LABELS;
+};
+
+const shortcutGroups = Object.keys(groupedShortcuts).filter(isShortcutGroup);
 
 export const PaletteShortcutsModal = ({
   onClose,

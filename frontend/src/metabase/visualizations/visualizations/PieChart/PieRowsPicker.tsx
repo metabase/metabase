@@ -4,6 +4,7 @@ import { color } from "metabase/ui/colors";
 import {
   ChartSettingSeriesOrder,
   type SortableChartSettingOrderedItem,
+  type SortableItem,
 } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import {
   createHexToAccentNumberMap,
@@ -57,10 +58,26 @@ export function PieRowsPicker({
       }),
     });
 
-  const onSortEnd = (newPieRows: SortableChartSettingOrderedItem[]) =>
+  const toPieRows = (rows: SortableItem[]): PieRow[] =>
+    rows.map((row) => {
+      const existingRow = pieRows.find((pieRow) => pieRow.key === row.key);
+
+      return {
+        key: row.key,
+        name: row.name,
+        originalName: existingRow?.originalName ?? row.name,
+        color: row.color ?? existingRow?.color ?? "",
+        defaultColor: existingRow?.defaultColor ?? true,
+        enabled: row.enabled,
+        hidden: row.hidden ?? existingRow?.hidden ?? false,
+        isOther: existingRow?.isOther ?? false,
+      };
+    });
+
+  const onSortEnd = (newPieRows: SortableItem[]) =>
     onChangeSettings({
       "pie.sort_rows": false,
-      "pie.rows": newPieRows as PieRow[],
+      "pie.rows": toPieRows(newPieRows),
     });
 
   return (
@@ -69,7 +86,7 @@ export function PieRowsPicker({
       series={rawSeries}
       onChangeSeriesColor={onChangeSeriesColor}
       onSortEnd={onSortEnd}
-      onChange={(rows) => onChangeSettings({ "pie.rows": rows as PieRow[] })}
+      onChange={(rows) => onChangeSettings({ "pie.rows": toPieRows(rows) })}
       onShowWidget={onShowWidget}
       hasEditSettings
       accentColorOptions={

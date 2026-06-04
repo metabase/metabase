@@ -48,9 +48,9 @@ const getDefaultPluginTenants = () => ({
     isLoading: false,
     error: undefined,
   }),
-  userStrategyRoute: null as React.ReactElement | null,
-  tenantsRoutes: null as React.ReactElement | null,
-  CreateTenantsOnboardingStep: PluginPlaceholder as React.ComponentType<{
+  userStrategyRoute: null,
+  tenantsRoutes: null,
+  CreateTenantsOnboardingStep: PluginPlaceholder<{
     onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
     tenants: CreatedTenantData[];
     onTenantsChange: (value: SetStateAction<CreatedTenantData[]>) => void;
@@ -58,55 +58,51 @@ const getDefaultPluginTenants = () => ({
     strategy?: DataSegregationStrategy | null;
     rlsColumnName?: string | null;
   }>,
-  TenantsSummaryOnboardingStep: PluginPlaceholder as React.ComponentType<{
+  TenantsSummaryOnboardingStep: PluginPlaceholder<{
     tenants: CreatedTenantData[];
     strategy?: DataSegregationStrategy | null;
     rlsTableNames?: string[];
     rlsColumnName?: string | null;
   }>,
   EditUserStrategySettingsButton: PluginPlaceholder,
-  FormTenantWidget: (_props: any) => null as React.ReactElement | null,
-  TenantDisplayName: (_props: any) => null as React.ReactElement | null,
+  FormTenantWidget: (_props: any) => null,
+  TenantDisplayName: (_props: any) => null,
   isExternalUsersGroup: (_group: Pick<Group, "magic_group_type">) => false,
   isTenantGroup: (_group: Pick<Group, "is_tenant_group">) => false,
   isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
   isTenantCollection: (_collection: Partial<Pick<Collection, "namespace">>) =>
     false,
-  PeopleNav: null as React.ReactElement | null,
-  ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
-    null as React.ReactElement | null,
+  PeopleNav: null,
+  ReactivateExternalUserButton: ({ user: _user }: { user: User }) => null,
   TenantGroupHintIcon: PluginPlaceholder,
-  MainNavSharedCollections: PluginPlaceholder as React.ComponentType<{
+  MainNavSharedCollections: PluginPlaceholder<{
     canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   }>,
-  TenantCollectionItemList: (_props: { pathIndex: number }) =>
-    null as React.ReactElement | null,
-  TenantSpecificCollectionsItemList: (_props: { pathIndex: number }) =>
-    null as React.ReactElement | null,
+  TenantCollectionItemList: (_props: { pathIndex: number }) => null,
+  TenantSpecificCollectionsItemList: (_props: { pathIndex: number }) => null,
   TenantCollectionList: PluginPlaceholder,
-  CanAccessTenantSpecificRoute: PluginPlaceholder as React.ComponentType<{
+  CanAccessTenantSpecificRoute: PluginPlaceholder<{
     children: React.ReactNode;
   }>,
   TenantUsersList: PluginPlaceholder,
-  TenantUsersPersonalCollectionList: PluginPlaceholder as React.ComponentType<{
+  TenantUsersPersonalCollectionList: PluginPlaceholder<{
     params: { tenantId: string };
   }>,
-  GroupDescription: (_props: { group: Group }) =>
-    null as React.ReactElement | null,
+  GroupDescription: (_props: { group: Group }) => null,
   EditUserStrategyModal: PluginPlaceholder,
-  getNewUserModalTitle: (_isExternal: boolean) => null as string | null,
-  getFormGroupsTitle: (_isExternal: boolean) => null as string | null,
+  getNewUserModalTitle: (_isExternal: boolean): string | null => null,
+  getFormGroupsTitle: (_isExternal: boolean): string | null => null,
   // cannot be null, because that refers to the default namespace
   SHARED_TENANT_NAMESPACE: "none" as CollectionNamespace,
   // cannot be null, because that refers to the default namespace
   TENANT_SPECIFIC_NAMESPACE: "none" as CollectionNamespace,
   canPlaceEntityInCollection: () => true,
-  getRootCollectionItem: () => null as OmniPickerCollectionItem | null,
-  getTenantRootDisabledReason: () => null as string | null,
-  getNamespaceDisplayName: (_namespace?: CollectionNamespace) =>
-    null as string | null,
+  getRootCollectionItem: (): OmniPickerCollectionItem | null => null,
+  getTenantRootDisabledReason: (): string | null => null,
+  getNamespaceDisplayName: (_namespace?: CollectionNamespace): string | null =>
+    null,
   getFlattenedCollectionsForNavbar: () => [],
   useTenantMainNavbarData: () => ({
     canAccessTenantSpecificCollections: false,

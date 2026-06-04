@@ -572,8 +572,8 @@ describe("useEmbeddingParameters", () => {
           }),
         {
           initialProps: {
-            resource: firstDashboard as Dashboard | Card | null,
-            initialAvailableParameters: [mockParameter1] as Parameter[] | null,
+            resource: firstDashboard,
+            initialAvailableParameters: [mockParameter1],
           },
         },
       );

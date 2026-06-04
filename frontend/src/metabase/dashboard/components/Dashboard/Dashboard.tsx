@@ -147,17 +147,18 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   RefreshPeriod: typeof RefreshWidget;
 };
 
-const DashboardComponent = DashboardDefaultView as DashboardComponentType;
-DashboardComponent.Header = DashboardHeader;
-DashboardComponent.Grid = Grid;
-DashboardComponent.Title = DashboardTitle;
-DashboardComponent.Tabs = DashboardTabs;
-DashboardComponent.ParametersList = ParametersList;
-DashboardComponent.FullscreenButton = FullscreenToggle;
-DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
-DashboardComponent.SubscriptionsButton =
-  PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton;
-DashboardComponent.InfoButton = DashboardInfoButton;
-DashboardComponent.RefreshPeriod = RefreshWidget;
-
-export const Dashboard = DashboardComponent;
+export const Dashboard: DashboardComponentType = Object.assign(
+  DashboardDefaultView,
+  {
+    Header: DashboardHeader,
+    Grid,
+    Title: DashboardTitle,
+    Tabs: DashboardTabs,
+    ParametersList,
+    FullscreenButton: FullscreenToggle,
+    ExportAsPdfButton,
+    SubscriptionsButton: PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton,
+    InfoButton: DashboardInfoButton,
+    RefreshPeriod: RefreshWidget,
+  },
+);

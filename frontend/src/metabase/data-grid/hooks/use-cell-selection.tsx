@@ -81,8 +81,9 @@ export const useCellSelection = ({
         return;
       }
 
-      const target = e.target as HTMLElement;
-      const isInsideSelectableCell = target.closest("[data-selectable-cell]");
+      const isInsideSelectableCell =
+        e.target instanceof Element &&
+        e.target.closest("[data-selectable-cell]") != null;
       if (isInsideSelectableCell || selectedCells.length === 0) {
         return;
       }
@@ -237,7 +238,7 @@ export const useCellSelection = ({
         table,
         selectedStartCell,
         getCellSelectionData(cell),
-      ) as CellId[];
+      );
 
       setSelectedCells(selectedCellsInRange);
     },
@@ -531,7 +532,7 @@ const getCellValues = (
             ?.textContent
         : undefined;
     })
-    .filter(Boolean) as string[];
+    .filter((headerText): headerText is string => Boolean(headerText));
 
   // Get rows in their current sorted/visual order
   const sortedRows = table.getRowModel().rows;
@@ -638,14 +639,16 @@ const getCellsBetween = (
     );
 
   return selectedRows.flatMap((row) =>
-    columns.map((column) => {
-      const tableCell = row
-        .getAllCells()
-        .find((cell) => cell.column.id === column.id);
-      if (!tableCell) {
-        return null;
-      }
-      return getCellSelectionData(tableCell);
-    }),
+    columns
+      .map((column) => {
+        const tableCell = row
+          .getAllCells()
+          .find((cell) => cell.column.id === column.id);
+        if (!tableCell) {
+          return null;
+        }
+        return getCellSelectionData(tableCell);
+      })
+      .filter((cell): cell is CellId => cell != null),
   );
 };

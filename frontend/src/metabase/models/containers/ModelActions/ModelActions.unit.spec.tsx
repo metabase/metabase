@@ -705,7 +705,7 @@ describe("ModelActions", () => {
       const { model } = await setup({
         model: createStructuredModelCard({ archived: true }),
       });
-      const modelName = model.displayName() as string;
+      const modelName = model.displayName() ?? "";
 
       expect(screen.queryByText(modelName)).not.toBeInTheDocument();
       expect(

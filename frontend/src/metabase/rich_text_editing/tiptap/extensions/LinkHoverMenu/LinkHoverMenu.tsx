@@ -52,16 +52,24 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
     }
 
     const handleMouseOver = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (target.tagName === "A" && target.classList.contains(S.plainLink)) {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.tagName === "A" &&
+        target.classList.contains(S.plainLink)
+      ) {
         clearHoverTimeout();
         setHoveredLink(target);
       }
     };
 
     const handleMouseOut = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (target.tagName === "A" && target.classList.contains(S.plainLink)) {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.tagName === "A" &&
+        target.classList.contains(S.plainLink)
+      ) {
         startHoverTimeout();
       }
     };

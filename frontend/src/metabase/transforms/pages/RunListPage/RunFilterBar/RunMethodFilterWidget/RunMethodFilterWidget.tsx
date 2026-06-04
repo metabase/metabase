@@ -18,6 +18,11 @@ import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
 import { FilterFieldSet } from "../FilterFieldSet";
 
 const RUN_METHODS: TransformRunMethod[] = ["manual", "cron"];
+const RUN_METHOD_SET: ReadonlySet<string> = new Set(RUN_METHODS);
+
+function isRunMethod(value: string): value is TransformRunMethod {
+  return RUN_METHOD_SET.has(value);
+}
 
 export function RunMethodFilterWidget({
   runMethods,
@@ -68,7 +73,7 @@ function RunMethodFilterForm({
   const isValid = runMethods.length > 0;
 
   const handleChange = (values: string[]) => {
-    setRunMethods(values as TransformRunMethod[]);
+    setRunMethods(values.filter(isRunMethod));
   };
 
   const handleSubmit = (event: FormEvent) => {

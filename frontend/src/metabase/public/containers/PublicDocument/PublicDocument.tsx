@@ -51,10 +51,10 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
     value: document,
     loading,
     error,
-  } = useAsync(async () => {
-    const doc = await PublicApi.document({ uuid });
-    return doc as Document;
-  }, [uuid]);
+  } = useAsync(
+    async (): Promise<Document> => PublicApi.document({ uuid }),
+    [uuid],
+  );
 
   useEffect(() => {
     if (error) {

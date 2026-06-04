@@ -45,7 +45,7 @@ const setup = ({
   enterprisePlugins,
   initialValues = USER,
   external = false,
-  tenants = [] as Tenant[],
+  tenants = [],
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();

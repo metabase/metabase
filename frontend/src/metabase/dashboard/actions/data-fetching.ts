@@ -448,9 +448,12 @@ const HTTP1_CONCURRENT_CARD_FETCH_LIMIT = 5;
 
 function getCardsFetchingConcurrencyLimit(): number {
   try {
-    const [navigationEntry] = performance.getEntriesByType(
-      "navigation",
-    ) as PerformanceNavigationTiming[];
+    const navigationEntry = performance
+      .getEntriesByType("navigation")
+      .find(
+        (entry): entry is PerformanceNavigationTiming =>
+          "nextHopProtocol" in entry,
+      );
     const protocol = navigationEntry?.nextHopProtocol ?? "";
     // HTTP/2 and HTTP/3 multiplex requests over a single connection,
     // so the per-host connection limit does not apply

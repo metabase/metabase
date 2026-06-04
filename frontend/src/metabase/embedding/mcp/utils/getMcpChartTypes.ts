@@ -1,5 +1,10 @@
 import visualizations from "metabase/visualizations";
-import type { CardDisplayType, IconName } from "metabase-types/api";
+import {
+  type CardDisplayType,
+  type IconName,
+  type QueryVisualizationDisplayType,
+  isCardDisplayType,
+} from "metabase-types/api";
 
 // Default visualization can be any sensible visualization, so the
 // chart type picker needs to be able to show any icon.
@@ -30,20 +35,23 @@ const MCP_CHART_TYPE_ICONS: Record<CardDisplayType, IconName> = {
 const MCP_ALTERNATIVE_CHART_TYPES: CardDisplayType[] = ["bar", "line"];
 
 export type McpChartTypeEntry = {
-  type: CardDisplayType;
+  type: QueryVisualizationDisplayType;
   icon: IconName;
 };
 
 interface GetMcpChartTypesProps {
-  defaultDisplay: CardDisplayType | null;
-  sensibleVisualizations: CardDisplayType[];
+  defaultDisplay: QueryVisualizationDisplayType | null;
+  sensibleVisualizations: QueryVisualizationDisplayType[];
   canShowTable: boolean;
 }
 
-function getChartTypeIcon(type: CardDisplayType) {
+function getChartTypeIcon(type: QueryVisualizationDisplayType) {
   const visualization = visualizations.get(type);
 
-  return visualization?.iconName ?? MCP_CHART_TYPE_ICONS[type] ?? null;
+  return (
+    visualization?.iconName ??
+    (isCardDisplayType(type) ? MCP_CHART_TYPE_ICONS[type] : null)
+  );
 }
 
 export function getMcpChartTypes({
@@ -55,7 +63,7 @@ export function getMcpChartTypes({
     (type) => type !== defaultDisplay,
   );
 
-  const chartTypes: Array<CardDisplayType | null> = [
+  const chartTypes: Array<QueryVisualizationDisplayType | null> = [
     // Slot 1: the original visualization
     // Lets them go back the original viz even if it's not bar/line/area.
     defaultDisplay,

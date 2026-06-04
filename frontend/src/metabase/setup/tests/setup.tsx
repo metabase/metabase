@@ -162,7 +162,13 @@ export const getLastSettingsPutPayload = async () => {
   expect(lastSettingsCall).toBeTruthy();
   expect(lastSettingsCall.options?.body).toBeTruthy();
 
-  return JSON.parse((await lastSettingsCall.options!.body!) as string);
+  const body = await lastSettingsCall.options!.body!;
+
+  if (typeof body !== "string") {
+    throw new Error("Expected settings request body to be a string");
+  }
+
+  return JSON.parse(body);
 };
 
 export const skipTokenStep = async (name = "Skip") =>

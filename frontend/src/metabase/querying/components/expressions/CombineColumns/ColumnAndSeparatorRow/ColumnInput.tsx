@@ -45,10 +45,14 @@ export function ColumnInput({
   }
 
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
-    if (!event.currentTarget || !event.relatedTarget) {
+    const relatedTarget = event.relatedTarget;
+    if (relatedTarget == null) {
       return;
     }
-    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+    if (
+      !(relatedTarget instanceof Node) ||
+      !event.currentTarget.contains(relatedTarget)
+    ) {
       setTimeout(() => setOpen(false), 100);
     }
   }

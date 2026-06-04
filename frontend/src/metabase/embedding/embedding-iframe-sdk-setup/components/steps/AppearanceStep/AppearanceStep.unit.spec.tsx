@@ -11,10 +11,10 @@ const landOnAppearanceStep = (overrides?: Parameters<typeof setup>[0]) =>
 
 const getOptionCardsWrapper = () => {
   const wrapper = screen.getByText("Behavior").closest("[style*='opacity']");
-  if (!wrapper) {
+  if (!(wrapper instanceof HTMLElement)) {
     throw new Error("Could not find option cards wrapper with opacity style");
   }
-  return wrapper as HTMLElement;
+  return wrapper;
 };
 
 describe("AppearanceStep > option cards dim state when landing on this step directly", () => {

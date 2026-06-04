@@ -11,6 +11,7 @@ import type {
   Card,
   DatabaseId,
   NativeDatasetQuery,
+  Parameter,
   VisualizationSettings,
   WritebackParameter,
   WritebackQueryAction,
@@ -94,6 +95,10 @@ function convertActionToQuestion(
   return question.setParameters(action.parameters);
 }
 
+function assertWritebackParameters(
+  _parameters: Parameter[],
+): asserts _parameters is WritebackParameter[] {}
+
 function convertQuestionToAction(
   question: Question,
   formSettings: ActionFormSettings,
@@ -106,14 +111,16 @@ function convertQuestionToAction(
     formSettings,
     cleanQuestion.parameters(),
   );
+  const name = question.displayName();
+  assertWritebackParameters(parameters);
 
   return {
     id: question.id(),
-    name: question.displayName() as string,
+    ...(name != null ? { name } : {}),
     description: question.description(),
     dataset_query: cleanQuestion.datasetQuery() as NativeDatasetQuery,
     database_id: question.databaseId() as DatabaseId,
-    parameters: parameters as WritebackParameter[],
+    parameters,
     visualization_settings: formSettings,
   };
 }

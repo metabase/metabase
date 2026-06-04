@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { type ReactNode, isValidElement } from "react";
 import { isElementOfType } from "react-dom/test-utils";
 
 import { setupSdkPlugins } from "__support__/enterprise";
@@ -17,6 +17,24 @@ import { formatUrl, slugify } from "./url";
 import { formatValue } from "./value";
 
 const SITE_URL = "http://localhost:3000";
+
+interface TestElementProps {
+  children?: ReactNode;
+  href?: string;
+  "data-testid"?: string;
+}
+
+const expectReactElement = (node: ReactNode) => {
+  expect(isValidElement<TestElementProps>(node)).toBe(true);
+  if (!isValidElement<TestElementProps>(node)) {
+    throw new Error("Expected a React element");
+  }
+
+  return node;
+};
+
+const isExternalLinkElement = (node: ReactNode) =>
+  isValidElement(node) && isElementOfType(node, ExternalLink);
 
 describe("formatUrl", () => {
   beforeAll(() => {
@@ -42,11 +60,13 @@ describe("formatUrl", () => {
       pluginsConfig: { handleLink },
     });
 
-    const node = formatUrl(url, {
-      jsx: true,
-      rich: true,
-      view_as: "link",
-    }) as ReactElement;
+    const node = expectReactElement(
+      formatUrl(url, {
+        jsx: true,
+        rich: true,
+        view_as: "link",
+      }),
+    );
     render(node);
 
     const link = screen.getByRole("link");
@@ -69,11 +89,13 @@ describe("formatUrl", () => {
       pluginsConfig: { handleLink },
     });
 
-    const node = formatUrl(url, {
-      jsx: true,
-      rich: true,
-      view_as: "link",
-    }) as ReactElement;
+    const node = expectReactElement(
+      formatUrl(url, {
+        jsx: true,
+        rich: true,
+        view_as: "link",
+      }),
+    );
     render(node);
 
     const link = screen.getByRole("link");
@@ -92,43 +114,39 @@ describe("formatUrl", () => {
 
   it("should return a component for http:, https:, and mailto: links in jsx mode", () => {
     expect(
-      isElementOfType(
+      isExternalLinkElement(
         formatUrl("http://metabase.com/", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
-        ExternalLink,
+        }),
       ),
     ).toEqual(true);
     expect(
-      isElementOfType(
+      isExternalLinkElement(
         formatUrl("https://metabase.com/", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
-        ExternalLink,
+        }),
       ),
     ).toEqual(true);
     expect(
-      isElementOfType(
+      isExternalLinkElement(
         formatUrl("mailto:tom@metabase.test", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
-        ExternalLink,
+        }),
       ),
     ).toEqual(true);
   });
 
   it("should return a component for custom protocols if the column type is URL", () => {
     expect(
-      isElementOfType(
+      isExternalLinkElement(
         formatUrl("myproto:some-custom-thing", {
           jsx: true,
           rich: true,
           column: { semantic_type: TYPE.URL },
-        }) as ReactElement,
-        ExternalLink,
+        }),
       ),
     ).toEqual(true);
   });
@@ -139,7 +157,7 @@ describe("formatUrl", () => {
         jsx: true,
         rich: true,
         column: { semantic_type: TYPE.URL },
-      }) as ReactElement,
+      }),
     ).toEqual("invalid-blah-blah-blah");
   });
 
@@ -148,15 +166,14 @@ describe("formatUrl", () => {
       formatUrl("myproto:some-custom-thing", {
         jsx: true,
         rich: true,
-      }) as ReactElement,
+      }),
     ).toEqual("myproto:some-custom-thing");
   });
 
   it("should not return a link component for unrecognized links in jsx mode", () => {
     expect(
-      isElementOfType(
-        formatUrl("metabase.com", { jsx: true, rich: true }) as ReactElement,
-        ExternalLink,
+      isExternalLinkElement(
+        formatUrl("metabase.com", { jsx: true, rich: true }),
       ),
     ).toEqual(false);
   });
@@ -166,36 +183,40 @@ describe("formatUrl", () => {
       formatUrl("javascript:alert('pwnd')", {
         jsx: true,
         rich: true,
-      }) as ReactElement,
+      }),
     ).toEqual("javascript:alert('pwnd')");
     expect(
       formatUrl("data:text/plain;charset=utf-8,hello%20world", {
         jsx: true,
         rich: true,
-      }) as ReactElement,
+      }),
     ).toEqual("data:text/plain;charset=utf-8,hello%20world");
   });
 
   describe("when view_as = link", () => {
     it("should return link component for type/URL and  view_as = link", () => {
-      const formatted = formatUrl("http://whatever", {
-        jsx: true,
-        rich: true,
-        column: { semantic_type: TYPE.URL },
-        view_as: "link",
-      }) as ReactElement;
+      const formatted = expectReactElement(
+        formatUrl("http://whatever", {
+          jsx: true,
+          rich: true,
+          column: { semantic_type: TYPE.URL },
+          view_as: "link",
+        }),
+      );
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
     });
 
     it("should return link component using link_url and link_text when specified", () => {
-      const formatted = formatUrl("http://not.metabase.com", {
-        jsx: true,
-        rich: true,
-        link_text: "metabase link",
-        link_url: "http://metabase.com",
-        view_as: "link",
-        clicked: {},
-      }) as ReactElement;
+      const formatted = expectReactElement(
+        formatUrl("http://not.metabase.com", {
+          jsx: true,
+          rich: true,
+          link_text: "metabase link",
+          link_url: "http://metabase.com",
+          view_as: "link",
+          clicked: {},
+        }),
+      );
 
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
       expect(formatted.props.children).toEqual("metabase link");
@@ -203,14 +224,16 @@ describe("formatUrl", () => {
     });
 
     it("should return link component using link_text and the value as url when link_url is empty", () => {
-      const formatted = formatUrl("http://metabase.com", {
-        jsx: true,
-        rich: true,
-        link_text: "metabase link",
-        link_url: "",
-        view_as: "link",
-        clicked: {},
-      }) as ReactElement;
+      const formatted = expectReactElement(
+        formatUrl("http://metabase.com", {
+          jsx: true,
+          rich: true,
+          link_text: "metabase link",
+          link_url: "",
+          view_as: "link",
+          clicked: {},
+        }),
+      );
 
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
       expect(formatted.props.children).toEqual("metabase link");
@@ -218,14 +241,16 @@ describe("formatUrl", () => {
     });
 
     it("should return link component using link_url and the value as text when link_text is empty", () => {
-      const formatted = formatUrl("metabase link", {
-        jsx: true,
-        rich: true,
-        link_text: "",
-        link_url: "http://metabase.com",
-        view_as: "link",
-        clicked: {},
-      }) as ReactElement;
+      const formatted = expectReactElement(
+        formatUrl("metabase link", {
+          jsx: true,
+          rich: true,
+          link_text: "",
+          link_url: "http://metabase.com",
+          view_as: "link",
+          clicked: {},
+        }),
+      );
 
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
       expect(formatted.props.children).toEqual("metabase link");
@@ -238,31 +263,33 @@ describe("formatUrl", () => {
         base_type: TYPE.Integer,
       });
       const value = 35660212261;
-      const formatted = formatValue(value, {
-        jsx: true,
-        rich: true,
-        column,
-        view_as: "link",
-        link_text: "{{hubspot_id}}",
-        link_url: "http://example.com/{{hubspot_id}}",
-        number_style: "decimal",
-        // No thousand separator: the user has chosen to render the value
-        // without group separators (e.g. for ID-like numbers).
-        number_separators: ".",
-        clicked: {
-          value,
+      const formatted = expectReactElement(
+        formatValue(value, {
+          jsx: true,
+          rich: true,
           column,
-          data: [{ value, col: column }],
-          settings: {
-            column_settings: {
-              '["name","hubspot_id"]': {
-                number_style: "decimal",
-                number_separators: ".",
+          view_as: "link",
+          link_text: "{{hubspot_id}}",
+          link_url: "http://example.com/{{hubspot_id}}",
+          number_style: "decimal",
+          // No thousand separator: the user has chosen to render the value
+          // without group separators (e.g. for ID-like numbers).
+          number_separators: ".",
+          clicked: {
+            value,
+            column,
+            data: [{ value, col: column }],
+            settings: {
+              column_settings: {
+                '["name","hubspot_id"]': {
+                  number_style: "decimal",
+                  number_separators: ".",
+                },
               },
             },
           },
-        },
-      }) as ReactElement;
+        }),
+      );
 
       expect(isElementOfType(formatted, ExternalLink)).toBe(true);
       expect(formatted.props.children).toBe("35660212261");
@@ -274,30 +301,32 @@ describe("formatUrl", () => {
         base_type: TYPE.Float,
       });
       const value = 1234567.89;
-      const formatted = formatValue(value, {
-        jsx: true,
-        rich: true,
-        column,
-        view_as: "link",
-        link_text: "{{amount}}",
-        link_url: "http://example.com",
-        number_style: "decimal",
-        // European-style separators: "." for thousands, "," for decimals.
-        number_separators: ",.",
-        clicked: {
-          value,
+      const formatted = expectReactElement(
+        formatValue(value, {
+          jsx: true,
+          rich: true,
           column,
-          data: [{ value, col: column }],
-          settings: {
-            column_settings: {
-              '["name","amount"]': {
-                number_style: "decimal",
-                number_separators: ",.",
+          view_as: "link",
+          link_text: "{{amount}}",
+          link_url: "http://example.com",
+          number_style: "decimal",
+          // European-style separators: "." for thousands, "," for decimals.
+          number_separators: ",.",
+          clicked: {
+            value,
+            column,
+            data: [{ value, col: column }],
+            settings: {
+              column_settings: {
+                '["name","amount"]': {
+                  number_style: "decimal",
+                  number_separators: ",.",
+                },
               },
             },
           },
-        },
-      }) as ReactElement;
+        }),
+      );
 
       expect(isElementOfType(formatted, ExternalLink)).toBe(true);
       expect(formatted.props.children).toBe("1.234.567,89");
@@ -314,51 +343,55 @@ describe("formatUrl", () => {
       });
       const linkValue = "Widget";
       const amountValue = 1234567.89;
-      const formatted = formatValue(linkValue, {
-        jsx: true,
-        rich: true,
-        column: linkColumn,
-        view_as: "link",
-        link_text: "Buy for {{amount}}",
-        link_url: "http://example.com",
-        clicked: {
-          value: linkValue,
+      const formatted = expectReactElement(
+        formatValue(linkValue, {
+          jsx: true,
+          rich: true,
           column: linkColumn,
-          data: [
-            { value: linkValue, col: linkColumn },
-            { value: amountValue, col: amountColumn },
-          ],
-          settings: {
-            column_settings: {
-              '["name","amount"]': {
-                number_style: "currency",
-                currency: "USD",
-                currency_style: "symbol",
+          view_as: "link",
+          link_text: "Buy for {{amount}}",
+          link_url: "http://example.com",
+          clicked: {
+            value: linkValue,
+            column: linkColumn,
+            data: [
+              { value: linkValue, col: linkColumn },
+              { value: amountValue, col: amountColumn },
+            ],
+            settings: {
+              column_settings: {
+                '["name","amount"]': {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                },
               },
             },
           },
-        },
-      }) as ReactElement;
+        }),
+      );
 
       expect(isElementOfType(formatted, ExternalLink)).toBe(true);
       expect(formatted.props.children).toBe("Buy for $1,234,567.89");
     });
 
     it("should not return an ExternalLink in jsx + rich mode if there's click behavior", () => {
-      const formatted = formatValue("http://metabase.com/", {
-        jsx: true,
-        rich: true,
-        click_behavior: {
-          linkTemplate: "foo",
-          linkTextTemplate: "bar",
-          linkType: "url",
-          type: "link",
-        },
-        link_text: "metabase link",
-        link_url: "http://metabase.com",
-        view_as: "link",
-        clicked: {},
-      }) as ReactElement;
+      const formatted = expectReactElement(
+        formatValue("http://metabase.com/", {
+          jsx: true,
+          rich: true,
+          click_behavior: {
+            linkTemplate: "foo",
+            linkTextTemplate: "bar",
+            linkType: "url",
+            type: "link",
+          },
+          link_text: "metabase link",
+          link_url: "http://metabase.com",
+          view_as: "link",
+          clicked: {},
+        }),
+      );
 
       // it is not a link set on the question level
       expect(isElementOfType(formatted, ExternalLink)).toEqual(false);

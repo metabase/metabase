@@ -16,15 +16,15 @@ import { DatabaseDangerZoneSection } from "./DatabaseDangerZoneSection";
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 function getDiscardFieldValuesConfirmModal() {
-  return document.querySelector(
-    "[data-testid=discard-field-values-confirm-modal]",
-  ) as HTMLElement;
+  return screen.getByTestId("discard-field-values-confirm-modal");
+}
+
+function queryDiscardFieldValuesConfirmModal() {
+  return screen.queryByTestId("discard-field-values-confirm-modal");
 }
 
 function getRemoveDatabaseConfirmModal() {
-  return document.querySelector(
-    "[data-testid=remove-database-confirm-modal]",
-  ) as HTMLElement;
+  return screen.getByTestId("remove-database-confirm-modal");
 }
 
 interface SetupOpts {
@@ -98,7 +98,7 @@ describe("DatabaseDangerZoneSection", () => {
         }),
       );
 
-      expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
+      expect(queryDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       expect(
         fetchMock.callHistory.called(
           `path:/api/database/${database.id}/discard_values`,
@@ -143,10 +143,10 @@ describe("DatabaseDangerZoneSection", () => {
         within(modal).getByRole("button", { name: "Delete" }),
       );
       await waitFor(() => {
-        expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
+        expect(queryDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       });
 
-      expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
+      expect(queryDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       expect(deleteDatabase).toHaveBeenCalled();
     });
 
@@ -165,7 +165,7 @@ describe("DatabaseDangerZoneSection", () => {
         }),
       );
 
-      expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
+      expect(queryDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       expect(deleteDatabase).not.toHaveBeenCalled();
     });
   });

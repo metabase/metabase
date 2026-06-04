@@ -3,6 +3,7 @@ import cx from "classnames";
 import { type CSSProperties, useMemo, useRef } from "react";
 
 import { Icon, Stack, Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type {
@@ -218,9 +219,9 @@ export function useListColumns(
   const rightColumns = useMemo(() => {
     return !listSettings
       ? []
-      : (listSettings.right
+      : listSettings.right
           .map((colName) => cols.find((col) => col.name === colName))
-          .filter(Boolean) as DatasetColumn[]);
+          .filter(isNotNull);
   }, [cols, listSettings]);
 
   return {

@@ -36,7 +36,7 @@ export default {
       ],
     },
   },
-} as Meta<typeof Code>;
+} satisfies Meta<typeof Code>;
 
 export const Inline = {
   render: InlineTemplate,

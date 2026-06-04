@@ -197,19 +197,34 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   addEventListener(
+    type: SdkIframeEmbedEvent["type"],
+    listener: SdkIframeEmbedEventHandler,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener<K extends keyof HTMLElementEventMap>(
+    type: K,
+    listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => void,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(
     type: string,
-    listener: EventListenerOrEventListenerObject | SdkIframeEmbedEventHandler,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
     options?: boolean | AddEventListenerOptions,
   ): void {
-    if (type === "ready") {
-      const eventType = type as SdkIframeEmbedEvent["type"];
+    if (type === "ready" && typeof listener === "function") {
+      const eventType = type;
       const handler = listener as SdkIframeEmbedEventHandler;
       if (!this._eventHandlers.has(eventType)) {
         this._eventHandlers.set(eventType, new Set());
       }
 
       // For the ready event, invoke the handler immediately if the embed is already ready.
-      if (eventType === "ready" && this._isEmbedReady) {
+      if (this._isEmbedReady) {
         handler();
         return;
       }
@@ -219,20 +234,31 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     // Fall back to the native HTMLElement event mechanism for all other events.
-    super.addEventListener(
-      type,
-      listener as EventListenerOrEventListenerObject,
-      options,
-    );
+    super.addEventListener(type, listener, options);
   }
 
   removeEventListener(
+    type: SdkIframeEmbedEvent["type"],
+    listener: SdkIframeEmbedEventHandler,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener<K extends keyof HTMLElementEventMap>(
+    type: K,
+    listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => void,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener(
     type: string,
-    listener: EventListenerOrEventListenerObject | SdkIframeEmbedEventHandler,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
     options?: boolean | EventListenerOptions,
   ): void {
-    if (type === "ready") {
-      const eventType = type as SdkIframeEmbedEvent["type"];
+    if (type === "ready" && typeof listener === "function") {
+      const eventType = type;
       const handler = listener as SdkIframeEmbedEventHandler;
       const handlers = this._eventHandlers.get(eventType);
 
@@ -246,11 +272,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return;
     }
 
-    super.removeEventListener(
-      type,
-      listener as EventListenerOrEventListenerObject,
-      options,
-    );
+    super.removeEventListener(type, listener, options);
   }
 
   /**

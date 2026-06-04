@@ -6,6 +6,7 @@ import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
 import * as Urls from "metabase/urls";
+import { getObjectKeys } from "metabase/utils/objects";
 import type { TransformId } from "metabase-types/api";
 
 import {
@@ -31,7 +32,7 @@ export const getMetabotState = (state: State) => {
 
 export const getActiveMetabotAgentIds = createSelector(
   getMetabotState,
-  (state) => Object.keys(state.conversations) as MetabotAgentId[],
+  (state) => getObjectKeys(state.conversations),
 );
 
 export const getMetabotId = () =>

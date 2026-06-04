@@ -120,7 +120,10 @@ function queryTab(numOrName: number | string) {
 }
 
 async function selectTab(num: number) {
-  const selectedTab = queryTab(num) as HTMLElement;
+  const selectedTab = screen.getByRole("tab", {
+    name: `Tab ${num}`,
+    hidden: true,
+  });
   await userEvent.click(selectedTab);
   return selectedTab;
 }

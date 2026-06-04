@@ -21,7 +21,7 @@ export interface SortableHeaderProps<TData, TValue> {
   onClick?: (e: React.MouseEvent<HTMLDivElement>, columnId: string) => void;
 }
 
-export const SortableHeader = memo(function SortableHeader<TData, TValue>({
+function SortableHeaderInner<TData, TValue>({
   header,
   className,
   children,
@@ -81,7 +81,8 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
 
         const isClicked = dx + dy < HEADER_DRAG_THRESHOLD;
         const isClickTarget = headerClickTargetSelector
-          ? !!(e.target as HTMLElement).closest(headerClickTargetSelector)
+          ? e.target instanceof Element &&
+            e.target.closest(headerClickTargetSelector) != null
           : true;
         if (isClicked && onClick && isClickTarget) {
           onClick(e, id);
@@ -123,6 +124,8 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       ) : null}
     </div>
   );
-}) as <TData, TValue>(
-  props: SortableHeaderProps<TData, TValue>,
-) => React.ReactElement;
+}
+
+export const SortableHeader = memo(
+  SortableHeaderInner,
+) as typeof SortableHeaderInner;

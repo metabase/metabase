@@ -20,7 +20,6 @@ import type {
 } from "metabase-types/api";
 
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
-import type { EmbedResourceParameterWithValue } from "./types";
 
 export interface ParametersSettingsProps {
   resourceType: EmbedResourceType;
@@ -61,7 +60,7 @@ export const ParametersSettings = ({
       }).filter((parameter) => {
         const visibility = embeddingParams[parameter.slug] || "disabled";
         return visibility === "enabled";
-      }) as EmbedResourceParameterWithValue[],
+      }),
     [resourceParameters, parameterValues, embeddingParams],
   );
   const valuePopulatedLockedParameters = useMemo(
@@ -70,7 +69,7 @@ export const ParametersSettings = ({
         parameters: lockedParameters,
         values: parameterValues,
         defaultRequired: true,
-      }) as EmbedResourceParameterWithValue[],
+      }),
     [lockedParameters, parameterValues],
   );
 

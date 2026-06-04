@@ -22,10 +22,11 @@ export const useTooltipMouseLeave = (
 
     const handleGlobalMouseMove = _.throttle((e: MouseEvent) => {
       try {
-        const target = e.target as HTMLElement;
-        const tooltipElement = target.closest(
-          ECHARTS_TOOLTIP_SELECTOR,
-        ) as HTMLElement;
+        const target = e.target;
+        const tooltipElement =
+          target instanceof Element
+            ? target.closest(ECHARTS_TOOLTIP_SELECTOR)
+            : null;
 
         if (tooltipElement) {
           if (!isMouseOverTooltipRef.current) {

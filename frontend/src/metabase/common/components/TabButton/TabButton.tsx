@@ -93,9 +93,10 @@ const _TabButton = forwardRef(function TabButton(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (
         disabled ||
-        menuButtonRef.current?.contains(event.target as Node) ||
-        (typeof inputRef === "object" &&
-          inputRef?.current?.contains(event.target as Node))
+        (event.target instanceof Node &&
+          (menuButtonRef.current?.contains(event.target) ||
+            (typeof inputRef === "object" &&
+              inputRef?.current?.contains(event.target))))
       ) {
         return;
       }

@@ -28,7 +28,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { MetabotSetup, MetabotSetupInner } from "./MetabotSetup";
-import type { MetabotApiKeyProvider } from "./utils";
+import { type MetabotApiKeyProvider, isMetabotProvider } from "./utils";
 
 const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
   metabase: {
@@ -274,7 +274,7 @@ async function setup({
   const settings = mockSettings(sessionProperties);
   setupEnterpriseOnlyPlugin("metabot");
 
-  for (const provider of Object.keys(responseMap) as MetabotProvider[]) {
+  for (const provider of Object.keys(responseMap).filter(isMetabotProvider)) {
     const response = responseMap[provider];
 
     fetchMock.get({

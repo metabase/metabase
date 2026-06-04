@@ -850,7 +850,7 @@ export const getStackTotalsSeries = (
   return Object.values(seriesByStackName).flatMap((seriesOptions) => {
     const stackDataKeys = seriesOptions // we set string dataKeys as series IDs
       .map((s) => s.id)
-      .filter(isNotNull) as string[];
+      .filter((id): id is string => typeof id === "string");
     const firstSeriesInStack = seriesOptions[0];
 
     const labelFormatter = firstSeriesInStack.stack

@@ -22,6 +22,10 @@ export type BucketItem = {
   isSelected?: boolean;
 };
 
+type BucketPickerStyles = CSSProperties & {
+  "--bucket-picker-active-color": string;
+};
+
 export interface BucketPickerPopoverProps {
   triggerLabel: string;
   ariaLabel?: string;
@@ -128,7 +132,7 @@ export function BucketPickerPopover({
             {
               "--bucket-picker-active-color": activeColor,
               overscrollBehavior: "contain",
-            } as CSSProperties
+            } satisfies BucketPickerStyles
           }
         >
           {visibleItems.map((item) => (

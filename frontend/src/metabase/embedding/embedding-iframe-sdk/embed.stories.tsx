@@ -61,8 +61,11 @@ const ControlledParametersEmbedJsPlayground = () => {
     let onParametersChange: ((event: Event) => void) | null = null;
     if (mode === "controlled") {
       onParametersChange = (event: Event) => {
-        const detail = (event as CustomEvent<ParameterChangePayload>).detail;
+        if (!(event instanceof CustomEvent)) {
+          return;
+        }
 
+        const detail: ParameterChangePayload = event.detail;
         playground.handleParametersChange(detail);
       };
 

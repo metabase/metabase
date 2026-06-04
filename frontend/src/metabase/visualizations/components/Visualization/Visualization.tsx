@@ -14,6 +14,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
@@ -765,9 +766,10 @@ class Visualization extends PureComponent<
             visualization.checkRenderable(series, settings);
           }
         } catch (e: unknown) {
-          error =
-            (e as Error).message ||
-            t`Could not display this chart with this data.`;
+          error = getErrorMessage(
+            e,
+            t`Could not display this chart with this data.`,
+          );
           if (
             e instanceof ChartSettingsError &&
             visualization?.hasEmptyState &&
@@ -1034,8 +1036,7 @@ const VisualizationMemoized = memoizeClass<Visualization>(
   "_getClickActionsCached",
 )(Visualization);
 
-// eslint-disable-next-line import/no-default-export
-export default _.compose(
+const ConnectedVisualization: ComponentType<VisualizationOwnProps> = _.compose(
   connect(mapStateToProps),
   ExplicitSize<VisualizationProps>({
     selector: ".CardVisualization",
@@ -1069,4 +1070,7 @@ export default _.compose(
       return <VisualizationMemoized {...props} forwardedRef={ref} />;
     },
   ),
-) as ComponentType<VisualizationOwnProps>;
+);
+
+// eslint-disable-next-line import/no-default-export
+export default ConnectedVisualization;

@@ -123,7 +123,7 @@ export function FunnelNormal({
   const formatPercent = (percent: number) => `${(100 * percent).toFixed(2)} %`;
 
   const dimensions = sortedRows.map((row) => row[dimensionIndex]);
-  const metrics = sortedRows.map((row) => row[metricIndex]) as number[];
+  const metrics = sortedRows.map((row) => Number(row[metricIndex]) || 0);
 
   // this is a little hacky, since this component and static-viz use different data structures for the funnel steps
   // but using the same function to calculate the height will help to prevent a regression until they're better aligned

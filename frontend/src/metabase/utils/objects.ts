@@ -1,23 +1,58 @@
 export const getObjectEntries = <K extends string, V>(
   obj: Record<K, V>,
 ): [K, V][] => {
-  return Object.entries(obj) as [K, V][];
+  const entries: [K, V][] = [];
+
+  for (const key in obj) {
+    if (Object.hasOwn(obj, key)) {
+      entries.push([key, obj[key]]);
+    }
+  }
+
+  return entries;
 };
 
-export const getObjectKeys = <K extends string>(
-  obj: Record<K, unknown>,
-): K[] => {
-  return Object.keys(obj) as K[];
+export const getObjectKeys = <T extends object>(
+  obj: T,
+): Array<Extract<keyof T, string>> => {
+  const keys: Array<Extract<keyof T, string>> = [];
+
+  for (const key in obj) {
+    if (Object.hasOwn(obj, key)) {
+      keys.push(key);
+    }
+  }
+
+  return keys;
 };
 
 export const getObjectValues = <V>(obj: Record<string, V>): V[] => {
-  return Object.values(obj) as V[];
+  const values: V[] = [];
+
+  for (const key in obj) {
+    if (Object.hasOwn(obj, key)) {
+      values.push(obj[key]);
+    }
+  }
+
+  return values;
 };
 
 export const objectFromEntries = <K extends string, V>(
   entries: readonly (readonly [K, V])[],
 ): Record<K, V> => {
-  return Object.fromEntries(entries) as Record<K, V>;
+  const object: Record<string, V> = {};
+
+  for (const [key, value] of entries) {
+    Object.defineProperty(object, key, {
+      value,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  return object;
 };
 
 // `sortObject` copies objects for deterministic serialization.
@@ -86,9 +121,7 @@ export function isSerializable(value: unknown): boolean {
         return value.every(isSerializable);
       }
 
-      return Object.values(value as Record<string, unknown>).every(
-        isSerializable,
-      );
+      return Object.values(value).every(isSerializable);
     }
 
     return false;

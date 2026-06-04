@@ -58,7 +58,10 @@ export const AutocompleteInput = ({
   });
 
   const handleListMouseDown = (event: React.MouseEvent<HTMLElement>) => {
-    if (optionsListRef.current?.contains(event.target as Node)) {
+    if (
+      event.target instanceof Node &&
+      optionsListRef.current?.contains(event.target)
+    ) {
       event.preventDefault();
     }
   };

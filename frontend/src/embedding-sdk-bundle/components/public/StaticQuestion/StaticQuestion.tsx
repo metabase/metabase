@@ -1,4 +1,4 @@
-import { type FC, type PropsWithChildren, useMemo } from "react";
+import { type PropsWithChildren, type ReactNode, useMemo } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -248,8 +248,11 @@ const _StaticQuestionWrapped = withPublicComponentWrapper(StaticQuestionInner, {
   supportsGuestEmbed: true,
 });
 
-export const StaticQuestion = Object.assign(
-  _StaticQuestionWrapped as FC<StaticQuestionProps>,
+type StaticQuestionComponent = ((props: StaticQuestionProps) => ReactNode) &
+  StaticQuestionComponents & { schema: typeof staticQuestionSchema };
+
+export const StaticQuestion: StaticQuestionComponent = Object.assign(
+  _StaticQuestionWrapped,
   subComponents,
   { schema: staticQuestionSchema },
 );
@@ -258,8 +261,12 @@ export const StaticQuestion = Object.assign(
  * Same runtime component as {@link StaticQuestion}, typed to accept the
  * internal `query` prop. This component is intended for internal use only.
  */
-export const StaticQuestionInternal = Object.assign(
-  _StaticQuestionWrapped as FC<StaticQuestionInternalProps>,
-  subComponents,
-  { schema: staticQuestionSchema },
-);
+type StaticQuestionInternalComponent = ((
+  props: StaticQuestionInternalProps,
+) => ReactNode) &
+  StaticQuestionComponents & { schema: typeof staticQuestionSchema };
+
+export const StaticQuestionInternal: StaticQuestionInternalComponent =
+  Object.assign(_StaticQuestionWrapped, subComponents, {
+    schema: staticQuestionSchema,
+  });

@@ -128,7 +128,7 @@ export function computeTrend(
     };
   } catch (error) {
     return {
-      error: error as Error,
+      error: error instanceof Error ? error : new Error(String(error)),
     };
   }
 }

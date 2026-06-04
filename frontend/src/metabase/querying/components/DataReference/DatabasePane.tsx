@@ -20,7 +20,6 @@ import CS from "metabase/css/core/index.css";
 import {
   type Card,
   type CollectionId,
-  type SchemaName,
   type SearchResult,
   type Table,
   isConcreteTableId,
@@ -64,10 +63,7 @@ const groupModelsByCollection = (models: SearchResult[]) => {
 };
 
 const groupTablesBySchema = (tables: SearchResult[]) => {
-  const grouped = _.groupBy(
-    tables,
-    (table) => table.table_schema ?? ("" as SchemaName),
-  );
+  const grouped = _.groupBy(tables, (table) => table.table_schema ?? "");
 
   return _.pairs(grouped).map(
     ([id, tables = []]): ITreeNodeItem => ({

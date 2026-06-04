@@ -336,18 +336,19 @@ class DashboardGridInner extends Component<
     return getLayoutForDashCard(dashcard, this.state?.initialCardSizes);
   };
 
-  getVisibleCards = (
-    cards = this.props.dashboard.dashcards,
-    visibleCardIds = this.state.visibleCardIds,
-    isEditing = this.props.isEditing,
-    selectedTabId = this.props.selectedTabId,
-  ) => {
-    return getVisibleCards(
-      cards,
-      visibleCardIds,
-      isEditing,
-      selectedTabId,
-    ) as DashboardCard[];
+  getVisibleCards = (): DashboardCard[] => {
+    const { dashboard, isEditing, selectedTabId } = this.props;
+
+    const tabCards = dashboard.dashcards.filter(
+      (card) =>
+        !selectedTabId ||
+        card.dashboard_tab_id === selectedTabId ||
+        card.dashboard_tab_id === null,
+    );
+
+    return isEditing
+      ? tabCards
+      : tabCards.filter((card) => this.state.visibleCardIds.has(card.id));
   };
 
   getDashcardCountByCardId = (cards: BaseDashboardCard[]) =>
@@ -762,7 +763,5 @@ const DashboardGrid = forwardRef<
   );
 });
 
-export const DashboardGridConnected = _.compose(
-  ExplicitSize(),
-  connector,
-)(DashboardGrid) as ComponentType<DashboardGridProps>;
+export const DashboardGridConnected: ComponentType<DashboardGridProps> =
+  _.compose(ExplicitSize(), connector)(DashboardGrid);

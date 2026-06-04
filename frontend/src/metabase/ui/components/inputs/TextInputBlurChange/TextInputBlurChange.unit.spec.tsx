@@ -65,8 +65,13 @@ describe("TextInputBlurChange", () => {
 
   it("should set `internalValue` to the normalized value even if the normalized value is the same as the previous one", async () => {
     const value = "/";
-    setup({ value, normalize: (value) => (value as string).trim() });
-    const input = screen.getByDisplayValue(value) as HTMLInputElement;
+    setup({ value, normalize: (value) => String(value ?? "").trim() });
+    const input = screen.getByDisplayValue(value);
+    expect(input).toBeInstanceOf(HTMLInputElement);
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error("Expected an input element");
+    }
+
     await userEvent.clear(input);
     await userEvent.type(input, "           /         ");
 

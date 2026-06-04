@@ -52,14 +52,14 @@ export function useCustomTooltip({
   const handleFocus = useCallback(() => setHasFocus(true), []);
   const handleBlur = useCallback((evt: FocusEvent | ReactFocusEvent) => {
     // Ignore blur events when they target the tooltip element
-    // el is null switching tabs
-    const el = evt.relatedTarget as HTMLElement | null;
+    // relatedTarget is null when switching tabs
+    const relatedTarget = evt.relatedTarget;
 
     if (
-      el !== null &&
-      (tooltipRef.current === el ||
-        tooltipRef.current?.contains(el) ||
-        el?.contains(tooltipRef.current))
+      relatedTarget instanceof HTMLElement &&
+      (tooltipRef.current === relatedTarget ||
+        tooltipRef.current?.contains(relatedTarget) ||
+        relatedTarget.contains(tooltipRef.current))
     ) {
       return;
     }

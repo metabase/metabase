@@ -32,7 +32,7 @@ import {
   UploadSettingsFormView,
 } from "./UploadSettingsForm";
 
-const TEST_DATABASES = [
+const TEST_DATABASES: Database[] = [
   createMockDatabase({
     id: 1,
     name: "Db Uno",
@@ -64,7 +64,7 @@ const TEST_DATABASES = [
     tables: [],
     features: ["schemas"],
   }),
-] as Database[];
+];
 
 interface SetupOpts {
   databases?: Database[];

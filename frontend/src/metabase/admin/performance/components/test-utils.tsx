@@ -106,9 +106,12 @@ export const changeInput = async (
   expectedPlaceholder: number,
   value: number,
 ) => {
-  const input = (await screen.findByRole("spinbutton", {
+  const input = await screen.findByRole("spinbutton", {
     name: new RegExp(label),
-  })) as HTMLInputElement;
+  });
+  if (!(input instanceof HTMLInputElement)) {
+    throw new Error(`Expected ${label} to be an input`);
+  }
   expect(input).toHaveAttribute("placeholder", expectedPlaceholder.toString());
   act(() => {
     fireEvent.change(input, { target: { value } });

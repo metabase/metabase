@@ -75,9 +75,10 @@ describe("NotebookStepList", () => {
 });
 
 function assertActionButtonsOrder(buttonNames: string[]) {
-  const actionButtonsContainer = screen
-    .getAllByTestId("action-buttons")
-    .at(-1) as HTMLElement;
+  const actionButtonsContainer = screen.getAllByTestId("action-buttons").at(-1);
+  if (actionButtonsContainer == null) {
+    throw new Error("Expected action buttons container to exist");
+  }
   const buttons = actionButtonsContainer.querySelectorAll("button");
 
   expect(buttons.length).toBe(buttonNames.length);

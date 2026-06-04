@@ -1,5 +1,4 @@
-import type { ReactElement } from "react";
-import { isElementOfType } from "react-dom/test-utils";
+import { type ElementType, type ReactNode, isValidElement } from "react";
 
 import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
@@ -12,6 +11,23 @@ import { createMockColumn } from "metabase-types/api/mocks";
 import { formatValue } from "./value";
 
 const SITE_URL = "http://localhost:3000";
+
+interface TestElementProps {
+  src?: string;
+  "data-testid"?: string;
+}
+
+const expectReactElement = (node: ReactNode) => {
+  expect(isValidElement<TestElementProps>(node)).toBe(true);
+  if (!isValidElement<TestElementProps>(node)) {
+    throw new Error("Expected a React element");
+  }
+
+  return node;
+};
+
+const isElementOfComponent = (node: ReactNode, component: ElementType) =>
+  isValidElement(node) && node.type === component;
 
 describe("formatValue", () => {
   const setup = (value: any, overrides: Partial<OptionsType> = {}) => {
@@ -375,11 +391,11 @@ describe("formatValue", () => {
 
   it("should return the component for external links in jsx + rich mode", () => {
     expect(
-      isElementOfType(
+      isElementOfComponent(
         formatValue("http://metabase.com/", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
+        }),
         ExternalLink,
       ),
     ).toEqual(true);
@@ -387,8 +403,8 @@ describe("formatValue", () => {
 
   it("should return a component for internal links in jsx + rich mode", () => {
     expect(
-      isElementOfType(
-        formatValue(SITE_URL, { jsx: true, rich: true }) as ReactElement,
+      isElementOfComponent(
+        formatValue(SITE_URL, { jsx: true, rich: true }),
         Link,
       ),
     ).toBe(true);
@@ -402,7 +418,7 @@ describe("formatValue", () => {
       semantic_type: "type/URL",
     });
     expect(
-      isElementOfType(
+      isElementOfComponent(
         formatValue("/question/12", {
           jsx: true,
           rich: true,
@@ -413,64 +429,70 @@ describe("formatValue", () => {
             column: column,
             data: [{ value: "question/12", col: column }],
           },
-        }) as ReactElement,
+        }),
         Link,
       ),
     ).toEqual(true);
   });
 
   it("should not return an ExternalLink for links in jsx + rich mode if there's click behavior", () => {
-    const formatted = formatValue("http://metabase.com/", {
-      jsx: true,
-      rich: true,
-      click_behavior: {
-        linkTemplate: "foo",
-        linkTextTemplate: "foo",
-        linkType: "url",
-        type: "link",
-      },
-      clicked: {},
-    }) as ReactElement;
+    const formatted = expectReactElement(
+      formatValue("http://metabase.com/", {
+        jsx: true,
+        rich: true,
+        click_behavior: {
+          linkTemplate: "foo",
+          linkTextTemplate: "foo",
+          linkType: "url",
+          type: "link",
+        },
+        clicked: {},
+      }),
+    );
     // it's not actually a link
-    expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
+    expect(isElementOfComponent(formatted, ExternalLink)).toEqual(false);
     // expect the text to be in a div (which has link formatting) rather than ExternalLink
     expect(formatted.props["data-testid"]).toEqual("link-formatted-text");
   });
 
   it("should render image", () => {
-    const formatted = formatValue("http://metabase.com/logo.png", {
-      jsx: true,
-      rich: true,
-      view_as: "image",
-      column: { semantic_type: "type/ImageURL" },
-    }) as ReactElement;
+    const formatted = expectReactElement(
+      formatValue("http://metabase.com/logo.png", {
+        jsx: true,
+        rich: true,
+        view_as: "image",
+        column: { semantic_type: "type/ImageURL" },
+      }),
+    );
     expect(formatted.type).toEqual("img");
     expect(formatted.props.src).toEqual("http://metabase.com/logo.png");
   });
 
   it("should render image with a click behavior in jsx + rich mode (metabase#17161)", () => {
-    const formatted = formatValue("http://metabase.com/logo.png", {
-      jsx: true,
-      rich: true,
-      view_as: "image",
-      click_behavior: {
-        linkTemplate: "foo",
-        linkType: "url",
-        type: "link",
-      },
-      clicked: {},
-    }) as ReactElement;
+    const formatted = expectReactElement(
+      formatValue("http://metabase.com/logo.png", {
+        jsx: true,
+        rich: true,
+        view_as: "image",
+        click_behavior: {
+          linkTemplate: "foo",
+          linkType: "url",
+          type: "link",
+        },
+        clicked: {},
+      }),
+    );
     expect(formatted.type).toEqual("img");
     expect(formatted.props.src).toEqual("http://metabase.com/logo.png");
   });
 
   it("should return a component for email addresses in jsx + rich mode", () => {
     expect(
-      isElementOfType(
+      isElementOfComponent(
         formatValue("tom@metabase.test", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
+        }),
         ExternalLink,
       ),
     ).toEqual(true);

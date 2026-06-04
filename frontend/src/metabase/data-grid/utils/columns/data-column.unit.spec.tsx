@@ -4,6 +4,24 @@ import { renderWithProviders } from "__support__/ui";
 
 import { getDataColumn } from "./data-column";
 
+type TestCellProps = {
+  getValue: () => string;
+  row: { index: number; original: { value: string } };
+};
+
+type DataColumnCell = ReturnType<
+  typeof getDataColumn<{ value: string }, string>
+>["cell"];
+
+type TestCellComponent = React.ElementType<TestCellProps> &
+  NonNullable<DataColumnCell>;
+
+function isTestCellComponent(cell: DataColumnCell): cell is TestCellComponent {
+  return (
+    (typeof cell === "function" || typeof cell === "object") && cell != null
+  );
+}
+
 const setup = ({
   columnSize,
   measuredColumnSize,
@@ -32,10 +50,11 @@ const setup = ({
     onExpand,
   );
 
-  const CellComponent = column.cell as React.ComponentType<{
-    getValue: () => string;
-    row: { index: number; original: { value: string } };
-  }>;
+  if (!isTestCellComponent(column.cell)) {
+    throw new Error("Expected data column cell to be a component");
+  }
+
+  const CellComponent = column.cell;
 
   renderWithProviders(
     <CellComponent

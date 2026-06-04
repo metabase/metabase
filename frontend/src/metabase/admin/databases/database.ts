@@ -70,7 +70,7 @@ export const databasesReducer = combineReducers({
       (_state, action) => action.payload.error,
     );
   }),
-  deletes: createReducer([] as DatabaseId[], (builder) => {
+  deletes: createReducer<DatabaseId[]>([], (builder) => {
     builder
       .addCase(DELETE_DATABASE_STARTED, (state, action) =>
         state.concat([action.payload.databaseId]),

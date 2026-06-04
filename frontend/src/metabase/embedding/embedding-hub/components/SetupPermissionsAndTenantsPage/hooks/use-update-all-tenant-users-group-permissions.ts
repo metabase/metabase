@@ -95,8 +95,8 @@ export function useUpdateAllTenantUsersGroupPermissions(): UseUpdateAllTenantUse
         databaseApi.endpoints.listDatabases.initiate(),
       )
         .unwrap()
-        .then((res) => res.data.map((db) => db.id))
-        .catch(() => [] as DatabaseId[]);
+        .then<DatabaseId[]>((res) => res.data.map((db) => db.id))
+        .catch(() => []);
 
       // get the revision number of the graph
       const graph = await PermissionsApi.graphForGroup({

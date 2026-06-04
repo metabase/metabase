@@ -14,6 +14,10 @@ import S from "./EmojiPicker.module.css";
 // Snapshot from https://cdn.jsdelivr.net/npm/emojibase-data@16.0.3/en/data.json
 const EMOJIBASE_URL = "/app/assets/emoji";
 
+type EmojiButtonStyles = CSSProperties & {
+  "--emoji": string;
+};
+
 type EmojiPickerProps = {
   search?: string;
   hideSearch?: boolean;
@@ -98,19 +102,21 @@ function Emoji({
   ref,
   ...props
 }: Omit<EmojiPickerListEmojiProps, "color">) {
+  const buttonRef = typeof ref === "string" ? undefined : ref;
+
   return (
     <ActionIcon
       c="text-primary"
       component="button"
       w="2rem"
       fz="1.25rem"
-      ref={ref as React.RefObject<HTMLButtonElement>}
+      ref={buttonRef}
       data-emoji={emoji.emoji}
       styles={{
         root: {
           // for colored backgrounds
           "--emoji": `"${emoji.emoji}"`,
-        } as CSSProperties,
+        } satisfies EmojiButtonStyles,
       }}
       {...props}
     >

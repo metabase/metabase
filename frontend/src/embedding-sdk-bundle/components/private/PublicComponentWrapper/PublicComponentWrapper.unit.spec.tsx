@@ -57,6 +57,25 @@ describe("PublicComponentWrapper", () => {
     expect(errorMessage).toBeInTheDocument();
   });
 
+  it("renders documentation link for error codes with docs", () => {
+    setup({
+      status: "error",
+      error: Object.assign(
+        new Error(
+          "Failed to authenticate using an existing Metabase user session.",
+        ),
+        { code: "EXISTING_USER_SESSION_FAILED" },
+      ),
+    });
+
+    expect(screen.getByRole("link", { name: "Read more." })).toHaveAttribute(
+      "href",
+      expect.stringContaining(
+        "https://www.metabase.com/docs/latest/embedding/authentication#configure-session-cookies-when-testing-locally",
+      ),
+    );
+  });
+
   it("renders children when loginStatus is success", () => {
     setup({ status: "success" });
     const component = screen.getByText("My component");

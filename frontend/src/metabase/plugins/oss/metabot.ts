@@ -8,8 +8,7 @@ export type MetabaseAIProviderSetupProps = {
 
 const getDefaultPluginMetabot = () => ({
   isEnabled: false,
-  MetabaseAIProviderSetup:
-    PluginPlaceholder as ComponentType<MetabaseAIProviderSetupProps>,
+  MetabaseAIProviderSetup: PluginPlaceholder<MetabaseAIProviderSetupProps>,
 });
 
 export const PLUGIN_METABOT: {

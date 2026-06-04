@@ -278,7 +278,7 @@ function getTempRawSeries(
       ...rawSeries[0],
       card: { ...rawSeries[0].card, display },
     },
-  ] as RawSeries;
+  ];
 }
 
 const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
@@ -669,7 +669,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       <EditBar
         className={DatasetEditorS.DatasetEditBar}
         data-testid="dataset-edit-bar"
-        title={question.displayName() as string}
+        title={question.displayName() ?? ""}
         center={
           <EditorTabs
             currentTab={datasetEditorTab}

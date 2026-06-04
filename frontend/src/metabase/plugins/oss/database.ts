@@ -1,5 +1,3 @@
-import type { ComponentType } from "react";
-
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -11,12 +9,12 @@ import type {
 } from "metabase-types/api";
 
 const getDefaultPluginDbRouting = () => ({
-  DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
+  DatabaseRoutingSection: PluginPlaceholder<{
     database: DatabaseType;
   }>,
   getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
-  getDestinationDatabaseRoutes: (_IsAdmin: any) =>
-    null as React.ReactElement | null,
+  getDestinationDatabaseRoutes: (_IsAdmin: any): React.ReactElement | null =>
+    null,
   useRedirectDestinationDatabase: (
     _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
   ): void => {},
@@ -28,7 +26,7 @@ const getDefaultPluginDbRouting = () => ({
 export const PLUGIN_DB_ROUTING = getDefaultPluginDbRouting();
 
 const getDefaultPluginDatabaseReplication = () => ({
-  DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
+  DatabaseReplicationSection: PluginPlaceholder<{
     database: DatabaseType;
   }>,
 });
@@ -39,9 +37,9 @@ export const PLUGIN_DATABASE_REPLICATION =
 const getDefaultPluginTableEditing = () => ({
   isEnabled: () => false,
   isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
-  getRoutes: () => null as React.ReactElement | null,
+  getRoutes: (): React.ReactElement | null => null,
   getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
-  AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
+  AdminDatabaseTableEditingSection: PluginPlaceholder<{
     database: DatabaseType;
     settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
     updateDatabase: (

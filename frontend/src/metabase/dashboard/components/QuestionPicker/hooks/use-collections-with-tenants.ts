@@ -121,17 +121,24 @@ export function mergeSharedCollections(
     location: null,
     path: [COLLECTIONS_TOP_LEVEL_ID],
     parent: syntheticTopLevel,
-    children: (sharedRoot?.children ?? []).map((child) => ({
-      ...child,
-      parent: null,
-    })) as ExpandedCollectionNode[],
+    children: (sharedRoot?.children ?? []).map<ExpandedCollectionNode>(
+      (child) => ({
+        ...child,
+        path: child.path ?? [],
+        parent: null,
+        children: child.children ?? [],
+      }),
+    ),
   };
 
   // Fix circular parent reference now that sharedSyntheticRoot exists
-  sharedSyntheticRoot.children = sharedSyntheticRoot.children.map((child) => ({
-    ...child,
-    parent: sharedSyntheticRoot,
-  })) as ExpandedCollectionNode[];
+  sharedSyntheticRoot.children =
+    sharedSyntheticRoot.children.map<ExpandedCollectionNode>((child) => ({
+      ...child,
+      path: child.path ?? [],
+      parent: sharedSyntheticRoot,
+      children: child.children ?? [],
+    }));
 
   // Wire up the top-level children
   syntheticTopLevel.children = [rootCollection, sharedSyntheticRoot];

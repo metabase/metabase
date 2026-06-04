@@ -225,7 +225,11 @@ export const PivotTableLightTheme = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const cell = await within(canvasElement).findByText("field-123");
-    (cell.parentNode?.parentNode as HTMLElement).classList.add("pseudo-hover");
+    const row = cell.parentElement?.parentElement;
+    if (!row) {
+      throw new Error("Could not find pivot table row");
+    }
+    row.classList.add("pseudo-hover");
   },
 };
 
@@ -358,9 +362,10 @@ export const SmartScalarLightThemeTooltip = {
     const value = "vs. July 21, 2024, 12:00 AM";
     const valueElement = await within(canvasElement).findByText(value);
     await userEvent.hover(valueElement);
-    const tooltip = document.documentElement.querySelector(
-      '[role="tooltip"]',
-    ) as HTMLElement;
+    const tooltip = document.documentElement.querySelector('[role="tooltip"]');
+    if (!(tooltip instanceof HTMLElement)) {
+      throw new Error("Could not find tooltip");
+    }
     await within(tooltip).findByText(`${value}:`);
   },
 };

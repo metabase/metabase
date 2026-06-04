@@ -70,7 +70,7 @@ const REPLACED_ELEMENTS = new Set([
   "SELECT",
 ]);
 
-function hasVisibleContent(element: HTMLElement): boolean {
+function hasVisibleContent(element: Element): boolean {
   if (REPLACED_ELEMENTS.has(element.tagName.toUpperCase())) {
     return true;
   }
@@ -83,12 +83,13 @@ function hasVisibleContent(element: HTMLElement): boolean {
   }
 
   return children.some((child) => {
-    const el = child as HTMLElement;
-
-    if (el.hidden || el.style?.display === "none") {
+    if (
+      child instanceof HTMLElement &&
+      (child.hidden || child.style.display === "none")
+    ) {
       return false;
     }
 
-    return hasVisibleContent(el);
+    return hasVisibleContent(child);
   });
 }

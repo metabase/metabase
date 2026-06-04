@@ -131,7 +131,7 @@ function getData(
     },
     ...users.map((user) => ({
       label: user.common_name,
-      value: stringifyValue(user.id) as string,
+      value: String(user.id),
       type: "user" as const,
     })),
     email == null || email.trim().length === 0
@@ -143,10 +143,6 @@ function getData(
           type: "email" as const,
         },
   ].filter((option) => option != null);
-}
-
-function stringifyValue(value: UserId | "unknown" | null): string | null {
-  return value === null ? null : String(value);
 }
 
 function parseValue(value: string): UserId | string | "unknown" {

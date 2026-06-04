@@ -1,4 +1,8 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
+import {
+  type SerializedError,
+  createAction,
+  createReducer,
+} from "@reduxjs/toolkit";
 
 import type { SdkState } from "embedding-sdk-bundle/store/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
@@ -83,6 +87,14 @@ const initialState: SdkState = {
   initialDashboardTabId: null,
 };
 
+const getRejectedActionError = (serializedError: SerializedError): Error => {
+  const error = new Error(serializedError.message);
+
+  Object.assign(error, serializedError);
+
+  return error;
+};
+
 export const sdk = createReducer(initialState, (builder) => {
   builder.addCase(refreshTokenAsync.pending, (state) => {
     state.token = { ...state.token, loading: true };
@@ -98,7 +110,7 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(refreshTokenAsync.rejected, (state, action) => {
-    const error = action.error as Error;
+    const error = getRejectedActionError(action.error);
     state.initStatus = { status: "error", error };
   });
 
@@ -111,7 +123,7 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(initAuth.rejected, (state, action) => {
-    const error = action.error as Error;
+    const error = getRejectedActionError(action.error);
     state.initStatus = { status: "error", error };
   });
 
@@ -124,7 +136,7 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(initGuestEmbed.rejected, (state, action) => {
-    const error = action.error as Error;
+    const error = getRejectedActionError(action.error);
     state.initStatus = { status: "error", error };
   });
 

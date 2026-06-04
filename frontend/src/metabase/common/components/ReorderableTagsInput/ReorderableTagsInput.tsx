@@ -79,7 +79,7 @@ export function SortablePill({
   const sortableStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
-  } as CSSProperties;
+  } satisfies CSSProperties;
 
   const combinedStyle = {
     ...sortableStyle,
@@ -209,10 +209,10 @@ export function ReorderableTagsInput({
         }}
         styles={styles}
         onMouseDownCapture={(e: React.MouseEvent<HTMLDivElement>) => {
-          const target = e.target as HTMLElement;
           // Do not open when interacting with a pill (likely starting a drag or clicking remove)
           if (
-            target?.closest('[data-reorderable-pill="true"]') ||
+            (e.target instanceof HTMLElement &&
+              e.target.closest('[data-reorderable-pill="true"]')) ||
             (maxValues && value.length >= maxValues)
           ) {
             e.nativeEvent.stopImmediatePropagation();
@@ -226,9 +226,11 @@ export function ReorderableTagsInput({
           e.stopPropagation();
         }}
         onDragEnter={(e) => {
-          const related = e.relatedTarget as Node | null;
           // Only set drag-over when entering from outside the top-level container
-          if (related && e.currentTarget.contains(related)) {
+          if (
+            e.relatedTarget instanceof Node &&
+            e.currentTarget.contains(e.relatedTarget)
+          ) {
             return;
           }
           draggingRef.current = true;
@@ -236,9 +238,11 @@ export function ReorderableTagsInput({
           setIsDragOver(true);
         }}
         onDragLeave={(e) => {
-          const related = e.relatedTarget as Node | null;
           // Only clear drag-over when leaving to outside the top-level container
-          if (related && e.currentTarget.contains(related)) {
+          if (
+            e.relatedTarget instanceof Node &&
+            e.currentTarget.contains(e.relatedTarget)
+          ) {
             return;
           }
           setIsDragOver(false);

@@ -10,7 +10,7 @@ import type { Widget } from "../types";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 interface ChartSettingsWidgetPopoverProps {
-  anchor: HTMLElement;
+  anchor: HTMLElement | null | undefined;
   handleEndShowWidget: () => void;
   widgets: Widget[];
 }
@@ -36,8 +36,11 @@ export const ChartSettingsWidgetPopover = ({
   const hasMultipleSections = sections.current.length > 1;
 
   const onClose = () => {
-    const activeElement = document.activeElement as HTMLElement;
-    if (activeElement && contentRef.current?.contains(activeElement)) {
+    const activeElement = document.activeElement;
+    if (
+      activeElement instanceof HTMLElement &&
+      contentRef.current?.contains(activeElement)
+    ) {
       activeElement.blur();
     }
     handleEndShowWidget();
@@ -45,7 +48,7 @@ export const ChartSettingsWidgetPopover = ({
 
   return (
     <TippyPopover
-      reference={anchor}
+      reference={anchor ?? undefined}
       content={
         widgets.length > 0 ? (
           <Box

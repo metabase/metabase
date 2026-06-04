@@ -15,14 +15,24 @@ export type AuthSettingsPageProps = {
   tab?: AuthSettingsPageTab;
 };
 
-const getDefaultPluginAuthProviders = () => ({
+type PluginAuthProviders = {
+  isEnabled: () => boolean;
+  AuthSettingsPage: typeof PluginPlaceholder<AuthSettingsPageProps>;
+  UserProvisioningSettings: typeof NotFoundPlaceholder;
+  SettingsSAMLForm: typeof NotFoundPlaceholder;
+  SettingsJWTForm: typeof NotFoundPlaceholder;
+  SettingsOIDCForm: typeof NotFoundPlaceholder;
+  providers: GetAuthProviders[];
+};
+
+const getDefaultPluginAuthProviders = (): PluginAuthProviders => ({
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder<AuthSettingsPageProps>,
   UserProvisioningSettings: NotFoundPlaceholder,
   SettingsSAMLForm: NotFoundPlaceholder,
   SettingsJWTForm: NotFoundPlaceholder,
   SettingsOIDCForm: NotFoundPlaceholder,
-  providers: [] as GetAuthProviders[],
+  providers: [],
 });
 
 export const PLUGIN_AUTH_PROVIDERS = getDefaultPluginAuthProviders();

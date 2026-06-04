@@ -71,8 +71,12 @@ describe("createBrandingElement", () => {
 
     // Should only have logo for xs size
     expect(element.children.length).toBe(1);
-    const logo = element.children[0] as HTMLImageElement;
+    const logo = element.children[0];
+    expect(logo).toBeInstanceOf(HTMLImageElement);
     expect(logo.tagName).toBe("IMG");
+    if (!(logo instanceof HTMLImageElement)) {
+      throw new Error("Expected logo to be an image element");
+    }
     expect(logo.src).toMatch(/^data:image\/svg\+xml;base64,/);
   });
 
@@ -91,9 +95,11 @@ describe("createBrandingElement", () => {
     const [text, logo] = element.children;
     expect(text.tagName).toBe("SPAN");
     expect(text).toHaveTextContent("Made with");
+    expect(logo).toBeInstanceOf(HTMLImageElement);
     expect(logo.tagName).toBe("IMG");
-    expect((logo as HTMLImageElement).src).toMatch(
-      /^data:image\/svg\+xml;base64,/,
-    );
+    if (!(logo instanceof HTMLImageElement)) {
+      throw new Error("Expected logo to be an image element");
+    }
+    expect(logo.src).toMatch(/^data:image\/svg\+xml;base64,/);
   });
 });

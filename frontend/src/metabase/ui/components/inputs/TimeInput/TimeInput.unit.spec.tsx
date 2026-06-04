@@ -11,7 +11,7 @@ interface SetupOpts {
 }
 
 function setup({ defaultValue }: SetupOpts = {}) {
-  const onChange = jest.fn();
+  const onChange = jest.fn<void, [Date | null]>();
 
   render(<TestInput defaultValue={defaultValue} onChange={onChange} />);
 
@@ -48,7 +48,18 @@ describe("TimeInput", () => {
     const input = screen.getByLabelText("Time");
     await userEvent.type(input, "10:20");
 
-    const time = onChange.mock.lastCall[0] as Date;
+    const lastCall = onChange.mock.lastCall;
+    expect(lastCall).toBeDefined();
+    if (!lastCall) {
+      throw new Error("Expected onChange to be called");
+    }
+
+    const [time] = lastCall;
+    expect(time).toBeInstanceOf(Date);
+    if (!(time instanceof Date)) {
+      throw new Error("Expected a date");
+    }
+
     expect(time.getHours()).toBe(10);
     expect(time.getMinutes()).toBe(20);
   });
@@ -62,7 +73,18 @@ describe("TimeInput", () => {
     await userEvent.type(input, "12:");
     await userEvent.tab();
 
-    const time = onChange.mock.lastCall[0] as Date;
+    const lastCall = onChange.mock.lastCall;
+    expect(lastCall).toBeDefined();
+    if (!lastCall) {
+      throw new Error("Expected onChange to be called");
+    }
+
+    const [time] = lastCall;
+    expect(time).toBeInstanceOf(Date);
+    if (!(time instanceof Date)) {
+      throw new Error("Expected a date");
+    }
+
     expect(time.getHours()).toBe(10);
     expect(time.getMinutes()).toBe(20);
     expect(input).toHaveValue("10:20");

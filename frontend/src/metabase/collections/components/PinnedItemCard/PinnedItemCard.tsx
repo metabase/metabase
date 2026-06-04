@@ -106,8 +106,12 @@ function PinnedItemCard({
     event: MouseEvent<HTMLDivElement>,
     setterFn: Dispatch<SetStateAction<boolean>>,
   ) => {
-    const target = event.target as HTMLDivElement;
-    const isTargetElWiderThanCard = target?.scrollWidth > target?.clientWidth;
+    if (!(event.target instanceof HTMLElement)) {
+      return;
+    }
+
+    const isTargetElWiderThanCard =
+      event.target.scrollWidth > event.target.clientWidth;
     if (isTargetElWiderThanCard) {
       setterFn(true);
     }

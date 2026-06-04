@@ -8,7 +8,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import type { EnabledSearchModel, SearchModel } from "metabase-types/api";
+import type { EnabledSearchModel } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSearchResult,
@@ -80,7 +80,7 @@ const setup = async ({
   setupSearchEndpoints(
     availableModels.map((type, index) =>
       createMockSearchResult({
-        model: type as SearchModel,
+        model: type,
         id: index + 1,
         database_id: TEST_DATABASE.id,
       }),
@@ -104,9 +104,14 @@ const setup = async ({
 };
 
 const getCheckboxes = () => {
-  return within(screen.getByTestId("type-filter-checkbox-group")).getAllByRole(
-    "checkbox",
-  ) as HTMLInputElement[];
+  return within(screen.getByTestId("type-filter-checkbox-group"))
+    .getAllByRole("checkbox")
+    .filter((element): element is HTMLInputElement => {
+      if (!(element instanceof HTMLInputElement)) {
+        throw new Error("Expected checkbox to be an HTMLInputElement");
+      }
+      return true;
+    });
 };
 
 describe("TypeFilterContent", () => {

@@ -47,7 +47,7 @@ async function setup({
   const modelCacheInfo = getMockModelCacheInfo({
     ...cacheInfo,
     card_id: model.id(),
-    card_name: model.displayName() as string,
+    card_name: model.displayName() ?? "",
   });
 
   setupModelPersistenceEndpoints([modelCacheInfo]);

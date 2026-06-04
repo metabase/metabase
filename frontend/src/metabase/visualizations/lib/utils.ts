@@ -200,8 +200,7 @@ export function getColumnCardinality(
     );
   }
 
-  // ok to cast since the code above will put the value in the map if it's not there
-  return cardinalityCache.get(key) as number;
+  return cardinalityCache.get(key) ?? 0;
 }
 
 const extentCache = new WeakMap<DatasetColumn, ReturnType<typeof d3.extent>>();

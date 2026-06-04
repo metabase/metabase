@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 
 import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
-import type { CardDisplayType } from "metabase-types/api";
+import { isCardDisplayType } from "metabase-types/api";
 
 import { useSdkQuestionContext } from "../context";
 
@@ -17,9 +17,10 @@ export const useSensibleVisualizations = () => {
     [],
   );
 
-  // SDK doesn't support custom viz plugins, so we safely narrow the type here.
+  // SDK doesn't support custom viz plugins, so only keep built-in card display types.
   return {
-    sensibleVisualizations: sensibleVisualizations as CardDisplayType[],
-    nonSensibleVisualizations: nonSensibleVisualizations as CardDisplayType[],
+    sensibleVisualizations: sensibleVisualizations.filter(isCardDisplayType),
+    nonSensibleVisualizations:
+      nonSensibleVisualizations.filter(isCardDisplayType),
   };
 };

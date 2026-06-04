@@ -44,7 +44,7 @@ const DEFAULT_DEFINITIONS: UiParameter[] = [STATE_PARAM, CITY_PARAM];
 const makeQuestion = (id: number): Question =>
   ({
     id: () => id,
-    card: () => ({}) as unknown,
+    card: () => ({}),
     parameters: () => undefined,
   }) as unknown as Question;
 

@@ -47,15 +47,17 @@ export const WithDocLink = {
   },
 };
 
+const FixedTemplate: StoryFn<SdkErrorComponentProps> = (args) => {
+  return (
+    <>
+      If you see nothing, refresh the page.
+      <SdkError {...args} />
+    </>
+  );
+};
+
 export const Fixed = {
-  render: ((args) => {
-    return (
-      <>
-        If you see nothing, refresh the page.
-        <SdkError {...args} />
-      </>
-    );
-  }) as StoryFn<SdkErrorComponentProps>,
+  render: FixedTemplate,
   args: {
     message: "Something went wrong.",
     type: "fixed",

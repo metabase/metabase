@@ -1,13 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import cx from "classnames";
-import type {
-  CSSProperties,
-  Key,
-  ReactElement,
-  ReactNode,
-  RefObject,
-} from "react";
-import { Children, Component, createRef } from "react";
+import type { CSSProperties, Key, ReactNode, RefObject } from "react";
+import { Children, Component, createRef, isValidElement } from "react";
 import _ from "underscore";
 
 import {
@@ -149,13 +143,19 @@ class BaseSelect<
     const { children, sections, options } = this.props;
     if (children) {
       const optionToItem = (option: any) => option.props;
-      const first = (Array.isArray(children) ? children[0] : children) as any;
-      if (first && (first as ReactElement).type === OptionSection) {
-        return Children.map(children, (child) => ({
-          ...(child as ReactElement<OptionProps<TValue>>).props,
-          items: Children.map((child as any).props.children, optionToItem),
-        })) as any;
-      } else if (first && first.type === Option) {
+      const first = Array.isArray(children) ? children[0] : children;
+      if (isValidElement(first) && first.type === OptionSection) {
+        return Children.map(children, (child) => {
+          if (!isValidElement<OptionSectionProps>(child)) {
+            return { items: [] };
+          }
+
+          return {
+            ...child.props,
+            items: Children.map(child.props.children, optionToItem),
+          };
+        }) as any;
+      } else if (isValidElement(first) && first.type === Option) {
         return [{ items: Children.map(children, optionToItem) }] as any;
       }
     } else if (options) {

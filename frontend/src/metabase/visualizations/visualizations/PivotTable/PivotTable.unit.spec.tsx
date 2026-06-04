@@ -135,11 +135,15 @@ describe("Visualizations > PivotTable > PivotTable", () => {
   const originalOffsetHeight = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype,
     "offsetHeight",
-  ) as number;
+  );
   const originalOffsetWidth = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype,
     "offsetWidth",
-  ) as number;
+  );
+
+  if (!originalOffsetHeight || !originalOffsetWidth) {
+    throw new Error("Expected HTMLElement offset descriptors to exist");
+  }
 
   beforeAll(() => {
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", {

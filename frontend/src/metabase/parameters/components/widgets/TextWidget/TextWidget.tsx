@@ -92,9 +92,8 @@ export class TextWidget extends Component<TextWidgetProps, State> {
           if (e.nativeEvent.isComposing) {
             return;
           }
-          const target = e.target as HTMLInputElement;
           if (e.key === "Enter") {
-            target.blur();
+            e.currentTarget.blur();
           }
         }}
         onFocus={() => {

@@ -1,7 +1,10 @@
 import _ from "underscore";
 
+import { getObjectKeys } from "metabase/utils/objects";
 import type {
   ColorSettings,
+  EnterpriseSettingKey,
+  EnterpriseSettings,
   PasswordComplexity,
   SettingKey,
   Settings,
@@ -10,24 +13,24 @@ import type {
 type SettingListener = (value: any) => void;
 
 class MetabaseSettings {
-  _settings: Partial<Settings>;
+  _settings: Partial<EnterpriseSettings>;
   _listeners: Partial<{ [key: string]: SettingListener[] }> = {};
 
-  constructor(settings: Partial<Settings> = {}) {
+  constructor(settings: Partial<EnterpriseSettings> = {}) {
     this._settings = settings;
   }
 
   /**
    * @deprecated use getSetting(state, key)
    */
-  get<T extends SettingKey>(key: T): Partial<Settings>[T] {
+  get<T extends EnterpriseSettingKey>(key: T): Partial<EnterpriseSettings>[T] {
     return this._settings[key];
   }
 
   /**
    * @deprecated set setting values in the redux store
    */
-  set<T extends SettingKey>(key: T, value: Settings[T]) {
+  set<T extends EnterpriseSettingKey>(key: T, value: EnterpriseSettings[T]) {
     if (this._settings[key] !== value) {
       this._settings[key] = value;
       const listeners = this._listeners[key];
@@ -46,9 +49,7 @@ class MetabaseSettings {
    * @deprecated set setting values in the redux store
    */
   setAll(settings: Settings) {
-    const keys = Object.keys(settings) as SettingKey[];
-
-    keys.forEach((key) => {
+    getObjectKeys(settings).forEach((key) => {
       this.set(key, settings[key]);
     });
   }
@@ -210,7 +211,7 @@ class MetabaseSettings {
    * Only use this when Redux store is not always available, e.g. in ThemeProvider
    */
   applicationColors(): ColorSettings {
-    return this.get("application-colors" as SettingKey) as ColorSettings;
+    return this.get("application-colors") ?? {};
   }
 }
 

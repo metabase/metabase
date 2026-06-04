@@ -35,7 +35,7 @@ it("Should render a segment editor", () => {
   // Add a row for the header
   expect(screen.getAllByRole("row")).toHaveLength(3);
 
-  const firstRow = screen.getAllByRole("row").at(1) as HTMLElement;
+  const firstRow = screen.getAllByRole("row")[1];
 
   expect(within(firstRow).getByPlaceholderText(/optional/)).toHaveValue("bad");
   expect(within(firstRow).getByPlaceholderText(/Min/)).toHaveValue("0");
@@ -64,7 +64,7 @@ it("Should allow you to remove a segment", async () => {
   const { onChange } = setup();
 
   await userEvent.click(
-    (await screen.findAllByRole("img", { name: /trash/ })).at(0) as HTMLElement,
+    (await screen.findAllByRole("img", { name: /trash/ }))[0],
   );
 
   expect(onChange).toHaveBeenCalledWith([
@@ -87,7 +87,7 @@ it("Should allow you to remove all segments if canRemoveAll is passed", async ()
   expect(await screen.findAllByRole("img", { name: /trash/ })).toHaveLength(1);
 
   await userEvent.click(
-    (await screen.findAllByRole("img", { name: /trash/ })).at(0) as HTMLElement,
+    (await screen.findAllByRole("img", { name: /trash/ }))[0],
   );
 
   expect(onChange).toHaveBeenCalledWith([]);
