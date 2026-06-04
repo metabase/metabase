@@ -1632,11 +1632,11 @@
                      :model/Card       c2   {:name "card2" :collection_id (:id coll)}
                      :model/Card       _c3  {:name "card3" :collection_id (:id coll)}]
         (testing "It's possible to skip a few errors during extract"
-          (let [extract-one serdes/extract-one]
-            (with-redefs [serdes/extract-one (fn [model-name opts instance]
-                                               (if (= (:entity_id instance) (:entity_id c1))
-                                                 (throw (ex-info "Skip me" {}))
-                                                 (extract-one model-name opts instance)))]
+          (let [extract-one (mt/original-fn #'serdes/extract-one)]
+            (mt/with-dynamic-fn-redefs [serdes/extract-one (fn [model-name opts instance]
+                                                             (if (= (:entity_id instance) (:entity_id c1))
+                                                               (throw (ex-info "Skip me" {}))
+                                                               (extract-one model-name opts instance)))]
               (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
                 (let [ser            (vec (serdes.extract/extract {:no-settings       true
                                                                    :no-data-model     true

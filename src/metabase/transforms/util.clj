@@ -14,6 +14,7 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -34,8 +35,8 @@
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
   (cond
-    (transforms-base.u/query-transform? transform) (transforms.gating/query-transforms-enabled?)
-    (transforms-base.u/python-transform? transform) (transforms.gating/python-transforms-enabled?)
+    (transforms-base.u/query-transform? transform) (premium-features/query-transforms-enabled?)
+    (transforms-base.u/python-transform? transform) (premium-features/python-transforms-enabled?)
     :else false))
 
 (defn enabled-source-types-for-user
@@ -175,5 +176,5 @@
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
   [table]
   (boolean
-   (when-let [table-name (and (transforms.gating/any-transforms-enabled?) (:name table))]
+   (when-let [table-name (and (premium-features/any-transforms-enabled?) (:name table))]
      (str/starts-with? (u/lower-case-en table-name) driver.u/transform-temp-table-prefix))))

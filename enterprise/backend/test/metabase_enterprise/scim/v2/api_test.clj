@@ -77,7 +77,7 @@
           (is (== 1 (mt/metric-value system :metabase-scim/response-ok)))
           (is (== 1 (mt/metric-value system :metabase-scim/response-error))))
         (testing "Unexpected server error (500)"
-          (with-redefs [scim-api/scim-response #(throw (Exception.))]
+          (mt/with-dynamic-fn-redefs [scim-api/scim-response #(throw (Exception.))]
             (scim-client :get 500 "ee/scim/v2/Users")
             (is (== 1 (mt/metric-value system :metabase-scim/response-ok)))
             (is (== 2 (mt/metric-value system :metabase-scim/response-error)))))))))
