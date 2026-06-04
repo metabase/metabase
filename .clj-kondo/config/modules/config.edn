@@ -160,6 +160,7 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              channel
               collections
               dashboards
               events
@@ -702,8 +703,8 @@
            query-processor
            search
            settings
-           util
-           warehouse-schema}
+           sync
+           util}
    :model-exports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
@@ -1396,6 +1397,7 @@
    :uses #{analytics
            analytics-interface
            api
+           app-db
            appearance
            auth-identity
            channel
@@ -1426,6 +1428,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
+                    :model/TaskHistory
                     :model/User}}
 
   oauth-server
@@ -1678,6 +1681,7 @@
            query-processor
            request
            search
+           sync
            util
            view-log
            warehouse-schema}
@@ -2141,6 +2145,7 @@
   {:team "Graphy"
    :api  #{metabase.sync.api
            metabase.sync.core
+           metabase.sync.field-values
            metabase.sync.init
            metabase.sync.schedules
            metabase.sync.task.sync-databases
@@ -2502,6 +2507,7 @@
   warehouse-schema
   {:team "UX West"
    :api  #{metabase.warehouse-schema.field
+           metabase.warehouse-schema.field-values.distinct-batch
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
@@ -2679,8 +2685,8 @@
            lib-be
            models
            query-processor
-           util
-           warehouse-schema}
+           sync
+           util}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -3169,20 +3175,6 @@
            sql-tools
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
-
-  enterprise/notification-admin
-  {:team "Gadget"
-   :api  #{metabase-enterprise.notification-admin.api}
-   :uses #{api
-           app-db
-           models
-           notification
-           request
-           util}
-   :model-imports #{:model/Notification
-                    :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/TaskHistory}}
 
   enterprise/permission-debug
   {:team "UX West"

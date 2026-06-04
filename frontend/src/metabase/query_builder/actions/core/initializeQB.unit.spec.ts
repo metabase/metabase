@@ -915,4 +915,55 @@ describe("QB Actions > initializeQB", () => {
       expect(result.uiControls.isShowingNewbModal).toBeFalsy();
     });
   });
+
+  describe("table route (/table/:slug)", () => {
+    function setupTableRoute(
+      tableId: TableId,
+      opts: Omit<BaseSetupOpts, "location" | "params"> = {},
+    ) {
+      const slug = `${tableId}-orders`;
+      const location: LocationDescriptorObject = {
+        pathname: `/table/${slug}`,
+        hash: "",
+        query: {},
+      };
+      return baseSetup({ location, params: { slug }, ...opts });
+    }
+
+    it("builds the table's default ad-hoc question from the slug", async () => {
+      const { result, metadata } = await setupTableRoute(ORDERS_ID);
+      const expectedCard = checkNotNull(
+        metadata.table(ORDERS_ID)?.question().card(),
+      );
+
+      expect(
+        Lib.areLegacyQueriesEqual(
+          result.card.dataset_query,
+          expectedCard.dataset_query,
+        ),
+      ).toBe(true);
+      expect(result.originalCard).toBeUndefined();
+    });
+
+    it("treats the slug as a table, not a saved card (does not load a card)", async () => {
+      const loadCardSpy = jest.spyOn(cardActions, "loadCard");
+      await setupTableRoute(ORDERS_ID);
+      expect(loadCardSpy).not.toHaveBeenCalled();
+    });
+
+    it("renders an unsaved (ad-hoc) question", async () => {
+      const { result } = await setupTableRoute(ORDERS_ID);
+      expect(result.card.id).toBeUndefined();
+      expect(result.card.displayIsLocked).toBeFalsy();
+    });
+
+    it("shows a not-found error for an unknown table", async () => {
+      const { dispatch } = await setupTableRoute(999999);
+      expect(dispatch).toHaveBeenCalledWith(
+        setErrorPage(
+          expect.objectContaining({ data: { error_code: "not-found" } }),
+        ),
+      );
+    });
+  });
 });
