@@ -776,7 +776,7 @@
           (testing "throws when a relation in the input schema is owned by an unmemberable role"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"ALTER DEFAULT PRIVILEGES"
+                 #"not a member of \d+ role"
                  (redshift/assert-can-alter-default-privileges! tenant-spec schema))))
           (testing "passes once the foreign-owned object is reassigned to the tenant"
             (jdbc/execute! admin-spec
@@ -825,7 +825,7 @@
           (testing "throws when the schema carries a pre-existing default-priv row from a foreign grantor"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"ALTER DEFAULT PRIVILEGES"
+                 #"not a member of \d+ role"
                  (redshift/assert-can-alter-default-privileges! tenant-spec schema)))))
         (finally
           ;; Revoke the seeded default-priv as the grantor (only they can).
