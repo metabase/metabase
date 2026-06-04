@@ -204,6 +204,7 @@
     (pulse-channel-test/with-send-pulse-setup!
       (mt/with-model-cleanup [:model/Pulse]
         (let [sent-channel-ids (atom #{})]
+          ;; with-redefs (cross-thread): quartz scheduler threads don't inherit *local-redefs*
           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [;; run the job every second
                         u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")

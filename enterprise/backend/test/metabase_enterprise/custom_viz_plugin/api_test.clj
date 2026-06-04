@@ -323,8 +323,8 @@
     (with-dev-mode-enabled
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (testing "dev plugin registration with manifest name"
-          (with-redefs [cache/fetch-dev-manifest (constantly {:name "dev-chart" :icon "icon.svg"})
-                        cache/set-or-clear-dev-bundle! (constantly nil)]
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "dev-chart" :icon "icon.svg"})
+                                      cache/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (= "dev-chart" (:identifier resp)))
@@ -335,21 +335,21 @@
               (is (= "active" (:status resp))
                   "dev plugins are immediately active"))))
         (testing "dev plugin registration with explicit identifier overrides manifest"
-          (with-redefs [cache/fetch-dev-manifest (constantly {:name "manifest-name"})
-                        cache/set-or-clear-dev-bundle! (constantly nil)]
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "manifest-name"})
+                                      cache/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"
                                               :identifier     "my-override"})]
               (is (= "my-override" (:identifier resp))
                   "explicit identifier takes precedence over manifest name"))))
         (testing "dev plugin registration fails with helpful message when no identifier and no manifest"
-          (with-redefs [cache/fetch-dev-manifest (constantly nil)]
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (str/includes? resp "metabase-plugin.json")
                   "error should mention the manifest file"))))
         (testing "dev plugin registration fails with helpful message when manifest missing name"
-          (with-redefs [cache/fetch-dev-manifest (constantly {:icon "icon.svg"})]
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:icon "icon.svg"})]
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (str/includes? resp "name")
@@ -413,8 +413,8 @@
                                                         :display_name   "dev-refresh"
                                                         :status         :active
                                                         :dev_bundle_url "http://localhost:5174"}]
-          (with-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5174")
-                        cache/fetch-dev-manifest (constantly {:name "Updated Name" :icon "new-icon.svg"})]
+          (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5174")
+                                      cache/fetch-dev-manifest (constantly {:name "Updated Name" :icon "new-icon.svg"})]
             (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))]
               (is (= "Updated Name" (:display_name resp))))))))))
 
@@ -489,13 +489,13 @@
                                                     :status       :active
                                                     :bundle_hash  "abc123"}]
       (testing "returns bundle with correct content-type and ETag"
-        (with-redefs [cache/resolve-dev-bundle (constantly nil)
-                      cache/resolve-bundle     (constantly {:content "console.log('hello')" :hash "deadbeef"})]
+        (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
+                                    cache/resolve-bundle     (constantly {:content "console.log('hello')" :hash "deadbeef"})]
           (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/bundle"))]
             (is (= "console.log('hello')" resp)))))
       (testing "returns 503 when bundle is not available"
-        (with-redefs [cache/resolve-dev-bundle (constantly nil)
-                      cache/resolve-bundle     (constantly nil)]
+        (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
+                                    cache/resolve-bundle     (constantly nil)]
           (let [resp (mt/user-http-request :crowberto :get 503 (str "ee/custom-viz-plugin/" id "/bundle"))]
             (is (some? resp))))))))
 
@@ -506,8 +506,8 @@
                                                     :status       :active
                                                     :enabled      true
                                                     :bundle_hash  "abc123"}]
-      (with-redefs [cache/resolve-dev-bundle (constantly nil)
-                    cache/resolve-bundle     (constantly {:content "console.log('hi')" :hash "h1"})]
+      (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
+                                  cache/resolve-bundle     (constantly {:content "console.log('hi')" :hash "h1"})]
         (testing "authenticated non-admin user can access /bundle"
           (is (= "console.log('hi')"
                  (mt/user-http-request :rasta :get 200 (str "ee/custom-viz-plugin/" id "/bundle")))))
@@ -547,8 +547,8 @@
     (with-dev-mode-enabled
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (testing "registering a dev plugin records a custom-viz-plugin-create audit event"
-          (with-redefs [cache/fetch-dev-manifest    (constantly {:name "audit-dev-chart" :icon "icon.svg"})
-                        cache/set-or-clear-dev-bundle! (constantly nil)]
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest    (constantly {:name "audit-dev-chart" :icon "icon.svg"})
+                                      cache/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp  (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                               {:dev_bundle_url "http://localhost:5174"})
                   entry (mt/latest-audit-log-entry "custom-viz-plugin-create" (:id resp))]
@@ -644,8 +644,8 @@
     (testing "dev endpoints work when dev mode is enabled"
       (with-dev-mode-enabled
         (mt/with-model-cleanup [:model/CustomVizPlugin]
-          (with-redefs [cache/fetch-dev-manifest    (constantly {:name "gated-dev" :icon "icon.svg"})
-                        cache/set-or-clear-dev-bundle! (constantly nil)]
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest    (constantly {:name "gated-dev" :icon "icon.svg"})
+                                      cache/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (= "gated-dev" (:identifier resp))))))))))

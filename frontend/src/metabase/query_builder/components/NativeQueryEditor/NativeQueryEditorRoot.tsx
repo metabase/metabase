@@ -323,7 +323,7 @@ export const NativeQueryEditorRoot = forwardRef<
   // button, extra buttons, custom content rendered over the editor surface).
   let topBar: ReactNode = null;
   const bodySlots: ReactNode[] = [];
-  Children.forEach(children, (child) => {
+  Children.toArray(children).forEach((child) => {
     if (isValidElement(child) && child.type === TopBar) {
       topBar = cloneElement(child, { ref: topBarRef });
     } else {

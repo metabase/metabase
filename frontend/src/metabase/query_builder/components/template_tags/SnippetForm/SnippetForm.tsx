@@ -4,14 +4,13 @@ import * as Yup from "yup";
 
 import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import { Button } from "metabase/common/components/Button";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormInput } from "metabase/common/components/FormInput";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Form, FormProvider } from "metabase/forms";
-import { Flex } from "metabase/ui";
+import { Button, Flex, Icon } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
@@ -110,8 +109,8 @@ function SnippetFormInner({
               {isEditing && (
                 <Button
                   type="button"
-                  icon="archive"
-                  borderless
+                  leftSection={<Icon name="archive" />}
+                  variant="subtle"
                   onClick={onArchive}
                 >
                   {t`Archive`}

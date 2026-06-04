@@ -160,6 +160,7 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              channel
               collections
               dashboards
               events
@@ -702,8 +703,8 @@
            query-processor
            search
            settings
-           util
-           warehouse-schema}
+           sync
+           util}
    :model-exports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
@@ -845,7 +846,6 @@
            config
            driver-api
            events
-           legacy-mbql
            lib
            lib-be
            premium-features
@@ -1679,6 +1679,7 @@
            query-processor
            request
            search
+           sync
            util
            view-log
            warehouse-schema}
@@ -1766,6 +1767,7 @@
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
+              metabase.query-processor.parameters.values
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
@@ -1776,8 +1778,7 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
-              metabase.query-processor.util.add-alias-info
-              metabase.query-processor.util.persisted-cache}
+              metabase.query-processor.util.add-alias-info}
    :uses #{analytics
            analytics-interface
            analyze
@@ -2142,6 +2143,7 @@
   {:team "Graphy"
    :api  #{metabase.sync.api
            metabase.sync.core
+           metabase.sync.field-values
            metabase.sync.init
            metabase.sync.schedules
            metabase.sync.task.sync-databases
@@ -2503,6 +2505,7 @@
   warehouse-schema
   {:team "UX West"
    :api  #{metabase.warehouse-schema.field
+           metabase.warehouse-schema.field-values.distinct-batch
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
@@ -2677,10 +2680,11 @@
            driver
            events
            lib
+           lib-be
            models
            query-processor
-           util
-           warehouse-schema}
+           sync
+           util}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues

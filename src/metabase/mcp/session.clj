@@ -267,7 +267,7 @@
 (defn store-handle!
   "Insert a new handle row binding `encoded-query` to the calling user, and return the handle UUID.
 
-   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and so reads can log
+   `mcp-session-id` is recorded so DELETE /api/metabase-mcp can sweep the session's handles, and so reads can log
    when a handle is resolved across sessions (see [[find-handle-row]]) — the read path itself is purely
    user-scoped, since handle UUIDs are globally unique.
 
