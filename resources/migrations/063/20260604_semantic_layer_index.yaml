@@ -2,10 +2,10 @@
 ## an enterprise pgvector mirror (one embedding per row) backs the `semantic_layer_search` Metabot tool.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/062_update_migrations.yaml
+  - logicalFilePath: migrations/063_update_migrations.yaml
 
   - changeSet:
-      id: v62.2026-06-04T00:00:00
+      id: v63.2026-06-04T00:00:00
       author: christruter
       comment: Create semantic_layer_index table
       changes:

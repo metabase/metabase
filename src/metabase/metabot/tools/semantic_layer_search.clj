@@ -63,7 +63,7 @@
        "or narrow the request."))
 
 (defn- similarity
-  "Raw cosine similarity (1 − distance) for a match, from its score breakdown."
+  "Raw cosine similarity (1 - distance) for a match, from its score breakdown."
   ^double [score]
   (or (some (fn [s] (when (= :similarity (:name s)) (double (:score s)))) (:scores score)) 0.0))
 
