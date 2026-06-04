@@ -16,7 +16,9 @@
   nil)
 
 (defenterprise search
-  "Similarity-search the curated semantic layer in the pgvector mirror; returns [] in OSS."
+  "Similarity-search the curated semantic layer for the saved prompts nearest `user-search-prompt`.
+  Returns up to `limit` matches shaped `{:saved_search_prompt :usage_instructions :entity :score}`,
+  best blended score first; [] in OSS or when no pgvector store is configured."
   metabase-enterprise.semantic-layer-search.core
   [_user-search-prompt _limit]
   [])

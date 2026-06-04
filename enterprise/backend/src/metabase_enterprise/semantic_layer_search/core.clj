@@ -56,7 +56,8 @@
 
 (defn- score
   "Build a weighted-scorer breakdown for one row, shaped like regular search's scoring.
-  Returns a `:scores` vector of `{:name :score :weight :contribution}` plus the weighted-sum `:total_score`."
+  Returns a `:scores` vector of `{:name :score :weight :contribution}` plus the weighted-sum
+  `:total_score`."
   [{:keys [distance verified]}]
   (let [scores [(scorer :similarity (- 1.0 (double distance)) similarity-weight)
                 (scorer :verified   (if verified 1.0 0.0)      verified-weight)]]

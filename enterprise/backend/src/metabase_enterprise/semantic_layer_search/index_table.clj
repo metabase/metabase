@@ -49,11 +49,11 @@
   (sql/format honey-sql {:quoted true}))
 
 (defn format-embedding
-  "Format a float-array embedding as a pgvector SQL literal, validating numerics.
-  Rejects non-numbers and NaN/Infinity — the latter satisfy `number?` but produce SQL literals pgvector
-  chokes on."
+  "Format a float-array embedding as a pgvector SQL literal.
+  Throws if any element is not a finite number."
   [embedding]
   (doseq [v embedding]
+    ;; NaN/Infinity satisfy `number?` but render as SQL literals pgvector chokes on, so require finite.
     (when-not (and (number? v) (Double/isFinite (double v)))
       (throw (ex-info "Embedding contains invalid value" {:invalid-value v}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))

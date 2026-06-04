@@ -66,7 +66,8 @@
    :embedding          [:raw (index-table/format-embedding embedding)]})
 
 (defn- upsert-batch!
-  "Embed one batch of stale appdb rows and upsert them into the mirror. Returns the rows upserted."
+  "Embed one batch of stale appdb rows and upsert them into the mirror.
+  Returns the number of rows upserted."
   [pgvector embedding-model rows]
   (let [embeddings (embedding/get-embeddings-batch embedding-model (map :search_prompt rows)
                                                    {:type :index :record-tokens? true})

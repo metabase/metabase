@@ -358,9 +358,10 @@
 
   `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"model\"`,
   `\"metric\"`, or `\"question\"` (the names the agent uses with `read_resource`); `\"card\"` is accepted
-  and normalized to `\"question\"`. Returns records carrying `:portable_entity_id`, `:database_name`,
-  fully-qualified names, metric base tables, etc. — everything the LLM needs to build a query without an
-  extra round-trip. Refs whose entity no longer exists are dropped."
+  and normalized to `\"question\"`.
+  Returns records carrying `:portable_entity_id`, `:database_name`, fully-qualified names, metric base
+  tables, etc. — everything the LLM needs to build a query without an extra round-trip.
+  Refs whose entity no longer exists are dropped."
   [refs]
   (let [by-model  (group-by (comp ref-model->entity-type :model) refs)
         table-ids (distinct (map :id (get by-model "table")))

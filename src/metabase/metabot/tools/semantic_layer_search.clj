@@ -2,13 +2,14 @@
   "Metabot `semantic_layer_search` tool, backed by the curated semantic layer.
 
   Instead of ranking the whole instance, it matches the user's request by vector similarity against a
-  hand-curated library of saved search prompts, each mapped to the single entity that answers it. Each
-  match also carries `usage_instructions`: curator guidance on how to use that entity.
+  hand-curated library of saved search prompts, each mapped to the single entity that answers it.
+  Each match also carries `usage_instructions`: curator guidance on how to use that entity.
 
-  The index has several prompts per entity, so raw vector hits are **deduped to distinct entities** and a
-  small number returned. The matched entity refs are hydrated into the same enriched search-result shape
-  the general `search` tool returns (`portable_entity_id`, fully-qualified names, database names, metric
-  base tables), so the agent can build a query inline without an extra `read_resource` round-trip.
+  The index has several prompts per entity, so raw vector hits are deduped to distinct entities and a
+  small number returned.
+  The matched entity refs are hydrated into the same enriched search-result shape the general `search`
+  tool returns (`portable_entity_id`, fully-qualified names, database names, metric base tables), so the
+  agent can build a query inline without an extra `read_resource` round-trip.
 
   Because profiles may use this tool without a general-search fallback, the tool also surfaces the raw
   cosine `similarity` of each match and flags low-confidence results, so a miss reads as a miss rather
@@ -82,8 +83,8 @@
 
 (defn- build-matches
   "Fetch, dedupe to distinct entities, take `n`, and hydrate each match's entity ref into a full search
-  record. Each match: {:saved_search_prompt :usage_instructions :score :similarity :weak? :entity
-  hydrated-hit}."
+  record.
+  Each match: `{:saved_search_prompt :usage_instructions :score :similarity :weak? :entity hydrated-hit}`."
   [user-search-prompt n]
   (let [raw     (semantic-layer-search/search
                  user-search-prompt (min over-fetch-cap (* over-fetch-factor n)))
