@@ -108,4 +108,10 @@
               (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
               (is (= [] (mirror-rows ds)))
               (is (=? {:upserted appdb-total :deleted 0 :unchanged 0}
-                      (reconcile/reconcile! ds new-model))))))))))
+                      (reconcile/reconcile! ds new-model)))
+              (testing "a schema-version mismatch alone also triggers the rebuild"
+                ;; stale-write the meta row, as if the table were built by an older code version
+                (jdbc/execute! ds [(format "UPDATE \"%s\" SET schema_version = schema_version - 1"
+                                           index-table/*meta-table*)])
+                (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
+                (is (= [] (mirror-rows ds)))))))))))
