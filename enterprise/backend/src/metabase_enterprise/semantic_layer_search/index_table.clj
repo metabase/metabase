@@ -39,7 +39,8 @@
 (def schema-version
   "Version of the vectors table schema.
   Bump it to force a drop-and-rebuild on instances whose meta row records an older version."
-  1)
+  ;; 2: dropped the HNSW index — the rebuild sheds it from tables built under version 1.
+  2)
 
 ;; Advisory lock serializing concurrent ensure-tables! calls (e.g. several cluster nodes starting at
 ;; once). Arbitrary app-wide-unique constant; semantic-search's migration lock uses 19991.
