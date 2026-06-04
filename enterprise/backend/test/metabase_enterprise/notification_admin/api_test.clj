@@ -563,7 +563,10 @@
                                                             :ended_at    (t/instant)}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
           (is (=? {:last_check {:status "failing"}}
-                  (find-row-by-id data nid))))))))
+                  (find-row-by-id data nid)))
+          (testing "abandoned runs have no task_history message, so we synthesize a reason"
+            (is (re-find #"abandoned"
+                         (get-in (find-row-by-id data nid) [:last_check :error])))))))))
 
 (deftest last-check-skips-in-flight-runs-test
   (testing "an :started in-flight run is invisible to the admin list — last_check stays nil"

@@ -34,6 +34,7 @@
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -419,7 +420,13 @@
   (when (and status at)
     (let [run-status (coerce-run-status status)]
       {:at     at
-       :error  (when (= run-status :failing) error)
+       ;; Abandoned runs are heartbeat-killed mid-flight, so they usually have no task_history
+       ;; message. Without a synthesized reason the Failing tab would show them as failing with a
+       ;; blank "why", which is the first question an admin asks. Fall back to an explanation.
+       :error  (when (= run-status :failing)
+                 (or error
+                     (when (= status :abandoned)
+                       (tru "The run was abandoned, likely because the instance restarted while it was queued."))))
        :status run-status})))
 
 (defn- coerce-status
