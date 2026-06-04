@@ -121,7 +121,7 @@ export const SupportingText = Node.create<{
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin(this.name)];
+    return [createProseMirrorPlugin("supportingText")];
   },
 });
 
@@ -142,7 +142,10 @@ const SupportingTextComponent = ({
   const { _id } = node.attrs;
   const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
   const isOpen = childTargetId === _id;
-  const commentsPath = useCommentUrl({ childTargetId: _id });
+  const commentsPath = useCommentUrl({
+    childTargetId: _id,
+    searchParams: unresolvedCommentsCount > 0 ? undefined : { new: "true" },
+  });
   const dispatch = useDispatch();
 
   const canWrite = editor.options.editable;
@@ -234,13 +237,7 @@ const SupportingTextComponent = ({
             unresolvedCommentsCount={unresolvedCommentsCount}
             onClick={(e) => {
               e.preventDefault();
-              dispatch(
-                push(
-                  unresolvedCommentsCount > 0
-                    ? commentsPath
-                    : `${commentsPath}?new=true`,
-                ),
-              );
+              dispatch(push(commentsPath));
             }}
           />
         </Box>

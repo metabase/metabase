@@ -136,6 +136,7 @@ function setup({
       selectedTimelineId={null}
       onSelectTimelineId={jest.fn()}
       interestingTimelineIds={interestingTimelineIds}
+      locationSearch="?timeline=1"
     />,
   );
 }
@@ -351,12 +352,16 @@ describe("ExplorationGroupVisualization", () => {
           name: "Sessions (US)",
           status: "done",
           dimension_id: "dim-map",
+          segment_id: 1,
+          segment_name: "US",
         }),
         createQuery({
           id: 202,
           name: "Sessions (EU)",
           status: "done",
           dimension_id: "dim-map",
+          segment_id: 2,
+          segment_name: "EU",
         }),
       ];
       const datasets = new Map([
@@ -393,7 +398,7 @@ describe("ExplorationGroupVisualization", () => {
       expect(seriesByStub).toEqual([201, 202]);
     });
 
-    it("bakes a distinct map.colors ramp into each map card so they don't share a color", () => {
+    it("bakes a distinct map.colors ramp into each map card per segment name", () => {
       setupMapGroup();
 
       const stubs = screen.getAllByTestId("visualization-stub");
@@ -410,15 +415,15 @@ describe("ExplorationGroupVisualization", () => {
       expect(ramps[0][0]).not.toEqual(ramps[1][0]);
     });
 
-    it("renders a single shared legend at the top with one item per chart", () => {
+    it("renders a single shared legend at the top with one item per segment", () => {
       setupMapGroup();
 
       const legend = screen.getByRole("list", { name: "Legend" });
-      expect(within(legend).getByText("Sessions (US)")).toBeInTheDocument();
-      expect(within(legend).getByText("Sessions (EU)")).toBeInTheDocument();
+      expect(within(legend).getByText("US")).toBeInTheDocument();
+      expect(within(legend).getByText("EU")).toBeInTheDocument();
       expect(within(legend).getAllByRole("listitem")).toHaveLength(2);
-      expect(screen.getAllByText("Sessions (US)")).toHaveLength(1);
-      expect(screen.getAllByText("Sessions (EU)")).toHaveLength(1);
+      expect(screen.getAllByText("US")).toHaveLength(1);
+      expect(screen.getAllByText("EU")).toHaveLength(1);
     });
   });
 

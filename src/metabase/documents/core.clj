@@ -17,4 +17,5 @@
   prose-mirror-content-type]
  [metabase.documents.validate
   validate-prose-mirror
-  valid-prose-mirror?])
+  valid-prose-mirror?
+  add-ids-to-nodes])

@@ -55,6 +55,7 @@ interface ExplorationDocumentProps {
   isCommentsSidebarOpen: boolean;
   childTargetId?: string;
   route: Route;
+  locationSearch: string;
 }
 
 export function ExplorationDocument({
@@ -63,6 +64,7 @@ export function ExplorationDocument({
   isCommentsSidebarOpen,
   childTargetId,
   route,
+  locationSearch,
 }: ExplorationDocumentProps) {
   const { isAiSummary, isCanceled } = document;
 
@@ -175,10 +177,13 @@ export function ExplorationDocument({
                 <Box>
                   <ActionIcon
                     component={Link}
-                    to={Urls.explorationDocumentComments(
-                      explorationId,
-                      document.id,
-                    )}
+                    to={{
+                      pathname: Urls.explorationDocumentComments(
+                        explorationId,
+                        document.id,
+                      ),
+                      search: locationSearch,
+                    }}
                     size="md"
                     aria-label={t`Show all comments`}
                     data-hide-on-print
@@ -197,7 +202,12 @@ export function ExplorationDocument({
                 handleUpdate({ archived: true });
                 // navigate back to the exploration page
                 // otherwise nothing will be appearing on the page
-                dispatch(push(Urls.exploration(explorationId)));
+                dispatch(
+                  push({
+                    pathname: Urls.exploration(explorationId),
+                    search: locationSearch,
+                  }),
+                );
               }}
             />
           </Group>

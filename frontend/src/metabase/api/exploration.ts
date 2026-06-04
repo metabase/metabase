@@ -62,6 +62,23 @@ export const explorationApi = Api.injectEndpoints({
           listTag("exploration"),
         ]),
     }),
+    restartExploration: builder.mutation<Exploration, ExplorationId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/exploration/${id}/restart`,
+      }),
+      invalidatesTags: (exploration, error, id) =>
+        invalidateTags(error, [
+          idTag("exploration", id),
+          // The thread's AI Summary doc was reset to its placeholder server-side; invalidate it
+          // so an open editor refetches instead of showing the previous run's summary.
+          ...(exploration?.threads ?? []).flatMap((thread) =>
+            thread.ai_summary_document_id != null
+              ? [idTag("document", thread.ai_summary_document_id)]
+              : [],
+          ),
+        ]),
+    }),
     deleteExploration: builder.mutation<void, ExplorationId>({
       query: (id) => ({
         method: "DELETE",
@@ -137,6 +154,7 @@ export const {
   useGetExplorationQuery,
   useCreateExplorationMutation,
   useUpdateExplorationMutation,
+  useRestartExplorationMutation,
   useDeleteExplorationMutation,
   useCancelExplorationThreadMutation,
   useGetExplorationQueryResultQuery,

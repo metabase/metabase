@@ -11,7 +11,8 @@
   placeholders that haven't yet been resolved to `cardEmbed`s) can register
   them via the `:custom-block-nodes` option — see [[validate-prose-mirror]]."
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [clojure.walk :as walk]))
 
 (def ^:private block-types
   #{"paragraph" "heading" "bulletList" "orderedList" "blockquote"})
@@ -168,3 +169,22 @@
   "Convenience predicate — true when [[validate-prose-mirror]] returns no errors."
   ([pm-doc]      (empty? (validate-prose-mirror pm-doc)))
   ([pm-doc opts] (empty? (validate-prose-mirror pm-doc opts))))
+
+;; keep in sync with nodes-with-id on the frontend
+(def ^:private nodes-with-id
+  #{"paragraph" "heading" "bulletList" "orderedList" "blockquote" "codeBlock" "cardEmbed" "supportingText"})
+
+(defn add-ids-to-nodes
+  "If needed, adds an `_id` attribute to nodes to be used as a target for comments."
+  [pm-doc]
+  (walk/postwalk
+   (fn [node]
+     (if (contains? nodes-with-id (node-type node))
+       (let [attrs-key (if (contains? node "attrs") "attrs" :attrs)]
+         (update node attrs-key
+                 (fn [attrs]
+                   (if (or (contains? attrs :_id) (contains? attrs "_id"))
+                     attrs
+                     (assoc attrs :_id (random-uuid))))))
+       node))
+   pm-doc))

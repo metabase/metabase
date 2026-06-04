@@ -30,7 +30,7 @@ export const CustomHeading = Heading.extend({
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin(Heading.name)];
+    return [createProseMirrorPlugin("heading")];
   },
 });
 

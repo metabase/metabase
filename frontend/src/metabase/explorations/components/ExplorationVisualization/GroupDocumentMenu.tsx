@@ -30,11 +30,13 @@ import { getDocumentsForDocumentMenu } from "./utils";
 interface GroupDocumentMenuProps {
   charts: ExplorationChartForDocumentEmbed[]; // One entry per visible chart on the page (≡ one `SeriesGroup`)
   explorationThread: ExplorationThread;
+  locationSearch: string;
 }
 
 export function GroupDocumentMenu({
   charts,
   explorationThread,
+  locationSearch,
 }: GroupDocumentMenuProps) {
   const [opened, setOpened] = useState(false);
   const [selectedChart, setSelectedChart] =
@@ -85,10 +87,13 @@ export function GroupDocumentMenu({
             {c("{0} is the document name").t`Added to `}
             <Anchor
               component={Link}
-              to={Urls.explorationDocument(
-                explorationThread.exploration_id,
-                documentId,
-              )}
+              to={{
+                pathname: Urls.explorationDocument(
+                  explorationThread.exploration_id,
+                  documentId,
+                ),
+                search: locationSearch,
+              }}
             >
               {document?.name ?? t`document`}
             </Anchor>
@@ -97,7 +102,13 @@ export function GroupDocumentMenu({
         icon: "document",
       });
     },
-    [appendChartToDocument, sendToast, explorationThread, handleClose],
+    [
+      appendChartToDocument,
+      sendToast,
+      explorationThread,
+      handleClose,
+      locationSearch,
+    ],
   );
 
   const handleCreateAndAppend = useCallback(

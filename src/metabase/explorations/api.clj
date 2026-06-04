@@ -187,6 +187,31 @@
                 (positional-rows thread-id
                                  (map (fn [tl-id] {:timeline_id tl-id}) timeline-ids)))))
 
+(defn- thread-to-restart
+  "The thread a restart re-runs. The exploration UI is single-thread for now, so this is just the
+  exploration's (latest) thread; a future multi-thread UI will pass the thread id explicitly."
+  [exploration-id]
+  (t2/select-one :model/ExplorationThread
+                 :exploration_id exploration-id
+                 {:order-by [[:position :desc] [:id :desc]]}))
+
+(defn- reset-ai-summary-doc!
+  [thread-id]
+  (when-let [doc-id (t2/select-one-fn :ai_summary_document_id :model/ExplorationThread :id thread-id)]
+    (t2/update! :model/Document doc-id {:document (ai-summary/placeholder-pm-doc)})))
+
+(defn- reset-thread-for-rerun!
+  [thread-id]
+  (t2/delete! :model/ExplorationQuery :exploration_thread_id thread-id)
+  (reset-ai-summary-doc! thread-id)
+  (t2/update! :model/ExplorationThread thread-id
+              {:started_at            (t/offset-date-time)
+               :query_plan_started_at nil
+               :query_plan_transcript nil
+               :analysis_started_at   nil
+               :completed_at          nil
+               :canceled_at           nil}))
+
 ;;; ----------------------------------------- schemas -----------------------------------------
 
 (def ^:private MetricSelection
@@ -414,6 +439,19 @@
         (events/publish-event! :event/exploration-create
                                {:object persisted :user-id api/*current-user-id*})
         (hydrate-exploration persisted)))))
+
+(api.macros/defendpoint :post "/:id/restart" :- ::HydratedExploration
+  "Re-run an exploration's analysis in place."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [exploration (get-exploration-or-404 id)
+        _           (api/write-check exploration)
+        thread      (api/check-404 (thread-to-restart id))]
+    (t2/with-transaction [_]
+      (reset-thread-for-rerun! (:id thread))
+      (let [updated (t2/select-one :model/Exploration :id id)]
+        (events/publish-event! :event/exploration-update
+                               {:object updated :user-id api/*current-user-id*})
+        (hydrate-exploration updated)))))
 
 (api.macros/defendpoint :get "/dimensions" :- ::DimensionsResponse
   "Hydrated metrics plus a deduplicated dimension list, for the Exploration data modal.
@@ -673,7 +711,9 @@
             exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
             chart-href (explorations.groups/chart-page-url exp-id (:group_id primary-eq)
                                                            (:card_id primary-eq) (:dimension_id primary-eq))
-            new-body   (append-chart-nodes (:document doc) card-id stored-result-id chart-href)]
+            new-body (-> (:document doc)
+                         (append-chart-nodes card-id stored-result-id chart-href)
+                         documents/add-ids-to-nodes)]
         (t2/update! :model/Document (:id doc) {:document new-body})))
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 

@@ -35,9 +35,11 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
     { active, childTargetId, show, style, unresolvedCommentsCount }: Props,
     ref,
   ) {
-    const commentUrl = useCommentUrl({ childTargetId });
-
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
+    const commentUrl = useCommentUrl({
+      childTargetId,
+      searchParams: hasUnresolvedComments ? undefined : { new: "true" },
+    });
 
     return createPortal(
       <Box
@@ -56,9 +58,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
           variant={active ? "filled" : "default"}
           unresolvedCommentsCount={unresolvedCommentsCount}
           component={ForwardRefLink}
-          to={
-            unresolvedCommentsCount > 0 ? commentUrl : `${commentUrl}?new=true`
-          }
+          to={commentUrl}
         />
       </Box>,
       document.body,

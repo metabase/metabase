@@ -5,6 +5,7 @@ import { t } from "ttag";
 import {
   explorationApi,
   useCancelExplorationThreadMutation,
+  useRestartExplorationMutation,
   useUpdateExplorationMutation,
 } from "metabase/api/exploration";
 import { EditableText } from "metabase/common/components/EditableText";
@@ -17,6 +18,7 @@ import type {
 import { useToast } from "metabase/common/hooks";
 import {
   trackExplorationAISummaryOpened,
+  trackExplorationRestarted,
   trackExplorationStopped,
   trackExplorationVisualizationChanged,
 } from "metabase/explorations/analytics";
@@ -192,12 +194,18 @@ export function ExplorationSidebar({
       <ExplorationTreeNode
         {...props}
         explorationId={exploration.id}
+        canWrite={exploration.can_write}
         handlePrefetch={handlePrefetch}
         pendingKeyboardSelectionRef={pendingKeyboardSelectionRef}
         getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       />
     ),
-    [exploration.id, handlePrefetch, getSelectedEntityIdUrl],
+    [
+      exploration.id,
+      exploration.can_write,
+      handlePrefetch,
+      getSelectedEntityIdUrl,
+    ],
   );
 
   return (
@@ -229,6 +237,7 @@ export function ExplorationSidebar({
 
 interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   explorationId: ExplorationId;
+  canWrite: boolean;
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
   pendingKeyboardSelectionRef: React.MutableRefObject<boolean>;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
@@ -259,6 +268,7 @@ function ExplorationTreeHeading({
   isExpanded,
   onToggleExpand,
   depth,
+  canWrite,
 }: ExplorationTreeHeadingProps) {
   return (
     <Box
@@ -277,17 +287,20 @@ function ExplorationTreeHeading({
       <Ellipsified flex={1} size="md" lh="1.5rem">
         {item.name}
       </Ellipsified>
-      <ExplorationThreadMenu item={item} />
+      <ExplorationThreadMenu item={item} canWrite={canWrite} />
     </Box>
   );
 }
 
 function ExplorationThreadMenu({
   item,
+  canWrite,
 }: {
   item: ITreeNodeItem<ExplorationTreeHeading>;
+  canWrite: boolean;
 }) {
   const [cancelThread] = useCancelExplorationThreadMutation();
+  const [restartExploration] = useRestartExplorationMutation();
   const [sendToast] = useToast();
 
   const handleCancelThread = useCallback(
@@ -296,6 +309,8 @@ function ExplorationThreadMenu({
       if (error) {
         sendToast({
           message: t`Failed to stop`,
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
         });
         return;
       }
@@ -304,19 +319,43 @@ function ExplorationThreadMenu({
     [cancelThread, sendToast],
   );
 
+  const handleRestart = useCallback(
+    async (explorationId: ExplorationId) => {
+      const { error } = await restartExploration(explorationId);
+      if (error) {
+        sendToast({
+          message: t`Failed to restart`,
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
+        });
+        return;
+      }
+      trackExplorationRestarted(explorationId);
+    },
+    [restartExploration, sendToast],
+  );
+
   if (!item.data?.explorationId || !item.data?.thread) {
     return null;
   }
   const { explorationId, thread } = item.data;
   const menuItems = [];
 
-  if (thread.completed_at == null) {
+  if (canWrite && thread.completed_at == null) {
     menuItems.push(
       <Menu.Item
         key="stop"
         onClick={() => handleCancelThread(explorationId, thread.id)}
       >
         {t`Stop running`}
+      </Menu.Item>,
+    );
+  }
+
+  if (canWrite && thread.canceled_at != null) {
+    menuItems.push(
+      <Menu.Item key="restart" onClick={() => handleRestart(explorationId)}>
+        {t`Restart`}
       </Menu.Item>,
     );
   }

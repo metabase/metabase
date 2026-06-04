@@ -32,6 +32,13 @@ export const trackExplorationStopped = (explorationId: ExplorationId) => {
   });
 };
 
+export const trackExplorationRestarted = (explorationId: ExplorationId) => {
+  trackSimpleEvent({
+    event: "exploration_restarted",
+    target_id: explorationId,
+  });
+};
+
 export const trackExplorationAISummaryOpened = (
   explorationId: ExplorationId,
 ) => {

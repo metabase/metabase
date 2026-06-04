@@ -86,6 +86,7 @@ function setup({
     <GroupDocumentMenu
       charts={charts}
       explorationThread={makeThread(documents)}
+      locationSearch="?timeline=1"
     />,
   );
 }

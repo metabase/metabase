@@ -77,6 +77,7 @@ function setup(
       document={{ ...mockDocument, ...documentOverrides }}
       isCommentsSidebarOpen={false}
       route={{} as Route}
+      locationSearch="?timeline=1"
     />,
   );
 }

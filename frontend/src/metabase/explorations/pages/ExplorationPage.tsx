@@ -411,6 +411,7 @@ export function ExplorationPage({
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={handleSelectTimelineId}
           interestingTimelineIds={interestingTimelineIds}
+          locationSearch={location.search}
         />
       )}
       {selectedDocument && (
@@ -420,6 +421,7 @@ export function ExplorationPage({
           isCommentsSidebarOpen={isCommentsSidebarOpen}
           childTargetId={params.childTargetId}
           route={route}
+          locationSearch={location.search}
         />
       )}
       {!selectedGroup &&
