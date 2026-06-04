@@ -2159,6 +2159,7 @@
            events
            interestingness
            lib
+           lib-be
            models
            premium-features
            query-processor

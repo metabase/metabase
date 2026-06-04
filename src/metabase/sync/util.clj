@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.interface :as qp.i]
@@ -458,15 +459,23 @@
   (into [:and] (for [[k v] sync-tables-kv-args]
                  [:= k v])))
 
-(defn reducible-sync-tables
-  "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
-  [database-or-id & {:keys [schema-names table-names]}]
+(mu/defn reducible-sync-tables
+  "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`.
+
+  Returns tables in by of `[schema name]` so results match the order expected by [[metabase.driver/describe-fks]]."
+  [database-or-id                       :- [:or
+                                            ::lib.schema.id/database
+                                            [:map
+                                             [:id ::lib.schema.id/database]]]
+   & {:keys [schema-names table-names]} :- ::driver/describe-fks.options]
   (eduction (map t2.realize/realize)
             (t2/reducible-select :model/Table
                                  :db_id (u/the-id database-or-id)
                                  {:where [:and sync-tables-clause
                                           (when (seq schema-names) [:in :schema schema-names])
-                                          (when (seq table-names) [:in :name table-names])]})))
+                                          (when (seq table-names) [:in :name table-names])]
+                                  :order-by [[:schema :asc]
+                                             [:name :asc]]})))
 
 (defn sync-tables-count
   "The count of all tables that should be synced for `database-or-id`."

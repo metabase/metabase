@@ -48,7 +48,6 @@
                               :database-routing                 true
                               :describe-default-expr            false
                               :describe-fields                  true
-                              :describe-fks                     true
                               :describe-is-generated            false
                               :describe-is-nullable             false
                               :expression-literals              true

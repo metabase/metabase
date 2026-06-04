@@ -10,6 +10,7 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -44,7 +45,7 @@
     (is (= @classloader/shared-context-classloader
            (.getContextClassLoader (Thread/currentThread))))))
 
-(deftest available?-test
+(deftest ^:parallel available?-test
   (mt/with-dynamic-fn-redefs [driver.impl/concrete? (constantly true)]
     (is (driver/available? ::test-driver))
     (is (driver/available? "metabase.driver-test/test-driver")
@@ -76,13 +77,13 @@
         (let [props           (driver/connection-properties d)
               props-by-name   (driver.u/collect-all-props-by-name props)
               total-props     (count-named-props props)]
-          ;; If there are duplicate names, some will be overwritten in the map,
+          ;; If there are duplicate names, some will be overwritten in the map
           ;; so the map size will be less than the total count of named properties
           (is (= total-props (count props-by-name))
               (format "Property(s) with duplicate name: %d total properties but only %d unique names in %s"
                       total-props (count props-by-name) d)))))))
 
-(deftest supports-schemas-matches-describe-database-test
+(deftest ^:parallel supports-schemas-matches-describe-database-test
   (mt/test-drivers (mt/normal-drivers)
     (if (driver/database-supports? driver/*driver* :schemas (mt/db))
       (testing "`describe-database` should return schemas with tables if the database supports schemas"
@@ -180,7 +181,7 @@
             ;; clean up the database
             (t2/delete! :model/Database (u/the-id db))))))))
 
-(deftest supports-table-privileges-matches-implementations-test
+(deftest ^:parallel supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
     (is (some? (driver/current-user-table-privileges driver/*driver* (mt/db))))))
 
@@ -349,7 +350,8 @@
             [a b c] (->> ["a" "b" "c"]
                          (map #(ddl.i/format-name driver/*driver* %))
                          (map (u/index-by :name fields)))]
-        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see
+        ;; sync_metadata/fields_test.clj
         (if (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
           (testing ":database-is-generated should be provided"
             (is (= [false true false] (mapv :database-is-generated [a b c]))))
@@ -357,33 +359,42 @@
             (is (= [nil nil nil] (mapv :database-is-generated [a b c])))))))))
 
 (deftest ^:parallel describe-table-fks-test
-  (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
-    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :metadata/key-constraints)
-                                     (mt/normal-drivers-with-feature :describe-fks))
+  (testing "`describe-fks` should be usable in the way we used to use the old `describe-table-fks` method"
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
       (let [orders   (t2/select-one :model/Table (mt/id :orders))
             products (t2/select-one :model/Table (mt/id :products))
             people   (t2/select-one :model/Table (mt/id :people))
             fmt      (partial ddl.i/format-name driver/*driver*)]
-        (is (= #{{:fk-column-name   (fmt "user_id")
-                  :dest-table       (select-keys people [:name :schema])
-                  :dest-column-name (fmt "id")}
-                 {:fk-column-name   (fmt "product_id")
-                  :dest-table       (select-keys products [:name :schema])
-                  :dest-column-name (fmt "id")}}
-               #_{:clj-kondo/ignore [:deprecated-var]}
-               (driver/describe-table-fks driver/*driver* (mt/db) orders)))))))
+        (is (= #{{:fk-table-schema (:schema orders)
+                  :fk-table-name   (:name orders)
+                  :fk-column-name  (fmt "user_id")
+                  :pk-table-schema (:schema people)
+                  :pk-table-name   (:name people)
+                  :pk-column-name  (fmt "id")}
+                 {:fk-table-schema (:schema orders)
+                  :fk-table-name   (:name orders)
+                  :fk-column-name  (fmt "product_id")
+                  :pk-table-schema (:schema products)
+                  :pk-table-name   (:name products)
+                  :pk-column-name  (fmt "id")}}
+               (into #{}
+                     (driver/describe-fks
+                      driver/*driver*
+                      (lib.metadata/database (mt/metadata-provider))
+                      {:table-names #{(:name orders)}}))))))))
 
 (deftest ^:parallel describe-fks-test
-  (testing "`describe-fks` works for drivers that support `describe-fks`"
-    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints :describe-fks)
-      (let [fmt           (partial ddl.i/format-name driver/*driver*)
+  (testing `driver/describe-fks
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
+      (let [db            (lib.metadata/database (mt/metadata-provider))
+            fmt           (partial ddl.i/format-name driver/*driver*)
             orders        (t2/select-one :model/Table (mt/id :orders))
             products      (t2/select-one :model/Table (mt/id :products))
             people        (t2/select-one :model/Table (mt/id :people))
-            entire-db-fks (driver/describe-fks driver/*driver* (mt/db))
-            schema-db-fks (driver/describe-fks driver/*driver* (mt/db)
+            entire-db-fks (driver/describe-fks driver/*driver* db)
+            schema-db-fks (driver/describe-fks driver/*driver* db
                                                :schema-names (when (:schema orders) [(:schema orders)]))
-            table-db-fks  (driver/describe-fks driver/*driver* (mt/db)
+            table-db-fks  (driver/describe-fks driver/*driver* db
                                                :schema-names (when (:schema orders) [(:schema orders)])
                                                :table-names [(:name orders)])]
         (doseq [[description orders-fks]
@@ -421,7 +432,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; TODO: Uncomment when https://github.com/metabase/metabase/pull/60263 is merged
-#_(deftest data-editing-requires-describe-features-test
+#_(deftest ^:parallel data-editing-requires-describe-features-test
     (testing "Drivers supporting :actions/data-editing must support relevant describe-X features"
       (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
         (testing "describe-default-expr feature"
@@ -434,7 +445,7 @@
           (is (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
               (str driver/*driver* " must support :describe-is-nullable to support :actions/data-editing"))))))
 
-(deftest query-driver-success-metrics-test
+(deftest ^:parallel query-driver-success-metrics-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "the number of successful and failed queries should be tracked correctly"
       (let [success-query (assoc-in (mt/mbql-query venues) [:middleware :userland-query?] true)
@@ -453,7 +464,7 @@
           (is (= 3.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))
           (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "failure"}))))))))
 
-(deftest python-transform-drivers-multimethods-support
+(deftest ^:parallel python-transform-drivers-multimethods-support
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (let [driver driver/*driver*]
       (is (get-method driver/create-table! driver))
@@ -466,7 +477,7 @@
 
 (driver/register! ::mock-no-deps-driver, :abstract? true)
 
-(deftest deps-ignores-invalid-drivers-test
+(deftest ^:parallel deps-ignores-invalid-drivers-test
   (is (= #{}
          (driver/native-query-deps ::mock-no-deps-driver nil nil))))
 
@@ -476,6 +487,8 @@
   [_driver _feature _database]
   true)
 
-(deftest deps-flags-when-supported-driver-is-not-covered-test
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
-                        (driver/native-query-deps ::mock-deps-driver nil nil))))
+(deftest ^:parallel deps-flags-when-supported-driver-is-not-covered-test
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
+       (driver/native-query-deps ::mock-deps-driver nil nil))))

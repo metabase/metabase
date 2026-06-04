@@ -1,5 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.snowflake-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.snowflake-test]}
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.driver.snowflake-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.snowflake-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
@@ -24,6 +24,7 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -440,9 +441,12 @@
                  (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn db-name dynamic-table))))
                (testing "also works if db-name is nil"
                  (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn nil dynamic-table)))))
-             (testing "driver/describe-table-fks returns empty set for dynamic table"
+             (testing "driver/describe-fks returns empty set for dynamic table"
                #_{:clj-kondo/ignore [:deprecated-var]}
-               (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
+               (is (= #{} (driver/describe-fks
+                           :snowflake
+                           (mt/db)
+                           dynamic-table)))))))))))
 
 (deftest ^:sequential describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake
@@ -681,14 +685,19 @@
               (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
                   (update :fields (partial sort-by :name))))))))
 
-(deftest ^:sequential describe-table-fks-test
+(deftest ^:sequential describe-fks-test
   (mt/test-driver :snowflake
-    (testing "make sure describe-table-fks uses the NAME FROM DETAILS too"
-      (is (= #{{:fk-column-name   "category_id"
-                :dest-table       {:name "categories", :schema "PUBLIC"}
-                :dest-column-name "id"}}
-             #_{:clj-kondo/ignore [:deprecated-var]}
-             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :venues))))))))
+    (testing "make sure describe-fks uses the NAME FROM DETAILS too"
+      (let [table (t2/select-one [:model/Table :schema :name] :id (mt/id :venues))]
+        (is (= #{{:fk-column-name   "category_id"
+                  :dest-table       {:name "categories", :schema "PUBLIC"}
+                  :dest-column-name "id"}}
+               (driver/describe-fks
+                :snowflake
+                (-> (lib.metadata/database (mt/metadata-provider))
+                    (assoc :name "ABC"))
+                {:schema-names [(:schema table)]
+                 :table-names  [(:name table)]})))))))
 
 (deftest can-change-from-password-test
   (mt/test-driver

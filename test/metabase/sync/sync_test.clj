@@ -7,12 +7,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sync.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -83,14 +85,19 @@
   [_ _ table]
   (get (sync-test-tables) (:name table)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks ::sync-test
-  [_ _ table]
-  (set (when (= "movie" (:name table))
-         #{{:fk-column-name   "studio"
-            :dest-table       {:name   "studio"
-                               :schema (when *supports-schemas?* "public")}
-            :dest-column-name "studio"}})))
+(mu/defmethod driver/describe-fks ::sync-test :- ::driver/describe-fks.result
+  [_driver                             :- :keyword
+   _database                           :- ::lib.schema.metadata/database
+   {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
+  (if (or (empty? table-names)
+          (contains? table-names "movie"))
+    #{{:fk-table-name   "movie"
+       :fk-table-schema (when *supports-schemas?* "public")
+       :fk-column-name  "studio"
+       :pk-table-name   "stuido"
+       :pk-table-schema (when *supports-schemas?* "public")
+       :pk-column-name  "studio"}}
+    #{}))
 
 (defmethod driver/database-supports? [::sync-test :metadata/key-constraints]
   [_driver _feature _db]

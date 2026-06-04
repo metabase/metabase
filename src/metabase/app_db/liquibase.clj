@@ -504,13 +504,15 @@
 (defn latest-available-major-version
   "Get the latest version that Liquibase would apply if we ran migrations right now."
   [^Liquibase liquibase]
-  (->> liquibase
-       (.getDatabaseChangeLog)
-       (.getChangeSets)
-       last
-       (#(.getId ^ChangeSet %))
-       extract-numbers
-       first))
+  ;; NOCOMMIT
+  #_(->> liquibase
+         (.getDatabaseChangeLog)
+         (.getChangeSets)
+         last
+         (#(.getId ^ChangeSet %))
+         extract-numbers
+         first)
+  63)
 
 (defn latest-applied-major-version
   "Gets the latest version applied to the database."

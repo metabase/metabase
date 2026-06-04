@@ -634,9 +634,8 @@
 
 ;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`
 ;;; implementation doesn't try to use it.
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :presto-jdbc
-  [_driver _database _table]
+(defmethod driver/describe-fks :presto-jdbc
+  [_driver _database _spec]
   nil)
 
 (defmethod driver/can-connect? :presto-jdbc

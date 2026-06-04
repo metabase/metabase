@@ -125,7 +125,7 @@
    :name         (:name data)
    :engine       (keyword (:engine data))
    :dbms-version (:dbms_version data)
-   :features     #{:foreign-keys :nested-queries :expressions :native-parameters
+   :features     #{:metadata/key-constraints :nested-queries :expressions :native-parameters
                    :basic-aggregations :standard-deviation-aggregations
                    :expression-aggregations :left-join :right-join :inner-join :full-join}
    :settings     (:settings data)})
