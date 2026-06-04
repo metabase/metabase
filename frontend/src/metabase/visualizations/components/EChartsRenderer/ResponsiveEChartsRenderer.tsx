@@ -1,14 +1,19 @@
 import { Suspense, forwardRef, useLayoutEffect } from "react";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
+import { Flex } from "metabase/ui";
 import { isNumber } from "metabase/utils/types";
 import type { EChartsRendererProps } from "metabase/visualizations/components/EChartsRenderer/EChartsRenderer";
 import { ResponsiveEChartsRendererStyled } from "metabase/visualizations/components/EChartsRenderer/ResponsiveEChartsRenderer.styled";
 import { LazyEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer/lazy";
+import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 export interface ResponsiveEChartsRendererProps extends React.PropsWithChildren<EChartsRendererProps> {
   onResize?: (width: number, height: number) => void;
+  // Display type of the chart, used to show a matching skeleton while the
+  // echarts chunk is loading.
+  display?: VisualizationDisplay;
 }
 
 const ResponsiveEChartsRendererInner = forwardRef<
@@ -20,6 +25,7 @@ const ResponsiveEChartsRendererInner = forwardRef<
     width,
     height,
     children,
+    display,
     ...echartsRenderedProps
   }: ResponsiveEChartsRendererProps,
   ref,
@@ -36,7 +42,13 @@ const ResponsiveEChartsRendererInner = forwardRef<
 
   return (
     <ResponsiveEChartsRendererStyled>
-      <Suspense fallback={<LoadingSpinner />}>
+      <Suspense
+        fallback={
+          <Flex h="100%" w="100%" direction="column">
+            {getChartSkeletonImage(display)}
+          </Flex>
+        }
+      >
         <LazyEChartsRenderer
           ref={ref}
           {...echartsRenderedProps}
