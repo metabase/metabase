@@ -329,6 +329,16 @@ const addOrdersProductsExpression = () => {
   cy.wait("@dataset");
 };
 
+const assertMetricControlsDoNotOverflowViewport = () => {
+  H.MetricsViewer.getMetricControls().then(($controls) => {
+    const rect = $controls[0].getBoundingClientRect();
+    const viewportWidth = Cypress.config("viewportWidth");
+
+    expect(Math.floor(rect.left)).to.be.at.least(0);
+    expect(Math.ceil(rect.right)).to.be.at.most(viewportWidth);
+  });
+};
+
 const openTimeDimensionConfiguration = () => {
   H.MetricsViewer.dimensionPickerSidebar()
     .findByRole("button", { name: "Time" })
@@ -2210,6 +2220,122 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Expression should run without 'No compatible dimensions' error");
       H.MetricsViewer.getMetricVisualization().should("be.visible");
+    });
+  });
+
+  describe("Responsive viewer controls", () => {
+    const setupTimeControls = (
+      width: number,
+      { withMultipleSeries = false }: { withMultipleSeries?: boolean } = {},
+    ) => {
+      cy.viewport(1280, 900);
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+      H.MetricsViewer.searchInput().type("{end}, Count of orders", {
+        waitForAnimations: true,
+      });
+      H.MetricsViewer.searchResults()
+        .findByText("Count of orders")
+        .closest("[role='menuitem']")
+        .click();
+      runFormula();
+      cy.wait("@dataset");
+      if (withMultipleSeries) {
+        addMetric("Count of products");
+        cy.wait("@dataset");
+      }
+      cy.viewport(width, 900);
+    };
+
+    it("keeps desktop controls unchanged at wide widths", () => {
+      setupTimeControls(1280);
+
+      H.MetricsViewer.getMetricControls()
+        .findByRole("button", { name: "line" })
+        .should("be.visible");
+      H.MetricsViewer.getColumnPickerButton()
+        .should("be.visible")
+        .should("contain.text", "Time");
+      H.MetricsViewer.getMetricControls()
+        .findByRole("button", { name: /by month/i })
+        .should("be.visible");
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-compact-chart-controls")
+        .should("not.be.visible");
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-x-axis-controls")
+        .should("not.be.visible");
+      assertMetricControlsDoNotOverflowViewport();
+    });
+
+    it("collapses chart controls while keeping center controls visible at tablet widths", () => {
+      setupTimeControls(760, { withMultipleSeries: true });
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-compact-chart-controls")
+        .should("be.visible")
+        .click();
+      H.popover().findByText("Visualization").should("be.visible");
+      H.popover()
+        .findByRole("menuitem", { name: "Line chart" })
+        .should("be.visible");
+      H.popover()
+        .findByRole("menuitem", { name: "Bar chart" })
+        .should("be.visible");
+      H.popover().findByText("Layout").should("be.visible");
+      H.popover()
+        .findByRole("menuitem", { name: "Default" })
+        .should("be.visible");
+      H.popover()
+        .findByRole("menuitem", { name: "Stacked" })
+        .should("be.visible");
+      H.MetricsViewer.getColumnPickerButton()
+        .should("be.visible")
+        .should("contain.text", "Time");
+      H.MetricsViewer.getMetricControls()
+        .findByRole("button", { name: /by month/i })
+        .should("be.visible");
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-x-axis-controls")
+        .should("not.be.visible");
+      assertMetricControlsDoNotOverflowViewport();
+    });
+
+    it("collapses center controls behind an X-axis trigger at phone widths", () => {
+      setupTimeControls(480);
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-compact-chart-controls")
+        .should("be.visible");
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-x-axis-controls")
+        .should("be.visible")
+        .click();
+      H.popover()
+        .findByRole("button", { name: "Change column" })
+        .should("be.visible")
+        .should("contain.text", "Time");
+      H.popover()
+        .findByRole("button", { name: /by month/i })
+        .should("be.visible");
+      H.popover().findByLabelText("Column label options").should("be.visible");
+      H.popover()
+        .findByRole("button", { name: /by month/i })
+        .then(($bucketButton) => {
+          H.popover()
+            .findByLabelText("Column label options")
+            .then(($columnLabelOptions) => {
+              expect(
+                $columnLabelOptions[0].getBoundingClientRect().left,
+              ).to.be.greaterThan(
+                $bucketButton[0].getBoundingClientRect().right,
+              );
+            });
+        });
+      H.popover().findByRole("button", { name: "Change column" }).click();
+      H.MetricsViewer.dimensionPickerSidebar().should("be.visible");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+      assertMetricControlsDoNotOverflowViewport();
     });
   });
 

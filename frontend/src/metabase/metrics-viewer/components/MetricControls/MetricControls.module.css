@@ -1,7 +1,8 @@
 .root {
-  --control-hover-color: rgba(7, 23, 34, 0.05);
   --ellipsis-button-size: 2rem;
 
+  container-name: metric-controls;
+  container-type: inline-size;
   position: relative;
   width: 100%;
   height: 2.5rem;
@@ -19,6 +20,13 @@
   position: absolute;
   top: 0;
   transform: translateX(-50%);
+}
+
+.centerControlsContent {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--mantine-spacing-sm);
+  position: relative;
 }
 
 .centerControls {
@@ -47,22 +55,118 @@
 
   &.controlButton:hover {
     color: var(--mb-color-text-primary);
-    background-color: var(--control-hover-color);
+    background-color: var(--mb-color-background-hover);
   }
 }
 
 .ellipsisMenuButton {
   border-radius: 0.5rem;
   height: var(--ellipsis-button-size);
+  width: var(--ellipsis-button-size);
+
+  &.ellipsisMenuButton:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.ellipsisMenuButtonFloating {
   position: absolute;
   /** Make the container be centered without taking the ellipsis menu button into consideration */
   right: calc(
     -1 * calc(var(--mantine-spacing-sm) + var(--ellipsis-button-size))
   );
   top: 0.25rem;
-  width: var(--ellipsis-button-size);
+}
 
-  &.ellipsisMenuButton:hover {
-    background-color: var(--control-hover-color);
+.ellipsisMenuButtonInline {
+  flex: 0 0 auto;
+}
+
+.leftControlsCompact,
+.compactCenterControls {
+  display: none;
+}
+
+.compactChartTypeButton {
+  background: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.75rem;
+  color: var(--mb-color-text-primary);
+  height: 2.5rem;
+  width: 2.5rem;
+
+  &.compactChartTypeButton:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.compactChartMenuDropdown,
+.centerControlsPopoverDropdown {
+  border-radius: var(--mantine-radius-lg);
+}
+
+.compactChartMenuDropdown {
+  min-width: 14rem;
+}
+
+.compactChartMenuDivider {
+  margin-inline: calc(-1 * var(--mantine-spacing-sm));
+}
+
+.compactChartMenuItem {
+  border-radius: var(--mantine-radius-md);
+  color: var(--mb-color-text-primary);
+  min-height: 2rem;
+
+  &.compactChartMenuItem:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.compactChartMenuItemSelected,
+.compactChartMenuItemSelected.compactChartMenuItem:hover {
+  background-color: var(--mb-color-background-selected);
+  color: var(--mb-color-brand);
+}
+
+.xAxisButton {
+  background: var(--mb-color-background-primary);
+  border-radius: 0.75rem;
+  border: 1px solid var(--mb-color-border);
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  height: 2.5rem;
+  width: 100%;
+
+  &.xAxisButton:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+@container metric-controls (max-width: 56rem) {
+  .leftControlsFull {
+    display: none;
+  }
+
+  .leftControlsCompact {
+    display: flex;
+    top: auto;
+  }
+}
+
+@container metric-controls (max-width: 36rem) {
+  .centerCluster {
+    display: none;
+  }
+
+  .compactCenterControls {
+    display: flex;
+    left: 50%;
+    margin-left: var(--mantine-spacing-sm);
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    /** Adjust to take available space on smaller screens, leaving some room for the left controls */
+    width: min(14rem, calc(100% - 5rem));
   }
 }

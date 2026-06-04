@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -14,15 +13,12 @@ import {
   getDimensionIcon,
   getProjectionInfo,
 } from "metabase/metrics-viewer/utils";
-import { ActionIcon, Box, Button, Flex, Icon, Menu, Switch } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit, VisualizationSettings } from "metabase-types/api";
 
-import { BinningButton } from "./BinningButton";
-import { BucketButton } from "./BucketButton";
-import { ChartLayoutPicker } from "./ChartLayoutPicker";
-import { ChartTypePicker } from "./ChartTypePicker";
-import { DimensionFilterButton } from "./DimensionFilterButton";
+import { CenterControls } from "./CenterControls";
+import { LeftControls } from "./LeftControls";
 import S from "./MetricControls.module.css";
 
 function isValidDisplayTypeForDimensionBreakout(
@@ -39,10 +35,6 @@ type MetricControlsProps = {
   showStackSeries?: boolean;
   canToggleColumnLabels?: boolean;
 };
-
-function ControlSection({ children }: { children: ReactNode }) {
-  return <Box className={S.controlSection}>{children}</Box>;
-}
 
 export function MetricControls({
   definition,
@@ -157,7 +149,6 @@ export function MetricControls({
   )
     ? displayType
     : config.defaultDisplayType;
-
   const hasSharedDimensions = availableDimensions.shared.length > 0;
   const hasAnySourceDimensions = sourceOrder.some(
     (sourceId) => (availableDimensions.bySource[sourceId]?.length ?? 0) > 0,
@@ -171,15 +162,12 @@ export function MetricControls({
     ? getDimensionIcon(projectionInfo.projectionDimension)
     : undefined;
 
-  const hasCenterControls =
-    hasFilterControls || hasBucketControls || hasBinningControls;
-
   if (dimensionBreakoutType === "scalar") {
     return (
       <Box className={S.root} data-testid="metrics-viewer-controls">
         <Flex className={S.centerCluster}>
           <Flex className={S.centerControls} align="center">
-            <ControlSection>
+            <Box className={S.controlSection}>
               <Button
                 className={S.controlButton}
                 fw="bold"
@@ -191,7 +179,7 @@ export function MetricControls({
               >
                 {t`No breakout`}
               </Button>
-            </ControlSection>
+            </Box>
           </Flex>
         </Flex>
       </Box>
@@ -200,108 +188,37 @@ export function MetricControls({
 
   return (
     <Box className={S.root} data-testid="metrics-viewer-controls">
-      <Flex className={S.leftControls} align="center" gap="md">
-        <ChartTypePicker
-          chartTypes={chartTypes}
-          value={effectiveDisplayType}
-          onChange={handleDisplayTypeChange}
-        />
-        {showStackSeries && (
-          <ChartLayoutPicker
-            isStacked={!!visualizationSettings?.["graph.split_panels"]}
-            onToggle={(stacked) =>
-              handleVisualizationSettingsChange({
-                "graph.split_panels": stacked,
-              })
-            }
-          />
-        )}
-      </Flex>
-      {(hasCenterControls || canToggleColumnLabels) && (
-        <Box className={S.centerCluster}>
-          {hasCenterControls && (
-            <Flex className={S.centerControls} align="center">
-              {hasFilterControls && projectionInfo.filterDimension && (
-                <>
-                  {hasAvailableDimensions && (
-                    <ControlSection>
-                      <Button
-                        className={S.controlButton}
-                        justify="space-between"
-                        fw="bold"
-                        aria-label={t`Change column`}
-                        variant="subtle"
-                        color="text-primary"
-                        leftSection={
-                          columnPickerIcon ? (
-                            <Icon c="brand" name={columnPickerIcon} size={16} />
-                          ) : undefined
-                        }
-                        onClick={openSidebar}
-                      >
-                        {columnPickerLabel}
-                      </Button>
-                    </ControlSection>
-                  )}
-                  <ControlSection>
-                    <DimensionFilterButton
-                      definition={definition}
-                      filterDimension={projectionInfo.filterDimension}
-                      dimensionFilter={dimensionFilter}
-                      allFilterDimensions={allFilterDimensions}
-                      onChange={handleDimensionFilterChange}
-                    />
-                  </ControlSection>
-                </>
-              )}
-              {hasBucketControls && projectionInfo.projectionDimension && (
-                <ControlSection>
-                  <BucketButton
-                    definition={definition}
-                    dimension={projectionInfo.projectionDimension}
-                    projection={projectionInfo.projection!}
-                    onChange={handleTemporalUnitChange}
-                  />
-                </ControlSection>
-              )}
-              {hasBinningControls && projectionInfo.projectionDimension && (
-                <ControlSection>
-                  <BinningButton
-                    definition={definition}
-                    dimension={projectionInfo.projectionDimension}
-                    projection={projectionInfo.projection!}
-                    onBinningChange={handleBinningChange}
-                  />
-                </ControlSection>
-              )}
-            </Flex>
-          )}
-          {canToggleColumnLabels && (
-            <Menu position="bottom-start" withinPortal>
-              <Menu.Target>
-                <ActionIcon
-                  className={S.ellipsisMenuButton}
-                  aria-label={t`Column label options`}
-                  variant="subtle"
-                >
-                  <Icon name="ellipsis" c="text-primary" />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown p="md">
-                <Switch
-                  label={t`Show column labels`}
-                  size="sm"
-                  labelPosition="right"
-                  checked={showColumnLabels}
-                  onChange={(event) =>
-                    handleShowColumnLabelsChange(event.currentTarget.checked)
-                  }
-                />
-              </Menu.Dropdown>
-            </Menu>
-          )}
-        </Box>
-      )}
+      <LeftControls
+        chartTypes={chartTypes}
+        value={effectiveDisplayType}
+        showStackSeries={showStackSeries}
+        isStacked={!!visualizationSettings?.["graph.split_panels"]}
+        onDisplayTypeChange={handleDisplayTypeChange}
+        onStackedChange={(stacked) =>
+          handleVisualizationSettingsChange({
+            "graph.split_panels": stacked,
+          })
+        }
+      />
+      <CenterControls
+        definition={definition}
+        allFilterDimensions={allFilterDimensions}
+        projectionInfo={projectionInfo}
+        dimensionFilter={dimensionFilter}
+        columnPickerLabel={columnPickerLabel}
+        columnPickerIcon={columnPickerIcon}
+        hasAvailableDimensions={hasAvailableDimensions}
+        hasFilterControls={!!hasFilterControls}
+        hasBucketControls={!!hasBucketControls}
+        hasBinningControls={!!hasBinningControls}
+        canToggleColumnLabels={canToggleColumnLabels}
+        showColumnLabels={showColumnLabels}
+        onOpenSidebar={openSidebar}
+        onDimensionFilterChange={handleDimensionFilterChange}
+        onTemporalUnitChange={handleTemporalUnitChange}
+        onBinningChange={handleBinningChange}
+        onShowColumnLabelsChange={handleShowColumnLabelsChange}
+      />
     </Box>
   );
 }
