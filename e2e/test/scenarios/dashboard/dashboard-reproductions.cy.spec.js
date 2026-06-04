@@ -2285,11 +2285,14 @@ describe("issue 64138", () => {
 });
 
 describe("issue 58556, issue 66277", () => {
+  // Pinned to the H2 sample database: hour-granularity bucketing of CREATED_AT needs real date typing,
+  // which SQLite (text-stored dates) lacks.
   const QUESTION = {
+    database: H2_SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS_ID,
+      "source-table": H2_ORDERS_ID,
       aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour" }]],
+      breakout: [["field", H2_ORDERS.CREATED_AT, { "temporal-unit": "hour" }]],
     },
     display: "table",
   };
@@ -2302,7 +2305,7 @@ describe("issue 58556, issue 66277", () => {
   });
 
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     cy.signInAsNormalUser();
 
     H.createDashboardWithQuestions({
