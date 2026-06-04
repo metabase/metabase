@@ -28,6 +28,7 @@ interface SidebarLinkProps {
   left?: ReactNode;
   right?: ReactNode;
   onClick?: (event: MouseEvent) => void;
+  onMouseDown?: (event: MouseEvent) => void;
 }
 
 type ContentProps = {

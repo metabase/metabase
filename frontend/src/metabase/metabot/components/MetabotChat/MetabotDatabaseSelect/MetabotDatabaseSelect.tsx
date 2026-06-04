@@ -67,9 +67,6 @@ export const MetabotDatabaseSelect = ({
   );
 
   const selectedValue = value != null ? String(value) : null;
-  const selectedEngine = selectedValue
-    ? engineByValue[selectedValue]
-    : undefined;
 
   const renderOption: SelectProps["renderOption"] = ({ option }) => (
     <Group gap="sm">
@@ -86,9 +83,7 @@ export const MetabotDatabaseSelect = ({
       onChange={(next) => onChange(next != null ? Number(next) : undefined)}
       disabled={disabled || isLoading}
       placeholder={isLoading ? t`Loading…` : t`Select database`}
-      leftSection={<EngineIcon engine={selectedEngine} />}
       rightSection={<Icon size="0.5rem" name="chevrondown" />}
-      leftSectionWidth="1.5rem"
       rightSectionWidth="1rem"
       comboboxProps={{ position: "top" }}
       renderOption={renderOption}

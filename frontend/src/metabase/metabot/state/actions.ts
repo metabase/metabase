@@ -4,6 +4,7 @@ import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
@@ -414,6 +415,9 @@ export const sendAgentRequest = createAsyncThunk<
     try {
       // store error object streamed across the wire
       let streamedError: MetabotAgentTurnError | undefined;
+      // track whether the turn produced a new artifact so we can refresh the
+      // navbar's Artifacts list once the response settles
+      let receivedAdhocViz = false;
       response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
@@ -480,6 +484,7 @@ export const sendAgentRequest = createAsyncThunk<
                 // Surface the latest chart in the SDK's question pane /
                 // CurrentChart without navigating the user away.
                 dispatch(setCurrentQuestionPath(part.value.link));
+                receivedAdhocViz = true;
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "static_viz" }, (part) => {
@@ -543,6 +548,14 @@ export const sendAgentRequest = createAsyncThunk<
       dispatch(
         metabotApi.util.invalidateTags([listTag("metabot-conversation")]),
       );
+
+      // a new artifact may have landed in the personal collection; refetch the
+      // navbar's Artifacts list a beat after the response settles so it shows up
+      if (receivedAdhocViz) {
+        window.setTimeout(() => {
+          dispatch(Api.util.invalidateTags([listTag("card")]));
+        }, 1000);
+      }
 
       return fulfillWithValue({
         conversation_id: request.conversation_id,

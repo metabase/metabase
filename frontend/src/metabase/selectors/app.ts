@@ -2,11 +2,7 @@ import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 import type { Location } from "history";
 
-import {
-  getDashboard,
-  getDashboardId,
-  getIsEditing as getIsEditingDashboard,
-} from "metabase/dashboard/selectors";
+import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import {
   getIsSavedQuestionChanged,
@@ -115,15 +111,9 @@ export const getIsQuestionLineageVisible = createSelector(
 );
 
 export const getIsNavBarEnabled = createSelector(
-  [
-    getUser,
-    getRouterPath,
-    getIsEditingDashboard,
-    getIsEmbeddingIframe,
-    getEmbedOptions,
-  ],
-  (currentUser, path, isEditingDashboard, isEmbedded, embedOptions) => {
-    if (!currentUser || isEditingDashboard) {
+  [getUser, getRouterPath, getIsEmbeddingIframe, getEmbedOptions],
+  (currentUser, path, isEmbedded, embedOptions) => {
+    if (!currentUser) {
       return false;
     }
     if (isEmbedded && !embedOptions.side_nav) {

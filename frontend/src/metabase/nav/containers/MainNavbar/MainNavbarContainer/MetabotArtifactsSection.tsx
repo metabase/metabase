@@ -66,6 +66,7 @@ function ArtifactRow({
           <PaddedSidebarLink
             icon={icon}
             onClick={() => onClick(id)}
+            onMouseDown={() => {}}
             aria-label={name}
           >
             {name}

@@ -1,6 +1,7 @@
 .root {
   flex: 0 1 auto;
   overflow: hidden;
+  margin-bottom: 5px;
 }
 
 .wrapper,
@@ -14,7 +15,7 @@
   background: transparent;
   min-height: 1.5rem;
   height: 1.5rem;
-  padding: 0 1rem 0 1.5rem;
+  padding: 0 1rem 0 0;
   color: var(--mb-color-text-secondary);
   font-size: 0.75rem;
   font-weight: 700;

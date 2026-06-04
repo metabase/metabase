@@ -123,14 +123,10 @@ export function MetabotModelSelector({
         .with({ isLoading: true }, () => t`Loading...`)
         .otherwise(() => undefined)}
       leftSection={
-        isLoading ? (
-          <Loader size="0.75rem" color="text-tertiary" />
-        ) : selectedModelOption?.icon ? (
-          <Icon aria-hidden name={selectedModelOption.icon} />
-        ) : undefined
+        isLoading ? <Loader size="0.75rem" color="text-tertiary" /> : undefined
       }
       rightSection={<Icon size="0.5rem" name="chevrondown" />}
-      leftSectionWidth="1.25rem"
+      leftSectionWidth={isLoading ? "1.25rem" : 0}
       rightSectionWidth="1rem"
       comboboxProps={{ position: dropdownPosition }}
       classNames={{
