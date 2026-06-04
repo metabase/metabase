@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { trackMetricsViewerDimensionSelected } from "metabase/metrics-viewer/analytics";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
+import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types";
 import {
   type DimensionPickerItem,
   type DimensionPickerSidebarCategory,
@@ -42,9 +43,14 @@ import {
 
 type SidebarMode = "default" | "all";
 
-export function DimensionPickerSidebar() {
+type DimensionPickerSidebarProps = {
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
+};
+
+export function DimensionPickerSidebar({
+  activeDimensionBreakout,
+}: DimensionPickerSidebarProps) {
   const {
-    activeDimensionBreakout,
     sidebarAvailableDimensions: availableDimensions,
     metricSlots,
     sourceColors,
@@ -86,9 +92,10 @@ export function DimensionPickerSidebar() {
     [sections, searchText],
   );
 
-  const selectedDimensionBreakoutCategoryKey = activeDimensionBreakout
-    ? getSelectedCategoryKey(categories, activeDimensionBreakout)
-    : undefined;
+  const selectedDimensionBreakoutCategoryKey = getSelectedCategoryKey(
+    categories,
+    activeDimensionBreakout,
+  );
   const showAllFields = mode === "all" || searchText.trim() !== "";
   const hasAllFields = sections.length > 0;
   const showSeeAll = !showAllFields && hasAllFields;
@@ -102,9 +109,6 @@ export function DimensionPickerSidebar() {
 
   const handleSelect = useCallback(
     (item: DimensionPickerItem) => {
-      if (!activeDimensionBreakout) {
-        return;
-      }
       if (hasSameDimensions(item, activeDimensionBreakout)) {
         return;
       }
@@ -136,9 +140,6 @@ export function DimensionPickerSidebar() {
 
   const handleAllFieldsSelect = useCallback(
     (item: DimensionPickerItem) => {
-      if (!activeDimensionBreakout) {
-        return;
-      }
       if (isMatchingActiveDimensionBreakout(item, activeDimensionBreakout)) {
         return;
       }
@@ -183,9 +184,6 @@ export function DimensionPickerSidebar() {
 
   const handleCategorySelect = useCallback(
     (category: DimensionPickerSidebarCategory) => {
-      if (!activeDimensionBreakout) {
-        return;
-      }
       if (expandedCategoryKey !== category.key) {
         setExpandedCategoryKey(null);
       }
@@ -214,9 +212,6 @@ export function DimensionPickerSidebar() {
       slotIndex: number,
       dimensionId: string,
     ) => {
-      if (!activeDimensionBreakout) {
-        return;
-      }
       const isActiveCategory = isCategorySelected(
         category,
         activeDimensionBreakout,
@@ -258,7 +253,7 @@ export function DimensionPickerSidebar() {
   };
 
   const handleNoBreakout = () => {
-    if (!activeDimensionBreakout || activeDimensionBreakout.type === "scalar") {
+    if (activeDimensionBreakout.type === "scalar") {
       return;
     }
 
@@ -269,10 +264,6 @@ export function DimensionPickerSidebar() {
     });
     trackMetricsViewerDimensionSelected();
   };
-
-  if (!activeDimensionBreakout) {
-    return null;
-  }
 
   const showFieldsByCategory = !showAllFields && categories.length > 0;
   const showDefaultView = !showAllFields;

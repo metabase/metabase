@@ -49,7 +49,6 @@ function MetricsViewerPageBody() {
   const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
-  const showDimensionPickerSidebar = isSidebarOpen && !!activeDimensionBreakout;
   const showBreakoutLegend =
     !isSidebarOpen &&
     !!activeDimensionBreakout &&
@@ -79,7 +78,11 @@ function MetricsViewerPageBody() {
                 <MetricsViewerNoDimensionBreakoutEmptyState />
               ) : null}
             </Flex>
-            {showDimensionPickerSidebar && <DimensionPickerSidebar />}
+            {isSidebarOpen && activeDimensionBreakout && (
+              <DimensionPickerSidebar
+                activeDimensionBreakout={activeDimensionBreakout}
+              />
+            )}
             {showBreakoutLegend && <BreakoutLegend />}
           </Flex>
         </Stack>

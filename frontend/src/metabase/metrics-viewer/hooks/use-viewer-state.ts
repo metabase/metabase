@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { measureApi, metricApi, segmentApi } from "metabase/api";
 import { useDispatch, useStore } from "metabase/redux";
@@ -714,21 +714,39 @@ export function useViewerState({
     [derivedData.activeDimensionBreakout, updateDimensionBreakout],
   );
 
-  return {
-    definitions: state.definitions,
-    formulaEntities: state.formulaEntities,
-    ...derivedData,
-    initialLoadComplete,
-    isSidebarOpen,
-    openSidebar,
-    closeSidebar,
+  return useMemo(
+    () => ({
+      definitions: state.definitions,
+      formulaEntities: state.formulaEntities,
+      ...derivedData,
+      initialLoadComplete,
+      isSidebarOpen,
+      openSidebar,
+      closeSidebar,
 
-    addMetric,
-    swapMetric,
-    removeMetric,
-    selectDimensionBreakout,
-    updateActiveDimensionBreakout,
-    setBreakoutDimension,
-    setFormulaEntities,
-  };
+      addMetric,
+      swapMetric,
+      removeMetric,
+      selectDimensionBreakout,
+      updateActiveDimensionBreakout,
+      setBreakoutDimension,
+      setFormulaEntities,
+    }),
+    [
+      state.definitions,
+      state.formulaEntities,
+      derivedData,
+      initialLoadComplete,
+      isSidebarOpen,
+      openSidebar,
+      closeSidebar,
+      addMetric,
+      swapMetric,
+      removeMetric,
+      selectDimensionBreakout,
+      updateActiveDimensionBreakout,
+      setBreakoutDimension,
+      setFormulaEntities,
+    ],
+  );
 }

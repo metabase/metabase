@@ -112,7 +112,7 @@ function setup({
 
   renderWithProviders(
     <MetricsViewerProvider value={metricsViewerResult}>
-      <DimensionPickerSidebar />
+      <DimensionPickerSidebar activeDimensionBreakout={dimensionBreakout} />
     </MetricsViewerProvider>,
   );
 

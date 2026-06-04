@@ -121,46 +121,6 @@ export function resolveCommonDimensionBreakoutLabel(
   return bestName;
 }
 
-/**
- * Recompute dimensionBreakout labels from the current dimension mappings.
- * Returns a new array only if at least one label changed.
- */
-export function recomputeDimensionBreakoutLabels(
-  dimensionBreakouts: MetricsViewerDimensionBreakoutState[],
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  metricSlots: MetricSlot[],
-): MetricsViewerDimensionBreakoutState[] {
-  const dimsBySlotIndex = new Map<
-    number,
-    Map<string, ViewerDimensionDescriptor>
-  >();
-  for (const slot of metricSlots) {
-    const entry = definitions[slot.sourceId];
-    if (entry?.definition) {
-      dimsBySlotIndex.set(
-        slot.slotIndex,
-        getDimensionsByType(entry.definition),
-      );
-    }
-  }
-
-  let changed = false;
-  const result = dimensionBreakouts.map((dimensionBreakout) => {
-    const names = resolveDimensionBreakoutDimensionNames(
-      dimensionBreakout.dimensionMapping,
-      dimsBySlotIndex,
-    );
-    const label = resolveCommonDimensionBreakoutLabel(names);
-    if (label != null && label !== dimensionBreakout.label) {
-      changed = true;
-      return { ...dimensionBreakout, label };
-    }
-    return dimensionBreakout;
-  });
-
-  return changed ? result : dimensionBreakouts;
-}
-
 export function getValidSelectedDimensionBreakoutId(
   currentSelectedDimensionBreakoutId: string | null,
   newDimensionBreakouts: MetricsViewerDimensionBreakoutState[],

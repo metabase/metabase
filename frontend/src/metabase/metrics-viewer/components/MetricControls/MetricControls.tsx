@@ -132,9 +132,9 @@ export function MetricControls({
     display: displayType,
     projectionConfig,
     visualizationSettings,
+    showColumnLabels = false,
   } = dimensionBreakout;
   const dimensionFilter = projectionConfig.dimensionFilter;
-  const showColumnLabels = dimensionBreakout.showColumnLabels === true;
 
   const hasFilterControls =
     projectionInfo.projection && projectionInfo.filterDimension;
