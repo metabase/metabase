@@ -10,6 +10,7 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import { documentApi } from "metabase/api/document";
 import { metabotApi } from "metabase/api/metabot";
 import { listTag } from "metabase/api/tags";
 import { PLUGIN_AUDIT } from "metabase/plugins";
@@ -32,21 +33,25 @@ import type {
 } from "metabase-types/api";
 
 import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
+import { conversationToDocument } from "../utils/conversation-to-document";
 
 import { metabot } from "./reducer";
 import {
   getAgentRequestMetadata,
+  getConversationTitle,
   getDebugMode,
   getDeveloperMessage,
   getHistory,
   getIsProcessing,
   getMessageIdToRewind,
+  getMessages,
   getMetabotConversation,
   getMetabotState,
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
   MetabotAgentDataPartMessage,
+  MetabotAgentDocumentMessage,
   MetabotAgentId,
   MetabotAgentTurnDisplayError,
   MetabotAgentTurnError,
@@ -394,6 +399,47 @@ const findCodeEditBuffer = (
   return buffers.find((buffer) => buffer.id === bufferId);
 };
 
+// Hack flow for the `convert_conversation_to_doc` tool: the backend only emits
+// a `convert_to_document` signal, and the client builds the document from the
+// live conversation (reusing the same converter the header button uses), then
+// appends a read-only `document` message to the chat.
+export const convertConversationToDocument = createAsyncThunk(
+  "metabase/metabot/convertConversationToDocument",
+  async (
+    { agentId, title }: { agentId: MetabotAgentId; title?: string },
+    { dispatch, getState },
+  ) => {
+    const state = getState() as State;
+    const { document, cards } = conversationToDocument(
+      getMessages(state, agentId),
+    );
+
+    try {
+      const doc = await dispatch(
+        documentApi.endpoints.createDocument.initiate({
+          name:
+            title || getConversationTitle(state, agentId) || t`Metabot chat`,
+          document,
+          cards: Object.keys(cards).length > 0 ? cards : undefined,
+        }),
+      ).unwrap();
+      // Spread a typed member (rather than an inline literal) so the
+      // non-distributive `Omit<union>` payload type accepts `documentId`,
+      // mirroring how `pushDataPart` dispatches data-part messages.
+      const message: Omit<
+        MetabotAgentDocumentMessage,
+        "id" | "role" | "externalId"
+      > = { type: "document", documentId: doc.id };
+      dispatch(addAgentMessage({ ...message, agentId }));
+    } catch (error) {
+      console.error("Failed to convert conversation to document", error);
+      dispatch(
+        addUndo({ icon: "warning", message: t`Couldn't create the document.` }),
+      );
+    }
+  },
+);
+
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & {
@@ -495,6 +541,14 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "conversation_title" }, (part) => {
                 dispatch(setConversationTitle({ agentId, title: part.value }));
+              })
+              .with({ type: "convert_to_document" }, (part) => {
+                dispatch(
+                  convertConversationToDocument({
+                    agentId,
+                    title: part.value.title,
+                  }),
+                );
               })
               .exhaustive();
           },

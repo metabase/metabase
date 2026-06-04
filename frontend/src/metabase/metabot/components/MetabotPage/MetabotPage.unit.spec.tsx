@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
@@ -15,6 +16,7 @@ import {
 import { MetabotProvider } from "metabase/metabot/context";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { createMockState } from "metabase/redux/store/mocks";
+import { createMockDocument } from "metabase-types/api/mocks";
 
 import { MetabotPage } from "./MetabotPage";
 
@@ -429,5 +431,63 @@ describe("MetabotPage send / stop button", () => {
     expect(
       screen.queryByTestId("metabot-stop-response"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("MetabotPage convert to document", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("does not offer the convert action on an empty conversation", () => {
+    setup({
+      initialRoute: "/chat/empty-id",
+      seedAgentId: "chat_empty-id",
+      seedMessages: [],
+      conversationQuery: { isLoading: true },
+    });
+    expect(
+      screen.queryByTestId("metabot-convert-to-document"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("creates a document from the conversation and navigates to it", async () => {
+    const createdDocument = createMockDocument({ id: 99, name: "Seed chat" });
+    fetchMock.post("path:/api/document", createdDocument);
+
+    const { history } = setup({
+      initialRoute: "/chat/live-id",
+      seedAgentId: "chat_live-id",
+      seedMessages: [
+        { id: "u1", role: "user", type: "text", message: "hi" },
+        {
+          id: "a1",
+          role: "agent",
+          type: "text",
+          message: "hello",
+          externalId: "e1",
+        },
+      ],
+      conversationQuery: { isLoading: true },
+    });
+
+    await userEvent.click(screen.getByTestId("metabot-convert-to-document"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/document", { method: "POST" }),
+      ).toBe(true);
+    });
+
+    const request = fetchMock.callHistory.lastCall("path:/api/document", {
+      method: "POST",
+    })?.request;
+    const body = await request?.json();
+    expect(body.name).toBe("Seed chat");
+    expect(body.document.type).toBe("doc");
+
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().pathname).toBe("/document/99");
+    });
   });
 });

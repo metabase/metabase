@@ -23,6 +23,15 @@ export function normalizeFetchedChatMessages(
   { isSlack = false }: { isSlack?: boolean } = {},
 ): MetabotChatMessage[] {
   return msgs.flatMap((inputMsg) => {
+    // Drop transient control-signal parts that older turns may have persisted
+    // as messages — they have no renderable form (e.g. `convert_to_document`,
+    // which only tells the client to build a document).
+    if (
+      inputMsg.type === "data_part" &&
+      String(inputMsg.part.type) === "convert_to_document"
+    ) {
+      return [];
+    }
     const msg = isSlack ? convertSlackChatMessage(inputMsg) : inputMsg;
     if (inputMsg.error != null) {
       return [

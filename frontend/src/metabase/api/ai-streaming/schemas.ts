@@ -21,6 +21,7 @@ export const knownDataPartTypes = [
   "static_viz",
   "automagic_dashboard",
   "conversation_title",
+  "convert_to_document",
 ];
 
 export type AdhocVizValue = {
@@ -53,7 +54,8 @@ export type KnownDataPart =
       version: 1;
       value: AutomagicDashboardValue;
     }
-  | { type: "conversation_title"; version: 1; value: string };
+  | { type: "conversation_title"; version: 1; value: string }
+  | { type: "convert_to_document"; version: 1; value: { title?: string } };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
