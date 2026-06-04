@@ -430,6 +430,7 @@ export const useEntityData = (
     case "indexed-entity":
     case "measure":
     case "data-point":
+    case "metabot-thread":
     case null:
       return { entity: null, isLoading: false, error: null };
     default:

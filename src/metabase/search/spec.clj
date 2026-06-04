@@ -32,6 +32,7 @@
    "metric"
    "card"
    "dataset"
+   "metabot-thread"
    ;; These can easily dwarf the cardinality of other entities, hence being dead last.
    "indexed-entity"])
 

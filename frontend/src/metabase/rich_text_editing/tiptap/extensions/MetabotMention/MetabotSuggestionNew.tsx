@@ -100,7 +100,8 @@ const MetabotMentionSuggestionComponent = forwardRef<
       model !== "action" &&
       model !== "segment" &&
       model !== "user" &&
-      model !== "measure",
+      model !== "measure" &&
+      model !== "metabot-thread",
   );
 
   const shouldHide = useMemo(() => {

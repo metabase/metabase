@@ -353,6 +353,10 @@
         enabled-types (:enabled-transform-source-types search-context)
         feature->supported-models (feature->supported-models)]
     (cond-> models
+      ;; metabot-thread is a spec-only search model: the legacy in-place engine has no
+      ;; query implementation for it, so it is searchable via the appdb engine only
+      ;; (Postgres/H2). On a MySQL app-db (which falls back to in-place) it is simply omitted.
+      true                         (disj "metabot-thread")
       (not   is-superuser?)        (disj "transform")
       (empty? enabled-types)       (disj "transform")
       (some? collection)           (set/intersection (:collection feature->supported-models))

@@ -28,6 +28,12 @@ jest.mock("metabase/metabot/analytics", () => ({
   trackMetabotChatOpened: jest.fn(),
 }));
 
+jest.mock("metabase/metabot/components/MetabotEntityLauncher", () => ({
+  MetabotEntityLauncher: () => (
+    <div data-testid="metabot-entity-launcher-mock" />
+  ),
+}));
+
 function setup({
   showChrome = true,
   hasMetabotAccess = true,
@@ -54,6 +60,20 @@ describe("AppContentShell", () => {
   it("renders children in bare-chrome mode", () => {
     setup({ showChrome: false });
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
+  });
+
+  it("renders the entity launcher with chrome", () => {
+    setup({ showChrome: true });
+    expect(
+      screen.getByTestId("metabot-entity-launcher-mock"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render the entity launcher in bare-chrome mode", () => {
+    setup({ showChrome: false });
+    expect(
+      screen.queryByTestId("metabot-entity-launcher-mock"),
+    ).not.toBeInTheDocument();
   });
 
   it("navigates home on the metabot shortcut when chrome and access are present", () => {

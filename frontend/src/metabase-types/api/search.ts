@@ -32,7 +32,13 @@ const ENABLED_SEARCH_MODELS = [
   "transform",
 ] as const;
 
-export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
+// "metabot-thread" (and "segment") are valid search-result models but not part of the search-app type
+// filter, so they live in SEARCH_MODELS but not ENABLED_SEARCH_MODELS.
+export const SEARCH_MODELS = [
+  ...ENABLED_SEARCH_MODELS,
+  "segment",
+  "metabot-thread",
+] as const;
 
 export type EnabledSearchModel = (typeof ENABLED_SEARCH_MODELS)[number];
 
@@ -71,7 +77,9 @@ export type SearchResultId =
   | DatabaseId
   | TableId
   | DashboardId
-  | MeasureId;
+  | MeasureId
+  // Metabot conversation ("metabot-thread") ids are UUID strings, not numeric.
+  | string;
 
 export interface SearchResult<
   Id extends SearchResultId = SearchResultId,

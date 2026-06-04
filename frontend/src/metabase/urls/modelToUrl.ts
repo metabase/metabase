@@ -88,6 +88,9 @@ export function modelToUrl(item: UrlableModel): string {
         return dataStudioPublishedTableMeasure(item.table_id, item.id);
       }
       return NOT_FOUND_URL;
+    case "metabot-thread":
+      // Metabot conversation; `id` is the UUID conversation id.
+      return `/chat/${item.id}`;
     default:
       return NOT_FOUND_URL;
   }

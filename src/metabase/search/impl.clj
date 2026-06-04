@@ -102,6 +102,15 @@
     (can-write? search-ctx instance)
     (can-read? search-ctx instance)))
 
+(defmethod check-permissions-for-model :metabot-thread
+  [{:keys [is-superuser? current-user-id]} instance]
+  ;; Metabot conversations have no collection, so the default `true` (which relies on SQL collection
+  ;; filtering) would leak every user's threads to everyone. Scope results to the conversation's
+  ;; originator or a superuser. This intentionally omits the participant-but-not-originator case
+  ;; (a Slack multi-user edge case) to avoid a per-row query — irrelevant for the web search use case.
+  (or (boolean is-superuser?)
+      (= (:creator_id instance) current-user-id)))
+
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
   [results]

@@ -29,7 +29,7 @@ type ValidateEvent<
 > = T;
 
 // keep in sync with the `search` snowplow schema
-type SearchContentType =
+export type SearchContentType =
   | "dashboard"
   | "card"
   | "dataset"

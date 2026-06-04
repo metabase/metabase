@@ -1,6 +1,7 @@
 import { trackSchemaEvent } from "metabase/analytics";
 import { openSaveDialog } from "metabase/utils/dom";
 import { hashSearchTerm, shouldReportSearchTerm } from "metabase/utils/search";
+import type { SearchContentType } from "metabase-types/analytics";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -79,7 +80,12 @@ export const trackSearchRequest = (
         : null,
       search_term:
         shouldReportSearchTerm() && searchRequest.q ? searchRequest.q : null,
-      content_type: searchRequest.models ?? null,
+      // metabot-thread is a search-result model but not a tracked analytics content type
+      // (and is never requested explicitly), so drop it before reporting.
+      content_type:
+        searchRequest.models?.filter(
+          (model): model is SearchContentType => model !== "metabot-thread",
+        ) ?? null,
       creator: !!searchRequest.created_by,
       creation_date: !!searchRequest.created_at,
       last_edit_date: !!searchRequest.last_edited_at,

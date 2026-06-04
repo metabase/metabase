@@ -116,4 +116,14 @@ describe("urls > modelToUrl", () => {
       }),
     ).toBe("/404");
   });
+
+  it("should return a chat URL for a metabot-thread", () => {
+    expect(
+      modelToUrl({
+        model: "metabot-thread",
+        name: "My Cool Chat",
+        id: "8dc0735e-e421-cf1b-7d49-4fb526ee3ab0",
+      }),
+    ).toBe("/chat/8dc0735e-e421-cf1b-7d49-4fb526ee3ab0");
+  });
 });

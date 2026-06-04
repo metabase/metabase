@@ -44,6 +44,9 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<ModelNames, string> = {
   get transform() {
     return t`Transform`;
   },
+  get "metabot-thread"() {
+    return t`Chat`;
+  },
   get user() {
     return t`User`;
   },

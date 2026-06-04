@@ -1,0 +1,9 @@
+/* A slim bar that sits below the content card (a flex-column child of the
+   AppContentShell), right-aligning the launcher button. Mirrors the original
+   bottom-bar placement rather than floating over the page content. */
+.bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}

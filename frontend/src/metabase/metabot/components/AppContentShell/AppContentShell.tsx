@@ -6,6 +6,7 @@ import { tinykeys } from "tinykeys";
 
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import { trackMetabotChatOpened } from "metabase/metabot/analytics";
+import { MetabotEntityLauncher } from "metabase/metabot/components/MetabotEntityLauncher";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -62,6 +63,7 @@ export function AppContentShell({
           </ContentViewportContext.Provider>
         </main>
       </div>
+      {showChrome && <MetabotEntityLauncher />}
     </div>
   );
 }

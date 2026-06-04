@@ -1,3 +1,7 @@
+export {
+  getViewingEntityMention,
+  useAskMetabotAboutCurrentEntity,
+} from "./use-ask-metabot-about-current-entity";
 export { useAskMetabotInNewTab } from "./use-ask-metabot-in-new-tab";
 export { useMetabotEnabledEmbeddingAware } from "./use-metabot-embedding-aware-enabled";
 export { useMetabotAgent } from "./use-metabot-agent";

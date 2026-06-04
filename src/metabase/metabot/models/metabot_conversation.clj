@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.search.core :as search]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -45,3 +46,22 @@
                       [:model/User :id :email :first_name :last_name]
                       :id (keep :user_id conversations))
    :user_id {:default nil}))
+
+;;; ----------------------------------------------------- Search -----------------------------------------------------
+
+;; Surface conversations as the "metabot-thread" search model so they show up in global / Command-K search.
+;; Only the title and (when present) summary are indexed — the framework only indexes columns on this table, and
+;; per-message text lives in `metabot_message`, so it is intentionally out of scope. `:name` maps to `:title`
+;; because the search index's `name` column is NOT NULL and is what the client renders; the `:where` clause skips
+;; rows without a title (title-generation failures / legacy rows) so they don't violate that constraint.
+;; Per-result visibility is enforced by `check-permissions-for-model :metabot-thread` (owner or superuser).
+(search/define-spec "metabot-thread"
+  {:model        :model/MetabotConversation
+   :attrs        {:archived      false
+                  :collection-id false
+                  :creator-id    :user_id
+                  :created-at    true
+                  :name          :title}
+   :search-terms [:title :summary]
+   :render-terms {}
+   :where        [:not= :this.title nil]})

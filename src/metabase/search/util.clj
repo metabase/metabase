@@ -42,9 +42,13 @@
       parse-long))
 
 (defn collapse-id
-  "Collapse the id of search results that may contain multiple ids (like indexed-entities)."
-  [{:keys [id] :as row}]
-  (assoc row :id (if (number? id) id (indexed-entity-id->model-pk id))))
+  "Collapse the composite id of indexed-entity search results (\"<model-index-id>:<model-pk>\") down to the
+  model-pk. Every other model keeps its id as-is — most are integers, but some are strings (e.g. a
+  metabot-thread's UUID conversation id), which must not be coerced."
+  [{:keys [id model] :as row}]
+  (assoc row :id (if (= "indexed-entity" model)
+                   (indexed-entity-id->model-pk id)
+                   id)))
 
 ;;; ============================================================================
 ;;; Postgres-specific utilities

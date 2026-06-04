@@ -92,4 +92,5 @@ export const TAG_TYPE_MAPPING = {
   snippet: "snippet",
   pulse: "subscription",
   transform: "transform",
+  "metabot-thread": "metabot-conversation",
 } as const;

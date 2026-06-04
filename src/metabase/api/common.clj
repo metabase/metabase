@@ -614,6 +614,7 @@
    "dataset"           {:db-model :model/Card               :alias :card}
    "document"          {:db-model :model/Document           :alias :document}
    "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
+   "metabot-thread"    {:db-model :model/MetabotConversation :alias :metabot_conversation}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}
    "measure"           {:db-model :model/Measure            :alias :measure}
