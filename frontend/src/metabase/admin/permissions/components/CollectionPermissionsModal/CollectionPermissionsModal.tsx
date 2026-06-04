@@ -4,12 +4,12 @@ import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
 
@@ -160,7 +160,12 @@ const CollectionPermissionsModal = ({
               </Link>,
             ]),
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button key="save" primary disabled={!isDirty} onClick={handleSave}>
+        <Button
+          key="save"
+          variant="filled"
+          disabled={!isDirty}
+          onClick={handleSave}
+        >
           {t`Save`}
         </Button>,
       ]}

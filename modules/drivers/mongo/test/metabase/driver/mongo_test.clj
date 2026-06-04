@@ -837,14 +837,14 @@
 (deftest strange-versionArray-test
   (mt/test-driver :mongo
     (testing "Negative values in versionArray are ignored (#29678)"
-      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                        "versionArray" [4 0 29 -100]})]
+      (mt/with-dynamic-fn-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+                                                                      "versionArray" [4 0 29 -100]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0 29]}
                (driver/dbms-version :mongo (mt/db))))))
     (testing "Any values after rubbish in versionArray are ignored"
-      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                        "versionArray" [4 0 "NaN" 29]})]
+      (mt/with-dynamic-fn-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+                                                                      "versionArray" [4 0 "NaN" 29]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))
@@ -1034,7 +1034,7 @@
     :mongo
     (testing "Ensure _id is present in results"
       ;; Gist: Limit is set to 2 and there, other fields' names that precede the _id when sorted
-      (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 2)]
+      (mt/with-dynamic-fn-redefs [driver.settings/sync-leaf-fields-limit (constantly 2)]
         (with-describe-table-for-sample
           [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
             "__a" 1
@@ -1128,7 +1128,7 @@
                                   {:path "a.b.c.d.e.f.g", :type "array", :indices [1 0 0 0 0 0 0]}
                                   {:path "a.b.c.d.e.f.i", :type "int", :indices [1 0 0 0 0 0 1]}
                                   {:path "a.b.c.d.e.f.h", :type "null", :indices [1 0 0 0 0 0 0]}]]]]
-      (with-redefs [driver.settings/sync-leaf-fields-limit (constantly limit)]
+      (mt/with-dynamic-fn-redefs [driver.settings/sync-leaf-fields-limit (constantly limit)]
         (with-describe-table-for-sample
           [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
             "a" {"b" {"c" {"d" {"e" {"f" {"g" [3 2 1]}}}}}}}
