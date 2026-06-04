@@ -10,7 +10,6 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-run-cancelation :as wr.cancelation]
-   [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
