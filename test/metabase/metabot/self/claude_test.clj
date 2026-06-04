@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
@@ -19,6 +20,24 @@
   "Load cached Claude raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
   (metabot.tu/raw-fixture fixture-name #(claude/claude-raw (merge {:model "claude-haiku-4-5"} opts))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; e2e localhost safeguard
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest request-e2e-localhost-safeguard-test
+  (testing "during e2e tests, self.core/request refuses a non-localhost URL before hitting the network"
+    (with-redefs [config/is-e2e? true
+                  http/request  (fn [& _] (throw (ex-info "http/request should not be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"non-localhost"
+           (self.core/request {:url "https://api.anthropic.com"} {:method :get :url "/v1/models"})))))
+  (testing "outside e2e mode the safeguard is inert (request proceeds to http/request)"
+    (with-redefs [config/is-e2e? false
+                  http/request  (fn [_] {:status 200 :body "ok"})]
+      (is (= {:status 200 :body "ok"}
+             (self.core/request {:url "https://api.anthropic.com"} {:method :get :url "/v1/models"}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
