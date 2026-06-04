@@ -259,16 +259,14 @@ describe("DataSourceSelector", () => {
       const searchResponse = new Promise<void>((resolve) => {
         resolveSearch = resolve;
       });
-      fetchMock.get(
-        {
-          url: "path:/api/search",
-          query: {
-            calculate_available_models: true,
-            limit: 0,
-            models: ["dataset"],
-          },
+      fetchMock.get({
+        url: "path:/api/search",
+        query: {
+          calculate_available_models: true,
+          limit: 0,
+          models: ["dataset"],
         },
-        () =>
+        response: () =>
           searchResponse.then(() => ({
             data: [],
             limit: 0,
@@ -278,22 +276,23 @@ describe("DataSourceSelector", () => {
             total: 1,
             available_models: ["table", "dataset"],
           })),
-        { name: "deferred-search" },
-      );
+        name: "deferred-search",
+      });
 
       let resolveDatabaseList!: () => void;
       const databaseListResponse = new Promise<void>((resolve) => {
         resolveDatabaseList = resolve;
       });
-      fetchMock.get(
-        { url: "path:/api/database", query: { saved: true } },
-        () =>
+      fetchMock.get({
+        url: "path:/api/database",
+        query: { saved: true },
+        response: () =>
           databaseListResponse.then(() => ({
             data: DATABASES,
             total: DATABASES.length,
           })),
-        { name: "deferred-database-list" },
-      );
+        name: "deferred-database-list",
+      });
 
       renderWithProviders(
         <DataSourceSelector
