@@ -146,12 +146,15 @@ export const OAuthAuthorizationsPage = ({ location }: WithRouterProps) => {
 };
 
 function getAuthorizationColumns(): TreeTableColumnDef<OAuthAuthorization>[] {
+  // The text columns stretch to fill the container (no `width`) so the table never grows
+  // wider than its parent. `client`/`user` cap at 220; `redirect-uri` stays uncapped to
+  // absorb leftover width. `event`/`created-at` are fixed.
   return [
     {
       id: "client",
       header: t`Client`,
-      width: "auto",
-      maxAutoWidth: 280,
+      minWidth: 120,
+      maxWidth: 180,
       accessorFn: (auth) => auth.client_name || auth.client_id || "—",
       cell: ({ getValue }) => (
         <Ellipsified className={CS.textBold}>{String(getValue())}</Ellipsified>
@@ -160,16 +163,15 @@ function getAuthorizationColumns(): TreeTableColumnDef<OAuthAuthorization>[] {
     {
       id: "user",
       header: t`User`,
-      width: "auto",
-      maxAutoWidth: 280,
+      minWidth: 120,
+      maxWidth: 180,
       accessorFn: (auth) => auth.user_email ?? "—",
       cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
     },
     {
       id: "redirect-uri",
       header: t`Redirect URI`,
-      width: "auto",
-      maxAutoWidth: 380,
+      minWidth: 120,
       accessorFn: (auth) =>
         auth.redirect_uris?.length ? auth.redirect_uris.join(", ") : "—",
       cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
@@ -190,7 +192,7 @@ function getAuthorizationColumns(): TreeTableColumnDef<OAuthAuthorization>[] {
     {
       id: "created-at",
       header: t`Date`,
-      width: "auto",
+      width: 160,
       accessorFn: (auth) => auth.created_at,
       cell: ({ row }) => (
         <DateTime value={row.original.created_at} unit="minute" />
