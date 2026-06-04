@@ -477,18 +477,16 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display correct value in a tooltip for unaggregated data with breakouts (metabase#15785)", () => {
-    // The graph.dimensions reference uppercase column names; H2 uppercases unquoted aliases (axis,
-    // breakout) while SQLite preserves their lowercase, so run this against the H2 sample database.
-    H.restore("default-with-h2");
-    cy.signInAsAdmin();
     H.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
+          // Uppercase the AXIS/BREAKOUT aliases so the result column names match graph.dimensions on
+          // SQLite (which preserves identifier case) as well as H2 (which uppercases unquoted aliases).
           query:
-            'select 1 as axis, 5 as "VALUE", 9 as breakout union all\nselect 2 as axis, 6 as "VALUE", 10 as breakout union all\nselect 2 as axis, 6 as "VALUE", 10 as breakout',
+            'select 1 as AXIS, 5 as "VALUE", 9 as BREAKOUT union all\nselect 2 as AXIS, 6 as "VALUE", 10 as BREAKOUT union all\nselect 2 as AXIS, 6 as "VALUE", 10 as BREAKOUT',
         },
-        database: H2_SAMPLE_DB_ID,
+        database: SAMPLE_DB_ID,
       },
       display: "bar",
       visualization_settings: {

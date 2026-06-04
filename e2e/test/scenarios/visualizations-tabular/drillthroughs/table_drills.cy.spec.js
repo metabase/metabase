@@ -402,12 +402,13 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       H.createNativeQuestion(
         {
           name: "table_drills",
-          database: H2_SAMPLE_DB_ID,
           native: {
+            // Uppercase the COUNT alias so the header matches on SQLite (which preserves identifier
+            // case) as well as H2 (which uppercases unquoted aliases).
             query: `
                   SELECT
                     REVIEWS.REVIEWER AS REVIEWER,
-                    COUNT(*) AS count
+                    COUNT(*) AS COUNT
                   FROM
                     REVIEWS
                   GROUP BY
