@@ -32,6 +32,26 @@ const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 
+// Number of vendor chunks node_modules packages are distributed across. Each
+// package is assigned to a chunk by a stable hash of its name, so the initial
+// request count stays bounded no matter how the dependency tree grows, and a
+// given package always lands in the same chunk (only that chunk's cache is
+// invalidated when the package changes).
+const VENDOR_CHUNK_COUNT = 20;
+
+// Stable, fast string hash (FNV-1a) so a package name always maps to the same
+// vendor chunk across builds.
+const hashStringToInt = (value) => {
+  let hash = 0x811c9dc5;
+
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+
+  return hash >>> 0;
+};
+
 // For sharing the embedding snippets in the docs with the embedding
 // onboarding flow in the app to keep the snippets always in sync.
 const SDK_DOCS_SNIPPETS_PATH = __dirname + "/docs/embedding/sdk/snippets";
@@ -230,36 +250,70 @@ const config = {
   optimization: {
     runtimeChunk: "single",
     splitChunks: {
+      // Split initial and async chunks alike, and share chunks across all
+      // entry points (app-main, app-public, app-embed, ...).
+      chunks: "all",
+      // Generous request budgets: granularity is governed by the
+      // ISOLATED_VENDOR_PACKAGES allowlist below (which collapses the long
+      // tail into a single `vendor` chunk), not by forcing rspack to merge.
+      maxInitialRequests: 50,
+      maxAsyncRequests: 50,
       cacheGroups: {
-        vendors: {
-          test: /[\\/]node_modules[\\/]/,
-          chunks: "initial",
-          name: "vendor",
-          priority: -10,
-        },
+        // Disable the built-in vendor group so every node_modules package
+        // flows through our named `vendor` group below instead of landing in
+        // anonymous, numbered chunks. (`default`, the app-commons group, is
+        // left enabled so code shared across entry points is still deduped.)
+        defaultVendors: false,
         metabaseLib: {
           test: /[\\/]target[\\/]cljs_(dev|release)[\\/]/,
-          chunks: "all",
           name: "metabase-lib",
           priority: 20,
         },
         sqlFormatter: {
           test: /[\\/]sql-formatter[\\/]/,
-          chunks: "all",
           name: "sql-formatter",
           priority: 10,
         },
         jspdf: {
           test: /[\\/]jspdf[\\/]/,
-          chunks: "all",
           name: "jspdf",
           priority: 10,
         },
         html2canvas: {
           test: /[\\/](html2canvas|html2canvas-pro)[\\/]/,
-          chunks: "all",
           name: "html2canvas",
           priority: 10,
+        },
+        // Distribute node_modules across a fixed number of vendor chunks by a
+        // stable hash of each package name. Bounded request count, automatic
+        // (no per-package list to maintain), and cache-stable: a package keeps
+        // its chunk across builds, so bumping it only invalidates that chunk.
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          priority: -10,
+          reuseExistingChunk: true,
+          name(module) {
+            // Match the LAST `node_modules/<package>` segment so we get the
+            // real package name regardless of installer layout: flat
+            // (`node_modules/pkg`), pnpm (`node_modules/.pnpm/.../node_modules/pkg`),
+            // or bun (`node_modules/.bun/pkg@ver/node_modules/pkg`).
+            const match =
+              /.*[\\/]node_modules[\\/](@[^\\/]+[\\/][^\\/]+|[^\\/]+)/.exec(
+                module.context ?? "",
+              );
+
+            if (!match) {
+              return "vendor";
+            }
+
+            // Key scoped packages by their scope ("@mantine/core" -> "mantine")
+            // so version-mates share a chunk; key unscoped packages by name.
+            const packageName = match[1].startsWith("@")
+              ? match[1].slice(1).split(/[\\/]/)[0]
+              : match[1];
+
+            return `vendor-${hashStringToInt(packageName) % VENDOR_CHUNK_COUNT}`;
+          },
         },
       },
     },
