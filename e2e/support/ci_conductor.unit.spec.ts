@@ -1,9 +1,4 @@
-import {
-  extractFailedTests,
-  recordFailureScreenshot,
-  resolveScreenshotPath,
-  takeRecordedScreenshotPaths,
-} from "./ci_conductor";
+import { extractFailedTests, resolveScreenshotPath } from "./ci_conductor";
 
 // jest.mock is hoisted; the mocked default must be referenced via a `mock`-
 // prefixed variable. node-fetch is unused by extractFailedTests, so mocking it
@@ -73,6 +68,13 @@ const test = (
   duration,
   attempts: attemptStates.map((state) => ({ state })),
 });
+
+// Build a `results.screenshots`-shaped array from bare paths (the only field we
+// read). Cypress leaves `name` null for automatic failure shots.
+const screenshotsFromPaths = (...paths: string[]) =>
+  paths.map((path) => ({
+    path,
+  })) as unknown as CypressCommandLine.RunResult["screenshots"];
 
 describe("extractFailedTests", () => {
   // Pin the default to "first attempt" so these tests are deterministic even
@@ -249,32 +251,34 @@ describe("extractFailedTests", () => {
     expect(extractFailedTests(spec, results)).toEqual([]);
   });
 
-  it("attaches screenshotPath for a failed test with a matching recorded shot", () => {
+  it("attaches screenshotPath for a failed test with a matching screenshot", () => {
     const path =
       "/cy/screenshots/foo.cy.spec.js/a -- shows an error (failed).png";
     const results = makeResults({
       tests: [test(["a", "shows an error"], ["failed"], "boom")],
+      screenshots: screenshotsFromPaths(path),
     });
 
-    expect(extractFailedTests(spec, results, [path])[0]).toMatchObject({
+    expect(extractFailedTests(spec, results)[0]).toMatchObject({
       name: "shows an error",
       screenshotPath: path,
     });
   });
 
-  it("omits screenshotPath when no recorded shot matches the test", () => {
-    const results = makeResults({
-      tests: [test(["a", "shows an error"], ["failed"], "boom")],
-    });
+  it("omits screenshotPath when no screenshot matches the test", () => {
     const unrelated =
       "/cy/screenshots/foo/a -- a totally different test (failed).png";
+    const results = makeResults({
+      tests: [test(["a", "shows an error"], ["failed"], "boom")],
+      screenshots: screenshotsFromPaths(unrelated),
+    });
 
-    expect(
-      extractFailedTests(spec, results, [unrelated])[0],
-    ).not.toHaveProperty("screenshotPath");
+    expect(extractFailedTests(spec, results)[0]).not.toHaveProperty(
+      "screenshotPath",
+    );
   });
 
-  it("omits screenshotPath when no screenshots were recorded", () => {
+  it("omits screenshotPath when the spec produced no screenshots", () => {
     const results = makeResults({
       tests: [test(["a", "shows an error"], ["failed"], "boom")],
     });
@@ -286,79 +290,61 @@ describe("extractFailedTests", () => {
 });
 
 describe("resolveScreenshotPath", () => {
-  it("returns undefined with no paths, no title, or no match", () => {
+  const shots = (...paths: string[]) => paths.map((path) => ({ path }));
+
+  it("returns undefined with no screenshots, no title, or no match", () => {
     expect(resolveScreenshotPath(["a", "b"], undefined)).toBeUndefined();
     expect(resolveScreenshotPath(["a", "b"], [])).toBeUndefined();
-    expect(resolveScreenshotPath(undefined, ["/x.png"])).toBeUndefined();
     expect(
-      resolveScreenshotPath(["a", "b"], ["/x/unrelated (failed).png"]),
+      resolveScreenshotPath(undefined, shots("/x/a (failed).png")),
+    ).toBeUndefined();
+    expect(
+      resolveScreenshotPath(["a", "b"], shots("/x/unrelated (failed).png")),
     ).toBeUndefined();
   });
 
-  it("matches by path basename despite spaces, separators and suffixes", () => {
+  it("matches the real on-disk basename despite spaces, ` -- ` and `>` stripping", () => {
+    // Verbatim from a local run: describe("scenarios > models > create") →
+    // Cypress writes "scenarios  models  create -- <test> (failed).png".
     const path =
-      "/cy/screenshots/foo.cy.spec.js/scenarios  dashboard  filters -- static list source (dropdown) -- should be able to use a static list source when embedded (failed).png";
+      "/home/dev/code/metabase/cypress/screenshots/create.cy.spec.js/scenarios  models  create -- user without a collection access should still be able to create and save a model in his own personal collection (failed).png";
     expect(
       resolveScreenshotPath(
         [
-          "scenarios",
-          "dashboard",
-          "filters static list source (dropdown)",
-          "should be able to use a static list source when embedded",
+          "scenarios > models > create",
+          "user without a collection access should still be able to create and save a model in his own personal collection",
         ],
-        [path],
+        shots(path),
       ),
     ).toBe(path);
   });
 
-  it("does not let a prefix title steal a longer test's screenshot", () => {
+  it("excludes manual screenshots (no `(failed)` anchor)", () => {
+    // A manual cy.screenshot() is named "<title>.png" — no "(failed)".
+    const manual = "/x/a -- renders the chart.png";
+    expect(
+      resolveScreenshotPath(["a", "renders the chart"], shots(manual)),
+    ).toBeUndefined();
+  });
+
+  it("picks the first attempt over its retry", () => {
+    const first = "/x/a -- flaky (failed).png";
+    const retry = "/x/a -- flaky (failed) (attempt 2).png";
+    expect(resolveScreenshotPath(["a", "flaky"], shots(retry, first))).toBe(
+      first,
+    );
+  });
+
+  it("anchors on `(failed)`, so a prefix title can't steal a longer test's shot", () => {
     const shortShot = "/x/a -- loads (failed).png";
     const longShot = "/x/a -- loads quickly (failed).png";
-    // "loads" is a substring of "loads quickly"; the shorter, more specific
-    // basename wins for the short title regardless of order.
-    expect(resolveScreenshotPath(["a", "loads"], [longShot, shortShot])).toBe(
-      shortShot,
-    );
-  });
-});
-
-describe("recordFailureScreenshot / takeRecordedScreenshotPaths", () => {
-  // Drain any leftover state so each test starts clean (module state persists
-  // across the shared top-level import).
-  beforeEach(() => {
-    takeRecordedScreenshotPaths();
-  });
-
-  const detail = (
-    path: string,
-    testFailure: boolean,
-    testAttemptIndex: number,
-  ) => ({ path, testFailure, testAttemptIndex });
-
-  it("keeps only first-attempt failure screenshots", () => {
-    recordFailureScreenshot(detail("/x/first (failed).png", true, 0));
-    recordFailureScreenshot(
-      detail("/x/retry (failed) (attempt 2).png", true, 1),
-    );
-    recordFailureScreenshot(detail("/x/manual.png", false, 0));
-
-    expect(takeRecordedScreenshotPaths()).toEqual(["/x/first (failed).png"]);
-  });
-
-  it("drains and resets, so a spec only ever sees its own shots", () => {
-    recordFailureScreenshot(detail("/x/spec-a (failed).png", true, 0));
-    expect(takeRecordedScreenshotPaths()).toEqual(["/x/spec-a (failed).png"]);
-    // Second drain is empty — the buffer was cleared.
-    expect(takeRecordedScreenshotPaths()).toEqual([]);
-  });
-
-  it("ignores malformed details and never throws", () => {
-    expect(() => {
-      recordFailureScreenshot({});
-      recordFailureScreenshot(detail("", true, 0));
-      recordFailureScreenshot(undefined as unknown as { path: string });
-    }).not.toThrow();
-    expect(takeRecordedScreenshotPaths()).toEqual([]);
+    // "loads" anchors on "loadsfailed"; "loadsquickly…" can't match it.
+    expect(
+      resolveScreenshotPath(["a", "loads"], shots(longShot, shortShot)),
+    ).toBe(shortShot);
+    expect(
+      resolveScreenshotPath(["a", "loads quickly"], shots(longShot, shortShot)),
+    ).toBe(longShot);
   });
 });
 

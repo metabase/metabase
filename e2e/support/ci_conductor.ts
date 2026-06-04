@@ -120,89 +120,46 @@ function baseName(p: string): string {
   return p.split(/[\\/]/).pop() ?? "";
 }
 
-// First-failure screenshot paths captured for the current spec via Cypress'
-// after:screenshot hook. Populated by recordFailureScreenshot and drained by
-// takeRecordedScreenshotPaths (per spec, in after:spec). Module-level state, but
-// specs run serially so a spec only ever sees its own shots.
-const recordedFailureScreenshots: string[] = [];
-
 /**
- * Record a screenshot from Cypress' after:screenshot hook (see config.js). The
- * hook's details carry `testFailure` and `testAttemptIndex`, which the after:spec
- * results don't — so we keep exactly the first failure shot per test
- * (`testFailure === true && testAttemptIndex === 0`) and ignore manual
- * screenshots and retry shots ("(attempt 2)", ...). Defensive: ignores anything
- * malformed and never throws into the run. See DEV-2000.
- */
-export function recordFailureScreenshot(details: {
-  path?: string;
-  testFailure?: boolean;
-  testAttemptIndex?: number;
-}): void {
-  try {
-    if (
-      details?.testFailure === true &&
-      details?.testAttemptIndex === 0 &&
-      typeof details?.path === "string" &&
-      details.path
-    ) {
-      recordedFailureScreenshots.push(details.path);
-    }
-  } catch (error) {
-    // Recording is best-effort; log but never throw into the run.
-    console.error("[ci-conductor] failed to record screenshot", error);
-  }
-}
-
-/**
- * Return the first-failure screenshot paths captured for the current spec and
- * reset the buffer for the next one (snapshot-and-clear, so a spec only ever
- * sees its own shots even if reporting later throws). Called once per spec.
- */
-export function takeRecordedScreenshotPaths(): string[] {
-  // splice(0) returns all elements and empties the buffer in one step.
-  return recordedFailureScreenshots.splice(0);
-}
-
-/**
- * Match a test to its (already filtered to first-failure) screenshot path. The
- * after:screenshot hook gives us paths but no test title, so the only link is
- * the path itself — Cypress derives the filename from the test's full title. We
- * normalize the title and each path's basename down to [a-z0-9] (dropping spaces,
- * the " -- " separators, the "(failed)" suffix, the extension and any filesystem
- * sanitization) and test containment.
+ * Match a failed test to its first-failure screenshot from after:spec's
+ * `results.screenshots` — a flat, spec-level list with no link back to the test.
+ * Cypress derives each screenshot filename from the test's full title (joined
+ * with " -- ", sanitized) followed by " (failed)" (plus "(attempt N)" for
+ * retries). We normalize the title and each basename down to [a-z0-9] — which
+ * cancels every sanitization rule (">", " -- ", "/", ":", ...) on both sides, so
+ * we never reconstruct the filename — and anchor on the title immediately
+ * followed by "failed":
  *
- * `recordedPaths` already holds only first-failure shots (one per test), so the
- * sole remaining ambiguity is a title that's a prefix of another test's — we
- * keep the most specific (shortest normalized basename that still contains the
- * title) so a short title can't steal a longer test's shot.
+ *   normalize(basename) === normalize(title.join("")) + "failed" + [attempt…] + ext
+ *
+ * Anchoring on "failed" (a) excludes manual cy.screenshot() shots, which have no
+ * "(failed)" suffix, and (b) is collision-proof: a title that's a prefix of
+ * another's won't match, because "failed" must follow the key exactly. The first
+ * shot and its retries both anchor-match, so we take the shortest basename — the
+ * one without an "(attempt N)" suffix, i.e. the first attempt.
  *
  * Pure and defensive: returns undefined on any missing/odd input, never throws.
  * See DEV-2000.
  */
 export function resolveScreenshotPath(
   titlePath: string[] | undefined,
-  recordedPaths: string[] | undefined,
+  screenshots: Array<{ path?: string }> | undefined,
 ): string | undefined {
   try {
     const key = normalizeForMatch((titlePath ?? []).join(""));
-    if (!key || !Array.isArray(recordedPaths)) {
+    if (!key || !Array.isArray(screenshots)) {
       return undefined;
     }
 
-    // Most specific wins (shortest basename still containing the title); ties
-    // keep the earlier, first-captured match.
-    return recordedPaths
-      .filter((path): path is string => typeof path === "string" && path !== "")
-      .map((path) => ({ path, hay: normalizeForMatch(baseName(path)) }))
-      .filter(({ hay }) => hay.includes(key))
-      .reduce<{ path: string; hay: string } | undefined>(
-        (best, match) =>
-          best === undefined || match.hay.length < best.hay.length
-            ? match
-            : best,
-        undefined,
-      )?.path;
+    const anchor = `${key}failed`;
+    return (
+      screenshots
+        .map((shot) => (typeof shot?.path === "string" ? shot.path : ""))
+        .filter((path) => path !== "")
+        .filter((path) => normalizeForMatch(baseName(path)).startsWith(anchor))
+        // Shortest basename = the first attempt (no "(attempt N)" suffix).
+        .sort((a, b) => baseName(a).length - baseName(b).length)[0]
+    );
   } catch (error) {
     console.error("[ci-conductor] failed to resolve screenshot path", error);
     return undefined;
@@ -256,7 +213,6 @@ function encodeScreenshot(filePath: string): string | undefined {
 export function extractFailedTests(
   spec: Cypress.Spec,
   results: CypressCommandLine.RunResult,
-  failureScreenshotPaths: string[] = [],
 ): ConductorTest[] {
   const file = spec?.relative;
 
@@ -282,12 +238,12 @@ export function extractFailedTests(
       const suite = titlePath.slice(0, -1).join(" > ");
       const attempts = test.attempts ?? [];
       // Resolve (but don't yet read) the test's first failure screenshot from
-      // the paths captured by the after:screenshot hook. The file is encoded
-      // into `failure_screenshot` at send time so the matching logic here stays
-      // pure. Returns undefined on any miss — best-effort.
+      // this spec's `results.screenshots`. The file is encoded into
+      // `failure_screenshot` at send time so the matching logic here stays pure.
+      // Returns undefined on any miss — best-effort.
       const screenshotPath = resolveScreenshotPath(
         titlePath,
-        failureScreenshotPaths,
+        results?.screenshots,
       );
       return {
         name,
