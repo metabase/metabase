@@ -70,6 +70,7 @@
          (sql.helpers/with-columns
            [[:prompt_id :bigint [:primary-key]]
             [:search_prompt :text :not-null]
+            [:usage_instructions :text :not-null]
             [:entities :jsonb :not-null]
             [:canonical :boolean :not-null]
             [:verified :boolean [:default false] :not-null]
@@ -87,26 +88,29 @@
 
 (defenterprise upsert-prompt-entity!
   "Embed `search-prompt` and upsert the companion pgvector row keyed on `id`.
-  `entities` is the bare list of entity refs; `canonical?` comes from the appdb row's `type`."
+  `entities` is the bare list of entity refs; `canonical?` comes from the appdb row's `type`.
+  `usage-instructions` is the agent-facing guidance for the mapped entities; nil is coerced to \"\"
+  since the companion column is NOT NULL."
   :feature :semantic-search
-  [id search-prompt entities verified canonical?]
+  [id search-prompt usage-instructions entities verified canonical?]
   (when (pgvector-available?)
     (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
           embedding (embedding/get-embedding (configured-model) search-prompt
                                              {:type :index :record-tokens? false})
-          record    {:prompt_id     id
-                     :search_prompt search-prompt
-                     :entities      [:cast (json/encode entities) :jsonb]
-                     :canonical     (boolean canonical?)
-                     :verified      (boolean verified)
-                     :embedding     [:raw (format-embedding embedding)]}]
+          record    {:prompt_id          id
+                     :search_prompt      search-prompt
+                     :usage_instructions (or usage-instructions "")
+                     :entities           [:cast (json/encode entities) :jsonb]
+                     :canonical          (boolean canonical?)
+                     :verified           (boolean verified)
+                     :embedding          [:raw (format-embedding embedding)]}]
       (ensure-table! ds)
       (jdbc/execute!
        ds
        (-> (sql.helpers/insert-into (keyword *table-name*))
            (sql.helpers/values [record])
            (sql.helpers/on-conflict :prompt_id)
-           (sql.helpers/do-update-set :search_prompt :entities :canonical :verified :embedding)
+           (sql.helpers/do-update-set :search_prompt :usage_instructions :entities :canonical :verified :embedding)
            sql-format-quoted)))))
 
 (defenterprise delete-prompt-entity!
@@ -144,7 +148,7 @@
 (defenterprise search-prompt-entities
   "Find the nearest saved prompts to `user-search-prompt` by cosine distance, up to `limit`.
   Results are ranked by blended score (similarity + canonical + verified boosts), each shaped
-  `{:saved_search_prompt :entities :score}`.
+  `{:saved_search_prompt :usage_instructions :entities :score}`.
   Returns [] when pgvector is unconfigured."
   :feature :semantic-search
   [user-search-prompt limit]
@@ -157,7 +161,7 @@
           lit       (format-embedding embedding)
           rows      (jdbc/execute!
                      ds
-                     (-> (sql.helpers/select :search_prompt :entities :canonical :verified
+                     (-> (sql.helpers/select :search_prompt :usage_instructions :entities :canonical :verified
                                              [[:raw (str "embedding <=> " lit)] :distance])
                          (sql.helpers/from (keyword *table-name*))
                          (sql.helpers/order-by [[:raw (str "embedding <=> " lit)] :asc])
@@ -167,6 +171,7 @@
       (->> rows
            (map (fn [row]
                   {:saved_search_prompt (:search_prompt row)
+                   :usage_instructions  (:usage_instructions row)
                    :entities            (decode-entities (:entities row))
                    :score               (score row)}))
            (sort-by (comp :total_score :score) >)

@@ -111,3 +111,20 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                     unique: true
+
+  - changeSet:
+      id: v62.2026-06-02T00:00:04
+      author: konjevic
+      comment: Add usage_instructions to search_prompt_entities (agent-facing guidance for the mapped entities)
+      changes:
+        - addColumn:
+            tableName: search_prompt_entities
+            columns:
+              - column:
+                  name: usage_instructions
+                  type: ${text.type}
+                  # Nullable: rows created before this column existed have no instructions; the pgvector
+                  # mirror coerces nil to "" since its companion column is NOT NULL.
+                  remarks: Instructions an agent sees describing how to use the mapped entities
+                  constraints:
+                    nullable: true

@@ -73,7 +73,7 @@
 (t2/define-after-insert :model/SearchPromptEntity
   [row]
   (mirror! #(prompt-entities/upsert-prompt-entity!
-             (:id row) (:prompt row) (:entities row) (:verified row) (canonical? row)))
+             (:id row) (:prompt row) (:usage_instructions row) (:entities row) (:verified row) (canonical? row)))
   row)
 
 (t2/define-after-update :model/SearchPromptEntity
@@ -82,7 +82,7 @@
   ;; re-embed unconditionally (cheap, hackathon-simple).
   (let [row (t2.realize/realize row)]
     (mirror! #(prompt-entities/upsert-prompt-entity!
-               (:id row) (:prompt row) (:entities row) (:verified row) (canonical? row)))
+               (:id row) (:prompt row) (:usage_instructions row) (:entities row) (:verified row) (canonical? row)))
     row))
 
 (t2/define-before-delete :model/SearchPromptEntity
@@ -97,9 +97,12 @@
 ;;; path) and reverse it on import, mirroring `serdes/export-viz-link-card`.
 
 (def ^:private entity-model->toucan
-  "Toucan model for each `entities` ref `:model` string. Tables get the table-fk treatment instead."
-  {"card"  :model/Card
-   "model" :model/Card})
+  "Toucan model for each `entities` ref `:model` string. Tables get the table-fk treatment instead.
+  `metric`/`model`/`card` are all Cards (the `:model` string mirrors the `read_resource` resource type the
+  agent uses to fetch the entity, not the underlying table)."
+  {"card"   :model/Card
+   "model"  :model/Card
+   "metric" :model/Card})
 
 (defn- export-entity-ref [{:keys [model id] :as entity}]
   (assoc entity :id (if (= model "table")
@@ -112,7 +115,7 @@
                       (serdes/*import-fk* id (entity-model->toucan model)))))
 
 (defmethod serdes/make-spec "SearchPromptEntity" [_model-name _opts]
-  {:copy      [:entity_id :prompt :verified]
+  {:copy      [:entity_id :prompt :usage_instructions :verified]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :type       (serdes/kw)

@@ -11,7 +11,7 @@
 (defenterprise upsert-prompt-entity!
   "Mirror a saved search prompt into the pgvector store; no-op in OSS."
   metabase-enterprise.metabot.prompt-entities
-  [_id _search-prompt _entities _verified _canonical?]
+  [_id _search-prompt _usage-instructions _entities _verified _canonical?]
   nil)
 
 (defenterprise delete-prompt-entity!

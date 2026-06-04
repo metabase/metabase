@@ -21,6 +21,18 @@
                :updated_at some?}
               (t2/select-one :model/SearchPromptEntity :id id))))))
 
+(deftest usage-instructions-persist-test
+  (testing "usage_instructions persists alongside the prompt"
+    (mt/with-temp [:model/SearchPromptEntity {:keys [id]}
+                   {:prompt "monthly revenue by region" :type :canonical :entities one-entity
+                    :usage_instructions "Use this metric for total revenue; group by month."}]
+      (is (= "Use this metric for total revenue; group by month."
+             (t2/select-one-fn :usage_instructions :model/SearchPromptEntity :id id)))))
+  (testing "usage_instructions is optional (nil when omitted)"
+    (mt/with-temp [:model/SearchPromptEntity {:keys [id]}
+                   {:prompt "orders" :type :sources :entities one-entity}]
+      (is (nil? (t2/select-one-fn :usage_instructions :model/SearchPromptEntity :id id))))))
+
 (deftest multi-entity-sources-persist-test
   (testing "a sources prompt persists its full entity list"
     (mt/with-temp [:model/SearchPromptEntity {sources-id :id}

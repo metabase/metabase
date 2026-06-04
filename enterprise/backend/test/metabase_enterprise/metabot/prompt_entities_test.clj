@@ -6,7 +6,7 @@
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.metabot.models.search-prompt-entity]
-   [metabase.metabot.tools.search-prompt-entities :as tools.spe]
+   [metabase.metabot.tools.search-semantic-layer :as tools.spe]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
@@ -41,7 +41,7 @@
     (mt/with-premium-features #{:semantic-search}
       (with-redefs [semantic.db.datasource/db-url nil]
         (is (= [] (prompt-entities/search-prompt-entities "anything" 10)))
-        (is (nil? (prompt-entities/upsert-prompt-entity! 1 "p" [{:model "table" :id 1}] false true)))
+        (is (nil? (prompt-entities/upsert-prompt-entity! 1 "p" "use it" [{:model "table" :id 1}] false true)))
         (is (nil? (prompt-entities/delete-prompt-entity! 1)))))))
 
 (defn- create-prompt!
@@ -77,20 +77,20 @@
                   (let [id-canon (create-prompt! p-canon "canonical" ent-1 false)
                         id-verif (create-prompt! p-verif "sources" ent-2 true)
                         _id-pln  (create-prompt! p-plain "sources" ent-3 false)
-                        results  (get-in (tools.spe/search-prompt-entities-tool {:user_search_prompt q})
+                        results  (get-in (tools.spe/search-semantic-layer-tool {:user_search_prompt q})
                                          [:structured-output :data])]
-                    (testing "all three rows mirrored and returned, ranked by boost"
+                    (testing "all three distinct entities mirrored and returned, ranked by boost"
                       (is (= [p-canon p-verif p-plain] (mapv :saved_search_prompt results))))
-                    (testing "entities round-trip; total_score reflects the weighted boosts (vectors tie, so similarity=1.0)"
-                      (is (=? [{:entities ent-1 :score {:total_score (approx 1.15)}}
-                               {:entities ent-2 :score {:total_score (approx 1.1)}}
-                               {:entities ent-3 :score {:total_score (approx 1.0)}}]
+                    (testing "data is flat per-entity hydrated records; total_score reflects the boosts, similarity=1.0 (vectors tie)"
+                      (is (=? [{:type "table" :id 1 :canonical true  :similarity (approx 1.0) :score {:total_score (approx 1.15)}}
+                               {:type "table" :id 2 :canonical false :similarity (approx 1.0) :score {:total_score (approx 1.1)}}
+                               {:type "table" :id 3 :canonical false :similarity (approx 1.0) :score {:total_score (approx 1.0)}}]
                               results)))
                     (testing "deleting via the CRUD API removes the row from search results"
                       (mt/user-http-request :crowberto :delete 204 (str "metabot/search-prompt/" id-canon))
                       (is (= [p-verif p-plain]
                              (mapv :saved_search_prompt
-                                   (get-in (tools.spe/search-prompt-entities-tool {:user_search_prompt q})
+                                   (get-in (tools.spe/search-semantic-layer-tool {:user_search_prompt q})
                                            [:structured-output :data])))))
                     ;; clean up the appdb rows we created (also exercises the before-delete mirror hook)
                     (mt/user-http-request :crowberto :delete 204 (str "metabot/search-prompt/" id-verif)))
