@@ -16,20 +16,10 @@ export function AddTimelinesModal({
   onClose,
   selection,
 }: AddTimelinesModalProps) {
-  const {
-    allTimelines,
-    timelines,
-    timelinesLoading,
-    timelinesError,
-    addTimelinesById,
-  } = selection;
+  const { allTimelines, timelinesLoading, timelinesError, addTimelinesById } =
+    selection;
 
   const [search, setSearch] = useState("");
-
-  const selectedIds = useMemo(
-    () => new Set(timelines.map((timeline) => timeline.id)),
-    [timelines],
-  );
 
   const items = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -47,10 +37,9 @@ export function AddTimelinesModal({
           key: String(timeline.id),
           label: timeline.name,
           description: timeline.description,
-          alreadyAdded: selectedIds.has(timeline.id),
         }))
     );
-  }, [allTimelines, search, selectedIds]);
+  }, [allTimelines, search]);
 
   const handleAdd = (keys: string[]) => {
     addTimelinesById(keys.map(Number));

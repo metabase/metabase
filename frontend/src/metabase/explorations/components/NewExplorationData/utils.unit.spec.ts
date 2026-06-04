@@ -86,18 +86,17 @@ describe("groupDimensionsByGroupSource", () => {
     expect(headers).toEqual(["Orders", "Other"]);
   });
 
-  it("preserves the within-section order of incoming dimensions", () => {
-    // Pass in deliberately reversed order; the in-section order
-    // should match the input, only the *section* order is by
-    // max interestingness.
+  it("sorts dimensions within a section by interestingness descending", () => {
+    // Pass in ascending-interestingness order; the in-section order
+    // should come back most-interesting-first regardless of input.
     const rows = groupDimensionsByGroupSource([
-      dimOrdersTotal,
-      dimOrdersCreatedAt,
+      dimOrdersTotal, // 0.7
+      dimOrdersCreatedAt, // 0.9
     ]);
     const dims = rows
       .filter((r) => r.type === "dimension")
       .map((r) => (r.type === "dimension" ? r.dimension.id : ""));
-    expect(dims).toEqual(["orders.total", "orders.created_at"]);
+    expect(dims).toEqual(["orders.created_at", "orders.total"]);
   });
 
   it("orders sections by the max interestingness of their dimensions, not the average", () => {

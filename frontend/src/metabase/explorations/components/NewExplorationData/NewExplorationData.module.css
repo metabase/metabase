@@ -1,5 +1,4 @@
 .container {
-  flex-basis: max-content;
   border-left: 1px solid var(--mb-color-border);
 }
 
@@ -73,8 +72,4 @@
 .togglePillSelected {
   background: var(--mb-color-background-brand);
   color: var(--mb-color-brand);
-}
-
-.beginButton {
-  align-self: center;
 }

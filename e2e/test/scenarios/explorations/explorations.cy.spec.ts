@@ -114,13 +114,13 @@ describe("scenarios > explorations > new research > manual flow", () => {
     // The right pane's header exposes the "+ Data" and "+ Events"
     // affordances for adding to the plan.
     cy.findByTestId("research-content")
-      .findByRole("button", { name: "Data" })
+      .findByRole("button", { name: /Data/ })
       .should("be.visible");
     cy.findByTestId("research-content")
-      .findByRole("button", { name: "Events" })
+      .findByRole("button", { name: /Events/ })
       .should("be.visible");
-    // CTA disabled until at least one block is added.
-    cy.findByRole("button", { name: /Start research/i }).should("be.disabled");
+    // CTA only appears once at least one block is added.
+    cy.findByRole("button", { name: /Start research/i }).should("not.exist");
   });
 
   it("QuestionModeSwitcher toggles between /question/ask and /question/research", () => {
@@ -185,7 +185,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
     H.visitNewExploration();
 
     // --- "+ Data" → Metrics modal search ---
-    cy.findByRole("button", { name: "Data" }).click();
+    cy.findByRole("button", { name: /Data/ }).click();
     cy.findByRole("menuitem", { name: "Metrics" }).click();
     // Seeded names are "Count of orders" + "Count of orders over time".
     cy.wait("@getDimensions");
@@ -218,7 +218,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
     cy.get("body").type("{esc}");
 
     // --- "+ Events" modal search ---
-    cy.findByRole("button", { name: "Events" }).click();
+    cy.findByRole("button", { name: /Events/ }).click();
     cy.findByRole("checkbox", { name: "Releases" }).should("exist");
     cy.findByRole("checkbox", { name: "Marketing campaigns" }).should("exist");
 
@@ -248,17 +248,16 @@ describe("scenarios > explorations > new research > manual flow", () => {
           // `canStart` gate from `NewExplorationData.tsx`.
           H.addMetricsAndDimensions({ metrics: ["Count of orders"] });
 
-          // Pick two timelines via the Browse → Timelines tab.
+          // Pick two timelines via the "+ Events" modal.
           H.addTimelinesToExploration(["Releases", "Marketing campaigns"]);
 
-          // Both timeline pills now live under the right pane's
-          // `Timelines` accordion section (see `PillList` in
-          // `NewExplorationData.tsx`).
+          // The first picked timeline shows as a pill next to the Events
+          // button; the rest collapse into a "+N" overflow pill.
           cy.findByTestId("research-content")
             .findByText("Releases")
             .should("be.visible");
           cy.findByTestId("research-content")
-            .findByText("Marketing campaigns")
+            .findByText("+1")
             .should("be.visible");
 
           // Verify the request body forwards both ids in pick order

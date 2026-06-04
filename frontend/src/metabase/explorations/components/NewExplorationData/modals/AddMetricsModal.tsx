@@ -21,7 +21,7 @@ export function AddMetricsModal({
   onClose,
   selection,
 }: AddMetricsModalProps) {
-  const { metricBlockIds, addMetric } = selection;
+  const { addMetric } = selection;
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
@@ -54,7 +54,6 @@ export function AddMetricsModal({
     key: String(metric.id),
     label: metric.name,
     description: metric.description,
-    alreadyAdded: metricBlockIds.has(metric.id),
   }));
 
   const handleAdd = (keys: string[]) => {

@@ -16,7 +16,8 @@ import type {
 import { isMetricBlock } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
   Box,
@@ -126,10 +127,11 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   } = selection;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
+  const applicationName = useSelector(getApplicationName);
 
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
-  // Blocks are expanded by default; track only the ones the user collapsed.
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  // Blocks are collapsed by default; track only the ones the user expanded.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const [createExploration, { isLoading: isStarting }] =
     useCreateExplorationMutation();
@@ -137,11 +139,11 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   const { messages } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
 
   const isExpanded = useCallback(
-    (blockId: string) => !collapsedIds.has(blockId),
-    [collapsedIds],
+    (blockId: string) => expandedIds.has(blockId),
+    [expandedIds],
   );
   const toggleExpanded = useCallback((blockId: string) => {
-    setCollapsedIds((prev) => {
+    setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(blockId)) {
         next.delete(blockId);
@@ -191,23 +193,17 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     <Stack
       className={S.container}
       data-testid="research-content"
-      gap={0}
+      gap="sm"
       bg="background-primary"
       flex={1}
-      px="sm"
+      px="xl"
       py="md"
       h="100%"
       w="100%"
     >
-      <Group justify="space-between" align="center" px="md" flex="none">
-        <Title order={4} fs="1rem" lh={1.5}>{t`Research plan`}</Title>
+      <Group justify="space-between" align="center" flex="none">
+        <Title order={3} fs="1rem" lh={1.4}>{t`Research plan`}</Title>
         <Group gap="xs">
-          <Button
-            variant="subtle"
-            size="compact-sm"
-            leftSection={<Icon name="add" size={12} />}
-            onClick={() => setActiveModal("events")}
-          >{t`Events`}</Button>
           <Menu position="bottom-end">
             <Menu.Target>
               <Button
@@ -228,7 +224,24 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         </Group>
       </Group>
 
-      <Box flex={1} mih={0} p="md" style={{ overflowY: "auto" }}>
+      <Group gap="xs">
+        <Button
+          variant="subtle"
+          c="text-secondary"
+          size="sm"
+          bd="1px dashed border"
+          bdrs="xl"
+          leftSection={<Icon name="add" size={12} />}
+          onClick={() => setActiveModal("events")}
+        >{t`Events`}</Button>
+        <SelectedTimelinePills
+          timelines={timelines}
+          onRemoveTimeline={toggleTimeline}
+          onShowMore={() => setActiveModal("events")}
+        />
+      </Group>
+
+      <Box flex={1} mih={0} mt="md" style={{ overflowY: "auto" }}>
         {blocks.length === 0 ? (
           <ResearchPlanEmptyState />
         ) : (
@@ -262,26 +275,23 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         )}
       </Box>
 
-      <SelectedTimelinesPanel
-        timelines={timelines}
-        onRemoveTimeline={toggleTimeline}
-      />
-
-      {canStart && (
-        <Button
-          className={S.beginButton}
-          flex="none"
+      <Group justify="space-between" align="flex-end" wrap="nowrap">
+        <Text
+          c="text-secondary"
           size="sm"
-          w="100%"
-          maw="25rem"
-          mx="2rem"
-          mt="md"
-          variant="filled"
-          loading={isStarting}
-          disabled={isStarting}
-          onClick={handleStart}
-        >{t`Start research`}</Button>
-      )}
+          lh="1rem"
+        >{t`${applicationName} will automate running combinations of these pairings and then do a basic analysis of the results.`}</Text>
+        {canStart && (
+          <Button
+            size="sm"
+            flex="none"
+            variant="filled"
+            loading={isStarting}
+            disabled={isStarting}
+            onClick={handleStart}
+          >{t`Start research`}</Button>
+        )}
+      </Group>
 
       <AddMetricsModal
         opened={activeModal === "metrics"}
@@ -336,6 +346,7 @@ function BlockShell({
           name={iconName}
           size={14}
           c="text-secondary"
+          tooltip={iconLabel}
           aria-label={iconLabel}
         />
         <Ellipsified flex={1} fw="bold">
@@ -365,25 +376,34 @@ function BlockShell({
   );
 }
 
+interface SelectedPill {
+  label: string;
+  interestingness?: number | null;
+}
+
 interface SelectedPillsProps {
-  labels: string[];
+  pills: SelectedPill[];
 }
 
 /** Collapsed view: plain, non-removable pills for the selected children. */
-function SelectedPills({ labels }: SelectedPillsProps) {
-  if (labels.length === 0) {
+function SelectedPills({ pills }: SelectedPillsProps) {
+  if (pills.length === 0) {
     return (
       <Text size="sm" c="text-secondary">
         {t`Nothing selected`}
       </Text>
     );
   }
-  const shown = labels.slice(0, COLLAPSED_PILL_LIMIT);
-  const overflow = labels.length - shown.length;
+  const shown = pills.slice(0, COLLAPSED_PILL_LIMIT);
+  const overflow = pills.length - shown.length;
   return (
     <Group align="center" gap="sm" wrap="wrap">
-      {shown.map((label, index) => (
-        <PillItem key={`${label}-${index}`} label={label} />
+      {shown.map((pill, index) => (
+        <PillItem
+          key={`${pill.label}-${index}`}
+          label={pill.label}
+          interestingness={pill.interestingness}
+        />
       ))}
       {overflow > 0 && <PillItem label={`+${overflow}`} isOverflow />}
     </Group>
@@ -417,9 +437,12 @@ function MetricBlockItem({
     return out;
   }, [block.dimensions]);
 
-  const selectedLabels = block.dimensions
+  const selectedPills = block.dimensions
     .filter((d) => block.selectedDimensionIds.has(d.id))
-    .map(formatDimensionLabel);
+    .map((d) => ({
+      label: formatDimensionLabel(d),
+      interestingness: d.dimension_interestingness,
+    }));
 
   return (
     <BlockShell
@@ -443,6 +466,7 @@ function MetricBlockItem({
                     key={dimension.id}
                     label={dimension.display_name ?? dimension.id}
                     selected={block.selectedDimensionIds.has(dimension.id)}
+                    interestingness={dimension.dimension_interestingness}
                     onToggle={() => onToggleDimension(dimension.id)}
                   />
                 ))}
@@ -451,7 +475,7 @@ function MetricBlockItem({
           ))}
         </Stack>
       ) : (
-        <SelectedPills labels={selectedLabels} />
+        <SelectedPills pills={selectedPills} />
       )}
     </BlockShell>
   );
@@ -475,9 +499,9 @@ function DimensionBlockItem({
   const iconName = getDimensionIcon(
     LibMetric.fromMetricDimension(block.dimension),
   );
-  const selectedLabels = block.metrics
+  const selectedPills = block.metrics
     .filter((m) => block.selectedMetricIds.has(m.id))
-    .map((m) => m.name);
+    .map((m) => ({ label: m.name }));
 
   return (
     <BlockShell
@@ -509,47 +533,67 @@ function DimensionBlockItem({
           )}
         </Stack>
       ) : (
-        <SelectedPills labels={selectedLabels} />
+        <SelectedPills pills={selectedPills} />
       )}
     </BlockShell>
   );
 }
 
-interface SelectedTimelinesPanelProps {
+interface SelectedTimelinePillsProps {
   timelines: Timeline[];
   onRemoveTimeline: (timeline: Timeline) => void;
+  onShowMore: () => void;
 }
 
-function SelectedTimelinesPanel({
+/**
+ * Picked timelines rendered inline beside the "Events" button: the first
+ * (most-relevant) one as a removable blue pill, the rest collapsed into a
+ * "+N" pill that opens the events picker.
+ */
+function SelectedTimelinePills({
   timelines,
   onRemoveTimeline,
-}: SelectedTimelinesPanelProps) {
+  onShowMore,
+}: SelectedTimelinePillsProps) {
   if (timelines.length === 0) {
     return null;
   }
+  const [primary, ...rest] = timelines;
   return (
-    <Box flex="none" px="md" pt="md">
-      <Text mb="xs">{t`Events`}</Text>
-      <Group align="flex-start" gap="sm" wrap="wrap">
-        {timelines.map((timeline) => (
-          <PillItem
-            key={timeline.id}
-            label={timeline.name}
-            onRemove={() => onRemoveTimeline(timeline)}
-          />
-        ))}
-      </Group>
-    </Box>
+    <>
+      <UnstyledButton
+        className={cx(S.togglePill, S.togglePillSelected)}
+        onClick={() => onRemoveTimeline(primary)}
+        aria-label={t`Remove ${primary.name}`}
+      >
+        <Ellipsified>{primary.name}</Ellipsified>
+      </UnstyledButton>
+      {rest.length > 0 && (
+        <UnstyledButton
+          className={S.togglePill}
+          onClick={onShowMore}
+          aria-label={t`Show more events`}
+        >
+          {`+${rest.length}`}
+        </UnstyledButton>
+      )}
+    </>
   );
 }
 
 interface PillItemProps {
   label: string;
   isOverflow?: boolean;
+  interestingness?: number | null;
   onRemove?: () => void;
 }
 
-function PillItem({ label, isOverflow, onRemove }: PillItemProps) {
+function PillItem({
+  label,
+  isOverflow,
+  interestingness,
+  onRemove,
+}: PillItemProps) {
   return (
     <Pill
       withRemoveButton={onRemove != null}
@@ -562,6 +606,7 @@ function PillItem({ label, isOverflow, onRemove }: PillItemProps) {
       px="sm"
       maw="100%"
       classNames={{ root: S.pill, remove: S.pillRemove, label: S.pillLabel }}
+      data-interestingness={interestingness || "null"}
       removeButtonProps={
         onRemove != null
           ? { mr: 0, "aria-hidden": false, "aria-label": t`Remove` }
@@ -576,15 +621,22 @@ function PillItem({ label, isOverflow, onRemove }: PillItemProps) {
 interface TogglePillProps {
   label: string;
   selected: boolean;
+  interestingness?: number | null;
   onToggle: () => void;
 }
 
-function TogglePill({ label, selected, onToggle }: TogglePillProps) {
+function TogglePill({
+  label,
+  selected,
+  interestingness,
+  onToggle,
+}: TogglePillProps) {
   return (
     <UnstyledButton
       className={cx(S.togglePill, { [S.togglePillSelected]: selected })}
       onClick={onToggle}
       aria-pressed={selected}
+      data-interestingness={interestingness || "null"}
     >
       {selected && <Icon name="check" size={10} aria-hidden />}
       <Ellipsified>{label}</Ellipsified>

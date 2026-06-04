@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import type { ExplorationDimensionGroup, MetricDimension } from "metabase-types/api";
+import type {
+  ExplorationDimensionGroup,
+  MetricDimension,
+} from "metabase-types/api";
 
 export type DimensionGroupSourceKey = string | null;
 
@@ -66,6 +69,9 @@ export function groupDimensionsByGroupSource(
     (a, b) => (maxima.get(b) ?? 0) - (maxima.get(a) ?? 0),
   );
 
+  const byInterestingnessDesc = (a: MetricDimension, b: MetricDimension) =>
+    (b.dimension_interestingness ?? 0) - (a.dimension_interestingness ?? 0);
+
   const rows: DimensionListRow[] = [];
   for (const key of orderedKeys) {
     rows.push({
@@ -74,7 +80,11 @@ export function groupDimensionsByGroupSource(
       label: labels.get(key) ?? t`Other`,
       maxInterestingness: maxima.get(key) ?? 0,
     });
-    for (const dimension of buckets.get(key) ?? []) {
+    // Sort within the group by interestingness; groups themselves are
+    // already ordered by their max interestingness above.
+    for (const dimension of [...(buckets.get(key) ?? [])].sort(
+      byInterestingnessDesc,
+    )) {
       rows.push({ type: "dimension", key, dimension });
     }
   }

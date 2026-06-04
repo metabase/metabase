@@ -28,7 +28,9 @@ export function explorationsMetabotPromptInput(): Cypress.Chainable<
 
 export function visitNewExploration(): void {
   cy.visit("/question/research");
-  cy.findByRole("button", { name: /Start research/i }).should("be.visible");
+  // The "+ Data" button is always present; "Start research" only appears
+  // once a block is added, so use the former as the load signal.
+  cy.findByRole("button", { name: /Data/ }).should("be.visible");
 }
 
 export interface AddMetricsAndDimensionsOptions {
@@ -47,7 +49,7 @@ export function addMetricsAndDimensions({
   metrics,
   dimensions = [],
 }: AddMetricsAndDimensionsOptions): void {
-  cy.findByRole("button", { name: "Data" }).click();
+  cy.findByRole("button", { name: /Data/ }).click();
   cy.findByRole("menuitem", { name: "Metrics" }).click();
   cy.wait("@getDimensions");
   for (const name of metrics) {
@@ -56,7 +58,7 @@ export function addMetricsAndDimensions({
   cy.findByRole("button", { name: "Add" }).click();
 
   if (dimensions.length > 0) {
-    cy.findByRole("button", { name: "Data" }).click();
+    cy.findByRole("button", { name: /Data/ }).click();
     cy.findByRole("menuitem", { name: "Dimensions" }).click();
     for (const name of dimensions) {
       cy.findByRole("checkbox", { name }).check({ force: true });
@@ -72,7 +74,7 @@ export function addMetricsAndDimensions({
  */
 export function addTimelinesToExploration(names: string | string[]): void {
   const list = Array.isArray(names) ? names : [names];
-  cy.findByRole("button", { name: "Events" }).click();
+  cy.findByRole("button", { name: /Events/ }).click();
   for (const name of list) {
     cy.findByRole("checkbox", { name }).check({ force: true });
   }

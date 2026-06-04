@@ -12,9 +12,15 @@ import type {
   ExplorationDimensionGroup,
 } from "metabase-types/api";
 
-import { filterDimensionGroupsBySearch } from "../utils";
+import {
+  filterDimensionGroupsBySearch,
+  groupDimensionsByGroupSource,
+} from "../utils";
 
-import { AddEntitiesModal } from "./AddEntitiesModal";
+import {
+  AddEntitiesModal,
+  type AddEntitiesModalItem,
+} from "./AddEntitiesModal";
 
 export interface AddDimensionsModalProps {
   opened: boolean;
@@ -27,7 +33,7 @@ export function AddDimensionsModal({
   onClose,
   selection,
 }: AddDimensionsModalProps) {
-  const { dimensionBlockIds, addDimension } = selection;
+  const { addDimension } = selection;
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
@@ -72,11 +78,31 @@ export function AddDimensionsModal({
     return map;
   }, [response]);
 
-  const items = groups.map((group) => ({
-    key: group.dimensions[0].id,
-    label: group.name,
-    alreadyAdded: group.dimensions.some((d) => dimensionBlockIds.has(d.id)),
-  }));
+  // Group the per-source dimension groups under source-section headers,
+  // mirroring the expanded MetricBlockItem list.
+  const items = useMemo<AddEntitiesModalItem[]>(() => {
+    // Represent each source-bucket group by its head dimension, carrying the
+    // group's interestingness so sections + rows sort by it.
+    const headDimensions = groups.map((group) => ({
+      ...group.dimensions[0],
+      dimension_interestingness: group.dimension_interestingness,
+    }));
+    const out: AddEntitiesModalItem[] = [];
+    let groupLabel: string | undefined;
+    for (const row of groupDimensionsByGroupSource(headDimensions)) {
+      if (row.type === "header") {
+        groupLabel = row.label;
+      } else {
+        out.push({
+          key: row.dimension.id,
+          label: row.dimension.display_name ?? row.dimension.id,
+          groupLabel,
+          interestingness: row.dimension.dimension_interestingness,
+        });
+      }
+    }
+    return out;
+  }, [groups]);
 
   const handleAdd = (keys: string[]) => {
     trackExplorationPlanEdited("manual", "dimensions");

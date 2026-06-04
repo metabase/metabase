@@ -69,23 +69,24 @@ function setup({
 
 describe("NewExplorationData (Research plan)", () => {
   describe("empty state", () => {
-    it("renders the header, the +Data / +Events affordances, and a disabled Start research CTA", () => {
+    it("renders the header + the +Data / +Events affordances, with no Start research CTA yet", () => {
       setup();
 
       expect(screen.getByText("Research plan")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Data" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Data/ })).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Events" }),
+        screen.getByRole("button", { name: /Events/ }),
       ).toBeInTheDocument();
+      // The CTA only appears once at least one block has been added.
       expect(
-        screen.getByRole("button", { name: "Start research" }),
-      ).toBeDisabled();
+        screen.queryByRole("button", { name: "Start research" }),
+      ).not.toBeInTheDocument();
     });
 
     it("opens the metrics modal from the +Data menu", async () => {
       setup();
 
-      await userEvent.click(screen.getByRole("button", { name: "Data" }));
+      await userEvent.click(screen.getByRole("button", { name: /Data/ }));
       await userEvent.click(screen.getByRole("menuitem", { name: "Metrics" }));
 
       expect(
@@ -95,7 +96,7 @@ describe("NewExplorationData (Research plan)", () => {
   });
 
   describe("metric block", () => {
-    it("expands by default, grouping dimensions into source sections of toggle pills", () => {
+    it("renders collapsed by default, showing selected dimensions as plain (non-toggle) pills", () => {
       setup({
         blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
       });
@@ -103,7 +104,20 @@ describe("NewExplorationData (Research plan)", () => {
       expect(screen.getByText("Revenue")).toBeInTheDocument();
       expect(screen.getByLabelText("Remove area")).toBeInTheDocument();
 
-      // Expanded: dimensions render as toggle buttons (selected by default).
+      // Collapsed: dimensions show as plain pills, not toggle buttons.
+      expect(
+        screen.queryByRole("button", { name: "Created At" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Created At")).toBeInTheDocument();
+    });
+
+    it("expanding groups dimensions into source sections of toggle pills", async () => {
+      setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
+
       const createdAt = screen.getByRole("button", { name: "Created At" });
       expect(createdAt).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute(
@@ -117,26 +131,13 @@ describe("NewExplorationData (Research plan)", () => {
         blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
       });
 
+      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
       await userEvent.click(screen.getByRole("button", { name: "Created At" }));
 
       expect(selection.toggleDimensionSelected).toHaveBeenCalledWith(
         "metric:1",
         dimCreatedAt.id,
       );
-    });
-
-    it("collapsing the block shows the selected dimensions as plain (non-toggle) pills", async () => {
-      setup({
-        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
-      });
-
-      await userEvent.click(screen.getByRole("button", { name: "Collapse" }));
-
-      // Plain pills are not buttons.
-      expect(
-        screen.queryByRole("button", { name: "Created At" }),
-      ).not.toBeInTheDocument();
-      expect(screen.getByText("Created At")).toBeInTheDocument();
     });
 
     it("clicking the area's remove button calls selection.removeBlock", async () => {
@@ -151,10 +152,12 @@ describe("NewExplorationData (Research plan)", () => {
   });
 
   describe("dimension block", () => {
-    it("expands by default, rendering related metrics as toggle pills", () => {
+    it("expanding renders related metrics as toggle pills", async () => {
       setup({
         blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
       });
+
+      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
 
       expect(screen.getByRole("button", { name: "Revenue" })).toHaveAttribute(
         "aria-pressed",
@@ -171,6 +174,7 @@ describe("NewExplorationData (Research plan)", () => {
         blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
       });
 
+      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
       await userEvent.click(screen.getByRole("button", { name: "Revenue" }));
 
       expect(selection.toggleMetricSelected).toHaveBeenCalledWith(
@@ -180,20 +184,30 @@ describe("NewExplorationData (Research plan)", () => {
     });
   });
 
-  describe("selected events tray", () => {
+  describe("selected events pills", () => {
     const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
+    const marketingTimeline = createMockTimeline({ id: 9, name: "Marketing" });
 
     it("is hidden when nothing is selected", () => {
       setup();
       expect(screen.queryByText("Releases")).not.toBeInTheDocument();
     });
 
-    it("renders a removable pill per selected timeline", async () => {
+    it("clicking the primary timeline pill unselects it", async () => {
       const { selection } = setup({ timelines: [releasesTimeline] });
 
-      expect(screen.getByText("Releases")).toBeInTheDocument();
-      await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove Releases" }),
+      );
       expect(selection.toggleTimeline).toHaveBeenCalledWith(releasesTimeline);
+    });
+
+    it("shows the first picked timeline plus a +N overflow pill", () => {
+      setup({ timelines: [releasesTimeline, marketingTimeline] });
+
+      expect(screen.getByText("Releases")).toBeInTheDocument();
+      expect(screen.queryByText("Marketing")).not.toBeInTheDocument();
+      expect(screen.getByText("+1")).toBeInTheDocument();
     });
   });
 

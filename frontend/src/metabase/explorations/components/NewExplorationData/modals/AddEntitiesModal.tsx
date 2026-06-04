@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import cx from "classnames";
+import { Fragment, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -14,12 +15,15 @@ import {
   TextInput,
 } from "metabase/ui";
 
+import S from "./AddEntitiesModal.module.css";
+
 export interface AddEntitiesModalItem {
   key: string;
   label: string;
   description?: string | null;
-  /** Already in the research plan — shown checked + disabled (add-only). */
-  alreadyAdded: boolean;
+  /** Section heading; a new header renders whenever this changes. */
+  groupLabel?: string;
+  interestingness?: number | null;
 }
 
 export interface AddEntitiesModalProps {
@@ -32,7 +36,6 @@ export interface AddEntitiesModalProps {
   items: AddEntitiesModalItem[];
   isLoading?: boolean;
   error?: unknown;
-  /** Receives only the newly-checked keys (existing items can't be unchecked). */
   onAdd: (keys: string[]) => void;
 }
 
@@ -50,6 +53,7 @@ export function AddEntitiesModal({
 }: AddEntitiesModalProps) {
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
+  // Every open starts with a clean slate.
   useEffect(() => {
     if (opened) {
       setChecked(new Set());
@@ -97,18 +101,51 @@ export function AddEntitiesModal({
                 py="lg"
               >{t`No results`}</Text>
             ) : (
-              <Stack gap="xs">
-                {items.map((item) => (
-                  <Checkbox
-                    key={item.key}
-                    p="sm"
-                    label={item.label}
-                    description={item.description ?? undefined}
-                    checked={item.alreadyAdded || checked.has(item.key)}
-                    disabled={item.alreadyAdded}
-                    onChange={() => toggle(item.key)}
-                  />
-                ))}
+              <Stack gap="sm">
+                {items.map((item, index) => {
+                  const showHeader =
+                    item.groupLabel != null &&
+                    item.groupLabel !== items[index - 1]?.groupLabel;
+                  return (
+                    <Fragment key={item.key}>
+                      {showHeader && (
+                        <Text
+                          size="sm"
+                          fw="bold"
+                          c="text-secondary"
+                          mt={index === 0 ? 0 : "xs"}
+                        >
+                          {item.groupLabel}
+                        </Text>
+                      )}
+                      {/* The whole card is the checkbox's <label>, so a click
+                          anywhere inside it toggles the contained input once. */}
+                      <Box
+                        component="label"
+                        className={cx(S.card, {
+                          [S.cardSelected]: checked.has(item.key),
+                        })}
+                        data-interestingness={item.interestingness || "null"}
+                      >
+                        <Checkbox
+                          checked={checked.has(item.key)}
+                          onChange={() => toggle(item.key)}
+                          aria-label={item.label}
+                        />
+                        <Stack gap={2} flex={1} miw={0}>
+                          <Text fw="bold" lh="1.25rem">
+                            {item.label}
+                          </Text>
+                          {item.description && (
+                            <Text size="sm" c="text-secondary">
+                              {item.description}
+                            </Text>
+                          )}
+                        </Stack>
+                      </Box>
+                    </Fragment>
+                  );
+                })}
               </Stack>
             )}
           </LoadingAndErrorWrapper>
