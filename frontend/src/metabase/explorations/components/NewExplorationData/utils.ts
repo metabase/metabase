@@ -116,3 +116,10 @@ export function filterDimensionGroupsBySearch(
       ),
   );
 }
+
+export function formatDimensionLabel(dim: MetricDimension): string {
+  const name = dim.display_name ?? dim.id;
+  const tableName = dim.group?.display_name;
+  // FIXME: actually we don't want to use tableName as dimension group. We should replace this with dimension metadata
+  return tableName ? `${tableName} - ${name}` : name;
+}

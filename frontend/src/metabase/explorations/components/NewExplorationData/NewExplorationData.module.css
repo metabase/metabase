@@ -56,12 +56,11 @@
   align-items: center;
   gap: 0.25rem;
   max-width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.625rem 0.75rem;
   border-radius: var(--border-radius-xl);
   background: var(--mb-color-background-secondary);
   color: var(--mb-color-text-secondary);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1rem;
 
   &:hover {
