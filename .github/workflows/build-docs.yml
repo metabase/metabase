@@ -1,0 +1,31 @@
+name: Build Docs Site
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-docs:
+    name: Build Docs
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Pull docs
+        run: bin/build-versioned-docs.sh
+
+      - name: Setup docs app
+        run: cd docs-build && bun install --frozen-lockfile
+
+      - name: Pull docs sources
+        run: bin/build-versioned-docs.sh
+
+      - name: Build docs site
+        run: bin/render-versioned-docs.sh
+
+      - name: list built docs
+        run: ls build/docs

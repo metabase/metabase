@@ -13,7 +13,14 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export const API_JSON_PATH = path.resolve(process.cwd(), "../docs/api.json");
+// Follows DOCS_CONTENT_DIR (the active content source) so a versioned build
+// reads that version's api.json when present, falling back to the repo's
+// ../docs/api.json. Absent → api.astro renders a "not generated" notice.
+export const API_JSON_PATH = path.resolve(
+  process.cwd(),
+  process.env.DOCS_CONTENT_DIR ?? "../docs",
+  "api.json",
+);
 
 // Minimal valid OpenAPI document — keeps api.json.ts serving something parseable
 // when the real spec is absent (api.astro renders a "not generated" notice).
