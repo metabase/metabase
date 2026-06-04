@@ -117,6 +117,15 @@
                          collection-id (assoc :collection_id collection-id))
                        user)))
 
+(defn- edge-present?
+  "Returns true if `edges` contains an edge from (`from-type` `from-id`) to (`to-type` `to-id`)."
+  [edges from-type from-id to-type to-id]
+  (boolean (some #(and (= (:from_entity_type %) from-type)
+                       (= (:from_entity_id %) from-id)
+                       (= (:to_entity_type %) to-type)
+                       (= (:to_entity_id %) to-id))
+                 edges)))
+
 (defn- break-model-card!
   "Update a model card to query the products table instead of orders.
    This breaks any downstream cards that depend on columns only in the orders table (like TOTAL)."
@@ -595,6 +604,33 @@
               (is (contains? node-ids (:id dependent-card)))
               (is (contains? node-ids (:id base-card)))
               (is (contains? node-ids (mt/id :orders))))))))))
+
+(deftest graph-archived-upstream-edges-test
+  (testing "GET /api/ee/dependencies/graph CONNECTS archived upstream entities with edges, not just nodes"
+    ;; Chain: dependent-card (active) -> base-card (archived) -> orders (table).
+    ;; The archived base-card is the *dependent* side of the base-card->orders edge, so a
+    ;; downstream graph built with :include-archived-items :exclude drops that edge, leaving
+    ;; the orders node present but disconnected. Asserts both edges survive.
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/User user {:email "test@test.com"}]
+          (let [base-card      (card/create-card! (basic-card "Archived Base Card") user)
+                dependent-card (card/create-card! (wrap-card base-card) user)]
+            (card/update-card! {:card-before-update base-card
+                                :card-updates {:archived true}})
+            (deps.test/synchronously-run-backfill!)
+            (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                 :id (:id dependent-card)
+                                                 :type "card")
+                  node-ids (set (map :id (:nodes response)))
+                  edges    (:edges response)]
+              (testing "archived upstream nodes are present"
+                (is (contains? node-ids (:id base-card)))
+                (is (contains? node-ids (mt/id :orders))))
+              (testing "edge from active dependent to archived base card"
+                (is (edge-present? edges "card" (:id dependent-card) "card" (:id base-card))))
+              (testing "edge from archived base card to its upstream table is NOT dropped"
+                (is (edge-present? edges "card" (:id base-card) "table" (mt/id :orders)))))))))))
 
 (deftest dependents-archived-card-test
   (testing "GET /api/ee/dependencies/graph/dependents excludes archived dependents"
