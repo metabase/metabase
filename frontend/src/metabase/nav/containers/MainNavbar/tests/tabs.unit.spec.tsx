@@ -72,4 +72,42 @@ describe("nav > containers > MainNavbar > sidebar tabs", () => {
       screen.queryByTestId("navbar-tab-data-studio"),
     ).not.toBeInTheDocument();
   });
+
+  it("switches to the App tab with the cmd+1 shortcut", async () => {
+    await setup({ selectAppTab: false });
+
+    await userEvent.keyboard("{Control>}1{/Control}");
+
+    expect(await screen.findByText(/Our analytics/i)).toBeInTheDocument();
+    expect(screen.getByTestId("navbar-tab-app")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("switches to the Chats tab with the cmd+2 shortcut", async () => {
+    await setup({ selectAppTab: true });
+
+    await userEvent.keyboard("{Control>}2{/Control}");
+
+    expect(screen.getByTestId("navbar-tab-chats")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByTestId("metabot-threads-section")).toBeInTheDocument();
+  });
+
+  it("ignores the cmd+3 shortcut for users without Data Studio access", async () => {
+    await setup({
+      selectAppTab: true,
+      user: createMockUser({ is_superuser: false }),
+    });
+
+    await userEvent.keyboard("{Control>}3{/Control}");
+
+    expect(screen.getByTestId("navbar-tab-app")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
 });

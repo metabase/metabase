@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
+import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -151,6 +152,28 @@ export function MainNavbarView({
     },
     [dispatch, isDataStudioRoute],
   );
+
+  // Cmd/Ctrl+1/2/3 switch sidebar tabs in their displayed order
+  // (App, Chats, Data Studio).
+  useEffect(() => {
+    return tinykeys(window, {
+      "$mod+1": (e) => {
+        e.preventDefault();
+        handleSelectTab("app");
+      },
+      "$mod+2": (e) => {
+        e.preventDefault();
+        handleSelectTab("chats");
+      },
+      ...(canAccessDataStudio && {
+        "$mod+3": (e: KeyboardEvent) => {
+          e.preventDefault();
+          handleSelectTab("data-studio");
+        },
+      }),
+    });
+  }, [handleSelectTab, canAccessDataStudio]);
+
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
