@@ -43,6 +43,7 @@ import { getUser } from "metabase/selectors/user";
 import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
+import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
 import { queryDataset } from "embedding-sdk-bundle/lib/query-dataset";
 import { queryMetric } from "embedding-sdk-bundle/lib/query-metric";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
@@ -86,6 +87,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   queryMetric,
   queryQuestion,
   dataAppRouting,
+  executeAction,
 };
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package

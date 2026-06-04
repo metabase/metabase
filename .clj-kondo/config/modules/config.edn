@@ -129,6 +129,7 @@
            analytics
            api
            collections
+           eid-translation
            lib
            permissions
            public-sharing

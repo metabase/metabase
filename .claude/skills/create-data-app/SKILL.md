@@ -12,36 +12,8 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 ## When to invoke this skill
 
 - "scaffold a new data app" / "create a Metabase data app" / "set up a data-app project"
+- "I want to build a data app" / any vague intent to author a data app
 - Starting a fresh agent task that will produce a data-app bundle.
-
-### Detecting an existing project
-
-Before cloning, look for an existing data-app project. Surface signs (one of):
-`src/index.tsx`, `vite.config.ts` with `name: "__dataAppFactory__"`, or
-`package.json` depending on `@metabase/embedding-sdk-react` with a `vite build`
-script.
-
-If any surface sign is present, verify the project matches the current
-`data-app-template`. Check **all** of:
-
-1. `vite.config.ts` externals include `"react"`, `"react/jsx-runtime"`,
-   `"@metabase/embedding-sdk-react"`, `"@metabase/embedding-sdk-react/data-app"`
-   with corresponding `output.globals` (`React`, `__react_jsx_runtime__`,
-   `__metabase_sdk__`, `__metabase_data_app__`).
-2. `src/index.tsx`'s factory returns `{ component, theme }` (no args).
-3. `src/dev.tsx` wraps in the SDK's `<MetabaseProvider authConfig={…}>`.
-
-**All checks pass** → template-shaped. Ask: "Extend this one, or scaffold fresh
-elsewhere?" If extend → skip the clone step, edit `src/`. If fresh → ask for a
-target path, clone there.
-
-**Any check fails** → not template-shaped (older scaffold or drift). **Stop.**
-Tell the user the structure differs from the current template, extending it
-risks breaking the bundle contract, and ask whether to (1) migrate it, (2)
-scaffold fresh and port the code over, or (3) proceed anyway at their risk.
-Wait for the answer.
-
-Never overwrite existing files without explicit confirmation.
 
 ## Step 1 — Clone the template
 
@@ -214,6 +186,7 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 | `CollectionBrowser` | Collection picker. |
 | `useMetabaseQuery` | Schema-backed data-fetching hook for questions / tables / metrics. **The `metabase-semantic-schema-data-apps` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
 | `useQuestionQuery` | Question-only data-fetching hook (`useQuestionQuery(questionId, options?)` returning `{ data, isLoading, error, refetch }`). The bare numeric id is the first arg; optional `{ initialSqlParameters?, enabled? }` is the second. Must be called under `<MetabaseProvider>`. Use when you need a quick question fetch without going through the schema layer (e.g. ad-hoc tooling, pre-schema apps); prefer `useMetabaseQuery` for new schema-backed work. |
+| `useAction` | Hook that triggers a pre-existing Metabase **action** (basic CRUD or custom SQL) and returns `{ execute, isExecuting, result, error, reset }`. Use for any write/mutation interaction — form submit, "Save" / "Update" / "Delete" buttons. **Signature:** `useAction(actionRef, options?)` — the first arg is the typed schema entry from `src/metabase.data.ts` (`schema.models.<m>.actions.<a>`), NOT a bare numeric id; only the schema entry gives typed parameters and a typed `result`. `execute(parameters)` is called from an event handler. Must be called inside a component rendered under `MetabaseProvider`. For full usage patterns and the critical post-action refresh rule, invoke the `metabase-data-app-actions` skill. |
 
 ### Blocked APIs
 

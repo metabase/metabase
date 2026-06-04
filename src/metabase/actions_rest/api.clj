@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -197,6 +198,30 @@
       api/read-check
       (actions/fetch-values (json/decode parameters))))
 
+(defn- remap-parameter-keys
+  "Translate incoming `parameters` keys to the destination parameter `:id` the
+   downstream executor expects.
+
+   Query-action parameters have UUID `:id`s with human-readable `:slug` aliases;
+   the FE typically sends keys by `:slug` (that's what shows up in the typed
+   schema export and in the action editor UI). Implicit-action parameters use
+   a slug-form value as their `:id`, so the keys already match.
+
+   Resolution order per incoming key:
+     1. Already matches a destination `:id` → passed through.
+     2. Matches a destination `:slug` → remapped to that parameter's `:id`.
+     3. No match → passed through unchanged so the downstream validator still
+        reports it as 'no destination parameter found'."
+  [{action-params :parameters} parameters]
+  (let [valid-ids (into #{} (map :id) action-params)
+        slug->id  (into {} (keep (fn [p] (when-let [s (:slug p)] [s (:id p)]))) action-params)]
+    (update-keys parameters
+                 (fn [k]
+                   (cond
+                     (contains? valid-ids k) k
+                     (contains? slug->id k)  (get slug->id k)
+                     :else                   k)))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -206,11 +231,12 @@
 
    `parameters` should be the mapped dashboard parameters with values."
   [{:keys [id]} :- [:map
-                    [:id ::actions.schema/id]]
+                    [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
-  (let [{:keys [type] :as action} (api/read-check (actions/select-action :id id :archived false))]
+  (let [resolved-id (eid-translation/->id-or-404 :action id)
+        {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (when (= type :http)
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http
@@ -219,5 +245,7 @@
                             {:event     :action-executed
                              :source    :model_detail
                              :type      type
-                             :action_id id})
-    (actions/execute-action! action (update-keys parameters name))))
+                             :action_id resolved-id})
+    (actions/execute-action! action
+                             (remap-parameter-keys action
+                                                   (update-keys parameters name)))))

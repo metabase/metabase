@@ -18,6 +18,8 @@ import {
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
 // eslint-disable-next-line no-restricted-imports
 import { useQuestionQuery } from "embedding-sdk-package/hooks/public/use-question-query";
+// eslint-disable-next-line no-restricted-imports
+import { useAction } from "embedding-sdk-package/hooks/public/use-action";
 import {
   DataAppLink,
   DataAppRouter,
@@ -63,6 +65,8 @@ export function createDataAppSandbox(
           // Data fetching
           useQuestionQuery,
           useMetabaseQuery,
+          // Custom actions
+          useAction,
           // Question components
           InteractiveQuestion,
           StaticQuestion,
