@@ -45,6 +45,16 @@ describe("better onboarding via sidebar", { tags: "@external" }, () => {
     });
 
     it("should track tab clicks within the 'Add data' modal", () => {
+      // The CSV tab only appears once uploads are enabled — the read-only SQLite sample
+      // database is not an upload target — so enable uploads on the writable H2 sample DB first.
+      cy.request("PUT", "/api/setting/uploads-settings", {
+        value: {
+          db_id: H2_SAMPLE_DB_ID,
+          schema_name: "PUBLIC",
+          table_prefix: null,
+        },
+      });
+
       cy.visit("/");
       openAddDataModalFromSidebar();
 
@@ -227,14 +237,18 @@ describe("Add data modal", () => {
   });
 
   describe("'CSV' tab", () => {
-    it("admins should be able to enable uploads initially", () => {
+    it("admins can enable uploads from settings, then upload a CSV (no CSV tab until uploads are enabled)", () => {
       cy.signInAsAdmin();
       cy.visit("/");
       openAddDataModalFromSidebar();
-      openTab("CSV");
-      addDataModal().findByText("Enable uploads").click();
 
-      cy.location("pathname").should("eq", "/admin/settings/uploads");
+      cy.log(
+        "The CSV tab is not offered out of the box: the read-only SQLite sample database is not an upload target",
+      );
+      addDataModal().findAllByRole("tab").should("not.contain", "CSV");
+
+      cy.log("Admins enable uploads from the uploads settings page instead");
+      cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Database to use for uploads").click();
       H.popover().within(() => {
         // The read-only SQLite Sample Database is not uploadable, so only the
@@ -314,6 +328,16 @@ describe("Add data modal", () => {
         [USER_GROUPS.DATA_GROUP]: {
           [FIRST_COLLECTION_ID]: "read",
           [SECOND_COLLECTION_ID]: "write",
+        },
+      });
+
+      cy.log("Grant the data group query access to the H2 upload database");
+      cy.updatePermissionsGraph({
+        [USER_GROUPS.DATA_GROUP]: {
+          [H2_SAMPLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": "query-builder-and-native",
+          },
         },
       });
 
