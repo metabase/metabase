@@ -51,7 +51,7 @@ const databaseTestCases = [
     ],
   },
   {
-    engine: "Druid",
+    engine: "Druid (Deprecated)",
     connectionString:
       "jdbc:avatica:remote:url=http://localhost:8888/druid/v2/sql/avatica/;transparent_reconnection=true",
     expectedFields: [
