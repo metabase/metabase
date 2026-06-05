@@ -475,13 +475,6 @@
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
     (not (settings/library-is-remote-synced?)) (conj "snippets")))
 
-(defn- needs-full-reconcile?
-  "True if the repo still contains files for content types that are currently disabled — those must be
-  cleaned up by a full export, so the incremental fast-path can't be used."
-  [snapshot]
-  (when-let [dir-set (not-empty (disabled-content-dirs))]
-    (boolean (some #(contains? dir-set (path-top-level-dir %)) (source.p/list-files snapshot)))))
-
 (defn export!
   "Exports remote-synced collections to a remote source repository.
 
@@ -515,7 +508,11 @@
       (analytics/inc! :metabase-remote-sync/exports)
       (serdes/with-cache
         (let [dirty-rows (remote-sync.object/dirty-rows)
-              plan       (when (and (seq dirty-rows) (not (needs-full-reconcile? snapshot)))
+              plan       (when (and (seq dirty-rows)
+                                    (->> (source.p/list-files snapshot)
+                                         (map path-top-level-dir)
+                                         (filter (disabled-content-dirs))
+                                         empty?))
                            (incremental-plan snapshot dirty-rows))]
           (if plan
             ;; Incremental fast-path: write only the changed entities and delete only the removed
