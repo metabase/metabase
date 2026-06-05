@@ -52,12 +52,7 @@
 
 (mu/defn- broken-cards-response :- ::broken-cards-response
   "Build the `check-*` response from a breakage map.
-
-  `bad_cards` and `bad_transforms` are sorted by `id` ascending so the response order is stable.
-  The FE renders these entities in the order the BE returns them, so the ordering is part of the
-  contract, not an implementation detail. We sort here, after the `filter`/`map` passes (rather than
-  via an `:order-by` on the query), so the guarantee can't be silently broken by an upstream
-  transformation that doesn't preserve order."
+  `bad_cards` and `bad_transforms` are sorted to ensure the stable response order."
   [{:keys [card transform]}]
   (let [broken-card-ids (keys card)
         broken-cards (when (seq broken-card-ids)
