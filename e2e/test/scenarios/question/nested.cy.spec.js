@@ -1,8 +1,11 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
+
+const { ORDERS_ID: H2_ORDERS_ID } = H2_SAMPLE_DATABASE;
 
 const ordersJoinProductsQuery = {
   "source-table": ORDERS_ID,
@@ -27,13 +30,19 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should allow 'Distribution' and 'Sum over time' on nested questions (metabase#12568)", () => {
+    // "Sum over time" needs a temporal Created At, and the SQL question uses
+    // date_trunc, which SQLite doesn't support. Use the H2 sample DB. skipCache:
+    // the outer beforeEach cached a session that is stale after this restore.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     // Make sure it works for a GUI question
     const guiQuestionDetails = {
       name: "GH_12568: Simple",
+      database: H2_SAMPLE_DB_ID,
       query: {
-        "source-table": ORDERS_ID,
+        "source-table": H2_ORDERS_ID,
       },
       display: "line",
     };
@@ -69,6 +78,7 @@ describe("scenarios > question > nested", () => {
     // Make sure it works for a SQL question
     const sqlQuestionDetails = {
       name: "GH_12568: SQL",
+      database: H2_SAMPLE_DB_ID,
       native: {
         query:
           "SELECT date_trunc('year', CREATED_AT) as date, COUNT(*) as count FROM ORDERS GROUP BY date_trunc('year', CREATED_AT)",
@@ -287,7 +297,7 @@ describe("scenarios > question > nested", () => {
       name: "15397",
       native: {
         query:
-          "select count(*), orders.product_id from orders group by orders.product_id;",
+          "select COUNT(*), orders.product_id from orders group by orders.product_id;",
       },
     }).then(({ body: { id } }) => {
       H.visitQuestion(id);
@@ -371,7 +381,7 @@ describe("scenarios > question > nested", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       H.createNativeQuestion({
         name: "15725",
-        native: { query: "select 'A' as cat, 5 as val" },
+        native: { query: "select 'A' as CAT, 5 as VAL" },
       });
       // Window object gets recreated for every `cy.visit`
       // See: https://stackoverflow.com/a/65218352/8815185

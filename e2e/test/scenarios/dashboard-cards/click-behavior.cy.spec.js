@@ -1,6 +1,6 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import {
   NORMAL_USER_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -43,7 +43,7 @@ const SECOND_TAB = { id: 901, name: "second" };
 const THIRD_TAB = { id: 902, name: "third" };
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, REVIEWS, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+  H2_SAMPLE_DATABASE;
 
 const TARGET_DASHBOARD = {
   name: "Target dashboard",
@@ -52,6 +52,7 @@ const TARGET_DASHBOARD = {
 const QUESTION_LINE_CHART = {
   name: "Line chart",
   display: "line",
+  database: H2_SAMPLE_DB_ID,
   query: {
     aggregation: [["count"]],
     breakout: [
@@ -69,11 +70,13 @@ const QUESTION_LINE_CHART = {
 const QUESTION_TABLE = {
   name: "Table",
   display: "table",
+  database: H2_SAMPLE_DB_ID,
   query: QUESTION_LINE_CHART.query,
 };
 
 const OBJECT_DETAIL_CHART = {
   display: "object",
+  database: H2_SAMPLE_DB_ID,
   query: {
     "source-table": ORDERS_ID,
   },
@@ -128,7 +131,7 @@ const URL_WITH_FILLED_PARAMS = URL_WITH_PARAMS.replace(
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     cy.signInAsAdmin();
     cy.intercept("/api/dataset").as("dataset");
     H.activateToken("pro-self-hosted");
@@ -189,15 +192,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         questionDetails: {
           name: "Native Question",
           display: "line",
+          database: H2_SAMPLE_DB_ID,
           native: {
             query: `
               SELECT
-                STRFTIME('%Y-%m', CREATED_AT) AS "Created At",
+                DATE_TRUNC('month', CREATED_AT) AS "Created At",
                 COUNT(*) AS "count"
               FROM
                 ORDERS
               GROUP BY
-                STRFTIME('%Y-%m', CREATED_AT)
+                DATE_TRUNC('month', CREATED_AT)
               LIMIT
                 5
             `,
@@ -1979,6 +1983,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   describe("multi-stage questions as target destination", () => {
     const questionDetails = {
       name: "Table",
+      database: H2_SAMPLE_DB_ID,
       query: {
         aggregation: [["count"]],
         breakout: [
@@ -2012,6 +2017,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     const targetQuestion = {
       name: "Target question",
+      database: H2_SAMPLE_DB_ID,
       query: createMultiStageQuery(),
     };
 
@@ -2347,7 +2353,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
         ],
       },
-      database: SAMPLE_DB_ID,
+      database: H2_SAMPLE_DB_ID,
     };
 
     H.createQuestionAndDashboard({
@@ -2355,6 +2361,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         name: QUESTION_NAME,
         query: testQuery.query,
         display: "pivot",
+        database: H2_SAMPLE_DB_ID,
       },
       dashboardDetails: {
         name: DASHBOARD_NAME,
@@ -2432,7 +2439,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
         ],
       },
-      database: SAMPLE_DB_ID,
+      database: H2_SAMPLE_DB_ID,
     };
 
     H.createQuestionAndDashboard({
@@ -2440,6 +2447,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         name: QUESTION_NAME,
         query: testQuery.query,
         display: "table",
+        database: H2_SAMPLE_DB_ID,
       },
       dashboardDetails: {
         name: DASHBOARD_NAME,
@@ -2492,6 +2500,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     const DASHBOARD_NAME = "Click Behavior Custom URL Dashboard";
     const questionDetails = {
       name: "Orders",
+      database: H2_SAMPLE_DB_ID,
       query: {
         "source-table": ORDERS_ID,
         aggregation: [
