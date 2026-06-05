@@ -37,7 +37,7 @@
   [provider-key request]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
 
-  (api/check-400 (sso-settings/oidc-enabled?) "OIDC is not enabled")
+  (api/check-400 (sso-settings/oidc-enabled) "OIDC is not enabled")
 
   (let [provider-config (sso-settings/get-oidc-provider provider-key)]
     (when-not provider-config
