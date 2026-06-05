@@ -7,7 +7,21 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.string :as u.str]))
+   [metabase.util.string :as u.str])
+  (:import
+   (org.eclipse.jetty.util InetAddressSet)))
+
+(defn- validate-ip-patterns
+  [value]
+  (when (not-empty value)
+    (doseq [pattern (map str/trim (str/split value #","))]
+      (when-not (str/blank? pattern)
+        (try
+          (.add (InetAddressSet.) pattern)
+          (catch Exception e
+            (throw (ex-info (tru "Invalid IP address pattern: {0}" pattern)
+                            {:status-code 400}
+                            e))))))))
 
 (def ^:private default-allowed-iframe-hosts
   "youtube.com,
@@ -96,6 +110,22 @@ x.com")
   :default    false
   :visibility :admin
   :export?    true)
+
+(defsetting allowed-ip-addresses
+  (deferred-tru
+   (str "Comma-separated list of IP addresses or CIDR blocks allowed to access the server. "
+        "Supports IPv4 (e.g. 192.168.1.0/24), IPv6 (e.g. 2001:db8::/32), single addresses, "
+        "and ranges (e.g. 10.0.0.1-10.0.0.255). When empty, all connections are allowed. "
+        "Uses the client IP from the configured source-address-header (default X-Forwarded-For)."))
+  :encryption :no
+  :type       :string
+  :default    nil
+  :visibility :admin
+  :audit      :getter
+  :export?    true
+  :setter     (fn [new-value]
+                (validate-ip-patterns new-value)
+                (setting/set-value-of-type! :string :allowed-ip-addresses new-value)))
 
 (defsetting hide-stacktraces
   (deferred-tru "Prevent the exception middleware from including stacktraces in responses.")

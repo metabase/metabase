@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.request.core :as request]
+   [metabase.request.current :as request.current]
    [metabase.server.instance :as server]
    [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response :as streaming-response]
@@ -38,11 +39,13 @@
 ;; These functions take parts of the info map and convert it into formatted strings.
 
 (defn- format-status-info
-  [{:keys [async-status]
+  [{:keys [async-status client-ip]
     {:keys [request-method uri] :or {request-method :XXX}} :request
     {:keys [status]} :response}]
   (str
    (format "%s %s %d" (u/upper-case-en (name request-method)) uri status)
+   (when client-ip
+     (format " [IP: %s]" client-ip))
    (when async-status
      (format " [ASYNC: %s]" async-status))))
 
@@ -233,7 +236,9 @@
           (let [info           {:request       request
                                 :start-time    (u/start-timer)
                                 :call-count-fn call-count-fn
-                                :diag-info-fn  diag-info-fn}
+                                :diag-info-fn  diag-info-fn
+                                :client-ip     (when (server.settings/allowed-ip-addresses)
+                                                 (request.current/ip-address request))}
                 response->info (fn [response]
                                  (assoc info
                                         :response response
