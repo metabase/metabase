@@ -376,7 +376,7 @@
 
 (defn- incremental-plan
   "Builds a plan for a safe incremental export of the current `dirty-rows`, or nil if any row can't be
-  handled incrementally (caller falls back to the full export).
+  handled incrementally.
 
   Every row must be on an entity-id model and be one of:
   - `create`/`update` — re-serialize the entity and upsert its file. A create, or an update whose path
