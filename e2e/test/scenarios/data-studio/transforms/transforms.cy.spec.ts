@@ -195,7 +195,23 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
         cy.log("Select database");
         H.popover().findByText(DB_NAME).click();
 
+        cy.log("open the editor search panel with Cmd/Ctrl+F (metabase#73290)");
+        H.PythonEditor.focus();
+        cy.realPress([H.metaKey, "f"]);
+        cy.findByTestId("python-editor")
+          .find(".cm-panels")
+          .should("be.visible");
+
         getPythonDataPicker().findByText("Select a table…").click();
+
+        cy.log(
+          "the editor search panel must not paint over the modal (metabase#73290)",
+        );
+        H.entityPickerModal().should("be.visible");
+        cy.findByTestId("python-editor")
+          .find(".cm-panels")
+          .should("not.be.visible");
+
         H.entityPickerModal().findByText("Animals").click();
 
         getPythonDataPicker().within(() => {

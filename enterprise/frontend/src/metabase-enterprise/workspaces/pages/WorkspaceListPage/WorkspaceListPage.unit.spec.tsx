@@ -36,14 +36,16 @@ describe("WorkspaceListPage", () => {
   it("from the empty state, opens the Add workspace modal", async () => {
     setup();
 
-    expect(await screen.findByText(/Isolated spaces/i)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("workspace-list-page"),
+    ).toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("button", { name: /Create a workspace/ }),
+      await screen.findByRole("button", { name: /Create a workspace/i }),
     );
 
     expect(
-      await screen.findAllByRole("heading", { name: "Create a workspace" }),
+      await screen.findAllByRole("heading", { name: /Create a workspace/i }),
     ).not.toHaveLength(0);
   });
 

@@ -784,7 +784,6 @@
 
 (doseq [driver [:presto-jdbc
                 :h2 ;; TODO
-                :druid
                 :druid-jdbc]]
   (defmethod driver/database-supports? [driver ::describe-view-fields]
     [_driver _feature _database]
@@ -794,7 +793,6 @@
                 :h2 ;; TODO
                 :snowflake ;; Requires enterprise account
                 :presto-jdbc
-                :druid
                 :druid-jdbc
                 :mysql
                 :sqlserver

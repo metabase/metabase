@@ -11,7 +11,7 @@ import {
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import CollectionRow from "./components/CollectionRow";
+import { CollectionRow } from "./components/CollectionRow";
 import { MoveSnippetModal } from "./components/MoveSnippetModal";
 import { SnippetCollectionPermissionsModal } from "./components/SnippetCollectionPermissionsModal";
 import { SnippetCollectionPickerModal } from "./components/SnippetCollectionPickerModal";

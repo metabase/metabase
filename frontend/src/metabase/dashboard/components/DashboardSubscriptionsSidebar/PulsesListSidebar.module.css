@@ -1,0 +1,11 @@
+.pulseCard {
+  margin-bottom: var(--mantine-spacing-xl);
+}
+
+.pulseCardEditable {
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-brand);
+  }
+}
