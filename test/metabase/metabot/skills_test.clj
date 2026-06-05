@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.scope :as scope]
-   [metabase.metabot.skills :as skills]))
+   [metabase.metabot.skills :as skills]
+   [metabase.metabot.skills.init]))
 
 (set! *warn-on-reflection* true)
 
