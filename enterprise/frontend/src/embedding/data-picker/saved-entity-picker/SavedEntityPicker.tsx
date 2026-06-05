@@ -23,6 +23,7 @@ import type {
   Collection,
   CollectionId,
   DatabaseId,
+  User,
 } from "metabase-types/api";
 
 import SavedEntityList from "./SavedEntityList";
@@ -45,6 +46,9 @@ const getOurAnalyticsCollection = (
   collectionEntity: Collection,
 ): CollectionTreeItem => ({
   ...collectionEntity,
+  // "Our analytics" is shown here as a flat clickable target; its real children
+  // are already listed by buildCollectionTree below, so we explicitly empty
+  // them to avoid duplicating the tree.
   children: [],
   schemaName: "Everything else",
   icon: "folder",
@@ -62,14 +66,18 @@ export function SavedEntityPicker(props: SavedEntityPickerProps) {
     namespaces: ["", "shared-tenant-collection", "tenant-specific"],
   });
   const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
-  if (!collections) {
+  const currentUser = useSelector(getUser);
+
+  if (!collections || !currentUser) {
     return null;
   }
+
   return (
     <InnerSavedEntityPicker
       {...props}
       collections={collections}
       rootCollection={rootCollection}
+      currentUser={currentUser}
     />
   );
 }
@@ -77,6 +85,7 @@ export function SavedEntityPicker(props: SavedEntityPickerProps) {
 interface InnerSavedEntityPickerProps extends SavedEntityPickerProps {
   collections: Collection[];
   rootCollection?: Collection;
+  currentUser: User;
 }
 
 function InnerSavedEntityPicker({
@@ -88,14 +97,9 @@ function InnerSavedEntityPicker({
   onBack,
   collections,
   rootCollection,
+  currentUser,
 }: InnerSavedEntityPickerProps) {
-  const currentUser = useSelector(getUser);
-
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
-    if (!currentUser) {
-      return [];
-    }
-
     const modelFilter = (model: string) => CARD_INFO[type].model === model;
 
     const preparedCollections: Collection[] = [];
