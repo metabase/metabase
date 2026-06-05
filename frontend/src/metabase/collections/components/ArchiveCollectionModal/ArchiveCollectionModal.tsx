@@ -1,4 +1,3 @@
-import { type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
@@ -9,6 +8,10 @@ import type { Collection } from "metabase-types/api";
 
 type OwnProps = {
   onClose: () => void;
+};
+
+type ArchiveCollectionModalRouteProps = OwnProps & {
+  params: { slug?: string };
 };
 
 type ArchiveCollectionModalInnerProps = OwnProps & {
@@ -41,7 +44,7 @@ function ArchiveCollectionModalInner({
 export function ArchiveCollectionModalContainer({
   params,
   onClose,
-}: OwnProps & WithRouterProps) {
+}: ArchiveCollectionModalRouteProps) {
   const collectionId = Urls.extractCollectionId(params.slug);
   const { data: collection } = useGetCollectionQuery(
     collectionId != null ? { id: collectionId } : skipToken,
@@ -54,6 +57,4 @@ export function ArchiveCollectionModalContainer({
   );
 }
 
-export const ArchiveCollectionModal = withRouter(
-  ArchiveCollectionModalContainer,
-);
+export const ArchiveCollectionModal = ArchiveCollectionModalContainer;
