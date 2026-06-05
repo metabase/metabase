@@ -160,7 +160,7 @@
           (let [seen      (atom ::unset)
                 refresher (reify task.persist-refresh/Refresher
                             (refresh! [_ _database _definition _card]
-                              (reset! seen driver.conn/*connection-type*)
+                              (reset! seen @#'driver.conn/*connection-type*)
                               {:state :success})
                             (unpersist! [_ _database _persisted-info]))]
             (#'task.persist-refresh/refresh-tables! (u/the-id db) refresher)
@@ -170,7 +170,7 @@
                 refresher (reify task.persist-refresh/Refresher
                             (refresh! [_ _database _definition _card] {:state :success})
                             (unpersist! [_ _database _persisted-info]
-                              (reset! seen driver.conn/*connection-type*)))]
+                              (reset! seen @#'driver.conn/*connection-type*)))]
             (#'task.persist-refresh/prune-deletables! refresher [deletable])
             (is (= :default @seen))))))))
 

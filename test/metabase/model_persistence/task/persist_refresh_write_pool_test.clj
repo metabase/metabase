@@ -28,7 +28,7 @@
             (with-redefs [driver-api/compile                               (fn [_query] {:query "SELECT 1" :params []})
                           sql-jdbc.conn/db->pooled-connection-spec         (fn [_database] {:fake :spec})
                           sql-jdbc.execute/do-with-connection-with-options (fn [_driver _database _opts _f]
-                                                                             (reset! ddl-ctx driver.conn/*connection-type*)
+                                                                             (reset! ddl-ctx @#'driver.conn/*connection-type*)
                                                                              {:state :success})]
               (#'task.persist-refresh/refresh-tables! (:id db) @#'task.persist-refresh/dispatching-refresher))
             (is (= :write-data @ddl-ctx))))))))
@@ -46,7 +46,7 @@
                                                 :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
           (let [ddl-ctx (atom ::unset)]
             (with-redefs [sql-jdbc.execute/do-with-connection-with-options (fn [_driver _database _opts _f]
-                                                                             (reset! ddl-ctx driver.conn/*connection-type*)
+                                                                             (reset! ddl-ctx @#'driver.conn/*connection-type*)
                                                                              nil)]
               (#'task.persist-refresh/prune-deletables! @#'task.persist-refresh/dispatching-refresher [pi]))
             (is (= :write-data @ddl-ctx))))))))

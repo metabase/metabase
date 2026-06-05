@@ -68,7 +68,7 @@
 (mr/def ::connection-type
   (into [:enum] connection-types))
 
-(def ^:dynamic *connection-type*
+(def ^:dynamic ^:private *connection-type*
   "Which connection details [[effective-details]] should resolve.
 
    - `:default` — primary `:details`
@@ -173,7 +173,7 @@
 
    `:transform` resolves the same `:write-data-details` as `:write-data` — transforms write,
    so they get write-data credentials when set. The two still resolve to *different* pool keys
-   (see [[effective-connection-type]]) so the pool properties can differ."
+   (see [[connection-pool-type]]) so the pool properties can differ."
   [database connection-type]
   (case connection-type
     :default    nil
@@ -221,7 +221,7 @@
                              {:connection-type (name *connection-type*)})
              (catch Exception _ nil)))
       (-> (driver.w/maybe-swap-details (:id database) base)
-          (assoc ::effective-connection-type eff-type)
+          (assoc ::connection-pool-type eff-type)
           (assoc ::database-id (u/id database))))))
 
 (defn details-for-exact-type
@@ -238,17 +238,14 @@
       :transform  (:details database)
       :admin      (database-admin-details database))))
 
-(defn write-connection-requested?
-  "True if currently executing within a [[with-write-connection]] scope."
+(defn connection-telemetry-info
+  "A human-readable description of the current connection context, for logging only. Prose, not a
+   token — interpolate it into log messages, never branch on it. If you need a value to act on, use
+   [[connection-pool-type]]."
   []
-  (= *connection-type* :write-data))
+  (str "the " (name *connection-type*) " connection"))
 
-(defn admin-connection-requested?
-  "True if currently executing within a [[with-admin-connection]] scope."
-  []
-  (= *connection-type* :admin))
-
-(defn effective-connection-type
+(defn connection-pool-type
   "Returns the effective pool key for the given database. Return value matches malli schema
   [[::connection-type]].
 
@@ -273,7 +270,7 @@
    Call at the point where a driver actually obtains a connection (e.g., pool checkout).
    Non-JDBC drivers that manage their own connections should call this explicitly."
   [connection-details]
-  (if-let [conn-type (::effective-connection-type connection-details)]
+  (if-let [conn-type (::connection-pool-type connection-details)]
     (do
       (log/debugf "Acquiring %s connection for db %s" conn-type (::database-id connection-details))
       (try (analytics/inc! :metabase-db-connection/write-op {:connection-type (name conn-type)})
