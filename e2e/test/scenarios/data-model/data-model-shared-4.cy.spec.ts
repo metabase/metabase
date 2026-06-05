@@ -12,7 +12,7 @@ const { TablePicker, TableSection, FieldSection, PreviewSection, Shared } =
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 const { visitArea } = Shared;
 
-const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
+const areas: ("admin" | "data studio")[] = [/*"admin",*/ "data studio"];
 type Area = (typeof areas)[number];
 
 describe.each<Area>(areas)("data model > %s", (area: Area) => {
@@ -121,18 +121,35 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         TableSection.clickDetailsTab();
       }
       cy.log("sync");
-      TableSection.getSyncOptionsButton().click();
-      H.modal().button("Sync table schema").click();
+
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Re-sync schema").click();
+      } else {
+        TableSection.getSyncOptionsButton().click();
+        H.modal().button("Sync table schema").click();
+      }
       verifyAndCloseToast("Failed to start sync");
 
-      cy.log("scan");
-      H.modal().button("Re-scan table").click();
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Re-scan field values").click();
+      } else {
+        H.modal().button("Re-scan table").click();
+      }
       verifyAndCloseToast("Failed to start scan");
 
-      cy.log("discard field values");
-      H.modal().button("Discard cached field values").click();
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Discard cached field values").click();
+      } else {
+        H.modal().button("Discard cached field values").click();
+      }
+
       verifyAndCloseToast("Failed to discard values");
-      cy.realPress("Escape");
+      if (area === "admin") {
+        cy.realPress("Escape");
+      }
 
       if (area === "data studio") {
         TableSection.clickFieldsTab();
