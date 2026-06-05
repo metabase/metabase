@@ -521,7 +521,6 @@
                           :labels [:stage-label]
                           ;; 10 -> 10M rows
                           :buckets [10 100 1000 10000 100000 1000000 10000000]})
-   ;; Transform cancelation observability
    (prometheus/counter :metabase-transforms/cancelation-requests
                        {:description "Number of transform run cancelation requests issued, labeled by status (ok, error)."
                         :labels [:status]})
@@ -533,6 +532,13 @@
                           :labels [:outcome]
                           ;; 20s poll loop + 10min timeout sweep; buckets bracket both tails.
                           :buckets [100 500 1000 5000 10000 20000 30000 60000 120000 300000 600000]})
+   (prometheus/histogram :metabase-transforms/incremental-rows
+                         {:description "Source-available vs. target-processed row counts for incremental transform runs."
+                          :labels [:type :full-incremental-run]
+                          ;; Decade layout matches `data-transfer-rows`; `0` distinguishes empty
+                          ;; windows from "small but nonzero work"; `100M` covers full-incremental
+                          ;; rebuilds on large sources.
+                          :buckets [0 10 100 1000 10000 100000 1000000 10000000 100000000]})
    ;; Python-transform specific metrics
    (prometheus/histogram :metabase-transforms/python-api-call-duration-ms
                          {:description "Duration of Python runner API calls."

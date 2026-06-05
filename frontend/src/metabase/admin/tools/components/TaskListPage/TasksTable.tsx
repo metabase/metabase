@@ -12,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { Box, Ellipsified, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type {
   Database,
   ListTasksSortColumn,
@@ -142,7 +143,7 @@ export const TasksTable = ({
                         />
                       </Ellipsified>
                     ) : (
-                      "—"
+                      EMPTY_CELL_PLACEHOLDER
                     )}
                   </td>
                   <td>{task.duration}</td>

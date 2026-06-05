@@ -595,6 +595,8 @@
              ;; deactivate the user again
              (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can't reactivate the user if user provisioning is disabled."
+               ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+               #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
                              appearance.settings/site-name (constantly "test")]
                  (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
@@ -745,6 +747,8 @@
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
+        ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
                       appearance.settings/site-name (constantly "test")]
           (let [req-options (saml-post-request-options (new-user-saml-test-response)
@@ -891,7 +895,9 @@
       (with-saml-default-setup!
         (do-with-some-validators-disabled!
          (fn []
-           ;; Mock the saml-response->attributes function to return mixed attribute types
+           ;; Mock the saml-response->attributes function to return mixed attribute types.
+           ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
            (with-redefs [saml.p/saml-response->attributes
                          (fn [_]
                            {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" "rasta@metabase.com"
@@ -1011,6 +1017,8 @@
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                      (is (successful-login? response)))))
                (testing "an existing user also fails to log in"
+                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
                                  {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
@@ -1030,6 +1038,8 @@
                                                         :name "Tenant McTenantson"
                                                         :is_active false}
                          :model/User {existing-email :email} {:tenant_id tenant-id}]
+            ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
             (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)]
               (do-with-some-validators-disabled!
                (fn []
@@ -1040,6 +1050,8 @@
                            response    (client/client-real-response :post 401 "/auth/sso" req-options)]
                        (is (not (successful-login? response))))))
                  (testing "an existing user also fails to log in"
+                   ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                   #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                    (with-redefs [saml.p/saml-response->attributes
                                  (fn [_]
                                    {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
@@ -1063,6 +1075,8 @@
             (do-with-some-validators-disabled!
              (fn []
                (testing "tenant -> other tenant fails with correct error message"
+                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
                                  {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant
@@ -1084,7 +1098,9 @@
                            :model/User {email-with-tenant :email} {:tenant_id tenant-id}]
               (do-with-some-validators-disabled!
                (fn []
-                 ;; Use the regular new-user response which doesn't have tenant attribute
+                 ;; Use the regular new-user response which doesn't have tenant attribute.
+                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
                                  {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant})]
@@ -1105,6 +1121,8 @@
                            :model/User {email-without-tenant :email} {:tenant_id nil}]
               (do-with-some-validators-disabled!
                (fn []
+                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
                                  {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-without-tenant

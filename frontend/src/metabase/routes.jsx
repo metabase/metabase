@@ -323,6 +323,7 @@ export const getRoutes = (store) => {
           <Route path="explore" component={MetricsViewerPage} />
 
           <Route path="table">
+            <Route path=":slug" component={QueryBuilder} />
             <Route path=":tableId/detail/:rowId" component={TableDetailPage} />
           </Route>
 

@@ -88,7 +88,7 @@
   (mt/with-premium-features #{:sandboxes}
     (testing "gtap with card and remappings"
       ;; hack so that we don't have to setup all the sandbox permissions the table
-      (with-redefs [ee-params.field-values/field-is-sandboxed? (constantly true)]
+      (mt/with-dynamic-fn-redefs [ee-params.field-values/field-is-sandboxed? (constantly true)]
         (let [field (t2/select-one :model/Field (mt/id :categories :name))
               hash-input-for-user-id-with-attributes (fn [user-id login-attributes field]
                                                        (mt/with-temp-vals-in-db :model/User user-id {:login_attributes login-attributes}
