@@ -66,8 +66,6 @@
     Takes a SourceSnapshot instance, a commit message, `upserts` (a sequence of file specs, each
     a map with :path and :content), and `delete-paths` (a sequence of path strings to remove).
 
-    Used by the incremental export fast-path to avoid re-serializing/re-writing the whole tree.
-
     Returns the version of the written files.")
 
   (version [snapshot]
