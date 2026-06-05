@@ -52,6 +52,7 @@
 
 (mu/defn- broken-cards-response :- ::broken-cards-response
   "Build the `check-*` response from a breakage map.
+
   `bad_cards` and `bad_transforms` are sorted to ensure the stable response order."
   [{:keys [card transform]}]
   (let [broken-card-ids (keys card)
@@ -80,8 +81,7 @@
 (api.macros/defendpoint :post "/check-card" :- ::broken-cards-response
   "Check a proposed edit to a card, and return the cards/transforms this edit will break.
 
-  `bad_cards` and `bad_transforms` are sorted by `id` ascending. This order is stable and may be
-  relied upon (the FE renders the entities in this order)."
+  `broken-cards-response` ensures the stable response order."
   [_route-params
    _query-params
    body :- ::card-body]
