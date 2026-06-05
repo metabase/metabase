@@ -2,6 +2,7 @@
 import type * as AggregationLib from "cljs/metabase.lib.aggregation";
 import type * as ColumnGroupLib from "cljs/metabase.lib.column_group";
 import type { Metabase_Lib_Schema_Filter_Operator } from "cljs/metabase.lib.filter";
+import type * as ML from "cljs/metabase.lib.js";
 import type {
   Metabase_Lib_Aggregation_Aggregable,
   Metabase_Lib_Metadata_Protocols_MetadataProvider,
@@ -9,6 +10,7 @@ import type {
   Metabase_Lib_Schema_Binning_Binning,
   Metabase_Lib_Schema_Binning_BinningOption,
   Metabase_Lib_Schema_DrillThru_DrillThru,
+  Metabase_Lib_Schema_Expression_Boolean,
   Metabase_Lib_Schema_Extraction_Extraction,
   Metabase_Lib_Schema_Join_Join,
   Metabase_Lib_Schema_Join_Strategy,
@@ -80,10 +82,7 @@ export type AggregationOperator = NonNullable<
   ReturnType<typeof AggregationLib.available_aggregation_operators>
 >[number];
 
-declare const BreakoutClauseSymbol: unique symbol;
-export type BreakoutClause = Metabase_Lib_Schema_Ref_Ref & {
-  _opaque: typeof BreakoutClauseSymbol;
-};
+export type BreakoutClause = Metabase_Lib_Schema_Ref_Ref;
 
 export type ExpressionClause = Metabase_Lib_Schema_MbqlClause_Clause;
 
@@ -91,7 +90,7 @@ export type OrderByClause = Metabase_Lib_Schema_OrderBy_OrderBy;
 
 export type OrderByDirection = "asc" | "desc";
 
-export type FilterClause = Metabase_Lib_Schema_MbqlClause_Clause;
+export type FilterClause = Metabase_Lib_Schema_Expression_Boolean;
 
 export type Filterable = FilterClause | ExpressionClause | SegmentMetadata;
 
@@ -101,7 +100,7 @@ export type JoinStrategy =
   | Metabase_Lib_Schema_Join_Strategy
   | Metabase_Lib_Schema_Join_StrategyOption;
 
-export type JoinCondition = Metabase_Lib_Schema_MbqlClause_Clause;
+export type JoinCondition = Metabase_Lib_Schema_Expression_Boolean;
 
 export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
 
@@ -387,14 +386,9 @@ export type SpecificDateFilterParts = {
   hasTime: boolean;
 };
 
-export type RelativeDateFilterParts = {
-  column: ColumnMetadata;
-  unit: RelativeDateFilterUnit;
-  value: number;
-  offsetUnit: RelativeDateFilterUnit | null;
-  offsetValue: number | null;
-  options: RelativeDateFilterOptions;
-};
+export type RelativeDateFilterParts = NonNullable<
+  ReturnType<typeof ML.relative_date_filter_parts>
+>;
 
 /*
  * values depend on the bucket

@@ -59,7 +59,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [goog.object :as gobject]
-   [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics.interface]
@@ -101,6 +100,7 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
@@ -424,7 +424,7 @@
                                                         [:effectiveType {:optional true} :string]
                                                         [:semanticType {:optional true} [:maybe :string]]
                                                         [:fingerprint {:optional true} [:maybe [:map-of :string :any]]]
-                                                          ;; source flags
+                                                        ;; source flags
                                                         [:isFromPreviousStage {:optional true} [:maybe :boolean]]
                                                         [:isFromJoin {:optional true} [:maybe :boolean]]
                                                         [:isCalculated {:optional true} [:maybe :boolean]]
@@ -433,37 +433,37 @@
                                                         [:isBreakout {:optional true} [:maybe :boolean]]
                                                         [:isOrderByColumn {:optional true} [:maybe :boolean]]
                                                         [:isTemporalExtraction {:optional true} :boolean]
-                                                          ;; group/table flags
+                                                        ;; group/table flags
                                                         [:isMainGroup {:optional true} [:maybe :boolean]]
                                                         [:isSourceTable {:optional true} [:maybe :boolean]]
                                                         [:isSourceCard {:optional true} [:maybe :boolean]]
-                                                          ;; card type flags
+                                                        ;; card type flags
                                                         [:isQuestion {:optional true} :boolean]
                                                         [:isModel {:optional true} :boolean]
                                                         [:isMetric {:optional true} :boolean]
-                                                          ;; query flags
+                                                        ;; query flags
                                                         [:isNative {:optional true} :boolean]
                                                         [:isEditable {:optional true} :boolean]
-                                                          ;; aggregation operator
+                                                        ;; aggregation operator
                                                         [:columnName {:optional true} :string]
                                                         [:requiresColumn {:optional true} :boolean]
                                                         [:selected {:optional true} :boolean]
                                                         [:default {:optional true} :boolean]
-                                                          ;; order by
+                                                        ;; order by
                                                         [:direction {:optional true} :string]
-                                                          ;; table/card context
+                                                        ;; table/card context
                                                         [:schema {:optional true} [:maybe :string]]
                                                         [:visibilityType {:optional true} [:maybe :string]]
-                                                          ;; nested table display-info
+                                                        ;; nested table display-info
                                                         [:table {:optional true} [:maybe [:map
                                                                                           [:name {:optional true} :string]
                                                                                           [:displayName {:optional true} :string]
                                                                                           [:isSourceTable {:optional true} :boolean]]]]
-                                                          ;; positions
+                                                        ;; positions
                                                         [:breakoutPositions {:optional true} [:maybe [:sequential :int]]]
                                                         [:orderByPosition {:optional true} [:maybe :int]]
                                                         [:filterPositions {:optional true} [:maybe [:sequential :int]]]
-                                                          ;; metric/measure
+                                                        ;; metric/measure
                                                         [:aggregationPosition {:optional true} :int]
                                                         [:aggregationPositions {:optional true} [:maybe [:sequential :int]]]]}]
   "Given an opaque CLJS value (in the context of `a-query` and `stage-number`), return a plain JS object with the info
@@ -511,7 +511,7 @@
   [a-query stage-number orderable direction]
   (lib.core/order-by a-query stage-number orderable (keyword direction)))
 
-(mu/defn ^:export order-bys :- [:any {:ts/array-of ::lib.schema.mbql-clause/clause}]
+(mu/defn ^:export order-bys :- [:any {:ts/array-of ::lib.schema.order-by/order-by}]
   "Get the `ORDER BY` clauses in `a-query` at `stage-number`, as a JS array of opaque values.
 
   Returns an empty array if there are no order-bys in the given stage.
@@ -642,8 +642,8 @@
   (memoize/lru (fn [_locale] (lib.filter/compound-filter-conjunctions)) :lru/threshold 2))
 
 (mu/defn ^:export parse-column-display-name-parts :- [:any {:ts/array-of [:map
-                                                                           [:type :string]
-                                                                           [:value :string]]}]
+                                                                          [:type :string]
+                                                                          [:value :string]]}]
   "Parse a column display name into a flat list of parts for translation.
 
   Returns an array of objects, each with:
@@ -1212,7 +1212,8 @@
                                                                        [:operator ::lib.schema.filter/string-filter-operator]
                                                                        [:column ::lib.schema.metadata/column]
                                                                        [:values [:sequential :string]]
-                                                                       [:options ::lib.schema.filter/string-filter-options]]}]]
+                                                                       [:options [:map
+                                                                                  [:caseSensitive {:optional true} :boolean]]]]}]]
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
   the expected shape. To avoid mistakes the function returns `options` for all operators even though they might not be
   used. Note that the FE does not support `:is-null` and `:not-null` operators with string columns."
@@ -1886,7 +1887,7 @@
   ;; For custom aggregation expressions this sets the `:display-name` option instead.
   (lib.core/with-expression-name an-expression-clause new-name))
 
-(mu/defn ^:export expressions :- [:any {:ts/array-of ::lib.schema.expression/expression}]
+(mu/defn ^:export expressions :- [:any {:ts/array-of [:any {:typescript "Shared.Metabase_Lib_Schema_MbqlClause_Clause"}]}]
   "Returns a JS array of expressions on the given stage of `a-query`."
   [a-query stage-number]
   (to-array (lib.core/expressions a-query stage-number)))

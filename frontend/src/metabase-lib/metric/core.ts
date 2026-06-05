@@ -145,7 +145,7 @@ export function sourceMetricOrMeasureMetadata(
 export function sourceInstances(
   definition: MetricDefinition,
 ): SourceInstance[] {
-  return LibMetric.sourceInstances(definition) as SourceInstance[];
+  return LibMetric.sourceInstances(definition);
 }
 
 export function filters(definition: MetricDefinition): FilterClause[];
@@ -224,7 +224,7 @@ function isRelativeDateFilterUnit(
 export function availableSegments(
   definition: MetricDefinition,
 ): SegmentMetadata[] {
-  return LibMetric.availableSegments(definition) as SegmentMetadata[];
+  return LibMetric.availableSegments(definition);
 }
 
 export function addSegmentFilter(
@@ -615,10 +615,7 @@ export function availableBinningStrategies(
   definition: MetricDefinition,
   dimension: DimensionMetadata,
 ): BinningStrategy[] {
-  return LibMetric.availableBinningStrategies(
-    definition,
-    dimension,
-  ) as BinningStrategy[];
+  return LibMetric.availableBinningStrategies(definition, dimension);
 }
 
 export function isBinnable(

@@ -218,7 +218,7 @@
                        (->metadata-provider definition)
                        {:lib/type :metadata/measure, :id #{measure-id}})))))
 
-(mu/defn ^:export sourceInstances :- [:any {:ts/array-of :any}]
+(mu/defn ^:export sourceInstances :- [:any {:ts/array-of [:tuple :string :map :int]}]
   "Get expression leaf instances as JS arrays.
    Returns a JS array of ['metric'|'measure', {'lib/uuid': '...'}, id] arrays."
   [definition]
@@ -345,7 +345,10 @@
     (gobject/set obj "projection" (to-array (map expression->js projection)))
     obj))
 
-(mu/defn ^:export toJsMetricDefinition :- :map
+(mu/defn ^:export toJsMetricDefinition :- [:any {:ts/object-of [:map
+                                                                [:expression :any]
+                                                                [:filters {:optional true} [:sequential :map]]
+                                                                [:projections {:optional true} [:sequential :map]]]}]
   "Convert a MetricDefinition to a JS object for JSON serialization.
 
    Produces format compatible with POST /api/metric/dataset:
@@ -857,7 +860,11 @@
                :table-id table-id
                :id       #{field-id}})))))
 
-(mu/defn ^:export dimensionValuesInfo :- [:any {:ts/object-of :map}]
+(mu/defn ^:export dimensionValuesInfo :- [:any {:ts/object-of [:map
+                                                               [:id :string]
+                                                               [:canListValues :boolean]
+                                                               [:canSearchValues :boolean]
+                                                               [:canRemapValues :boolean]]}]
   "Get dimension values info. Prefers has-field-values stored directly on the
    dimension (computed during sync). Falls back to resolving the underlying field
    for backward compatibility with older dimensions that lack the key."

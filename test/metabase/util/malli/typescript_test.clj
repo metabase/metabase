@@ -3,31 +3,43 @@
    [clojure.test :refer :all]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.typescript :as ts]))
+
+(mr/def ::memo-context-ref :string)
 
 (deftest basic-transforms-test
   (testing "basic schema transforms"
     (are [res schema] (= res (ts/schema->ts schema))
-      "number"                                          number?
-      "{\n\ta: number;\n\tb: string;\n}"                [:map [:a :int] [:b :string]]
-      "{\n\ttype: \"main\";\n\tvalue: string;\n}"       [:map [:type [:= :main]] [:value :string]]
-      "(string | number)"                               [:or :string :int]
-      "Record<string, unknown>"                         [:map-of :keyword :any]
-      "\"one\" | \"two\""                               [:enum :one :two]
-      "(Record<string, unknown> & {\n\tkey: string;\n})" [:and
-                                                         [:map-of :keyword :any]
-                                                         [:map
-                                                          [:key string?]]]
-      "({\n\ttype: \"a\";\n} | {\n\ttype: \"b\";\n})"   [:multi {:dispatch :type}
-                                                         [:a [:map
-                                                              [:type [:= :a]]]]
-                                                         [:b [:map
-                                                              [:type [:= :b]]]]])))
+      "number"                                                  number?
+      "{\n\ta: number;\n\tb: string;\n\t[key: string]: any;\n}" [:map [:a :int] [:b :string]]
+      "{\n\ttype: \"main\";\n\tvalue: string;\n\t[key: string]: any;\n}" [:map [:type [:= :main]] [:value :string]]
+      "(string | number)"                                       [:or :string :int]
+      "Record<string, unknown>"                                 [:map-of :keyword :any]
+      "CustomType"                                               [:any {:typescript "CustomType"}]
+      "\"one\" | \"two\""                                   [:enum :one :two]
+      "(Record<string, unknown> & {\n\tkey: string;\n})"         [:and
+                                                                  [:map-of :keyword :any]
+                                                                  [:map {:closed true}
+                                                                   [:key string?]]]
+      "({\n\ttype: \"a\";\n\t[key: string]: any;\n} | {\n\ttype: \"b\";\n\t[key: string]: any;\n})" [:multi {:dispatch :type}
+                                                                                                     [:a [:map
+                                                                                                          [:type [:= :a]]]]
+                                                                                                     [:b [:map
+                                                                                                          [:type [:= :b]]]]]))
+  (testing "closed maps omit index signatures"
+    (is (= "{\n\ta: number;\n}"
+           (ts/schema->ts [:map {:closed true} [:a :int]]))))
+  (testing "open maps include index signatures"
+    (is (= "{\n\ta: number;\n\t[key: string]: any;\n}"
+           (ts/schema->ts [:map [:a :int]])))))
 
 (deftest union-simplification-test
-  (testing "unions containing 'any' simplify to 'any'"
-    (is (= "any" (ts/schema->ts [:or :string :any])))
-    (is (= "any" (ts/schema->ts [:or :int :string :any]))))
+  (testing "unions containing unknown branches preserve uncertainty"
+    (is (= "(string | { readonly __metabaseUnknownSchemaBranch: true })"
+           (ts/schema->ts [:or :string :any])))
+    (is (= "(number | string | { readonly __metabaseUnknownSchemaBranch: true })"
+           (ts/schema->ts [:or :int :string :any]))))
   (testing "unions preserve uncertainty from unknown branches"
     (is (= "(string | { readonly __metabaseUnknownSchemaBranch: true })"
            (ts/schema->ts [:or :string [:fn {:typescript "unknown"} any?]])))
@@ -38,11 +50,11 @@
     (is (= "(string | number)" (ts/schema->ts [:or :string :int :string])))))
 
 (deftest intersection-safety-test
-  (testing "intersections preserve uncertainty from unknown branches"
-    (is (= "(string & { readonly __metabaseUnknownSchemaBranch: true })"
+  (testing "intersections drop unknown branches because T & unknown is T"
+    (is (= "string"
            (ts/schema->ts [:and :string [:fn {:typescript "unknown"} any?]]))))
-  (testing "merges preserve uncertainty from unknown branches"
-    (is (= "({\n\ta: string;\n} & { readonly __metabaseUnknownSchemaBranch: true })"
+  (testing "merges drop unknown branches because T & unknown is T"
+    (is (= "{\n\ta: string;\n\t[key: string]: any;\n}"
            (ts/schema->ts [:merge
                            [:map [:a :string]]
                            [:fn {:typescript "unknown"} any?]])))))
@@ -58,8 +70,24 @@
     (is (= "Metabase_Lib_Schema_Common_NonBlankString"
            (ts/schema->ts ::lib.schema.common/non-blank-string))))
   (testing "refs in maps use type names"
-    (is (= "{\n\tstrategy: Metabase_Lib_Schema_Binning_Strategy;\n}"
+    (is (= "{\n\tstrategy: Metabase_Lib_Schema_Binning_Strategy;\n\t[key: string]: any;\n}"
            (ts/schema->ts [:map [:strategy [:ref ::lib.schema.binning/strategy]]])))))
+
+(deftest memoization-context-test
+  (testing "registry refs are recorded even when the type string is memoized"
+    (is (= "Metabase_Util_Malli_TypescriptTest_MemoContextRef"
+           (ts/schema->ts ::memo-context-ref)))
+    (let [refs (atom #{})]
+      (binding [ts/*registry-refs* refs]
+        (is (= "Metabase_Util_Malli_TypescriptTest_MemoContextRef"
+               (ts/schema->ts ::memo-context-ref))))
+      (is (contains? @refs ::memo-context-ref))))
+  (testing "shared type context affects emitted registry type names even when memoized"
+    (is (= "Metabase_Util_Malli_TypescriptTest_MemoContextRef"
+           (ts/schema->ts ::memo-context-ref)))
+    (binding [ts/*shared-types* #{::memo-context-ref}]
+      (is (= "Shared.Metabase_Util_Malli_TypescriptTest_MemoContextRef"
+             (ts/schema->ts ::memo-context-ref))))))
 
 (deftest base-type-name-test
   (testing "converts qualified keywords to TypeScript type names"
@@ -130,6 +158,16 @@
                          '[query stage & args]
                          [:=> [:cat :string :int [:sequential :any]] :string])))))
 
+(deftest predicate-schema-test
+  (testing "common predicate schemas produce precise primitive types"
+    (are [expected schema] (= expected (ts/schema->ts schema))
+      "number"  int?
+      "boolean" boolean?
+      "number"  double?
+      "number"  float?
+      "string"  symbol?
+      "string"  uuid?)))
+
 (deftest fallback-declarations-test
   (testing "fallback function declarations preserve export and arity"
     (is (= (str "/**\n"
@@ -194,4 +232,3 @@
   "Run tests from shadow-cljs context."
   []
   (clojure.test/run-tests 'metabase.util.malli.typescript-test))
-

@@ -133,9 +133,9 @@
 (defn- quote-if-necessary
   "Quote a property name if it contains characters invalid for JS identifiers."
   [s]
-  (if (re-find #"[^\w\d_]" s)
-    (str "\"" s "\"")
-    s))
+  (if (re-matches #"[A-Za-z_$][\w$]*" s)
+    s
+    (str "\"" s "\"")))
 
 (defn- indent-ts
   "Add proper indentation to TypeScript type definition based on brace depth.
@@ -179,6 +179,10 @@
 (defmethod -schema->ts :any      [schema]
   (let [props (mc/properties schema)]
     (cond
+      ;; [:any {:typescript "CustomType"}] => "CustomType"
+      (:typescript props)
+      (:typescript props)
+
       ;; [:any {:ts/array-of <element-schema>}] => "ElementType[]"
       (:ts/array-of props)
       (str (schema->ts (:ts/array-of props)) "[]")
@@ -196,22 +200,29 @@
             "unknown"))
 
       :else
-      (do (record-weak-type! :any)
+      (do (record-weak-type! :unknown)
           "unknown"))))
 (defmethod -schema->ts :re       [_] "string")
 (defmethod -schema->ts 'pos-int? [_] "number")
 (defmethod -schema->ts 'nat-int? [_] "number")
 (defmethod -schema->ts 'neg-int? [_] "number")
 (defmethod -schema->ts 'int      [_] "number")
+(defmethod -schema->ts 'int?     [_] "number")
 (defmethod -schema->ts 'number?  [_] "number")
 (defmethod -schema->ts 'string?  [_] "string")
 (defmethod -schema->ts 'boolean  [_] "boolean")
+(defmethod -schema->ts 'boolean? [_] "boolean")
 (defmethod -schema->ts 'double   [_] "number")
+(defmethod -schema->ts 'double?  [_] "number")
 (defmethod -schema->ts 'float    [_] "number")
+(defmethod -schema->ts 'float?   [_] "number")
 (defmethod -schema->ts 'keyword? [_] "string")
 (defmethod -schema->ts 'symbol   [_] "string")
+(defmethod -schema->ts 'symbol?  [_] "string")
 (defmethod -schema->ts 'uuid     [_] "string")
+(defmethod -schema->ts 'uuid?    [_] "string")
 (defmethod -schema->ts 'nil      [_] "null")
+(defmethod -schema->ts 'nil?     [_] "null")
 (defmethod -schema->ts 'vector?  [_]
   (record-weak-type! :unknown)
   "unknown[]")
@@ -242,17 +253,27 @@
 
 (defmethod -schema->ts :map
   [schema]
-  (let [children (mc/children schema)
-        entries  (map (fn [[k opts v-schema]]
-                        (let [k-str     (-> (if (keyword? k) (name k) (str k))
-                                            (quote-if-necessary))
-                              optional? (:optional opts)
-                              separator (if optional? "?:" ":")]
-                          (str k-str separator " " (schema->ts v-schema))))
-                      children)]
-    (if (empty? entries)
-      "Record<string, unknown>"
-      (str "{\n" (str/join ";\n" (map #(str "\t" %) entries)) ";\n}"))))
+  (let [closed? (true? (:closed (mc/properties schema)))
+        children (mc/children schema)
+        entries  (mapv (fn [[k opts v-schema]]
+                         (let [k-str     (-> (if (keyword? k) (name k) (str k))
+                                             (quote-if-necessary))
+                               optional? (:optional opts)
+                               separator (if optional? "?:" ":")]
+                           (str k-str separator " " (schema->ts v-schema))))
+                       children)
+        entries  (cond-> entries
+                   (and (not closed?) (seq entries))
+                   (conj "[key: string]: any"))]
+    (cond
+      (seq entries)
+      (str "{\n" (str/join ";\n" (map #(str "\t" %) entries)) ";\n}")
+
+      closed?
+      "{}"
+
+      :else
+      "Record<string, unknown>")))
 
 (defmethod -schema->ts :map-of
   [schema]
@@ -469,8 +490,10 @@
 
 (defmethod -schema->ts :fn
   [schema]
-  (or (:typescript (mc/properties schema))
-      "unknown"))
+  (let [typescript (:typescript (mc/properties schema))]
+    (when (or (nil? typescript) (= "unknown" typescript))
+      (record-weak-type! :unknown))
+    (or typescript "unknown")))
 
 ;; Default fallback
 
@@ -546,10 +569,14 @@
 (defn schema->ts
   "Convert a Malli schema to TypeScript type definition.
    Dispatches on the schema type (keyword).
-   Uses memoization unless *bypass-memoization* is true or *argument-context* is true
-   (since argument context affects :maybe output)."
+   Uses memoization only when no dynamic generation context can affect the returned
+   type string or side-effect collection."
   [schema]
-  (if (or *bypass-memoization* *argument-context*)
+  (if (or *bypass-memoization*
+          *argument-context*
+          *registry-refs*
+          *weak-types*
+          (seq *shared-types*))
     (schema->ts-impl schema)
     (schema->ts-memoized schema)))
 
@@ -636,8 +663,8 @@
                                 :arg-schema (first remaining-schemas)
                                 :arg-idx    arg-idx
                                 :rest?      true}))
-            (if-let [_rest-name (second remaining-args)]
-              (conj specs {:arg-name   'rest
+            (if-let [rest-name (second remaining-args)]
+              (conj specs {:arg-name   rest-name
                            :arg-schema (first remaining-schemas)
                            :arg-idx    arg-idx
                            :rest?      true})
@@ -664,8 +691,8 @@
             (recur (next remaining-args)
                    (inc arg-idx)
                    (conj specs {:arg-name 'rest :arg-idx arg-idx :rest? true}))
-            (if-let [_rest-name (second remaining-args)]
-              (conj specs {:arg-name 'rest :arg-idx arg-idx :rest? true})
+            (if-let [rest-name (second remaining-args)]
+              (conj specs {:arg-name rest-name :arg-idx arg-idx :rest? true})
               specs))
           (recur (next remaining-args)
                  (inc arg-idx)
