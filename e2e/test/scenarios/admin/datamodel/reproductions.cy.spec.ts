@@ -201,8 +201,7 @@ describe("issue 52411", { tags: "@external" }, () => {
     cy.visit("/admin/datamodel/segments");
     cy.findByTestId("segment-list-table").findByText("Filter by table").click();
     H.popover().within(() => {
-      // force-click dodges the list re-render that detaches the item mid-click.
-      cy.findByText("Writable Postgres12").click({ force: true });
+      cy.findByText("Writable Postgres12").click();
       cy.findByText("Wild").click();
       cy.findByText("Birds").click();
     });
