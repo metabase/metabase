@@ -5,6 +5,7 @@
   streams) so the suite is fast and not flaky."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.channel.render.pdf :as pdf])
   (:import
    (clojure.lang ExceptionInfo)
@@ -184,3 +185,17 @@
                         set)]
           ;; "rel" (relative) and "js" (javascript:) must not be clickable
           (is (= #{"https://metabase.com" "mailto:a@b.com"} uris)))))))
+
+;; --------------------------------------------------------------------------------------------
+;; Link cards render as clickable markdown text cells
+;; --------------------------------------------------------------------------------------------
+
+(deftest link-card-cell-test
+  (testing "a URL link dashcard becomes a markdown text cell (clickable like any md link)"
+    (binding [api/*current-user-id* 1]
+      (is (= {:row 0 :col 0 :size_x 2 :size_y 1 :kind :text
+              :text "### [https://example.com](https://example.com)"}
+             (#'pdf/dashcard->cell {:row 0 :col 0 :size_x 2 :size_y 1
+                                    :visualization_settings {:virtual_card {:display "link"}
+                                                             :link {:url "https://example.com"}}}
+                                   []))))))

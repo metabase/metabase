@@ -886,7 +886,7 @@
 
 (defn- dashcard->cell
   "Build a renderable cell from a dashcard, preserving its grid geometry. Returns nil for
-  dashcard kinds we don't render (link/iframe/placeholder/action) or cards that fail/are empty."
+  dashcard kinds we don't render (iframe/placeholder/action) or cards that fail/are empty."
   [dc parameters]
   (let [geom (select-keys dc [:row :col :size_x :size_y])]
     (cond
@@ -903,6 +903,12 @@
       (assoc geom :kind :text
              :text (get-in (notification.execute/process-virtual-dashcard dc parameters)
                            [:visualization_settings :text]))
+
+      ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
+      ;; reuse the email conversion so they match, and so entity links are permission-checked.
+      (notification.execute/virtual-card-of-type? dc "link")
+      (when-let [part (notification.execute/dashcard-link-card->part dc)]
+        (assoc geom :kind :text :text (:text part)))
 
       :else nil)))
 
@@ -1081,7 +1087,9 @@
                        (.setRectangle rect)
                        (.setBorderStyle border)
                        (.setAction (doto (PDActionURI.) (.setURI (str href)))))]
-          (.add annots link))))))
+          (.add annots link)))
+      ;; re-attach the list so the /Annots array is written when the page has none yet
+      (.setAnnotations pg annots))))
 
 (defn- render-page!
   [^PDDocument doc {:keys [^PDRectangle rect unit]} timezone page]
