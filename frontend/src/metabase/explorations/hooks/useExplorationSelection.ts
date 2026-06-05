@@ -3,6 +3,7 @@ import {
   type SetStateAction,
   useCallback,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { t } from "ttag";
@@ -91,17 +92,24 @@ export interface ExplorationSelection {
   setName: Dispatch<SetStateAction<string>>;
   setCollection: (collection: Required<ExplorationCollection>) => void;
 
-  addMetric: (metric: ExplorationMetric, context: ToggleMetricContext) => void;
+  // Add mutators return true iff they actually changed the selection (a no-op add
+  // returns false), so callers can avoid over-counting analytics edits.
+  addMetric: (
+    metric: ExplorationMetric,
+    context: ToggleMetricContext,
+  ) => boolean;
   addDimension: (
     dimension: MetricDimension,
     context: ToggleDimensionContext,
-  ) => void;
+  ) => boolean;
 
   toggleTimeline: (timeline: Timeline) => void;
-  addTimelinesById: (timelineIds: number[]) => void;
-  removeTimelinesById: (timelineIds: number[]) => void;
+  // Return true iff the selection actually changed (no-op adds/removes return false),
+  // so callers can avoid over-counting analytics edits.
+  addTimelinesById: (timelineIds: number[]) => boolean;
+  removeTimelinesById: (timelineIds: number[]) => boolean;
 
-  removeBlock: (blockId: string) => void;
+  removeBlock: (blockId: string) => boolean;
 
   // Deselect metrics and/or dimensions within a block. Metric ids apply to a dimension block,
   // dimension ids to a metric block; a mismatched family is ignored. If the removal empties the
@@ -112,7 +120,7 @@ export interface ExplorationSelection {
       metricIds?: ExplorationMetric["id"][];
       dimensionIds?: DimensionId[];
     },
-  ) => void;
+  ) => boolean;
 
   // Flip whether a candidate child is selected within an existing block.
   toggleDimensionSelected: (blockId: string, dimensionId: DimensionId) => void;
@@ -199,6 +207,45 @@ export function useExplorationSelection(): ExplorationSelection {
     name: t`Personal collection`,
   });
 
+  // Refs mirror the latest blocks/timelines so mutators can compute a change-delta
+  // synchronously (the setState functional updater runs async/batched, so its result
+  // can't be read back in time to gate analytics). They also stay correct across
+  // several mutator calls within a single handler-loop iteration, before React commits.
+  const blocksRef = useRef(blocks);
+  const timelinesRef = useRef(timelines);
+  blocksRef.current = blocks;
+  timelinesRef.current = timelines;
+
+  // Apply a pure updater to blocks: update the ref synchronously, schedule the state
+  // update, and return whether the reference actually changed.
+  const updateBlocks = useCallback(
+    (updater: (prev: ExplorationBlock[]) => ExplorationBlock[]): boolean => {
+      const prev = blocksRef.current;
+      const next = updater(prev);
+      blocksRef.current = next;
+      if (next !== prev) {
+        setBlocks(next);
+        return true;
+      }
+      return false;
+    },
+    [],
+  );
+
+  const updateTimelines = useCallback(
+    (updater: (prev: Timeline[]) => Timeline[]): boolean => {
+      const prev = timelinesRef.current;
+      const next = updater(prev);
+      timelinesRef.current = next;
+      if (next !== prev) {
+        setTimelines(next);
+        return true;
+      }
+      return false;
+    },
+    [],
+  );
+
   const {
     data: allTimelines = [],
     isLoading: timelinesLoading,
@@ -209,8 +256,8 @@ export function useExplorationSelection(): ExplorationSelection {
     (
       metric: ExplorationMetric,
       { dimensionsById, additionalSelectedDimensionIds }: ToggleMetricContext,
-    ) => {
-      setBlocks((prevBlocks) => {
+    ): boolean => {
+      return updateBlocks((prevBlocks) => {
         const existing = prevBlocks.find(
           (b): b is MetricBlock =>
             isMetricBlock(b) && b.metric.id === metric.id,
@@ -248,13 +295,13 @@ export function useExplorationSelection(): ExplorationSelection {
         ];
       });
     },
-    [],
+    [updateBlocks],
   );
 
   const addDimension = useCallback(
-    (dimension: MetricDimension, context: ToggleDimensionContext) => {
+    (dimension: MetricDimension, context: ToggleDimensionContext): boolean => {
       const id = dimensionBlockId(dimension.id);
-      setBlocks((prevBlocks) => {
+      return updateBlocks((prevBlocks) => {
         const existing = prevBlocks.find(
           (b): b is DimensionBlock => b.id === id && isDimensionBlock(b),
         );
@@ -279,7 +326,7 @@ export function useExplorationSelection(): ExplorationSelection {
         return [...prevBlocks, buildDimensionBlock(dimension, context)];
       });
     },
-    [],
+    [updateBlocks],
   );
 
   const toggleTimeline = useCallback((timeline: Timeline) => {
@@ -292,9 +339,9 @@ export function useExplorationSelection(): ExplorationSelection {
   }, []);
 
   const addTimelinesById = useCallback(
-    (timelineIds: number[]) => {
+    (timelineIds: number[]): boolean => {
       const timelinesById = new Map(allTimelines.map((t) => [t.id, t]));
-      setTimelines((prev) => {
+      return updateTimelines((prev) => {
         const have = new Set(prev.map((t) => t.id));
         const merged = [...prev];
         for (const id of timelineIds) {
@@ -307,21 +354,31 @@ export function useExplorationSelection(): ExplorationSelection {
         return merged.length === prev.length ? prev : merged;
       });
     },
-    [allTimelines],
+    [allTimelines, updateTimelines],
   );
 
-  const removeTimelinesById = useCallback((timelineIds: number[]) => {
-    const remove = new Set(timelineIds);
-    setTimelines((prev) => {
-      const next = prev.filter((t) => !remove.has(t.id));
-      // Preserve the reference when no selected timeline matched (no-op for unknown ids).
-      return next.length === prev.length ? prev : next;
-    });
-  }, []);
+  const removeTimelinesById = useCallback(
+    (timelineIds: number[]): boolean => {
+      const remove = new Set(timelineIds);
+      return updateTimelines((prev) => {
+        const next = prev.filter((t) => !remove.has(t.id));
+        // Preserve the reference when no selected timeline matched (no-op for unknown ids).
+        return next.length === prev.length ? prev : next;
+      });
+    },
+    [updateTimelines],
+  );
 
-  const removeBlock = useCallback((blockId: string) => {
-    setBlocks((prev) => prev.filter((b) => b.id !== blockId));
-  }, []);
+  const removeBlock = useCallback(
+    (blockId: string): boolean => {
+      return updateBlocks((prev) => {
+        const next = prev.filter((b) => b.id !== blockId);
+        // Preserve the reference when the id wasn't in the plan (no-op).
+        return next.length === prev.length ? prev : next;
+      });
+    },
+    [updateBlocks],
+  );
 
   const removeBlockMembers = useCallback(
     (
@@ -333,8 +390,9 @@ export function useExplorationSelection(): ExplorationSelection {
         metricIds?: ExplorationMetric["id"][];
         dimensionIds?: DimensionId[];
       },
-    ) => {
-      setBlocks((prev) => {
+    ): boolean => {
+      return updateBlocks((prev) => {
+        let changed = false;
         const next: ExplorationBlock[] = [];
         for (const block of prev) {
           if (block.id !== blockId) {
@@ -351,6 +409,12 @@ export function useExplorationSelection(): ExplorationSelection {
             for (const id of dimensionIds) {
               selected.delete(id);
             }
+            if (selected.size === block.selectedDimensionIds.size) {
+              // Nothing was actually deselected.
+              next.push(block);
+              continue;
+            }
+            changed = true;
             // A metric block with no selected dimensions is invalid — drop it entirely.
             if (selected.size > 0) {
               next.push({ ...block, selectedDimensionIds: selected });
@@ -365,15 +429,22 @@ export function useExplorationSelection(): ExplorationSelection {
             for (const id of metricIds) {
               selected.delete(id);
             }
+            if (selected.size === block.selectedMetricIds.size) {
+              // Nothing was actually deselected.
+              next.push(block);
+              continue;
+            }
+            changed = true;
             if (selected.size > 0) {
               next.push({ ...block, selectedMetricIds: selected });
             }
           }
         }
-        return next;
+        // Preserve the reference when nothing changed (no-op for unknown block/members).
+        return changed ? next : prev;
       });
     },
-    [],
+    [updateBlocks],
   );
 
   const toggleDimensionSelected = useCallback(

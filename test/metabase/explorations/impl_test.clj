@@ -185,4 +185,8 @@
     (testing "metric anchor missing metric_id"
       (is (thrown-with-msg? Exception #"requires a metric_id"
                             (explorations.impl/research-groups
-                             {:groups [{:anchor "metric"}]}))))))
+                             {:groups [{:anchor "metric"}]}))))
+    (testing "dimension anchor missing dimension_id"
+      (is (thrown-with-msg? Exception #"requires a dimension_id"
+                            (explorations.impl/research-groups
+                             {:groups [{:anchor "dimension"}]}))))))

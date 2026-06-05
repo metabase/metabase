@@ -109,7 +109,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         return;
       }
 
-      trackExplorationPlanEdited("agent", "metrics");
+      let addedAny = false;
 
       try {
         for (const message of messages) {
@@ -153,23 +153,31 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
             if (group.anchor === "metric") {
               const metric = metricsById.get(group.metric_id);
               if (metric) {
-                addMetric(metric, {
+                // Call unconditionally (no `||=` short-circuit), then OR the result so
+                // every add still runs even after one has already changed the plan.
+                const changed = addMetric(metric, {
                   dimensionsById,
                   additionalSelectedDimensionIds: new Set(
                     group.dimension_ids ?? [],
                   ),
                 });
+                addedAny = addedAny || changed;
               }
             } else {
               const dimensionGroup = groupByDimensionId.get(group.dimension_id);
               if (dimensionGroup) {
-                addDimension(dimensionGroup.dimensions[0], {
+                const changed = addDimension(dimensionGroup.dimensions[0], {
                   group: dimensionGroup,
                   metricsByDimension,
                 });
+                addedAny = addedAny || changed;
               }
             }
           }
+        }
+
+        if (addedAny) {
+          trackExplorationPlanEdited("agent", "metrics");
         }
       } catch (error) {
         console.error(error);
@@ -197,21 +205,23 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           const { block_ids, members, timeline_ids } = JSON.parse(
             message.result,
           ) as RemoveFromResearchPlanResponse;
-          // Removing a block/member/timeline that isn't in the plan is a no-op.
+          // Removing a block/member/timeline that isn't in the plan is a no-op, so only
+          // flag a change when the mutator reports it actually removed something. Call
+          // each mutator unconditionally (no `||=` short-circuit) so every removal runs.
           for (const blockId of block_ids ?? []) {
-            removeBlock(blockId);
-            removedGroups = true;
+            const removed = removeBlock(blockId);
+            removedGroups = removedGroups || removed;
           }
           for (const member of members ?? []) {
-            removeBlockMembers(member.block_id, {
+            const removed = removeBlockMembers(member.block_id, {
               metricIds: member.metric_ids,
               dimensionIds: member.dimension_ids,
             });
-            removedGroups = true;
+            removedGroups = removedGroups || removed;
           }
           if (timeline_ids?.length) {
-            removeTimelinesById(timeline_ids);
-            removedTimelines = true;
+            const removed = removeTimelinesById(timeline_ids);
+            removedTimelines = removedTimelines || removed;
           }
         }
       } catch (error) {
@@ -256,8 +266,6 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         return;
       }
 
-      trackExplorationPlanEdited("agent", "timelines");
-
       try {
         const timelineIds = messages.flatMap((message) => {
           const parsed = JSON.parse(message.result) as {
@@ -265,7 +273,9 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           };
           return parsed.timeline_ids;
         });
-        addTimelinesById(timelineIds);
+        if (addTimelinesById(timelineIds)) {
+          trackExplorationPlanEdited("agent", "timelines");
+        }
       } catch (error) {
         console.error(error);
         sendToast({

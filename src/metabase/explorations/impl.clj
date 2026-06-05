@@ -388,6 +388,8 @@
                                 {:anchor "metric" :metric_id metric-id :dimension_id d}))))))
         "dimension"
         (let [dimension-id (:dimension_id g)]
+          (when (nil? dimension-id)
+            (throw (ex-info "A dimension-anchored group requires a dimension_id" {:group g})))
           (when-not (contains? all-dim-ids dimension-id)
             (throw (ex-info (format "Unknown dimension id %s" dimension-id)
                             {:anchor "dimension" :dimension_id dimension-id}))))
