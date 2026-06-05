@@ -17,6 +17,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
   context("SQL question with field filters", () => {
     beforeEach(() => {
+      // The native question uses H2-specific schema-qualified SQL that SQLite
+      // can't run, so this context uses the H2 sample DB. skipCache: the outer
+      // beforeEach cached a session that is stale after this restore.
+      H.restore("default-with-h2");
+      cy.signIn("admin", { skipCache: true });
+
       H.createNativeQuestionAndDashboard({
         questionDetails: nativeQuestionDetails,
         dashboardDetails: nativeDashboardDetails,

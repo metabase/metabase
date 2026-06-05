@@ -497,9 +497,13 @@ describe("issues 20845, 25031", () => {
 
           // wait for the results to load
           cy.contains(dashboardDetails.name);
-          cy.get(".CardVisualization")
-            .should("contain", "COUNT(*)")
-            .and("contain", "5");
+          cy.get(".CardVisualization").as("cardViz");
+          // SQLite preserves the literal `count(*)` column name while H2
+          // uppercases it, so match the header case-insensitively.
+          cy.get("@cardViz")
+            .invoke("text")
+            .should("match", /count\(\*\)/i);
+          cy.get("@cardViz").should("contain", "5");
         });
       });
     });

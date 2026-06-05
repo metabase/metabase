@@ -1,10 +1,17 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  H2_SAMPLE_DB_ID,
+  SAMPLE_DB_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+
+const { ORDERS_ID: H2_ORDERS_ID } = H2_SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -79,9 +86,16 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should allow selecting cells in a table and copy the values", () => {
+    // The unformatted copy asserts a report-timezone offset (-08:00) on Created
+    // At, which requires H2's temporal/timezone semantics. SQLite surfaces the
+    // value as UTC (...892Z). Use the H2 sample DB. skipCache: the outer
+    // beforeEach cached a session that is stale after this restore.
+    H.restore("default-with-h2");
+    cy.signIn("normal", { skipCache: true });
+
     H.grantClipboardPermissions();
 
-    H.openOrdersTable();
+    H.openTable({ database: H2_SAMPLE_DB_ID, table: H2_ORDERS_ID });
 
     const getNonPKCells = () =>
       H.tableInteractiveBody().find(
@@ -1240,9 +1254,17 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
   });
 
   it("should work with time columns", { tags: ["@external"] }, () => {
+    // The TIME column must be recognized as temporal so the formatting menu is
+    // available. SQLite does not surface TIME as a temporal type. Use the H2
+    // sample DB. skipCache: the outer beforeEach cached a session that is stale
+    // after this restore.
+    H.restore("default-with-h2");
+    cy.signIn("normal", { skipCache: true });
+
     H.createNativeQuestion(
       {
         name: "11398",
+        database: H2_SAMPLE_DB_ID,
         native: {
           query: singleTimeQuery,
         },

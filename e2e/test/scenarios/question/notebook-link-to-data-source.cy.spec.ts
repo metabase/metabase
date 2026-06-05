@@ -144,7 +144,7 @@ describe("scenarios > notebook > link to data source", () => {
       const source = {
         name: "Native source",
         native: {
-          query: "select 1 as foo",
+          query: "select 1 as FOO",
           "template-tags": {},
         },
       };

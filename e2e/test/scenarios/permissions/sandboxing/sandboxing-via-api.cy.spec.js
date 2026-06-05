@@ -226,7 +226,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       cy.log("setup sandboxing");
       cy.visit(
-        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/table/${PRODUCTS_ID}`,
       );
       H.modifyPermission("collection", 0, "Row and column security");
       H.modal().findByText("Pick a column").click();
@@ -1259,7 +1259,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           },
         });
         cy.visit(
-          `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
+          `/admin/permissions/data/database/${SAMPLE_DB_ID}/table/${PRODUCTS_ID}`,
         );
         H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
         H.popover().findByText("Edit row and column security").click();

@@ -9,7 +9,7 @@ import type {
 import type { CardId, DashboardParameterMapping } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 // The "dashboards" describe is pinned to the H2 sample database: a boolean custom column isn't
 // available for click-behavior column mapping on the SQLite sample DB (it loses its boolean type).
 const {

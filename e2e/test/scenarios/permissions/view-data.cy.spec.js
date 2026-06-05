@@ -23,7 +23,7 @@ describe("scenarios > admin > permissions > view data > blocked", () => {
 
   it("should allow saving 'blocked' and disable create queries dropdown when set", () => {
     cy.visit(
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`, // table level
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`, // table level
     );
 
     H.assertPermissionForItem(g, DATA_ACCESS_PERM_IDX, "Can view", false);
@@ -631,7 +631,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     cy.url().should(
       "include",
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Configure row and column security for this table");
@@ -679,7 +679,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     cy.url().should(
       "include",
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Configure row and column security for this table");
@@ -724,7 +724,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     cy.url().should(
       "include",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/${ORDERS_ID}/segmented`,
     );
     H.modal().within(() => {
       cy.findByText("Configure row and column security for this table");
@@ -770,7 +770,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     cy.url().should(
       "include",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/${ORDERS_ID}/segmented`,
     );
 
     H.modal().findByText("Configure row and column security for this table");
@@ -781,7 +781,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     cy.url().should(
       "include",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC`,
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
     );
 
     cy.button("Save changes").click();
@@ -799,7 +799,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     // assertions that specifically targets metabase#37774. Should be able to reload with the schema in the URL and not error
     cy.url().should(
       "include",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC`,
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
     );
     cy.reload();
 
@@ -952,7 +952,7 @@ describe("scenarios > admin > permissions > view data > blocked (enforcement)", 
   it("should deny view access to a query builder question that makes use of a blocked table", () => {
     assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
     cy.visit(
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`,
     );
     removeCollectionGroupPermissions();
     assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
@@ -971,7 +971,7 @@ describe("scenarios > admin > permissions > view data > blocked (enforcement)", 
     }).then(({ body: { id: nativeQuestionId } }) => {
       assertCollectionGroupUserHasAccess(nativeQuestionId, false);
       cy.visit(
-        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`,
       );
       removeCollectionGroupPermissions();
       assertCollectionGroupHasNoAccess(nativeQuestionId, false);
@@ -1044,7 +1044,7 @@ function makeOrdersSandboxed() {
 
   cy.url().should(
     "include",
-    `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
+    `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/${ORDERS_ID}/segmented`,
   );
 
   cy.findByText("Configure row and column security for this table");

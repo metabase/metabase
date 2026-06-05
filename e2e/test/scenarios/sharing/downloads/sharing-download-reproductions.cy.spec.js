@@ -1,5 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID } =
@@ -11,12 +11,15 @@ describe("issue 10803", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore();
+    // The native query relies on H2's parsedatetime function, which SQLite
+    // doesn't have, so run it against the H2 sample DB.
+    H.restore("default-with-h2");
     cy.signInAsAdmin();
 
     H.createNativeQuestion(
       {
         name: "10803",
+        database: H2_SAMPLE_DB_ID,
         native: {
           query:
             "SELECT cast(parsedatetime('2026-06-03', 'yyyy-MM-dd') AS timestamp) AS \"birth_date\", cast(parsedatetime('2026-06-03 23:41:23', 'yyyy-MM-dd HH:mm:ss') AS timestamp) AS \"created_at\"",

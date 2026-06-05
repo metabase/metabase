@@ -1,11 +1,20 @@
 const { H } = cy;
+import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
+
+const {
+  ORDERS_ID: H2_ORDERS_ID,
+  ORDERS: H2_ORDERS,
+  PEOPLE_ID: H2_PEOPLE_ID,
+  PEOPLE: H2_PEOPLE,
+} = H2_SAMPLE_DATABASE;
 
 const questionWith2TemporalBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
@@ -117,6 +126,96 @@ const multiStageQuestionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails
       filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
     },
   };
+
+// H2 variants of the question details above. The SQLite sample DB stores dates
+// as TEXT, so temporal aggregations/expressions degrade to string output. Tests
+// that assert genuine temporal output must run against the H2 sample DB.
+const h2QuestionWith2TemporalBreakoutsDetails: StructuredQuestionDetails = {
+  name: "Test question",
+  database: H2_SAMPLE_DB_ID,
+  query: {
+    "source-table": H2_ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        H2_ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "year" },
+      ],
+      [
+        "field",
+        H2_ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+    ],
+  },
+  display: "table",
+  visualization_settings: {
+    "table.pivot": false,
+  },
+};
+
+const h2QuestionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails = {
+  name: "Test question",
+  database: H2_SAMPLE_DB_ID,
+  query: {
+    "source-table": H2_ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        H2_ORDERS.TOTAL,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "num-bins", "num-bins": 10 },
+        },
+      ],
+      [
+        "field",
+        H2_ORDERS.TOTAL,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "num-bins", "num-bins": 50 },
+        },
+      ],
+    ],
+  },
+  display: "table",
+  visualization_settings: {
+    "table.pivot": false,
+  },
+};
+
+const h2QuestionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails = {
+  name: "Test question",
+  database: H2_SAMPLE_DB_ID,
+  query: {
+    "source-table": H2_PEOPLE_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        H2_PEOPLE.LATITUDE,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "bin-width", "bin-width": 20 },
+        },
+      ],
+      [
+        "field",
+        H2_PEOPLE.LATITUDE,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "bin-width", "bin-width": 10 },
+        },
+      ],
+    ],
+  },
+  display: "table",
+  visualization_settings: {
+    "table.pivot": false,
+  },
+};
 
 const questionWith5TemporalBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
@@ -236,9 +335,10 @@ const dashboardDetails: DashboardDetails = {
   },
 };
 
-function getNestedQuestionDetails(cardId: number) {
+function getNestedQuestionDetails(cardId: number, database?: number) {
   return {
     name: "Nested question",
+    database,
     query: {
       "source-table": `card__${cardId}`,
     },
@@ -772,6 +872,13 @@ describe("scenarios > question > multiple column breakouts", () => {
   describe("previous stage", () => {
     describe("notebook", () => {
       it("should be able to add post-aggregation expressions for each breakout column", () => {
+        // datetimeAdd and min/max of date columns need genuine temporal output,
+        // which the SQLite sample DB can't provide (dates are stored as TEXT).
+        // Use the H2 sample DB. skipCache: the outer beforeEach cached a session
+        // that is stale after this restore.
+        H.restore("default-with-h2");
+        cy.signIn("normal", { skipCache: true });
+
         function testDatePostAggregationExpression({
           questionDetails,
           expression1,
@@ -812,7 +919,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         // Fragile and bound to break when the year changes
         cy.log("temporal breakouts");
         testDatePostAggregationExpression({
-          questionDetails: questionWith2TemporalBreakoutsDetails,
+          questionDetails: h2QuestionWith2TemporalBreakoutsDetails,
           expression1: 'datetimeAdd([Created At: Year], 1, "year")',
           expression2: 'datetimeAdd([Created At: Month], 1, "month")',
         });
@@ -837,7 +944,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("'num-bins' breakouts");
         testDatePostAggregationExpression({
-          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          questionDetails: h2QuestionWith2NumBinsBreakoutsDetails,
           expression1: "[Total: 10 bins] + 100",
           expression2: "[Total: 10 bins] + 200",
         });
@@ -855,7 +962,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("'max-bins' breakouts");
         testDatePostAggregationExpression({
-          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          questionDetails: h2QuestionWith2BinWidthBreakoutsDetails,
           expression1: "[Latitude: 20°] + 100",
           expression2: "[Latitude: 10°] + 200",
         });
@@ -1050,6 +1157,12 @@ describe("scenarios > question > multiple column breakouts", () => {
       });
 
       it("should be able to add post-aggregation aggregations for each breakout column", () => {
+        // min/max of date columns need genuine temporal output, which the SQLite
+        // sample DB can't provide (dates are stored as TEXT). Use the H2 sample
+        // DB. skipCache: the outer beforeEach cached a stale session.
+        H.restore("default-with-h2");
+        cy.signIn("normal", { skipCache: true });
+
         function testPostAggregationAggregation({
           questionDetails,
           column1Name,
@@ -1083,7 +1196,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("temporal breakouts");
         testPostAggregationAggregation({
-          questionDetails: questionWith2TemporalBreakoutsDetails,
+          questionDetails: h2QuestionWith2TemporalBreakoutsDetails,
           column1Name: "Created At: Year",
           column2Name: "Created At: Month",
         });
@@ -1094,7 +1207,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("'num-bins' breakouts");
         testPostAggregationAggregation({
-          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          questionDetails: h2QuestionWith2NumBinsBreakoutsDetails,
           column1Name: "Total: 10 bins",
           column2Name: "Total: 50 bins",
         });
@@ -1105,7 +1218,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("'max-bins' breakouts");
         testPostAggregationAggregation({
-          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          questionDetails: h2QuestionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude: 20°",
           column2Name: "Latitude: 10°",
         });
@@ -1635,6 +1748,12 @@ describe("scenarios > question > multiple column breakouts", () => {
       });
 
       it("should be able to add aggregations for each source column", () => {
+        // min/max of date columns need genuine temporal output, which the SQLite
+        // sample DB can't provide (dates are stored as TEXT). Use the H2 sample
+        // DB. skipCache: the outer beforeEach cached a stale session.
+        H.restore("default-with-h2");
+        cy.signIn("normal", { skipCache: true });
+
         function testSourceAggregation({
           questionDetails,
           column1Name,
@@ -1645,9 +1764,12 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: string;
         }) {
           H.createQuestion(questionDetails).then(({ body: card }) => {
-            H.createQuestion(getNestedQuestionDetails(card.id), {
-              visitQuestion: true,
-            });
+            H.createQuestion(
+              getNestedQuestionDetails(card.id, H2_SAMPLE_DB_ID),
+              {
+                visitQuestion: true,
+              },
+            );
           });
           H.openNotebook();
 
@@ -1672,7 +1794,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("temporal breakouts");
         testSourceAggregation({
-          questionDetails: questionWith2TemporalBreakoutsDetails,
+          questionDetails: h2QuestionWith2TemporalBreakoutsDetails,
           column1Name: "Created At: Year",
           column2Name: "Created At: Month",
         });
@@ -1683,7 +1805,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("'num-bins' breakouts");
         testSourceAggregation({
-          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          questionDetails: h2QuestionWith2NumBinsBreakoutsDetails,
           column1Name: "Total: 10 bins",
           column2Name: "Total: 50 bins",
         });
@@ -1694,7 +1816,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("'max-bins' breakouts");
         testSourceAggregation({
-          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          questionDetails: h2QuestionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude: 20°",
           column2Name: "Latitude: 10°",
         });

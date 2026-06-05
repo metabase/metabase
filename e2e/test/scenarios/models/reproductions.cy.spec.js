@@ -1,10 +1,12 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+  H2_SAMPLE_DB_ID,
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+} from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createMockActionParameter,
   createMockDashboardCard,
@@ -16,6 +18,8 @@ import { turnIntoModel } from "./helpers/e2e-models-helpers";
 
 const { ORDERS_ID, ORDERS, REVIEWS, REVIEWS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
+
+const { ORDERS_ID: H2_ORDERS_ID } = H2_SAMPLE_DATABASE;
 
 describe("issue 19737", () => {
   const modelName = "Orders Model";
@@ -266,6 +270,7 @@ describe("issue 23421", () => {
     'SELECT 1 AS "id", current_timestamp::timestamp AS "created_at"';
 
   const emptyColumnsQuestionDetails = {
+    database: H2_SAMPLE_DB_ID,
     native: {
       query,
     },
@@ -279,6 +284,7 @@ describe("issue 23421", () => {
   };
 
   const hiddenColumnsModelDetails = {
+    database: H2_SAMPLE_DB_ID,
     native: {
       query,
     },
@@ -305,8 +311,11 @@ describe("issue 23421", () => {
   };
 
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+    // The native query uses H2/Postgres-style `::timestamp` casting, which
+    // SQLite doesn't support. Use the H2 sample DB. skipCache: the restore
+    // invalidates the session that signInAsAdmin would otherwise reuse.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
   });
 
   it("`visualization_settings` should not break UI (metabase#23421)", () => {
@@ -415,10 +424,9 @@ describe("issue 29378", () => {
     name: "Update orders quantity",
     description: "Set orders quantity to the same value",
     type: "query",
-    model_id: ORDERS_QUESTION_ID,
-    database_id: SAMPLE_DB_ID,
+    database_id: H2_SAMPLE_DB_ID,
     dataset_query: {
-      database: SAMPLE_DB_ID,
+      database: H2_SAMPLE_DB_ID,
       native: {
         query: "UPDATE orders SET quantity = quantity",
       },
@@ -431,16 +439,28 @@ describe("issue 29378", () => {
   };
 
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    // Actions require the :actions driver feature, which the SQLite sample DB
+    // doesn't support. Use the H2 sample DB instead. skipCache: the restore
+    // invalidates the session that signInAsAdmin would otherwise reuse.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
+    H.setActionsEnabledForDB(H2_SAMPLE_DB_ID);
+
+    H.createQuestion({
+      type: "model",
+      name: "Orders model",
+      database: H2_SAMPLE_DB_ID,
+      query: { "source-table": H2_ORDERS_ID },
+    }).then(({ body: { id } }) => {
+      cy.wrap(id).as("modelId");
+    });
   });
 
   it("should not crash the model detail page after searching for an action (metabase#29378)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
-    H.createAction(ACTION_DETAILS);
-
-    cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);
+    cy.get("@modelId").then((modelId) => {
+      H.createAction({ ...ACTION_DETAILS, model_id: modelId });
+      cy.visit(`/model/${modelId}/detail`);
+    });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -483,6 +503,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
   const questionDetails = {
     name: "29517",
     type: "model",
+    database: H2_SAMPLE_DB_ID,
     native: {
       query:
         'Select Orders."ID" AS "ID",\nOrders."CREATED_AT" AS "CREATED_AT"\nFrom Orders',
@@ -491,13 +512,16 @@ describe("issue 29517 - nested question based on native model with remapped valu
   };
 
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+    // The native model uses H2 table/column names ("Orders"."CREATED_AT") and a
+    // temporal-unit breakout that depends on date typing SQLite loses. Use the
+    // H2 sample DB. skipCache: the restore invalidates the cached session.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
 
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept(
         "GET",
-        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+        `/api/database/${H2_SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
       ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
@@ -590,6 +614,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
   const questionDetails = {
     name: "53556",
     type: "model",
+    database: H2_SAMPLE_DB_ID,
     native: {
       query:
         "Select " +
@@ -602,13 +627,16 @@ describe("issue 53556 - nested question based on native model with remapped valu
   };
 
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+    // The native model uses H2 table/column names ("Orders"."CREATED_AT") and
+    // temporal/binning breakouts that depend on date typing SQLite loses. Use
+    // the H2 sample DB. skipCache: the restore invalidates the cached session.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
 
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept(
         "GET",
-        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+        `/api/database/${H2_SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
       ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
@@ -787,6 +815,7 @@ describe("issue 52465 - model with linked columns can still be aggregated", () =
   const questionDetails = {
     name: "52465",
     type: "model",
+    database: H2_SAMPLE_DB_ID,
     native: {
       query: `
 SELECT
@@ -800,15 +829,19 @@ FROM
   };
 
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+    // The native model uses H2 uppercase table/column names ("PEOPLE", "SOURCE")
+    // and a PUBLIC schema, neither of which exist in the schema-less SQLite
+    // sample DB. Use the H2 sample DB. skipCache: the restore invalidates the
+    // cached session.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
   });
 
   it("Create model, set metadata, distinct", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept(
         "GET",
-        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+        `/api/database/${H2_SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
       ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
@@ -1055,15 +1088,18 @@ describe("issue 32483", () => {
 });
 
 describe("issue 40252", () => {
+  // Quote the aliases so the column names keep their uppercase casing under
+  // SQLite (bare aliases stay lowercase there, unlike H2), matching the field
+  // refs and expected header text below.
   const modelA = {
     name: "Model A",
-    native: { query: "select 1 as a1, 2 as a2" },
+    native: { query: 'select 1 as "A1", 2 as "A2"' },
     type: "model",
   };
 
   const modelB = {
     name: "Model B",
-    native: { query: "select 1 as b1, 2 as b2" },
+    native: { query: 'select 1 as "B1", 2 as "B2"' },
     type: "model",
   };
 

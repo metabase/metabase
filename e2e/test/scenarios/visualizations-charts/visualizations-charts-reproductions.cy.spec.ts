@@ -306,12 +306,12 @@ describe("issue 55880", () => {
         type: "native",
         native: {
           query: `select * from (
-  select 1415 x, 1 y
+  select 1415 X, 1 Y
   union all select 20, 2
   union all select 900, 3
   union all select 115, 4
 ) as subquery
-where x < {{param}}`,
+where X < {{param}}`,
           "template-tags": {
             param: {
               type: "number",
@@ -360,9 +360,9 @@ describe("issue 47757", () => {
       dataset_query: {
         type: "native",
         native: {
-          query: `select '2020-01-01' x, 10 y
-union all select '2020-03-01' x, 30 y
-union all select '2020-04-01' x, 40 y`,
+          query: `select '2020-01-01' X, 10 Y
+union all select '2020-03-01' X, 30 Y
+union all select '2020-04-01' X, 40 Y`,
         },
         database: SAMPLE_DB_ID,
       },

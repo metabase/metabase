@@ -26,7 +26,7 @@ describe("scenarios > visualizations > waterfall", () => {
   it("should work with ordinal series", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type(
-      "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
+      "select 'A' as PRODUCT, 10 as PROFIT union select 'B' as PRODUCT, -4 as PROFIT",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -240,7 +240,7 @@ describe("scenarios > visualizations > waterfall", () => {
         type: "native",
         native: {
           query:
-            "SELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-02', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\"",
+            'SELECT \'2026-01-01\' AS "d", 1 AS "c" UNION ALL\nSELECT \'2026-01-01\' AS "d", 2 AS "c" UNION ALL\nSELECT \'2026-01-02\' AS "d", 3 AS "c"',
         },
         database: SAMPLE_DB_ID,
       },
@@ -334,7 +334,7 @@ describe("scenarios > visualizations > waterfall", () => {
       display: "waterfall",
       visualization_settings: {
         "graph.show_values": true,
-        column_settings: { '["name","C2"]': { scale: 0.1 } },
+        column_settings: { '["name","column2"]': { scale: 0.1 } },
       },
     });
 
@@ -345,7 +345,7 @@ describe("scenarios > visualizations > waterfall", () => {
     H.assertEChartsTooltip({
       rows: [
         {
-          name: "C2",
+          name: "Column2",
           value: "0.2",
         },
       ],

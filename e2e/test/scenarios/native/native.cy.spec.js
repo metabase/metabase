@@ -94,7 +94,7 @@ describe("scenarios > question > native", () => {
 
     runQuery();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains('Table "NOT_A_TABLE" not found');
+    cy.contains("no such table: not_a_table");
   });
 
   it("displays an error when running selected text", () => {
@@ -107,7 +107,7 @@ describe("scenarios > question > native", () => {
     Cypress._.range(19).forEach(() => cy.realPress(["Shift", "ArrowLeft"]));
     runQuery();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains('Table "ORD" not found');
+    cy.contains("no such table: ord");
   });
 
   describe("template tags", () => {
@@ -479,10 +479,16 @@ describe("scenarios > question > native", () => {
   });
 
   it("shouldn't remove rows containing NULL when using 'Is not' or 'Does not contain' filter (metabase#13332, metabase#37100)", () => {
+    // Pinned to H2: SQLite types the `null AS "V"` column as a number, so the
+    // string filter operators ("Is not", "Does not contain") aren't offered.
+    H.restore("default-with-h2");
+    cy.signInAsNormalUser();
+
     const FILTERS = ["Is not", "Does not contain"];
 
     const questionDetails = {
       name: "13332",
+      database: H2_SAMPLE_DB_ID,
       native: {
         query:
           'SELECT null AS "V", 1 as "N" UNION ALL SELECT \'This has a value\' AS "V", 2 as "N"',
@@ -493,7 +499,7 @@ describe("scenarios > question > native", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestionAdhoc({
         dataset_query: {
-          database: SAMPLE_DB_ID,
+          database: H2_SAMPLE_DB_ID,
           query: {
             "source-table": `card__${id}`,
           },
@@ -542,7 +548,7 @@ describe("scenarios > question > native", () => {
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     H.startNewNativeQuestion({ display: "table" });
-    H.NativeEditor.type("select 1 as visible, 2 as hidden");
+    H.NativeEditor.type("select 1 as VISIBLE, 2 as HIDDEN");
     cy.findByTestId("native-query-editor-container")
       .icon("play")
       .as("runQuery")
@@ -556,7 +562,7 @@ describe("scenarios > question > native", () => {
           .icon("eye_outline")
           .click({ force: true });
       });
-    H.NativeEditor.type("{movetoend}, 3 as added");
+    H.NativeEditor.type("{movetoend}, 3 as ADDED");
     cy.get("@runQuery").click();
     cy.get("@sidebar").contains(/added/i);
   });
@@ -620,9 +626,12 @@ describe("scenarios > question > native", () => {
   });
 
   it("should be possible to format the native query using the keyboard shortcut", () => {
-    H.restore();
+    // Pinned to H2: the SQL formatter has no dialect for SQLite, so the format
+    // shortcut is a no-op and the query stays on a single line.
+    H.restore("default-with-h2");
     cy.signInAsNormalUser();
     H.startNewNativeQuestion({
+      database: H2_SAMPLE_DB_ID,
       query: "SELECT COUNT(*) FROM ORDERS",
     });
     H.NativeEditor.focus();
@@ -901,7 +910,7 @@ describe("scenarios > native question > data reference sidebar", () => {
       {
         name: "Native Products Model",
         description: "A model of the Products table",
-        native: { query: "select id as renamed_id from products" },
+        native: { query: "select id as RENAMED_ID from products" },
         type: "model",
       },
       { visitQuestion: true },

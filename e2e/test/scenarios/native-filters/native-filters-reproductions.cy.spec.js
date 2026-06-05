@@ -1,15 +1,19 @@
 const { H } = cy;
 import {
+  H2_SAMPLE_DB_ID,
   SAMPLE_DB_ID,
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
-const { ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
+
+const { ORDERS: H2_ORDERS, PRODUCTS_ID: H2_PRODUCTS_ID } = H2_SAMPLE_DATABASE;
 
 const { COLLECTION_GROUP } = USER_GROUPS;
 
@@ -57,12 +61,15 @@ describe("issue 11480", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore();
-    cy.signInAsAdmin();
+    // The assertion relies on H2's "Data conversion error" message when a text
+    // value is compared against a numeric column. SQLite is dynamically typed
+    // and does not raise this error, so pin this test to the H2 sample DB.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
   });
 
   it("should clear a template tag's default value when the type changes (metabase#11480)", () => {
-    H.startNewNativeQuestion();
+    H.startNewNativeQuestion({ database: H2_SAMPLE_DB_ID });
     // Parameter `x` defaults to a text parameter.
     SQLFilter.enterParameterizedQuery(
       "select * from orders where total = {{x}}",
@@ -834,7 +841,8 @@ describe("issue 21160", () => {
 
 describe("issue 21246", () => {
   const questionDetails = {
-    query: { "source-table": PRODUCTS_ID },
+    database: H2_SAMPLE_DB_ID,
+    query: { "source-table": H2_PRODUCTS_ID },
   };
   function resultAssertion(res) {
     cy.findByTestId("scalar-value").invoke("text").should("eq", res);
@@ -843,13 +851,16 @@ describe("issue 21246", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore();
-    cy.signInAsAdmin();
+    // The native query uses `created_at::date` casting and unqualified table
+    // names, which only work against the H2 sample DB (SQLite lacks `::` casts).
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
 
     H.createQuestion(questionDetails).then(({ body: { id } }) => {
       const cardTagName = "#" + id;
 
       const nativeQuestionDetails = {
+        database: H2_SAMPLE_DB_ID,
         native: {
           query: `with exclude_products as {{${cardTagName}}}\nselect count(*) from orders where true [[and {{filter}}]] [[and orders.created_at::date={{datevariable}}]]`,
           "template-tags": {
@@ -858,7 +869,7 @@ describe("issue 21246", () => {
               name: "filter",
               "display-name": "Field Filter",
               type: "dimension",
-              dimension: ["field", ORDERS.CREATED_AT, null],
+              dimension: ["field", H2_ORDERS.CREATED_AT, null],
               "widget-type": "date/month-year",
               default: null,
             },

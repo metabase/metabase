@@ -1,4 +1,4 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
   DashboardDetails,
   NativeQuestionDetails,
@@ -1125,7 +1125,14 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     });
   });
 
+  // Pinned to the H2 sample database: the DECIMAL test case casts a value
+  // outside the 64-bit integer range to DECIMAL in native SQL. The SQLite
+  // sample DB has no real DECIMAL type and stores the value as a float, losing
+  // precision, so the exact decimal value never renders for the drill.
   it("query builder + drills", () => {
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
+
     function setupQuestion({
       sourceQuestionDetails,
     }: {
@@ -1141,7 +1148,10 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         display: "table",
       });
 
-      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
+      H.createNativeQuestion({
+        ...sourceQuestionDetails,
+        database: H2_SAMPLE_DB_ID,
+      }).then(({ body: card }) => {
         H.createQuestion(getTargetQuestionDetails(card.id), {
           visitQuestion: true,
         });
@@ -1250,7 +1260,14 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     testExport();
   });
 
+  // Pinned to the H2 sample database: the DECIMAL test case casts a value
+  // outside the 64-bit integer range to DECIMAL in native SQL. The SQLite
+  // sample DB has no real DECIMAL type and stores the value as a float, losing
+  // precision, so the exact decimal value never renders in the card.
   it("dashboards + click behavior", () => {
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
+
     function setupDashboard({
       sourceQuestionDetails,
       baseType,
@@ -1308,7 +1325,10 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         target: ["dimension", ["field", "NUMBER", { "base-type": baseType }]],
       });
 
-      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
+      H.createNativeQuestion({
+        ...sourceQuestionDetails,
+        database: H2_SAMPLE_DB_ID,
+      }).then(({ body: card }) => {
         H.createQuestionAndDashboard({
           questionDetails: getTargetQuestionDetails(card.id),
           dashboardDetails,

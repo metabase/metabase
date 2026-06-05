@@ -1,6 +1,7 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
@@ -16,6 +17,8 @@ const {
   REVIEWS_ID,
   PEOPLE,
 } = SAMPLE_DATABASE;
+
+const { REVIEWS: H2_REVIEWS, REVIEWS_ID: H2_REVIEWS_ID } = H2_SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(() => {
@@ -559,14 +562,23 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should apply correct date range on a graph drill-through (metabase#13785)", () => {
+    // Month bucketing of CREATED_AT needs a real temporal column, which SQLite
+    // loses. Use the H2 sample DB. skipCache: the outer beforeEach cached a
+    // session that is stale after this restore.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
+
     cy.log("Create a question");
 
     H.createQuestion({
       name: "13785",
+      database: H2_SAMPLE_DB_ID,
       query: {
-        "source-table": REVIEWS_ID,
+        "source-table": H2_REVIEWS_ID,
         aggregation: [["count"]],
-        breakout: [["field", REVIEWS.CREATED_AT, { "temporal-unit": "month" }]],
+        breakout: [
+          ["field", H2_REVIEWS.CREATED_AT, { "temporal-unit": "month" }],
+        ],
       },
       display: "bar",
     }).then(({ body: { id: QUESTION_ID } }) => {
@@ -614,7 +626,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
               {
                 parameter_id: "4ff53514",
                 card_id: QUESTION_ID,
-                target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
+                target: ["dimension", ["field", H2_REVIEWS.CREATED_AT, null]],
               },
             ],
           },
@@ -1024,7 +1036,8 @@ function createQuestion(options, callback) {
       database: SAMPLE_DB_ID,
       type: "native",
       native: {
-        query: options.query || "select 111 as my_number, 'foo' as my_string",
+        query:
+          options.query || 'select 111 as "MY_NUMBER", \'foo\' as "MY_STRING"',
       },
     },
     display: "table",

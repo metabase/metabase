@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { H } = cy;
 
@@ -303,9 +303,12 @@ describe(
   },
 );
 
+// Pinned to the H2 sample database: this casts a string to bytea in native SQL and relies on the
+// column retaining bytes typing so datetime(..., "isobytes"/"simplebytes") parses it into a temporal
+// value. On the SQLite sample DB the column loses its bytes typing and the cast produces wrong output.
 describe("exercise binary datetime() cast function", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     cy.signInAsAdmin();
   });
 
@@ -324,6 +327,7 @@ describe("exercise binary datetime() cast function", () => {
     it(`should correctly convert temporal bytes: ${test.expression}`, () => {
       H.createNativeQuestion(
         {
+          database: H2_SAMPLE_DB_ID,
           native: {
             query: test.query,
           },
@@ -334,7 +338,7 @@ describe("exercise binary datetime() cast function", () => {
           {
             dataset_query: {
               type: "query",
-              database: SAMPLE_DB_ID,
+              database: H2_SAMPLE_DB_ID,
               query: {
                 "source-table": `card__${id}`,
               },

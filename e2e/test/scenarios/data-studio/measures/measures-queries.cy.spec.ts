@@ -1,11 +1,25 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import { openNotebook } from "e2e/support/helpers";
 import type { Measure, TableId } from "metabase-types/api";
 
 const { H } = cy;
 const { MeasureEditor } = H.DataModel;
 const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID: H2_ORDERS_ID, ORDERS: H2_ORDERS } = H2_SAMPLE_DATABASE;
+
+// SQLite (the bundled sample DB) compiles `floor(x)` to `round(x - 0.5)` via a
+// driver impl that does not recursively compile non-trivial args (measure refs,
+// nested expressions), so floor-based measure queries error out. These tests use
+// the H2 sample DB instead. skipCache: the outer beforeEach cached a session that
+// is stale after this restore.
+function useH2SampleDb() {
+  H.restore("default-with-h2");
+  cy.signIn("admin", { skipCache: true });
+  // restore wiped the token activated in the outer beforeEach; measures need it.
+  H.activateToken("pro-self-hosted");
+}
 
 const MEASURE_NAME = "Table Measure";
 
@@ -149,16 +163,17 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     it("should create a measure based on another measure", () => {
+      useH2SampleDb();
       H.createMeasure({
         name: "TotalMeasure",
-        table_id: ORDERS_ID,
+        table_id: H2_ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          "source-table": H2_ORDERS_ID,
+          aggregation: [["sum", ["field", H2_ORDERS.TOTAL, null]]],
         },
       });
 
-      startNewMeasure();
+      startNewMeasure({ tableId: H2_ORDERS_ID });
       MeasureEditor.getAggregationPlaceholder().click();
       H.popover().findByText("Custom Expression").click();
       H.CustomExpressionEditor.type("floor([TotalMeasure])");
@@ -166,7 +181,7 @@ describe("scenarios > data studio > measures > queries", () => {
       H.popover().button("Done").click();
       saveMeasure();
 
-      useMeasureInAdhocQuestion();
+      useMeasureInAdhocQuestion({ tableId: H2_ORDERS_ID });
       verifyScalarValue("1,510,621");
     });
 
@@ -407,16 +422,18 @@ describe("scenarios > data studio > measures > queries", () => {
 
   describe("follow up stages", () => {
     it("should be possible to use results of a measure in follow up stages", () => {
+      useH2SampleDb();
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
+        table_id: H2_ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          "source-table": H2_ORDERS_ID,
+          aggregation: [["sum", ["field", H2_ORDERS.TOTAL, null]]],
         },
       });
 
       useMeasureInAdhocQuestion({
+        tableId: H2_ORDERS_ID,
         customizeQuery() {
           breakout("Created At");
 
@@ -476,21 +493,23 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   it("should be possible to join on a measure in a follow up stage with a custom expression", () => {
+    useH2SampleDb();
     H.createMeasure({
       name: MEASURE_NAME,
-      table_id: ORDERS_ID,
+      table_id: H2_ORDERS_ID,
       definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        "source-table": H2_ORDERS_ID,
+        aggregation: [["sum", ["field", H2_ORDERS.TOTAL, null]]],
       },
     });
     useMeasureInAdhocQuestion({
+      tableId: H2_ORDERS_ID,
       customizeQuery() {
         breakout("Created At");
 
         H.getNotebookStep("summarize").button("Join data").click();
         H.popover().within(() => {
-          cy.findByText("Sample Database").click();
+          cy.findByText("Sample Database (H2)").click();
           cy.findByText("Orders").click();
         });
 

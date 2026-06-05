@@ -1,7 +1,7 @@
 const { H } = cy;
 import { chunk } from "underscore";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -107,6 +107,10 @@ describe("issue 11435", () => {
   const questionDetails = {
     name: "11435",
     display: "line",
+    // Native query uses H2-only syntax ("PUBLIC"."ORDERS", "timestamp with time
+    // zone" literals) and relies on temporal column typing the SQLite sample DB
+    // doesn't preserve. Pin this test to the H2 sample DB.
+    database: H2_SAMPLE_DB_ID,
     native: {
       query: `
   SELECT "PUBLIC"."ORDERS"."ID" AS "ID", "PUBLIC"."ORDERS"."USER_ID" AS "USER_ID", "PUBLIC"."ORDERS"."PRODUCT_ID" AS "PRODUCT_ID", "PUBLIC"."ORDERS"."SUBTOTAL" AS "SUBTOTAL", "PUBLIC"."ORDERS"."TAX" AS "TAX", "PUBLIC"."ORDERS"."TOTAL" AS "TOTAL", "PUBLIC"."ORDERS"."DISCOUNT" AS "DISCOUNT", "PUBLIC"."ORDERS"."CREATED_AT" AS "CREATED_AT", "PUBLIC"."ORDERS"."QUANTITY" AS "QUANTITY"
@@ -131,8 +135,8 @@ describe("issue 11435", () => {
   };
 
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
   });
 
   it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
@@ -1158,6 +1162,9 @@ describe("issue 50686", () => {
   const questionDetails = {
     name: "50686",
     display: "smartscalar",
+    // now() is an H2 function (SQLite has no now()) and smartscalar needs the
+    // resulting temporal column typed as a date. Pin this test to the H2 sample DB.
+    database: H2_SAMPLE_DB_ID,
     native: {
       query:
         "select 100 as total, 110 as forecast, 80 as last_year, now() as now",
@@ -1165,8 +1172,8 @@ describe("issue 50686", () => {
   };
 
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
   });
 
   it("should allow selecting more than 1 comparison (metabase#50686)", () => {

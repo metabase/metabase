@@ -1,9 +1,16 @@
+import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 
-const { PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+
+// The native question uses H2-specific schema-qualified syntax ("PUBLIC"."PEOPLE")
+// that SQLite can't run, so it targets the H2 sample DB and its field ids.
+const { PEOPLE: H2_PEOPLE } = H2_SAMPLE_DATABASE;
 
 export const nativeQuestionDetails = {
   name: "Count of People by State (SQL)",
+  database: H2_SAMPLE_DB_ID,
   native: {
     query:
       'SELECT "PUBLIC"."PEOPLE"."STATE" AS "STATE", count(*) AS "count" FROM "PUBLIC"."PEOPLE" WHERE 1=1 [[ AND {{city}}]] [[ AND {{state}}]] GROUP BY "PUBLIC"."PEOPLE"."STATE" ORDER BY "count" DESC, "PUBLIC"."PEOPLE"."STATE" ASC',
@@ -13,7 +20,7 @@ export const nativeQuestionDetails = {
         name: "city",
         "display-name": "City",
         type: "dimension",
-        dimension: ["field", PEOPLE.CITY, null],
+        dimension: ["field", H2_PEOPLE.CITY, null],
         "widget-type": "string/=",
       },
       state: {
@@ -21,7 +28,7 @@ export const nativeQuestionDetails = {
         name: "state",
         "display-name": "State",
         type: "dimension",
-        dimension: ["field", PEOPLE.STATE, null],
+        dimension: ["field", H2_PEOPLE.STATE, null],
         "widget-type": "string/=",
       },
     },

@@ -1,5 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import type { NativeQuestionDetails } from "e2e/support/helpers";
 
 const ordersTableQuestionDetails: NativeQuestionDetails = {
@@ -84,10 +84,15 @@ describe("scenarios > question > native query drill", () => {
 
   describe("query builder metadata", () => {
     it("should allow to save an ad-hoc native query when attempting to drill", () => {
+      // The "On" date filter drill needs a temporal Created At, which SQLite
+      // loses (dates become TEXT), so the filter matches no rows. Use the H2
+      // sample DB. skipCache: the outer beforeEach cached a now-stale session.
+      H.restore("default-with-h2");
+      cy.signIn("normal", { skipCache: true });
       H.visitQuestionAdhoc({
         display: "table",
         dataset_query: {
-          database: SAMPLE_DB_ID,
+          database: H2_SAMPLE_DB_ID,
           type: "native",
           native: peopleTableQuestionDetails.native,
         },
@@ -388,9 +393,18 @@ describe("scenarios > question > native query drill", () => {
 
   describe("dashboard drills", () => {
     it("quick-filter drill", () => {
+      // The "On" date filter drill needs a temporal Created At, which SQLite
+      // loses (dates become TEXT), so the filter matches no rows. Use the H2
+      // sample DB. skipCache: the outer beforeEach cached a now-stale session.
+      H.restore("default-with-h2");
+      cy.signIn("normal", { skipCache: true });
+
       cy.log("cell click");
       H.createNativeQuestionAndDashboard({
-        questionDetails: ordersTableQuestionDetails,
+        questionDetails: {
+          ...ordersTableQuestionDetails,
+          database: H2_SAMPLE_DB_ID,
+        },
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().findByText("May 15, 2027, 8:04 AM").click();
       H.popover().within(() => {
@@ -402,7 +416,10 @@ describe("scenarios > question > native query drill", () => {
 
       cy.log("aggregated cell click");
       H.createNativeQuestionAndDashboard({
-        questionDetails: timeseriesLineQuestionDetails,
+        questionDetails: {
+          ...timeseriesLineQuestionDetails,
+          database: H2_SAMPLE_DB_ID,
+        },
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() => H.cartesianChartCircle().eq(0).click());
       H.popover().within(() => {

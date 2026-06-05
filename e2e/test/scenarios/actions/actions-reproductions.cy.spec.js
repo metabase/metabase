@@ -1,17 +1,17 @@
 const { H } = cy;
 import {
-  SAMPLE_DB_ID,
+  H2_SAMPLE_DB_ID,
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createMockActionParameter,
   createMockParameter,
 } from "metabase-types/api/mocks";
 
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID: H2_PRODUCTS_ID } = H2_SAMPLE_DATABASE;
 
 const viewports = [
   [768, 800],
@@ -23,9 +23,12 @@ describe("metabase#31587", () => {
   viewports.forEach(([width, height]) => {
     describe(`Testing on resolution ${width} x ${height}`, () => {
       beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        H.setActionsEnabledForDB(SAMPLE_DB_ID);
+        // The SQLite sample DB doesn't support the :actions feature, so enable
+        // actions on the H2 sample DB instead. This test only checks the action
+        // button's layout, not action execution, so the dashboard's DB is irrelevant.
+        H.restore("default-with-h2");
+        cy.signIn("admin", { skipCache: true });
+        H.setActionsEnabledForDB(H2_SAMPLE_DB_ID);
         cy.viewport(width, height);
       });
 
@@ -447,17 +450,19 @@ describe("issue 51020", () => {
 
 describe("issue 32840", () => {
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    // Executing an implicit update action requires the :actions driver feature,
+    // which the SQLite sample DB lacks. Use the H2 sample DB instead.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
+    H.setActionsEnabledForDB(H2_SAMPLE_DB_ID);
 
     H.createQuestion(
       {
         type: "model",
         name: "Products model",
-        database: SAMPLE_DB_ID,
+        database: H2_SAMPLE_DB_ID,
         query: {
-          "source-table": PRODUCTS_ID,
+          "source-table": H2_PRODUCTS_ID,
         },
       },
       {
@@ -502,9 +507,11 @@ describe("issue 32840", () => {
 
 describe("issue 32750", () => {
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    // The action creator needs an actions-enabled DB, which the SQLite sample DB
+    // can't be (no :actions feature). Use the H2 sample DB instead.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
+    H.setActionsEnabledForDB(H2_SAMPLE_DB_ID);
     cy.visit("/");
   });
 

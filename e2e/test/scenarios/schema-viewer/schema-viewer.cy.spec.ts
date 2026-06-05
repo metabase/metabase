@@ -1,15 +1,27 @@
 const { H } = cy;
 
 import {
+  H2_SAMPLE_DB_ID,
   MAGIC_USER_GROUPS,
   SAMPLE_DB_ID,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import { checkNotNull } from "metabase/utils/types";
 import type { TableId } from "metabase-types/api";
 
-const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+// The SQLite sample DB is schema-less (no PUBLIC) and lower-cases identifiers,
+// so the schema-viewer tests that assert the PUBLIC schema and upper-cased
+// table/field names pin to the H2 sample DB.
+const {
+  ORDERS_ID: H2_ORDERS_ID,
+  PEOPLE_ID: H2_PEOPLE_ID,
+  PRODUCTS_ID: H2_PRODUCTS_ID,
+  REVIEWS_ID: H2_REVIEWS_ID,
+} = H2_SAMPLE_DATABASE;
 
 const BASE_URL = "/data-studio/schema-viewer";
 const PUBLIC_SCHEMA = "PUBLIC";
@@ -122,8 +134,11 @@ describe("scenarios > schema-viewer (premium gating)", () => {
 
 describe("scenarios > schema-viewer (Sample Database happy path)", () => {
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+    // Pin to the H2 sample DB: these tests assert the PUBLIC schema and
+    // upper-cased table/field names, which the schema-less SQLite sample DB
+    // doesn't have. skipCache: the cached session is stale after this restore.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
     H.activateToken("bleeding-edge");
     cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
   });
@@ -136,28 +151,28 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .should("be.visible");
 
     cy.log("Pick the Sample Database from the picker");
-    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("Sample Database (H2)").click();
     H.miniPicker().findByText("PUBLIC").click();
 
     cy.log("Single-schema DB auto-navigates into PUBLIC and fetches ERD");
     cy.wait("@erd")
       .its("request.url")
-      .should("include", `database-id=${SAMPLE_DB_ID}`)
+      .should("include", `database-id=${H2_SAMPLE_DB_ID}`)
       .and("include", `schema=${PUBLIC_SCHEMA}`);
-    cy.url().should("include", `database-id=${SAMPLE_DB_ID}`);
+    cy.url().should("include", `database-id=${H2_SAMPLE_DB_ID}`);
     cy.url().should("include", `schema=${PUBLIC_SCHEMA}`);
 
     cy.log("All four FK-connected sample tables render as nodes");
-    tableNode(ORDERS_ID).should("be.visible");
-    tableNode(PRODUCTS_ID).should("be.visible");
-    tableNode(PEOPLE_ID).should("be.visible");
-    tableNode(REVIEWS_ID).should("be.visible");
+    tableNode(H2_ORDERS_ID).should("be.visible");
+    tableNode(H2_PRODUCTS_ID).should("be.visible");
+    tableNode(H2_PEOPLE_ID).should("be.visible");
+    tableNode(H2_REVIEWS_ID).should("be.visible");
 
     cy.log("Edges are rendered between FK-related tables");
     cy.get(".react-flow__edge").should("have.length.at.least", 3);
 
     cy.log("Click the Orders table header to select the node");
-    tableNode(ORDERS_ID).findByText("ORDERS").click();
+    tableNode(H2_ORDERS_ID).findByText("ORDERS").click();
 
     cy.log("Side info panel opens with the table breadcrumb and field list");
     infoPanel()
@@ -180,7 +195,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
         MIN_ZOOM_FOR_TARGET,
       ),
     );
-    assertNodeInViewport(ORDERS_ID);
+    assertNodeInViewport(H2_ORDERS_ID);
 
     cy.log(
       "Click an FK link inside the info panel — camera pans to the target",
@@ -188,16 +203,16 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     infoPanel()
       .findByRole("button", { name: /Products/i })
       .click();
-    assertNodeInViewport(PRODUCTS_ID);
+    assertNodeInViewport(H2_PRODUCTS_ID);
     cy.log("Selection stays on Orders after FK link click");
     infoPanel().findByRole("heading", { name: "ORDERS" }).should("be.visible");
 
     cy.log("Auto-layout fits the entire canvas — every table is on screen");
     cy.contains("button", "Auto-layout").should("be.visible").click();
-    assertNodeInViewport(ORDERS_ID);
-    assertNodeInViewport(PRODUCTS_ID);
-    assertNodeInViewport(PEOPLE_ID);
-    assertNodeInViewport(REVIEWS_ID);
+    assertNodeInViewport(H2_ORDERS_ID);
+    assertNodeInViewport(H2_PRODUCTS_ID);
+    assertNodeInViewport(H2_PEOPLE_ID);
+    assertNodeInViewport(H2_REVIEWS_ID);
     cy.log("Auto-layout zoom is within React Flow's clamp range (>= MIN_ZOOM)");
     assertViewportZoom((z) =>
       expect(z, "auto-layout zoom should be at least MIN_ZOOM").to.be.at.least(
@@ -206,25 +221,25 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     );
 
     cy.log("Re-select Orders, then Focus-node zooms in onto Orders");
-    tableNode(ORDERS_ID).findByText("ORDERS").click();
+    tableNode(H2_ORDERS_ID).findByText("ORDERS").click();
     cy.contains("button", "Focus node").should("be.visible").click();
     assertViewportZoom((z) =>
       expect(z, "focus-node should be zoomed in").to.be.at.least(
         MIN_ZOOM_FOR_TARGET,
       ),
     );
-    assertNodeInViewport(ORDERS_ID);
+    assertNodeInViewport(H2_ORDERS_ID);
 
     cy.log(
       "Double-click Reviews — camera zooms in onto Reviews and re-enables the focus-node button",
     );
-    tableNode(REVIEWS_ID).findByText("REVIEWS").dblclick();
+    tableNode(H2_REVIEWS_ID).findByText("REVIEWS").dblclick();
     assertViewportZoom((z) =>
       expect(z, "double-click should zoom in").to.be.at.least(
         MIN_ZOOM_FOR_TARGET,
       ),
     );
-    assertNodeInViewport(REVIEWS_ID);
+    assertNodeInViewport(H2_REVIEWS_ID);
     cy.contains("button", "Focus node").should("not.be.disabled");
 
     cy.log("Selection moved from Orders to Reviews — prior selection cleared");
@@ -240,8 +255,8 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       "Clicking the USER_ID FK on Orders (target on canvas) selects the connecting edge and pans the camera",
     );
 
-    tableNode(ORDERS_ID).findByText("USER_ID").click({ force: true });
-    assertNodeInViewport(PEOPLE_ID);
+    tableNode(H2_ORDERS_ID).findByText("USER_ID").click({ force: true });
+    assertNodeInViewport(H2_PEOPLE_ID);
     cy.findAllByTestId("schema-viewer-edge-path")
       .filter('[data-selected="true"]')
       .should("have.length", 1);
@@ -270,7 +285,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     searchInput().click().should("be.focused").type("ord");
     cy.findByRole("option", { name: /Orders/i }).should("be.visible");
     searchInput().type("{enter}");
-    assertNodeInViewport(ORDERS_ID);
+    assertNodeInViewport(H2_ORDERS_ID);
 
     cy.log("Empty result shows 'No tables found'");
     searchInput().click().clear().type("zzz_nope_zzz");
@@ -282,29 +297,33 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
 
   it("URL state survives a hard reload, and the bare URL redirects back to the last opened (DB, schema)", () => {
     cy.log("Deep-link directly to Sample DB → PUBLIC");
-    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
+    cy.visit(
+      `${BASE_URL}?database-id=${H2_SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`,
+    );
     cy.wait("@erd");
-    tableNode(ORDERS_ID).should("be.visible");
+    tableNode(H2_ORDERS_ID).should("be.visible");
 
     cy.log("Hard reload reproduces the same canvas state");
     cy.reload();
     cy.wait("@erd");
-    tableNode(ORDERS_ID).should("be.visible");
-    tableNode(PRODUCTS_ID).should("be.visible");
+    tableNode(H2_ORDERS_ID).should("be.visible");
+    tableNode(H2_PRODUCTS_ID).should("be.visible");
 
     cy.log("Visiting the bare URL redirects to the last opened (DB, schema)");
     cy.visit(BASE_URL);
     cy.wait("@erd");
     cy.url()
-      .should("include", `database-id=${SAMPLE_DB_ID}`)
+      .should("include", `database-id=${H2_SAMPLE_DB_ID}`)
       .and("include", `schema=${PUBLIC_SCHEMA}`);
-    tableNode(ORDERS_ID).should("be.visible");
+    tableNode(H2_ORDERS_ID).should("be.visible");
   });
 
   it("opens the picker with the current selection highlighted, and supports Back navigation between databases and schemas", () => {
-    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
+    cy.visit(
+      `${BASE_URL}?database-id=${H2_SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`,
+    );
     cy.wait("@erd");
-    tableNode(ORDERS_ID).should("be.visible");
+    tableNode(H2_ORDERS_ID).should("be.visible");
 
     cy.log("Picker trigger shows the current schema name");
     schemaPickerTrigger().should("contain", PUBLIC_SCHEMA);
@@ -313,7 +332,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       "Open the picker — drills directly into the schema list of the current DB",
     );
     schemaPickerTrigger().click();
-    H.miniPicker().findByText("Sample Database").should("be.visible");
+    H.miniPicker().findByText("Sample Database (H2)").should("be.visible");
 
     cy.log("Click outside the popover closes it");
     cy.get("body").click(0, 0);
@@ -519,11 +538,20 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
   });
 
   it("renders the loader during a slow ERD fetch and the error panel when the request fails", () => {
+    // The picker step selects a PUBLIC schema, which only the H2 sample DB has.
+    // skipCache: the outer beforeEach cached a session that is stale after this
+    // restore.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
+    H.activateToken("bleeding-edge");
+
     cy.log("Force a 500 — error panel renders with the surfaced message");
     cy.intercept("GET", "/api/ee/erd*", { statusCode: 500, body: "boom" }).as(
       "erdError",
     );
-    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
+    cy.visit(
+      `${BASE_URL}?database-id=${H2_SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`,
+    );
     cy.wait("@erdError");
     cy.findByTestId("schema-viewer-error")
       .should("be.visible")
@@ -539,19 +567,23 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
     }).as("slowErd");
     H.DataStudio.nav().findByLabelText("Library").click();
     H.DataStudio.nav().findByLabelText("Schema viewer").click();
-    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("Sample Database (H2)").click();
     H.miniPicker().findByText("PUBLIC").click();
     cy.findByTestId("schema-viewer-loader").should("be.visible");
     cy.wait("@slowErd");
     cy.findByTestId("schema-viewer-loader").should("not.exist");
-    tableNode(ORDERS_ID).should("be.visible");
+    tableNode(H2_ORDERS_ID).should("be.visible");
   });
 });
 
 describe("scenarios > schema-viewer (permissions)", () => {
   beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+    // Pin to the H2 sample DB: this test deep-links to the PUBLIC schema, which
+    // the schema-less SQLite sample DB doesn't have. The H2 sample DB inherits
+    // the same per-group permissions, so the analyst can still reach it.
+    // skipCache: the cached session is stale after this restore.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
     H.activateToken("bleeding-edge");
   });
 
@@ -569,21 +601,23 @@ describe("scenarios > schema-viewer (permissions)", () => {
       });
     });
 
-    cy.signInAsNormalUser();
+    cy.signIn("normal", { skipCache: true });
     cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
-    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
+    cy.visit(
+      `${BASE_URL}?database-id=${H2_SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`,
+    );
     cy.wait("@erd");
 
     cy.log(
       "Schema viewer renders for the analyst — Sample DB tables on canvas",
     );
-    tableNode(ORDERS_ID).should("be.visible");
-    tableNode(PRODUCTS_ID).should("be.visible");
-    tableNode(PEOPLE_ID).should("be.visible");
-    tableNode(REVIEWS_ID).should("be.visible");
+    tableNode(H2_ORDERS_ID).should("be.visible");
+    tableNode(H2_PRODUCTS_ID).should("be.visible");
+    tableNode(H2_PEOPLE_ID).should("be.visible");
+    tableNode(H2_REVIEWS_ID).should("be.visible");
 
     cy.log("Selection still works for the non-admin user");
-    tableNode(ORDERS_ID).findByText("ORDERS").click();
+    tableNode(H2_ORDERS_ID).findByText("ORDERS").click();
     infoPanel().should("be.visible").and("contain", "ORDERS");
   });
 });
