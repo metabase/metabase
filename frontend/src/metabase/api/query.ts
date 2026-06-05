@@ -17,18 +17,18 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
 export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
   const method = typeof args === "string" ? "GET" : (args?.method ?? "GET");
   const url = typeof args === "string" ? args : args.url;
-  const { noEvent, formData, fetch, transformResponse } = args;
+  const { noEvent, fetch, rawResponse } = args;
 
   if (!isAllowedHTTPMethod(method)) {
     return { error: "Invalid HTTP method" };
   }
 
-  // `FormData` bodies are forwarded as-is — spreading would yield an empty
-  // object (its entries aren't enumerable as keys) and erase the upload. Other
-  // bodies merge with `params` so a single combined object reaches the legacy
-  // client (which doesn't separate them).
+  // `FormData` / `URLSearchParams` bodies are forwarded as-is — spreading would
+  // yield an empty object (their entries aren't enumerable as keys) and erase
+  // the body. Other bodies merge with `params` so a single combined object
+  // reaches the legacy client (which doesn't separate them).
   const rawData =
-    args?.body instanceof FormData
+    args?.body instanceof FormData || args?.body instanceof URLSearchParams
       ? args.body
       : { ...args?.body, ...args?.params };
 
@@ -36,9 +36,8 @@ export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
     const response = await api[method](url)(rawData, {
       signal: ctx.signal,
       noEvent,
-      formData,
       fetch,
-      transformResponse,
+      rawResponse,
       ...extraOptions,
     });
     return { data: response };

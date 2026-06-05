@@ -48,7 +48,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -622,7 +621,7 @@
                         "Is Now:" new-param-field-ids
                         "Newly Added:" newly-added-param-field-ids)
               ;; Now update the FieldValues for the Fields referenced by this Card.
-              (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
+              ((requiring-resolve 'metabase.sync.field-values/update-field-values-for-on-demand-dbs!) newly-added-param-field-ids)))))
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)
@@ -802,7 +801,7 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+      ((requiring-resolve 'metabase.sync.field-values/update-field-values-for-on-demand-dbs!) field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (defn- apply-dashboard-question-updates [card changes]
@@ -1260,7 +1259,11 @@
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defn- export-result-metadata [card _k metadata]
-  (if (and (seq metadata) (model? card))
+  (cond
+    (empty? metadata)
+    ::serdes/skip
+
+    (model? card)
     (let [native?   (lib/native? (:dataset_query card))
           keep-keys (into #{:name}
                           (map u/->snake_case_en)
@@ -1270,6 +1273,25 @@
                   (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
                   (m/update-existing :id serdes/*export-field-fk*)))
             metadata))
+
+    ;; Native non-model cards keep their result_metadata. Unlike MBQL cards, their columns can't be re-derived
+    ;; from the query at import time without executing the SQL, and downstream questions that join them depend
+    ;; on this metadata to resolve join columns. We whitelist the portable keys (dropping computed `:lib/*`,
+    ;; `:fingerprint`, etc.) rather than the model soft-key set, since native columns also need their structural
+    ;; type info preserved.
+    (lib/native? (:dataset_query card))
+    (let [keep-keys #{:name :base_type :effective_type :field_ref :database_type
+                      :display_name :semantic_type :description :visibility_type :settings
+                      :fk_target_field_id :id :table_id}]
+      (mapv (fn [m]
+              (-> (select-keys m keep-keys)
+                  (m/update-existing :table_id           serdes/*export-table-fk*)
+                  (m/update-existing :id                 serdes/*export-field-fk*)
+                  (m/update-existing :field_ref          serdes/export-mbql)
+                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))
+            metadata))
+
+    :else
     ::serdes/skip))
 
 (defn- import-result-metadata [metadata]
