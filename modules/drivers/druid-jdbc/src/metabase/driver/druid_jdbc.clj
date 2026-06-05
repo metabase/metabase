@@ -68,8 +68,8 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/TIMESTAMP]
   [_driver ^ResultSet rs _rsmeta ^Long i]
   (fn []
-    (when (.getObject rs i)
-      (t/instant (.getObject rs i)))))
+    (when-let [ts (.getObject rs i)]
+      (t/instant ts))))
 
 ;; Druid's COMPLEX<...> types are encoded as JDBC's other -- 1111. Values are rendered as string.
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/OTHER]
