@@ -397,6 +397,8 @@
 (def ^:private image-max-bytes (* 20 1024 1024))
 (def ^:private image-max-megapixels 24)
 (def ^:private allowed-image-content-types #{"image/png" "image/jpeg" "image/gif"})
+;; A descriptive User-Agent: some hosts (e.g. Wikimedia) return 403 for default library UAs.
+(def ^:private image-fetch-user-agent "Metabase (dashboard PDF export; +https://www.metabase.com)")
 (def ^:private blocked-image-hosts #{"localhost" "metadata" "metadata.google.internal"})
 (def ^:private blocked-image-host-suffixes [".localhost" ".local" ".internal" ".lan" ".home.arpa"])
 
@@ -462,6 +464,7 @@
                                  :socket-timeout     image-fetch-timeout-ms
                                  :connection-timeout image-fetch-timeout-ms
                                  :throw-exceptions   false
+                                 :headers            {"User-Agent" image-fetch-user-agent}
                                  :dns-resolver       ssrf-safe-dns-resolver})
             ctype (some-> (get-in resp [:headers :content-type])
                           (str/split #";") first str/trim str/lower-case)
