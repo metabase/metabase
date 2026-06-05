@@ -199,3 +199,21 @@
                                     :visualization_settings {:virtual_card {:display "link"}
                                                              :link {:url "https://example.com"}}}
                                    []))))))
+
+;; --------------------------------------------------------------------------------------------
+;; Parameter bar layout (flow + wrap)
+;; --------------------------------------------------------------------------------------------
+
+(deftest layout-param-chips-test
+  (let [chips [{:width 100.0} {:width 100.0} {:width 100.0}]] ; param-chip-gap is 16
+    (testing "chips that fit stay on one line, with cumulative x offsets (0, 100+gap, 200+2gap)"
+      (let [lines (#'pdf/layout-param-chips chips 1000.0)]
+        (is (= 1 (count lines)))
+        (is (= [0.0 116.0 232.0] (mapv :x (first lines))))))
+    (testing "chips wrap onto new lines when they exceed the content width"
+      (let [lines (#'pdf/layout-param-chips chips 250.0)]
+        (is (= [2 1] (mapv count lines)))
+        (is (= [0.0 116.0] (mapv :x (first lines))))
+        (is (= [0.0] (mapv :x (second lines))))))
+    (testing "no chips -> no lines"
+      (is (= [] (#'pdf/layout-param-chips [] 1000.0))))))
