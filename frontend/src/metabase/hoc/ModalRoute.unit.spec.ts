@@ -1,13 +1,17 @@
 import { mockSettings } from "__support__/settings";
+import { createMockLocation } from "metabase/redux/store/mocks";
 
 import { getParentPath } from "./ModalRoute";
 
-const setup = (routePath, locationPath, siteURL = undefined) => {
+const setup = (routePath: string, locationPath: string, siteURL?: string) => {
   if (siteURL) {
     mockSettings({ "site-url": siteURL });
   }
 
-  return getParentPath({ path: routePath }, { pathname: locationPath });
+  return getParentPath(
+    { path: routePath },
+    createMockLocation({ pathname: locationPath }),
+  );
 };
 
 describe("getParentPath", () => {
