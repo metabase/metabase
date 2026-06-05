@@ -6,6 +6,7 @@ import type {
   DatasetQuery,
   DraftTransform,
   PaginationResponse,
+  ResearchPlanContext,
   RowValue,
   SuggestedTransform,
   Transform,
@@ -49,6 +50,9 @@ export type MetabotChatContext = {
   default_database_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
+  // The user's in-progress draft Research plan (Explorations new-research chat). Present only on
+  // the explorations agent; the front-end serializes it from local selection state each turn.
+  research_plan?: ResearchPlanContext;
 };
 
 export type MetabotTool = {

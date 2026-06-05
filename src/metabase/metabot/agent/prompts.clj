@@ -167,6 +167,8 @@
                                      (get context :viewing-context))
             recent-views         (or (get context :recent_views)
                                      (get context :recent-views))
+            research-plan        (or (get context :research_plan)
+                                     (get context :research-plan))
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
             ;; The SQL guidance tells the model to load SQL skills and use the SQL tools, so gate it
@@ -185,6 +187,7 @@
                                   :skill_always_on          (mapv :body always-on)
                                   :viewing_context          viewing-context
                                   :recent_views             recent-views
+                                  :research_plan            research-plan
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)

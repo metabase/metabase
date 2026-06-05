@@ -42,6 +42,40 @@
   [{:keys [groups]} :- add-research-groups-schema]
   (explorations/research-groups {:groups groups}))
 
+(def ^:private remove-from-research-plan-schema
+  [:map {:closed true}
+   [:block_ids {:optional true} [:sequential :string]]
+   [:members {:optional true}
+    [:sequential
+     [:map {:closed true}
+      [:block_id :string]
+      [:metric_ids {:optional true} [:sequential :int]]
+      [:dimension_ids {:optional true} [:sequential :string]]]]]
+   [:timeline_ids {:optional true} [:sequential :int]]])
+
+(mu/defn ^{:tool-name "remove_from_research_plan"}
+  remove-from-research-plan-tool
+  "Remove groups, individual metrics/dimensions within a group, or timelines from the research
+   plan. Address groups by the `block_id` shown in brackets for each group in the current research
+   plan (e.g. `metric:42`, `dim:7`).
+
+   - To drop whole groups, pass `block_ids`: `{\"block_ids\": [\"metric:42\"]}`. Use this when the
+     user no longer wants a metric or dimension area at all (e.g. \"actually I don't care about
+     revenue\").
+   - To prune within a group, pass `members`. For a metric-anchored group, list the
+     `dimension_ids` to stop slicing by; for a dimension-anchored group, list the `metric_ids` to
+     stop including: `{\"members\": [{\"block_id\": \"metric:42\", \"dimension_ids\": [\"d1\"]}]}`.
+   - To drop timelines, pass `timeline_ids` (the ids shown in the current plan's selected
+     timelines): `{\"timeline_ids\": [7]}`.
+
+   If removing members would leave a group with nothing in it, the whole group is dropped — so to
+   remove an entire group prefer `block_ids` directly. Removing a block, member, or id that isn't
+   in the plan is a no-op."
+  [{:keys [block_ids members timeline_ids]} :- remove-from-research-plan-schema]
+  {:block_ids    block_ids
+   :members      members
+   :timeline_ids timeline_ids})
+
 (def ^:private set-exploration-name-schema
   [:map {:closed true}
    [:name :string]])

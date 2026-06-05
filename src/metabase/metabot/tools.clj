@@ -52,6 +52,7 @@
  [tools.explorations
   get-research-candidates-tool
   add-research-groups-tool
+  remove-from-research-plan-tool
   set-exploration-name-tool
   select-exploration-timelines-tool]
  [tools.metadata

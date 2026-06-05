@@ -149,6 +149,17 @@ const setNameToolCallMessage: MetabotDebugToolCallMessage = {
   result: JSON.stringify({ name: "Revenue investigation" }),
 };
 
+const removeFromResearchPlanToolCallMessage: MetabotDebugToolCallMessage = {
+  id: "tool-call-4",
+  role: "agent",
+  type: "tool_call",
+  name: "remove_from_research_plan",
+  status: "ended",
+  result: JSON.stringify({
+    block_ids: ["metric:1", "dim:customer.segment"],
+  }),
+};
+
 const agentMessage: MetabotChatMessage = {
   id: "agent-1",
   role: "agent",
@@ -303,5 +314,90 @@ describe("NewExplorationChat", () => {
     await waitFor(() => {
       expect(selection.setName).toHaveBeenCalledWith("Revenue investigation");
     });
+  });
+
+  it("removes blocks from a remove_from_research_plan tool call response", async () => {
+    const { selection, rerender } = setup();
+
+    rerender({
+      messages: [userMessage, removeFromResearchPlanToolCallMessage],
+      isDoingScience: true,
+    });
+
+    // Not applied while the agent is still working.
+    expect(selection.removeBlock).not.toHaveBeenCalled();
+
+    rerender({
+      messages: [
+        userMessage,
+        removeFromResearchPlanToolCallMessage,
+        agentMessage,
+      ],
+      isDoingScience: false,
+    });
+
+    await waitFor(() => {
+      expect(selection.removeBlock).toHaveBeenCalledWith("metric:1");
+    });
+    expect(selection.removeBlock).toHaveBeenCalledWith("dim:customer.segment");
+    expect(selection.removeBlock).toHaveBeenCalledTimes(2);
+  });
+
+  it("deselects members from a remove_from_research_plan tool call response", async () => {
+    const { selection, rerender } = setup();
+
+    const removeMembersMessage: MetabotDebugToolCallMessage = {
+      id: "tool-call-5",
+      role: "agent",
+      type: "tool_call",
+      name: "remove_from_research_plan",
+      status: "ended",
+      result: JSON.stringify({
+        members: [
+          { block_id: "metric:1", dimension_ids: ["revenue.created_at"] },
+          { block_id: "dim:customer.segment", metric_ids: [2] },
+        ],
+      }),
+    };
+
+    rerender({
+      messages: [userMessage, removeMembersMessage, agentMessage],
+      isDoingScience: false,
+    });
+
+    await waitFor(() => {
+      expect(selection.removeBlockMembers).toHaveBeenCalledWith("metric:1", {
+        metricIds: undefined,
+        dimensionIds: ["revenue.created_at"],
+      });
+    });
+    expect(selection.removeBlockMembers).toHaveBeenCalledWith(
+      "dim:customer.segment",
+      { metricIds: [2], dimensionIds: undefined },
+    );
+    expect(selection.removeBlock).not.toHaveBeenCalled();
+  });
+
+  it("removes timelines from a remove_from_research_plan tool call response", async () => {
+    const { selection, rerender } = setup();
+
+    const removeTimelinesMessage: MetabotDebugToolCallMessage = {
+      id: "tool-call-6",
+      role: "agent",
+      type: "tool_call",
+      name: "remove_from_research_plan",
+      status: "ended",
+      result: JSON.stringify({ timeline_ids: [7, 9] }),
+    };
+
+    rerender({
+      messages: [userMessage, removeTimelinesMessage, agentMessage],
+      isDoingScience: false,
+    });
+
+    await waitFor(() => {
+      expect(selection.removeTimelinesById).toHaveBeenCalledWith([7, 9]);
+    });
+    expect(selection.removeBlock).not.toHaveBeenCalled();
   });
 });

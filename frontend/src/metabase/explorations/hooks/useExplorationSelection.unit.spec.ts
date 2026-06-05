@@ -17,6 +17,7 @@ import {
 import {
   type DimensionBlock,
   isMetricBlock,
+  metricBlockId,
   useExplorationSelection,
 } from "./useExplorationSelection";
 
@@ -138,6 +139,101 @@ describe("useExplorationSelection", () => {
 
       expect(result.current.blocks).toBe(blocksAfterFirst);
     });
+
+    it("grows an existing block by selecting the explicitly-requested dimensions", () => {
+      const dimHigh = makeDim("dim-high", 0.9);
+      const dimLow = makeDim("dim-low", 0.3);
+      const metric = makeMetric(1, ["dim-high", "dim-low"]);
+      const dimensionsById = makeDimensionsById([dimHigh, dimLow]);
+
+      const { result } = renderSelection();
+
+      // First add selects only the interesting dimension.
+      act(() => {
+        result.current.addMetric(metric, { dimensionsById });
+      });
+      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
+        "dim-high",
+      ]);
+
+      // Re-adding with an explicit extra dimension grows the existing block's selection.
+      act(() => {
+        result.current.addMetric(metric, {
+          dimensionsById,
+          additionalSelectedDimensionIds: new Set(["dim-low"]),
+        });
+      });
+
+      expect(result.current.blocks).toHaveLength(1);
+      expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
+        "dim-high",
+        "dim-low",
+      ]);
+    });
+
+    it("is a no-op when the requested dimensions are already selected", () => {
+      const dimHigh = makeDim("dim-high", 0.9);
+      const metric = makeMetric(1, ["dim-high"]);
+      const dimensionsById = makeDimensionsById([dimHigh]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.addMetric(metric, { dimensionsById });
+      });
+      const blocksAfterFirst = result.current.blocks;
+
+      act(() => {
+        result.current.addMetric(metric, {
+          dimensionsById,
+          additionalSelectedDimensionIds: new Set(["dim-high"]),
+        });
+      });
+
+      expect(result.current.blocks).toBe(blocksAfterFirst);
+    });
+  });
+
+  describe("removeBlock", () => {
+    it("removes the block with the matching id", () => {
+      const dim = makeDim("dim-a", 0.9);
+      const metric = makeMetric(1, ["dim-a"]);
+      const dimensionsById = makeDimensionsById([dim]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.addMetric(metric, { dimensionsById });
+      });
+      expect(result.current.blocks).toHaveLength(1);
+
+      act(() => {
+        result.current.removeBlock(metricBlockId(1));
+      });
+
+      expect(result.current.blocks).toHaveLength(0);
+    });
+
+    it("is a no-op when no block has the given id", () => {
+      const dim = makeDim("dim-a", 0.9);
+      const metric = makeMetric(1, ["dim-a"]);
+      const dimensionsById = makeDimensionsById([dim]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.addMetric(metric, { dimensionsById });
+      });
+      const blocksBefore = result.current.blocks;
+
+      act(() => {
+        result.current.removeBlock("metric:999");
+      });
+
+      // Removing an id that isn't present leaves every block in place.
+      expect(result.current.blocks).toEqual(blocksBefore);
+      expect(result.current.blocks).toHaveLength(1);
+    });
   });
 
   describe("toggleDimensionSelected", () => {
@@ -203,6 +299,39 @@ describe("useExplorationSelection", () => {
       });
       expect(result.current.blocks).toBe(blocksAfterFirst);
     });
+
+    it("grows an existing dimension block by re-selecting related metrics", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const metric1 = makeMetric(1, ["dim-a"]);
+      const metric2 = makeMetric(2, ["dim-a"]);
+      const metricsByDimension = new Map([["dim-a", [metric1, metric2]]]);
+
+      const { result } = renderSelection();
+
+      // Existing block with metric 2 deselected.
+      act(() => {
+        result.current.setBlocks([
+          {
+            kind: "dimension",
+            id: "dim:dim-a",
+            dimension: dimA,
+            groupDimensions: [dimA],
+            metrics: [metric1, metric2],
+            selectedMetricIds: new Set([1]),
+          },
+        ]);
+      });
+
+      act(() => {
+        result.current.addDimension(dimA, {
+          group: null,
+          metricsByDimension,
+        });
+      });
+
+      expect(result.current.blocks).toHaveLength(1);
+      expect(result.current.metrics.map((m) => m.id).sort()).toEqual([1, 2]);
+    });
   });
 
   describe("toggleMetricSelected", () => {
@@ -233,6 +362,146 @@ describe("useExplorationSelection", () => {
       expect([
         ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
       ]).toEqual([2]);
+    });
+  });
+
+  describe("removeBlockMembers", () => {
+    function metricBlockWith(dims: MetricDimension[], selected: DimensionId[]) {
+      return {
+        kind: "metric" as const,
+        id: metricBlockId(1),
+        metric: makeMetric(
+          1,
+          dims.map((d) => d.id),
+        ),
+        dimensions: dims,
+        selectedDimensionIds: new Set(selected),
+      };
+    }
+
+    function dimensionBlockWith(
+      metrics: ExplorationMetric[],
+      selected: number[],
+    ) {
+      const dimA = makeDim("dim-a", 0.9);
+      return {
+        kind: "dimension" as const,
+        id: "dim:dim-a",
+        dimension: dimA,
+        groupDimensions: [dimA],
+        metrics,
+        selectedMetricIds: new Set(selected),
+      };
+    }
+
+    it("deselects a dimension within a metric block, keeping the block", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const dimB = makeDim("dim-b", 0.8);
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.setBlocks([
+          metricBlockWith([dimA, dimB], ["dim-a", "dim-b"]),
+        ]);
+      });
+      act(() => {
+        result.current.removeBlockMembers(metricBlockId(1), {
+          dimensionIds: ["dim-a"],
+        });
+      });
+
+      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
+        "dim-b",
+      ]);
+    });
+
+    it("drops the metric block when its last selected dimension is removed", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.setBlocks([metricBlockWith([dimA], ["dim-a"])]);
+      });
+      act(() => {
+        result.current.removeBlockMembers(metricBlockId(1), {
+          dimensionIds: ["dim-a"],
+        });
+      });
+
+      expect(result.current.blocks).toHaveLength(0);
+    });
+
+    it("deselects a metric within a dimension block, keeping the block", () => {
+      const metric1 = makeMetric(1, ["dim-a"]);
+      const metric2 = makeMetric(2, ["dim-a"]);
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.setBlocks([
+          dimensionBlockWith([metric1, metric2], [1, 2]),
+        ]);
+      });
+      act(() => {
+        result.current.removeBlockMembers("dim:dim-a", { metricIds: [1] });
+      });
+
+      expect(result.current.metrics.map((m) => m.id)).toEqual([2]);
+    });
+
+    it("drops the dimension block when its last selected metric is removed", () => {
+      const metric1 = makeMetric(1, ["dim-a"]);
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.setBlocks([dimensionBlockWith([metric1], [1])]);
+      });
+      act(() => {
+        result.current.removeBlockMembers("dim:dim-a", { metricIds: [1] });
+      });
+
+      expect(result.current.blocks).toHaveLength(0);
+    });
+
+    it("ignores a mismatched member family", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const dimB = makeDim("dim-b", 0.8);
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.setBlocks([
+          metricBlockWith([dimA, dimB], ["dim-a", "dim-b"]),
+        ]);
+      });
+      // metric ids don't apply to a metric block — nothing changes
+      act(() => {
+        result.current.removeBlockMembers(metricBlockId(1), {
+          metricIds: [1, 2],
+        });
+      });
+
+      expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
+        "dim-a",
+        "dim-b",
+      ]);
+    });
+
+    it("is a no-op when the block id is not present", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.setBlocks([metricBlockWith([dimA], ["dim-a"])]);
+      });
+      act(() => {
+        result.current.removeBlockMembers("metric:999", {
+          dimensionIds: ["dim-a"],
+        });
+      });
+
+      expect(result.current.blocks).toHaveLength(1);
+      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
+        "dim-a",
+      ]);
     });
   });
 
@@ -293,6 +562,49 @@ describe("useExplorationSelection", () => {
       });
 
       expect(result.current.timelines).toBe(timelinesAfterFirst);
+    });
+  });
+
+  describe("removeTimelinesById", () => {
+    it("removes the selected timelines with matching ids", async () => {
+      const timeline1 = createMockTimeline({ id: 1, name: "Product launches" });
+      const timeline2 = createMockTimeline({ id: 2, name: "Marketing" });
+
+      const { result } = renderSelection([timeline1, timeline2]);
+
+      await waitFor(() => {
+        expect(result.current.allTimelines).toHaveLength(2);
+      });
+
+      act(() => {
+        result.current.addTimelinesById([1, 2]);
+      });
+      act(() => {
+        result.current.removeTimelinesById([1]);
+      });
+
+      expect(result.current.timelines.map((t) => t.id)).toEqual([2]);
+    });
+
+    it("is a no-op when no selected timeline has the given id", async () => {
+      const timeline1 = createMockTimeline({ id: 1, name: "Product launches" });
+
+      const { result } = renderSelection([timeline1]);
+
+      await waitFor(() => {
+        expect(result.current.allTimelines).toHaveLength(1);
+      });
+
+      act(() => {
+        result.current.addTimelinesById([1]);
+      });
+      const timelinesAfterAdd = result.current.timelines;
+
+      act(() => {
+        result.current.removeTimelinesById([999]);
+      });
+
+      expect(result.current.timelines).toBe(timelinesAfterAdd);
     });
   });
 });

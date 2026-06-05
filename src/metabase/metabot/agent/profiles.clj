@@ -179,6 +179,7 @@
                     #'tools/read-resource-tool
                     #'tools/get-research-candidates-tool
                     #'tools/add-research-groups-tool
+                    #'tools/remove-from-research-plan-tool
                     #'tools/set-exploration-name-tool
                     #'tools/list-timelines-tool
                     #'tools/get-timeline-details-tool

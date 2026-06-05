@@ -41,6 +41,49 @@ export type AddResearchGroupsResponse = GetExplorationDataResponse & {
   groups: ResearchGroupSpec[];
 };
 
+// The draft Research plan the front-end serializes into Metabot's chat context each turn, so the
+// agent can read what's currently in the plan and edit it. Plan-only: just the selected members,
+// not the unselected candidates (the agent gets those from `get_research_candidates`).
+export type ResearchPlanMetricRef = { id: number; name: string };
+export type ResearchPlanDimensionRef = { id: DimensionId; name: string };
+export type ResearchPlanTimelineRef = { id: TimelineId; name: string };
+
+export type ResearchPlanGroup =
+  | {
+      block_id: string;
+      anchor: "metric";
+      metric: ResearchPlanMetricRef;
+      dimensions: ResearchPlanDimensionRef[];
+    }
+  | {
+      block_id: string;
+      anchor: "dimension";
+      dimension: ResearchPlanDimensionRef;
+      metrics: ResearchPlanMetricRef[];
+    };
+
+export type ResearchPlanContext = {
+  name: string;
+  groups: ResearchPlanGroup[];
+  timelines: ResearchPlanTimelineRef[];
+};
+
+// Result of the `remove_from_research_plan` tool: the validated ids the front-end removes from the
+// draft plan. The tool is pure-echo (no DB), so this just mirrors what the agent asked to remove.
+// `block_ids` drop whole groups; `members` deselect metrics/dimensions within a group (emptying a
+// group drops it).
+export type RemoveFromResearchPlanMember = {
+  block_id: string;
+  metric_ids?: number[];
+  dimension_ids?: DimensionId[];
+};
+
+export type RemoveFromResearchPlanResponse = {
+  block_ids?: string[];
+  members?: RemoveFromResearchPlanMember[];
+  timeline_ids?: number[];
+};
+
 export type ExplorationId = number;
 export type ExplorationThreadId = number;
 export type ExplorationQueryId = number;

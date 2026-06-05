@@ -367,6 +367,43 @@
                   (log/error e "Error formatting viewing context item:" (:type item))
                   "")))))
 
+;;; Research Plan Formatting
+
+(defn- format-research-plan-group
+  "Format one group of the draft Research plan as a single line the LLM can act on. The
+  `block_id` is surfaced verbatim so the agent can echo it back to plan-editing tools."
+  [{:keys [block_id anchor metric dimensions dimension metrics]}]
+  (case anchor
+    "metric"
+    (str "- [" block_id "] " (:name metric)
+         ", broken out by: " (str/join ", " (map :name dimensions)))
+    "dimension"
+    (str "- [" block_id "] by " (:name dimension)
+         ", slicing: " (str/join ", " (map :name metrics)))
+    nil))
+
+(defn format-research-plan
+  "Format the user's in-progress draft Research plan for injection into the system message.
+
+  The plan lives only as front-end state until the Exploration is created, so the front-end
+  serializes it into context each turn. Returns a formatted string for template variable
+  {{research_plan}}, or nil when there is no plan to show (so the template's
+  `{% if research_plan %}` guard stays false)."
+  [context]
+  (when-let [plan (:research_plan context)]
+    (let [{:keys [name groups timelines]} plan]
+      (when (or (seq groups) (seq timelines) (not (str/blank? name)))
+        (te/lines
+         (str "The user is assembling a Research plan. Below is its current contents — the user "
+              "may have added or removed items directly in addition to your tool calls, so treat "
+              "this as the source of truth. Refer to a group by its [block_id].")
+         ""
+         (te/field "Plan name" (not-empty name))
+         (when (seq groups)
+           (te/lines "Groups:" (keep format-research-plan-group groups)))
+         (when (seq timelines)
+           (te/field "Selected timelines" (str/join ", " (map :name timelines)))))))))
+
 ;;; Recent Views Formatting
 
 (defn format-recent-views
@@ -411,11 +448,13 @@
   - :sql_dialect - SQL dialect name (lowercase)
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
-  - :recent_views - Formatted recent views"
+  - :recent_views - Formatted recent views
+  - :research_plan - Formatted draft Research plan (nil when absent)"
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")
    :sql_dialect (extract-sql-dialect context)
    :current_user_info (format-current-user-info context)
    :viewing_context (format-viewing-context context)
-   :recent_views (format-recent-views context)})
+   :recent_views (format-recent-views context)
+   :research_plan (format-research-plan context)})

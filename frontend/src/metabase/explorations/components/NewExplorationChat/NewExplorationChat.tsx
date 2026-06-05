@@ -8,12 +8,14 @@ import {
   trackExplorationPlanEdited,
 } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
+import { selectionToResearchPlanContext } from "metabase/explorations/research-plan-context";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
+import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
@@ -27,6 +29,7 @@ import type {
   AddResearchGroupsResponse,
   DimensionId,
   ExplorationDimensionGroup,
+  RemoveFromResearchPlanResponse,
 } from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
@@ -34,6 +37,7 @@ import S from "./NewExplorationChat.module.css";
 export const EXPLORATIONS_AGENT_ID = "explorations";
 
 const ADD_RESEARCH_GROUPS_TOOL = "add_research_groups";
+const REMOVE_FROM_RESEARCH_PLAN_TOOL = "remove_from_research_plan";
 const SET_RESEARCH_NAME_TOOL = "set_research_name";
 const SELECT_RESEARCH_TIMELINES_TOOL = "select_research_timelines";
 
@@ -46,8 +50,31 @@ export interface NewExplorationChatProps {
 }
 
 export function NewExplorationChat({ selection }: NewExplorationChatProps) {
-  const { addMetric, addDimension, setName, addTimelinesById } = selection;
+  const {
+    addMetric,
+    addDimension,
+    setName,
+    addTimelinesById,
+    removeTimelinesById,
+    removeBlock,
+    removeBlockMembers,
+    blocks,
+    timelines,
+    name,
+  } = selection;
   const { canUseNlq } = useUserMetabotPermissions();
+
+  // Surface the in-progress draft plan to Metabot each turn so it can read and edit it.
+  useRegisterMetabotContextProvider(
+    async () => ({
+      research_plan: selectionToResearchPlanContext({
+        blocks,
+        timelines,
+        name,
+      }),
+    }),
+    [blocks, timelines, name],
+  );
   const [
     isAiProviderConfigurationModalOpen,
     {
@@ -156,6 +183,57 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     [addMetric, addDimension, sendToast],
   );
 
+  const handleRemoveFromResearchPlanToolCallMessages = useCallback(
+    (messages: MetabotToolCallMessageWithResult[]) => {
+      if (messages.length === 0) {
+        return;
+      }
+
+      let removedGroups = false;
+      let removedTimelines = false;
+
+      try {
+        for (const message of messages) {
+          const { block_ids, members, timeline_ids } = JSON.parse(
+            message.result,
+          ) as RemoveFromResearchPlanResponse;
+          // Removing a block/member/timeline that isn't in the plan is a no-op.
+          for (const blockId of block_ids ?? []) {
+            removeBlock(blockId);
+            removedGroups = true;
+          }
+          for (const member of members ?? []) {
+            removeBlockMembers(member.block_id, {
+              metricIds: member.metric_ids,
+              dimensionIds: member.dimension_ids,
+            });
+            removedGroups = true;
+          }
+          if (timeline_ids?.length) {
+            removeTimelinesById(timeline_ids);
+            removedTimelines = true;
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
+          message: t`Failed to update research plan`,
+        });
+        return;
+      }
+
+      if (removedGroups) {
+        trackExplorationPlanEdited("agent", "metrics");
+      }
+      if (removedTimelines) {
+        trackExplorationPlanEdited("agent", "timelines");
+      }
+    },
+    [removeBlock, removeBlockMembers, removeTimelinesById, sendToast],
+  );
+
   const handleSetExplorationNameToolCallMessages = useCallback(
     (messages: MetabotToolCallMessageWithResult[]) => {
       if (messages.length === 0) {
@@ -217,6 +295,9 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     handleAddResearchGroupsToolCallMessages(
       unprocessedMessages.filter(isAddResearchGroupsToolCallMessage),
     );
+    handleRemoveFromResearchPlanToolCallMessages(
+      unprocessedMessages.filter(isRemoveFromResearchPlanToolCallMessage),
+    );
     handleSetExplorationNameToolCallMessages(
       unprocessedMessages.filter(isSetExplorationNameToolCallMessage),
     );
@@ -226,6 +307,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
   }, [
     isDoingScience,
     handleAddResearchGroupsToolCallMessages,
+    handleRemoveFromResearchPlanToolCallMessages,
     handleSetExplorationNameToolCallMessages,
     handleSelectExplorationTimelinesToolCallMessages,
     messages,
@@ -309,6 +391,18 @@ function isAddResearchGroupsToolCallMessage(
     message.role === "agent" &&
     message.type === "tool_call" &&
     message.name === ADD_RESEARCH_GROUPS_TOOL &&
+    !message.is_error &&
+    !!message.result
+  );
+}
+
+function isRemoveFromResearchPlanToolCallMessage(
+  message: MetabotChatMessage,
+): message is MetabotToolCallMessageWithResult {
+  return (
+    message.role === "agent" &&
+    message.type === "tool_call" &&
+    message.name === REMOVE_FROM_RESEARCH_PLAN_TOOL &&
     !message.is_error &&
     !!message.result
   );

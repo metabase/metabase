@@ -99,9 +99,22 @@ export interface ExplorationSelection {
 
   toggleTimeline: (timeline: Timeline) => void;
   addTimelinesById: (timelineIds: number[]) => void;
+  removeTimelinesById: (timelineIds: number[]) => void;
 
   removeBlock: (blockId: string) => void;
 
+  // Deselect metrics and/or dimensions within a block. Metric ids apply to a dimension block,
+  // dimension ids to a metric block; a mismatched family is ignored. If the removal empties the
+  // block's selection, the whole block is dropped.
+  removeBlockMembers: (
+    blockId: string,
+    members: {
+      metricIds?: ExplorationMetric["id"][];
+      dimensionIds?: DimensionId[];
+    },
+  ) => void;
+
+  // Flip whether a candidate child is selected within an existing block.
   toggleDimensionSelected: (blockId: string, dimensionId: DimensionId) => void;
   toggleMetricSelected: (
     blockId: string,
@@ -198,10 +211,32 @@ export function useExplorationSelection(): ExplorationSelection {
       { dimensionsById, additionalSelectedDimensionIds }: ToggleMetricContext,
     ) => {
       setBlocks((prevBlocks) => {
-        if (
-          prevBlocks.some((b) => isMetricBlock(b) && b.metric.id === metric.id)
-        ) {
-          return prevBlocks;
+        const existing = prevBlocks.find(
+          (b): b is MetricBlock =>
+            isMetricBlock(b) && b.metric.id === metric.id,
+        );
+        if (existing) {
+          // Create-or-grow: the block already exists, so union the explicitly-requested
+          // dimensions into its selection (never deselects). With no explicit dimensions there is
+          // nothing to add, so this is a no-op.
+          if (!additionalSelectedDimensionIds?.size) {
+            return prevBlocks;
+          }
+          const candidateIds = new Set(existing.dimensions.map((d) => d.id));
+          const selected = new Set(existing.selectedDimensionIds);
+          for (const id of additionalSelectedDimensionIds) {
+            if (candidateIds.has(id)) {
+              selected.add(id);
+            }
+          }
+          if (selected.size === existing.selectedDimensionIds.size) {
+            return prevBlocks;
+          }
+          return prevBlocks.map((b) =>
+            b === existing
+              ? { ...existing, selectedDimensionIds: selected }
+              : b,
+          );
         }
         return [
           ...prevBlocks,
@@ -220,8 +255,26 @@ export function useExplorationSelection(): ExplorationSelection {
     (dimension: MetricDimension, context: ToggleDimensionContext) => {
       const id = dimensionBlockId(dimension.id);
       setBlocks((prevBlocks) => {
-        if (prevBlocks.some((b) => b.id === id)) {
-          return prevBlocks;
+        const existing = prevBlocks.find(
+          (b): b is DimensionBlock => b.id === id && isDimensionBlock(b),
+        );
+        if (existing) {
+          // Create-or-grow: the block already exists, so re-select every related metric (union;
+          // never deselects), bounded by the block's candidate metrics.
+          const rebuilt = buildDimensionBlock(dimension, context);
+          const candidateIds = new Set(existing.metrics.map((m) => m.id));
+          const selected = new Set(existing.selectedMetricIds);
+          for (const metricId of rebuilt.selectedMetricIds) {
+            if (candidateIds.has(metricId)) {
+              selected.add(metricId);
+            }
+          }
+          if (selected.size === existing.selectedMetricIds.size) {
+            return prevBlocks;
+          }
+          return prevBlocks.map((b) =>
+            b === existing ? { ...existing, selectedMetricIds: selected } : b,
+          );
         }
         return [...prevBlocks, buildDimensionBlock(dimension, context)];
       });
@@ -257,9 +310,71 @@ export function useExplorationSelection(): ExplorationSelection {
     [allTimelines],
   );
 
+  const removeTimelinesById = useCallback((timelineIds: number[]) => {
+    const remove = new Set(timelineIds);
+    setTimelines((prev) => {
+      const next = prev.filter((t) => !remove.has(t.id));
+      // Preserve the reference when no selected timeline matched (no-op for unknown ids).
+      return next.length === prev.length ? prev : next;
+    });
+  }, []);
+
   const removeBlock = useCallback((blockId: string) => {
     setBlocks((prev) => prev.filter((b) => b.id !== blockId));
   }, []);
+
+  const removeBlockMembers = useCallback(
+    (
+      blockId: string,
+      {
+        metricIds,
+        dimensionIds,
+      }: {
+        metricIds?: ExplorationMetric["id"][];
+        dimensionIds?: DimensionId[];
+      },
+    ) => {
+      setBlocks((prev) => {
+        const next: ExplorationBlock[] = [];
+        for (const block of prev) {
+          if (block.id !== blockId) {
+            next.push(block);
+            continue;
+          }
+          if (isMetricBlock(block)) {
+            // Dimension ids deselect candidate dimensions; metric ids don't apply here.
+            if (!dimensionIds?.length) {
+              next.push(block);
+              continue;
+            }
+            const selected = new Set(block.selectedDimensionIds);
+            for (const id of dimensionIds) {
+              selected.delete(id);
+            }
+            // A metric block with no selected dimensions is invalid — drop it entirely.
+            if (selected.size > 0) {
+              next.push({ ...block, selectedDimensionIds: selected });
+            }
+          } else {
+            // Metric ids deselect candidate metrics; dimension ids don't apply here.
+            if (!metricIds?.length) {
+              next.push(block);
+              continue;
+            }
+            const selected = new Set(block.selectedMetricIds);
+            for (const id of metricIds) {
+              selected.delete(id);
+            }
+            if (selected.size > 0) {
+              next.push({ ...block, selectedMetricIds: selected });
+            }
+          }
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const toggleDimensionSelected = useCallback(
     (blockId: string, dimensionId: DimensionId) => {
@@ -342,7 +457,9 @@ export function useExplorationSelection(): ExplorationSelection {
     addDimension,
     toggleTimeline,
     addTimelinesById,
+    removeTimelinesById,
     removeBlock,
+    removeBlockMembers,
     toggleDimensionSelected,
     toggleMetricSelected,
   };
