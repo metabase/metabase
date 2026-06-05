@@ -123,7 +123,7 @@ export const DatabaseList = ({
                   </span>
                 ) : (
                   <UnstyledButton
-                    c="brand"
+                    c="core-brand"
                     onClick={() => addSampleDatabase(query)}
                   >
                     {t`Bring the sample database back`}

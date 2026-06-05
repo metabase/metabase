@@ -422,7 +422,7 @@ export function AggregationPicker({
         className={className}
         mih="18.75rem"
         data-testid="aggregation-column-picker"
-        c="summarize"
+        c="core-summarize"
       >
         <ColumnPickerHeader onClick={handleResetOperator}>
           {operatorInfo.displayName}
@@ -432,7 +432,7 @@ export function AggregationPicker({
           stageIndex={stageIndex}
           columnGroups={columnGroups}
           hasTemporalBucketing
-          color="summarize"
+          color="core-summarize"
           checkIsColumnSelected={checkIsColumnSelected}
           onSelect={handleColumnSelect}
           onClose={onClose}
@@ -444,7 +444,7 @@ export function AggregationPicker({
   return (
     <AccordionList<Item, Section>
       data-testid="aggregation-picker"
-      style={{ color: "var(--mb-color-summarize)" }}
+      style={{ color: "var(--mb-color-core-summarize)" }}
       sections={sections}
       onChange={handleChange}
       onChangeSection={handleSectionChange}

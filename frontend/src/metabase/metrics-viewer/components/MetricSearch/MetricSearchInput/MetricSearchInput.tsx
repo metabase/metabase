@@ -243,7 +243,7 @@ export function MetricSearchInput({
       {isFocused && !pendingFocusRef.current && isExpressionDirty && (
         <Button
           variant="light"
-          color="brand"
+          color="core-brand"
           size="xs"
           py="sm"
           px="sm"

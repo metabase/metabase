@@ -133,7 +133,7 @@ function DocsLink({ title, description, link }: DocsLinkProps) {
       miw="16rem"
     >
       <Group gap="sm" wrap="nowrap" align="flex-start">
-        <FixedSizeIcon c="brand" name="reference" />
+        <FixedSizeIcon c="core-brand" name="reference" />
         <Stack gap="xs">
           <Title order={5}>{title}</Title>
           <Box c="text-secondary">{description}</Box>

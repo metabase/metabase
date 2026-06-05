@@ -108,7 +108,7 @@ function DependencyItemCard({ item }: DependencyItemCardProps) {
       withBorder
     >
       <Stack className={CS.textWrap} gap="xs">
-        <Group c="brand" gap="sm" wrap="nowrap">
+        <Group c="core-brand" gap="sm" wrap="nowrap">
           <FixedSizeIcon name={getItemIcon(item)} />
           <Box fw="bold" lh="h4">
             {getItemName(item)}

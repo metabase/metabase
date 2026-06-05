@@ -37,7 +37,7 @@ export const Badge = ({
   to,
   icon,
   inactiveColor = "text-secondary",
-  activeColor = "brand",
+  activeColor = "core-brand",
   isSingleLine = false,
   onClick,
   children,

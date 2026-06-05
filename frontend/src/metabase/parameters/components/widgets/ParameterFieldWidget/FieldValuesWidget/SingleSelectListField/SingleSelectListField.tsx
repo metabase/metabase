@@ -198,7 +198,7 @@ const SingleSelectListField = ({
                 selectedColor={
                   (checkedColor ?? isDashboardFilter)
                     ? "var(--mb-color-background-selected)"
-                    : "var(--mb-color-filter)"
+                    : "var(--mb-color-core-filter)"
                 }
                 selected={selectedValue === option[0]}
                 onClick={() => onClickOption(option[0])}

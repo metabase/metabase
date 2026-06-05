@@ -27,6 +27,6 @@ export const SettingsTriggerIcon = styled(Icon)`
   color: var(--mb-color-text-secondary);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

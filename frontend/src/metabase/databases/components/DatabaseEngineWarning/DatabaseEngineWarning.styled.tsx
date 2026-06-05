@@ -8,7 +8,7 @@ export const Warning = styled(Alert)`
 `;
 
 export const WarningLink = styled.a`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   cursor: pointer;
   font-weight: bold;
 `;

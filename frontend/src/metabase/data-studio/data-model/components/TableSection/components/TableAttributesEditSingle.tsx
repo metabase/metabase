@@ -223,13 +223,13 @@ function TransformLink({ table }: { table: Table }) {
           textDecoration: "none",
         }}
         bg="background-brand"
-        c="brand"
+        c="core-brand"
       >
         <Icon name="insight" size={12} />
         <Text
           size="sm"
           fw="bold"
-          c="brand"
+          c="core-brand"
           style={{
             fontSize: 12,
             lineHeight: "16px",

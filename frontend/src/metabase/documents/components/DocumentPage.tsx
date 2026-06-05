@@ -608,7 +608,7 @@ export const DocumentPage = ({
           // only applies when trying to duplicate a document that has unsaved changes
           opened={duplicateModalMode === "leave"}
           confirmButtonText={t`Save changes`}
-          confirmButtonProps={{ color: "brand" }}
+          confirmButtonProps={{ color: "core-brand" }}
           data-testid="save-confirmation"
           message={t`You need to save before you can duplicate this document.`}
           title={t`Save your changes first`}

@@ -14,9 +14,9 @@ function getColorForIconWrapper(
     return color("text-secondary");
   }
   if (type === "collection") {
-    return lighten("brand", 0.35);
+    return lighten("core-brand", 0.35);
   }
-  return color("brand");
+  return color("core-brand");
 }
 
 export const IconWrapper = styled.div<{

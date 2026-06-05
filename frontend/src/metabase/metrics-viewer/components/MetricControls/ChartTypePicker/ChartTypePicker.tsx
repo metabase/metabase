@@ -28,7 +28,10 @@ export function ChartTypePicker({
           aria-label={type}
           className={value === type ? S.selected : undefined}
         >
-          <Icon name={icon} c={value === type ? "brand" : "text-primary"} />
+          <Icon
+            name={icon}
+            c={value === type ? "core-brand" : "text-primary"}
+          />
         </ActionIcon>
       ))}
     </Flex>

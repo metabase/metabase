@@ -43,7 +43,7 @@ import { useHelpLink } from "./useHelpLink";
 const CURRENT_APP_ICON_OVERRIDES: {
   name: IconName;
   c: ColorName;
-} = { name: "check_filled", c: "brand" };
+} = { name: "check_filled", c: "core-brand" };
 
 export const AppSwitcher = ({ className }: { className?: string }) => {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
@@ -190,7 +190,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               data-testid="mode-switcher-profile-link"
             >
               <Group wrap="nowrap">
-                <Avatar color="brand" radius="lg" size={32}>
+                <Avatar color="core-brand" radius="lg" size={32}>
                   {user ? userInitials(user) : "?"}
                 </Avatar>
                 <Stack gap="xs">

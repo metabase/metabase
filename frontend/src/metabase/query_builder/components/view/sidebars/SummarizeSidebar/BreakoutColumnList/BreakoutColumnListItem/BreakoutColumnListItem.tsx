@@ -124,7 +124,7 @@ export function BreakoutColumnListItem({
           query={query}
           stageIndex={stageIndex}
           column={item.column}
-          color="summarize"
+          color="core-summarize"
           isEditing={isSelected}
           hasChevronDown
           hasBinning

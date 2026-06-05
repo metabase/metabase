@@ -51,7 +51,7 @@ export const Body = styled.div`
 
   &:hover {
     ${Title} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
 
     ${ActionsContainer} {

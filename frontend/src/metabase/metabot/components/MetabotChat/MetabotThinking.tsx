@@ -60,7 +60,7 @@ export const MetabotThinking = ({
     <Stack gap="xs" mt="md">
       <ThoughtProcess toolCalls={toolCallsWithMsgs} />
       <Loader
-        color="brand"
+        color="core-brand"
         type="dots"
         size="lg"
         data-testid="metabot-response-loader"

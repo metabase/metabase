@@ -13,12 +13,12 @@ export const CopyWidgetButton = styled(CopyButton)`
   padding: 0.5rem 0.75rem;
   border-top-right-radius: 4px;
   border-bottom-right-radius: 4px;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   outline: none;
   cursor: pointer;
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 `;

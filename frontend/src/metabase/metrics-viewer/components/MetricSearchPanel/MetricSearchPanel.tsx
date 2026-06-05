@@ -99,7 +99,7 @@ export function MetricSearchPanel({
             <Button.Group>
               <Button
                 variant="light"
-                color="filter"
+                color="core-filter"
                 size="xs"
                 p="sm"
                 leftSection={
@@ -116,7 +116,7 @@ export function MetricSearchPanel({
                 <Tooltip label={toggleLabel}>
                   <Button
                     variant="light"
-                    color="filter"
+                    color="core-filter"
                     size="xs"
                     py="sm"
                     px="md"

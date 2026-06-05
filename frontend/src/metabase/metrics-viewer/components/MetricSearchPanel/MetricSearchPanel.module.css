@@ -7,11 +7,11 @@
 }
 
 .container:hover {
-  border: 1px solid var(--mb-color-brand);
+  border: 1px solid var(--mb-color-core-brand);
 }
 
 .container:focus-within {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .container:has([data-has-error]) {

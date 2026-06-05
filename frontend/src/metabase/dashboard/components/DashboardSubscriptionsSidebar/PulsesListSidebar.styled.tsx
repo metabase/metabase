@@ -21,7 +21,7 @@ export const PulseCard = styled(Card)<{ canEdit: boolean }>`
       cursor: pointer;
 
       &:hover {
-        background-color: var(--mb-color-brand);
+        background-color: var(--mb-color-core-brand);
       }
     `}
 ` as unknown as ComponentType<PulseCardProps>;

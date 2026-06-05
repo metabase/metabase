@@ -27,7 +27,7 @@
   touch-action: none;
   opacity: 0;
   transition: opacity 0.2s;
-  background: var(--mb-color-brand);
+  background: var(--mb-color-core-brand);
 }
 
 .resizeHandle:hover,

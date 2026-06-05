@@ -103,7 +103,7 @@ const itemLinkStyle = css`
   align-items: center;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
@@ -124,7 +124,7 @@ export const ItemNameCell = styled.td`
 
   &:hover {
     ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
 
     cursor: pointer;
