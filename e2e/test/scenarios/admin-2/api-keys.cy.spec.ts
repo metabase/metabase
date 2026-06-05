@@ -140,7 +140,7 @@ describe("scenarios > admin > settings > API keys", () => {
       .clear()
       .type("Different key name");
 
-    cy.findByLabelText(/group/).click();
+    cy.findByLabelText(/group/i).click();
     cy.findByRole("listbox").findByText("collection").click();
 
     cy.button("Save").click();

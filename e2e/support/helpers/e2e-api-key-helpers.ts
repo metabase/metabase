@@ -13,7 +13,7 @@ export const tryToCreateApiKeyViaModal = ({
     .click();
   H.modal().within(() => {
     cy.findByLabelText(/Key name/).type(name);
-    cy.findByLabelText(/group/).click();
+    cy.findByLabelText(/group/i).click();
   });
 
   H.selectDropdown()
