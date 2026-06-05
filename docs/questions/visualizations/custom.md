@@ -19,7 +19,7 @@ This page covers how to add a custom visualization to your Metabase. To _create_
 
 ### Restrict image domains first
 
-Before you can turn on custom visualizations, you need to enable [Restrict image domains](../../configuring-metabase/settings.md#restrict-image-domains).
+Before you can turn on custom visualizations, you need to enable [Restrict image domains](../../configuring-metabase/settings.md#restrict-image-domains). A custom visualization runs third-party JavaScript in your Metabase. By restricting image (and font) domains, you limit where that code can load assets from, which narrows the ways a plugin could leak data through outbound asset requests. See [Only add plugins you trust](#only-add-plugins-you-trust).
 
 While custom visualizations are enabled, you can't turn **Restrict image domains** back off. You'll need to first disable custom visualizations.
 
@@ -43,7 +43,7 @@ Once you've [built the custom visualization](../../developers-guide/custom-visua
 
 ## Using a custom visualization
 
-On a question or dashboard card, open the visualization sidebar (the **Visualization** button), and look for the **Custom visualizations** section. Pick your visualization the same way you'd pick a line chart or a table, and voilà, there's that gondola line chart you needed:
+On a question, dashboard or document card, open the visualization sidebar (the **Visualization** button), and look for the **Custom visualizations** section. Pick your visualization the same way you'd pick a line chart or a table, and voilà, there's that gondola line chart you needed:
 
 ![Gondola line chart](../images/gondola-line-chart.png)
 
@@ -51,7 +51,7 @@ If a custom visualization can't render the current query results (for example, t
 
 Custom visualizations behave like built-in charts in most places:
 
-- **Settings.** Click the **gear** icon in the visualization sidebar to change the visualization's settings. Plugins can put settings under the **Data** and **Display** tabs, just like built-in charts.
+- **Settings.** Click the **gear** icon in the visualization sidebar to change the visualization's settings. A plugin defines its own setting tabs: each setting names the section it belongs to.
 - **Dark mode.** Plugins that use Metabase's colors adapt to [dark mode](../../people-and-groups/account-settings.md#theme) automatically.
 - **Icons.** A custom visualization shows its own icon in the visualization picker, and questions that use it show that icon in collections and bookmarks.
 
