@@ -39,6 +39,7 @@ type Modal = null | "create" | "edit" | "delete";
 
 const getNodeId = (apiKey: ApiKey) => String(apiKey.id);
 
+// TODO: replace with the shared `metabase/common/components/EmptyState` once it's migrated off Emotion (UXW-3641).
 function EmptyState() {
   return (
     <Center mih="20rem" data-testid="empty-table-warning">
@@ -68,11 +69,15 @@ function ApiKeyActionsMenu({
   return (
     <Menu shadow="md" position="bottom-end">
       <Menu.Target>
-        <ActionIcon variant="subtle" aria-label={t`API key actions`}>
+        <ActionIcon
+          variant="subtle"
+          aria-label={t`API key actions`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
         <Menu.Item
           leftSection={<Icon name="pencil" />}
           onClick={() => onEdit(apiKey)}
@@ -192,6 +197,11 @@ function ApiKeysTable({
     [],
   );
 
+  const handleRowClick = useCallback(
+    (row: Row<ApiKey>) => onEdit(row.original),
+    [onEdit],
+  );
+
   return (
     <Box data-testid="api-keys-table">
       <TreeTable
@@ -200,6 +210,7 @@ function ApiKeysTable({
         headerVariant="pill"
         ariaLabel={t`API keys`}
         getRowProps={getRowProps}
+        onRowClick={handleRowClick}
         classNames={{ cell: S.cell, row: S.row }}
       />
     </Box>

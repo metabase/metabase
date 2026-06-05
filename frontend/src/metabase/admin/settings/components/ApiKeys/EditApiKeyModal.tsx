@@ -17,6 +17,7 @@ import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 
+import S from "./EditApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
@@ -121,7 +122,7 @@ export const EditApiKeyModal = ({
   if (modal === "edit") {
     return (
       <Modal
-        size="30rem"
+        size="40rem"
         padding="xl"
         opened
         onClose={onClose}
@@ -134,7 +135,7 @@ export const EditApiKeyModal = ({
         >
           {({ dirty }) => (
             <Form>
-              <Stack gap="md">
+              <Stack gap="xl">
                 <FormTextInput
                   name="name"
                   label={t`Key name`}
@@ -143,7 +144,9 @@ export const EditApiKeyModal = ({
                 />
                 <FormGroupWidget
                   name="group_id"
-                  label={t`Which group should this key belong to? The key will have the same permissions granted to that group.`}
+                  label={t`Group this key should belong to`}
+                  description={t`The key will have the same permissions that the group does.`}
+                  classNames={{ description: S.groupDescription }}
                 />
                 <FormTextInput
                   name="masked_key"
@@ -158,7 +161,7 @@ export const EditApiKeyModal = ({
                   disabled
                 />
                 <FormErrorMessage />
-                <Group justify="space-between" mt="lg">
+                <Group justify="space-between">
                   <Button
                     onClick={() => setModal("regenerate")}
                   >{t`Regenerate API key`}</Button>

@@ -108,13 +108,17 @@ describe("ManageApiKeys", () => {
     );
     expect(await screen.findByText("Create a new API key")).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/Key name/), "New key");
-    await userEvent.click(await screen.findByLabelText(/which group/i));
+    await userEvent.click(
+      await screen.findByLabelText(/group this key should belong to/i),
+    );
     await userEvent.click(await screen.findByText("flamingos"));
 
     // Blur the select
     await userEvent.click(await screen.findByText(/We don't version/));
     expect(
-      await screen.findByRole("textbox", { name: /which group/i }),
+      await screen.findByRole("textbox", {
+        name: /group this key should belong to/i,
+      }),
     ).not.toHaveAttribute("data-error");
 
     const createButton = screen.getByRole("button", { name: "Create" });
@@ -181,7 +185,9 @@ describe("ManageApiKeys", () => {
     );
     await screen.findByText("Edit API key");
 
-    const group = await screen.findByLabelText(/which group/i);
+    const group = await screen.findByLabelText(
+      /group this key should belong to/i,
+    );
     await userEvent.click(group);
     await userEvent.click(await screen.findByText("flamingos"));
 
@@ -202,6 +208,23 @@ describe("ManageApiKeys", () => {
         fetchMock.callHistory.calls("path:/api/api-key", { method: "GET" }),
       ).toHaveLength(2);
     });
+  });
+
+  it("should open the edit modal when a row is clicked", async () => {
+    await setup();
+    await userEvent.click(
+      await screen.findByRole("row", { name: /development api key/i }),
+    );
+    expect(await screen.findByText("Edit API key")).toBeInTheDocument();
+  });
+
+  it("should not open the edit modal when opening the actions menu", async () => {
+    await setup();
+    await openRowMenu(/development api key/i);
+    expect(
+      await screen.findByRole("menuitem", { name: /edit/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Edit API key")).not.toBeInTheDocument();
   });
 
   it("should delete API key", async () => {

@@ -1,10 +1,19 @@
 import { t } from "ttag";
 
-import { CopyTextInput } from "metabase/common/components/CopyTextInput";
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
+import {
+  ActionIcon,
+  Button,
+  CopyButton,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+} from "metabase/ui";
 
-const { fontFamilyMonospace } = getThemeOverrides();
+import S from "./SecretKeyModal.module.css";
 
 export const SecretKeyModal = ({
   secretKey,
@@ -14,7 +23,7 @@ export const SecretKeyModal = ({
   onClose: () => void;
 }) => (
   <Modal
-    size="30rem"
+    size="40rem"
     opened
     onClose={onClose}
     title={t`Copy and save this API key`}
@@ -22,22 +31,27 @@ export const SecretKeyModal = ({
   >
     <Stack gap="lg">
       <Text c="text-secondary">{t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}</Text>
-      <CopyTextInput
+      <TextInput
         aria-label={t`The API key`}
         value={secretKey}
         readOnly
-        styles={{
-          input: {
-            height: "auto",
-            minHeight: "auto",
-            padding: "0.5rem 2.5rem 0.5rem 1rem",
-            border: "none",
-            borderRadius: "0.5rem",
-            lineHeight: "1.25rem",
-            backgroundColor: "var(--mb-color-background-secondary)",
-            fontFamily: fontFamilyMonospace as string,
-          },
-        }}
+        classNames={{ input: S.keyInput }}
+        rightSectionPointerEvents="all"
+        rightSection={
+          <CopyButton value={secretKey} timeout={2000}>
+            {({ copied, copy }) => (
+              <Tooltip label={t`Copied!`} opened={copied}>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={t`Copy`}
+                  onClick={copy}
+                >
+                  <Icon name="copy" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+        }
       />
       <Group justify="flex-end">
         <Button onClick={onClose} variant="filled">{t`Done`}</Button>

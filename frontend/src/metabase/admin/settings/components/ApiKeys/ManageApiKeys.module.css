@@ -12,4 +12,5 @@
 
 .row {
   min-height: 3rem;
+  cursor: pointer;
 }
