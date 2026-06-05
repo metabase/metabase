@@ -334,7 +334,7 @@ If you are fixing SQL errors it is FORBIDDEN to replace referenced models and ta
 {% if sql_dialect %}
 # SQL Dialect: {{sql_dialect|upper}}
 
-The target database uses the **{{sql_dialect}}** SQL dialect. When the user is in the SQL editor, its dialect-specific instructions have already been loaded into this conversation — follow them.
+The target database uses the **{{sql_dialect}}** SQL dialect.{% if sql_dialect_loaded %} When the user is in the SQL editor, its dialect-specific instructions have already been loaded into this conversation — follow them.{% endif %}
 {% endif %}
 
 {% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}

@@ -671,7 +671,10 @@
   (testing "handles empty field values"
     (let [metadata {:field_values []}
           xml (llm-shape/field-values-metadata->xml metadata)]
-      (is (str/includes? xml "This field hasn't been sampled yet")))))
+      (is (str/includes? xml "This field hasn't been sampled yet"))))
+  (testing "a pipe in a sample value is escaped so it can't break the table"
+    (let [xml (llm-shape/field-values-metadata->xml {:field_values ["a|b"]})]
+      (is (str/includes? xml "a\\|b")))))
 
 (deftest ^:parallel field-metadata->xml-test
   (testing "formats field metadata"

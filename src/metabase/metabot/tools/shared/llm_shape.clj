@@ -676,7 +676,7 @@
    Matches Python FieldValuesMetadata.llm_representation exactly.
    Note: Tables are used with |safe in the template, so values must be escaped."
   [{:keys [field_values statistics]}]
-  (let [escape-value        (fn [_k v] (escape-xml (str v)))
+  (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
                                (map vector field_values)

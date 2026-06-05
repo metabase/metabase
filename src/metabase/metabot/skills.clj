@@ -20,6 +20,7 @@
    [clojure.string :as str]
    [malli.error :as me]
    [metabase.api-scope.core :as api-scope]
+   [metabase.driver :as driver]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
    [metabase.util.files :as u.files]
@@ -235,8 +236,28 @@
 
 ;;; Dialect preload
 
+(defn- engine->dialect
+  "Resolve a SQL `engine` (the driver name from viewing context, e.g. \"postgres\") to the dialect name
+  its skill is registered under (the dialect file's base name, e.g. \"postgresql\").
+  Resolution goes through [[metabase.driver/llm-sql-dialect-resource]], the canonical driver->dialect-file
+  mapping (it isn't 1:1 — `:sparksql` shares databricks.md), falling back to `engine` itself for callers
+  that already pass a dialect name."
+  [engine]
+  (or (when-let [path (try
+                        (driver/llm-sql-dialect-resource (keyword engine))
+                        ;; `engine` comes from FE-supplied viewing context and may not name a driver.
+                        (catch Exception _ nil))]
+        (-> path (str/split #"/") peek (str/replace #"\.md$" "")))
+      engine))
+
+(defn dialect-skill
+  "The registered dialect skill for SQL `engine` (a driver name from viewing context), or nil."
+  [engine]
+  (when engine
+    (get-skill (dialect-skill-id (engine->dialect engine)))))
+
 (defn dialect-preload-parts
-  "Given a SQL `engine` name (e.g. \"postgresql\", as extracted from viewing context), return AISDK parts
+  "Given a SQL `engine` name (e.g. \"postgres\", as extracted from viewing context), return AISDK parts
   that preload its dialect skill body into the message stream as a synthetic `load_skill` tool call +
   result.
   These sit below the system cache breakpoint, so the cached system prefix stays identical across
@@ -245,10 +266,9 @@
   Returns [] when `engine` is nil or has no matching dialect skill.
   Dialect context only arises in SQL-editor sessions, so its presence is itself the gate."
   [engine]
-  (or (when engine
-        (let [skill-id (dialect-skill-id engine)]
-          (when-let [skill (get-skill skill-id)]
-            (let [call-id (str "skill_preload_" (name skill-id))]
-              [{:type :tool-input  :id call-id :function "load_skill" :arguments {:ids [(name skill-id)]}}
-               {:type :tool-output :id call-id :result {:output (:body skill)}}]))))
+  (or (when-let [skill (dialect-skill engine)]
+        (let [skill-id (:id skill)
+              call-id  (str "skill_preload_" (name skill-id))]
+          [{:type :tool-input  :id call-id :function "load_skill" :arguments {:ids [(name skill-id)]}}
+           {:type :tool-output :id call-id :result {:output (:body skill)}}]))
       []))

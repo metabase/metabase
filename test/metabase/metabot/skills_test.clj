@@ -96,6 +96,10 @@
       (is (str/includes? (get-in (second parts) [:result :output]) "PostgreSQL"))
       (testing "the tool-input and tool-output share an id"
         (is (= (:id (first parts)) (:id (second parts)))))))
+  (testing "resolves a raw driver name through driver/llm-sql-dialect-resource"
+    ;; the FE sends the driver name (`postgres`), not the dialect file's name (`postgresql`)
+    (let [parts (skills/dialect-preload-parts "postgres")]
+      (is (= ["sql-dialect-postgresql"] (get-in (first parts) [:arguments :ids])))))
   (testing "returns empty when no dialect is given"
     (is (= [] (skills/dialect-preload-parts nil))))
   (testing "returns empty when the dialect has no registered skill"

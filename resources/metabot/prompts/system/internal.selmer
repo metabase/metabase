@@ -17,7 +17,7 @@ A single objective: **the query you build should return the data the user asked 
 {% if has_sql_generation %}
 # Writing SQL
 
-Metabase is read-only: your SQL is always a `SELECT` (CTEs/`WITH` are fine for transforms; never `CREATE`, `INSERT`, `UPDATE`, `DELETE`, `ALTER`, `DROP`, `TRUNCATE`). Deliver SQL through the SQL tools rather than pasting it into chat — the tools place it in the editor for the user. Verify the format of any literal you filter or branch on before writing it (see grounding above). The full SQL contract — model reference syntax, fully-qualified table names — is in the SQL skills (load them via `load_skill`).{% if sql_dialect %} When the user is in the SQL editor, dialect-specific instructions for **{{ sql_dialect }}** have already been loaded into this conversation — follow them.{% endif %}
+Metabase is read-only: your SQL is always a `SELECT` (CTEs/`WITH` are fine for transforms; never `CREATE`, `INSERT`, `UPDATE`, `DELETE`, `ALTER`, `DROP`, `TRUNCATE`). Deliver SQL through the SQL tools rather than pasting it into chat — the tools place it in the editor for the user. Verify the format of any literal you filter or branch on before writing it (see grounding above). The full SQL contract — model reference syntax, fully-qualified table names — is in the SQL skills (load them via `load_skill`).{% if sql_dialect_loaded %} When the user is in the SQL editor, dialect-specific instructions for **{{ sql_dialect }}** have already been loaded into this conversation — follow them.{% endif %}
 {% endif %}
 {% else %}
 # Discovery only

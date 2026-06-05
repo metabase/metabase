@@ -196,6 +196,7 @@
                                   :current_user_info        current-user-info
                                   :first_day_of_week        first-day-of-week
                                   :sql_dialect              sql-dialect
+                                  :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
                                   :skill_catalog            catalog
                                   :skill_always_on          (mapv :body always-on)
                                   :viewing_context          viewing-context
