@@ -64,7 +64,9 @@
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
    (org.apache.pdfbox.pdmodel.common PDRectangle)
    (org.apache.pdfbox.pdmodel.font PDFont PDType0Font)
-   (org.apache.pdfbox.pdmodel.graphics.image LosslessFactory PDImageXObject)))
+   (org.apache.pdfbox.pdmodel.graphics.image LosslessFactory PDImageXObject)
+   (org.apache.pdfbox.pdmodel.interactive.action PDActionURI)
+   (org.apache.pdfbox.pdmodel.interactive.annotation PDAnnotationLink PDBorderStyleDictionary)))
 
 (set! *warn-on-reflection* true)
 
@@ -630,7 +632,8 @@
     (if (empty? runs)
       out
       (let [r     (first runs)
-            style (cond-> (dissoc r :text :base :reading :ruby? :space? :break? :href)
+            ;; keep :href so links can be made clickable; :link? drives the link colour
+            style (cond-> (dissoc r :text :base :reading :ruby? :space? :break?)
                     (:href r) (assoc :link? true))]
         (cond
           (:break? r)
@@ -673,7 +676,7 @@
                 advance    (+ (if add-space? sp 0.0) ww)
                 item       {:ruby? true :base (:base w) :reading (:reading w) :font font
                             :pt base-pt :ruby-pt ruby-pt :base-ww bw :reading-ww rw :color color
-                            :ww ww :sp sp :space-before? add-space?}]
+                            :href (:href style) :ww ww :sp sp :space-before? add-space?}]
             (if (and (seq line) (> (+ line-w advance) max-w))
               (recur ws [] 0.0 (conj lines line))
               (recur (rest ws) (conj line item) (+ line-w advance) lines)))
@@ -688,7 +691,7 @@
                 add-space? (boolean (and (seq line) (:space-before? w)))
                 advance    (+ (if add-space? sp 0.0) ww)
                 item       {:text txt :font font :pt base-pt :color color
-                            :ww ww :sp sp :space-before? add-space?}]
+                            :href (:href style) :ww ww :sp sp :space-before? add-space?}]
             (cond
               ;; a single token wider than the whole line -> hard-break into characters
               (and (empty? line) (> ww max-w) (> (count txt) 1))
@@ -738,6 +741,31 @@
             (map #(/ (double %) 100.0) (range 100 44 -5)))
       0.45))
 
+;; --------------------------------------------------------------------------------------------
+;; Clickable links. PDF link annotations attach to the page, not the content stream, so while a
+;; page draws we collect link rectangles into `*link-rects*` and add the annotations afterward.
+;; --------------------------------------------------------------------------------------------
+
+(def ^:dynamic *link-rects*
+  "While a page renders, an atom of `{:x0 :y0 :x1 :y1 :href}` rectangles for the clickable link
+  annotations to add to the page once drawing is done."
+  nil)
+
+(defn- clickable-href?
+  "Only annotate absolute http(s)/mailto links (skip relative or file:/javascript: schemes)."
+  [href]
+  (boolean (re-find #"(?i)^(?:https?|mailto):" (str href))))
+
+(defn- record-link!
+  "Record a clickable rectangle for link `href`, covering text drawn at `[x, baseline]`."
+  [x baseline width pt href]
+  (when (and *link-rects* (clickable-href? href))
+    (swap! *link-rects* conj {:x0 (double x)
+                              :y0 (- (double baseline) (* 0.2 pt))
+                              :x1 (+ (double x) width)
+                              :y1 (+ (double baseline) (* 0.85 pt))
+                              :href href})))
+
 (defn- draw-md-line!
   [^PDPageContentStream cs x baseline items]
   (loop [items items, cx (double x)]
@@ -753,6 +781,8 @@
             (draw-line! cs (:font it) (:pt it) base-x baseline (:base it))
             (draw-line! cs (:font it) (:ruby-pt it) read-x (+ baseline (:pt it) 1.0) (:reading it)))
           (draw-line! cs (:font it) (:pt it) cx2 baseline (:text it)))
+        (when (:href it)
+          (record-link! cx2 baseline (:ww it) (:pt it) (:href it)))
         (recur (rest items) (+ cx2 (:ww it))))))
   (.setNonStrokingColor cs Color/BLACK))
 
@@ -791,6 +821,9 @@
           txt  (let [alt (:alt block)] (if (str/blank? alt) (:src block) alt))
           used (draw-text-block! cs (face :regular) pt link-color x top-y cell-w
                                  (- (double top-y) bottom) txt)]
+      (when (and *link-rects* (clickable-href? (:src block)))
+        (swap! *link-rects* conj {:x0 (double x) :y0 (- (double top-y) used)
+                                  :x1 (+ (double x) cell-w) :y1 (double top-y) :href (:src block)}))
       (- (double top-y) used 4.0))))
 
 (defn- draw-block!
@@ -1033,6 +1066,23 @@
       (let [y (if dashboard-title (- top (header-block-pt dashboard-title-pt)) top)]
         (draw-line! cs bold tab-title-pt margin (- y tab-title-pt) tab-title)))))
 
+(defn- add-link-annotations!
+  "Add a clickable URI link annotation to `pg` for each collected rectangle (invisible border --
+  the link text is already coloured)."
+  [^PDPage pg rects]
+  (when (seq rects)
+    (let [annots (.getAnnotations pg)]
+      (doseq [{:keys [x0 y0 x1 y1 href]} rects]
+        (let [rect   (doto (PDRectangle.)
+                       (.setLowerLeftX (float x0)) (.setLowerLeftY (float y0))
+                       (.setUpperRightX (float x1)) (.setUpperRightY (float y1)))
+              border (doto (PDBorderStyleDictionary.) (.setWidth (float 0)))
+              link   (doto (PDAnnotationLink.)
+                       (.setRectangle rect)
+                       (.setBorderStyle border)
+                       (.setAction (doto (PDActionURI.) (.setURI (str href)))))]
+          (.add annots link))))))
+
 (defn- render-page!
   [^PDDocument doc {:keys [^PDRectangle rect unit]} timezone page]
   (let [pg            (PDPage. rect)
@@ -1040,25 +1090,27 @@
         ph            (.getHeight rect)
         cs            (PDPageContentStream. doc pg)
         card-area-top (- ph margin (* (:header-rows page) unit))]
-    (try
-      (draw-header! cs ph page)
-      (doseq [cell (:cards page)]
-        (let [rr     (- (:row cell) (:base page))
-              x      (+ margin (* (:col cell) unit))
-              top-y  (- card-area-top (* rr unit))
-              cell-w (* (:size_x cell) unit)
-              cell-h (min (* (:size_y cell) unit) (- top-y margin))]
-          (try
-            (case (:kind cell)
-              :card    (render-card-cell! doc cs timezone (:part cell) x top-y cell-w cell-h)
-              :heading (draw-text-in-cell! cs (bold-font) heading-card-pt x top-y cell-w cell-h (:text cell))
-              :text    (draw-markdown-in-cell! doc cs x top-y cell-w cell-h (:text cell))
-              nil)
-            (catch Throwable e
-              (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
-              (draw-text-in-cell! cs (regular-font) 10.0 x top-y cell-w cell-h "[Unable to render this card]")))))
-      (finally
-        (.close cs)))))
+    (binding [*link-rects* (atom [])]
+      (try
+        (draw-header! cs ph page)
+        (doseq [cell (:cards page)]
+          (let [rr     (- (:row cell) (:base page))
+                x      (+ margin (* (:col cell) unit))
+                top-y  (- card-area-top (* rr unit))
+                cell-w (* (:size_x cell) unit)
+                cell-h (min (* (:size_y cell) unit) (- top-y margin))]
+            (try
+              (case (:kind cell)
+                :card    (render-card-cell! doc cs timezone (:part cell) x top-y cell-w cell-h)
+                :heading (draw-text-in-cell! cs (bold-font) heading-card-pt x top-y cell-w cell-h (:text cell))
+                :text    (draw-markdown-in-cell! doc cs x top-y cell-w cell-h (:text cell))
+                nil)
+              (catch Throwable e
+                (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
+                (draw-text-in-cell! cs (regular-font) 10.0 x top-y cell-w cell-h "[Unable to render this card]")))))
+        (finally
+          (.close cs)))
+      (add-link-annotations! pg @*link-rects*))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Public API
