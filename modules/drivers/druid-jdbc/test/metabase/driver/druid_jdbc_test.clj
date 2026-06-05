@@ -596,7 +596,8 @@
 
 (deftest ^:parallel null-timestamp-test
   (mt/test-driver :druid-jdbc
-    (let [mp (mt/metadata-provider)
-          query (lib/native-query mp "SELECT CAST(NULL AS TIMESTAMP) FROM checkins LIMIT 1")]
-      (is (= [[nil]]
-             (mt/rows (qp/process-query query)))))))
+    (is (= [[nil]]
+           (-> (mt/metadata-provider)
+               (lib/native-query "SELECT CAST(NULL AS TIMESTAMP) FROM checkins LIMIT 1")
+               qp/process-query
+               mt/rows)))))
