@@ -18,6 +18,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting/time";
 import {
   TRANSFORM_RUN_SORT_COLUMNS,
@@ -31,8 +32,6 @@ import type { TransformRunSortOptions } from "../types";
 
 import { TagList } from "./TagList";
 import { TimezoneIndicator } from "./TimezoneIndicator";
-
-const EMPTY_CELL_PLACEHOLDER = "—";
 
 function getTransformColumn(): TreeTableColumnDef<TransformRun> {
   return {
