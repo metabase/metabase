@@ -143,9 +143,7 @@ export const AlertListItem = ({
   );
 };
 
-const formatTitle = (
-  sendCondition?: NotificationCardSendCondition | null,
-): string => {
+const formatTitle = (sendCondition?: NotificationCardSendCondition): string => {
   switch (sendCondition) {
     case "has_result":
       return t`Alert when this has results`;
