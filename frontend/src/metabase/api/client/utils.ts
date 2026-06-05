@@ -53,60 +53,29 @@ export function appendQueryParameters(
   }
 }
 
-export async function getResponseBody(response: Response): Promise<unknown> {
-  if (response.status === 202) {
-    // HTTP 202 - Accepted
-    // Streaming endpoints (queries, downloads) commit HTTP 202 up front, so a
-    // post-commit failure can't change the status line — it's signalled by a
-    // small {_status: N} JSON body. The only bodies possible on a 202 are JSON (a
-    // result or that _status error) or a non-JSON export read off the clone by a
-    // transformResponse caller. We only ever need JSON here: parse in one pass,
-    // and treat a parse failure as a successful non-JSON export.
-    //
-    // TODO: This is a bug. The server can return a json error at any time in the response, and that would silently fail here.
-    try {
-      return await response.json();
-    } catch {
-      return undefined;
-    }
-  }
-
-  if (response.status === 204) {
-    // HTTP 204 - No Content
-    return null;
-  }
-
-  if (isJson(response)) {
-    return response.json();
-  }
-
-  return response.text();
-}
-
 function isJson(response: Response): boolean {
   return (
     response.headers.get("Content-Type")?.includes("application/json") ?? false
   );
 }
 
-/**
- * Resolve a response's real status. A streaming endpoint commits a 202 before
- * its work can fail, then signals the true status in a `{_status: N}` body; this
- * recovers it, falling back to the HTTP status for every other response.
- */
-export function getResponseStatus(response: Response, body: unknown): number {
-  if (
-    response.status === 202 &&
-    body &&
-    typeof body === "object" &&
-    "_status" in body &&
-    typeof body._status === "number" &&
-    body._status > 0
-  ) {
-    return body._status;
-  }
+function isOk(status: number): boolean {
+  return 200 <= status && status <= 299;
+}
 
-  return response.status;
+/**
+ * Parse a JSON body stream natively — `response.json()` never materializes the
+ * payload as a JS string the way `text()` + `JSON.parse` would. A body that
+ * can't be parsed (empty, truncated, or mislabeled `application/json`) resolves
+ * to `null` rather than throwing, so it can never mask the response's status
+ * with an opaque, status-less `SyntaxError`.
+ */
+async function parseJsonOrNull(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -152,14 +121,65 @@ export async function handleResponse(
 }
 
 /**
- * Read and parse the response body, returning it with the resolved status and
- * whether that status is 2xx. Does not throw on a non-2xx status — the caller
- * inspects `ok`.
+ * A streamed 202 signals its real status in a `{_status: N}` body.
+ */
+function streamedStatus(body: unknown): number | undefined {
+  if (
+    body &&
+    typeof body === "object" &&
+    "_status" in body &&
+    typeof body._status === "number" &&
+    body._status > 0
+  ) {
+    return body._status;
+  }
+  return undefined;
+}
+
+/**
+ * Read the body by its `Content-Type`: JSON natively (never materializing an
+ * intermediate string), otherwise text. A successful JSON body must be
+ * parseable, so a parse failure throws; on a failed response the body is error
+ * data, so an empty or garbage body is swallowed to `null` rather than masking
+ * the status with a `SyntaxError`.
+ */
+async function readResponseBody(
+  response: Response,
+  ok: boolean,
+): Promise<unknown> {
+  if (!isJson(response)) {
+    return response.text();
+  }
+  return ok ? response.json() : parseJsonOrNull(response);
+}
+
+/**
+ * Read and interpret a response into `{ ok, status, body }`, routed by status:
+ *
+ * - 202: a streamed query/download commits the 202 before its work can fail, so
+ *   read the body to recover the real status from a `{_status}` payload. The
+ *   read stays tolerant — a non-`_status` body (even a non-JSON export) is a
+ *   success streamed straight through.
+ *   TODO: a JSON error emitted mid-stream parses to a non-`_status` object and
+ *   is silently treated as success.
+ * - 204: no content.
+ * - otherwise: the status line is authoritative; see `readResponseBody`.
+ *
+ * Does not throw on a non-2xx status — the caller inspects `ok`.
  */
 async function readBody(response: Response): Promise<ResponseResult> {
-  const body = await getResponseBody(response);
-  const status = getResponseStatus(response, body);
-  const ok = 200 <= status && status <= 299;
+  if (response.status === 202) {
+    const body = await parseJsonOrNull(response);
+    const status = streamedStatus(body) ?? 202;
+    return { ok: isOk(status), status, body };
+  }
+
+  if (response.status === 204) {
+    return { ok: true, status: 204, body: null };
+  }
+
+  const { status, ok } = response;
+  const body = await readResponseBody(response, ok);
   return { ok, status, body };
 }
 

@@ -389,4 +389,95 @@ describe("api", () => {
       expect(listener).not.toHaveBeenCalled();
     });
   });
+
+  describe("response body parsing", () => {
+    let apiInstance: ApiClient;
+
+    beforeEach(() => {
+      apiInstance = new ApiClient();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    it("parses a JSON-typed body", async () => {
+      fetchMock.get("path:/api/thing", {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+        body: { id: 1 },
+      });
+
+      await expect(
+        apiInstance.request({ method: "GET", url: "/api/thing" }),
+      ).resolves.toEqual({ id: 1 });
+    });
+
+    // A successful response we're told is JSON but can't parse isn't really a
+    // success — fail loud at the source rather than resolve with a silent null
+    // that NPEs somewhere downstream.
+    it("throws when a successful JSON-typed body cannot be parsed", async () => {
+      fetchMock.get("path:/api/thing", {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+        body: "<html>not json</html>",
+      });
+
+      await expect(
+        apiInstance.request({ method: "GET", url: "/api/thing" }),
+      ).rejects.toThrow();
+    });
+
+    it("throws when a successful JSON-typed body is empty", async () => {
+      fetchMock.get("path:/api/thing", {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+        body: "",
+      });
+
+      await expect(
+        apiInstance.request({ method: "GET", url: "/api/thing" }),
+      ).rejects.toThrow();
+    });
+
+    // The regression this guards: an error response carrying a JSON content type
+    // but an empty (or broken) body used to throw an opaque SyntaxError with no
+    // `.status`, so downstream error handlers lost the HTTP status. It must
+    // throw `{ status, data: null }` with the real status instead.
+    it("throws the real status (not a SyntaxError) when an error body is empty but JSON-typed", async () => {
+      fetchMock.get("path:/api/thing", {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+        body: "",
+      });
+
+      await expect(
+        apiInstance.request({ method: "GET", url: "/api/thing" }),
+      ).rejects.toEqual({ status: 500, data: null });
+    });
+
+    it("throws the real status when an error body is malformed JSON", async () => {
+      fetchMock.get("path:/api/thing", {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+        body: "<html>gateway error</html>",
+      });
+
+      await expect(
+        apiInstance.request({ method: "GET", url: "/api/thing" }),
+      ).rejects.toEqual({ status: 503, data: null });
+    });
+
+    it("returns a non-JSON body as text", async () => {
+      fetchMock.get("path:/api/thing", {
+        status: 200,
+        headers: { "Content-Type": "text/plain" },
+        body: "plain text",
+      });
+
+      await expect(
+        apiInstance.request({ method: "GET", url: "/api/thing" }),
+      ).resolves.toBe("plain text");
+    });
+  });
 });
