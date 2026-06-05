@@ -18,7 +18,7 @@ A custom visualization is a small React app that Metabase renders in place of a 
 Building a custom viz from scaffolding to adding it to your Metabase looks something like:
 
 1. **Scaffold** a project with the `@metabase/custom-viz` CLI. The command sets up the build, the manifest, and a working starter visualization.
-2. **Develop** against a running Metabase with hot reload while you write your component and settings.
+2. **Develop** against a locally running Metabase with hot reload while you write your component and settings.
 3. **Handle the data**: read query results from `series`, wire up clicks and tooltips, and add any settings your chart needs.
 4. **Match the look** with Metabase's formatters, theme variables, and color scheme.
 5. **Build and package** the project into a `.tgz` bundle.
@@ -73,7 +73,7 @@ The scaffold ships a complete, working example: a chart that shows a thumbs-up e
 
 To develop your plugin against a live Metabase with hot reload:
 
-1. Start Metabase with the following `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable.
+1. Start Metabase with the following `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable. Like any Metabase that runs custom visualizations, this local instance needs a [Pro or Enterprise](https://www.metabase.com/pricing/) token.
 2. Run `npm run dev` in your project. By default, the dev server listens on `http://localhost:5174`.
 3. In Metabase, go to **Admin** > **Settings** > **Custom visualizations** > **Development** and set the **Dev server URL** to your dev server's address.
 
@@ -268,7 +268,7 @@ settings: {
 | `group`                        | Sub-heading within a section for grouping related settings.                                      |
 | `index`                        | Display order within a group.                                                                    |
 | `inline`                       | When `true`, renders the widget on the same line as `title` (handy for `"toggle"`).              |
-| `widget`                       | Built-in widget name (see below).                                                                |
+| `widget`                       | A [built-in widget](#built-in-widgets) name, or a [custom React component](#custom-widgets).      |
 | `getDefault(series, settings)` | Computes the default value when none is stored.                                                  |
 | `getValue(series, settings)`   | Always-computed value — overrides the stored value on every render.                              |
 | `getProps(series, settings)`   | Returns widget-specific props.                                                                   |
@@ -295,6 +295,42 @@ Widgets for the settings UI.
 | `"field"`            | `{ columns, options: { name, value }[], showColumnSetting? }`              | Single column picker     |
 | `"fields"`           | `{ columns, options: { name, value }[], addAnother?, showColumnSetting? }` | Multi-column picker      |
 
+### Custom widgets
+
+When the built-in widgets don't fit, set `widget` to your own React component instead of a built-in name. Metabase renders the component in the settings sidebar, inside the same [sandbox](#sandbox-restrictions) as your visualization. A widget that reaches for a blocked API is removed, so keep widgets to plain inputs and display.
+
+Metabase injects these props into your widget component (import the type with `BaseWidgetProps<TValue, TSettings>`):
+
+| Prop               | Type                  | Description                             |
+| ------------------ | --------------------- | --------------------------------------- |
+| `id`               | `string`              | The setting's `id`.                     |
+| `value`            | `TValue \| undefined` | The setting's current value.            |
+| `onChange`         | `(value?) => void`    | Update this setting's value.            |
+| `onChangeSettings` | `(settings) => void`  | Update other settings at the same time. |
+
+Add any extra props your component needs with `getProps()`. Its return type is your component's own props, minus the base props Metabase injects.
+
+```tsx
+import { defineConfig, type BaseWidgetProps } from "@metabase/custom-viz";
+
+type Settings = { label?: string };
+
+function LabelWidget({ value, onChange }: BaseWidgetProps<string, Settings>) {
+  return (
+    <input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+  );
+}
+
+// ...in your visualization's settings:
+settings: {
+  label: defineSetting({
+    id: "label",
+    title: "Label",
+    widget: LabelWidget,
+  }),
+},
+```
+
 ## Formatting and theming
 
 Render numbers, dates, and currencies the way the rest of Metabase does with `formatValue`. Pass the cell's column to pick up that column's formatting settings, or override with options like `currency`, `decimals`, `compact`, or `date_style`:
@@ -316,7 +352,7 @@ Canvas-based charting libraries (ECharts, Chart.js, and most chart libraries) ca
 
 ## Bundling assets
 
-The build produces a single JavaScript bundle (`dist/index.js`), and the [icon](#the-visualization-icon) is the only file Metabase serves alongside it. Metabase doesn't serve arbitrary static files, and the [sandbox](#sandbox-restrictions) blocks network access, so you can't load an external image at runtime either.
+The build produces a single JavaScript bundle (`dist/index.js`), and the [icon](#the-visualization-icon) is the only file Metabase serves alongside it. Metabase doesn't serve arbitrary static files, so bundling images into your plugin is the most reliable approach. The [sandbox](#sandbox-restrictions) blocks scripted network access like `fetch` and `XMLHttpRequest`, but it doesn't stop the browser from loading an `<img>` or CSS `url()`: an external image still loads as long as its domain is allowed by the image-domains Content Security Policy (see below).
 
 Bundled images always render, including when an admin has turned on [Restrict image domains](../configuring-metabase/settings.md#restrict-image-domains). That Content Security Policy setting limits which external hosts images can load from, but inline and `data:` images ship inside your bundle, so they're never blocked.
 
@@ -339,7 +375,7 @@ const VisualizationComponent = () => <img src={logo} alt="" />;
 The icon shows up in the chart type picker and elsewhere in the Metabase UI.
 
 - Declare it with `"icon"` in `metabase-plugin.json`. The default location is `public/assets/icon.svg`.
-- Use `currentColor` for fills and strokes so the icon adapts to light and dark themes:
+- Use `currentColor` for fills and strokes so the icon adapts to light and dark themes, as well as to hover and active states (like when it's highlighted in a menu):
 
 ```svg
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -379,9 +415,9 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 - **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
 - **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
-### Custom visualizations don't render in subscriptions
+### Custom visualizations only render in the live app
 
-Custom visualizations only render in the live, interactive app. Static renders, like dashboard subscriptions sent by [email](../dashboards/subscriptions.md), Slack, or webhook, fall back to a default visualization for any card that uses a custom visualization.
+Custom visualizations only render in the live, interactive app. Static renders, like dashboard subscriptions sent by [email](../dashboards/subscriptions.md), Slack, or webhook, fall back to a default visualization for any card that uses a custom visualization. The same goes for [embedded](../embedding/introduction.md) questions and dashboards: a card that uses a custom visualization falls back to a default visualization.
 
 ## Example plugins
 
