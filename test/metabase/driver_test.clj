@@ -361,9 +361,9 @@
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-fks` should be usable in the way we used to use the old `describe-table-fks` method"
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
-      (let [orders   (t2/select-one :model/Table (mt/id :orders))
-            products (t2/select-one :model/Table (mt/id :products))
-            people   (t2/select-one :model/Table (mt/id :people))
+      (let [orders   (t2/select-one [:model/Table :name :schema] (mt/id :orders))
+            products (t2/select-one [:model/Table :name :schema] (mt/id :products))
+            people   (t2/select-one [:model/Table :name :schema] (mt/id :people))
             fmt      (partial ddl.i/format-name driver/*driver*)]
         (is (= #{{:fk-table-schema (:schema orders)
                   :fk-table-name   (:name orders)
@@ -381,7 +381,9 @@
                      (driver/describe-fks
                       driver/*driver*
                       (lib.metadata/database (mt/metadata-provider))
-                      {:table-names #{(:name orders)}}))))))))
+                      {:schema-names (when (:schema orders)
+                                       #{(:schema orders)})
+                       :table-names #{(:name orders)}}))))))))
 
 (deftest ^:parallel describe-fks-test
   (testing `driver/describe-fks
