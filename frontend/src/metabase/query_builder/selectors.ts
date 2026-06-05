@@ -683,7 +683,8 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
         return rawQuery.length > 0;
       }
 
-      const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());
+      const rawOriginalQuery =
+        Lib.rawNativeQuery(originalQuestion.query()) ?? "";
       const hasQueryChanged = rawQuery !== rawOriginalQuery;
       return hasQueryChanged;
     }

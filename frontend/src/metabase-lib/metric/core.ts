@@ -1,4 +1,4 @@
-import dayjs, { type Dayjs } from "dayjs";
+import dayjs from "dayjs";
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
 import type { Metadata } from "metabase-lib";
@@ -395,15 +395,17 @@ export function timeFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): TimeFilterParts | null {
-  const filterParts = LibMetric.timeFilterParts(definition, filterClause) as
-    | (TimeFilterParts & { values: Dayjs[] })
-    | null;
-  if (!filterParts) {
+  const filterParts = LibMetric.timeFilterParts(definition, filterClause);
+  if (!filterParts || !Array.isArray(filterParts.values)) {
     return null;
   }
+  // CLJS emits time values as dayjs objects at this boundary even though the
+  // generated schema types them as Date; narrow at runtime instead of casting.
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Dayjs) => value.toDate()),
+    values: filterParts.values.map((value) =>
+      dayjs.isDayjs(value) ? value.toDate() : value,
+    ),
   };
 }
 

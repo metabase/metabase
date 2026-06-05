@@ -18,7 +18,9 @@ const fmtFilter = (q: Query, f: Lib.FilterClause): string =>
 
 const fmtJoin = (q: Query, j: Lib.Join): string => {
   const joinedThing = Lib.joinedThing(q, j);
-  const tableName = joinedThing ? Lib.displayInfo(q, 0, joinedThing).name : "";
+  const tableName = joinedThing
+    ? Lib.displayInfo(q, 0, joinedThing).name
+    : "[unknown]";
   const strategy = Lib.displayInfo(q, 0, Lib.joinStrategy(j)).shortName;
   const conditions = Lib.joinConditions(j).map((c) => {
     const { operator, lhsExpression, rhsExpression } =
