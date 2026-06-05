@@ -7,7 +7,6 @@ import * as Yup from "yup";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/collections/hooks";
-import { Button } from "metabase/common/components/Button";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { FormInput } from "metabase/common/components/FormInput";
@@ -20,7 +19,7 @@ import type {
 } from "metabase/common/components/Pickers";
 import { Form, FormProvider } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
 

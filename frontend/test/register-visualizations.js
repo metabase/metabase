@@ -7,6 +7,6 @@ jest.mock("metabase/common/components/ExplicitSize", () =>
 // We need to mock this *before* registering the visualizations.
 // Otherwise ActionViz loads the NativeQueryEditor (via ActionCreator)
 // and tests fail because ace is not properly mocked
-jest.mock("metabase/query_builder/components/NativeQueryEditor", () =>
-  require("metabase/query_builder/components/NativeQueryEditor/__mocks__/NativeQueryEditor"),
+jest.mock("metabase/querying/components/NativeQueryEditor", () =>
+  require("metabase/querying/components/NativeQueryEditor/__mocks__/NativeQueryEditor"),
 );

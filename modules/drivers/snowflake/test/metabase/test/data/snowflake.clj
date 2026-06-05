@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -18,7 +19,9 @@
   (:import
    (java.sql PreparedStatement ResultSet)
    (java.time Instant)
-   (java.time.temporal ChronoUnit)))
+   (java.time.temporal ChronoUnit)
+   (java.util.concurrent.locks ReadWriteLock Lock)
+   (net.snowflake.client.api.exception SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -192,14 +195,14 @@
   "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
   close everything. Centralizes the boilerplate so the per-resource drop fns
   don't repeat it."
-  [f]
+  [f & args]
   (sql-jdbc.execute/do-with-connection-with-options
    :snowflake
    (no-db-connection-spec)
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (f stmt)))))
+       (apply f stmt args)))))
 
 (defn- drop-old-datasets!
   "Drop test datasets (databases) prefixed by `sha_` that are >2 days old."
@@ -293,7 +296,7 @@
   ;; local testing shows that identifying old datasets works correctly, but
   ;; sometimes randomly in CI it seems to decide that datasets are old and
   ;; deletes them even tho they are not old.
-  ;; (drop-old-datasets!)
+  (drop-old-datasets!)
   (drop-orphan-isolation-schemas!)
   (drop-orphan-isolation-users!)
   (drop-orphan-isolation-roles!))
@@ -625,3 +628,66 @@
     "TIME"         :type/Time
     ;; Default: unknown types get :type/*
     :type/*))
+
+;; Sadly Snowflake does not implement locks outside very limited scope of
+;; automatic locking around DDL; there are no advisory locks, so we are stuck
+;; building them ourselves out of table rows.
+(defn- setup-locks! []
+  ;; Reuse the existing tracking database, but make a new table.
+  (with-write-stmt! (fn [^java.sql.Statement stmt]
+                      (.executeQuery stmt "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;")))
+  ;; normal tables literally cannot have primary keys enforced! must be hybrid.
+  (with-write-stmt! (fn [^java.sql.Statement stmt]
+                      (.executeQuery stmt "CREATE HYBRID TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.locks
+                                          (dataset TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT current_timestamp())")))
+  ;; unfortuantely with-redefs in the test suite can mean that we end up trying
+  ;; to create locks as other users which will need access to the locks table
+  (with-write-stmt! (fn [^java.sql.Statement stmt]
+                      (.executeQuery stmt "GRANT ALL ON metabase_test_tracking.PUBLIC.locks TO SYSADMIN"))))
+
+(alter-var-root #'setup-locks! memoize)
+
+(defn- try-lock! [^java.sql.Statement stmt dataset-name]
+  (try
+    (.executeQuery stmt (format "INSERT INTO metabase_test_tracking.PUBLIC.locks (dataset) VALUES ('%s')"
+                                dataset-name))
+    true
+    (catch SnowflakeSQLException e
+      (when-not (= "A primary key already exists." (.getMessage e))
+        (throw e))
+      (with-write-stmt! (fn [^java.sql.Statement stmt]
+                          (.executeQuery stmt "DELETE FROM metabase_test_tracking.PUBLIC.locks
+                                           WHERE TIMEDIFF('seconds', at, current_timestamp()::TIMESTAMPTZ) > 60")))
+      false)))
+
+(defn- lock! [dataset-name]
+  (setup-locks!)
+  (loop [tries 0]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "[Snowflake] locking attempt" tries "on" dataset-name)
+    (let [locked? (with-write-stmt! try-lock! dataset-name)]
+      (when (< 1000 tries)
+        (throw (Exception. "could not acquire snowflake lock")))
+      (when (not locked?)
+        (Thread/sleep 100)
+        (recur (inc tries))))))
+
+(defn- unlock! [dataset-name ^java.sql.Statement stmt]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println "[Snowflake] unlocking" dataset-name)
+  (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
+                              dataset-name)))
+
+(defmethod test.data.impl.get-or-create/dataset-lock :snowflake
+  [_driver dataset-name]
+  (reify ReadWriteLock
+    (readLock [_]
+      (reify Lock
+        (lock [_])
+        (unlock [_])))
+    (writeLock [_]
+      (reify Lock
+        (lock [_]
+          (lock! dataset-name))
+        (unlock [_]
+          (with-write-stmt! (partial unlock! dataset-name)))))))

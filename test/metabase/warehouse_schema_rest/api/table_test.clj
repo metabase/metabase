@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -240,7 +241,7 @@
           (mt/user-http-request :rasta :get 404 (format "table/%d/data" 133713371337)))))))
 
 (defn- query-metadata-defaults []
-  (table-defaults))
+  (assoc (table-defaults) :transform nil))
 
 (deftest ^:parallel sensitive-fields-included-test
   (mt/with-premium-features #{}
@@ -389,6 +390,22 @@
                  :id           (mt/id :users)})
                (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
             "Make sure that getting the User table does *not* include password info")))))
+
+(deftest query-metadata-transform-hydration-test
+  (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
+    (mt/with-temp [:model/Transform transform {:name   "My transform"
+                                               :source {:type  "query"
+                                                        :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                               :target {:database (mt/id) :table "my_transform_table"}}
+                   :model/Table     {table-id :id} {:db_id        (mt/id)
+                                                    :transform_id (:id transform)}]
+      (testing "self-hosted (not hosted) without :transforms-basic still hydrates the source transform"
+        (mt/with-premium-features #{}
+          (is (=? {:transform {:id (:id transform)}}
+                  (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" table-id))))))
+      (testing "hosted instance without :transforms-basic does not hydrate the source transform"
+        (mt/with-premium-features #{:hosting}
+          (is (nil? (:transform (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" table-id))))))))))
 
 (deftest fk-target-permissions-test
   (testing "GET /api/table/:id/query_metadata"

@@ -2080,15 +2080,28 @@
       "metabase-enterprise.erd.impl.erd-node" : {
         "type" : "object",
         "properties" : {
-          "db_id" : {
-            "type" : "integer"
+          "owner" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-owner"
           },
-          "description" : {
+          "visibility_type" : {
             "oneOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
             } ]
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "type" : "integer"
           },
           "display_name" : {
             "type" : "string"
@@ -2099,21 +2112,15 @@
               "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-field"
             }
           },
-          "name" : {
-            "type" : "string"
+          "db_id" : {
+            "type" : "integer"
           },
-          "owner" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-owner"
-          },
-          "schema" : {
+          "description" : {
             "oneOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
             } ]
-          },
-          "table_id" : {
-            "type" : "integer"
           }
         },
         "required" : [ "table_id", "name", "display_name", "db_id", "fields" ]
@@ -2195,260 +2202,6 @@
           }
         },
         "required" : [ "nodes", "edges" ]
-      },
-      "metabase-enterprise.notification-admin.api.bulk-response" : {
-        "type" : "object",
-        "properties" : {
-          "updated" : {
-            "description" : "value must be an integer greater or equal to than zero.",
-            "type" : "integer",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "updated" ]
-      },
-      "metabase-enterprise.notification-admin.api.channel-entry" : {
-        "description" : "One channel delivery attempt within a tick.",
-        "type" : "object",
-        "properties" : {
-          "channel_type" : {
-            "type" : "string"
-          },
-          "error" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
-          }
-        },
-        "required" : [ "channel_type", "status", "error" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.notification-admin.api.detail-response" : {
-        "type" : "object",
-        "properties" : {
-          "last_check" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "payload_type" : {
-            "type" : "string"
-          },
-          "payload_id" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "send_history" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.tick-send-entry"
-            }
-          },
-          "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "check_history" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }
-          },
-          "last_send" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "updated_at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "created_at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "active" : {
-            "type" : "boolean"
-          },
-          "creator_id" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send", "check_history", "send_history" ]
-      },
-      "metabase-enterprise.notification-admin.api.list-response" : {
-        "type" : "object",
-        "properties" : {
-          "data" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.list-row"
-            }
-          },
-          "limit" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "offset" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater or equal to than zero.",
-              "type" : "integer",
-              "minimum" : 0
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "total" : {
-            "description" : "value must be an integer greater or equal to than zero.",
-            "type" : "integer",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "data", "total", "limit", "offset" ]
-      },
-      "metabase-enterprise.notification-admin.api.list-row" : {
-        "type" : "object",
-        "properties" : {
-          "last_check" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "payload_type" : {
-            "type" : "string"
-          },
-          "payload_id" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "last_send" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "updated_at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "created_at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "active" : {
-            "type" : "boolean"
-          },
-          "creator_id" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send" ]
-      },
-      "metabase-enterprise.notification-admin.api.run-status" : {
-        "type" : "string",
-        "enum" : [ "failing", "successful" ]
-      },
-      "metabase-enterprise.notification-admin.api.run-summary" : {
-        "type" : "object",
-        "properties" : {
-          "at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "error" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
-          }
-        },
-        "required" : [ "at", "error", "status" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.notification-admin.api.sort-column" : {
-        "type" : "string",
-        "enum" : [ "id", "last_send", "last_check", "card_name", "creator_name", "updated_at" ]
-      },
-      "metabase-enterprise.notification-admin.api.sort-direction" : {
-        "type" : "string",
-        "enum" : [ "asc", "desc" ]
-      },
-      "metabase-enterprise.notification-admin.api.tick-send-entry" : {
-        "description" : "One tick's worth of sends, rolled up across all channels that fired in that tick.",
-        "type" : "object",
-        "properties" : {
-          "at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "channels" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.channel-entry"
-            }
-          },
-          "error" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
-          }
-        },
-        "required" : [ "at", "status", "error", "channels" ],
-        "additionalProperties" : false
       },
       "metabase-enterprise.permission-debug.impl.group-id" : {
         "type" : "integer"
@@ -4118,9 +3871,12 @@
           "name" : {
             "type" : "string",
             "minLength" : 1
+          },
+          "url" : {
+            "type" : "string"
           }
         },
-        "required" : [ "id", "name", "collection_id", "description", "dashcard_ids" ]
+        "required" : [ "id", "name", "url", "collection_id", "description", "dashcard_ids" ]
       },
       "metabase.agent-api.api.create-question-request" : {
         "type" : "object",
@@ -4197,9 +3953,12 @@
           "name" : {
             "type" : "string",
             "minLength" : 1
+          },
+          "url" : {
+            "type" : "string"
           }
         },
-        "required" : [ "id", "name", "display", "collection_id", "description" ]
+        "required" : [ "id", "name", "url", "display", "collection_id", "description" ]
       },
       "metabase.agent-api.api.dashcard-mutation" : {
         "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`(\"wide\", \"tall\", or \"full\").\n   - `remove` : requires `dashcard_id`.\n   - `move`   : requires `dashcard_id` and `position` (\"top\" or \"bottom\").",
@@ -6869,7 +6628,7 @@
         },
         "minItems" : 1
       },
-      "metabase.legacy-mbql.schema.MBQLQuery" : {
+      "metabase.legacy-mbql.schema.MBQLInnerQuery" : {
         "allOf" : [ {
           "type" : "object",
           "properties" : {
@@ -6924,28 +6683,6 @@
           "properties" : { }
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.RemoveFieldRefsFromFieldsAlreadyInBreakout"
-        }, {
-          "allOf" : [ ]
-        } ]
-      },
-      "metabase.legacy-mbql.schema.NativeQuery" : {
-        "description" : "Schema for a valid, normalized native [inner] query.",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "collection" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "query" : { },
-            "template-tags" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagMap"
-            }
-          },
-          "required" : [ "query" ]
         }, {
           "allOf" : [ ]
         } ]
@@ -7121,10 +6858,10 @@
               } ]
             },
             "query" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLQuery"
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLInnerQuery"
             },
             "native" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeQuery"
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TopLevelNativeInnerQuery"
             },
             "info" : {
               "description" : "Used when recording info about this run in the QueryExecution log; things like context query was\n  ran in and User who ran it.",
@@ -7188,10 +6925,15 @@
       "metabase.legacy-mbql.schema.RemoveFieldRefsFromFieldsAlreadyInBreakout" : { },
       "metabase.legacy-mbql.schema.SourceQuery" : {
         "description" : "Schema for a valid value for a `:source-query`.",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeSourceQuery"
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : { }
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLQuery"
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NativeSourceQuery"
+          }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLInnerQuery"
+          } ]
         } ]
       },
       "metabase.legacy-mbql.schema.SourceTable" : {
@@ -7335,6 +7077,28 @@
         "description" : "Valid unit for time bucketing.",
         "type" : "string",
         "enum" : [ "hour", "second", "default", "hour-of-day", "millisecond", "minute-of-hour", "minute" ]
+      },
+      "metabase.legacy-mbql.schema.TopLevelNativeInnerQuery" : {
+        "description" : "Schema for a valid, normalized native [inner] query.",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "collection" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "query" : { },
+            "template-tags" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTagMap"
+            }
+          },
+          "required" : [ "query" ]
+        }, {
+          "allOf" : [ ]
+        } ]
       },
       "metabase.legacy-mbql.schema.UnnamedAggregation" : {
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.AnyMBQLClause"
@@ -10154,13 +9918,6 @@
               "type" : "null"
             } ]
           },
-          "skewness" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "top-3-fraction" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
@@ -12031,6 +11788,260 @@
             "type" : "string"
           } ]
         } ]
+      },
+      "metabase.notification.api.admin.bulk-response" : {
+        "type" : "object",
+        "properties" : {
+          "updated" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "updated" ]
+      },
+      "metabase.notification.api.admin.channel-entry" : {
+        "description" : "One channel delivery attempt within a tick.",
+        "type" : "object",
+        "properties" : {
+          "channel_type" : {
+            "type" : "string"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        },
+        "required" : [ "channel_type", "status", "error" ],
+        "additionalProperties" : false
+      },
+      "metabase.notification.api.admin.detail-response" : {
+        "type" : "object",
+        "properties" : {
+          "last_check" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "payload_type" : {
+            "type" : "string"
+          },
+          "payload_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "send_history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.tick-send-entry"
+            }
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "check_history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }
+          },
+          "last_send" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "creator_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send", "check_history", "send_history" ]
+      },
+      "metabase.notification.api.admin.list-response" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.list-row"
+            }
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "data", "total", "limit", "offset" ]
+      },
+      "metabase.notification.api.admin.list-row" : {
+        "type" : "object",
+        "properties" : {
+          "last_check" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "payload_type" : {
+            "type" : "string"
+          },
+          "payload_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last_send" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "creator_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send" ]
+      },
+      "metabase.notification.api.admin.run-status" : {
+        "type" : "string",
+        "enum" : [ "failing", "successful" ]
+      },
+      "metabase.notification.api.admin.run-summary" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        },
+        "required" : [ "at", "error", "status" ],
+        "additionalProperties" : false
+      },
+      "metabase.notification.api.admin.sort-column" : {
+        "type" : "string",
+        "enum" : [ "id", "last_send", "last_check", "card_name", "creator_name", "updated_at" ]
+      },
+      "metabase.notification.api.admin.sort-direction" : {
+        "type" : "string",
+        "enum" : [ "asc", "desc" ]
+      },
+      "metabase.notification.api.admin.tick-send-entry" : {
+        "description" : "One tick's worth of sends, rolled up across all channels that fired in that tick.",
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "channels" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.channel-entry"
+            }
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        },
+        "required" : [ "at", "status", "error", "channels" ],
+        "additionalProperties" : false
       },
       "metabase.notification.api.notification.NotificationApiInput" : {
         "description" : "Notification schema for API input. Like FullyHydratedNotification but restricts templates\n  to user-provided types only (no handlebars-resource).",
@@ -28289,236 +28300,6 @@
         "tags" : [ "/api/ee/metabot" ]
       }
     },
-    "/api/ee/notifications" : {
-      "get" : {
-        "operationId" : "get-api-ee-notifications",
-        "summary" : "GET /api/ee/notifications",
-        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification's card (`successful` = latest channel-send succeeded; `failing` = latest\n  channel-send failed). The Failing tab uses `?last_send_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "active",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "creator_id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "creator_active",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "creatorless",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "card_id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "recipient_email",
-          "required" : false,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        }, {
-          "in" : "query",
-          "name" : "channel",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "type" : "string",
-                "minLength" : 1
-              }, {
-                "type" : "array",
-                "items" : {
-                  "type" : "string",
-                  "minLength" : 1
-                }
-              } ]
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "last_send_status",
-          "required" : false,
-          "schema" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
-          }
-        }, {
-          "in" : "query",
-          "name" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        }, {
-          "in" : "query",
-          "name" : "sort_column",
-          "required" : true,
-          "schema" : {
-            "default" : "last_send",
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.sort-column"
-          }
-        }, {
-          "in" : "query",
-          "name" : "sort_direction",
-          "required" : true,
-          "schema" : {
-            "default" : "desc",
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.sort-direction"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.list-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/notifications" ]
-      }
-    },
-    "/api/ee/notifications/bulk" : {
-      "post" : {
-        "operationId" : "post-api-ee-notifications-bulk",
-        "summary" : "POST /api/ee/notifications/bulk",
-        "description" : "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes\n  through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz\n  triggers. Recipient emails and `:event/notification-update` audit events are\n  published via the shared [[notification-api/publish-notification-update!]] helper so this\n  endpoint's side-effect contract can't drift from `PUT /api/notification/:id`.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.bulk-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "action" : {
-                    "type" : "string",
-                    "enum" : [ "archive", "change-creator" ]
-                  },
-                  "creator_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "notification_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "minItems" : 1
-                  }
-                },
-                "required" : [ "notification_ids", "action" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/notifications" ]
-      }
-    },
-    "/api/ee/notifications/{id}" : {
-      "get" : {
-        "operationId" : "get-api-ee-notifications-id",
-        "summary" : "GET /api/ee/notifications/{id}",
-        "description" : "Get a single card-type notification with last_check, last_send, check_history (up to 10\n  most-recent terminal alert-type TaskRuns) and send_history (up to 10 most-recent channel-send\n  delivery attempts). 404 if the notification doesn't exist or isn't a card-type notification.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.detail-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/notifications" ]
-      }
-    },
     "/api/ee/permission_debug" : {
       "get" : {
         "operationId" : "get-api-ee-permission_debug",
@@ -38877,6 +38658,236 @@
         "tags" : [ "/api/notification" ]
       }
     },
+    "/api/notification/admin" : {
+      "get" : {
+        "operationId" : "get-api-notification-admin",
+        "summary" : "GET /api/notification/admin",
+        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification's card (`successful` = latest channel-send succeeded; `failing` = latest\n  channel-send failed). The Failing tab uses `?last_send_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "active",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "creator_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "creator_active",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "creatorless",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "card_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "recipient_email",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "channel",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string",
+                "minLength" : 1
+              }, {
+                "type" : "array",
+                "items" : {
+                  "type" : "string",
+                  "minLength" : 1
+                }
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_send_status",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : true,
+          "schema" : {
+            "default" : "last_send",
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.sort-column"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : true,
+          "schema" : {
+            "default" : "desc",
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.sort-direction"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.notification.api.admin.list-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/notification/admin" ]
+      }
+    },
+    "/api/notification/admin/bulk" : {
+      "post" : {
+        "operationId" : "post-api-notification-admin-bulk",
+        "summary" : "POST /api/notification/admin/bulk",
+        "description" : "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes\n  through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz\n  triggers. Recipient emails and `:event/notification-update` audit events are\n  published via the shared [[notification-api/publish-notification-update!]] helper so this\n  endpoint's side-effect contract can't drift from `PUT /api/notification/:id`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.notification.api.admin.bulk-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "action" : {
+                    "type" : "string",
+                    "enum" : [ "archive", "change-creator" ]
+                  },
+                  "creator_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "notification_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "minItems" : 1
+                  }
+                },
+                "required" : [ "notification_ids", "action" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification/admin" ]
+      }
+    },
+    "/api/notification/admin/{id}" : {
+      "get" : {
+        "operationId" : "get-api-notification-admin-id",
+        "summary" : "GET /api/notification/admin/{id}",
+        "description" : "Get a single card-type notification with last_check, last_send, check_history (up to 10\n  most-recent terminal alert-type TaskRuns) and send_history (up to 10 most-recent channel-send\n  delivery attempts). 404 if the notification doesn't exist or isn't a card-type notification.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.notification.api.admin.detail-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/notification/admin" ]
+      }
+    },
     "/api/notification/send" : {
       "post" : {
         "operationId" : "post-api-notification-send",
@@ -42564,7 +42575,7 @@
       "get" : {
         "operationId" : "get-api-search",
         "summary" : "GET /api/search",
-        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
+        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
         "parameters" : [ {
           "in" : "query",
           "name" : "q",
@@ -42742,6 +42753,18 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "vector_search_strategy",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "hnsw", "brute-force" ]
             }, {
               "type" : "null"
             } ]
@@ -48042,7 +48065,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "transform-name", "start-time", "end-time", "status", "run-method", "transform-tags" ]
+            "enum" : [ "transform-name", "start-time", "end-time", "status", "run-method", "transform-tags", "duration" ]
           }
         }, {
           "in" : "query",
