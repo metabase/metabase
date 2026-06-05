@@ -71,7 +71,7 @@
                                 collection.root/hydrate-root-collection
                                 (update :dashboard #(some-> % (select-keys [:id :name])))
                                 (update :document #(some-> % (select-keys [:id :name]))))))
-                     (sort-by :id)
+                     (sort-by (juxt :created_at :id))
                      vec)
      :bad_transforms (->> broken-transforms
                           (filter mi/can-read?)
