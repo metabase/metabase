@@ -124,7 +124,6 @@ dev/serialization_deltas/
 /frontend/src/metabase-types/openapi
 
 **/cypress_sample_database.json
-**/cypress_sample_database_h2.json
 **/cypress_sample_instance_data.json
 /frontend/src/cljs
 /frontend/src/cljs_release
