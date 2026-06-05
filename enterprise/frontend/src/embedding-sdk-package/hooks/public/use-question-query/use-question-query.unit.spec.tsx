@@ -9,6 +9,8 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types";
 import { createMockColumn } from "metabase-types/api/mocks";
 
+import type { SchemaRow } from "../data-schema";
+
 import { useQuestionQuery } from "./use-question-query";
 
 const TEST_QUESTION_ID = 12;
@@ -27,13 +29,36 @@ const TEST_RESULT = {
   rows: [[1]],
 };
 
+type TestSchema = {
+  readonly id: typeof TEST_QUESTION_ID;
+  readonly name: "Orders";
+  readonly columns: readonly [
+    {
+      readonly name: "count";
+      readonly displayName: "Count";
+      readonly jsType: "number";
+    },
+  ];
+  readonly parameters: readonly [];
+};
+
+type Equals<TLeft, TRight> =
+  (<TValue>() => TValue extends TLeft ? 1 : 2) extends <
+    TValue,
+  >() => TValue extends TRight ? 1 : 2
+    ? true
+    : false;
+type Expect<TValue extends true> = TValue;
+type _QuestionRowIsInferred = Expect<
+  Equals<SchemaRow<TestSchema>, { count: number | null }>
+>;
+
 describe("useQuestionQuery", () => {
   it("fetches question data when the SDK is initialized", async () => {
-    const queryQuestion = jest.fn(() =>
-      jest.fn().mockResolvedValue({
-        ...TEST_RESULT,
-      }),
-    );
+    const queryQuestionApi = jest.fn().mockResolvedValue({
+      ...TEST_RESULT,
+    });
+    const queryQuestion = jest.fn(() => queryQuestionApi);
 
     setup({ queryQuestion });
 
@@ -42,6 +67,11 @@ describe("useQuestionQuery", () => {
     });
 
     expect(screen.getByTestId("first-row-value")).toHaveTextContent("1");
+    expect(screen.getByTestId("first-raw-row-value")).toHaveTextContent("1");
+    expect(queryQuestionApi).toHaveBeenCalledWith({
+      questionId: TEST_QUESTION_ID,
+      initialSqlParameters: undefined,
+    });
     expect(queryQuestion).toHaveBeenCalledTimes(1);
   });
 
@@ -90,13 +120,16 @@ const TestComponent = ({
   questionId?: SdkQuestionId | null;
   enabled?: boolean;
 }) => {
-  const result = useQuestionQuery(questionId, { enabled });
+  const result = useQuestionQuery<TestSchema>(questionId, { enabled });
 
   return (
     <div>
       <div data-testid="question-name">{result.data?.name}</div>
       <div data-testid="first-row-value">
-        {String(result.data?.rows[0]?.[0] ?? "")}
+        {String(result.data?.rows[0]?.count ?? "")}
+      </div>
+      <div data-testid="first-raw-row-value">
+        {String(result.data?.rawRows[0]?.[0] ?? "")}
       </div>
       <button onClick={() => result.refetch()}>Refetch</button>
     </div>
