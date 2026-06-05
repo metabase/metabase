@@ -59,7 +59,7 @@ Custom visualizations behave like built-in charts in most places:
 
 _Admin > Settings > Custom visualizations > Manage visualizations_
 
-- **Disable a visualization.** Any question or dashboard card that used the visualization falls back to the default visualization for that query's results. If you re-enable the plugin, those cards will go back to using the custom visualization.
+- **Disable a visualization.** Any question, dashboard card, or document card that used the visualization falls back to the default visualization for that query's results. If you re-enable the plugin, those cards will go back to using the custom visualization.
 - **Replace a bundle.** Upload a new `.tgz` to ship an updated version of a plugin. The new bundle's manifest `name` _must_ match the existing plugin's identifier, so questions that already use the visualization keep working.
 - **Remove a visualization.** Cards that used the custom viz fall back to the default visualization.
 
