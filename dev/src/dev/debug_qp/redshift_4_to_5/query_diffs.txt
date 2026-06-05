@@ -1,0 +1,96 @@
+--- dev/src/dev/debug_qp/redshift_4_to_5/card_37499_mbql4.sql	2026-06-04 22:18:14
++++ dev/src/dev/debug_qp/redshift_4_to_5/card_37499_mbql5.sql	2026-06-04 22:18:14
+@@ -103,12 +103,6 @@
+         FROM
+           (
+             SELECT
+-              "__mb_source"."page_view_start" AS "page_view_start",
+-              "__mb_source"."converted_plan" AS "converted_plan",
+-              "__mb_source"."cookie_id" AS "cookie_id"
+-            FROM
+-              (
+-                SELECT
+                   DATE_TRUNC('month', "__mb_source"."page_view_start") AS "page_view_start",
+                   "__mb_source"."converted_plan" AS "converted_plan",
+                   "__mb_source"."cookie_id" AS "cookie_id"
+@@ -185,7 +179,6 @@
+                     "__mb_source"."page_view_start" < CAST(? AS timestamp)
+                   )
+               ) AS "__mb_source"
+-          ) AS "__mb_source"
+         GROUP BY
+           "__mb_source"."page_view_start",
+           "__mb_source"."converted_plan"
+
+--- dev/src/dev/debug_qp/redshift_4_to_5/card_37500_mbql4.sql	2026-06-04 22:18:14
++++ dev/src/dev/debug_qp/redshift_4_to_5/card_37500_mbql5.sql	2026-06-04 22:18:14
+@@ -103,12 +103,6 @@
+         FROM
+           (
+             SELECT
+-              "__mb_source"."page_view_start" AS "page_view_start",
+-              "__mb_source"."converted_plan" AS "converted_plan",
+-              "__mb_source"."cookie_id" AS "cookie_id"
+-            FROM
+-              (
+-                SELECT
+                   DATE_TRUNC('month', "__mb_source"."page_view_start") AS "page_view_start",
+                   "__mb_source"."converted_plan" AS "converted_plan",
+                   "__mb_source"."cookie_id" AS "cookie_id"
+@@ -185,7 +179,6 @@
+                     "__mb_source"."page_view_start" < CAST(? AS timestamp)
+                   )
+               ) AS "__mb_source"
+-          ) AS "__mb_source"
+         GROUP BY
+           "__mb_source"."page_view_start",
+           "__mb_source"."converted_plan"
+
+--- dev/src/dev/debug_qp/redshift_4_to_5/card_37576_mbql4.sql	2026-06-04 22:18:15
++++ dev/src/dev/debug_qp/redshift_4_to_5/card_37576_mbql5.sql	2026-06-04 22:18:15
+@@ -103,12 +103,6 @@
+         FROM
+           (
+             SELECT
+-              "__mb_source"."page_view_start" AS "page_view_start",
+-              "__mb_source"."converted_plan" AS "converted_plan",
+-              "__mb_source"."cookie_id" AS "cookie_id"
+-            FROM
+-              (
+-                SELECT
+                   DATE_TRUNC('month', "__mb_source"."page_view_start") AS "page_view_start",
+                   "__mb_source"."converted_plan" AS "converted_plan",
+                   "__mb_source"."cookie_id" AS "cookie_id"
+@@ -185,7 +179,6 @@
+                     "__mb_source"."page_view_start" < CAST(? AS timestamp)
+                   )
+               ) AS "__mb_source"
+-          ) AS "__mb_source"
+         GROUP BY
+           "__mb_source"."page_view_start",
+           "__mb_source"."converted_plan"
+
+--- dev/src/dev/debug_qp/redshift_4_to_5/card_37715_mbql4.sql	2026-06-04 22:18:15
++++ dev/src/dev/debug_qp/redshift_4_to_5/card_37715_mbql5.sql	2026-06-04 22:18:15
+@@ -103,12 +103,6 @@
+         FROM
+           (
+             SELECT
+-              "__mb_source"."page_view_start" AS "page_view_start",
+-              "__mb_source"."converted_plan" AS "converted_plan",
+-              "__mb_source"."cookie_id" AS "cookie_id"
+-            FROM
+-              (
+-                SELECT
+                   DATE_TRUNC('month', "__mb_source"."page_view_start") AS "page_view_start",
+                   "__mb_source"."converted_plan" AS "converted_plan",
+                   "__mb_source"."cookie_id" AS "cookie_id"
+@@ -185,7 +179,6 @@
+                     "__mb_source"."page_view_start" < CAST(? AS timestamp)
+                   )
+               ) AS "__mb_source"
+-          ) AS "__mb_source"
+         GROUP BY
+           "__mb_source"."page_view_start",
+           "__mb_source"."converted_plan"
+
