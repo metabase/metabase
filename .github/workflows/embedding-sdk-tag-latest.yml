@@ -17,7 +17,7 @@ on:
 jobs:
   tag-latest:
     name: Tag npm release as latest
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Setup Node.js
