@@ -233,6 +233,39 @@ describe("GitSyncControls", () => {
       });
     });
 
+    it("shows a refresh modal when a pull is rejected for a stale branch", async () => {
+      setup();
+
+      // Another session switched the branch; the import CAS guard rejects.
+      fetchMock.removeRoute("remote-sync-import");
+      fetchMock.post(
+        "path:/api/ee/remote-sync/import",
+        {
+          status: 409,
+          body: {
+            message:
+              "The sync branch changed to 'develop' in another session. Refresh and try again.",
+            branch_mismatch: true,
+            current_branch: "develop",
+          },
+        },
+        { name: "remote-sync-import" },
+      );
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      await userEvent.click(await findOption(/Pull changes/));
+
+      expect(
+        await screen.findByText(/changed .* in another session/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Refresh/ }),
+      ).toBeInTheDocument();
+    });
+
     it("is enabled when there are changes to pull", async () => {
       setup({ hasRemoteChanges: true });
 

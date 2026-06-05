@@ -77,6 +77,25 @@ export const GitSyncControls = () => {
   const isSwitchingBranch = !!nextBranch;
   const isLoading = isSyncTaskRunning || isSwitchingBranch || isImporting;
 
+  // If `error` is a branch-mismatch rejection (another session switched branches), open the
+  // out-of-date modal prompting a refresh and return true so the caller can stop. Returns false for
+  // any other error so the caller can handle it normally.
+  const showBranchMismatchIfPresent = useCallback((error: unknown): boolean => {
+    const {
+      hasBranchMismatch,
+      errorMessage,
+      currentBranch: serverBranch,
+    } = parseSyncError(error as SyncError);
+    if (hasBranchMismatch) {
+      setBranchMismatch({
+        message: errorMessage ?? t`The sync branch changed in another session.`,
+        currentBranch: serverBranch,
+      });
+      return true;
+    }
+    return false;
+  }, []);
+
   const changeBranch = useCallback(
     async (branch: string | null, isNewBranch?: boolean) => {
       if (branch == null) {
@@ -123,16 +142,26 @@ export const GitSyncControls = () => {
           await changeBranch(branch, isNewBranch);
           setNextBranch(null);
         }
-      } catch {
+      } catch (error) {
+        setNextBranch(null);
+        if (showBranchMismatchIfPresent(error)) {
+          return;
+        }
         sendToast({
           icon: "warning",
           toastColor: "error",
           message: t`Sorry, we were unable to switch branches.`,
         });
-        setNextBranch(null);
       }
     },
-    [currentBranch, refetchDirty, dispatch, changeBranch, sendToast],
+    [
+      currentBranch,
+      refetchDirty,
+      dispatch,
+      changeBranch,
+      sendToast,
+      showBranchMismatchIfPresent,
+    ],
   );
 
   const handlePushClick = useCallback(async () => {
@@ -154,25 +183,22 @@ export const GitSyncControls = () => {
         return;
       }
     } catch (error) {
-      const {
-        hasBranchMismatch,
-        errorMessage,
-        currentBranch: serverBranch,
-      } = parseSyncError(error as SyncError);
-      if (hasBranchMismatch) {
-        // Another session switched branches under us, so the branch shown here is stale. Don't fall
-        // through to a push that would target the wrong branch — surface it and prompt a refresh.
-        setBranchMismatch({
-          message:
-            errorMessage ?? t`The sync branch changed in another session.`,
-          currentBranch: serverBranch,
-        });
+      // Another session switched branches under us, so the branch shown here is stale. Don't fall
+      // through to a push that would target the wrong branch — surface it and prompt a refresh.
+      if (showBranchMismatchIfPresent(error)) {
         return;
       }
       // fall through to the plain push modal on any other preflight error
     }
     togglePushModal();
-  }, [combobox, currentBranch, dispatch, runExportPreflight, togglePushModal]);
+  }, [
+    combobox,
+    currentBranch,
+    dispatch,
+    runExportPreflight,
+    togglePushModal,
+    showBranchMismatchIfPresent,
+  ]);
 
   const handlePullClick = useCallback(async () => {
     if (!currentBranch) {
@@ -190,17 +216,7 @@ export const GitSyncControls = () => {
         }).unwrap();
         setConflictPreflight(preflight);
       } catch (error) {
-        const {
-          hasBranchMismatch,
-          errorMessage,
-          currentBranch: serverBranch,
-        } = parseSyncError(error as SyncError);
-        if (hasBranchMismatch) {
-          setBranchMismatch({
-            message:
-              errorMessage ?? t`The sync branch changed in another session.`,
-            currentBranch: serverBranch,
-          });
+        if (showBranchMismatchIfPresent(error)) {
           return;
         }
         setConflictPreflight(null);
@@ -220,6 +236,10 @@ export const GitSyncControls = () => {
         force: false,
       });
     } catch (error) {
+      if (showBranchMismatchIfPresent(error)) {
+        return;
+      }
+
       const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
 
       if (hasConflict) {
@@ -241,6 +261,7 @@ export const GitSyncControls = () => {
     isDirty,
     runExportPreflight,
     sendToast,
+    showBranchMismatchIfPresent,
   ]);
 
   const handleCloseSyncConflictModal = useCallback(() => {
