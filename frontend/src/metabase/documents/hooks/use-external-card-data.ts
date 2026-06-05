@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useAsync } from "react-use";
 
-import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
 import { useSelector } from "metabase/redux";
+import { useExternalCardData } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/ExternalCardDataContext";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset, RawSeries } from "metabase-types/api";

@@ -5,7 +5,7 @@ import {
   useListRecentsQuery,
   useSearchQuery,
 } from "metabase/api";
-import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
+import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import type {
   MentionableUser,
   RecentItem,
