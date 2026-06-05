@@ -13,7 +13,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 
@@ -43,31 +43,34 @@ const RegenerateKeyModal = ({
 
   return (
     <Modal
-      size="30rem"
+      size="40rem"
+      padding="xl"
       opened
       onClose={() => setModal("edit")}
       title={t`Regenerate API key`}
     >
       <FormProvider initialValues={{}} onSubmit={handleRegenerate}>
         <Form>
-          <Stack gap="lg">
+          <Stack gap="xl">
             <Stack gap="xs">
               <Text
                 component="label"
+                c="text-secondary"
                 fw="bold"
-                color="text-tertiary"
               >{t`Key name`}</Text>
-              <Text fw="bold">{apiKey.name}</Text>
+              <Text>{apiKey.name}</Text>
             </Stack>
             <Stack gap="xs">
               <Text
                 component="label"
+                c="text-secondary"
                 fw="bold"
-                color="text-tertiary"
               >{t`Group`}</Text>
-              <Text fw="bold">{apiKey.group.name}</Text>
+              <Text>{apiKey.group.name}</Text>
             </Stack>
-            <Text>{t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`}</Text>
+            <Paper bg="background-secondary" radius="md" px="md" py="sm">
+              <Text c="text-secondary">{t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`}</Text>
+            </Paper>
             <FormErrorMessage />
             <Group justify="flex-end">
               <Button
@@ -136,12 +139,7 @@ export const EditApiKeyModal = ({
           {({ dirty }) => (
             <Form>
               <Stack gap="xl">
-                <FormTextInput
-                  name="name"
-                  label={t`Key name`}
-                  required
-                  withAsterisk={false}
-                />
+                <FormTextInput name="name" label={t`Key name`} required />
                 <FormGroupWidget
                   name="group_id"
                   label={t`Group this key should belong to`}

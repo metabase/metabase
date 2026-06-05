@@ -191,7 +191,7 @@ describe("ManageApiKeys", () => {
     await userEvent.click(group);
     await userEvent.click(await screen.findByText("flamingos"));
 
-    const keyName = screen.getByLabelText("Key name");
+    const keyName = screen.getByLabelText(/Key name/);
     await userEvent.clear(keyName);
     await userEvent.type(keyName, "My Key");
 
