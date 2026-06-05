@@ -168,9 +168,9 @@
   [driver {db-id :id :as db}
    {:keys [target] :as transform}
    metadata temp-file]
-  ;; First incremental run: no checkpoint exists yet, behave like non-incremental
-  ;; to drop and recreate the table rather than appending to existing data.
-  (if (nil? (:last_checkpoint_value transform))
+  ;; Full incremental run (no watermark — first ever or after a checkpoint-config reset): behave
+  ;; like non-incremental and drop-and-recreate rather than appending.
+  (if (transforms-base.u/full-incremental-run? transform)
     ((get-method transfer-file-to-db :table) driver db transform metadata temp-file)
     ;; Normal incremental: append if table exists, create if it doesn't
     (let [table-name (transforms-base.u/qualified-table-name driver target)
@@ -216,6 +216,12 @@
 
 ;;; ------------------------------------------------- Core Execution -------------------------------------------------
 
+(defn- count-jsonl-rows
+  "Non-blank line count of a JSONL temp file."
+  [^File file]
+  (with-open [rdr (io/reader file)]
+    (->> (line-seq rdr) (remove str/blank?) count)))
+
 (defn- run-python-transform-impl!
   "Core Python transform execution. Returns {:status :result :logs :events}.
 
@@ -240,7 +246,7 @@
              {:server-url     server-url
               :code           (:body source)
               :run-id         run-id
-              :table-name->id resolved-source-tables
+              :source-tables  resolved-source-tables
               :shared-storage @shared-storage-ref})
 
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)
@@ -266,15 +272,16 @@
                 (with-open [in (python-runner/open-output @shared-storage-ref)]
                   (io/copy in temp-file))
                 ;; Transfer file to database with instrumentation
-                (let [file-size (.length temp-file)
-                      do-transfer (fn [] (transfer-file-to-db driver db transform output-manifest temp-file))]
+                (let [file-size    (.length temp-file)
+                      rows-written (count-jsonl-rows temp-file)
+                      do-transfer  (fn [] (transfer-file-to-db driver db transform output-manifest temp-file))]
                   (if with-stage-timing-fn
                     (with-stage-timing-fn run-id [:import :file-to-dwh] do-transfer)
                     (do-transfer))
-                  (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
+                  (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size rows-written)
+                  (assoc response :rows-affected rows-written))
                 (finally
                   (.delete temp-file))))
-            response
             (catch Exception e
               (log/error e "Failed to create resulting table")
               (throw (ex-info "Failed to create the resulting table"
@@ -318,7 +325,6 @@
       ;; Check cancellation before starting
       (when (and cancelled? (cancelled?))
         (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
-
       (let [{:keys [target] transform-id :id} transform
             db (t2/select-one :model/Database (:database target))
             ;; Use run-id if provided, otherwise generate a temp one for python runner
@@ -337,25 +343,20 @@
                                           (recur)))))))
                               ch))
             start-ms (u/start-timer)]
-
         (log! message-log (i18n/tru "Executing Python transform"))
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
-
         (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log
                                                  {:with-stage-timing-fn with-stage-timing-fn
                                                   :source-range-params  source-range-params})]
           (log! message-log (i18n/tru "Python execution finished successfully in {0}"
                                       (u.format/format-milliseconds (u/since-ms start-ms))))
-
           ;; Check cancellation after python
           (when (and cancelled? (cancelled?))
             (throw (ex-info "Transform cancelled after python execution" {:status :cancelled})))
-
           {:status :succeeded
            :result result
            :logs (message-log->string message-log)
            :source-range-params source-range-params}))
-
       (catch Exception e
         (let [data (ex-data e)
               logs (message-log->string message-log)

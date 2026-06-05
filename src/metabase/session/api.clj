@@ -20,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.password :as u.password]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -130,7 +131,8 @@
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
                        (let [{session-key :key, :as session} (login username password (request/device-info request))
-                             response                        {:id (str session-key)}]
+                             response                        (vary-meta {:id (str session-key)}
+                                                                        assoc :metabase-user-id (:user_id session))]
                          (request/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
@@ -164,17 +166,30 @@
   {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms 1000)
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
-(defn- password-reset-disabled?
+(defn- sso-password-reset-disabled?
   "Disable password reset for users whose SSO provider is still active — they should use SSO.
    When a provider is no longer available (e.g., after license downgrade), allow password reset
-   so users aren't locked out.
+   so users aren't locked out."
+  [sso-source]
+  (and (some? sso-source)
+       (sso/sso-source-enabled? sso-source)))
 
-   Always disable password reset for support-access users."
-  [user-id sso-source]
-  (cond
-    (t2/exists? :model/AuthIdentity :user_id user-id :provider "support-access-grant") true
-    (some? sso-source) (sso/sso-source-enabled? sso-source)
-    :else false))
+(defn- refresh-support-access-token!
+  "Refresh the reset token on an existing support-access-grant AuthIdentity, preserving the grant
+   binding. Returns the new plaintext token, or nil if the grant has expired."
+  [user-id]
+  (when-let [auth-identity (t2/select-one :model/AuthIdentity
+                                          :user_id user-id
+                                          :provider "support-access-grant")]
+    (let [grant-ends-at (get-in auth-identity [:credentials :grant_ends_at])]
+      (when (and grant-ends-at (t/before? (t/instant) (t/instant grant-ends-at)))
+        (let [token (auth-identity/generate-reset-token user-id)]
+          (t2/update! :model/AuthIdentity (:id auth-identity)
+                      {:credentials {:token_hash   (u.password/hash-bcrypt token)
+                                     :expires_at   (t/plus (t/instant) (t/hours 48))
+                                     :grant_ends_at grant-ends-at
+                                     :consumed_at  nil}})
+          token)))))
 
 (defn- forgot-password-impl
   [email]
@@ -185,12 +200,23 @@
                (t2/select-one [:model/User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      ;; If user uses any *enabled* SSO method to log in, no need to generate a reset token.
-      (if (password-reset-disabled? user-id sso-source)
+      (cond
+        ;; SSO users should use their SSO provider, not password reset.
+        (sso-password-reset-disabled? sso-source)
         (messages/send-password-reset-email! email sso-source nil is-active?)
+
+        ;; Support-access users get a refreshed token bound to the grant.
+        ;; If the grant has expired, refresh-support-access-token! returns nil and we silently
+        ;; do nothing (same as a nonexistent account).
+        (t2/exists? :model/AuthIdentity :user_id user-id :provider "support-access-grant")
+        (when-let [reset-token (refresh-support-access-token! user-id)]
+          (let [password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
+            (messages/send-password-reset-email! email nil password-reset-url is-active?)))
+
+        ;; Normal password reset.
+        :else
         (let [reset-token        (auth-identity/create-password-reset! user-id)
               password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
-          (log/info password-reset-url)
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
@@ -242,10 +268,11 @@
                        :provider/emailed-secret-password-reset]
                       request-body)]
     (if (:success? auth-result)
-      (request/set-session-cookies request
-                                   {:success true :session_id (get-in auth-result [:session :key])}
-                                   (:session auth-result)
-                                   (t/zoned-date-time (t/zone-id "GMT")))
+      (let [session  (:session auth-result)
+            response (vary-meta {:success true :session_id (str (:key session))}
+                                assoc :metabase-user-id (:user_id session))]
+        (request/set-session-cookies request response session
+                                     (t/zoned-date-time (t/zone-id "GMT"))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token")))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -299,8 +326,9 @@
               (cond
                 ;; Login succeeded
                 (:success? login-result)
-                (let [session (:session login-result)
-                      response {:id (str (:key session))}]
+                (let [session  (:session login-result)
+                      response (vary-meta {:id (str (:key session))}
+                                          assoc :metabase-user-id (:user_id session))]
                   (request/set-session-cookies request
                                                response
                                                session

@@ -6,8 +6,8 @@ import S from "metabase/common/components/upsells/components/Upsells.module.css"
 import { useUpsellLink } from "metabase/common/components/upsells/components/use-upsell-link";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 
 export const UpsellWhitelabel = ({ source }: { source: string }) => {

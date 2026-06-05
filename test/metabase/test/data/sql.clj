@@ -1,9 +1,11 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.test.data.sql]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql]
@@ -170,12 +172,19 @@
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
   :hierarchy #'driver/hierarchy)
 
+(defn- find-method-for-ancestor-type
+  "Find a registered method for `driver` (or any of its ancestors) with `ancestor-type`."
+  [driver ancestor-type]
+  (let [methods* (methods field-base-type->sql-type)]
+    (some #(get methods* [% ancestor-type])
+          (cons driver (ancestors driver/hierarchy driver)))))
+
 (defmethod field-base-type->sql-type :default
   [driver base-type]
   (or (some
        (fn [ancestor-type]
          (when-not (= ancestor-type :type/*)
-           (when-let [method (get (methods field-base-type->sql-type) [driver ancestor-type])]
+           (when-let [method (find-method-for-ancestor-type driver ancestor-type)]
              (log/infof "No test data type mapping for driver %s for base type %s, falling back to ancestor base type %s"
                         driver base-type ancestor-type)
              (method driver base-type))))
@@ -276,7 +285,8 @@
 (defmethod default-column-sql :default [_ expr]
   (format "DEFAULT (%s)" expr))
 
-(defn- field-definition-sql
+(defn field-definition-sql
+  "Generate the fragment of a `CREATE TABLE` DDL statement for a specific column."
   [driver {:keys [field-name base-type field-comment not-null? unique? default-expr generated-expr], :as field-definition}]
   (let [field-name      (format-and-quote-field-name driver field-name)
         field-type      (or (cond
@@ -343,12 +353,11 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defn- get-tabledef
-  [dbdef table-name]
-  (->> dbdef
-       :table-definitions
-       (filter #(= (:table-name %) table-name))
-       first))
+(defn get-tabledef
+  "Find the first table definition with `table-name`."
+  [{:keys [table-definitions], :as _dbdef} table-name]
+  (m/find-first #(= (:table-name %) table-name)
+                table-definitions))
 
 (defmethod add-fk-sql :sql/test-extensions
   [driver {:keys [database-name] :as dbdef} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
@@ -360,7 +369,6 @@
         _ (when (< 1 (count pk-names))
             (throw (IllegalArgumentException. "`add-fk-sql` only works with tables with a single PK field")))
         pk-name             (first pk-names)]
-
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that

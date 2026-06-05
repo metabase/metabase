@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.sum-where-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.sum-where-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.sum-where-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -17,7 +19,6 @@
                 mt/rows
                 ffirst
                 double)))
-
     (testing "Should get normalized correctly and work as expected"
       (is (= 179.0
              (->> {:aggregation [["sum-where"

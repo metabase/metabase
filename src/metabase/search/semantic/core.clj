@@ -101,3 +101,9 @@
 (defmethod search.engine/reset-tracking! :search.engine/semantic [_]
   (log/debug "reset-tracking! is not supported for semantic search engine")
   nil)
+
+(defmethod search.engine/sync-from-restored-db! :search.engine/semantic [_]
+  ;; Semantic search index lives outside the appdb snapshot.
+  ;; For now, fall back to reindex (which is already a no-op for this engine).
+  ;; TODO: If semantic embeddings are serialized alongside snapshots in the future, optimize this.
+  (search.engine/reindex! :search.engine/semantic {}))

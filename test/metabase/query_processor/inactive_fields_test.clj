@@ -6,8 +6,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (deftest ^:parallel inactive-remaps-in-join-test

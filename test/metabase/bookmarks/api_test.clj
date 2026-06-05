@@ -75,6 +75,15 @@
       :else
       (throw (ex-info "Unknown type" {:user-id user-id :model model})))))
 
+(deftest synced-collection-bookmark-test
+  (testing "GET /api/bookmark returns is_remote_synced: true for remote-synced collection bookmarks"
+    (mt/with-temp [:model/Collection synced-coll {:name "Synced" :is_remote_synced true}]
+      (bookmark-models (mt/user->id :rasta) synced-coll)
+      (is (true? (->> (mt/user-http-request :rasta :get 200 "bookmark")
+                      (filter #(= (:name %) "Synced"))
+                      first
+                      :is_remote_synced))))))
+
 (deftest bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp [:model/Collection archived-collection {:name "Test Collection"
@@ -122,19 +131,16 @@
         (is (= (u/the-id document)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/document/" (u/the-id document)))
                     :document_id))))
-
       (testing "document appears in bookmark list"
         (let [result (mt/user-http-request :rasta :get 200 "bookmark")
               document-bookmark (first (filter #(= (:type %) "document") result))]
           (is (some? document-bookmark))
           (is (= "Test Document" (:name document-bookmark)))
           (is (= (u/the-id document) (:item_id document-bookmark)))))
-
       (testing "can delete document bookmark"
         (mt/user-http-request :rasta :delete 204 (str "bookmark/document/" (u/the-id document)))
         (is (empty? (filter #(= (:type %) "document")
                             (mt/user-http-request :rasta :get 200 "bookmark")))))
-
       (testing "document bookmarks are included in ordering"
         (mt/with-temp [:model/Card card {:name "Test Card"}]
           (mt/with-model-cleanup [:model/BookmarkOrdering]

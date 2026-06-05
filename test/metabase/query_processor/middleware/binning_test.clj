@@ -1,5 +1,7 @@
 (ns metabase.query-processor.middleware.binning-test
   "There are more 'e2e' tests related to binning in [[metabase.query-processor.breakout-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.binning-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.binning-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -13,10 +15,10 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.binning :as binning]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (deftest ^:parallel filter->field-map-test
@@ -27,7 +29,6 @@
            [[:and
              [:= {} [:field {} 1] 10]
              [:= {} [:field {} 2] 10]]]))))
-
   (is (=? {1 [[:< {} [:field {} 1] 10] [:> {} [:field {} 1] 1]]
            2 [[:> {} [:field {} 2] 20] [:< {} [:field {} 2] 10]]
            3 [[:between {} [:field {} 3] 5 10]]}

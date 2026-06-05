@@ -10,11 +10,11 @@ concurrency:
 
 jobs:
   check-openapi-specs:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     if: contains(github.event.pull_request.labels.*.name, 'openapi-self-healing')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # we're intentionally using METABASE_AUTOMATION_USER_TOKEN to trigger the whole CI pipeline again
           #  after the self-healing commit is created

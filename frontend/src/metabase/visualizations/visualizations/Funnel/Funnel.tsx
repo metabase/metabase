@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { formatNullable } from "metabase/lib/formatting/nullable";
+import { formatNullable } from "metabase/utils/formatting/nullable";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
@@ -25,6 +25,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
+  VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
@@ -44,7 +45,7 @@ const getUniqueFunnelRows = (rows: FunnelRow[]) => {
   return [...new Map(rows.map((row) => [row.key, row])).values()];
 };
 
-Object.assign(Funnel, {
+const FunnelViz: VisualizationDefinition = {
   getUiName: () => t`Funnel`,
   identifier: "funnel",
   iconName: "funnel",
@@ -83,16 +84,17 @@ Object.assign(Funnel, {
   hasEmptyState: true,
 
   settings: {
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     ...dimensionSetting("funnel.dimension", {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      section: t`Data`,
+      getSection: () => t`Data`,
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Column with steps`,
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
-      marginBottom: "0.625rem",
+      getWrapperStyle: () => ({
+        marginBottom: "0.625rem",
+      }),
     }),
     "funnel.order_dimension": {
       getValue: (_series: RawSeries, settings: ComputedVisualizationSettings) =>
@@ -100,8 +102,7 @@ Object.assign(Funnel, {
       readDependencies: ["funnel.rows"],
     },
     "funnel.rows": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      section: t`Data`,
+      getSection: () => t`Data`,
       widget: ChartSettingOrderedSimple,
       getValue: (
         rawSeries: RawSeries,
@@ -157,8 +158,7 @@ Object.assign(Funnel, {
       dataTestId: "funnel-row-sort",
     },
     ...metricSetting("funnel.metric", {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      section: t`Data`,
+      getSection: () => t`Data`,
 
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Measure`,
@@ -171,8 +171,7 @@ Object.assign(Funnel, {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Funnel type`,
 
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      section: t`Display`,
+      getSection: () => t`Display`,
 
       widget: "select",
       getProps: () => ({
@@ -186,7 +185,9 @@ Object.assign(Funnel, {
       useRawSeries: true,
     },
   },
-});
+};
+
+Object.assign(Funnel, FunnelViz);
 
 export function Funnel(props: VisualizationProps) {
   const {

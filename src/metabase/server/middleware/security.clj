@@ -8,15 +8,16 @@
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
+   [metabase.mcp.core :as mcp]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
-
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
   (:import
+   (java.net URI)
    (java.security MessageDigest SecureRandom)))
 
 (set! *warn-on-reflection* true)
@@ -59,20 +60,26 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
 
-(defn parse-url
-  "Returns an object with protocol, domain and port for the given url"
+(defn try-parse-url
+  "Like `parse-url` but returns nil silently on unparsable input. Use this when the caller is parsing
+   client-controlled data (e.g. `Origin`/`Host` headers) where bad input is expected and shouldn't
+   fill the error logs."
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
     ;; Pattern supports both regular hostnames/IPv4 and bracketed IPv6 addresses like [::1]
     (let [pattern #"^(?:(https?|app|capacitor)://)?(\[[^\]]+\]|[^:/]+)(?::(\d+|\*))?$"
-          matches (re-matches pattern url)]
-      (if-not matches
-        (do (log/errorf "Invalid URL: %s" url) nil)
-        (let [[_ protocol domain port] matches]
-          {:protocol protocol
-           :domain domain
-           :port port})))))
+          [_ protocol domain port] (re-matches pattern url)]
+      (when domain
+        {:protocol protocol :domain domain :port port}))))
+
+(defn parse-url
+  "Returns an object with protocol, domain and port for the given url. Logs an error when the input
+   doesn't parse — appropriate for server-side config (where bad input indicates a misconfiguration).
+   For client-controlled input prefer [[try-parse-url]]."
+  [url]
+  (or (try-parse-url url)
+      (do (log/errorf "Invalid URL: %s" url) nil)))
 
 (defn- add-wildcard-entries
   "Adds a wildcard prefix `.*` to the domain part of the given `domain-or-url` string.
@@ -109,19 +116,66 @@
    "https://www.metabase.com/"
    "https://metabase.com/"])
 
+(def ^:private always-allowed-resource-hosts
+  "Implicitly-allowed `img-src`/`font-src` hosts: our own origin and `data:` URIs."
+  ["'self'" "data:"])
+
+(defn- parse-hosts-string
+  "Split a comma/whitespace-separated `hosts-string` into individual hosts, adding wildcard prefixes as needed."
+  [hosts-string]
+  (->> (str/split (or hosts-string "") #"[ ,\s\r\n]+")
+       (remove str/blank?)
+       (mapcat add-wildcard-entries)))
+
 (defn- parse-allowed-iframe-hosts*
   [hosts-string]
-  (->> (str/split hosts-string #"[ ,\s\r\n]+")
-       (remove str/blank?)
-       (mapcat add-wildcard-entries)
-       (into always-allowed-iframe-hosts)))
+  (into always-allowed-iframe-hosts (parse-hosts-string hosts-string)))
 
 (def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
   parse-allowed-iframe-hosts
   (memoize parse-allowed-iframe-hosts*))
 
+(defn- parse-allowed-resource-hosts*
+  [hosts-string]
+  (into always-allowed-resource-hosts (parse-hosts-string hosts-string)))
+
+(def ^{:doc "Parse a string of allowed resource hosts (e.g. for `img-src`), adding wildcard prefixes as needed."}
+  parse-allowed-resource-hosts
+  (memoize parse-allowed-resource-hosts*))
+
+(defn- bracket-ipv6-host
+  "`URI#getHost` returns IPv6 literals unbracketed, but CSP origins require the brackets."
+  [host]
+  (if (and (str/includes? host ":") (not (str/starts-with? host "[")))
+    (str "[" host "]")
+    host))
+
+(defn- font-file-src->origin
+  "Extract the `scheme://host[:port]` origin from a custom font file `src` URL, or nil if it is
+  blank, relative, or unparseable."
+  [src]
+  (when (and (string? src) (not (str/blank? src)))
+    (try
+      (let [uri    (URI. src)
+            scheme (.getScheme uri)
+            host   (some-> uri .getHost bracket-ipv6-host)
+            port   (.getPort uri)]
+        (when (and scheme host)
+          (str scheme "://" host (when (pos? port) (str ":" port)))))
+      (catch Exception _ nil))))
+
+(defn- application-font-files->hosts
+  "Origins of any custom font files configured via the `application-font-files` setting, so that
+  `font-src` allows the fonts an admin has explicitly opted into without a separate setting."
+  []
+  (->> (setting/get-value-of-type :json :application-font-files)
+       (keep (comp font-file-src->origin :src))
+       distinct
+       vec))
+
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
+(def ^:private cljs-dev-port (or (env/env :mb-cljs-dev-port) "9630"))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
@@ -131,6 +185,11 @@
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
+                                  ;; for custom viz plugin bundles loaded via fetch + inline <script> with nonce.
+                                  ;; In dev mode 'unsafe-inline' covers this; adding a nonce there would
+                                  ;; cause the browser to ignore 'unsafe-inline' per the CSP spec.
+                                  (when (and nonce (not config/is-dev?))
+                                    (format "'nonce-%s'" nonce))
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
                                   (when (analytics/anon-tracking-enabled)
@@ -145,7 +204,7 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
-                                    "http://localhost:9630"])
+                                    (str "http://localhost:" cljs-dev-port)])
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
@@ -159,13 +218,17 @@
                                    frontend-address)
                                  ;; CLJS REPL
                                  (when config/is-dev?
-                                   "http://localhost:9630")
+                                   (str "http://localhost:" cljs-dev-port))
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
-                  :font-src     ["*"]
-                  :img-src      ["*"
-                                 "'self' data:"]
+                  :font-src     (into (cond-> always-allowed-resource-hosts
+                                        config/is-dev? (conj frontend-address))
+                                      (application-font-files->hosts))
+                  :img-src      (if (server.settings/csp-img-enabled)
+                                  (cond-> (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                    config/is-dev? (conj frontend-address))
+                                  (into ["*"] always-allowed-resource-hosts))
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
@@ -174,12 +237,14 @@
                                  ;; Snowplow analytics
                                  (when (analytics/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
+                                 (when (analytics/anon-tracking-enabled)
+                                   (setting/get-value-of-type :string :metaplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
                                    (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
                                  ;; CLJS REPL
                                  (when config/is-dev?
-                                   "ws://*:9630")]
+                                   (str "ws://*:" cljs-dev-port))]
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
@@ -251,20 +316,24 @@
     (when (and (seq raw-origin) (seq approved-origins-raw))
       (let [approved-list (parse-approved-origins approved-origins-raw)
             origin        (parse-url raw-origin)]
-        (some (fn [approved-origin]
-                (and
-                 (approved-domain? (:domain origin) (:domain approved-origin))
-                 (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                 (approved-port? (:port origin) (:port approved-origin))))
-              approved-list))))))
+        (when origin
+          (some (fn [approved-origin]
+                  (and
+                   (approved-domain? (:domain origin) (:domain approved-origin))
+                   (approved-protocol? (:protocol origin) (:protocol approved-origin))
+                   (approved-port? (:port origin) (:port approved-origin))))
+                approved-list)))))))
 
 (defn access-control-headers
-  "Returns headers for CORS requests"
-  [origin enabled? approved-origins]
-  (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))]
-    (when (or enabled? localhost-allowed?)
+  "Returns headers for CORS requests. Merges embedding SDK origins and MCP app origins."
+  [origin approved-origins]
+  (let [mcp-origins       (mcp/cors-origins)
+        all-origins       (str/trim (str approved-origins " " mcp-origins))
+        localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
+        mcp-sandbox?       (mcp/sandbox-origin? origin)]
+    (when (or (seq all-origins) localhost-allowed? mcp-sandbox?)
       (merge
-       (when (approved-origin? origin approved-origins)
+       (when (or (approved-origin? origin all-origins) mcp-sandbox?)
          {"Access-Control-Allow-Origin" origin
           "Vary"                        "Origin"})
        {"Access-Control-Allow-Headers"  "*"
@@ -281,11 +350,7 @@
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (access-control-headers origin
-                           (or
-                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
-                            (setting/get-value-of-type :boolean :enable-embedding-simple))
-                           (embedding.settings/embedding-app-origins-sdk))
+   (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)

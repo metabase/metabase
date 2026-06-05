@@ -2,13 +2,13 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import {
   AdminNavItem,
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/urls";
 
 type ToolsAppProps = {
   location: Location;
@@ -30,7 +30,7 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
           />
           <ToolsNavItem
             label={t`Tasks`}
-            path={Urls.adminToolsTasksBase()}
+            path={Urls.adminToolsTasks()}
             icon="clipboard"
             location={location}
           />
@@ -56,6 +56,12 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
             label={t`Model cache log`}
             path={Urls.adminToolsModelCaching()}
             icon="database"
+            location={location}
+          />
+          <ToolsNavItem
+            label={t`Alerts management`}
+            path={Urls.adminToolsNotifications()}
+            icon="bell"
             location={location}
           />
         </AdminNavWrapper>

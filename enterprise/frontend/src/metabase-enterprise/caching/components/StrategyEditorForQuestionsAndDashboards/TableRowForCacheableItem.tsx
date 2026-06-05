@@ -2,12 +2,11 @@ import { useMemo } from "react";
 
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { MaybeLink } from "metabase/common/components/Badge/Badge.styled";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { Link } from "metabase/common/components/Link";
-import { getIcon } from "metabase/lib/icon";
-import * as Urls from "metabase/lib/urls";
-import { Box, Button, FixedSizeIcon, Flex } from "metabase/ui";
+import { useGetIcon } from "metabase/hooks/use-icon";
+import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { CacheableModel } from "metabase-types/api";
 
 import type { CacheableItem, UpdateTarget } from "../types";
@@ -30,6 +29,7 @@ export const TableRowForCacheableItem = ({
   updateTarget: UpdateTarget;
   isFormDirty: boolean;
 }) => {
+  const getIcon = useGetIcon();
   const { name, id, collection, model, strategy, iconModel } = item;
 
   const iconName = iconModel

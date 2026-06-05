@@ -203,8 +203,11 @@ export function seriesSetting({
     axis: {
       title: t`Y-axis position`,
       widget: "segmentedControl",
-      default: null,
-      getHidden: (single) => single.card.display === "row",
+      getHidden: (single, _seriesSettings, extra) =>
+        single.card.display === "row" ||
+        extra?.settings?.["graph.split_panels"] === true,
+      getDefault: (_single, _seriesSettings, extra) =>
+        extra?.settings?.["graph.split_panels"] === true ? "left" : null,
       getProps: () => ({
         options: [
           { name: t`Auto`, value: null },
@@ -238,9 +241,9 @@ export function seriesSetting({
 
         return Boolean(
           series.length <= 1 || // no need to show series-level control if there's only one series
-            !settings["graph.show_values"] || // don't show it unless this chart has a global setting
-            (settings["stackable.stack_type"] &&
-              settings["graph.show_stack_values"] === "total"),
+          !settings["graph.show_values"] || // don't show it unless this chart has a global setting
+          (settings["stackable.stack_type"] &&
+            settings["graph.show_stack_values"] === "total"),
         );
       },
       getDefault: (_single, _seriesSettings, extra) =>
@@ -265,7 +268,10 @@ export function seriesSetting({
         getSettingDefinitionsForObject: () => COMMON_SETTINGS,
         component: ChartNestedSettingSeries,
         readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
-        noPadding: true,
+        getWrapperStyle: () => ({
+          marginLeft: 0,
+          marginRight: 0,
+        }),
         getExtraProps: (series) => ({
           seriesCardNames: series.reduce<Record<string, string>>(
             (memo, singleSeries) => {

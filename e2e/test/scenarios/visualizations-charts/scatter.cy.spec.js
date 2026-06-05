@@ -52,7 +52,7 @@ describe("scenarios > visualizations > scatter", () => {
 
     triggerPopoverForBubble();
     H.assertEChartsTooltip({
-      header: "May 2023",
+      header: "May 2026",
       rows: [
         {
           name: "Count",
@@ -86,7 +86,7 @@ describe("scenarios > visualizations > scatter", () => {
 
     triggerPopoverForBubble();
     H.assertEChartsTooltip({
-      header: "May 2023",
+      header: "May 2026",
       rows: [
         {
           name: "Orders count",
@@ -113,7 +113,7 @@ describe("scenarios > visualizations > scatter", () => {
     // Use force=true because this chart has too many bubbles that overlap with each other
     triggerPopoverForBubble(300, true);
     H.assertEChartsTooltip({
-      header: "2025",
+      header: "2028",
       rows: [
         {
           name: "Widget",
@@ -182,7 +182,7 @@ select 10 as size, 2 as x, 5 as y`,
       { name: "Product ID", value: "61" },
       { name: "Total", value: "16.55" },
       { name: "Discount", value: "" },
-      { name: "Created At", value: "July 4, 2023, 4:57 AM" },
+      { name: "Created At", value: "July 4, 2026, 4:57 AM" },
       { name: "Quantity", value: "4" },
     ];
 

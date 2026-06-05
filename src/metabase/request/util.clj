@@ -4,17 +4,16 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.util :as embed.util]
-   [metabase.request.settings :as request.settings]
+   [metabase.request.current :as request.current]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [user-agent :as user-agent])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time ZoneId)))
 
@@ -24,6 +23,11 @@
   "Is this ring request an API call (does path start with `/api`)?"
   [{:keys [^String uri]}]
   (str/starts-with? uri "/api"))
+
+(defn auth-call?
+  "Is this ring request an auth call (does path start with `/auth`)?"
+  [{:keys [^String uri]}]
+  (str/starts-with? uri "/auth"))
 
 (defn public?
   "Is this ring request one that will serve `public.html`?"
@@ -61,65 +65,37 @@
   [request]
   (some-> request (get-in [:headers "x-metabase-embedded"]) Boolean/parseBoolean))
 
-(defn ip-address
-  "The IP address a Ring `request` came from. Looks at the `request.settings/source-address-header` header (by default
-  `X-Forwarded-For`, or the `(:remote-addr request)` if not set, or if disabled via MB_NOT_BEHIND_PROXY=true."
-  [{:keys [headers remote-addr]}]
-  (let [header-ip-address (some->> (request.settings/source-address-header)
-                                   (get headers))
-        source-address    (if (or (request.settings/not-behind-proxy)
-                                  (not header-ip-address))
-                            remote-addr
-                            header-ip-address)]
-    (some-> source-address
-            ;; first IP (if there are multiple) is the actual client -- see
-            ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
-            (str/split #"\s*,\s*")
-            first
-            ;; strip out non-ip-address characters like square brackets which we get sometimes
-            (str/replace #"[^0-9a-fA-F.:]" ""))))
+(defn referer
+  "The `Referer` header from a Ring `request`, or nil. Best-effort — browsers may strip it under
+  `Referrer-Policy: no-referrer` or cross-origin restrictions."
+  [request]
+  (get-in request [:headers "referer"]))
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
   [:map {:closed true}
-   [:device_id          ms/NonBlankString]
-   [:device_description ms/NonBlankString]
-   [:embedded           ms/BooleanValue]
-   [:ip_address         ms/NonBlankString]])
+   [:device_id                           ms/NonBlankString]
+   [:device_description                  ms/NonBlankString]
+   [:embedded                            ms/BooleanValue]
+   [:ip_address                          ms/NonBlankString]
+   [:token_exchange                      ms/BooleanValue]])
 
 (mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
-  [{{:strs [user-agent]} :headers, :keys [browser-id], :as request}]
+  [{{:strs [user-agent]} :headers, :keys [browser-id token-exchange?], :as request}]
   (let [id          (or browser-id
                         (log/warn "Login request is missing device ID information"))
         description (or user-agent
                         (log/warn "Login request is missing user-agent information"))
-        ip-address  (or (ip-address request)
+        ip-address  (or (request.current/ip-address request)
                         (log/warn "Unable to determine login request IP address"))]
     (when-not (and id description ip-address)
       (log/warn "Error determining login history for request"))
     {:device_id          (or id (trs "unknown"))
      :device_description (or description (trs "unknown")),
      :embedded           (embed.util/is-modular-embedding-request? request)
-     :ip_address         (or ip-address (trs "unknown"))}))
-
-(defn describe-user-agent
-  "Format a user-agent string from a request in a human-friendly way."
-  [user-agent-string]
-  (when-not (str/blank? user-agent-string)
-    (when-let [{device-type     :type-name
-                {os-name :name} :os
-                browser-name    :name} (some-> user-agent-string user-agent/parse not-empty)]
-      (let [non-blank    (fn [s]
-                           (when-not (str/blank? s)
-                             s))
-            device-type  (or (non-blank device-type)
-                             (tru "Unknown device type"))
-            os-name      (or (non-blank os-name)
-                             (tru "Unknown OS"))
-            browser-name (or (non-blank browser-name)
-                             (tru "Unknown browser"))]
-        (format "%s (%s/%s)" device-type browser-name os-name)))))
+     :ip_address         (or ip-address (trs "unknown"))
+     :token_exchange     (boolean token-exchange?)}))
 
 (defn- describe-location [{:keys [city region country]}]
   (when-let [info (not-empty (remove str/blank? [city region country]))]

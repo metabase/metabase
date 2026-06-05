@@ -1,72 +1,105 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
+import * as domUtils from "metabase/utils/dom";
 
 import {
-  assertLeftColumnContent,
   setup,
-  transformsAdvancedPrice,
-  transformsBasicPrice,
   waitForLoadingToFinish,
 } from "./TransformsUpsellPage.setup.spec";
 
 describe("TransformsUpsellPage", () => {
-  it("renders single column layout without CTA when user is not a store user", async () => {
-    setup({ isHosted: true, isStoreUser: false });
-
-    await waitForLoadingToFinish();
-    assertLeftColumnContent();
-
-    expect(
-      screen.queryByRole("heading", { name: "Add transforms to your plan" }),
-    ).not.toBeInTheDocument();
-
-    expect(
-      screen.queryByRole("button", { name: "Confirm purchase" }),
-    ).not.toBeInTheDocument();
+  beforeEach(() => {
+    fetchMock.post("path:/api/ee/cloud-add-ons/transforms-basic-metered", 200);
+    jest.spyOn(domUtils, "reload").mockImplementation(() => undefined);
   });
 
-  it("renders 2-column layout with CTA when user is a store user", async () => {
-    setup({ isHosted: true, isStoreUser: true });
-
+  it("shows the contact message if the user is not an admin or store user", async () => {
+    setup({ isHosted: true, isAdmin: false, isStoreUser: false });
     await waitForLoadingToFinish();
-    assertLeftColumnContent();
 
     expect(
-      screen.getByRole("heading", { name: "Add transforms to your plan" }),
-    ).toBeInTheDocument();
-
+      screen.queryByRole("button", { name: "Enable transforms" }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Confirm purchase" }),
+      screen.getByText(/contact a store administrator/i),
     ).toBeInTheDocument();
   });
 
-  it("shows both transforms tiers and updates price when switching", async () => {
-    setup({ isHosted: true, isStoreUser: true });
-
+  it("proceeds to an agree step when the user is an admin", async () => {
+    setup({ isHosted: true, isAdmin: true, isStoreUser: false });
     await waitForLoadingToFinish();
 
-    await userEvent.click(screen.getByRole("radio", { name: /SQL only/ }));
-    expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
-      `$${transformsBasicPrice}`,
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enable transforms" }),
     );
 
-    await userEvent.click(screen.getByRole("radio", { name: /SQL \+ Python/ }));
-    expect(screen.getByTestId("due-today-amount")).toHaveTextContent(
-      `$${transformsAdvancedPrice}`,
-    );
+    expect(screen.getByText("1,000 free transform runs")).toBeInTheDocument();
   });
 
-  it("shows due today as $0 and trial heading when trial is available", async () => {
-    setup({ isHosted: true, isStoreUser: true, trialDays: 13 });
-
+  it("proceeds to an agree step with an overview of the free bucket", async () => {
+    setup({ isHosted: true, isStoreUser: true });
     await waitForLoadingToFinish();
 
     expect(
-      screen.getByRole("heading", {
-        name: "Start a free 13-day trial of transforms",
-      }),
+      screen.getByText("Customize and clean up your data"),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("due-today-amount")).toHaveTextContent(`$0`);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enable transforms" }),
+    );
+
+    expect(screen.getByText("1,000 free transform runs")).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+        { method: "POST" },
+      ),
+    ).toHaveLength(0);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Agree and continue" }),
+    );
+
+    expect(
+      screen.getByText("Setting up transforms, please wait"),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+        { method: "POST" },
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("skips the free bucket overview if the user has had transforms before", async () => {
+    setup({ isHosted: true, isStoreUser: true, hadTransforms: true });
+    await waitForLoadingToFinish();
+
+    expect(
+      screen.queryByText("1,000 free transform runs"),
+    ).not.toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+        { method: "POST" },
+      ),
+    ).toHaveLength(0);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enable transforms" }),
+    );
+
+    expect(
+      screen.getByText("Setting up transforms, please wait"),
+    ).toBeInTheDocument();
+
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+        { method: "POST" },
+      ),
+    ).toHaveLength(1);
   });
 });

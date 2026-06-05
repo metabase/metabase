@@ -3,8 +3,8 @@ import { useHoverDirty } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 

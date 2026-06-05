@@ -2,11 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Button } from "metabase/common/components/Button";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Stack } from "metabase/ui";
-import type { Locale } from "metabase-types/store";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { Locale } from "metabase/redux/store";
+import { Button, Stack } from "metabase/ui";
 
 import { useStep } from "../..//useStep";
 import { goToNextStep, updateLocale } from "../../actions";
@@ -77,7 +76,7 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         ))}
       </LocaleGroup>
       <Button
-        primary={selectedLocale != null}
+        variant={selectedLocale != null ? "filled" : "default"}
         disabled={selectedLocale == null}
         onClick={handleStepSubmit}
       >

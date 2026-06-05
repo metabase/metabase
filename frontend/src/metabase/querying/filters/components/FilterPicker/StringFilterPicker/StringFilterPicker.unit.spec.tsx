@@ -11,7 +11,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   PEOPLE,

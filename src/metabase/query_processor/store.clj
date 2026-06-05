@@ -161,7 +161,6 @@
                           {:existing-id existing-database-id
                            :new-id      new-database-id
                            :type        qp.error-type/invalid-query}))))
-
       ;; Metadata Providerable
       (let [new-provider (-> database-id-or-metadata-providerable
                              lib.metadata/->metadata-provider
@@ -219,7 +218,7 @@
 ;;;;
 
 (mu/defn ->legacy-metadata
-  "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
+  "For compatibility: convert Lib-style metadata as returned by [[metabase.lib.metadata.protocols]]
   or [[metabase.lib.metadata]] functions
   (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys
   and Toucan 2 model `:type` metadata).

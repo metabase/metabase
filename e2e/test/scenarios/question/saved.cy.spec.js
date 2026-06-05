@@ -21,6 +21,15 @@ describe("scenarios > question > saved", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     cy.findAllByText("Orders"); // question and table name appears
 
+    // capture the view header height in the saved state to assert it does not
+    // change after the question transitions to ad-hoc (UXW-3751)
+    let savedHeaderHeight;
+    cy.findByTestId("qb-header")
+      .invoke("outerHeight")
+      .then((h) => {
+        savedHeaderHeight = h;
+      });
+
     // filter to only orders with quantity=100
     H.tableHeaderClick("Quantity");
     H.popover().findByText("Filter by this column").click();
@@ -35,10 +44,17 @@ describe("scenarios > question > saved", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 2 rows"); // query updated
 
+    // view header height should be unchanged in the ad-hoc state
+    cy.findByTestId("qb-header")
+      .invoke("outerHeight")
+      .should((h) => {
+        expect(h).to.equal(savedHeaderHeight);
+      });
+
     // check that save will give option to replace
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByText('Replace original question, "Orders"');
       cy.findByText("Save as new question");
       cy.findByText("Cancel").click();
@@ -173,6 +189,7 @@ describe("scenarios > question > saved", () => {
 
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
+    cy.intercept("POST", "/api/revision/revert").as("revertRevision");
 
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.questionInfoButton().click();
@@ -188,11 +205,30 @@ describe("scenarios > question > saved", () => {
       cy.findByText(/added a description/i);
 
       cy.findByTestId("question-revert-button").click();
+      // The revert mutation invalidates the revision list. On fetch
+      // (microtask resolution) clicking the History tab before that
+      // invalidation lands shows the pre-revert entries — the new
+      // "reverted to an earlier version" row is then never found within
+      // Cypress's default 4s. Wait for the revert request before
+      // re-entering History.
+      cy.wait("@revertRevision");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i);
       cy.findByText(/This is a question/i).should("not.exist");
+
+      // Simulate a backend failure on revert and confirm we surface
+      // the error message as a toast (UXW-310).
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing card" },
+      }).as("failedRevert");
+
+      cy.findAllByTestId("question-revert-button").first().click();
+      cy.wait("@failedRevert");
     });
+
+    H.undoToast().should("contain.text", "Cannot revert: missing card");
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {

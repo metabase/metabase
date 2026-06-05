@@ -4,7 +4,7 @@ import { readFileSync } from "fs";
 
 import { glob } from "glob";
 
-import { ALL_COLOR_NAMES } from "../../frontend/src/metabase/lib/colors";
+import { ALL_COLOR_NAMES } from "../../frontend/src/metabase/ui/colors";
 
 /**
  * This script finds css variables that are used but *never* defined in our codebase.
@@ -45,9 +45,9 @@ interface UsageMap {
 }
 
 const findFiles = (): string[] => {
-  return glob.sync(
-    "{frontend,enterprise/frontend}/**/*.{css,module.css,js,jsx,ts,tsx}",
-  );
+  return glob
+    .sync("{frontend,enterprise/frontend}/**/*.{css,module.css,js,jsx,ts,tsx}")
+    .filter(f => !/\.(unit\.spec|spec|test)\.(js|jsx|ts|tsx)$/.test(f));
 };
 
 const extractVariableDefinitions = (filePath: string): Set<string> => {

@@ -10,7 +10,6 @@ import type {
   SuggestedTransform,
   Transform,
   UnsavedCard,
-  Version,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -48,7 +47,6 @@ export type MetabotChatContext = {
   user_is_viewing: MetabotUserIsViewingContext;
   current_time_with_timezone: string;
   default_database_id?: number;
-  workspace_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
 };
@@ -188,6 +186,28 @@ export type MetabotAgentResponse = {
   state: any;
 };
 
+export type MetabotProvider =
+  | "metabase"
+  | "anthropic"
+  | "openai"
+  | "openrouter";
+
+export interface MetabotSettingsResponse {
+  value: string | null;
+  "api-key-error"?: string | null;
+  models: {
+    id: string;
+    display_name: string;
+    group?: string | null;
+  }[];
+}
+
+export interface UpdateMetabotSettingsRequest {
+  provider: MetabotProvider;
+  model?: string;
+  "api-key"?: string | null;
+}
+
 /* Metabot - Suggested Prompts */
 
 export type SuggestedMetabotPrompt = {
@@ -226,19 +246,77 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
-export interface MetabotFeedback {
+export type RegenerateSuggestedMetabotPromptsResponse =
+  | { status: "generated"; prompt_count: number }
+  | { status: "no-library-content" }
+  | { status: "ai-produced-no-prompts" };
+
+export const METABOT_ISSUE_TYPE_VALUES = [
+  "ui-bug",
+  "took-incorrect-actions",
+  "overall-refusal",
+  "did-not-follow-request",
+  "not-factual",
+  "incomplete-response",
+  "other",
+] as const;
+
+export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
+
+export type MetabotFeedback = {
   metabot_id: MetabotId;
+  message_id: string;
+  freeform_feedback?: string;
+} & ({ positive: true } | { positive: false; issue_type?: MetabotIssueType });
+
+export type MetabotSourceType = "table" | "card" | "model";
+
+export type MetabotSourceFeedback = {
+  metabot_id: MetabotId;
+  message_id: string;
+  source_id: number;
+  source_type: MetabotSourceType;
+  positive: boolean;
+};
+
+/**
+ * Feedback payload for MCP Apps visualization results.
+ *
+ * Sends the prompt and query context needed for Harbormaster
+ * to understand the generated visualization.
+ */
+export type McpAppsFeedback = {
+  /** User's rating and optional comments about the generated visualization. */
   feedback: {
     positive: boolean;
+
+    /** Client-generated id for feedback submission. */
     message_id: string;
-    issue_type?: string | undefined;
-    freeform_feedback: string;
+
+    /** Optional category for negative feedback. */
+    issue_type?: string;
+
+    /** Optional free-form user feedback text. */
+    freeform_feedback?: string;
   };
-  conversation_data: any;
-  version: Version;
-  submission_time: string;
-  is_admin: boolean;
-}
+
+  /** MCP-specific context that Harbormaster needs to evaluate the result. */
+  conversation_data: {
+    /** Identifies this submission as coming from the MCP Apps flow. */
+    source: "mcp";
+
+    /** User prompt that produced the visualization, when available. */
+    prompt: string | null;
+
+    /** Query text or structured query snapshot for the result, when available. */
+    query: string | null;
+  };
+};
+
+export type SubmitMcpAppsFeedbackRequest = {
+  mcpSessionId: string;
+  payload: McpAppsFeedback;
+};
 
 /* Metabot v3 - Entity Types */
 
@@ -276,4 +354,65 @@ export type MetabotTodoItem = {
   content: string;
   status: "pending" | "in_progress" | "completed" | "cancelled";
   priority: "high" | "medium" | "low";
+};
+
+/* Metabot v3 - Slack Settings */
+
+export type MetabotSlackSettings =
+  | {
+      "slack-connect-client-id": string;
+      "slack-connect-client-secret": string;
+      "metabot-slack-signing-secret": string;
+    }
+  | {
+      "slack-connect-client-id": null;
+      "slack-connect-client-secret": null;
+      "metabot-slack-signing-secret": null;
+    };
+
+/* Metabot v3 - Group Permissions */
+
+export enum AIToolKey {
+  Metabot = "permission/metabot",
+  ChatAndNLQ = "permission/metabot-nlq",
+  SQLGeneration = "permission/metabot-sql-generation",
+  OtherTools = "permission/metabot-other-tools",
+}
+
+export type MetabotGroupPermission = {
+  group_id: number;
+  perm_type: AIToolKey;
+  perm_value: "yes" | "no";
+};
+
+export type MetabotPermissionsResponse = {
+  permissions: MetabotGroupPermission[];
+  advanced: boolean;
+};
+
+export type UpdateMetabotPermissionsRequest = {
+  permissions: MetabotGroupPermission[];
+};
+
+export type UserMetabotPermissions = {
+  metabot: "yes" | "no";
+  "metabot-sql-generation": "yes" | "no";
+  "metabot-nlq": "yes" | "no";
+  "metabot-other-tools": "yes" | "no";
+};
+
+export type UserMetabotPermissionsResponse = {
+  permissions: UserMetabotPermissions;
+};
+
+export type MetabotLimitPeriod = "daily" | "weekly" | "monthly";
+export type MetabotLimitType = "tokens" | "messages";
+
+/* Metabot v3 - Usage Limits */
+
+export type MetabotInstanceLimit = { max_usage: number | null };
+export type MetabotGroupLimit = { group_id: number; max_usage: number };
+export type MetabotTenantLimit = {
+  tenant_id: number;
+  max_usage: number | null;
 };

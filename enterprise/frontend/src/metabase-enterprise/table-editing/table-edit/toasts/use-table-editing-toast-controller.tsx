@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 
 import { ErrorUpdateToast } from "./ErrorUpdateToast";
@@ -28,7 +28,6 @@ export function useTableEditingToastController() {
             icon: null,
             renderChildren: () => <ErrorUpdateToast error={error} />,
             timeout: null, // removes automatic toast hide
-            undo: false,
             onDismiss,
           }),
         );

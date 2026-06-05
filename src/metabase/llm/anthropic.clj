@@ -5,7 +5,6 @@
    using tool_use for structured output."
   (:require
    [clj-http.client :as http]
-   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.util :as u]
@@ -79,28 +78,6 @@
                       {:type :llm-not-configured})))
     api-key))
 
-(def ^:private list-models*
-  "Memoized implementation of list-models with 5-minute TTL."
-  (memoize/ttl
-   (fn [api-key]
-     (try
-       (let [url (str (llm.settings/llm-anthropic-api-url) "/v1/models")
-             response (http/get url
-                                {:headers {"x-api-key"         api-key
-                                           "anthropic-version" (llm.settings/llm-anthropic-api-version)}})
-             body (json/decode+kw (:body response))
-             models (reverse (sort-by :created_at (:data body)))]
-         {:models (map #(select-keys % [:id :display_name]) models)})
-       (catch Exception e
-         (handle-api-error e))))
-   :ttl/threshold (* 5 60 1000)))
-
-(defn list-models
-  "Send a list models request to Anthropic.
-   Returns a map with :models. Results are cached for 5 minutes."
-  []
-  (list-models* (get-api-key-or-throw)))
-
 (defn chat-completion
   "Send a chat completion request to Anthropic.
    Returns a map with:
@@ -119,7 +96,7 @@
                     :messages messages}
         start-time (u/start-timer)]
     (try
-      (let [url      (str (llm.settings/llm-anthropic-api-url) "/v1/messages")
+      (let [url      (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")
             response (http/post url
                                 {:headers            (build-request-headers (get-api-key-or-throw))
                                  :body               (json/encode (build-request-body request))

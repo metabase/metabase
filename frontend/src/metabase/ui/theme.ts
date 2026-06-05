@@ -1,10 +1,10 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
-import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import type { ColorSettings } from "metabase-types/api";
 
 import Styles from "./Theme.module.css";
+import { DEFAULT_METABASE_COMPONENT_THEME } from "./component-theme";
 import {
   accordionOverrides,
   actionIconOverrides,
@@ -147,7 +147,7 @@ export const getThemeOverrides = (
       },
     },
   },
-  fontFamily: "var(--mb-default-font-family), sans-serif",
+  fontFamily: "var(--mb-default-font-family)",
   fontFamilyMonospace: "Monaco, monospace",
   components: {
     ...accordionOverrides,

@@ -20,9 +20,9 @@ jobs:
           github.event.label.name == 'triple-backport'
         )
       )
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -35,7 +35,7 @@ jobs:
 
       - name: how many backports?
         id: how-many-backports
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const labels = [
@@ -58,7 +58,7 @@ jobs:
 
       - name: get release versions
         id: get-latest-release-version
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const currentVersion = Number(${{ vars.CURRENT_VERSION }});

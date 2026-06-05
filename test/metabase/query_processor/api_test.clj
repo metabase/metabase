@@ -6,7 +6,8 @@
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
                        {:discouraged-var {metabase.test/with-temp           {:level :off}
-                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.api-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -21,12 +22,12 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.unique-name-generator]
    [metabase.permissions.core :as perms]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -53,7 +54,7 @@
                    (m/dissoc-in [:data :results_metadata])
                    (m/dissoc-in [:data :insights]))]
      (cond
-       (contains? #{:id :started_at :running_time :hash :cache_hash} k)
+       (contains? #{:id :started_at :running_time :hash :cache_hash :auth_method :metabase_version} k)
        [k (boolean v)]
 
        (and (= :data k) (contains? v :native_form))
@@ -128,7 +129,19 @@
                   :started_at       true
                   :running_time     true
                   :embedding_client nil
-                  :embedding_version nil}
+                  :embedding_hostname nil
+                  :embedding_path nil
+                  :embedding_route nil
+                  :embedding_sdk_version nil
+                  :metabase_version true
+                  :auth_method      true
+                  :ip_address       nil
+                  :is_db_routed     false
+                  :is_impersonated  false
+                  :parameters       nil
+                  :tenant_id        nil
+                  :user_agent       nil
+                  :sanitized_user_agent nil}
                  (format-response (most-recent-query-execution-for-query query)))))))))
 
 (deftest failure-test
@@ -247,9 +260,9 @@
                                       (some #(str/includes? % long-col-name) native-form-lines)))
           ;; Disable truncate-alias when compiling the native query to ensure we don't truncate the column.
           ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-          native-sub-query     (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
-                                             (fn mock-truncate-alias
-                                               [ss & _] ss)]
+          native-sub-query     (mt/with-dynamic-fn-redefs [metabase.lib.util.unique-name-generator/truncate-alias
+                                                           (fn mock-truncate-alias
+                                                             [ss & _] ss)]
                                  ;; make sure the schema checks don't fail for aliases > 60 characters
                                  (mu/disable-enforcement
                                    (-> (mt/mbql-query people
@@ -307,7 +320,7 @@
   (testing "POST /api/dataset/:format"
     (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
       ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
-      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
         (doseq [:let     [query {:database (mt/id)
                                  :type     :query
                                  :query    {:source-table (mt/id :venues)}
@@ -356,7 +369,7 @@
 (deftest non-download-queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
                 "(this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)")
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+    (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (let [{row-count :row_count, :as result}
             (mt/user-http-request :crowberto :post 202 "dataset"
                                   {:database (mt/id)
@@ -690,7 +703,7 @@
 (deftest databricks-stack-trace-test
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
-      (let [res (mt/user-http-request :rasta :post 202 "dataset"
+      (let [res (mt/user-http-request :rasta :post 400 "dataset"
                                       (lib/native-query (mt/metadata-provider)
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
@@ -779,7 +792,6 @@
             (is (= "completed" (:status result)))
             (is (= 4 (count (get-in result [:data :cols]))))
             (is (= 140 (count rows)))
-
             (is (= ["AK" "Google" 0 119] (first rows)))
             (is (= ["AK" "Organic" 0 89] (second rows)))
             (is (= ["WA" nil 2 148] (nth rows 135)))
@@ -796,7 +808,6 @@
             (is (= "completed" (:status result)))
             (is (= 4 (count (get-in result [:data :cols]))))
             (is (= 137 (count rows)))
-
             (is (= ["AK" "Google" 0 27] (first rows)))
             (is (= ["AK" "Organic" 0 25] (second rows)))
             (is (= ["VA" nil 2 29] (nth rows 130)))
@@ -868,7 +879,6 @@
                                                             (mt/id :people :source)]})
                          :values set)]
           (is (set/subset? #{["Doohickey"] ["Facebook"]} values))))
-
       (testing "search"
         (let [values (-> (mt/user-http-request :crowberto :post 200
                                                "dataset/parameter/search/g"
@@ -879,7 +889,6 @@
           ;; results matched on g, does not include Doohickey (which is in above results)
           (is (set/subset? #{["Widget"] ["Google"]} values))
           (is (not (contains? values ["Doohickey"])))))
-
       (testing "deduplicates the values returned from multiple fields"
         (let [values (-> (mt/user-http-request :crowberto :post 200
                                                "dataset/parameter/values"
@@ -893,7 +902,7 @@
   (testing "fallback to field-values"
     (let [mock-default-result {:values          [["field-values"]]
                                :has_more_values false}]
-      (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
+      (mt/with-dynamic-fn-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card {source-card-id :id}]
             (is (= mock-default-result
@@ -904,7 +913,6 @@
                                                        :type                 :string/=,
                                                        :name                 "Text"
                                                        :id                   "abc"}})))))
-
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card {source-card-id :id} {:archived true}]
             (is (= mock-default-result
@@ -945,9 +953,9 @@
       (is (= ["A   sian" "As"]
              (mt/user-http-request :crowberto :post 200 "dataset/parameter/remapping" body))))))
 
-(deftest ^:parallel adhoc-mlv2-query-test
+(deftest ^:parallel adhoc-mbql5-query-test
   (testing "POST /api/dataset"
-    (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
+    (testing "Should be able to run an ad-hoc MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -957,9 +965,9 @@
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
-(deftest ^:parallel mlv2-query-convert-to-native-test
+(deftest ^:parallel mbql5-query-convert-to-native-test
   (testing "POST /api/dataset/native"
-    (testing "Should be able to convert an MLv2 query to native (#39024)"
+    (testing "Should be able to convert an MBQL 5 query to native (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -986,9 +994,9 @@
                                               (driver/prettify-native-form :h2)
                                               str/split-lines))))))))))
 
-(deftest ^:parallel mlv2-query-convert-to-native-disable-default-limit-test
+(deftest ^:parallel mbql5-query-convert-to-native-disable-default-limit-test
   (testing "POST /api/dataset/native"
-    (testing "MLv2 query with disable-default-limit should compile to SQL without a LIMIT clause"
+    (testing "MBQL 5 query with disable-default-limit should compile to SQL without a LIMIT clause"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -1018,7 +1026,7 @@
 (deftest pivot-exports-ignore-query-constraints
   (testing "POST /api/dataset/:format with pivot-results=true"
     (testing "Downloading pivot CSV/JSON/XLSX results shouldn't be subject to the default query constraints"
-      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
         (let [query {:database   (mt/id)
                      :type       :query
                      :query      {:source-table (mt/id :venues)

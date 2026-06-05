@@ -1,12 +1,18 @@
+import type { AbortError } from "metabase/api/legacy-client";
 import type { Dashboard } from "metabase-types/api";
 
-export type SuccessfulFetchDashboardResult = {
+type SuccessfulFetchDashboardResult = {
   payload: { dashboard: Dashboard };
 };
-export type FailedFetchDashboardResult = { error: unknown; payload: unknown };
-export type CancelledFetchDashboardResult = {
-  payload: { isCancelled: true };
+
+// A cancelled fetch surfaces as an `AbortError` payload. It also satisfies
+// `FailedFetchDashboardResult` shape-wise, so consumers use
+// `isAbortError(result.payload)` to distinguish.
+type CancelledFetchDashboardResult = {
+  payload: AbortError;
 };
+
+export type FailedFetchDashboardResult = { error: unknown; payload: unknown };
 
 export type FetchDashboardResult =
   | SuccessfulFetchDashboardResult

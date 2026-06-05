@@ -3,8 +3,8 @@ import { useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { FormField, FormSelect, type FormSelectProps } from "metabase/forms";
-import { SelectItem, Text } from "metabase/ui";
+import { FormSelect, type FormSelectProps } from "metabase/forms";
+import { SelectItem, Stack, Text } from "metabase/ui";
 
 export function SchemaFormSelect(props: FormSelectProps & { data: string[] }) {
   const { data, name, ...rest } = props;
@@ -19,7 +19,7 @@ export function SchemaFormSelect(props: FormSelectProps & { data: string[] }) {
   const isNewValue = value !== "" && !data.includes(value ?? "");
 
   return (
-    <FormField>
+    <Stack gap="sm">
       <FormSelect
         {...rest}
         name={name}
@@ -36,11 +36,11 @@ export function SchemaFormSelect(props: FormSelectProps & { data: string[] }) {
         }}
       />
       {isNewValue && (
-        <Text size="sm" c="text-secondary" mt="sm">
+        <Text size="sm" c="text-secondary">
           {t`This schema will be created the first time the transform runs.`}
         </Text>
       )}
-    </FormField>
+    </Stack>
   );
 }
 
@@ -52,7 +52,7 @@ function NewSelectItem({ value }: { value: string }) {
   return (
     <SelectItem>
       <Text c="inherit" lh="inherit">
-        {jt`Create new schema ${(<strong key="value">{value}</strong>)}`}
+        {jt`Create new schema ${<strong key="value">{value}</strong>}`}
       </Text>
     </SelectItem>
   );

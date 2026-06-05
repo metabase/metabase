@@ -1,14 +1,9 @@
-import type { ResizableBoxProps } from "react-resizable";
-
-import { useSelector } from "metabase/lib/redux";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
-import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
-import type {
-  SelectionRange,
-  SidebarFeatures,
-} from "metabase/query_builder/components/NativeQueryEditor/types";
-import type { QueryModalType } from "metabase/query_builder/constants";
 import { getHighlightedNativeQueryLineNumbers } from "metabase/query_builder/selectors";
+import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
+import type { QueryModalType } from "metabase/querying/constants";
+import type { SelectionRange } from "metabase/querying/editor/types";
+import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -46,12 +41,7 @@ interface ViewNativeQueryEditorProps {
 
   readOnly?: boolean;
   canChangeDatabase?: boolean;
-  hasTopBar?: boolean;
-  hasParametersList?: boolean;
-  hasEditingSidebar?: boolean;
-  sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
-  resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
 
   editorContext?: "question";
 
@@ -113,7 +103,14 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         proposedQuestion={inlineSQLPrompt?.proposedQuestion}
         onAcceptProposed={inlineSQLPrompt?.handleAcceptProposed}
         onRejectProposed={inlineSQLPrompt?.handleRejectProposed}
-      />
+      >
+        <NativeQueryEditor.TopBar>
+          <NativeQueryEditor.ParametersList />
+          <NativeQueryEditor.Sidebar />
+          <NativeQueryEditor.VisibilityToggler />
+        </NativeQueryEditor.TopBar>
+        <NativeQueryEditor.RunButton />
+      </NativeQueryEditor>
       {inlineSQLPrompt?.portalElement}
     </Box>
   );

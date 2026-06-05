@@ -1,4 +1,5 @@
 (ns metabase.query-processor.util.nest-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.util.nest-query-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -7,8 +8,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.places-cam-likes-metadata-provider :as lib.tu.places-cam-likes-metadata-provider]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.test :as mt]))

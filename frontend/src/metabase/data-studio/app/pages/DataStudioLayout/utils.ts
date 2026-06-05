@@ -1,4 +1,4 @@
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/urls";
 
 type TabName =
   | "data"
@@ -7,10 +7,11 @@ type TabName =
   | "jobs"
   | "runs"
   | "dependencies"
-  | "workspace"
   | "dependency-diagnostics"
+  | "schema-viewer"
   | "glossary"
-  | "git-sync";
+  | "git-sync"
+  | "workspaces";
 
 export const getCurrentTab = (pathname: string): TabName => {
   switch (true) {
@@ -18,20 +19,22 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "glossary";
     case pathname.startsWith(Urls.dataStudioGitSync()):
       return "git-sync";
+    case pathname.startsWith(Urls.workspaces()):
+      return "workspaces";
     case pathname.startsWith(Urls.transformJobList()):
       return "jobs";
     case pathname.startsWith(Urls.dependencyGraph()):
       return "dependencies";
     case pathname.startsWith(Urls.dependencyDiagnostics()):
       return "dependency-diagnostics";
+    case pathname.startsWith(Urls.dataStudioSchemaViewer()):
+      return "schema-viewer";
     case pathname.startsWith(Urls.dataStudioLibrary()):
       return "library";
     case pathname.startsWith(Urls.transformRunList()):
       return "runs";
     case pathname.startsWith(Urls.transformList()):
       return "transforms";
-    case pathname.startsWith(Urls.dataStudioWorkspaceList()):
-      return "workspace";
     default:
       return "data";
   }

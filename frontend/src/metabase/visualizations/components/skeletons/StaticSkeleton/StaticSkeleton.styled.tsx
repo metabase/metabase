@@ -1,9 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { Icon } from "metabase/ui";
+import { Ellipsified, Icon } from "metabase/ui";
 
 export const SkeletonRoot = styled.div`
   position: relative;
@@ -19,13 +18,6 @@ export const SkeletonTitle = styled(Ellipsified)`
 export const SkeletonDescription = styled(MarkdownPreview)`
   color: var(--mb-color-text-secondary);
   line-height: 1.5rem;
-`;
-
-export const SkeletonIcon = styled(Icon)`
-  display: block;
-  color: var(--mb-color-text-secondary);
-  width: 1.5rem;
-  height: 1.5rem;
 `;
 
 export const SkeletonTooltipIcon = styled(Icon)`

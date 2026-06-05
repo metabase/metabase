@@ -19,7 +19,7 @@
    (fn []
      (let [file-url (io/resource js-file-path)]
        (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
-       (doto (js.engine/context)
+       (doto (js.engine/trusted-context)
          (js.engine/load-resource  js-file-path))))
    5))
 
@@ -31,6 +31,22 @@
    [:cols [:sequential [:map
                         [:name :string]]]]
    [:rows [:sequential [:sequential :any]]]])
+
+(defn- ->js-number
+  "Coerce BigDecimal/BigInteger to primitive double/long so Graal's JS context sees them as numbers, not host objects.
+   Returns nil when the value would overflow — BigInteger too wide for long, or BigDecimal magnitude beyond Double's
+   finite range — since silently truncating would feed wrong values into gradient/comparison logic."
+  [v]
+  (cond
+    (instance? BigDecimal v)
+    (let [d (.doubleValue ^BigDecimal v)]
+      (when (Double/isFinite d) d))
+
+    (instance? BigInteger v)
+    (when (<= (.bitLength ^BigInteger v) 63)
+      (.longValue ^BigInteger v))
+
+    :else v))
 
 (defn- convert-bignumbers-by-column
   "Convert BigDecimal and BigInteger values to doubles/longs since Graal doesn't handle these"
@@ -54,14 +70,7 @@
             (map-indexed
              (fn [idx item]
                (if (bignum-column-indices idx)
-                 (cond
-                   (instance? BigDecimal item)
-                   (.doubleValue ^BigDecimal item)
-
-                   (instance? BigInteger item)
-                   (.longValue ^BigInteger item)
-
-                   :else item)
+                 (->js-number item)
                  item))
              row)))
          data)))))
@@ -91,11 +100,11 @@
   ^String [color-selector cell-value column-name row-index]
   (let [cell-value (cond
                      (formatter/NumericWrapper? cell-value)
-                     (:num-value cell-value)
+                     (->js-number (:num-value cell-value))
 
                      (formatter/TextWrapper? cell-value)
                      (:original-value cell-value)
 
                      :else
-                     cell-value)]
+                     (->js-number cell-value))]
     (.asString (js.engine/execute-fn color-selector cell-value row-index column-name))))

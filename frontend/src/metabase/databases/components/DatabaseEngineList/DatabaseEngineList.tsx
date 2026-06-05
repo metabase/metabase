@@ -9,7 +9,7 @@ import {
   getEngineLogo,
   getEngineOptions,
 } from "metabase/databases/utils/engine";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import {
   Button,
   Center,

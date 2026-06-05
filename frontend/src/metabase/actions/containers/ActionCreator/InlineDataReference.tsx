@@ -2,7 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
-import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { Tooltip } from "metabase/ui";
 
 export const DataReferenceInline = ({
@@ -12,10 +13,10 @@ export const DataReferenceInline = ({
   onClose?: () => void;
   onBack?: () => void;
 }) => {
-  const [dataRefStack, setDataRefStack] = useState<any[]>([]);
+  const [dataRefStack, setDataRefStack] = useState<DataReferenceItem[]>([]);
 
-  const pushRefStack = (ref: any) => {
-    setDataRefStack([...dataRefStack, ref]);
+  const pushRefStack = (item: DataReferenceItem) => {
+    setDataRefStack([...dataRefStack, item]);
   };
 
   const popRefStack = () => {

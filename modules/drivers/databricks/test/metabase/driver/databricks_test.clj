@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.databricks-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.databricks-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.databricks-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -12,10 +14,11 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- maybe-qualify-schema
@@ -472,7 +475,17 @@
     (testing "Can connect returns true for catalog that is present on the instance"
       (is (true? (driver/can-connect? :databricks (:details (mt/db))))))
     (testing "Can connect returns false for catalog that is NOT present on the instance (#49444)"
-      (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))))
+      (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))
+    (testing "Disallows unsafe connection parameters"
+      (let [details (assoc (:details (mt/db)) :additional-options "VolumeOperationAllowedLocalPaths=/etc/hosts")]
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/can-connect? :databricks details)))
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/can-connect? :databricks (update details
+                                                                       :additional-options
+                                                                       u/lower-case-en))))
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/validate-db-details! :databricks details)))))))
 
 (deftest can-connect-using-m2m-test
   (mt/test-driver
@@ -485,3 +498,12 @@
                       (assoc :use-m2m true
                              :client-id (tx/db-test-env-var-or-throw :databricks :client-id)
                              :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))
+
+(deftest ^:parallel mulit-line-comment-test
+  (mt/test-driver :databricks
+    (testing "queries with multi line block comments work (#68667)"
+      (is (= [[1]]
+             (->> "/*\n*/\nselect 1;"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/rows)))))))

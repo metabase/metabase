@@ -6,12 +6,7 @@ import { useWindowSize } from "react-use";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { useSetting } from "metabase/common/hooks";
-import {
-  NativeQueryEditor,
-  type SelectionRange,
-} from "metabase/query_builder/components/NativeQueryEditor";
-import type { QueryModalType } from "metabase/query_builder/constants";
-import type { QueryEditorDatabasePickerItem } from "metabase/querying/editor/types";
+import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -20,6 +15,12 @@ import type {
   NativeQuerySnippet,
   RecentCollectionItem,
 } from "metabase-types/api";
+
+import type { QueryModalType } from "../../../../constants";
+import type {
+  QueryEditorDatabasePickerItem,
+  SelectionRange,
+} from "../../../types";
 
 import S from "./QueryEditorBody.module.css";
 
@@ -57,6 +58,9 @@ type QueryEditorBodyProps = {
   isShowingTemplateTagsSidebar: boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldDisableItem?: (item: OmniPickerItem | RecentCollectionItem) => boolean;
+  getItemTooltip?: (
+    item: OmniPickerItem | RecentCollectionItem,
+  ) => string | undefined;
   shouldShowLibrary?: boolean;
   onBlur?: () => void;
   onChange: (newQuestion: Question) => void;
@@ -95,6 +99,7 @@ export function QueryEditorBody({
   isShowingTemplateTagsSidebar,
   shouldDisableDatabase,
   shouldDisableItem,
+  getItemTooltip,
   shouldShowLibrary,
   onBlur,
   onChange,
@@ -123,9 +128,31 @@ export function QueryEditorBody({
   );
 
   const dataPickerOptions = useMemo(
-    () => ({ shouldDisableItem, shouldDisableDatabase, shouldShowLibrary }),
-    [shouldDisableItem, shouldDisableDatabase, shouldShowLibrary],
+    () => ({
+      shouldDisableItem,
+      getItemTooltip,
+      shouldDisableDatabase,
+      shouldShowLibrary,
+    }),
+    [
+      shouldDisableItem,
+      getItemTooltip,
+      shouldDisableDatabase,
+      shouldShowLibrary,
+    ],
   );
+
+  const databaseDisabledTooltip = useMemo(() => {
+    if (!getItemTooltip) {
+      return undefined;
+    }
+    return (database: QueryEditorDatabasePickerItem) =>
+      getItemTooltip({
+        id: database.id,
+        model: "database",
+        name: "",
+      });
+  }, [getItemTooltip]);
 
   const setQuestion = (newQuestion: Question) => {
     onChange(newQuestion);
@@ -152,15 +179,11 @@ export function QueryEditorBody({
         proposedQuestion={proposedQuestion}
         query={query}
         placeholder="SELECT * FROM TABLE_NAME"
-        hasTopBar
-        hasRunButton={!readOnly && !hideRunButton}
         isInitiallyOpen
         isNativeEditorOpen
         readOnly={readOnly}
         resizable={resizable}
         canChangeDatabase={canChangeDatabase}
-        hasParametersList
-        hasEditingSidebar
         isRunnable={isRunnable}
         isRunning={isRunning}
         isResultDirty={isResultDirty}
@@ -170,8 +193,8 @@ export function QueryEditorBody({
         runQuery={hideRunButton ? undefined : onRunQuery}
         cancelQuery={onCancelQuery}
         databaseIsDisabled={shouldDisableDatabase}
+        databaseDisabledTooltip={databaseDisabledTooltip}
         setDatasetQuery={handleNativeQueryChange}
-        sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
         toggleDataReference={onToggleDataReference}
         toggleSnippetSidebar={onToggleSnippetSidebar}
         toggleTemplateTagsEditor={onToggleTemplateTagsSidebar}
@@ -184,9 +207,18 @@ export function QueryEditorBody({
         onOpenModal={onOpenModal}
         onAcceptProposed={onAcceptProposed}
         onRejectProposed={onRejectProposed}
-        topBarInnerContent={topBarInnerContent}
-        extraButton={extraButton}
-      />
+      >
+        <NativeQueryEditor.TopBar>
+          <NativeQueryEditor.ParametersList />
+          {topBarInnerContent}
+          <NativeQueryEditor.Sidebar
+            features={NATIVE_EDITOR_SIDEBAR_FEATURES}
+          />
+          <NativeQueryEditor.VisibilityToggler />
+        </NativeQueryEditor.TopBar>
+        {extraButton}
+        {!readOnly && !hideRunButton && <NativeQueryEditor.RunButton />}
+      </NativeQueryEditor>
     );
   }
 

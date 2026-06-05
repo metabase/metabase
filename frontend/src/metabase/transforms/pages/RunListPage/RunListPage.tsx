@@ -11,12 +11,15 @@ import {
   useListTransformsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useDispatch } from "metabase/redux";
+import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { Center, Flex, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { TransformRun, TransformRunId } from "metabase-types/api";
 
 import { RunFilterBar } from "./RunFilterBar";
@@ -43,6 +46,7 @@ type RunListPageProps = {
 };
 
 export function RunListPage({ location }: RunListPageProps) {
+  usePageTitle(t`Runs`);
   const params = getParsedParams(location);
   const { page = 0 } = params;
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -148,6 +152,8 @@ export function RunListPage({ location }: RunListPageProps) {
     setSelectedRunId(runId);
   }, []);
 
+  const isMeterLocked = useSetting("transforms-meter-locked");
+
   return (
     <Flex
       className={cx({ [S.resizing]: isResizing })}
@@ -168,6 +174,7 @@ export function RunListPage({ location }: RunListPageProps) {
           </Center>
         ) : (
           <Stack flex="0 1 auto" mih={0} gap="lg">
+            {isMeterLocked && <LockedTransformsBanner />}
             <RunFilterBar
               filterOptions={getFilterOptions(params)}
               transforms={transforms}

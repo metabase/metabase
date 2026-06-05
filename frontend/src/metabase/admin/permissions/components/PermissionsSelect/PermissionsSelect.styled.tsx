@@ -2,8 +2,8 @@
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
-import { lighten } from "metabase/lib/colors";
 import { Icon, type IconProps } from "metabase/ui";
+import { lighten } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 import { PermissionsSelectOption } from "./PermissionsSelectOption";

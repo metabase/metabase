@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.interface :as audit.i]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 

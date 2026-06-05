@@ -1,7 +1,7 @@
 import { memoize } from "metabase/common/hooks/use-memoized-callback";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
-import type { OptionsType } from "metabase/lib/formatting/types";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import type { OptionsType } from "metabase/utils/formatting/types";
+import { isEmpty } from "metabase/utils/validate";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   ChartDataset,
@@ -21,6 +21,7 @@ import type {
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getHexColor } from "metabase/visualizations/lib/color";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   SERIES_COLORS_SETTING_KEY,
@@ -77,6 +78,29 @@ export const getSeriesVizSettingsKey = (
     breakoutName ?? (hasMultipleCards ? column.display_name : column.name);
 
   return prefix + columnNameOrFormattedBreakoutValue;
+};
+
+export const formatBreakoutValue = (
+  value: RowValue,
+  column: DatasetColumn,
+): string => {
+  return String(
+    formatValue(isEmpty(value) ? NULL_DISPLAY_VALUE : value, { column }),
+  );
+};
+
+export const getBreakoutSeriesName = (
+  breakoutValue: RowValue,
+  breakoutColumn: DatasetColumn,
+  hasMultipleCards: boolean,
+  cardName?: string | null,
+): string => {
+  return [
+    hasMultipleCards && cardName,
+    formatBreakoutValue(breakoutValue, breakoutColumn),
+  ]
+    .filter(Boolean)
+    .join(": ");
 };
 
 // HACK: creates a pseudo legacy series object to integrate with the `series` function in computed settings.
@@ -246,14 +270,10 @@ export const getCardSeriesModels = (
   return breakoutValues.map((breakoutValue) => {
     // Unfortunately, breakout series include formatted breakout values in the key
     // which can be different based on a user's locale.
-    const formattedBreakoutValue =
-      breakoutValue != null && breakoutValue !== ""
-        ? String(
-            formatValue(breakoutValue, {
-              column: breakout.column,
-            }),
-          )
-        : NULL_DISPLAY_VALUE;
+    const formattedBreakoutValue = formatBreakoutValue(
+      breakoutValue,
+      breakout.column,
+    );
 
     const displayValue = breakoutDisplayValueMap.get(breakoutValue);
     const formattedDisplayValue =

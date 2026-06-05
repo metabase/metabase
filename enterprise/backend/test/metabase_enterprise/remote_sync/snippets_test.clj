@@ -283,12 +283,12 @@ is_sample: false
         (mt/with-temporary-setting-values [remote-sync-type :read-write
                                            remote-sync-enabled true]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-            (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}
+            (mt/with-temp [:model/Collection {coll-id :id}
                            {:name "Snippets Collection"
                             :namespace :snippets
                             :entity_id "snippets-coll-xxxxx"
                             :location "/"}
-                           :model/NativeQuerySnippet {snippet-id :id snippet-eid :entity_id}
+                           :model/NativeQuerySnippet {snippet-id :id}
                            {:name "Test Snippet"
                             :content "SELECT 1"
                             :collection_id coll-id
@@ -309,9 +309,9 @@ is_sample: false
                 (is (= :success (:status result))
                     (str "Export should succeed. Result: " result))
                 (let [files-after-export (get @(:files-atom mock-source) "main")]
-                  (is (some #(str/includes? % coll-eid) (keys files-after-export))
+                  (is (some #(str/includes? % "snippets_collection") (keys files-after-export))
                       "Export should include the snippets-namespace collection")
-                  (is (some #(str/includes? % snippet-eid) (keys files-after-export))
+                  (is (some #(str/includes? % "test_snippet") (keys files-after-export))
                       "Export should include the snippet"))))))))))
 
 (deftest import-snippets-from-yaml-test
@@ -322,9 +322,9 @@ is_sample: false
           (mt/with-temporary-setting-values [remote-sync-enabled true]
             (let [coll-entity-id "snippets-coll-importx"
                   snippet-entity-id "test-snippet-importxx"
-                  test-files {"main" {(str "collections/" coll-entity-id "_snippets_collection/" coll-entity-id "_snippets_collection.yaml")
+                  test-files {"main" {"collections/snippets/snippets_collection/snippets_collection.yaml"
                                       (generate-snippets-namespace-collection-yaml coll-entity-id "Snippets Collection")
-                                      (str "snippets/" coll-entity-id "_snippets_collection/" snippet-entity-id "_test_snippet.yaml")
+                                      "collections/snippets/snippets_collection/test_snippet.yaml"
                                       (test-helpers/generate-snippet-yaml snippet-entity-id "Test Snippet" "SELECT 42" :collection-id coll-entity-id)}}
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
                   result (impl/import! (source.p/snapshot mock-source) task-id)]
@@ -406,17 +406,16 @@ is_sample: false
                                                           :model_collection_id coll-id
                                                           :status "delete"
                                                           :status_changed_at (t/offset-date-time)}]
-              (let [removal-paths (spec/build-all-removal-paths)
-                    snippet-removal-path (first (filter #(str/includes? % snippet-eid) removal-paths))
-                    _ (is (some? snippet-removal-path) "Should have a removal path for the archived snippet")
-                    initial-files {"main" {(str snippet-removal-path ".yaml")
+              (let [snippet-file-path (str "snippets/" snippet-eid "_archived_snippet.yaml")
+                    initial-files {"main" {snippet-file-path
                                            (test-helpers/generate-snippet-yaml snippet-eid "Archived Snippet" "SELECT 1" :collection-id coll-eid)}}
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)
                     result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
                 (is (= :success (:status result))
                     (str "Export should succeed. Result: " result))
+                ;; Archived snippet is not in the export stream, so its file gets cleaned from snippets/ (a managed dir)
                 (let [files-after-export (get @(:files-atom mock-source) "main")]
-                  (is (not (some #(str/includes? % snippet-eid) (keys files-after-export)))
+                  (is (not (some #(str/includes? % "archived_snippet") (keys files-after-export)))
                       "Archived snippet file should be deleted after export")))
               (testing "RemoteSyncObject entry is updated to synced after export"
                 (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id snippet-id)))

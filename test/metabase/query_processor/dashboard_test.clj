@@ -1,16 +1,17 @@
 (ns metabase.query-processor.dashboard-test
   "There are more e2e tests in [[metabase.dashboards-rest.api-test]]."
   {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp           {:level :off}
-                                                   toucan2.tools.with-temp/with-temp {:level :off}}}}}
+                                                   toucan2.tools.with-temp/with-temp {:level :off}}
+                                 :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.dashboard-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.driver.common :as driver.common]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -98,25 +99,20 @@
                  :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id-3 :card_id card-id-3}]
     (testing "Sanity check that a valid combination card, dashcard and dashboard IDs executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-1))))))
-
     (testing "A 404 error should be thrown if the card-id is not valid for the dashboard"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
-
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the dashboard"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
-
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the card"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
-
     (testing "Sanity check that a card-id in a dashboard card series executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-3 dashcard-id-3))))))
-
     (testing "A 404 error should be thrown if the card-id is not valid for the dashcard series"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"

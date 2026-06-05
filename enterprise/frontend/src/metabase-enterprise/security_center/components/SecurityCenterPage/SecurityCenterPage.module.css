@@ -1,0 +1,52 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+}
+
+.header {
+  flex-shrink: 0;
+  padding-bottom: var(--mantine-spacing-lg);
+}
+
+@media screen and (max-width: 64em) {
+  .root {
+    padding-inline: 2rem;
+  }
+}
+
+@media screen and (max-width: 40em) {
+  .root {
+    padding-inline: 1rem;
+  }
+
+  .content {
+    flex-direction: column;
+  }
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+
+  .filterBar {
+    flex: 0;
+  }
+
+  .list {
+    flex: 1;
+    overflow: auto;
+  }
+
+  .emptyState {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 400px;
+    margin-inline: auto;
+    text-align: center;
+  }
+}

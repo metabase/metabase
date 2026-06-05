@@ -1,5 +1,5 @@
 import { skipToken, useGetDashboardQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getCustomHomePageDashboardId } from "metabase/selectors/app";
 import { getSettingsLoading } from "metabase/selectors/settings";
 

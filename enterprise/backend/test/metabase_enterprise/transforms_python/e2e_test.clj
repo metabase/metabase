@@ -52,7 +52,6 @@
                   (transforms.tu/test-run transform-id)
                   (transforms.tu/wait-for-table table-name 5000)
                   (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
-
                   (let [rows (transforms.tu/table-rows table-name)]
                     (is (= 5 (count rows)))
                     (is (every? #(= (* 2 (first %)) (second %)) rows))
@@ -71,7 +70,7 @@
               (let [original           {:name   "Gadget Products"
                                         :source {:type  "python"
                                                  :source-database (mt/id)
-                                                 :source-tables [{:alias "transforms_customers" :table_id (mt/id :transforms_customers)}]
+                                                 :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                  :body  (str "import pandas as pd\n"
                                                              "\n"
                                                              "def transform():\n"

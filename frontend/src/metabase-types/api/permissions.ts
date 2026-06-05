@@ -1,8 +1,4 @@
 import type {
-  DataPermission,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import type {
   CollectionId,
   DatabaseId,
   SchemaName,
@@ -11,6 +7,41 @@ import type {
 
 import type { GroupId } from "./group";
 import type { UserAttributeKey } from "./user";
+
+export enum DataPermission {
+  VIEW_DATA = "view-data",
+  CREATE_QUERIES = "create-queries",
+  DOWNLOAD = "download",
+  DATA_MODEL = "data-model",
+  DETAILS = "details",
+  TRANSFORMS = "transforms",
+  WORKSPACES = "workspaces",
+  COLLECTIONS = "collections",
+}
+
+export enum DataPermissionValue {
+  BLOCKED = "blocked",
+  CONTROLLED = "controlled",
+  IMPERSONATED = "impersonated",
+  LEGACY_NO_SELF_SERVICE = "legacy-no-self-service",
+  NO = "no",
+  QUERY_BUILDER = "query-builder",
+  QUERY_BUILDER_AND_NATIVE = "query-builder-and-native",
+  SANDBOXED = "sandboxed",
+  UNRESTRICTED = "unrestricted",
+  // download specific values
+  NONE = "none",
+  LIMITED = "limited",
+  FULL = "full",
+  // details specific values
+  YES = "yes",
+  // data model specific values
+  ALL = "all",
+  //collections
+  WRITE = "write",
+  READ = "read",
+  //NONE = "none", //shared with download above
+}
 
 export type PermissionsGraph = {
   groups: GroupsPermissions;
@@ -55,6 +86,10 @@ export type TransformsPermission =
   | DataPermissionValue.NO
   | DataPermissionValue.YES;
 
+export type WorkspacesPermission =
+  | DataPermissionValue.NO
+  | DataPermissionValue.YES;
+
 export type DatabasePermissions = {
   [DataPermission.VIEW_DATA]: SchemasPermissions;
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
@@ -62,6 +97,7 @@ export type DatabasePermissions = {
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
   [DataPermission.DETAILS]?: DetailsPermissions;
   [DataPermission.TRANSFORMS]?: TransformsPermission;
+  [DataPermission.WORKSPACES]?: WorkspacesPermission;
 };
 
 export type DataModelPermissions = {
@@ -137,3 +173,8 @@ export type Impersonation = {
   group_id: GroupId;
   attribute: UserAttributeKey;
 };
+
+export type DataSegregationStrategy =
+  | "row-column-level-security"
+  | "connection-impersonation"
+  | "database-routing";

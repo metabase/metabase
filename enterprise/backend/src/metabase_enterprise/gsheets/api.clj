@@ -7,8 +7,8 @@
     :as gsheets.settings
     :refer [gsheets gsheets!]]
    [metabase-enterprise.harbormaster.client :as hm.client]
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.event :as analytics.event]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util :as u]
@@ -229,9 +229,8 @@
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
   (let [attached-dwh (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
-      (snowplow/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
+      (analytics.event/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
       (throw-error 400 (tru "No attached dwh found.") nil))
-
     (let [[status response] (hm-create-gdrive-conn! url)
           created-at (seconds-from-epoch-now)
           created-by-id api/*current-user-id*]
@@ -278,15 +277,24 @@
       (let [{:keys [status status-reason error last-sync-at last-sync-started-at]
              :as   _} (normalize-gdrive-conn hm-body)]
         (cond
+          (and (= "active" status)
+               last-sync-started-at
+               last-sync-at
+               (t/< (t/instant last-sync-at) (t/instant last-sync-started-at)))
+          (assoc (setting->response saved-setting)
+                 :status "syncing"
+                 :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                 :sync_started_at (.getEpochSecond ^Instant (t/instant last-sync-started-at)))
+
           (= "active" status)
           (assoc (setting->response saved-setting)
                  :status "active"
                  :last_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)))
                  :next_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15)))))
 
-          (or (= "syncing" status) (= "initializing" status))
+          (= "initializing" status)
           (assoc (setting->response saved-setting)
-                 :status "syncing"
+                 :status "initializing"
                  :last_sync_at (if last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)) nil)
                  :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
 
@@ -350,10 +358,10 @@
   (let [sheet-config (gsheets-safe)]
     (if (empty? sheet-config)
       (do
-        (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync" :event_detail "fail - no config"})
+        (analytics.event/track-event! :snowplow/simple_event {:event "sheets_sync" :event_detail "fail - no config"})
         (throw-error 404 (tru "No attached google sheet(s) found.") nil))
       (do
-        (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync"})
+        (analytics.event/track-event! :snowplow/simple_event {:event "sheets_sync"})
         (analytics/inc! :metabase-gsheets/connection-manually-synced)
         (let [[status response] (hm-sync-conn! (:gdrive/conn-id sheet-config))]
           (if (= status :ok)
@@ -369,7 +377,7 @@
 (api.macros/defendpoint :delete "/connection"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
-  (snowplow/track-event! :snowplow/simple_event {:event "sheets_disconnected"})
+  (analytics.event/track-event! :snowplow/simple_event {:event "sheets_disconnected"})
   (analytics/inc! :metabase-gsheets/connection-deleted)
   (reset-gsheets-status!)
   {:status "not-connected"})
@@ -392,6 +400,5 @@
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
-
     (sync-metadata/sync-db-metadata!
      (t2/select-one :model/Database :is_attached_dwh true))))

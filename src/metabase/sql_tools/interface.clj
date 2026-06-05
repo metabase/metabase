@@ -65,3 +65,8 @@
   SELECT INTO syntax."
   {:arglists '([parser driver sql table-name])}
   parser-driver-dispatch)
+
+(defmulti transpile-sql-impl
+  "Transpile sql from one dialect to another."
+  {:arglists '([parser sql from-dialect to-dialect])}
+  parser-driver-dispatch)

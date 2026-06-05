@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { TooltipWarning } from "metabase/embedding/embedding-iframe-sdk-setup/components/Common/TooltipWarning";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+
+import { TooltipWarning } from "./TooltipWarning";
 
 export const WithNotAvailableForOssOrGuestEmbedsGuard = ({
   children,
@@ -12,15 +13,19 @@ export const WithNotAvailableForOssOrGuestEmbedsGuard = ({
   const { isSimpleEmbedFeatureAvailable, settings } =
     useSdkIframeEmbedSetupContext();
 
+  if (!isSimpleEmbedFeatureAvailable) {
+    return children({ disabled: true, hoverCard: null });
+  }
+
   return (
     <TooltipWarning
-      enableTooltip={isSimpleEmbedFeatureAvailable}
+      enableTooltip
       tooltip={t`Not available if Guest Mode is selected`}
       disabled={!!settings.isGuest}
     >
       {({ disabled: disabledForGuestEmbeds, hoverCard }) =>
         children({
-          disabled: !isSimpleEmbedFeatureAvailable || disabledForGuestEmbeds,
+          disabled: disabledForGuestEmbeds,
           hoverCard,
         })
       }

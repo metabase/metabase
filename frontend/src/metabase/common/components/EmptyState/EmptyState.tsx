@@ -1,8 +1,7 @@
-import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
-import { Flex, Icon, Text, isValidIconName } from "metabase/ui";
+import { Button, Flex, Icon, Text, isValidIconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./EmptyState.module.css";
 import {
@@ -85,7 +84,7 @@ export const EmptyState = ({
         </h2>
       )}
       {message && (
-        <Text role="status" color="text-secondary" mt="xs">
+        <Text role="status" c="text-secondary" mt="xs">
           {message}
         </Text>
       )}
@@ -97,11 +96,11 @@ export const EmptyState = ({
       <EmptyStateActions className={S.EmptyStateFooter}>
         {action && link && (
           <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
-            <Button primary>{action}</Button>
+            <Button variant="filled">{action}</Button>
           </Link>
         )}
         {action && onActionClick && (
-          <Button onClick={onActionClick} primary>
+          <Button onClick={onActionClick} variant="filled">
             {action}
           </Button>
         )}

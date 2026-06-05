@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk.query-processor-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk.query-processor-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -14,10 +16,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -157,7 +159,6 @@
                 :params     nil
                 :table-name "venues"
                 :mbql?      true})
-
              (-> (mt/mbql-query venues
                    {:aggregation [[:avg $category_id]]
                     :breakout    [$price]
@@ -190,7 +191,7 @@
                        "  `categories__via__category_id__name`"
                        "ORDER BY"
                        "  `categories__via__category_id__name` ASC"]
-                        ;; reformat the SQL because the formatting may have changed once we change the test DB name.
+                      ;; reformat the SQL because the formatting may have changed once we change the test DB name.
                       (str/join " ")
                       (driver/prettify-native-form :bigquery-cloud-sdk)
                       str/split-lines))
@@ -212,7 +213,6 @@
     (is (= "2018-08-31T00:00:00Z"
            (native-timestamp-query (mt/id) "2018-08-31 00:00:00" "UTC"))
         "A UTC date is returned, we should read/return it as UTC")
-
     (test.tz/with-system-timezone-id! "America/Chicago"
       (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
                                          :details (assoc (:details (mt/db))
@@ -222,7 +222,6 @@
             (str "This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery "
                  "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
                  "the correct date is compared"))))
-
     (test.tz/with-system-timezone-id! "Asia/Jakarta"
       (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
                                          :details (assoc (:details (mt/db))
@@ -493,7 +492,7 @@
     (mt/with-driver :bigquery-cloud-sdk
       (qp.store/with-metadata-provider (mt/id)
         (mt/with-temporary-setting-values [start-of-week :sunday]
-          (is (= ["DATE_TRUNC(`source`.`date`, week(sunday))"]
+          (is (= ["DATE_TRUNC(`__mb_source`.`date`, week(sunday))"]
                  (sql.qp/format-honeysql
                   :bigquery-cloud-sdk
                   (sql.qp/->honeysql
@@ -1034,9 +1033,31 @@
     (testing "replace non-letter characters with underscores"
       (is (= "_"
              (driver/escape-alias :bigquery-cloud-sdk "😍"))))
+    (testing "preserve Unicode letters"
+      (is (= "通過後内定承諾応募数"
+             (driver/escape-alias :bigquery-cloud-sdk "通過後内定承諾応募数"))))
     (testing "trim long strings"
       (is (= "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_89971909"
              (driver/escape-alias :bigquery-cloud-sdk (str/join (repeat 300 "a"))))))))
+
+(deftest ^:parallel japanese-aggregation-aliases-test
+  (driver/with-driver :bigquery-cloud-sdk
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          price (lib.metadata/field mp (mt/id :products :price))
+          rating (lib.metadata/field mp (mt/id :products :rating))
+          category (lib.metadata/field mp (mt/id :products :category))
+          query (as-> (lib/query mp products) q
+                  (lib/aggregate q (lib/with-expression-name (lib/sum price) "通過後内定承諾応募数"))
+                  (lib/aggregate q (lib/with-expression-name (lib/sum rating) "通過後入社決定応募数"))
+                  (lib/breakout q category)
+                  (lib/order-by q (lib/aggregation-ref q 0))
+                  (lib/order-by q (lib/aggregation-ref q 1)))]
+      (is (= [["Doohickey" 2185 156]
+              ["Gizmo" 2834 185]
+              ["Gadget" 3019 181]
+              ["Widget" 3109 170]]
+             (mt/formatted-rows [str int int] (qp/process-query query)))))))
 
 (deftest ^:parallel remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1113,14 +1134,13 @@
         (mt/with-native-query-testing-context query
           (is (= (with-test-db-name
                    {:query      ["SELECT"
-                                 "  `source`.`count` AS `count`,"
+                                 "  `__mb_source`.`count` AS `count`,"
                                  "  COUNT(*) AS `count_2`"
                                  "FROM"
                                  "  ("
                                  "    SELECT"
                                  "      DATE_TRUNC("
                                  "        `v4_test_data.checkins`.`date`,"
-
                                  "        month"
                                  "      ) AS `date`,"
                                  "      COUNT(*) AS `count`"
@@ -1130,7 +1150,7 @@
                                  "      `date`"
                                  "    ORDER BY"
                                  "      `date` ASC"
-                                 "  ) AS `source`"
+                                 "  ) AS `__mb_source`"
                                  "GROUP BY"
                                  "  `count`"
                                  "ORDER BY"
@@ -1138,7 +1158,7 @@
                                  "LIMIT"
                                  "  2"]
                     :params     nil
-                    :table-name "source"
+                    :table-name "__mb_source"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1179,20 +1199,20 @@
                      :breakout     [[:field "source" {:base-type :type/Text}]]
                      :source-query {:native "select 1 as `val`, '2' as `source`"}})]
         (is (= {:query      ["SELECT"
-                             "  `source`.`source` AS `source`,"
+                             "  `__mb_source`.`source` AS `source`,"
                              "  COUNT(*) AS `count`"
                              "FROM"
                              "  ("
                              "    select"
                              "      1 as `val`,"
                              "      '2' as `source`"
-                             "  ) AS `source`"
+                             "  ) AS `__mb_source`"
                              "GROUP BY"
                              "  `source`"
                              "ORDER BY"
                              "  `source` ASC"]
                 :params     nil
-                :table-name "source"
+                :table-name "__mb_source"
                 :mbql?      true}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1263,16 +1283,16 @@
                                 (lib/aggregate (lib/sum orders-total))
                                 (lib/limit 3))]
       (is (= ["SELECT"
-              "  `source`.`created_at` AS `created_at`,"
+              "  `__mb_source`.`created_at` AS `created_at`,"
               "  SUM(COUNT(*)) OVER ("
               "    ORDER BY"
-              "      `source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
+              "      `__mb_source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
               "  ) AS `count`,"
-              "  SUM(SUM(`source`.`total`)) OVER ("
+              "  SUM(SUM(`__mb_source`.`total`)) OVER ("
               "    ORDER BY"
-              "      `source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
+              "      `__mb_source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
               "  ) AS `sum`,"
-              "  SUM(`source`.`total`) AS `sum_2`"
+              "  SUM(`__mb_source`.`total`) AS `sum_2`"
               "FROM"
               "  ("
               "    SELECT"
@@ -1283,7 +1303,7 @@
               "      `test_data.orders`.`total` AS `total`"
               "    FROM"
               "      `test_data.orders`"
-              "  ) AS `source`"
+              "  ) AS `__mb_source`"
               "GROUP BY"
               "  `created_at`"
               "ORDER BY"

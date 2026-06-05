@@ -1,9 +1,12 @@
 (ns metabase.channel.impl.email
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.email.logo :as email.logo]
@@ -31,7 +34,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod prometheus/known-labels :metabase-notification/template-render [_]
+(defmethod analytics.core/known-labels :metabase-notification/template-render [_]
   (for [template-type [:email/handlebars-text :email/handlebars-resource]]
     {:template-type template-type
      :channel-type  :channel/email}))
@@ -44,8 +47,25 @@
    [:message                         :any]
    [:recipient-type {:optional true} [:maybe (ms/enum-keywords-and-strings :cc :bcc)]]])
 
+(defn- email->digest
+  "A short, stable digest of an email address, for logging recipients without writing the raw address
+  to logs. Not meant to be irreversible — email space is enumerable — just to keep PII out of plain
+  sight. To check whether an address was a recipient, digest it the same way and grep the logs:
+  lower-cased + trimmed, SHA-256, first 12 hex chars."
+  [email]
+  (-> (u/lower-case-en (str/trim (str email)))
+      buddy-hash/sha256
+      codecs/bytes->hex
+      (subs 0 12)))
+
 (mu/defmethod channel/send! :channel/email
   [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
+  ;; Make deliverability debuggable from logs (Grafana/Loki). info: recipient count only (always on,
+  ;; no PII). debug: short per-recipient digests, so "was address X sent to?" can be answered by
+  ;; digesting the suspected address the same way and grepping (see [[email->digest]]) — opt-in.
+  ;; Carries the caller's log context (e.g. :notification_id) via MDC. (GDGT-2416)
+  (log/infof "Sending email to %d recipient(s)" (count recipients))
+  (log/debugf "Email recipient digests: %s" (pr-str (mapv email->digest recipients)))
   (email/send-message-or-throw! {:subject      subject
                                  :recipients   recipients
                                  :message-type message-type
@@ -103,9 +123,9 @@
 (defn- render-body
   [{:keys [details] :as _template} payload]
   (let [template-type (keyword (:type details))]
-    (prometheus/inc! :metabase-notification/template-render
-                     {:template-type template-type
-                      :channel-type  :channel/email})
+    (analytics/inc! :metabase-notification/template-render
+                    {:template-type template-type
+                     :channel-type  :channel/email})
     (case template-type
       :email/handlebars-resource
       (handlebars/render (:path details) payload)
@@ -208,7 +228,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} {:keys [template recipients]}]
+  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients]}]
   (let [{:keys [card_part
                 notification_card
                 subscriptions
@@ -222,7 +242,8 @@
         result-attachments (email.result-attachment/result-attachment
                             (first (assoc-attachment-booleans
                                     [(assoc notification_card :include_csv true :format_rows true)]
-                                    [card_part])))
+                                    [card_part]))
+                            creator_id)
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
         goal               (ui-logic/find-goal-value payload)
@@ -252,7 +273,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} {:keys [template recipients attachment_only]}]
+  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only]}]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
@@ -268,13 +289,23 @@
          result-attachments
          html-contents]     (reduce
                              (fn [[merged-attachments result-attachments html-contents] part]
-                               (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
-                                                                                               :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
-                                     result-attachment             (email.result-attachment/result-attachment part)]
-                                 [(merge merged-attachments attachments)
-                                  (into result-attachments result-attachment)
-                                  (when-not attachment_only
-                                    (conj html-contents (html content)))]))
+                               ;; Isolate each part: realizing one part's Hiccup (here, via `html`) must not
+                               ;; abort the whole subscription. On failure, substitute the error placeholder so
+                               ;; the remaining cards still deliver (#74007).
+                               (try
+                                 (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
+                                                                                                 :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
+                                       result-attachment             (email.result-attachment/result-attachment part creator_id)]
+                                   [(merge merged-attachments attachments)
+                                    (into result-attachments result-attachment)
+                                    (when-not attachment_only
+                                      (conj html-contents (html content)))])
+                                 (catch Throwable e
+                                   (log/error e "Error rendering dashboard subscription part; substituting error placeholder")
+                                   [merged-attachments
+                                    result-attachments
+                                    (when-not attachment_only
+                                      (conj html-contents (html (:content (channel.render/error-rendered-part)))))])))
                              [{} [] []]
                              (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription) dashboard_parts))
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
@@ -313,9 +344,12 @@
                      :let [details (:details recipient)
                            emails (case (:type recipient)
                                     :notification-recipient/user
-                                    [(-> recipient :user :email)]
+                                    (when (not= :api-key (-> recipient :user :type))
+                                      [(-> recipient :user :email)])
                                     :notification-recipient/group
-                                    (->> recipient :permissions_group :members (map :email))
+                                    (->> recipient :permissions_group :members
+                                         (remove #(= :api-key (:type %)))
+                                         (map :email))
                                     :notification-recipient/raw-value
                                     [(:value details)]
                                     :notification-recipient/template

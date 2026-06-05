@@ -31,6 +31,7 @@ export function LocationSection({ node }: LocationSectionProps) {
             className={CS.textWrap}
             lh="1rem"
             to={link.url}
+            target="_blank"
           >
             <Group gap="sm" wrap="nowrap">
               {linkIndex === 0 && <FixedSizeIcon name={locationInfo.icon} />}

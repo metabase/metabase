@@ -1,7 +1,7 @@
 import { useBeforeUnload } from "react-use";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { hasActiveDownloads } from "metabase/redux/downloads";
 
 export const useCheckActiveDownloadsBeforeUnload = () => {

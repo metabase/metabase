@@ -4,6 +4,8 @@ import {
   BOOLEAN,
   COORDINATE,
   FOREIGN_KEY,
+  type FieldTypeKey,
+  type Hierarchy,
   INTEGER,
   LOCATION,
   NUMBER,
@@ -15,30 +17,17 @@ import {
   TYPE,
   TYPE_HIERARCHIES,
 } from "metabase-lib/v1/types/constants";
-import type { TableId } from "metabase-types/api";
+import type { DatasetColumn, TableId } from "metabase-types/api";
 
 /**
- * A loose interface for field-like objects. Many callers pass partial objects
- * with just the type properties they need (e.g., `{ base_type: "type/Integer" }`).
- *
- * All properties are optional because:
- * 1. Different functions check different properties
- * 2. Callers often pass minimal objects with just the fields they need
- * 3. Functions handle missing properties gracefully (return false)
- *
- * In order to be able to narrow this type, we'll have to fix all its usage first.
+ * A minimal field-like shape shared by both Field and DatasetColumn,
+ * used by functions that only need type-checking properties.
  */
-export interface FieldLike {
+export interface FieldTypeInfo {
   base_type?: string | null;
   effective_type?: string | null;
   semantic_type?: string | null;
-  source?: string | null;
-  binning_info?: unknown;
-  name?: string;
-  table_id?: TableId | null;
 }
-
-type FieldTypeCategory = keyof typeof TYPE_HIERARCHIES;
 
 /**
  * Is x the same as, or a descendant type of, y?
@@ -46,15 +35,8 @@ type FieldTypeCategory = keyof typeof TYPE_HIERARCHIES;
  * @example
  * isa(field.semantic_type, TYPE.Currency);
  */
-export function isa<Y extends string>(
-  x: string | null | undefined,
-  y: Y,
-): x is Y {
-  if (x == null) {
-    return false;
-  }
-  return cljs_isa(x, y);
-}
+export const isa = (x: string | null | undefined, y: string): boolean =>
+  cljs_isa(x, y);
 
 // convenience functions since these operations are super-common
 // this will also make it easier to tweak how these checks work in the future,
@@ -73,8 +55,8 @@ export function isTypeCurrency(type: string | null | undefined): boolean {
 }
 
 export function isFieldType(
-  type: FieldTypeCategory,
-  field: FieldLike | null | undefined,
+  type: FieldTypeKey,
+  field: FieldTypeInfo | null | undefined,
 ): boolean {
   if (!field) {
     return false;
@@ -82,21 +64,16 @@ export function isFieldType(
 
   const typeDefinition = TYPE_HIERARCHIES[type];
   // check to see if it belongs to any of the field types:
-  const props: Array<"effective" | "base" | "semantic"> = field.effective_type
-    ? ["effective", "semantic"]
-    : ["base", "semantic"];
+  const props: (keyof Hierarchy & keyof FieldTypeInfo)[] = field.effective_type
+    ? ["effective_type", "semantic_type"]
+    : ["base_type", "semantic_type"];
   for (const prop of props) {
-    const allowedTypes = typeDefinition[prop as keyof typeof typeDefinition] as
-      | string[]
-      | undefined;
+    const allowedTypes = typeDefinition[prop];
     if (!allowedTypes) {
       continue;
     }
 
-    const fieldType = field[`${prop}_type` as keyof typeof field] as
-      | string
-      | null
-      | undefined;
+    const fieldType = field[prop];
     for (const allowedType of allowedTypes) {
       if (isa(fieldType, allowedType)) {
         return true;
@@ -105,18 +82,14 @@ export function isFieldType(
   }
 
   // recursively check to see if it's NOT another field type:
-  const excludeTypes = (typeDefinition as { exclude?: FieldTypeCategory[] })
-    .exclude;
-  for (const excludedType of excludeTypes || []) {
+  for (const excludedType of typeDefinition.exclude || []) {
     if (isFieldType(excludedType, field)) {
       return false;
     }
   }
 
   // recursively check to see if it's another field type:
-  const includeTypes = (typeDefinition as { include?: FieldTypeCategory[] })
-    .include;
-  for (const includedType of includeTypes || []) {
+  for (const includedType of typeDefinition.include || []) {
     if (isFieldType(includedType, field)) {
       return true;
     }
@@ -124,11 +97,9 @@ export function isFieldType(
   return false;
 }
 
-export function getFieldType(
-  field: FieldLike | null | undefined,
-): FieldTypeCategory | undefined {
+export function getFieldType(field: FieldTypeInfo) {
   // try more specific types first, then more generic types
-  const types: FieldTypeCategory[] = [
+  const types: FieldTypeKey[] = [
     TEMPORAL,
     LOCATION,
     COORDINATE,
@@ -144,80 +115,62 @@ export function getFieldType(
       return type;
     }
   }
-  return undefined;
 }
 
-export const isDate = (field: FieldLike | null | undefined): boolean =>
+export const isDate = (field: FieldTypeInfo | null | undefined) =>
   isFieldType(TEMPORAL, field);
-export const isNumeric = (field: FieldLike | null | undefined): boolean =>
+export const isNumeric = (field: FieldTypeInfo | null | undefined) =>
   isFieldType(NUMBER, field);
-export const isInteger = (field: FieldLike | null | undefined): boolean =>
+export const isInteger = (field: FieldTypeInfo | null | undefined) =>
   isFieldType(INTEGER, field);
-export const isBoolean = (field: FieldLike | null | undefined): boolean =>
+export const isBoolean = (field: FieldTypeInfo | null | undefined) =>
   isFieldType(BOOLEAN, field);
-export const isString = (field: FieldLike | null | undefined): boolean =>
+export const isString = (field: FieldTypeInfo | null | undefined) =>
   isFieldType(STRING, field);
-export const isStringLike = (field: FieldLike | null | undefined): boolean =>
+export const isStringLike = (field: FieldTypeInfo | null | undefined) =>
   isFieldType(STRING_LIKE, field);
-export const isSummable = (field: FieldLike | null | undefined): boolean =>
+export const isSummable = (field: FieldTypeInfo | null | undefined) =>
   isFieldType(SUMMABLE, field);
 
-const hasNonMetricName = (col: FieldLike): boolean => {
-  const name = col?.name?.toLowerCase();
-  return (
-    name === "id" ||
-    name?.endsWith("_id") === true ||
-    name?.endsWith("-id") === true
-  );
+const hasNonMetricName = (col: DatasetColumn) => {
+  const name = col.name.toLowerCase();
+  return name === "id" || name.endsWith("_id") || name.endsWith("-id");
 };
 
-// columns with binning_info are always dimensions (they represent categorical buckets)
-export const isDimension = (col: FieldLike | null | undefined): boolean =>
-  Boolean(col && (col.source !== "aggregation" || col.binning_info));
+export const isDimension = (col: DatasetColumn) =>
+  col.source !== "aggregation" || !!col.binning_info; // columns with binning_info are always dimensions (they represent categorical buckets)
+export const isMetric = (col: DatasetColumn) =>
+  col.source !== "breakout" &&
+  isSummable(col) &&
+  !hasNonMetricName(col) &&
+  !col.binning_info; // do not treat column with binning_info as metric by default (metabase#10493)
 
-export const isMetric = (col: FieldLike | null | undefined): boolean =>
-  Boolean(
-    col &&
-      col.source !== "breakout" &&
-      isSummable(col) &&
-      !hasNonMetricName(col) &&
-      !col.binning_info,
-  );
+export const isFK = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isTypeFK(field.semantic_type);
+export const isPK = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isTypePK(field.semantic_type);
+export const isEntityName = (
+  field: FieldTypeInfo | null | undefined,
+): boolean => !!field && isa(field.semantic_type, TYPE.Name);
+export const isTitle = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Title);
+export const isProduct = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Product);
+export const isSource = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Source);
+export const isAddress = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Address);
+export const isScore = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Score);
+export const isQuantity = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Quantity);
+export const isCategory = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Category);
 
-export const isFK = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isTypeFK(field.semantic_type));
-
-export const isPK = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isTypePK(field.semantic_type));
-
-export const isEntityName = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Name));
-
-export const isTitle = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Title));
-
-export const isProduct = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Product));
-
-export const isSource = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Source));
-
-export const isAddress = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Address));
-
-export const isScore = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Score));
-
-export const isQuantity = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Quantity));
-
-export const isCategory = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Category));
-
-export const isAny = (_col: FieldLike): boolean => true;
+export const isAny = (_col: FieldTypeInfo | null | undefined) => true;
 
 export const isNumericBaseType = (
-  field: FieldLike | null | undefined,
+  field: FieldTypeInfo | null | undefined,
 ): boolean => {
   if (!field) {
     return false;
@@ -230,7 +183,7 @@ export const isNumericBaseType = (
 };
 
 export const isDateWithoutTime = (
-  field: FieldLike | null | undefined,
+  field: FieldTypeInfo | null | undefined,
 ): boolean => {
   if (!field) {
     return false;
@@ -243,19 +196,16 @@ export const isDateWithoutTime = (
 };
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
-export const isNumber = (field: FieldLike | null | undefined): boolean =>
-  Boolean(
-    field &&
-      isNumericBaseType(field) &&
-      (field.semantic_type == null ||
-        isa(field.semantic_type, TYPE.Number) ||
-        isa(field.semantic_type, TYPE.Category)),
-  );
+export const isNumber = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field &&
+  isNumericBaseType(field) &&
+  (field.semantic_type == null ||
+    isa(field.semantic_type, TYPE.Number) ||
+    isa(field.semantic_type, TYPE.Category));
+export const isFloat = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Float);
 
-export const isFloat = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Float));
-
-export const isTime = (field: FieldLike | null | undefined): boolean => {
+export const isTime = (field: FieldTypeInfo | null | undefined): boolean => {
   if (!field) {
     return false;
   }
@@ -266,43 +216,38 @@ export const isTime = (field: FieldLike | null | undefined): boolean => {
   }
 };
 
-export const isState = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.State));
+export const isState = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.State);
+export const isCountry = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Country);
+export const isCoordinate = (
+  field: FieldTypeInfo | null | undefined,
+): boolean => !!field && isa(field.semantic_type, TYPE.Coordinate);
+export const isLatitude = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Latitude);
+export const isLongitude = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Longitude);
 
-export const isCountry = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Country));
+export const isCurrency = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Currency);
 
-export const isCoordinate = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Coordinate));
+export const isPercentage = (
+  field: FieldTypeInfo | null | undefined,
+): boolean => !!field && isa(field.semantic_type, TYPE.Percentage);
 
-export const isLatitude = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Latitude));
-
-export const isLongitude = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Longitude));
-
-export const isCurrency = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Currency));
-
-export const isPercentage = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Percentage));
-
-export const isID = (field: FieldLike | null | undefined): boolean =>
+export const isID = (field: FieldTypeInfo | null | undefined): boolean =>
   isFK(field) || isPK(field);
 
-export const isURL = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.URL));
+export const isURL = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.URL);
+export const isEmail = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.Email);
+export const isAvatarURL = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.AvatarURL);
+export const isImageURL = (field: FieldTypeInfo | null | undefined): boolean =>
+  !!field && isa(field.semantic_type, TYPE.ImageURL);
 
-export const isEmail = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.Email));
-
-export const isAvatarURL = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.AvatarURL));
-
-export const isImageURL = (field: FieldLike | null | undefined): boolean =>
-  Boolean(field && isa(field.semantic_type, TYPE.ImageURL));
-
-export function hasLatitudeAndLongitudeColumns(cols: FieldLike[]): boolean {
+export function hasLatitudeAndLongitudeColumns(cols: FieldTypeInfo[]) {
   let hasLatitude = false;
   let hasLongitude = false;
   for (const col of cols) {
@@ -318,12 +263,12 @@ export function hasLatitudeAndLongitudeColumns(cols: FieldLike[]): boolean {
 
 export const getIsPKFromTablePredicate =
   (tableId: TableId | null | undefined) =>
-  (column: FieldLike | null | undefined): boolean => {
+  (column: FieldTypeInfo & { table_id?: TableId }): boolean => {
     const isPrimaryKey = isPK(column);
 
     // FIXME: columns of nested questions at this moment miss table_id value
     // which makes it impossible to match them with their tables that are nested cards
     return isVirtualCardId(tableId)
       ? isPrimaryKey
-      : isPrimaryKey && column?.table_id === tableId;
+      : isPrimaryKey && column.table_id === tableId;
   };

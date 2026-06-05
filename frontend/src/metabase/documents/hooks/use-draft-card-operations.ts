@@ -2,7 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 
 import { datasetApi } from "metabase/api/dataset";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import type { Card, Dataset } from "metabase-types/api";
 
 import { createDraftCard, generateDraftCardId } from "../documents.slice";

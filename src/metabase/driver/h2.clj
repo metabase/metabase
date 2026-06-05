@@ -30,12 +30,13 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some]])
+   [metabase.util.performance :as perf :refer [every? some]])
   (:import
-   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement)
+   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
-   (org.h2.engine SessionLocal)))
+   (org.h2.engine SessionLocal)
+   (org.h2.util StringUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -43,6 +44,12 @@
 (comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+
+;; h2 can be used to generate mbql5 natively, but this is not the default yet.
+;; we need to gather more data from the experiment (see query-processor/mbql->honeysql)
+;; before we can switch this over. once that happens, make regular :h2 have
+;; :sql-mbql5 as a parent and move the :h2-mbql5 methods below to just :h2.
+(driver/register! :h2-mbql5, :parent #{:h2 :sql-mbql5})
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
@@ -94,6 +101,10 @@
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
+(defmethod sql.qp/->honeysql [:h2-mbql5 :regex-match-first]
+  [driver [_ _opts arg pattern]]
+  ((get-method sql.qp/->honeysql [:h2 :regex-match-first]) driver [:regex-match-first arg pattern]))
+
 (defmethod driver/connection-properties :h2
   [_]
   (->>
@@ -124,8 +135,8 @@
                                         bad-markers))]
     (pred s)))
 
-(defmethod driver/can-connect? :h2
-  [driver {:keys [db] :as details}]
+(defmethod driver/validate-db-details! :h2
+  [_driver {:keys [db]}]
   (when-not driver.settings/*allow-testing-h2-connections*
     (throw (ex-info (tru "H2 is not supported as a data warehouse") {:status-code 400})))
   (when (string? db)
@@ -141,7 +152,11 @@
       ;; keys are uppercased by h2 when parsed:
       ;; https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/engine/ConnectionInfo.java#L298
       (when (contains? properties "INIT")
-        (throw (ex-info "INIT not allowed" {:keys ["INIT"]})))))
+        (throw (ex-info "INIT not allowed" {:keys ["INIT"]}))))))
+
+(defmethod driver/can-connect? :h2
+  [driver details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
 
 (defmethod driver/db-start-of-week :h2
@@ -237,6 +252,43 @@
       (catch org.h2.message.DbException _
         {:command-types [] :remaining-sql nil}))))
 
+(def ^:private unsupported-builtin-functions
+  "H2 built-in functions that operate on the server environment (filesystem, linked databases,
+   session and memory state) rather than on query data. They are not supported in native queries
+   or actions, and can be embedded inside otherwise-ordinary SELECT/CALL statements, so they are
+   matched by name rather than by statement type."
+  #{"ABORT_SESSION"
+    "CANCEL_SESSION"
+    "CSVREAD"
+    "CSVWRITE"
+    "DATABASE_PATH"
+    "DB_OBJECT_ID"
+    "DB_OBJECT_SQL"
+    "FILE_READ"
+    "FILE_WRITE"
+    "LINK_SCHEMA"
+    "MEMORY_FREE"
+    "MEMORY_USED"})
+
+(def ^:private unsupported-builtin-function-regex
+  (re-pattern (str "(?i)\\b(?:" (str/join "|" unsupported-builtin-functions) ")\\b")))
+
+(defn- unsupported-functions-in-query
+  "The set of `unsupported-builtin-functions` referenced by `sql`, or nil if none. Scans the SQL
+   text rather than the parsed command, so it still applies when the H2 parser is unavailable."
+  [sql]
+  (when sql
+    (perf/not-empty
+     (into #{} (map u/upper-case-en)
+           (re-seq unsupported-builtin-function-regex
+                   (StringUtils/toUpperEnglish sql))))))
+
+(defn- check-no-unsupported-functions [sql]
+  (when-let [fns (unsupported-functions-in-query sql)]
+    (throw (ex-info (tru "These functions are not supported in native queries: {0}" (str/join ", " (sort fns)))
+                    {:type      driver-api/qp.error-type.db
+                     :functions fns}))))
+
 (defn- every-command-allowed-for-actions? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
     (boolean
@@ -267,6 +319,7 @@
 
 (defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
   (when query
+    (check-no-unsupported-functions query)
     (when-let [query-classification (classify-query database query)]
       (when-not (every-command-allowed-for-actions? query-classification)
         (throw (ex-info "DDL commands are not allowed to be used with H2."
@@ -286,6 +339,7 @@
                                                                               [:map
                                                                                [:query string?]]]]]
   (when sql
+    (check-no-unsupported-functions sql)
     (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
                                                sql)]
       (when-not (read-only-statements? query-classification)
@@ -317,6 +371,10 @@
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
+(defmethod sql.qp/add-interval-honeysql-form :h2-mbql5
+  [driver hsql-form amount unit]
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+
 (defmethod driver/humanize-connection-error-message :h2
   [_ messages]
   (let [message (first messages)]
@@ -343,6 +401,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
+
+(defmethod sql.qp/current-datetime-honeysql-form :h2-mbql5
   [driver]
   (h2x/current-datetime-honeysql-form driver))
 
@@ -419,6 +481,10 @@
   [driver [_ field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
+(defmethod sql.qp/->honeysql [:h2-mbql5 :log]
+  [driver [_ _opts field]]
+  ((get-method sql.qp/->honeysql [:h2 :log]) driver [:log field]))
+
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
   [driver [_ value]]
   ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
@@ -429,6 +495,10 @@
   ;; https://github.com/h2database/h2database/issues/1383
   (->> (sql.qp/->honeysql driver value)
        (h2x/cast :text)))
+
+(defmethod sql.qp/->honeysql [:h2-mbql5 ::sql.qp/expression-literal-text-value]
+  [driver [_ _opts value]]
+  ((get-method sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]) driver [::sql.qp/expression-literal-text-value value]))
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."
@@ -452,10 +522,8 @@
          [:case
           [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 
@@ -549,7 +617,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (driver-api/spec :h2 (cond-> details
+  (driver-api/spec :h2 (cond-> (driver/sanitize-db-details details)
                          (string? (:db details)) (update :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2
@@ -580,13 +648,19 @@
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [classname (some-> (.getColumnClassName rsmeta i)
-                          (Class/forName true (driver-api/the-classloader)))]
-    (if (isa? classname Clob)
-      (fn []
-        (driver-api/clob->str (.getObject rs i)))
-      (fn []
-        (.getObject rs i)))))
+  (let [col-type (.getColumnType rsmeta i)]
+    (when (= col-type Types/JAVA_OBJECT)
+      (throw (ex-info "Unable to parse jdbc type"
+                      {:column-index i
+                       :column-name  (.getColumnName rsmeta i)
+                       :column-type  col-type})))
+    (let [classname (some-> (.getColumnClassName rsmeta i)
+                            (Class/forName true (driver-api/the-classloader)))]
+      (if (isa? classname Clob)
+        (fn []
+          (driver-api/clob->str (.getObject rs i)))
+        (fn []
+          (.getObject rs i))))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]
@@ -715,7 +789,10 @@
                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [password]))))))
     {:schema           schema-name
      :database_details {:db new-db}}))
 
@@ -732,24 +809,20 @@
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/grant-workspace-read-access! :h2
-  [_driver database workspace tables]
+  [_driver database workspace schemas]
   (let [username (-> workspace :database_details :db get-user-from-connection-string)
         qu       (sql.u/quote-name :h2 :field username)
-        schemas  (distinct (map :schema tables))]
-    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName
+        schemas  (distinct schemas)]
+    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
+    ;; Schema-wide grant covers existing + future tables. Per-table grants
+    ;; are not emitted: workspace input shape is per-namespace, not per-table.
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [schema schemas]
           (.addBatch ^Statement stmt
                      ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
                                      (sql.u/quote-name :h2 :schema schema) qu)))
-        ;; Also grant on individual tables for more fine-grained access
-        (doseq [table tables]
-          (.addBatch ^Statement stmt
-                     ^String (format "GRANT SELECT ON %s.%s TO %s"
-                                     (sql.u/quote-name :h2 :schema (:schema table))
-                                     (sql.u/quote-name :h2 :table (:name table)) qu)))
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
-  "llm/prompts/dialects/h2.md")
+  "metabot/prompts/dialects/h2.md")

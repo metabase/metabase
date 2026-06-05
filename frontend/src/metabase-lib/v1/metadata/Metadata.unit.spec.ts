@@ -1,10 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import {
-  createMockDatabase,
-  createMockField,
-  createMockSegment,
-  createMockTable,
-} from "metabase-types/api/mocks";
+import { createMockDatabase, createMockField } from "metabase-types/api/mocks";
 
 describe("Metadata", () => {
   describe("instantiation", () => {
@@ -54,28 +49,6 @@ describe("Metadata", () => {
     it("should exclude the 'is_saved_questions' db when the `savedQuestions` flag is false", () => {
       const databases = metadata.databasesList({ savedQuestions: false });
       expect(databases).toEqual([metadata.database(3), metadata.database(1)]);
-    });
-  });
-
-  describe("tablesList (deprecated)", () => {
-    it("should return a list of table objects found on the instance", () => {
-      const metadata = createMockMetadata({
-        tables: [createMockTable({ id: 1 }), createMockTable({ id: 2 })],
-      });
-
-      const tables = metadata.tablesList();
-      expect(tables).toEqual([metadata.table(1), metadata.table(2)]);
-    });
-  });
-
-  describe("segmentsList (deprecated)", () => {
-    it("should return a list of segment objects found on the instance", () => {
-      const metadata = createMockMetadata({
-        segments: [createMockSegment({ id: 1 }), createMockSegment({ id: 2 })],
-      });
-
-      const segments = metadata.segmentsList();
-      expect(segments).toEqual([metadata.segment(1), metadata.segment(2)]);
     });
   });
 

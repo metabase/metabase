@@ -3,6 +3,7 @@
    [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.email.messages :as messages]
    [metabase.request.core :as request]
    [metabase.server.instance :as server.instance]
    [metabase.session.core :as session]
@@ -28,7 +29,7 @@
                                            site-url                           "http://localhost:3000"
                                            saml-slo-enabled                   true
                                            saml-identity-provider-slo-uri     "http://idp.example.com/logout"]
-          (with-redefs [random-uuid (constantly "66d96ab4-9834-40db-a3cd-42b361503ab9")]
+          (mt/with-dynamic-fn-redefs [random-uuid (constantly "66d96ab4-9834-40db-a3cd-42b361503ab9")]
             (binding [client/*url-prefix* ""]
               (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
                              :model/Session {session-id :id} {:user_id (:id user) :id (session/generate-session-id) :key_hashed (session/hash-session-key (session/generate-session-key))}]
@@ -109,4 +110,20 @@
                                                 :exp (+ (int (/ (System/currentTimeMillis) 1000)) 3600)}
                                                "wrong-secret")]
               (is (= "Message seems corrupt or manipulated"
-                     (mt/client :post 401 "/auth/sso/to_session" {:jwt wrong-secret-token}))))))))))
+                     (mt/client :post 401 "/auth/sso/to_session" {:jwt wrong-secret-token})))))
+          (testing "does not send new device login email"
+            (let [email-addr  "to-session-no-email@example.com"
+                  emails-sent (atom [])]
+              (mt/with-temp [:model/User {user-id :id} {:email      email-addr
+                                                        :first_name "Test"
+                                                        :last_name  "NoEmail"}
+                             ;; existing login history so it's not the user's first login ever
+                             :model/LoginHistory _ {:user_id   user-id
+                                                    :device_id "existing-device"}]
+                (mt/with-dynamic-fn-redefs [messages/send-login-from-new-device-email! (fn [info]
+                                                                                         (swap! emails-sent conj info))]
+                  (let [jwt-token (create-valid-jwt-token {:email email-addr})
+                        response  (mt/client :post 200 "/auth/sso/to_session" {:jwt jwt-token})]
+                    (is (string? (:session_token response)))
+                    (is (= [] @emails-sent)
+                        "to_session endpoint should not send new device login emails")))))))))))

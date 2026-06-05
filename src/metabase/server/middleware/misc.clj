@@ -7,6 +7,7 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -45,7 +46,7 @@
   [handler]
   (fn [request respond raise]
     (handler request
-             (if-not (request/api-call? request)
+             (if-not (or (request/api-call? request) (request/auth-call? request))
                respond
                (comp respond add-content-type*))
              raise)))
@@ -58,12 +59,28 @@
 ;;
 ;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting
 ;; the (initial) value of `site-url`
-(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent]} :headers, uri :uri}]
+(defn- forwarded-scheme
+  "The scheme a TLS-terminating proxy used to reach us, from `X-Forwarded-Proto`."
+  [x-forwarded-proto]
+  ;; first hop of a comma-separated chain (`https, http`), lower-cased: URL schemes are case-insensitive
+  ;; (RFC 3986) but normalize-site-url's "http" prefix check is not, so `HTTPS` would be mangled as scheme-less.
+  (some-> x-forwarded-proto (str/split #",") first str/trim not-empty u/lower-case-en))
+
+(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host x-forwarded-proto host user-agent]} :headers, uri :uri}]
   (when (and (mdb/db-is-set-up?)
              (not (system/site-url))
              (not (#{"/api/health" "/livez" "/readyz"} uri))
              (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
-    (when-let [site-url (or origin x-forwarded-host host)]
+    ;; `origin` already carries a scheme; the `*-host` headers normally don't, so prepend the scheme the proxy
+    ;; terminated TLS with -- otherwise `normalize-site-url` defaults to `http://` and a TLS-terminating proxy ends
+    ;; up advertising `http://` auth/discovery URLs over an `https` origin, breaking MCP OAuth (BOT-1617). Only
+    ;; prepend when the host is scheme-less; a scheme-bearing host passes through untouched.
+    (when-let [site-url (or origin
+                            (when-let [host (or x-forwarded-host host)]
+                              (if-let [scheme (and (not (str/includes? host "://"))
+                                                   (forwarded-scheme x-forwarded-proto))]
+                                (str scheme "://" host)
+                                host)))]
       (log/infof "Setting Metabase site URL to %s" site-url)
       (try
         (system/site-url! site-url)

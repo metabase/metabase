@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.add-remaps-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-remaps-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -7,11 +8,11 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -233,7 +234,6 @@
                                       {"apple"  "Appletini"
                                        "banana" "Bananasplit"
                                        "kiwi"   "Kiwi-flavored Thing"})
-
       (is (=? {:status    :completed
                :row_count 3
                :data      {:rows [[1 "apple"   4 3 "Appletini"]
@@ -488,7 +488,7 @@
 ;;; `partial=`, which ended up asserting nothing of value. However, other tests for this
 ;;; issue, [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]], and a test
 ;;; in `e2e/test/scenarios/joins/joins.cy.spec.js`, are still passing. So I'm not sure what to do with this test. I
-;;; updated it to use MLv2, but it's commented out for now.
+;;; updated it to use Lib, but it's commented out for now.
 ;;;
 ;;; Note that it mostly passes if you
 ;;; update [[metabase.query-processor.middleware.add-remaps/remap-column-infos]] not to ignore `:field`

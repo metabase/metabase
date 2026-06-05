@@ -1,8 +1,8 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -25,24 +25,19 @@
 (p/import-vars
  [search.config
   SearchableModel]
-
  [search.engine
   model-set]
-
  [search.impl
   search
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
-
  [search.ingestion
   bulk-ingest!
   max-searchable-value-length
   searchable-value-trim-sql]
-
  [search.spec
   spec
   define-spec]
-
  [search.util
   collapse-id
   indexed-entity-id->model-index-id
@@ -51,30 +46,39 @@
   to-tsquery-expr
   weighted-tsvector])
 
-(defmethod analytics/known-labels :metabase-search/index-updates
+(defmethod analytics.core/known-labels :metabase-search/index-updates
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
-(defmethod analytics/known-labels :metabase-search/index-reindexes
+(defmethod analytics.core/known-labels :metabase-search/index-reindexes
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
-(defmethod analytics/known-labels :metabase-search/engine-default
+(defmethod analytics.core/known-labels :metabase-search/appdb-index-batches-skipped
   [_]
-  (analytics/known-labels :metabase-search/engine-active))
+  [{:table-type :active} {:table-type :pending}])
 
-(defmethod analytics/known-labels :metabase-search/engine-active
+(defmethod analytics.core/known-labels :metabase-search/index-documents-skipped
+  [_]
+  (for [model (keys (search.spec/specifications))]
+    {:model model}))
+
+(defmethod analytics.core/known-labels :metabase-search/engine-default
+  [_]
+  (analytics.core/known-labels :metabase-search/engine-active))
+
+(defmethod analytics.core/known-labels :metabase-search/engine-active
   [_]
   (for [e (search.engine/known-engines)]
     {:engine (name e)}))
 
-(defmethod analytics/initial-value :metabase-search/engine-default
+(defmethod analytics.core/initial-value :metabase-search/engine-default
   [_ {:keys [engine]}]
   (if (= engine (name (search.engine/default-engine))) 1 0))
 
-(defmethod analytics/initial-value :metabase-search/engine-active
+(defmethod analytics.core/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
   (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
 
@@ -101,7 +105,7 @@
             (if (seq report)
               (do
                 (analytics/inc! :metabase-search/index-reindex-ms duration)
-                (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
+                (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
                 (doseq [[model cnt] report]
                   (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
                 (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
@@ -124,7 +128,7 @@
                                    (search.engine/reindex! e opts)))
                 duration (u/since-ms timer)]
             (analytics/inc! :metabase-search/index-reindex-ms duration)
-            (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
+            (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
             (doseq [[model cnt] report]
               (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
             (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
@@ -156,6 +160,14 @@
   (when (supports-index?)
     (doseq [e (search.engine/active-engines)]
       (search.engine/reset-tracking! e))))
+
+(defn sync-from-restored-db!
+  "Reconcile all search engine state with the current database.
+   Use after snapshot restore instead of reindex! to avoid redundant work."
+  []
+  (when (supports-index?)
+    (doseq [e (search.engine/active-engines)]
+      (search.engine/sync-from-restored-db! e))))
 
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."

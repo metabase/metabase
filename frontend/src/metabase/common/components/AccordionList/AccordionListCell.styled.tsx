@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/ui/colors";
 
 interface ListCellItemProps {
   isClickable: boolean;

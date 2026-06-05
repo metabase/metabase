@@ -48,7 +48,7 @@ describe("scenarios > table-editing", () => {
       tableName: EDITABLE_SOURCE_TABLE_NAME,
     });
 
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     setTableEditingEnabledForDB(WRITABLE_DB_ID);
 
@@ -307,12 +307,11 @@ describe("scenarios > table-editing", () => {
       cases.forEach(({ dataType, column, value }) => {
         it(`should allow to edit a cell with type ${dataType}`, () => {
           // Locate the table and the specific cell to edit
-          cy.findByTestId("table-root")
-            .findAllByRole("row")
+          H.tableInteractiveBody()
+            .find(`[data-column-id='${column}']`)
             .eq(1) // Select the second row (index 1)
-            .within(() => {
-              cy.get(`[data-column-id='${column}']`).as("targetCell").click(); // Activate inline editing
-            });
+            .as("targetCell")
+            .click(); // Activate inline editing
 
           // Edit the cell value
           cy.get("@targetCell")
@@ -351,14 +350,11 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with date type", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        H.tableInteractiveBody()
+          .find("[data-column-id='date']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='date']").as("targetCell").click({
-              scrollBehavior: false,
-            });
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false });
 
         const day = Math.floor(Math.random() * 10) + 10; // 10-20
 
@@ -379,7 +375,8 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with datetime type", () => {
-        cy.findByTestId("table-root")
+        H.tableInteractiveBody()
+          .findByTestId("center-center-quadrant")
           .findAllByRole("row")
           .eq(1)
           .within(() => {
@@ -423,14 +420,11 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with select type", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        H.tableInteractiveBody()
+          .find("[data-column-id='boolean']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='boolean']").as("targetCell").click({
-              scrollBehavior: false,
-            });
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false });
 
         H.popover().within(() => {
           // 3: true, false, null
@@ -445,37 +439,27 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should not allow to edit PK cells", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        H.tableInteractiveBody()
+          .find("[data-column-id='id']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='id']")
-              .as("targetCell")
-              .click({
-                scrollBehavior: false,
-              })
-              .find("input")
-              .should("not.exist");
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false })
+          .find("input")
+          .should("not.exist");
       });
 
       it("should handle errors", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        H.tableInteractiveBody()
+          .find("[data-column-id='tinyint']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='tinyint']")
-              .as("targetCell")
-              .click({
-                scrollBehavior: false,
-              })
-              .find("input")
-              // Entering a big number into tinyint column
-              .type("{selectAll}{backspace}9999999", {
-                scrollBehavior: false,
-              })
-              .blur(); // Trigger the save action by blurring the input
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false })
+          .find("input")
+          // Entering a big number into tinyint column
+          .type("{selectAll}{backspace}9999999", {
+            scrollBehavior: false,
+          })
+          .blur(); // Trigger the save action by blurring the input
 
         H.undoToast()
           .findByText("Couldn't save table changes")
@@ -495,7 +479,7 @@ describe("scenarios > table-editing", () => {
         tableName: "scoreboard_actions",
       });
 
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       setTableEditingEnabledForDB(WRITABLE_DB_ID);
 
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
@@ -644,6 +628,67 @@ describe("scenarios > table-editing", () => {
         .findByRole("option", { name: `Add option: ${NON_EXISTING_ID}` })
         .should("be.visible");
     });
+
+    it("should allow creating a record in a table with a required date column (metabase#70647)", () => {
+      const TABLE_NAME = "date_create_test";
+
+      H.queryWritableDB(`DROP TABLE IF EXISTS ${TABLE_NAME}`, "postgres");
+      H.queryWritableDB(
+        `CREATE TABLE ${TABLE_NAME} (
+          id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+          sale_date DATE NOT NULL
+        )`,
+        "postgres",
+      );
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+      cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
+      cy.intercept("POST", "api/ee/action-v2/execute-bulk").as("executeBulk");
+
+      H.getTableId({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
+        (tableId) => {
+          cy.visit(
+            `/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`,
+          );
+        },
+      );
+      cy.wait("@getTableMetadata");
+
+      cy.findByTestId("new-record-button").click();
+      H.modal().findByText("Create a new record").should("be.visible");
+
+      // The DATE column is NOT NULL, so the form stays invalid until a date is
+      // picked. Before the fix, picking a date never reached the form state, so
+      // the submit button stayed disabled and the row could not be created.
+      cy.findByTestId("Sale Date-field-input").should("be.visible");
+      cy.findByTestId("create-row-form-submit-button").should("be.disabled");
+
+      const targetDay = dayjs().date(15);
+      cy.findByTestId("Sale Date-field-input").click();
+      H.popover()
+        .findByRole("button", { name: targetDay.format("D MMMM YYYY") })
+        .click();
+
+      cy.findByTestId("create-row-form-submit-button")
+        .should("be.enabled")
+        .click();
+
+      cy.wait("@executeBulk").then(({ request, response }) => {
+        expect(request.body.action).to.equal("data-grid.row/create");
+        expect(response?.body.outputs[0].op).to.equal("created");
+
+        const responseDate = dayjs(
+          response?.body.outputs[0].row.sale_date,
+        ).format("YYYY-MM-DD");
+        expect(responseDate).to.equal(targetDay.format("YYYY-MM-DD"));
+      });
+
+      H.undoToast()
+        .findByText("Record successfully created")
+        .should("be.visible");
+
+      H.queryWritableDB(`DROP TABLE IF EXISTS ${TABLE_NAME}`, "postgres");
+    });
   });
 });
 
@@ -676,8 +721,19 @@ function openTableEdit(tableName: RegExp) {
 function openEditRowModal(rowIndex: number) {
   cy.findByTestId("table-root")
     .findAllByRole("row")
-    .should("have.length.gte", 2)
-    .eq(rowIndex)
+    .should("have.length.gte", 4)
+    .filter((_, el) => rowIndex === Number(el.dataset.datasetIndex))
+    .as("rowSections");
+
+  cy.get("@rowSections")
+    .eq(0)
+    .within(() => {
+      cy.get("[data-column-id]").first().realHover();
+      cy.findByTestId("row-edit-icon").click();
+    });
+
+  cy.get("@rowSections")
+    .eq(1)
     .within(() => {
       cy.findAllByTestId("cell-data")
         .eq(0)
@@ -685,10 +741,6 @@ function openEditRowModal(rowIndex: number) {
         .then((text) => {
           cy.wrap(text).as("rowId");
         });
-
-      cy.findAllByTestId("cell-data").first().realHover();
-
-      cy.findByTestId("row-edit-icon").click();
     });
 
   H.modal().findByText("Edit record").should("be.visible");

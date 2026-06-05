@@ -2,11 +2,11 @@
 import styled from "@emotion/styled";
 
 import { Link } from "metabase/common/components/Link";
-import { alpha } from "metabase/lib/colors";
 import {
   breakpointMinLarge,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
+import { alpha } from "metabase/ui/colors";
 
 export const CardRoot = styled(Link)`
   display: flex;

@@ -28,6 +28,7 @@ import type {
 } from "../common";
 
 declare const _SourceInstanceSymbol: unique symbol;
+declare const _SegmentMetadataSymbol: unique symbol;
 
 export type MetadataProvider = Metabase_Lib_Metadata_Protocols_MetadataProvider;
 
@@ -49,6 +50,19 @@ export type BinningStrategy = Metabase_LibMetric_Schema_Binning;
 
 export type SourceInstance = unknown & {
   _opaque: typeof _SourceInstanceSymbol;
+};
+
+export type SegmentMetadata = unknown & {
+  _opaque: typeof _SegmentMetadataSymbol;
+};
+
+export type SegmentDisplayInfo = {
+  name?: string;
+  displayName: string;
+  longDisplayName?: string;
+  description?: string;
+  filterPositions?: number[];
+  group?: DimensionGroup;
 };
 
 export type MetadataProviderable = MetadataProvider | MetricDefinition;
@@ -106,7 +120,8 @@ export type Displayable =
   | Clause
   | DimensionMetadata
   | TemporalBucket
-  | BinningStrategy;
+  | BinningStrategy
+  | SegmentMetadata;
 
 export type DisplayInfo =
   | MetricDisplayInfo
@@ -114,7 +129,8 @@ export type DisplayInfo =
   | ClauseDisplayInfo
   | DimensionDisplayInfo
   | TemporalBucketDisplayInfo
-  | BinningStrategyDisplayInfo;
+  | BinningStrategyDisplayInfo
+  | SegmentDisplayInfo;
 
 export type FilterParts =
   | StringFilterParts

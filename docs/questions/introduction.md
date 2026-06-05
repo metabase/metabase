@@ -15,10 +15,10 @@ Questions in Metabase are queries, their results, and their visualization. Quest
 
 You can create a new question from scratch, or build off of an existing question. To create a question from scratch click on **+ New** and select how you want to query your data:
 
-- **+ New > Question** to create a question using the graphicalcquery builder. See [Query builder](../questions/query-builder/editor.md).
+- **+ New > Question** to create a question using the graphical query builder. See [Query builder](../questions/query-builder/editor.md).
   ![Query builder editor](./images/editor.png)
 
-- **+ New >SQl/Native query** to create a question using the native/SQL query editor. See [Native editor](../questions/native-editor/writing-sql.md).
+- **+ New > SQL/Native query** to create a question using the native/SQL query editor. See [Native editor](../questions/native-editor/writing-sql.md).
 
   ![Native editor](./images/native-editor.png)
 
@@ -31,7 +31,7 @@ Once you've built your query and [visualized its results](./visualizations/visua
 
 ### Saving questions to dashboards
 
-Questions that live in a dashboard are only visible in that dashboard. These questions can't be used in other dashboards. When you save a question to a dashboard, you'll need to arrange the card on one of the dashboard's tab, then save the dashboard.
+Questions that live in a dashboard are only visible in that dashboard. These questions can't be used in other dashboards. When you save a question to a dashboard, you'll need to arrange the card on one of the dashboard's tabs, then save the dashboard.
 
 ### Saving questions to collections
 

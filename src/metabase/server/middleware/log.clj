@@ -211,10 +211,12 @@
   (cond-> #{"/api/logger/logs"}
     (not (server.settings/health-check-logging-enabled)) (into #{"/api/health" "/livez" "/readyz"})))
 
-(defn- should-log-request? [{:keys [uri], :as request}]
+(defn- should-log-request? [{:keys [^String uri], :as request}]
   ;; don't log calls to health checks or /logger/logs because they clutter up the logs (especially the window in admin)
   ;; with useless lines
   (and (or (request/api-call? request)
+           (str/starts-with? uri "/.well-known")
+           (str/starts-with? uri "/oauth")
            (contains? #{"/livez" "/readyz"} uri))
        (not ((logging-disabled-uris) uri))))
 
@@ -231,9 +233,11 @@
           (let [info           {:request       request
                                 :start-time    (u/start-timer)
                                 :call-count-fn call-count-fn
-                                :diag-info-fn  diag-info-fn
-                                :log-context   {:metabase-user-id api/*current-user-id*}}
+                                :diag-info-fn  diag-info-fn}
                 response->info (fn [response]
-                                 (assoc info :response response))
+                                 (assoc info
+                                        :response response
+                                        :log-context {:metabase-user-id (or (:metabase-user-id (meta response))
+                                                                            api/*current-user-id*)}))
                 respond        (comp respond logged-response response->info)]
             (handler request respond raise)))))))

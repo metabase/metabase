@@ -24,12 +24,18 @@ on:
           - snowflake
           - sqlserver
 
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+  actions: read
+
 jobs:
 
   be-tests-bigquery-transforms:
     # inputs.driver is empty on push triggers, so treat '' as 'all'
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'bigquery' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -43,7 +49,7 @@ jobs:
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     name: BigQuery Transforms
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -64,8 +70,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -77,7 +82,7 @@ jobs:
 
   be-tests-clickhouse-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'clickhouse' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -88,7 +93,7 @@ jobs:
       MB_CLICKHOUSE_TEST_NGINX_PORT: 8127
     name: ClickHouse Transforms
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -99,10 +104,11 @@ jobs:
       run: |
         sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
     - name: Start ClickHouse in Docker
-      uses: hoverkraft-tech/compose-action@v2.0.0
+      uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
       with:
         compose-file: "modules/drivers/clickhouse/docker-compose.yml"
         down-flags: "--volumes"
+        up-flags: "--pull always"
         services: |
           clickhouse
           clickhouse_tls
@@ -124,8 +130,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -137,7 +142,7 @@ jobs:
 
   be-tests-mongo-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'mongo' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -154,7 +159,7 @@ jobs:
           MONGO_INITDB_ROOT_PASSWORD: metasample123
     name: MongoDB Transforms
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -175,8 +180,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -188,7 +192,7 @@ jobs:
 
   be-tests-mysql-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'mysql' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     services:
       mysql:
@@ -209,7 +213,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     name: MySQL Transforms
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -230,8 +234,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -243,7 +246,7 @@ jobs:
 
   be-tests-postgres-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'postgres' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -265,7 +268,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     name: Postgres Transforms
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -286,8 +289,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -299,7 +301,7 @@ jobs:
 
   be-tests-redshift-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'redshift' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -311,7 +313,7 @@ jobs:
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     name: Redshift Transforms
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -332,8 +334,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -345,7 +346,7 @@ jobs:
 
   be-tests-snowflake-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'snowflake' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -366,7 +367,7 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
     name: Snowflake Transforms
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -387,8 +388,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -400,7 +400,7 @@ jobs:
 
   be-tests-sqlserver-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'sqlserver' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -419,7 +419,7 @@ jobs:
           MSSQL_MEMORY_LIMIT_MB: 1024
     name: SQL Server Transforms
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -440,8 +440,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -461,13 +460,13 @@ jobs:
       - be-tests-redshift-transforms
       - be-tests-snowflake-transforms
       - be-tests-sqlserver-transforms
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: transforms-stress-test-result
     if: always() && !cancelled()
     steps:
       - name: Check job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:

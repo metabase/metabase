@@ -1,4 +1,4 @@
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 
 export interface CheckBoxInputProps {
   size: number;

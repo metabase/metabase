@@ -1,4 +1,4 @@
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { useSetting } from "./use-setting";

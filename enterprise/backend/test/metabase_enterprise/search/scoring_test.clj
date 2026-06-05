@@ -1,4 +1,5 @@
 (ns metabase-enterprise.search.scoring-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.search.scoring-test]}}}}}}
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
@@ -36,7 +37,7 @@
   (mt/with-premium-features #{}
     (-> (scoring/score-and-result item {:search-string search-string}) :score)))
 
-(deftest official-collection-tests
+(deftest official-collection-bumps-value-test
   (testing "it should bump up the value of items in official collections"
     ;; using the ee implementation that isn't wrapped by premium features token check
     (let [search-string "custom expression examples"
@@ -62,12 +63,17 @@
               "custom expression examples"]
              (mapv :name (sort-by #(oss-score search-string %)
                                   (shuffle [a b c d])))))
-      (is (= ["customer examples of bad sorting"
-              "customer success stories"
+      ;; With :official-collection lifted to 80 in :default, the official bump dominates the
+      ;; text scorers — `d` now ranks highest, landing last under the ascending sort, despite
+      ;; having the weakest text match.
+      (is (= ["customer success stories"
               "examples of custom expressions"
-              "custom expression examples"]
+              "custom expression examples"
+              "customer examples of bad sorting"]
              (mapv :name (sort-by #(ee-score search-string %)
-                                  (shuffle [a b c (assoc d :collection_authority_level "official")])))))))
+                                  (shuffle [a b c (assoc d :collection_authority_level "official")]))))))))
+
+(deftest verified-items-bump-value-test
   (testing "It should bump up the value of verified items"
     (let [ss "foo"
           a  {:name                "foobar"
@@ -141,15 +147,12 @@
         (is (= #{}
                (set/intersection #{"official collection score" "verified"}
                                  (score-result-names))))))
-
     (testing "includes official collection score if :official-collections is enabled"
       (mt/with-premium-features #{:official-collections}
         (is (set/subset? #{"official collection score"} (score-result-names)))))
-
     (testing "includes verified if :content-verification is enabled"
       (mt/with-premium-features #{:content-verification}
         (is (set/subset? #{"verified"} (score-result-names)))))
-
     (testing "includes both if has both features"
       (mt/with-premium-features #{:official-collections :content-verification}
         (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))
@@ -199,7 +202,7 @@
                                                   :source {:type "query"
                                                            :query (mt/native-query {:query "SELECT 1"})}
                                                   :target {:type "table"
-                                                           :name "test_table"}}
+                                                           :name (mt/random-name)}}
                      :model/RecentViews _ (recent-view c1 now)]
         (appdb.scoring-test/with-index-contents
           [{:model "card"      :id c1 :name "test card recent"}

@@ -46,10 +46,6 @@ If you surround your attribute value with double quotes, make sure to use single
 ></metabase-dashboard>
 ```
 
-## Resizing dashboards to fit their content
-
-The `<metabase-dashboard>` web component automatically resizes to fit its content. No additional configuration is needed.
-
 ## Question
 
 To render a question (chart):
@@ -75,7 +71,7 @@ For example, to embed the SQL editor:
 
 ## Browser
 
-{% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embbedding=true%}
+{% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embedding=true%}
 
 Browser component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
@@ -96,7 +92,7 @@ To render a collection browser so people can navigate a collection and open dash
 
 ## AI chat
 
-{% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embbedding=true%}
+{% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embedding=true%}
 
 AI chat component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
@@ -106,13 +102,15 @@ To render the AI chat interface:
 <metabase-metabot></metabase-metabot>
 ```
 
+If you're using the SDK, you can use either the [`MetabotQuestion`](./sdk/ai-chat.md#example) component or the [`useMetabot`](./sdk/ai-chat.md#building-custom-ai-chat-uis-with-usemetabot) hook for a custom UI.
+
 ### Attributes
 
 {% include_file "{{ dirname }}/eajs/snippets/MetabaseMetabotAttributes.md" snippet="properties" %}
 
 ## Customizing loader and error components
 
-{% include plans-blockquote.html feature="Customizing loader and error componentst" convert_pro_link_to_embbedding=true%}
+{% include plans-blockquote.html feature="Customizing loader and error components" convert_pro_link_to_embedding=true%}
 
 If you're using the [modular embedding SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 

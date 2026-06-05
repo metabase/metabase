@@ -14,34 +14,35 @@ import {
   GRAPH_COLORS_SETTINGS,
   GRAPH_DATA_SETTINGS,
   GRAPH_TREND_SETTINGS,
+  SPLIT_PANELS_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "../../lib/settings/graph";
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationDefinition, VisualizationProps } from "../../types";
 
-Object.assign(
-  ScatterPlot,
-  getCartesianChartDefinition({
-    getUiName: () => t`Scatter`,
-    identifier: "scatter",
-    iconName: "bubble",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    noun: t`scatter plot`,
-    minSize: getMinSize("scatter"),
-    defaultSize: getDefaultSize("scatter"),
-    settings: {
-      ...GRAPH_BUBBLE_SETTINGS,
-      ...GRAPH_GOAL_SETTINGS,
-      ...GRAPH_TREND_SETTINGS,
-      ...GRAPH_COLORS_SETTINGS,
-      ...GRAPH_AXIS_SETTINGS,
-      ...GRAPH_DATA_SETTINGS,
-      ...TOOLTIP_SETTINGS,
-    } as any as VisualizationSettingsDefinitions,
-  }),
-);
+const ScatterViz: Omit<
+  VisualizationDefinition,
+  "isSensible" | "checkRenderable"
+> = {
+  getUiName: () => t`Scatter`,
+  identifier: "scatter",
+  iconName: "bubble",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  noun: t`scatter plot`,
+  minSize: getMinSize("scatter"),
+  defaultSize: getDefaultSize("scatter"),
+  settings: {
+    ...GRAPH_BUBBLE_SETTINGS,
+    ...GRAPH_GOAL_SETTINGS,
+    ...GRAPH_TREND_SETTINGS,
+    ...GRAPH_COLORS_SETTINGS,
+    ...GRAPH_AXIS_SETTINGS,
+    ...GRAPH_DATA_SETTINGS,
+    ...SPLIT_PANELS_SETTINGS,
+    ...TOOLTIP_SETTINGS,
+  },
+};
+
+Object.assign(ScatterPlot, getCartesianChartDefinition(ScatterViz));
 
 export function ScatterPlot(props: VisualizationProps) {
   return <CartesianChart {...props} />;

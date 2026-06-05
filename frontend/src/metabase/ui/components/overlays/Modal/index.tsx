@@ -4,15 +4,15 @@ import {
   type ModalRootProps,
 } from "@mantine/core";
 
-import { useDisableCommandPalette } from "metabase/palette/hooks/useDisableCommandPalette";
 import { PreventEagerPortal } from "metabase/ui";
+import { useDisableCommandPalette } from "metabase/ui/hooks/use-disable-command-palette";
 
 export type { ModalProps } from "@mantine/core";
 export { useModalsStack } from "@mantine/core";
 
 export * from "./Modal.config";
 
-export const Modal = (props: ModalProps) => {
+export function Modal(props: ModalProps) {
   useDisableCommandPalette({
     disabled: props.opened,
   });
@@ -22,9 +22,9 @@ export const Modal = (props: ModalProps) => {
       <MantineModal {...props} />
     </PreventEagerPortal>
   );
-};
+}
 
-const ModalRoot = (props: ModalRootProps) => {
+function ModalRoot(props: ModalRootProps) {
   useDisableCommandPalette({
     disabled: props.opened,
   });
@@ -33,7 +33,7 @@ const ModalRoot = (props: ModalRootProps) => {
       <MantineModal.Root {...props} />
     </PreventEagerPortal>
   );
-};
+}
 Modal.Root = ModalRoot;
 Modal.Overlay = MantineModal.Overlay;
 Modal.Content = MantineModal.Content;

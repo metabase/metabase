@@ -26,6 +26,7 @@
    [metabase.util.format :as u.format]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
@@ -56,6 +57,7 @@
   format-nanoseconds
   format-seconds
   format-plural
+  qualified-key
   qualified-name])
 
 #?(:clj (p/import-vars [u.jvm
@@ -525,7 +527,7 @@
          :cljs (js/encodeURIComponent c))
       c)))
 
-(defn slugify
+(mu/defn slugify
   "Return a version of String `s` appropriate for use as a URL slug.
   Downcase the name and remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores.
 
@@ -537,7 +539,12 @@
   Optionally specify `:max-length` which will truncate the slug after that many characters."
   (^String [^String s]
    (slugify s {}))
-  (^String [s {:keys [max-length unicode?]}]
+  (^String [s :- [:maybe :string]
+            {:keys [max-length unicode?]} :- [:maybe
+                                              [:map
+                                               {:closed true}
+                                               [:max-length {:optional true} pos-int?]
+                                               [:unicode?   {:optional true} [:maybe boolean?]]]]]
    (when (seq s)
      (cond->> (remove-diacritical-marks (lower-case-en s))
        true (map #(slugify-char % (not unicode?)))
@@ -765,7 +772,6 @@
       (with-out-str
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
-
       :cljs-dev
       ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
       ;; default value wastes too much space, 120 is a little easier to read actually.
@@ -773,7 +779,6 @@
         (with-out-str
           #_{:clj-kondo/ignore [:discouraged-var]}
           (pprint/pprint x)))
-
       :default
       ;; For CLJS release, we don't pull cljs.pprint to reduce bundle size.
       (str x)))
@@ -1174,7 +1179,6 @@
                                                            (long (+
                                                                   cumulative-byte-count
                                                                   (string-byte-count (string-character-at s i)))))))
-
      :cljs
      (let [buf (js/Uint8Array. max-length-bytes)
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
@@ -1261,6 +1265,11 @@
   "Return first item from Reducible"
   [reducible]
   (reduce (fn [_ fst] (reduced fst)) nil reducible))
+
+(defn rlast
+  "Return last item from Reducible."
+  [reducible]
+  (reduce (fn [_ x] x) nil reducible))
 
 (defn rconcat
   "Concatenate two Reducibles"
@@ -1366,3 +1375,8 @@
   "Finds the first map in `maps` that contains the value at the given key path."
   [maps ks value]
   (second (find-first-map-indexed maps ks value)))
+
+(defn tee-xf
+  "Transducer that collects items into an atom while passing them through unchanged."
+  [atom]
+  (map (fn [x] (swap! atom conj x) x)))

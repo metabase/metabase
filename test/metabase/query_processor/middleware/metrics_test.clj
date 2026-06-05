@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.metrics-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.metrics-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
@@ -16,9 +17,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
@@ -110,7 +111,7 @@
      :metabase-query-processor/metrics-adjust 1
      :metabase-query-processor/metrics-adjust-errors 1
      :check-fn (fn [query]
-                 (with-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
+                 (mt/with-dynamic-fn-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
                    (try
                      (adjust query)
                      (is false "Failed to throw expected Exception")
@@ -126,7 +127,7 @@
      :metabase-query-processor/metrics-adjust 1
      :metabase-query-processor/metrics-adjust-errors 1
      :check-fn (fn [query]
-                 (with-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
+                 (mt/with-dynamic-fn-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
                    (is (thrown-with-msg?
                         java.lang.Exception
                         #"Test exception"
@@ -685,7 +686,7 @@
                                                 [:field (meta/id :venues :price) {}]]]]]
                                  {:display-name "My Cool Aggregation"}]]}
           expand-macros (fn [mbql-query]
-                          (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->pMBQL mbql-query)))))]
+                          (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->mbql5 mbql-query)))))]
       (comment
         (testing "nested 1 level"
           (is (=? (lib.tu.macros/mbql-query nil
@@ -712,7 +713,6 @@
                  (lib.tu.macros/mbql-query checkins
                    {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
                              :source-query before}]})))))
-
       (testing "inside :joins inside :source-query"
         (is (=? (lib.tu.macros/mbql-query nil
                   {:source-query {:source-table (meta/id :checkins)

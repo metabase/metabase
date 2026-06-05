@@ -717,6 +717,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
                 id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
                 name: "sandbox",
                 type: "number",
+                default: "1",
               },
             },
           },
@@ -743,6 +744,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
                 id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
                 name: "sandbox",
                 type: "text",
+                default: "Widget",
               },
             },
           },
@@ -1285,6 +1287,58 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
           { "stage-number": 0 },
         ]);
+      });
+    });
+  });
+
+  describe("Column-restricting sandbox: hide hidden columns in the Data Reference UI", () => {
+    // The sandbox source card exposes only a subset of the sandboxed table's columns.
+    // Pure-API assertions for the metadata endpoints live in the backend test
+    // metabase-enterprise.sandbox.api.database-test; add UI repros here as it() cases.
+
+    const PEOPLE_VISIBLE_COLS = ["ID", "NAME", "EMAIL"];
+    const PEOPLE_HIDDEN_COLS = new Set(Object.keys(PEOPLE)).difference(
+      new Set(PEOPLE_VISIBLE_COLS),
+    );
+
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      preparePermissions();
+
+      // Sandbox PEOPLE with a native query exposing only PEOPLE_VISIBLE_COLS;
+      // every other column (PEOPLE_HIDDEN_COLS) must be hidden everywhere.
+      H.createNativeQuestion({
+        name: "Sandbox source — people subset",
+        native: {
+          query: `SELECT ${PEOPLE_VISIBLE_COLS.join(", ")} FROM people`,
+        },
+      }).then(({ body: card }) => {
+        cy.sandboxTable({
+          table_id: PEOPLE_ID,
+          card_id: card.id,
+          group_id: COLLECTION_GROUP,
+        });
+      });
+
+      cy.signOut();
+      cy.signInAsSandboxedUser();
+    });
+
+    it("Data Reference field list excludes sandbox-hidden columns", () => {
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}/fields`,
+      );
+      H.main().within(() => {
+        // Each field renders its display name and its raw column name, so a
+        // visible column like ID appears more than once — use findAllByText.
+        PEOPLE_VISIBLE_COLS.forEach((name) =>
+          cy.findAllByText(name).should("exist"),
+        );
+        PEOPLE_HIDDEN_COLS.forEach((name) =>
+          cy.findByText(name).should("not.exist"),
+        );
       });
     });
   });

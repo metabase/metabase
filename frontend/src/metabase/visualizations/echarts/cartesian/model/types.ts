@@ -227,6 +227,7 @@ export type BaseCartesianChartModel = {
 
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
+  splitPanelYAxisModels?: YAxisModel[];
   xAxisModel: XAxisModel;
 
   columnByDataKey: Record<DataKey, DatasetColumn>;

@@ -1,7 +1,7 @@
 import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { isDate, isID, isNumber } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
+import type { Field as ApiField, DatasetColumn } from "metabase-types/api";
 
 import { DateTimeFingerprint } from "./DateTimeFingerprint";
 import { GlobalFingerprint } from "./GlobalFingerprint";
@@ -14,7 +14,7 @@ type BaseProps = {
 };
 
 type TableColumnFingerprintInfoProps = BaseProps & {
-  field: Field | DatasetColumn;
+  field: Field | DatasetColumn | ApiField;
 };
 
 /**

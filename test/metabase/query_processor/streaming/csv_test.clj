@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.streaming.csv-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.streaming.csv-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.string :as str]
@@ -6,8 +7,8 @@
    [metabase.driver :as driver]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs])
   (:import
@@ -134,7 +135,6 @@
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
     (let [row (first (csv-export [[(lazy-seq [1 2 3])]]))]
       (is (= ["[1 2 3]"] row))))
-
   (testing "LocalDate in a lazy seq (checking that elements in a lazy seq are formatted correctly as strings)"
     (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T"])]]))]
       (is (= ["[\"2021-03-30\"]"] row)))))

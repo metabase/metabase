@@ -1,11 +1,10 @@
 import type { Path } from "history";
 import type { ReactNode } from "react";
 
+import { Box, rem } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 import { AccountHeader } from "../AccountHeader";
-
-import { AccountContent } from "./AccountLayout.styled";
 
 interface AccountLayoutProps {
   user: User | null;
@@ -31,7 +30,14 @@ const AccountLayout = ({
         path={path}
         onChangeLocation={onChangeLocation}
       />
-      <AccountContent>{children}</AccountContent>
+      <Box
+        mx="auto"
+        px={{ base: "sm", sm: "md" }}
+        py={{ base: "sm", sm: "xl" }}
+        w={{ base: "100%", sm: rem(540) }}
+      >
+        {children}
+      </Box>
     </div>
   );
 };

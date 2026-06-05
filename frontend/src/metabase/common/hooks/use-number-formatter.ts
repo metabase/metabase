@@ -4,7 +4,7 @@ import { useSetting } from "metabase/common/hooks";
 import {
   type FormatNumberOptions,
   formatNumber,
-} from "metabase/lib/formatting/numbers";
+} from "metabase/utils/formatting/numbers";
 
 export type UseFormatNumberOptions = FormatNumberOptions & {
   ignoreInstanceSettings?: boolean;

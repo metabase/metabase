@@ -1,0 +1,100 @@
+name: Tabbed Dashboard
+entity_id: 7RZUq1g5o1C5ws_e3ppKf
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+collection_id: cOlDaShBoArDs0ExAmPlx
+parameters:
+- id: b0000001-0000-0000-0000-000000000001
+  name: Category
+  position: 0
+  sectionId: string
+  slug: category
+  type: string/=
+serdes/meta:
+- id: 7RZUq1g5o1C5ws_e3ppKf
+  label: tabbed_dashboard
+  model: Dashboard
+dashcards:
+- entity_id: _Bv8Qc16SHr8CtmMHBEub
+  card_id: h5F2EjHsRd73Dqqh8sAtd
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 0
+  col: 0
+  size_x: 12
+  size_y: 6
+  dashboard_tab_id:
+  - 7RZUq1g5o1C5ws_e3ppKf
+  - XcmNByL-bsDQ15jLHBUwr
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: h5F2EjHsRd73Dqqh8sAtd
+    parameter_id: b0000001-0000-0000-0000-000000000001
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 7RZUq1g5o1C5ws_e3ppKf
+    model: Dashboard
+  - id: XcmNByL-bsDQ15jLHBUwr
+    model: DashboardTab
+  - id: _Bv8Qc16SHr8CtmMHBEub
+    model: DashboardCard
+- entity_id: uyqXk5DNhkAMTp4W1TD9-
+  card_id: dShCrdProdsTables0007
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 0
+  col: 0
+  size_x: 18
+  size_y: 9
+  dashboard_tab_id:
+  - 7RZUq1g5o1C5ws_e3ppKf
+  - frlnbZFzBEzun9_GwdiZd
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 7RZUq1g5o1C5ws_e3ppKf
+    model: Dashboard
+  - id: frlnbZFzBEzun9_GwdiZd
+    model: DashboardTab
+  - id: uyqXk5DNhkAMTp4W1TD9-
+    model: DashboardCard
+tabs:
+- created_at: '2026-04-02T02:59:02.778668Z'
+  entity_id: XcmNByL-bsDQ15jLHBUwr
+  name: Overview
+  position: 0
+  serdes/meta:
+  - id: 7RZUq1g5o1C5ws_e3ppKf
+    model: Dashboard
+  - id: XcmNByL-bsDQ15jLHBUwr
+    model: DashboardTab
+- created_at: '2026-04-02T02:59:02.778668Z'
+  entity_id: frlnbZFzBEzun9_GwdiZd
+  name: Details
+  position: 1
+  serdes/meta:
+  - id: 7RZUq1g5o1C5ws_e3ppKf
+    model: Dashboard
+  - id: frlnbZFzBEzun9_GwdiZd
+    model: DashboardTab
+- created_at: '2026-04-02T02:59:02.778668Z'
+  entity_id: tiXyfAYcKGSBaGMVsqVom
+  name: Analysis
+  position: 2
+  serdes/meta:
+  - id: 7RZUq1g5o1C5ws_e3ppKf
+    model: Dashboard
+  - id: tiXyfAYcKGSBaGMVsqVom
+    model: DashboardTab
+width: full

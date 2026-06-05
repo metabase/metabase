@@ -8,17 +8,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]))
 
-(defsetting slack-token
-  (deferred-tru
-   (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
-        "Please use a new Slack app integration instead."))
-  :deprecated "0.42.0"
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :doc        false
-  :audit      :never
-  :export?    false)
-
 (defsetting slack-app-token
   (deferred-tru
    (str "Bot user OAuth token for connecting the Metabase Slack app. "
@@ -71,6 +60,18 @@
   [channel-name]
   (when-not (str/blank? channel-name)
     (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
+
+(defn find-cached-slack-channel-or-username
+  "Look up a Slack channel or username by name or ID in [[slack-cached-channels-and-usernames]].
+
+  Returns the cached entry or `nil` if not found. The input is normalized by stripping a leading `#` before matching."
+  [channel-name]
+  (let [normalized (process-files-channel-name channel-name)]
+    (some (fn [channel]
+            (when (or (= normalized (:name channel))
+                      (= normalized (:id channel)))
+              channel))
+          (:channels (slack-cached-channels-and-usernames)))))
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
@@ -287,6 +288,16 @@
   :visibility :settings-manager
   :audit      :getter)
 
+(defsetting email-max-recipients-per-message
+  (deferred-tru "The maximum number of recipients allowed on a single email. Notifications with more recipients than
+                this are split into multiple messages. This guards against SMTP providers (e.g. Amazon SES) that reject
+                any message exceeding their per-message recipient cap. Defaults to 50; set to 0 to disable batching.")
+  :export?    true
+  :type       :integer
+  :default    50
+  :visibility :settings-manager
+  :audit      :getter)
+
 (defsetting email-configured?
   "Check if email is enabled and that the mandatory settings are configured."
   :type       :boolean
@@ -323,10 +334,6 @@
   "Is Slack integration configured?"
   :type       :boolean
   :visibility :internal
-  :getter     (fn []
-                (boolean
-                 (or
-                  (seq (slack-app-token))
-                  (seq (slack-token)))))
+  :getter     (fn [] (boolean (slack-app-token)))
   :export?    false
   :setter     :none)

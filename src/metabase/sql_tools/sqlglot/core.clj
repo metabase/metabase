@@ -26,6 +26,7 @@
     ;; Fallback: pass through if already in correct format or unknown type
     error))
 
+;; TODO(rileythomp, 2026-03): Should this be a driver multimethod?
 (defn driver->dialect
   "Map a Metabase driver keyword to a SQLGlot dialect string.
    Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
@@ -33,6 +34,7 @@
   (case driver
     nil                  nil
     :postgres            "postgres"
+    :postgres-mbql5      "postgres"
     :mysql               "mysql"
     :snowflake           "snowflake"
     :bigquery            "bigquery"
@@ -41,8 +43,11 @@
     :sqlserver           "tsql"
     :sparksql            "spark"
     :presto-jdbc         "presto"
+    :starburst           "trino"
+    :clickhouse          "clickhouse"
     :vertica             nil
     :h2                  nil
+    :h2-mbql5            nil
     ;; Default: try using the driver name as dialect
     (name driver)))
 
@@ -176,3 +181,7 @@
                           (update :tables #(when % (vec %)))
                           (update :columns #(when % (vec %))))]
     (sql-parsing/replace-names (driver->dialect driver) sql-string replacements')))
+
+(defmethod sql-tools/transpile-sql-impl :sqlglot
+  [_parser sql from-dialect to-dialect]
+  (sql-parsing/transpile-sql sql from-dialect to-dialect))

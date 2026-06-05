@@ -1,6 +1,5 @@
-import registerCypressGrep from "@cypress/grep"; // eslint-disable-line import/order
+import { register as registerCypressGrep } from "@cypress/grep";
 registerCypressGrep();
-
 import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
@@ -10,6 +9,7 @@ import "./commands";
 
 const isCI = Cypress.expose("CI");
 const isNetworkThrottlingEnabled = Cypress.expose("ENABLE_NETWORK_THROTTLING");
+const isFailFastEnabled = Cypress.expose("FAIL_FAST");
 
 // remove default html output on test failure
 configure({
@@ -123,19 +123,6 @@ if (isCI) {
     );
   });
 
-  // Fast failure notifications
-  afterEach(() => {
-    const testInfo = Cypress.mocha.getRunner().suite.ctx.currentTest;
-    const isLastRetry = testInfo.currentRetry() === testInfo.retries();
-
-    if (testInfo.state === "failed" && isLastRetry) {
-      cy.task("reportCIFailure", {
-        spec: Cypress.spec,
-        test: Cypress.currentTest,
-      });
-    }
-  });
-
   const options = {
     collectTypes: [
       "cons:log",
@@ -156,6 +143,12 @@ if (isCI) {
   // Ensure that after plugin installation is after the afterEach handling the integration.
   require("cypress-terminal-report/src/installLogsCollector")(options);
 }
+
+afterEach(function () {
+  if (isFailFastEnabled && this.currentTest.state === "failed") {
+    Cypress.runner.stop();
+  }
+});
 
 beforeEach(function () {
   const isCurrentTesOss =

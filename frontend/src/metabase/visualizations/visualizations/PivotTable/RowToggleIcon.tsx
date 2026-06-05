@@ -1,8 +1,8 @@
 import { updateIn } from "icepick";
 import _ from "underscore";
 
-import { COLLAPSED_ROWS_SETTING } from "metabase/lib/data_grid";
 import { Icon } from "metabase/ui";
+import { COLLAPSED_ROWS_SETTING } from "metabase/visualizations/lib/data_grid";
 import type {
   PivotTableCollapsedRowsSetting,
   VisualizationSettings,

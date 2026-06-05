@@ -29,10 +29,14 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv get-in]])
+   [metabase.util.match :as match]
+   [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf :refer [mapv get-in]]
+   [next.jdbc :as next.jdbc])
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -64,8 +68,24 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :workspace                              true}]
+                              :workspace                              true
+                              :table-privileges                       true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
+
+(defmethod driver/qualified-name-components :sqlserver
+  [_driver]
+  ;; SQL Server emits `db.schema.table` (3-part) when crossing databases. Single-DB
+  ;; queries are typically `schema.table`, but workspace remap rows must be keyed
+  ;; on the more general 3-part shape.
+  [:db :schema])
+
+(defmethod driver.sql/table-qualification-style :sqlserver
+  [_driver]
+  :table-qualification-style/db-schema-table)
+
+(defmethod driver.sql/db-slot-value :sqlserver
+  [_driver database]
+  (:db (:details database)))
 
 (mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db :- ::lib.schema.metadata/database]
@@ -81,6 +101,9 @@
 (defmethod driver.sql/default-schema :sqlserver
   [_]
   "dbo")
+
+(defn- quote-schema [s] (sql.u/quote-name :sqlserver :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :sqlserver :field s))
 
 (defmethod driver/prettify-native-form :sqlserver
   [_ native-form]
@@ -253,7 +276,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (driver-api/match-lite base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
+          (match/match-one base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -610,10 +633,8 @@
                           (-> %
                               (driver-api/assoc-field-options ::sql.qp/wrap-in-case true)
                               (driver-api/assoc-field-options ::sql.qp/add-cast :bit))
-
                           (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
                           (driver-api/assoc-field-options % ::sql.qp/add-cast :bit)
-
                           :else
                           %)]
     (->> (update query :fields #(mapv maybe-add-cast %))
@@ -802,8 +823,8 @@
       ;; NULL` for us.
       (let [clause (into [op field]
                          ;; we're compiling this ahead of time and throwing out the compiled value to make it easier to
-                         ;; get the real database type of the expression... maybe when we convert this to MLv2 we can
-                         ;; just use MLv2 metadata or type calculation functions instead.
+                         ;; get the real database type of the expression... maybe when we convert this to MBQL 5 we can
+                         ;; just use Lib metadata or type calculation functions instead.
                          (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
                                (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
                                  (map (fn [[_type val :as expr]]
@@ -885,7 +906,7 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (driver-api/replace-lite inner-query
+    (match/replace inner-query
       ;; remove order by and then recurse in case we need to do more transformations at another level
       (m :guard (remove-order-by? &parents m))
       (fix-order-bys (dissoc m :order-by))
@@ -1035,10 +1056,19 @@
   ;; valid database user for impersonation (see issue #60665).
   (:role (driver.conn/effective-details database)))
 
-(defmethod driver.sql/set-role-statement :sqlserver
-  [_driver role]
+(def ^{:arglists '([conn s])} memoized-quote-string-literal
+  "Call quotename(?, '''') on SQL Server to quote a string literal, and escape any embedded single quotes, for use
+  with [[sql-jdbc/set-role-statement]] below; presumably this should never change so use a bounded cache to avoid the
+  overhead of calling this on every query."
+  (memoize/bounded
+   (-> (fn [conn s]
+         (:s (next.jdbc/execute-one! conn ["SELECT quotename(?, '''') AS s;" s])))
+       (vary-meta assoc :clojure.core.memoize/args-fn (fn [[_conn s]] s)))))
+
+(defmethod sql-jdbc/set-role-statement :sqlserver
+  [_driver conn role]
   ;; REVERT to handle the case where the users role attribute has changed
-  (format "REVERT; EXECUTE AS USER = '%s';" role))
+  (format "REVERT; EXECUTE AS USER = %s;" (memoized-quote-string-literal conn role)))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sqlserver
   [_ e]
@@ -1080,24 +1110,28 @@
    nil
    (fn [^Connection conn]
      (let [^DatabaseMetaData metadata (.getMetaData conn)
-             ;; SQL Server doesn't have a special escape method, but we should still handle nil
+           ;; SQL Server doesn't have a special escape method, but we should still handle nil
            schema-name (some->> schema (driver/escape-entity-name-for-metadata driver))
            table-name (some->> name (driver/escape-entity-name-for-metadata driver))
-             ;; SQL Server uses the database name from the connection, not as a parameter
+           ;; SQL Server uses the database name from the connection, not as a parameter
            db-name nil]
        (with-open [rs (.getTables metadata db-name schema-name table-name (into-array String ["TABLE"]))]
          (.next rs))))))
 
 (defmethod driver/create-schema-if-needed! :sqlserver
   [driver conn-spec schema]
-  (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
+  (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s;');"
+                      (sql.u/escape-sql schema :ansi)
+                      (quote-schema schema))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/rename-table! :sqlserver
   [_driver db-id old-table-name new-table-name]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
-      (let [sql (format "EXEC sp_rename '%s', '%s';" (name old-table-name) (name new-table-name))]
+      (let [sql (format "EXEC sp_rename '%s', '%s';"
+                        (sql.u/escape-sql (name old-table-name) :ansi)
+                        (sql.u/escape-sql (name new-table-name) :ansi))]
         (.execute stmt sql)))))
 
 (defmethod driver/table-name-length-limit :sqlserver
@@ -1122,62 +1156,112 @@
         username         (driver.u/workspace-isolation-user-name workspace)
         password         (driver.u/random-workspace-password)
         escaped-password (sql.u/escape-sql password :ansi)
+        escaped-username (sql.u/escape-sql username :ansi)
+        escaped-schema   (sql.u/escape-sql schema-name :ansi)
+        quoted-user      (quote-field username)
+        quoted-schema    (quote-schema schema-name)
         conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; SQL Server: create login (server level), then user (database level), then schema
-    (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
-                              "CREATE LOGIN [%s] WITH PASSWORD = N'%s'")
-                         username username escaped-password)
-                 (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER [%s] FOR LOGIN [%s]"
-                         username username username)
-                 (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s]')"
-                         schema-name schema-name)
-                 ;; CONTROL ON SCHEMA gives ALTER (needed for creating objects in schema)
-                 (format "GRANT CONTROL ON SCHEMA::[%s] TO [%s]" schema-name username)
-                 ;; CREATE TABLE at database level is also required in SQL Server
-                 (format "GRANT CREATE TABLE TO [%s]" username)]]
-      (jdbc/execute! conn-spec [sql]))
+    (try
+      (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
+                                "CREATE LOGIN %s WITH PASSWORD = N'%s'")
+                           escaped-username quoted-user escaped-password)
+                   (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER %s FOR LOGIN %s"
+                           escaped-username quoted-user quoted-user)
+                   (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s')"
+                           escaped-schema quoted-schema)
+                   ;; CONTROL ON SCHEMA gives ALTER (needed for creating objects in schema)
+                   (format "GRANT CONTROL ON SCHEMA::%s TO %s" quoted-schema quoted-user)
+                   ;; CREATE TABLE at database level is also required in SQL Server
+                   (format "GRANT CREATE TABLE TO %s" quoted-user)]]
+        (jdbc/execute! conn-spec [sql]))
+      (catch Throwable t
+        (throw (driver.u/scrub-exceptions t [password escaped-password]))))
     {:schema           schema-name
      :database_details {:user     username
                         :password password}}))
 
 (defmethod driver/destroy-workspace-isolation! :sqlserver
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)
-        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        username         (driver.u/workspace-isolation-user-name workspace)
+        escaped-schema   (sql.u/escape-sql schema-name :ansi)
+        escaped-username (sql.u/escape-sql username :ansi)
+        quoted-schema    (quote-schema schema-name)
+        quoted-user      (quote-field username)
+        conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (doseq [sql [(format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
-                              "SELECT @sql += 'DROP TABLE [%s].[' + name + ']; ' "
+                              "SELECT @sql += 'DROP TABLE %s.[' + name + ']; ' "
                               "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
                               "EXEC sp_executesql @sql")
-                         schema-name schema-name)
-                 (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA [%s]"
-                         schema-name schema-name)
-                 (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER [%s]"
-                         username username)
+                         quoted-schema escaped-schema)
+                 (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
+                         escaped-schema quoted-schema)
+                 (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
+                         escaped-username quoted-user)
                  ;; Kill all sessions using this login before dropping it
                  (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
                               "SELECT @sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
                               "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
                               "EXEC sp_executesql @sql")
-                         username)
-                 (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN [%s]"
-                         username username)]]
+                         escaped-username)
+                 (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
+                         escaped-username quoted-user)]]
       (jdbc/execute! conn-spec [sql]))))
 
 (defmethod driver/grant-workspace-read-access! :sqlserver
-  [_driver database workspace tables]
+  [_driver database workspace schemas]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-        username  (-> workspace :database_details :user)]
+        username  (-> workspace :database_details :user)
+        db-name   (:db (:details database))]
     (when-not username
-      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+      (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no read user — initialization may have failed. Re-run workspace initialization and retry.")
                       {:workspace-id (:id workspace) :step :grant})))
-    ;; Grant SELECT on each specific table only - no schema-level grants
-    (let [qu (sql.u/quote-name :sqlserver :field username)]
-      (doseq [table tables]
-        (jdbc/execute! conn-spec [(format "GRANT SELECT ON %s.%s TO %s"
-                                          (sql.u/quote-name :sqlserver :schema (:schema table))
-                                          (sql.u/quote-name :sqlserver :table (:name table))
-                                          qu)])))))
+    (when (str/blank? db-name)
+      (throw (ex-info (tru "Cannot grant workspace read access. SQL Server connection details must include a ''db'' (database name). Set it in the database connection and retry.")
+                      {:database-id (:id database) :step :grant})))
+    ;; SQL Server connection is bound to one DB (`:db` in details). Per-schema
+    ;; grant: SELECT on the schema covers existing + future objects within it.
+    (let [quoted-user (quote-field username)]
+      (doseq [schema schemas]
+        (when (str/blank? schema)
+          (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
+                          {:database-id (:id database) :step :grant})))
+        (jdbc/execute! conn-spec
+                       [(format "GRANT SELECT ON SCHEMA::%s TO %s"
+                                (quote-schema schema)
+                                quoted-user)])))))
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
-  "llm/prompts/dialects/sqlserver.md")
+  "metabot/prompts/dialects/sqlserver.md")
+
+(defmethod driver/validate-impersonated-query :sqlserver
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :sqlserver
+  [_driver conn-spec & {:as _options}]
+  ;; role is NULL because HAS_PERMS_BY_NAME checks the current user's effective
+  ;; permissions directly rather than querying role-based grants
+  (->> (jdbc/query
+        conn-spec
+        (str/join
+         "\n"
+         ["SELECT"
+          "  NULL AS [role],"
+          "  s.name AS [schema],"
+          "  o.name AS [table],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'SELECT') AS [select],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'UPDATE') AS [update],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'INSERT') AS [insert],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'DELETE') AS [delete]"
+          "FROM sys.objects o"
+          "JOIN sys.schemas s ON o.schema_id = s.schema_id"
+          ;; U = user table, V = view
+          "WHERE o.type IN ('U', 'V')"]))
+       (map (fn [row]
+              (-> row
+                  (update :select pos?)
+                  (update :update pos?)
+                  (update :insert pos?)
+                  (update :delete pos?))))))

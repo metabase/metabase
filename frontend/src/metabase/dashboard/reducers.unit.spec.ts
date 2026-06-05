@@ -1,11 +1,11 @@
+import { INITIALIZE } from "metabase/redux/dashboard";
+import { createMockStoreDashboard } from "metabase/redux/store/mocks";
 import { createMockDashboard } from "metabase-types/api/mocks";
-import { createMockStoreDashboard } from "metabase-types/store/mocks";
 
 import {
   ADD_DASHCARD_IDS_TO_LOADING_QUEUE,
   CLOSE_SIDEBAR,
   FETCH_DASHBOARD_CARD_DATA,
-  INITIALIZE,
   REMOVE_PARAMETER,
   SET_DASHBOARD_ATTRIBUTES,
   SET_EDITING_DASHBOARD,
@@ -369,6 +369,61 @@ describe("dashboard reducers", () => {
         },
       );
       expect(result.loadingDashCards.loadingIds).toEqual([3]);
+    });
+
+    it("should not overwrite existing dashcardData with null on cancellation (#70534)", () => {
+      const existingResult = { data: { rows: [[1, 2]] } };
+
+      // First, populate dashcardData with a valid result
+      const stateWithData = reducer(
+        {
+          ...initState,
+          loadingDashCards: {
+            loadingIds: [3],
+            loadingStatus: "running",
+            startTime: 100,
+            endTime: null,
+          },
+        },
+        {
+          type: fetchCardDataAction.fulfilled.type,
+          payload: {
+            dashcard_id: 3,
+            card_id: 1,
+            result: existingResult,
+            currentTime: 200,
+          },
+        },
+      );
+      expect(stateWithData.dashcardData).toEqual({ 3: { 1: existingResult } });
+
+      // Then dispatch a fulfilled action with null result (simulating a
+      // cancelled request). The existing data should be preserved.
+      const stateAfterNull = reducer(stateWithData, {
+        type: fetchCardDataAction.fulfilled.type,
+        payload: {
+          dashcard_id: 3,
+          card_id: 1,
+          result: null,
+          currentTime: 300,
+        },
+      });
+      expect(stateAfterNull.dashcardData).toEqual({
+        3: { 1: existingResult },
+      });
+    });
+
+    it("should store non-null results in dashcardData normally", () => {
+      const result = reducer(initState, {
+        type: fetchCardDataAction.fulfilled.type,
+        payload: {
+          dashcard_id: 5,
+          card_id: 2,
+          result: { data: [] },
+          currentTime: 100,
+        },
+      });
+      expect(result.dashcardData).toEqual({ 5: { 2: { data: [] } } });
     });
   });
 });

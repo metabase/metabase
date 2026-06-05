@@ -19,7 +19,6 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-1-id :id} {:db_id db-id}
                    :model/Table    {table-2-id :id} {:db_id db-id}]
-
       (testing "updating data_layer syncs to visibility_type for all tables"
         ;; Update two tables to internal, which should sync to nil visibility_type
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
@@ -29,7 +28,6 @@
         (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
         (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
         (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id))))
-
       (testing "updating data_layer to hidden syncs to hidden visibility_type"
         ;; Update one table back to hidden, which should sync to :hidden
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
@@ -37,7 +35,6 @@
                                :data_layer "hidden"})
         (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
         (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
-
       (testing "cannot update both visibility_type and data_layer at once"
         (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
                               {:table_ids        [table-1-id]
@@ -96,10 +93,10 @@
                      :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-        (with-redefs [sync/sync-table! (fn [table]
-                                         (swap! tables conj table)
-                                         (.countDown latch)
-                                         nil)]
+        (mt/with-dynamic-fn-redefs [sync/sync-table! (fn [table]
+                                                       (swap! tables conj table)
+                                                       (.countDown latch)
+                                                       nil)]
           (mt/user-http-request :crowberto :post 204 "data-studio/table/sync-schema" {:database_ids [d1],
                                                                                       :schema_ids   [(format "%d:FOO" d2)]
                                                                                       :table_ids    [t4]})
@@ -124,10 +121,10 @@
                      :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-        (with-redefs [sync/update-field-values-for-table! (fn [table]
-                                                            (swap! tables conj table)
-                                                            (.countDown latch)
-                                                            nil)]
+        (mt/with-dynamic-fn-redefs [sync/update-field-values-for-table! (fn [table]
+                                                                          (swap! tables conj table)
+                                                                          (.countDown latch)
+                                                                          nil)]
           (mt/user-http-request :crowberto :post 204 "data-studio/table/rescan-values" {:database_ids [d1],
                                                                                         :schema_ids   [(format "%d:FOO" d2)]
                                                                                         :table_ids    [t4]})
@@ -140,48 +137,49 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 "data-studio/table/discard-values" {:database_ids [(mt/id)]})))))
 
-(deftest ^:parallel bulk-discard-values-test
-  (testing "POST /api/data-studio/table/discard-values"
-    (mt/with-temp
-      [:model/Database    {d1 :id} {:engine "h2", :details (:details (mt/db))}
-       :model/Database    {d2 :id} {:engine "h2", :details (:details (mt/db))}
-       :model/Table       {t1 :id} {:db_id d1, :schema "PUBLIC"}
-       :model/Table       {t2 :id} {:db_id d1, :schema "PUBLIC"}
-       :model/Table       {t3 :id} {:db_id d2, :schema "PUBLIC"}
-       :model/Table       {t4 :id} {:db_id d2, :schema "PUBLIC"}
-       :model/Table       {t5 :id} {:db_id d2, :schema "FOO"}
-       :model/Field       {f1 :id} {:table_id t1}
-       :model/FieldValues {v1 :id} {:field_id f1, :values ["T1"]}
-       :model/Field       {f2 :id} {:table_id t2}
-       :model/FieldValues {v2 :id} {:field_id f2, :values ["T2"]}
-       :model/Field       {f3 :id} {:table_id t3}
-       :model/FieldValues {v3 :id} {:field_id f3, :values ["T3"]}
-       :model/Field       {f4 :id} {:table_id t4}
-       :model/FieldValues {v4 :id} {:field_id f4, :values ["T4-1"]}
-       :model/Field       {f5 :id} {:table_id t4}
-       :model/FieldValues {v5 :id} {:field_id f5, :values ["T4-2"]}
-       :model/Field       {f6 :id} {:table_id t5}
-       :model/FieldValues {v6 :id} {:field_id f6, :values ["T5-1"]}
-       :model/Field       {f7 :id} {:table_id t5}
-       :model/FieldValues {v7 :id} {:field_id f7, :values ["T5-2"]}]
-      (let [url "data-studio/table/discard-values"
-            remaining-field-values-q {:select   [:fv.id]
-                                      :from     [[(t2/table-name :model/FieldValues) :fv]
-                                                 [(t2/table-name :model/Field) :f]]
-                                      :where    [:and [:= :fv.field_id :f.id]
-                                                 [:in :f.table_id [t1 t2 t3 t4 t5]]]
-                                      :order-by [[:fv.id :asc]]}
-            get-field-values         #(mapv :id (t2/query remaining-field-values-q))]
-        (testing "Non-admin toucans should not be allowed to discard values"
-          (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post 403 url {:table_ids [t1]})))
-          (testing "FieldValues should still exist"
-            (is (= [v1 v2 v3 v4 v5 v6 v7] (get-field-values)))))
-        (testing "Admins should be able to successfully delete them"
-          (is (nil? (mt/user-http-request :crowberto :post 204 url {:database_ids [d1],
-                                                                    :schema_ids   [(format "%d:FOO" d2)]
-                                                                    :table_ids    [t4]})))
-          (testing "Selected FieldValues should be gone"
-            (is (= [v3] (get-field-values)))))))))
+(deftest bulk-discard-values-test
+  (mt/with-empty-h2-app-db!
+    (testing "POST /api/data-studio/table/discard-values"
+      (mt/with-temp
+        [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+         :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+         :model/Table {t1 :id} {:db_id d1, :schema "PUBLIC"}
+         :model/Table {t2 :id} {:db_id d1, :schema "PUBLIC"}
+         :model/Table {t3 :id} {:db_id d2, :schema "PUBLIC"}
+         :model/Table {t4 :id} {:db_id d2, :schema "PUBLIC"}
+         :model/Table {t5 :id} {:db_id d2, :schema "FOO"}
+         :model/Field {f1 :id} {:table_id t1}
+         :model/FieldValues {v1 :id} {:field_id f1, :values ["T1"]}
+         :model/Field {f2 :id} {:table_id t2}
+         :model/FieldValues {v2 :id} {:field_id f2, :values ["T2"]}
+         :model/Field {f3 :id} {:table_id t3}
+         :model/FieldValues {v3 :id} {:field_id f3, :values ["T3"]}
+         :model/Field {f4 :id} {:table_id t4}
+         :model/FieldValues {v4 :id} {:field_id f4, :values ["T4-1"]}
+         :model/Field {f5 :id} {:table_id t4}
+         :model/FieldValues {v5 :id} {:field_id f5, :values ["T4-2"]}
+         :model/Field {f6 :id} {:table_id t5}
+         :model/FieldValues {v6 :id} {:field_id f6, :values ["T5-1"]}
+         :model/Field {f7 :id} {:table_id t5}
+         :model/FieldValues {v7 :id} {:field_id f7, :values ["T5-2"]}]
+        (let [url "data-studio/table/discard-values"
+              remaining-field-values-q {:select   [:fv.id]
+                                        :from     [[(t2/table-name :model/FieldValues) :fv]
+                                                   [(t2/table-name :model/Field) :f]]
+                                        :where    [:and [:= :fv.field_id :f.id]
+                                                   [:in :f.table_id [t1 t2 t3 t4 t5]]]
+                                        :order-by [[:fv.id :asc]]}
+              get-field-values #(mapv :id (t2/query remaining-field-values-q))]
+          (testing "Non-admin toucans should not be allowed to discard values"
+            (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post 403 url {:table_ids [t1]})))
+            (testing "FieldValues should still exist"
+              (is (= [v1 v2 v3 v4 v5 v6 v7] (get-field-values)))))
+          (testing "Admins should be able to successfully delete them"
+            (is (nil? (mt/user-http-request :crowberto :post 204 url {:database_ids [d1],
+                                                                      :schema_ids   [(format "%d:FOO" d2)]
+                                                                      :table_ids    [t4]})))
+            (testing "Selected FieldValues should be gone"
+              (is (= [v3] (get-field-values))))))))))
 
 (deftest ^:parallel table-selectors->filter-test
   (testing "table-selectors->filter function generates correct WHERE clauses"
@@ -195,35 +193,28 @@
                      :model/Table    {table-3 :id}   {:db_id db-2, :schema "schema-a"}
                      :model/Table    {table-4 :id}   {:db_id db-2, :schema "schema-b"}
                      :model/Table    {table-5 :id}   {:db_id db-2}]
-
         (testing "filter by database_ids"
           (is (= #{table-1 table-2}
                  (selectors->table-ids {:database_ids [db-1]}))))
-
         (testing "filter by table_ids"
           (is (= #{table-3 table-4}
                  (selectors->table-ids {:table_ids [table-3 table-4]}))))
-
         (testing "filter by schema_ids"
           (is (= #{table-2}
                  (selectors->table-ids {:schema_ids [(format "%d:schema-a" db-1)]}))))
-
         (testing "filter by multiple schema_ids"
           (is (= #{table-3 table-4}
                  (selectors->table-ids {:schema_ids [(format "%d:schema-a" db-2)
                                                      (format "%d:schema-b" db-2)]}))))
-
         (testing "combine database_ids and table_ids (OR logic)"
           (is (= #{table-1 table-2 table-3}
                  (selectors->table-ids {:database_ids [db-1]
                                         :table_ids    [table-3]}))))
-
         (testing "combine all selectors (OR logic)"
           (is (= #{table-1 table-2 table-4 table-5}
                  (selectors->table-ids {:database_ids [db-1]
                                         :table_ids    [table-5]
                                         :schema_ids   [(format "%d:schema-b" db-2)]}))))
-
         (testing "empty selectors returns no tables"
           (is (= nil (selectors->table-ids {}))))))))
 
@@ -243,21 +234,18 @@
                                   {:table_ids  [hidden-1 hidden-2]
                                    :data_layer "final"})
             (is (= #{hidden-1 hidden-2} @synced-ids)))
-
           (testing "Changing from hidden to internal triggers sync"
             (reset! synced-ids #{})
             (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                                   {:table_ids  [hidden-3]
                                    :data_layer "internal"})
             (is (= #{hidden-3} @synced-ids)))
-
           (testing "Not changing from hidden does not trigger sync"
             (reset! synced-ids #{})
             (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                                   {:table_ids  [internal-1]
                                    :data_layer "final"})
             (is (= #{} @synced-ids)))
-
           (testing "Changing to hidden does not trigger sync"
             (reset! synced-ids #{})
             (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
@@ -275,13 +263,11 @@
                    :model/Table    {classes :id}    {:db_id jvm}
                    :model/Table    {gc :id}         {:db_id jvm, :schema "jre"}
                    :model/Table    {jit :id}        {:db_id jvm, :schema "jre"}]
-
       (testing "only admin can edit"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "data-studio/table/edit"
                                      {:database_ids [clojure jvm]
                                       :data_layer   "hidden"}))))
-
       (testing "simple happy path updating with db ids"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:database_ids   [clojure jvm]
@@ -291,7 +277,6 @@
         (is (= #{:hidden} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
         (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table :db_id [:in [clojure jvm]])))
         (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table :db_id [:in [clojure jvm]]))))
-
       (testing "updating with all selectors"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:database_ids  [clojure]
@@ -305,14 +290,11 @@
                 gc         :internal
                 jit        :internal}
                (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))
-
       (testing "can update owner_email"
         (is (= #{nil} (t2/select-fn-set :owner_email :model/Table :db_id [:in [clojure jvm]])))
-
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:database_ids [clojure]
                                :owner_email  "clojure-owner@example.com"})
-
         (is (= {vars       "clojure-owner@example.com"
                 namespaces "clojure-owner@example.com"
                 beans      nil
@@ -320,14 +302,11 @@
                 gc         nil
                 jit        nil}
                (t2/select-pk->fn :owner_email :model/Table :db_id [:in [clojure jvm]]))))
-
       (testing "can update owner_user_id"
         (is (= #{nil} (t2/select-fn-set :owner_user_id :model/Table :db_id [:in [clojure jvm]])))
-
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids      [beans classes]
                                :owner_user_id  (mt/user->id :rasta)})
-
         (is (= {vars       nil
                 namespaces nil
                 beans      (mt/user->id :rasta)
@@ -409,7 +388,6 @@
                                                   :display_name "Products"
                                                   :schema       "PUBLIC"}]}
                   response))))
-
       (testing "if products is already published, it appears in published_downstream when selecting it"
         (t2/update! :model/Table products-id {:is_published true})
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
@@ -425,7 +403,6 @@
           ;; when we want to unpublish products, orders would need to be unpublished too
           ;; but orders is already unpublished, so published_downstream_tables should be empty
           (is (= [] (:published_downstream_tables response)))))
-
       (testing "when orders is published and we select products, orders appears in published_downstream"
         (t2/update! :model/Table orders-id {:is_published true})
         (t2/update! :model/Table products-id {:is_published true})

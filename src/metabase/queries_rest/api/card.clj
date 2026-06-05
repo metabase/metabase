@@ -24,6 +24,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
@@ -214,7 +215,17 @@
                     :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details]
+                    :param_fields
                     :is_remote_synced)
+        (update :param_fields (fn [param-fields]
+                                (let [viewable? (memoize (fn [table-id]
+                                                           (perms/user-has-permission-for-table?
+                                                            api/*current-user-id*
+                                                            :perms/view-data :unrestricted
+                                                            (:database_id card) table-id)))]
+                                  (update-vals param-fields
+                                               (fn [fields]
+                                                 (filterv #(viewable? (:table_id %)) fields))))))
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (queries/model? card) (t2/hydrate :persisted
@@ -397,9 +408,9 @@
         compatible-cards (->> matching-cards
                               (filter mi/can-read?)
                               (filter #(or
-                                         ;; columns name on native query are not match with the column name in viz-settings. why??
-                                         ;; so we can't use series-are-compatible? to filter out incompatible native cards.
-                                         ;; => we assume all native queries are compatible and FE will figure it out later
+                                        ;; columns name on native query are not match with the column name in viz-settings. why??
+                                        ;; so we can't use series-are-compatible? to filter out incompatible native cards.
+                                        ;; => we assume all native queries are compatible and FE will figure it out later
                                         (= (:query_type %) :native)
                                         (series-are-compatible? card %))))]
     (if page-size
@@ -519,7 +530,7 @@
    [:name                   ms/NonBlankString]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:dataset_query          ms/Map]
-                            ;; TODO: Make entity_id a NanoID regex schema?
+   ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
@@ -531,7 +542,19 @@
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:size                   {:optional true} [:maybe [:map
+                                                      [:size_x ms/PositiveInt]
+                                                      [:size_y ms/PositiveInt]]]]])
+
+(defn- normalize-dataset-query-or-400
+  "Strictly normalize an incoming `:dataset_query` from an API request, converting any normalization
+  failure into a 400 Bad Request."
+  [query]
+  (try
+    (lib-be/normalize-query nil query {:strict? true})
+    (catch Throwable e
+      (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -543,8 +566,10 @@
    _query-params
    {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
   (let [card (-> card
-                 (update :dataset_query lib-be/normalize-query)
+                 (update :dataset_query normalize-dataset-query-or-400)
                  (cond-> (some? collection-id)
+                   ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
+                   ;; from being written into the DB (#74615).
                    (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
@@ -557,9 +582,15 @@
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
-    (-> (queries/create-card! card @api/*current-user*)
-        hydrate-card-details
-        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
+    (let [created-card (queries/create-card! card @api/*current-user*)]
+      (when (and (some? (:result_metadata card))
+                 (= (name (:type created-card)) "question"))
+        (events/publish-event! :event/card-create-with-result-metadata
+                               {:card-id (:id created-card)
+                                :user-id api/*current-user-id*}))
+      (-> created-card
+          hydrate-card-details
+          (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -651,7 +682,9 @@
   [id :- ::lib.schema.id/card
    {metadata :result_metadata, card-type :type, :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
-  (let [card-updates (m/update-existing card-updates :dataset_query lib-be/normalize-query)
+  ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
+  ;; from being written into the DB (#74615).
+  (let [card-updates (m/update-existing card-updates :dataset_query normalize-dataset-query-or-400)
         query        (:dataset_query card-updates)]
     (check-if-card-can-be-saved query card-type)
     (when-some [query (:dataset_query card-updates)]
@@ -782,7 +815,6 @@
                                            :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
-
     ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
     ;; to be lazy and we're just going to discard the results
     (doall
@@ -819,7 +851,6 @@
       ;; ...and check that we have write permissions for the old collections if applicable
       (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
         (api/write-check :model/Collection old-collection-id))
-
       ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
@@ -829,7 +860,6 @@
         ;; are gone and update the position in the new collection
         (when-let [cards-with-position (seq (filter :collection_position cards))]
           (update-collection-positions! new-collection-id-or-nil cards-with-position))
-
         ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
@@ -1012,7 +1042,8 @@
   [{:keys [card-id param-key]} :- [:map
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
-  (queries/card-param-values (api/read-check :model/Card card-id) param-key))
+  (binding [qp.perms/*param-values-query* true]
+    (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1029,7 +1060,8 @@
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
                                          [:query     ms/NonBlankString]]]
-  (queries/card-param-values (api/read-check :model/Card card-id) param-key query))
+  (binding [qp.perms/*param-values-query* true]
+    (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1044,5 +1076,6 @@
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]
    {:keys [value]}        :- [:map [:value :string]]]
-  (-> (api/read-check :model/Card id)
-      (queries/card-param-remapped-value param-key (codec/url-decode value))))
+  (binding [qp.perms/*param-values-query* true]
+    (-> (api/read-check :model/Card id)
+        (queries/card-param-remapped-value param-key (codec/url-decode value)))))

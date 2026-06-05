@@ -5,9 +5,9 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -24,7 +24,7 @@ export interface SetupOpts {
   isEmbeddingSdk?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
-export const setup = ({
+export const setup = async ({
   step = createMockNotebookStep(),
   readOnly = false,
   isEmbeddingSdk = false,
@@ -70,6 +70,8 @@ export const setup = ({
       />
     </NotebookProvider>,
   );
+
+  await waitForLoaderToBeRemoved();
 
   const getNextQuery = (): Lib.Query => {
     const [lastCall] = updateQuery.mock.calls.slice(-1);

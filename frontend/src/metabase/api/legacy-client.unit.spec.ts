@@ -1,0 +1,414 @@
+import fetchMock from "fetch-mock";
+
+import { LegacyApi } from "./legacy-client";
+
+type OnBeforeRequestHandlerData = {
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  url: string;
+  options: {
+    headers?: Record<string, string>;
+    hasBody: boolean;
+  } & Record<string, unknown>;
+};
+
+describe("api", () => {
+  describe("apiRequestManipulationMiddleware", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    it("should return the original data when there are no handlers", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/test",
+        options: { hasBody: false, json: true },
+        data: {},
+      };
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result).toEqual(inputData);
+    });
+
+    it("should return the original data when handler returns void", async () => {
+      const inputData = {
+        method: "POST" as const,
+        url: "/api/test",
+        options: { hasBody: true, json: true, headers: { "X-Test": "value" } },
+        data: {},
+      };
+
+      // Mock a handler that returns void
+      const voidHandler = jest.fn().mockResolvedValue(undefined);
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          await voidHandler(data);
+          return data;
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result).toEqual(inputData);
+      expect(voidHandler).toHaveBeenCalledWith(inputData);
+    });
+
+    it("should update only the url when handler returns partial modification", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/original",
+        options: { hasBody: false, json: true },
+        data: {},
+      };
+
+      const expectedUrl = "/api/modified";
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          // Simulate handler that only modifies URL
+          const typedData = data as OnBeforeRequestHandlerData;
+          return {
+            method: typedData.method,
+            url: expectedUrl,
+            options: typedData.options,
+          };
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result).toEqual({
+        method: inputData.method,
+        url: expectedUrl,
+        options: inputData.options,
+      });
+    });
+
+    it("should update method, url, and options when handler returns full modification", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/original",
+        options: { hasBody: false, json: true },
+        data: {},
+      };
+
+      const modifications = {
+        method: "POST" as const,
+        url: "/api/modified",
+        options: { hasBody: true, json: false, custom: "value" },
+      };
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async () => modifications);
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result).toEqual(modifications);
+    });
+
+    it("should merge options properly when handler returns partial options", async () => {
+      const inputData = {
+        method: "POST" as const,
+        url: "/api/test",
+        options: {
+          hasBody: true,
+          json: true,
+          headers: { "X-Original": "value" },
+          retry: true,
+        },
+        data: {},
+      };
+
+      const newHeaders = { "X-Modified": "new-value" };
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          const typedData = data as OnBeforeRequestHandlerData;
+          return {
+            method: typedData.method,
+            url: typedData.url,
+            options: {
+              ...typedData.options,
+              headers: { ...typedData.options.headers, ...newHeaders },
+            },
+          };
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result.options.headers).toEqual({
+        "X-Original": "value",
+        "X-Modified": "new-value",
+      });
+      expect(result.options.hasBody).toBe(true);
+      expect(result.options.json).toBe(true);
+      expect(result.options.retry).toBe(true);
+    });
+
+    it("should execute multiple handlers in order", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/start",
+        options: { hasBody: false, counter: 0 },
+        data: {},
+      };
+
+      const executionOrder: number[] = [];
+
+      const handler1 = jest.fn(
+        async (
+          data: OnBeforeRequestHandlerData & { options: { counter: number } },
+        ) => {
+          executionOrder.push(1);
+          return {
+            ...data,
+            url: data.url + "/step1",
+            options: { ...data.options, counter: data.options.counter + 1 },
+          };
+        },
+      );
+
+      const handler2 = jest.fn(
+        async (
+          data: OnBeforeRequestHandlerData & { options: { counter: number } },
+        ) => {
+          executionOrder.push(2);
+          return {
+            ...data,
+            url: data.url + "/step2",
+            options: { ...data.options, counter: data.options.counter + 10 },
+          };
+        },
+      );
+
+      const handler3 = jest.fn(
+        async (
+          data: OnBeforeRequestHandlerData & { options: { counter: number } },
+        ) => {
+          executionOrder.push(3);
+          return {
+            ...data,
+            url: data.url + "/step3",
+            options: { ...data.options, counter: data.options.counter + 100 },
+          };
+        },
+      );
+
+      // Mock the middleware to use our handlers
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          let currentData = data as OnBeforeRequestHandlerData & {
+            options: { counter: number };
+          };
+          for (const handler of [handler1, handler2, handler3]) {
+            const result = await handler(currentData);
+            if (result) {
+              currentData = result;
+            }
+          }
+          return currentData;
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(executionOrder).toEqual([1, 2, 3]);
+      expect(result.url).toBe("/api/start/step1/step2/step3");
+      expect(result.options.counter).toBe(111); // 0 + 1 + 10 + 100
+      expect(handler1).toHaveBeenCalledWith(
+        expect.objectContaining({ url: "/api/start" }),
+      );
+      expect(handler2).toHaveBeenCalledWith(
+        expect.objectContaining({ url: "/api/start/step1" }),
+      );
+      expect(handler3).toHaveBeenCalledWith(
+        expect.objectContaining({ url: "/api/start/step1/step2" }),
+      );
+    });
+
+    it("should handle async handlers correctly", async () => {
+      const inputData = {
+        method: "POST" as const,
+        url: "/api/async",
+        options: { hasBody: true, json: true },
+        data: {},
+      };
+
+      const asyncHandler = jest.fn(async (data: OnBeforeRequestHandlerData) => {
+        // Simulate async operation
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return {
+          ...data,
+          url: "/api/async-modified",
+        };
+      });
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          return await asyncHandler(data as OnBeforeRequestHandlerData);
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(asyncHandler).toHaveBeenCalled();
+      expect(result.url).toBe("/api/async-modified");
+    });
+
+    it("should handle handler that only returns options", async () => {
+      const inputData = {
+        method: "GET" as const,
+        url: "/api/test",
+        options: { hasBody: false },
+        data: {},
+      };
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          const typedData = data as OnBeforeRequestHandlerData;
+          return {
+            method: typedData.method,
+            url: typedData.url,
+            options: { ...typedData.options, newOption: "added" },
+          };
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result.method).toBe("GET");
+      expect(result.url).toBe("/api/test");
+      expect(result.options).toEqual({ hasBody: false, newOption: "added" });
+    });
+
+    it("should preserve all original options when handler does not modify them", async () => {
+      const complexOptions = {
+        hasBody: true,
+        json: true,
+        headers: { "X-Custom": "header" },
+        retry: true,
+        retryCount: 5,
+        noEvent: false,
+        rawResponse: true,
+      };
+
+      const inputData = {
+        method: "POST" as const,
+        url: "/api/complex",
+        options: complexOptions,
+        data: {},
+      };
+
+      jest
+        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
+        .mockImplementation(async (data) => {
+          const typedData = data as OnBeforeRequestHandlerData;
+          return {
+            ...typedData,
+            url: "/api/modified-url",
+          };
+        });
+
+      const result =
+        await apiInstance.apiRequestManipulationMiddleware(inputData);
+
+      expect(result.url).toBe("/api/modified-url");
+      expect(result.options).toEqual(complexOptions);
+      expect(result.options.rawResponse).toBe(true);
+    });
+  });
+
+  // In test environments (`isTest`) the legacy client routes every request
+  // through `_makeRequestWithFetch`, so these specs cover the fetch path. The
+  // XHR path's empty-body branch mirrors the same `status === 204` check and is
+  // exercised end-to-end by the live app; co-locating both transports' unit
+  // coverage would require a dedicated XHR mock which the spec doesn't
+  // currently set up.
+  describe("response body parsing", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    it("resolves an empty 204 body as null (not the empty string)", async () => {
+      fetchMock.get("path:/api/empty", { status: 204, body: "" });
+
+      const result = await apiInstance.GET("/api/empty")({});
+
+      expect(result).toBeNull();
+    });
+
+    it("leaves an empty non-204 body as the empty string", async () => {
+      // Only 204 No Content is normalized to null. An empty-bodied 200 keeps
+      // its historical empty-string value so callers that index into a body
+      // (e.g. `result.id`) don't begin dereferencing null.
+      fetchMock.get("path:/api/also-empty", { status: 200, body: "" });
+
+      const result = await apiInstance.GET("/api/also-empty")({});
+
+      expect(result).toBe("");
+    });
+
+    it("parses a non-empty JSON body to its decoded value", async () => {
+      fetchMock.get("path:/api/data", {
+        status: 200,
+        body: { hello: "world" },
+      });
+
+      const result = await apiInstance.GET("/api/data")({});
+
+      expect(result).toEqual({ hello: "world" });
+    });
+  });
+
+  describe("form-encoded requests", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    // Regression: a `URLSearchParams` body (e.g. a dataset download) must be
+    // passed through verbatim — not JSON-stringified — and must drop our
+    // default `application/json` Content-Type so the browser can set
+    // `application/x-www-form-urlencoded`. Keeping the JSON header made the
+    // backend reject the request with a 400.
+    //
+    // The Content-Type strip is gated on `body instanceof URLSearchParams`, so
+    // this assertion doubles as proof the body reached `fetch` as a real
+    // `URLSearchParams` rather than a JSON string.
+    it("drops the application/json Content-Type for a URLSearchParams body", async () => {
+      fetchMock.post("path:/api/download", { status: 200, body: "" });
+
+      const body = new URLSearchParams();
+      body.append("query", JSON.stringify({ foo: "bar" }));
+
+      await apiInstance.POST("/api/download")(body, { rawResponse: true });
+
+      const call = fetchMock.callHistory.lastCall("path:/api/download");
+      const headers = new Headers(call?.options?.headers);
+      expect(headers.get("Content-Type")).not.toContain("application/json");
+    });
+  });
+});

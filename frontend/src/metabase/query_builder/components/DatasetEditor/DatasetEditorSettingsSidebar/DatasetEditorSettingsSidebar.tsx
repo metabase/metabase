@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
 import {
   getIsListViewConfigurationShown,
   getTransformedSeries,
 } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Button, Group, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
@@ -54,7 +54,7 @@ export const DatasetEditorSettingsSidebar = ({
       <Stack gap="sm">
         <Text size="md">{t`What should the default view of this data be?`}</Text>
         <Stack gap="sm">
-          <SegmentedControl
+          <SegmentedControl<CardDisplayType>
             data={[
               { value: "table", label: t`Table` },
               { value: "list", label: t`List` },

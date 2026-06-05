@@ -5,9 +5,9 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { RemoteSyncEntity } from "metabase-types/api";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 export const setupCollectionEndpoints = () => {
   fetchMock.get("path:/api/collection/tree", []);

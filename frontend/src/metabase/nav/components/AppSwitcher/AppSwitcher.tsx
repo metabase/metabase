@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
 import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
@@ -14,11 +13,10 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
-import type { ColorName } from "metabase/lib/colors/types";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
+import { getAdminPaths } from "metabase/selectors/admin";
 import { getUser } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
@@ -28,11 +26,13 @@ import {
   Divider,
   Group,
   Icon,
-  type IconName,
   Menu,
   Stack,
   Text,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import * as Urls from "metabase/urls";
+import type { IconName } from "metabase-types/api";
 
 import { AboutModal } from "../AboutModal/AboutModal";
 

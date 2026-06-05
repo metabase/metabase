@@ -174,8 +174,10 @@ describe(
         });
 
         cy.findByTestId("table-body")
+          .findByTestId("center-center-quadrant")
           .findAllByRole("gridcell")
-          .first()
+          .eq(1)
+          .findByTestId("body-cell-container")
           .should(($el) => {
             assertBackgroundColorEqual($el, CELL_COLOR);
           });

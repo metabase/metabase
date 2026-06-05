@@ -1,12 +1,14 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.execute-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mongo.execute-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mongo.execute-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.execute :as mongo.execute]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as middleware.cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.test :as qp]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.test :as mt])
   (:import
@@ -70,9 +72,9 @@
     :mongo
     (mt/dataset
       test-data
-    ;; Dummy query execution here. If the dataset was not initialized before running this test, the timing gets out of
-    ;; sync and test fails. I suspect dataset initialization happens after (or while) the future is executed.
-    ;; To overcome that next line is executed - and dataset initialization forced - before the test code runs.
+      ;; Dummy query execution here. If the dataset was not initialized before running this test, the timing gets out of
+      ;; sync and test fails. I suspect dataset initialization happens after (or while) the future is executed.
+      ;; To overcome that next line is executed - and dataset initialization forced - before the test code runs.
       (mt/run-mbql-query people {:limit 10})
       (let [canceled-chan (a/chan)]
         (binding [qp.pipeline/*canceled-chan* canceled-chan]
@@ -105,19 +107,19 @@
                                                    :query (str "[{\"$addFields\": {}}\n"
                                                                " {\"$limit\":1}]")}}}]
         (mt/with-temporary-setting-values [enable-query-caching true]
-          (let [orig-freeze! @#'middleware.cache.impl/freeze!
+          (let [orig-freeze! (mt/original-fn #'middleware.cache.impl/freeze!)
                 freeze-started (atom false)
                 thrown-data (atom [])]
-            (with-redefs [middleware.cache.impl/freeze! (fn [& args]
-                                                          (reset! freeze-started true)
-                                                          (try
-                                                            (apply orig-freeze! args)
-                                                            (catch Throwable t
-                                                              (swap! thrown-data conj t)
-                                                              (throw t))))]
+            (mt/with-dynamic-fn-redefs [middleware.cache.impl/freeze! (fn [& args]
+                                                                        (reset! freeze-started true)
+                                                                        (try
+                                                                          (apply orig-freeze! args)
+                                                                          (catch Throwable t
+                                                                            (swap! thrown-data conj t)
+                                                                            (throw t))))]
               (let [model-based-query (-> (mt/mbql-query orders {:source-table (str "card__" (:id c))})
                                           (update :cache_strategy assoc
-                                                 ;; Enable caching for current query
+                                                  ;; Enable caching for current query
                                                   :avg-execution-time 5000
                                                   :min_duration_ms 1
                                                   :multiplier 100000

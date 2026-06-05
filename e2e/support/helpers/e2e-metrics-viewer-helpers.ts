@@ -1,8 +1,16 @@
 export const MetricsViewer = {
   goToViewer: () => cy.visit("/explore"),
-  searchInput: () => cy.findByTestId("metrics-viewer-search-input"),
-  searchBarPills: () => cy.findAllByTestId("metrics-viewer-search-pill"),
-  searchResults: () => cy.findByTestId("metrics-search-results"),
+  searchInput: () => {
+    // Click the right edge of the container to focus the CodeMirror input
+    // without accidentally hitting a pill (which would trigger the swap-metric flow).
+    cy.findByTestId("metrics-formula-input").click("right");
+    return cy.findByTestId("metrics-viewer-search-input");
+  },
+  // Pills commit asynchronously after the formula is run and its @dataset query
+  // resolves; on a loaded CI this re-render can exceed the default 4s timeout.
+  searchBarPills: () =>
+    cy.findAllByTestId("metrics-viewer-search-pill", { timeout: 15000 }),
+  searchResults: () => cy.findByTestId("mini-picker"),
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
   getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
   getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),
@@ -16,7 +24,10 @@ export const MetricsViewer = {
       MetricsViewer.tablist().findByRole("tab", { name: tab }).should("exist"),
     );
   },
-  getMetricVisualization: () => cy.findByTestId("visualization-root"),
+  // The visualization re-renders after the @dataset query resolves, which can
+  // exceed the default 4s timeout on a loaded CI.
+  getMetricVisualization: () =>
+    cy.findByTestId("visualization-root", { timeout: 15000 }),
   getMetricVisualizationDataPoints: () =>
     MetricsViewer.getMetricVisualization().get(
       "path[fill='hsla(0, 0%, 100%, 1.00)']",
@@ -29,6 +40,15 @@ export const MetricsViewer = {
       "data-viz-ui-name",
       displayType,
     ),
+  assertAllVizTypes: (displayType: string, expectedLength?: number) => {
+    const subject = MetricsViewer.getAllMetricVisualizations();
+    if (expectedLength !== undefined) {
+      subject.should("have.length", expectedLength);
+    }
+    subject.each(($el) => {
+      cy.wrap($el).should("have.attr", "data-viz-ui-name", displayType);
+    });
+  },
   getMerticControls: () => cy.findByTestId("metrics-viewer-controls"),
   changeVizType: (display: string) =>
     MetricsViewer.getMerticControls()
@@ -44,4 +64,5 @@ export const MetricsViewer = {
     MetricsViewer.searchBarPills().contains(metricName).rightclick();
     cy.findByText(/Go to metric home page/).click();
   },
+  runButton: () => cy.findByTestId("run-expression-button"),
 };

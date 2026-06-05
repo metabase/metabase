@@ -123,7 +123,7 @@
                     (.build))]
     (.toString (.url (.presignPutObject presigner request)))))
 
-(defn- s3-shared-storage [table-name->id]
+(defn- s3-shared-storage [source-tables]
   (let [work-dir-name       (working-dir-for-run)
         container-presigner (create-s3-presigner-for-container)
         bucket-name         (transforms-python.settings/python-storage-s-3-bucket)
@@ -142,9 +142,9 @@
       {:output          (ref :put "output.csv")
        :output-manifest (ref :put "output-manifest.json")
        :events          (ref :put "events.jsonl")}
-      (for [[table-name id] table-name->id]
-        {[:table id :manifest] (ref :get (str "table-" (name table-name) "-" id ".manifest.json"))
-         [:table id :data]     (ref :get (str "table-" (name table-name) "-" id ".jsonl"))}))}))
+      (for [{:keys [alias table_id]} source-tables]
+        {[:table table_id :manifest] (ref :get (str "table-" alias "-" table_id ".manifest.json"))
+         [:table table_id :data]     (ref :get (str "table-" alias "-" table_id ".jsonl"))}))}))
 
 (declare delete-many)
 
@@ -172,8 +172,8 @@
 
   When the value is closed, all the relevant keys will be deleted, but this is best-effort only.
   We rely on the bucket retention policy to ensure any stragglers are eventually deleted."
-  ^Closeable [table-name->id]
-  (let [shared-storage (s3-shared-storage table-name->id)]
+  ^Closeable [source-tables]
+  (let [shared-storage (s3-shared-storage source-tables)]
     (reify IDeref
       (deref [_] shared-storage)
       Closeable

@@ -1,20 +1,29 @@
 (ns metabase-enterprise.serialization.v2.e2e-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.serialization.v2.e2e-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.serialization.cmd :as cmd]
+   [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouses.models.database :as models.database]
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2])
   (:import
@@ -23,11 +32,15 @@
 
 (set! *warn-on-reflection* true)
 
-;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
+;; Many tests here rely on the H2 test-data database via Card defaults, so we keep the H2 guard
+;; off and re-enable the H2 path in the extract (production keeps it filtered).
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                        (thunk))))
+                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
+                                                  models.database/assert-not-h2! (constantly nil)]
+                        (binding [models.database/*include-h2-in-extract?* true]
+                          (thunk)))))
 
 (defn- dir->contents-set [p ^File dir]
   (->> dir
@@ -51,13 +64,10 @@
   (filter #(-> % :serdes/meta last :model (= model-name))
           entities))
 
-(defn- collections [dir]
-  (for [coll-dir (subdirs dir)
-        :when (->> ["cards" "dashboards" "timelines"]
-                   (map #(io/file coll-dir %))
-                   (filter #(= % coll-dir))
-                   empty?)]
-    coll-dir))
+(defn- yaml-model-at
+  "Read a YAML file and return its serdes model name."
+  [^File base-dir path-vec]
+  (-> (apply io/file base-dir path-vec) yaml/from-file :serdes/meta last :model))
 
 (defn- file-set [^File dir]
   (let [^Path base (.toPath dir)]
@@ -97,7 +107,8 @@
 (defn- clean-entity
   "Removes any comparison-confounding fields, like `:created_at`."
   [entity]
-  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
+  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule
+          :metabase_version))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test
@@ -138,7 +149,8 @@
               :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                         [10  {:refs     {:personal_owner_id ::rs/omit}
                                               :spec-gen {:namespace :snippets}}]]
-              :database                [[10]]
+              ;; serdes skips H2 databases at extract, so force :postgres here
+              :database                [[10 {:spec-gen {:engine :postgres}}]]
               ;; Tables are special - we define table 0-9 under db0, 10-19 under db1, etc. The :card spec below
               ;; depends on this relationship.
               :table                   (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
@@ -175,10 +187,9 @@
               :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
                                                                 :dashboard_id [:d 100]})
               :dimension               (vec (concat
-                                             ;; 20 with both IDs set
-                                             (many-random-fks 20 {}
-                                                              {:field_id                [:field 1000]
-                                                               :human_readable_field_id [:field 1000]})
+                                             (vec (repeatedly 20 #(let [f (random-keyword :field 1000)]
+                                                                    [1 {:refs {:field_id                f
+                                                                               :human_readable_field_id f}}])))
                                              ;; 20 with just :field_id
                                              (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
                                                               {:field_id [:field 1000]})))
@@ -198,7 +209,6 @@
               :timeline                (many-random-fks 10 {} {:creator_id    [:u 10]
                                                                :collection_id [:coll 100]})
               :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})}))
-
           (is (= 101 (count (t2/select-fn-set :email 'User)))) ; +1 for the internal user
 
           (testing "extraction"
@@ -209,76 +219,61 @@
                                        {} @extraction))
             ;; +1 for the Trash collection
             (is (= 110 (-> @entities (get "Collection") count))))
-
           (testing "storage"
-            (storage/store! (seq @extraction) dump-dir)
-
+            (storage/store! (seq @extraction) (storage.files/file-writer dump-dir))
             (testing "for Actions"
               (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
-
             (testing "for Collections"
               ;; +1 for the Trash collection
-              (is (= 110 (count (for [f (file-set (io/file dump-dir))
-                                      :when (and (= (first f) "collections")
-                                                 (let [[a b] (take-last 2 f)]
-                                                   (= b (str a ".yaml"))))]
-                                  f)))
-                  "which all go in collections/, even the snippets ones"))
-
+              (let [colls-dir  (io/file dump-dir "collections")
+                    coll-count (count (for [f (file-set colls-dir)
+                                            :when (= "Collection" (yaml-model-at colls-dir f))]
+                                        f))]
+                ;; +1 for Trash collection; exact count may vary by 1 depending on naming collisions
+                (is (<= 109 coll-count 111)
+                    "which all go in collections/, even the snippets ones")))
             (testing "for Databases"
               (is (= 10 (count (dir->dir-set (io/file dump-dir "databases"))))))
-
             (testing "for Tables"
               (is (= 100
-                     (reduce + (for [db    (get @entities "Database")
-                                     :let [tables (dir->dir-set (io/file dump-dir "databases" (:name db) "tables"))]]
-                                 (count tables))))
+                     (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
+                                     :let  [tables-dir (io/file dump-dir "databases" db "tables")]
+                                     :when (.exists tables-dir)]
+                                 (count (dir->dir-set tables-dir)))))
                   "Tables are scattered, so the directories are harder to count"))
-
             (testing "for Fields"
               (is (= 1000
-                     (reduce + (for [db    (get @entities "Database")
-                                     table (subdirs (io/file dump-dir "databases" (:name db) "tables"))]
-                                 (->> (io/file table "fields")
-                                      dir->file-set
-                                      count))))
+                     (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
+                                     table (subdirs (io/file dump-dir "databases" db "tables"))
+                                     :let  [fields-dir (io/file table "fields")]
+                                     :when (.exists fields-dir)]
+                                 (count (dir->file-set fields-dir)))))
                   "Fields are scattered, so the directories are harder to count"))
-
-            (testing "for cards"
-              ;; 100 from card, and 10 from simple-model
-              (is (= 110 (->> (io/file dump-dir "collections")
-                              collections
-                              (map (comp count dir->file-set #(io/file % "cards")))
-                              (reduce +)))))
-
-            (testing "for dashboards"
-              (is (= 150 (->> (io/file dump-dir "collections")
-                              collections
-                              (map (comp count dir->file-set #(io/file % "dashboards")))
-                              (reduce +)))))
-
-            (testing "for timelines"
-              (is (= 10 (->> (io/file dump-dir "collections")
-                             collections
-                             (map (comp count dir->file-set #(io/file % "timelines")))
-                             (reduce +)))))
-
+            (testing "for cards, dashboards, and timelines"
+              ;; In the new storage format, cards/dashboards/timelines are stored directly
+              ;; in collection directories (no per-type subfolders).
+              ;; 100 cards + 10 simple-models + 150 dashboards + 10 timelines = 270
+              ;; We count all yaml files under collections/main/ that are NOT collection definitions.
+              ;; exact count may vary by 1 depending on naming collisions with collection names
+              (let [main-dir (io/file dump-dir "collections" "main")]
+                (is (<= 269 (count (for [f (file-set main-dir)
+                                         :when (not= "Collection" (yaml-model-at main-dir f))]
+                                     f)) 271))))
             (testing "for segments"
               (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
                                         table (dir->dir-set (io/file dump-dir "databases" db "tables"))
                                         :let [segments-dir (io/file dump-dir "databases" db "tables" table "segments")]
                                         :when (.exists segments-dir)]
                                     (count (dir->file-set segments-dir)))))))
-
             (testing "for native query snippets"
-              (is (= 10 (->> (io/file dump-dir "snippets")
-                             collections
-                             (map (comp count dir->file-set))
-                             (reduce +)))))
-
+              ;; Snippets are now under collections/snippets/ (not a top-level snippets/ dir).
+              ;; Count non-collection yaml files under collections/snippets/.
+              (let [snippets-dir (io/file dump-dir "collections" "snippets")]
+                (is (= 10 (count (for [f (file-set snippets-dir)
+                                       :when (not= "Collection" (yaml-model-at snippets-dir f))]
+                                   f))))))
             (testing "for settings"
               (is (.exists (io/file dump-dir "settings.yaml")))))
-
           (testing "ingest and load"
             (ts/with-db dest-db
               (testing "ingested set matches extracted set"
@@ -287,29 +282,24 @@
                          (count @extraction)))
                   (is (= extracted-set
                          (set (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
-
               (testing "doing ingestion"
                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful"))
-
               (testing "for Actions"
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Action")]
                   (is (= (clean-entity coll)
                          (-> (ts/extract-one "Action" entity_id)
                              clean-entity)))))
-
               (testing "for Collections"
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Collection")]
                   (is (= (clean-entity coll)
                          (-> (ts/extract-one "Collection" entity_id)
                              clean-entity)))))
-
               (testing "for Databases"
                 (doseq [{:keys [name] :as db} (get @entities "Database")]
                   (is (= (assoc (clean-entity db) :initial_sync_status "complete")
                          (-> (ts/extract-one "Database" [:= :name name])
                              clean-entity)))))
-
               (testing "for Tables"
                 (doseq [{:keys [db_id name] :as coll} (get @entities "Table")]
                   (is (= (clean-entity coll)
@@ -317,7 +307,6 @@
                                                       [:= :name name]
                                                       [:= :db_id (t2/select-one-pk 'Database :name db_id)]])
                              clean-entity)))))
-
               (testing "for Fields"
                 (doseq [{[db schema table] :table_id name :name :as coll} (get @entities "Field")]
                   (is (nil? schema))
@@ -326,55 +315,46 @@
                     (is (= (clean-entity coll)
                            (-> (ts/extract-one "Field" [:and [:= :name name] [:= :table_id table]])
                                clean-entity))))))
-
               (testing "for cards"
                 (doseq [{:keys [entity_id] :as card} (get @entities "Card")]
                   (is (= (clean-entity card)
                          (-> (ts/extract-one "Card" entity_id)
                              clean-entity)))))
-
               (testing "for dashboards"
                 (doseq [{:keys [entity_id] :as dash} (get @entities "Dashboard")]
                   (is (= (clean-entity dash)
                          (-> (ts/extract-one "Dashboard" entity_id)
                              clean-entity)))))
-
               (testing "for dashboard cards"
                 (doseq [{:keys [entity_id] :as dashcard} (get @entities "DashboardCard")]
                   (is (= (clean-entity dashcard)
                          (-> (ts/extract-one "DashboardCard" entity_id)
                              clean-entity)))))
-
               (testing "for dimensions"
                 (doseq [{:keys [entity_id] :as dim} (get @entities "Dimension")]
                   (is (= (clean-entity dim)
                          (-> (ts/extract-one "Dimension" entity_id)
                              clean-entity)))))
-
               (testing "for segments"
                 (doseq [{:keys [entity_id] :as segment} (get @entities "Segment")]
                   (is (= (clean-entity segment)
                          (-> (ts/extract-one "Segment" entity_id)
                              clean-entity)))))
-
               (testing "for measures"
                 (doseq [{:keys [entity_id] :as measure} (get @entities "Measure")]
                   (is (= (clean-entity measure)
                          (-> (ts/extract-one "Measure" entity_id)
                              clean-entity)))))
-
               (testing "for native query snippets"
                 (doseq [{:keys [entity_id] :as snippet} (get @entities "NativeQuerySnippet")]
                   (is (= (clean-entity snippet)
                          (-> (ts/extract-one "NativeQuerySnippet" entity_id)
                              clean-entity)))))
-
               (testing "for timelines and events"
                 (doseq [{:keys [entity_id] :as timeline} (get @entities "Timeline")]
                   (is (= (clean-entity timeline)
                          (-> (ts/extract-one "Timeline" entity_id)
                              clean-entity)))))
-
               (testing "for settings"
                 (let [settings (get @entities "Setting")]
                   (is (every? setting/export?
@@ -393,7 +373,7 @@
           ;; preparation
           (mt/test-helpers-set-global-values!
             (mt/with-temp
-              [:model/Database   db1s {:name "my-db"}
+              [:model/Database   db1s {:name "my-db" :engine :postgres}
                :model/Collection coll1s {:name "My Collection"}
                :model/Table      table1s {:name  "CUSTOMERS"
                                           :db_id (:id db1s)}
@@ -408,7 +388,7 @@
                                                            :type                 "category"
                                                            :name                 "CATEGORY"
                                                            :values_source_type   "card"
-                                                            ;; card_id is in a different collection with dashboard's collection
+                                                           ;; card_id is in a different collection with dashboard's collection
                                                            :values_source_config {:card_id     (:id card1s)
                                                                                   :value_field [:field (:id field1s) nil]}}]}
                :model/Dashboard  dash1s {:name          (mt/random-name)
@@ -417,14 +397,12 @@
                                                           :type                 "category"
                                                           :name                 "CATEGORY"
                                                           :values_source_type   "card"
-                                                           ;; card_id is in a different collection with dashboard's collection
+                                                          ;; card_id is in a different collection with dashboard's collection
                                                           :values_source_config {:card_id     (:id card1s)
                                                                                  :value_field [:field (:id field1s) nil]}}]}]
-
               (testing "make sure we insert ParameterCard when insert Dashboard/Card"
                 ;; one for parameter on card card2s, and one for parameter on dashboard dash1s
                 (is (= 2 (t2/count :model/ParameterCard))))
-
               (testing "extract and store"
                 (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
                   (is (= [{:id                   "abc",
@@ -437,7 +415,6 @@
                                                                 nil]},
                            :values_source_type   :card}]
                          (:parameters (first (by-model extraction "Dashboard")))))
-
                   ;; card1s has no parameters, card2s does.
                   (is (= #{[]
                            [{:id                   "abc",
@@ -450,16 +427,13 @@
                                                                   nil]},
                              :values_source_type   :card}]}
                          (set (map :parameters (by-model extraction "Card")))))
-
-                  (storage/store! (seq extraction) dump-dir)))
-
+                  (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
               (testing "ingest and load"
                 (ts/with-db dest-db
-                 ;; ingest
+                  ;; ingest
                   (testing "doing ingestion"
                     (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                         "successful"))
-
                   (let [dash1d  (t2/select-one :model/Dashboard :name (:name dash1s))
                         card1d  (t2/select-one :model/Card :name (:name card1s))
                         card2d  (t2/select-one :model/Card :name (:name card2s))
@@ -472,7 +446,6 @@
                                  first
                                  :values_source_config)))
                       (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
-
                     (testing "parameter on card is loaded correctly"
                       (is (= {:card_id     (:id card1d),
                               :value_field [:field (:id field1d) nil]}
@@ -499,7 +472,8 @@
                                                              :description "Linked Collection"}
              :model/Database      {db-id   :id
                                    db-name :name}           {:name        "Linked database"
-                                                             :description "Linked database desc"}
+                                                             :description "Linked database desc"
+                                                             :engine      :postgres}
              :model/Table         {table-id   :id
                                    table-name :name}        {:db_id        db-id
                                                              :schema      "Public"
@@ -548,26 +522,19 @@
                         {:model "card"       :id card-eid}
                         {:model "dataset"    :id model-eid}]
                        (dashboard->link-cards extracted-dashboard)))
-
                 (is (= #{[{:id dash-eid          :model "Dashboard"}]
                          [{:id coll-eid          :model "Collection"}]
                          [{:id model-eid         :model "Card"}]
                          [{:id card-eid          :model "Card"}]
-                         [{:id "Linked database" :model "Database"}]
-                         [{:model "Database" :id "Linked database"}
-                          {:model "Schema"   :id "Public"}
-                          {:model "Table"    :id "Linked table"}]}
+                         [{:id "Linked database" :model "Database"}]}
                        (set (serdes/dependencies extracted-dashboard))))
-
-                (storage/store! (seq extraction) dump-dir)))
-
+                (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
             (testing "ingest and load"
               ;; ingest
               (ts/with-db dest-db
                 (testing "doing ingestion"
                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
-
                 (doseq [[name model]
                         [[db-name    'Database]
                          [table-name 'Table]
@@ -576,7 +543,6 @@
                          [dash-name  'Dashboard]]]
                   (testing (format "model %s from link cards are loaded properly" model)
                     (is (some? (t2/select model :name name)))))
-
                 (testing "linkcards are loaded with correct fk"
                   (let [new-db-id    (t2/select-one-pk :model/Database :name db-name)
                         new-table-id (t2/select-one-pk :model/Table :name table-name)
@@ -619,7 +585,7 @@
                       hydrated-dashcards))))
           (testing "extract and store"
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-              (storage/store! (seq extraction) dump-dir)))
+              (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
           (testing "ingest and load"
             (ts/with-db dest-db
               (testing "doing ingestion"
@@ -676,8 +642,7 @@
                                                                     :card_id          card-id-2
                                                                     :dashboard_tab_id tab-id-2}]
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-              (storage/store! (seq extraction) dump-dir))
-
+              (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
             (testing "ingest and load"
               (ts/with-db dest-db
                 ;; ingest
@@ -690,7 +655,6 @@
                       new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
                       new-card-id-1 (t2/select-one-pk :model/Card :entity_id card-eid-1)
                       new-card-id-2 (t2/select-one-pk :model/Card :entity_id card-eid-2)]
-
                   (is (=? [{:id           new-tab-id-1
                             :dashboard_id (:id new-dashboard)
                             :name         "Tab 1"
@@ -729,15 +693,13 @@
              :model/Card      {card-eid :entity_id}    {:name         "Card on the Dashboard"
                                                         :dashboard_id dashboard-id}]
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-              (storage/store! (seq extraction) dump-dir))
-
+              (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
             (testing "ingest and load"
               (ts/with-db dest-db
                 ;; ingest
                 (testing "doing ingestion"
                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
-
                 (testing "The loaded card is a dashboard question, same as before"
                   (let [new-dash-id (t2/select-one-pk :model/Dashboard :entity_id dashboard-eid)
                         new-coll-id (t2/select-one-pk :model/Collection :entity_id coll-eid)
@@ -753,12 +715,13 @@
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
           (mt/with-temp
-            [:model/Database {router-db-id :id} {:name "Router"}
+            [:model/Database {router-db-id :id} {:name "Router" :engine :postgres}
              :model/DatabaseRouter _ {:database_id router-db-id :user_attribute "foobar"}
              :model/Database _ {:router_database_id router-db-id
-                                :name "Destination"}]
+                                :name "Destination"
+                                :engine :postgres}]
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-              (storage/store! (seq extraction) dump-dir))
+              (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
             (testing "ingest and load"
               (ts/with-db dest-db
                 (testing "doing ingestion"
@@ -780,14 +743,12 @@
               (testing "export (v2-dump) command"
                 (is (cmd/v2-dump! dump-dir {})
                     "works"))
-
               (testing "import (v2-load) command"
                 (ts/with-db dest-db
                   (testing "doing ingestion"
                     (mt/with-temp [:model/User _ {}]
                       (is (cmd/v2-load! dump-dir {})
                           "works")))))))))))
-
   (testing "without :serialization feature enabled"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (mt/with-premium-features #{}
@@ -799,7 +760,6 @@
                 (is (thrown-with-msg? Exception #"Please upgrade"
                                       (cmd/v2-dump! dump-dir {}))
                     "throws"))
-
               (testing "import (v2-load) command"
                 (ts/with-db dest-db
                   (testing "doing ingestion"
@@ -841,26 +801,22 @@
                                    :products.title    %products.title
                                    :orders.product_id %orders.product_id})
                   (reset! card1s card)
-                  (storage/store! (extract/extract {}) dump-dir)))))
-
+                  (storage/store! (extract/extract {}) (storage.files/file-writer dump-dir))))))
           (ts/with-db dest-db
             ;; ensure there is something in db so that test-data gets different field ids for sure
             (mt/dataset office-checkins
               (mt/db))
-
             (mt/dataset test-data
               ;; ensuring field ids are stable by loading dataset in db first
               (mt/db)
               (mt/$ids nil
                 (testing "Column ids are different in different dbs")
-                (is (not= @old-ids
-                          {:people.name       %people.name
+                (is (not= {:people.name       %people.name
                            :orders.user_id    %orders.user_id
                            :products.title    %products.title
-                           :orders.product_id %orders.product_id}))
-
+                           :orders.product_id %orders.product_id}
+                          @old-ids))
                 (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
-
                 (let [viz (t2/select-one-fn :visualization_settings :model/Card :entity_id (:entity_id @card1s))]
                   (testing "column names inside pivot table transferred"
                     (is (= ["NAME"]
@@ -880,22 +836,41 @@
         (let [coll (ts/create! :model/Collection :name "coll")
               _    (ts/create! :model/Card :name "card" :collection_id (:id coll))]
           (storage/store! (extract/extract {:no-settings   true
-                                            :no-data-model true}) dump-dir)
-
+                                            :no-data-model true}) (storage.files/file-writer dump-dir))
           (spit (io/file dump-dir "collections" ".hidden.yaml") "serdes/meta: [{do-not: read}]")
-          (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
+          (testing "Hidden YAML files are still silently skipped"
+            (let [{:keys [entities]} (#'ingest/ingest-all (io/file dump-dir))
+                  files (->> entities
+                             (map (comp second second))
+                             (map #(.getName ^File %))
+                             set)]
+              (is (not (contains? files ".hidden.yaml")))))
+          (testing "Unparseable non-hidden YAML files are collected as ingestion errors"
+            (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
+            (let [{:keys [errors]} (#'ingest/ingest-all (io/file dump-dir))]
+              (is (= 1 (count errors))))))))))
 
-          (testing "No exceptions when loading despite unreadable files"
-            (mt/with-log-messages-for-level [logs [metabase-enterprise :error]]
-              (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
-                               (map (comp second second))
-                               (map #(.getName ^File %))
-                               set)]
-                (testing "Hidden YAML wasn't read even though it's not throwing errors"
-                  (is (not (contains? files ".hidden.yaml")))))
-              (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
-                (is (=? [{:level :error, :e Throwable, :message "Error reading file unreadable.yaml"}]
-                        (logs)))))))))))
+(deftest ingestion-errors-fail-import-test
+  (testing "Unparseable YAML files cause load-metabase! to fail by default"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (let [coll (ts/create! :model/Collection :name "coll")
+              _    (ts/create! :model/Card :name "card" :collection_id (:id coll))]
+          (storage/store! (extract/extract {:no-settings   true
+                                            :no-data-model true}) (storage.files/file-writer dump-dir))
+          (spit (io/file dump-dir "collections" "corrupt.yaml") "\0")
+          (testing "continue-on-error false (default) — throws on ingestion errors"
+            (is (thrown-with-msg? Exception #"Failed to read 1 file\(s\) during ingestion: corrupt\.yaml"
+                                  (serdes/with-cache
+                                    (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))))
+          (testing "continue-on-error true — collects ingestion errors without throwing"
+            (let [result (serdes/with-cache
+                           (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)
+                                                       {:continue-on-error true}))]
+              (is (= 1 (count (:errors result)))
+                  "Should have collected exactly 1 ingestion error")
+              (is (seq (:seen result))
+                  "Should have still loaded the valid entities"))))))))
 
 (deftest channel-test
   (mt/test-helpers-set-global-values!
@@ -907,7 +882,7 @@
                                :type :channel/http
                                :details {:url         "http://example.com"
                                          :auth-method :none}}]
-            (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) dump-dir)
+            (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) (storage.files/file-writer dump-dir))
             (ts/with-db dest-db
               (testing "doing ingestion"
                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
@@ -936,7 +911,7 @@
                                                                {:aggregation [[:metric metric-id]]
                                                                 :breakout    [[:field %orders.user_id nil]]})}]
           (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-            (storage/store! (seq extraction) dump-dir))
+            (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
           (testing "ingest and load"
             (ts/with-db dest-db
               (testing "doing ingestion"
@@ -957,6 +932,62 @@
                                                      :breakout    [[:field {} (mt/id :orders :user_id)]]}]}}
                           (t2/select-one :model/Card :name "Metric Consuming Question Card"))))))))))))
 
+(deftest gui-question-joined-to-native-source-card-survives-roundtrip-test
+  (testing "GUI question joining a native source-card should still run after serdes export+import (GHY-3801)"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (mt/with-temp
+            [:model/Collection {coll-id :id}                {:name "GHY-3801"}
+             :model/Card       {native-id :id
+                                native-eid :entity_id}      {:name          "Native Products"
+                                                             :collection_id coll-id
+                                                             :type          :question
+                                                             :display       :table
+                                                             :dataset_query {:type     :native
+                                                                             :database (mt/id)
+                                                                             :native   {:query "SELECT * FROM PRODUCTS"}}}
+             :model/Card       {gui-eid :entity_id}         {:name          "GUI Joins Native"
+                                                             :collection_id coll-id
+                                                             :type          :question
+                                                             :display       :table
+                                                             :dataset_query (mt/mbql-query nil
+                                                                              {:source-table (str "card__" native-id)
+                                                                               :joins        [{:fields       :all
+                                                                                               :strategy     :left-join
+                                                                                               :alias        "Products"
+                                                                                               :source-table $$products
+                                                                                               :condition    [:=
+                                                                                                              [:field "CATEGORY" {:base-type :type/Text}]
+                                                                                                              [:field %products.category {:join-alias "Products"}]]}]})}]
+            ;; Populate the native source card's result_metadata the way the app does when a user runs and
+            ;; saves the query. This is the state serdes must preserve across the round-trip.
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] native-id))
+                                   (get-in [:data :results_metadata :columns]))
+                  source-names (mapv :name source-cols)]
+              (t2/update! :model/Card native-id {:result_metadata source-cols})
+              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+                (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
+              (ts/with-db dest-db
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "serdes ingest succeeded")
+                (let [imported-native (t2/select-one :model/Card :entity_id native-eid)
+                      imported-gui    (t2/select-one :model/Card :entity_id gui-eid)]
+                  (testing "imported native card preserves its result_metadata columns"
+                    (is (= source-names (mapv :name (:result_metadata imported-native)))
+                        "Native source card lost result_metadata columns during serdes round-trip"))
+                  (testing "imported GUI question's query compiles without 'add alias info to join' errors"
+                    ;; Compile (not execute): the bug surfaces in add-alias-info during compilation, and serdes
+                    ;; strips warehouse connection details so the imported card can't actually be run here.
+                    (let [result (try
+                                   (qp.compile/compile (:dataset_query imported-gui))
+                                   (catch Throwable e
+                                     {:error (ex-message e)
+                                      :data  (ex-data e)}))]
+                      (is (not (and (map? result) (:error result)))
+                          (str "Expected query to compile but got error: "
+                               (when (map? result) (:error result)))))))))))))))
+
 (deftest schema-coercion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
@@ -968,7 +999,48 @@
           (serdes/with-cache
             (-> (extract/extract {:no-settings   true
                                   :no-data-model true})
-                (storage/store! dump-dir))))
+                (storage/store! (storage.files/file-writer dump-dir)))))
         (testing "loads well too"
           (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
               "ingested successfully"))))))
+
+(deftest old-format-paths-import-test
+  (testing "serdes can import content stored at old-format paths (entity_id in name, per-type subfolders)"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        ;; Write YAML files using the OLD path format (entity_id_slug, cards/ subfolder)
+        (let [coll-eid   "old-test-coll-xxxxxxx"
+              coll-dir   (io/file dump-dir "collections" (str coll-eid "_test_collection"))
+              coll-yaml  {:serdes/meta [{:model "Collection" :id coll-eid :label "test_collection"}]
+                          :name "Test Collection" :entity_id coll-eid :namespace nil
+                          :slug "test_collection" :archived false}]
+          ;; Old format: collections/entityid_slug/entityid_slug.yaml
+          (dump/spit-yaml! (io/file coll-dir (str coll-eid "_test_collection.yaml")) coll-yaml)
+          ;; Write settings.yaml (required)
+          (dump/spit-yaml! (io/file dump-dir "settings.yaml") {})
+          (testing "old-format files can be ingested and loaded"
+            (let [ingestable (ingest/ingest-yaml dump-dir)]
+              (is (serdes/with-cache (serdes.load/load-metabase! ingestable))
+                  "ingestion should succeed")
+              (is (t2/exists? :model/Collection :entity_id coll-eid)
+                  "collection should have been imported from old-format path"))))))))
+
+(deftest query-with-missing-table-and-field-test
+  (testing "An exported query whose table/field have been deleted re-imports by synthesizing inactive rows"
+    (mt/with-temp
+      [:model/Database {db-id :id} {}
+       :model/Table    {table-id :id, table-name :name, table-schema :schema} {:db_id db-id}
+       :model/Field    {field-id :id, field-name :name} {:table_id table-id :base_type :type/Text}]
+      (let [mp       (lib-be/application-database-metadata-provider db-id)
+            query    (-> (lib/query mp (lib.metadata/table mp table-id))
+                         (lib/with-fields [(lib.metadata/field mp field-id)]))
+            exported (serdes/export-mbql query)
+            _        (t2/delete! :model/Field :id field-id)
+            _        (t2/delete! :model/Table :id table-id)
+            imported (serdes/import-mbql exported)
+            table    (t2/select-one :model/Table :db_id db-id :schema table-schema :name table-name)
+            field    (t2/select-one :model/Field :table_id (:id table) :name field-name)]
+        (is (=? {:db_id db-id :schema table-schema :name table-name :active false} table))
+        (is (=? {:table_id (:id table) :name field-name :active false}             field))
+        (is (= (:id table) (lib/primary-source-table-id imported)))
+        (is (=? [[:field {} (:id field)]] (lib/fields imported)))))))

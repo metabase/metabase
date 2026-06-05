@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -19,7 +19,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { METAKEY } from "metabase/lib/browser";
+import { createMockState } from "metabase/redux/store/mocks";
+import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
 import type {
@@ -41,7 +42,6 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
@@ -81,6 +81,8 @@ const metadata = createMockMetadata({
 });
 
 const provider = createMetadataProvider({ metadata });
+
+const userEvent = _userEvent.setup();
 
 function getJoinedQuery() {
   return Lib.createTestQuery(provider, {
@@ -286,7 +288,10 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   afterAll(() => {
-    jest.resetAllMocks();
+    // restore (not reset): resetAllMocks would leave the spied
+    // `getBoundingClientRect` returning `undefined`, which crashes
+    // floating-ui callbacks that fire after the tests finish.
+    jest.restoreAllMocks();
   });
 
   it("should display a join correctly", () => {

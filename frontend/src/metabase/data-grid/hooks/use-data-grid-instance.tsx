@@ -1,6 +1,7 @@
 import {
   type ColumnSizingState,
   type PaginationState,
+  type Row,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -19,39 +20,46 @@ import { usePrevious, useUpdateEffect } from "react-use";
 import _ from "underscore";
 
 import {
+  DATASET_INDEX_ATTRIBUTE_NAME,
   MIN_COLUMN_WIDTH,
-  ROW_ID_COLUMN_ID,
+  ROW_HEIGHT,
   TRUNCATE_LONG_CELL_WIDTH,
+  VIRTUAL_INDEX_ATTRIBUTE_NAME,
 } from "metabase/data-grid/constants";
 import { useBodyCellMeasure } from "metabase/data-grid/hooks/use-body-cell-measure";
 import { useColumnResizeObserver } from "metabase/data-grid/hooks/use-column-resize-observer";
 import { useColumnsReordering } from "metabase/data-grid/hooks/use-columns-reordering";
 import { useMeasureColumnWidths } from "metabase/data-grid/hooks/use-measure-column-widths";
+import { useRowSizing } from "metabase/data-grid/hooks/use-row-sizing";
 import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
 import type {
+  DataGridColumnType,
   DataGridInstance,
   DataGridOptions,
+  DataGridRowType,
   ExpandedColumnsState,
+  ScrollToDestinations,
 } from "metabase/data-grid/types";
 import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
-import { getScrollBarSize } from "metabase/lib/dom";
-import { isNotNull } from "metabase/lib/types";
+import { getScrollBarSize } from "metabase/utils/dom";
+import { isNotNull } from "metabase/utils/types";
 
 import { getTruncatedColumnSizing } from "../utils/column-sizing";
 import { maybeExpandColumnWidths } from "../utils/maybe-expand-column-widths";
 
 import { useCellSelection } from "./use-cell-selection";
+import { useColumnPinningByCount } from "./use-column-pinning-by-count";
 import { useExpandColumnsToMinGridWidth } from "./use-expand-columns-to-min-grid-width";
+import { useRowPinningByCount } from "./use-row-pinning-by-count";
 
 // Disable pagination by setting pageSize to -1
 const DISABLED_PAGINATION_STATE = { pageSize: -1, pageIndex: 0 };
 
-// Creates a column order array with row ID column first if present
-const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
-  _.uniq(
-    hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder,
-  );
+const getColumnOrder = (
+  dataColumnsOrder: string[],
+  utilityColumnIds: string[],
+) => _.uniq([...utilityColumnIds, ...dataColumnsOrder]);
 
 /**
  * Main hook for creating and managing a data grid instance.
@@ -62,9 +70,10 @@ export const useDataGridInstance = <TData, TValue>({
   data,
   columnOrder: controlledColumnOrder,
   columnSizingMap: controlledColumnSizingMap,
-  columnPinning: controlledColumnPinning,
+  pinnedLeftColumnsCount = 0,
+  pinnedTopRowsCount = 0,
   sorting,
-  defaultRowHeight = 36,
+  defaultRowHeight = ROW_HEIGHT,
   minGridWidth: minGridWidthProp,
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
@@ -80,14 +89,29 @@ export const useDataGridInstance = <TData, TValue>({
   onColumnReorder,
   measurementRenderWrapper,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
+  const datasetIndexAttributeName = DATASET_INDEX_ATTRIBUTE_NAME;
+  const virtualIndexAttributeName = VIRTUAL_INDEX_ATTRIBUTE_NAME;
   const gridRef = useRef<HTMLDivElement>(null);
-  const hasRowIdColumn = rowId != null;
+
+  const utilityColumns = useMemo(
+    () =>
+      [
+        columnRowSelectOptions,
+        rowId ? getRowIdColumn<TData, TValue>(rowId) : null,
+      ].filter(isNotNull),
+    [rowId, columnRowSelectOptions],
+  );
+
+  const utilityColumnIds = useMemo(
+    () => utilityColumns.map((column) => column.id).filter(isNotNull),
+    [utilityColumns],
+  );
 
   // Initialize column order (either controlled or from column options)
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(
       controlledColumnOrder ?? columnsOptions.map((column) => column.id),
-      hasRowIdColumn,
+      utilityColumnIds,
     ),
   );
 
@@ -114,8 +138,10 @@ export const useDataGridInstance = <TData, TValue>({
 
   // Update column order when controlled value changes
   useLayoutEffect(() => {
-    setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
-  }, [controlledColumnOrder, hasRowIdColumn]);
+    setColumnOrder(
+      getColumnOrder(controlledColumnOrder ?? [], utilityColumnIds),
+    );
+  }, [controlledColumnOrder, utilityColumnIds]);
 
   // Handler for updating column expanded state
   const handleUpdateColumnExpanded = useCallback(
@@ -150,42 +176,34 @@ export const useDataGridInstance = <TData, TValue>({
     ],
   );
 
-  // Generate table columns configuration from options
-  const columns = useMemo(() => {
-    const rowIdColumnDefinition =
-      rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
-
-    const dataColumns = columnsOptions.map((options) =>
-      getDataColumn<TData, TValue>(
-        options,
-        columnSizingMap,
-        measuredColumnSizingMap,
-        expandedColumnsMap,
-        truncateLongCellWidth,
-        handleExpandButtonClick,
+  const dataColumns = useMemo(
+    () =>
+      columnsOptions.map((options) =>
+        getDataColumn<TData, TValue>(
+          options,
+          columnSizingMap,
+          measuredColumnSizingMap,
+          expandedColumnsMap,
+          truncateLongCellWidth,
+          handleExpandButtonClick,
+        ),
       ),
-    );
+    [
+      columnsOptions,
+      columnSizingMap,
+      measuredColumnSizingMap,
+      expandedColumnsMap,
+      truncateLongCellWidth,
+      handleExpandButtonClick,
+    ],
+  );
 
-    return [
-      columnRowSelectOptions,
-      rowIdColumnDefinition,
-      ...dataColumns,
-    ].filter(isNotNull);
-  }, [
-    rowId,
-    columnsOptions,
-    columnRowSelectOptions,
-    columnSizingMap,
-    measuredColumnSizingMap,
-    expandedColumnsMap,
-    truncateLongCellWidth,
-    handleExpandButtonClick,
-  ]);
+  const columns = useMemo(
+    () => [...utilityColumns, ...dataColumns],
+    [utilityColumns, dataColumns],
+  );
 
-  // IDs of columns with fixed width that shouldn't be auto-resized
-  const fixedWidthColumnIds = useMemo(() => {
-    return [columnRowSelectOptions?.id, ROW_ID_COLUMN_ID].filter(isNotNull);
-  }, [columnRowSelectOptions]);
+  const fixedWidthColumnIds = utilityColumnIds;
 
   // Columns that need text wrapping
   const wrappedColumnsOptions = useMemo(() => {
@@ -223,13 +241,39 @@ export const useDataGridInstance = <TData, TValue>({
       : minGridWidthProp - getScrollBarSize();
   }, [enablePagination, minGridWidthProp]);
 
+  const { columnPinning, toggle: toggleColumnPinningLimiter } =
+    useColumnPinningByCount({
+      gridRef,
+      columnOrder,
+      columnSizingMap,
+      pinnedColumnsCount: pinnedLeftColumnsCount + utilityColumns.length,
+    });
+
+  const { getRowHeight } = useRowSizing({
+    data,
+    defaultRowHeight,
+    columnSizingMap,
+    wrappedColumnsOptions,
+    measureBodyCellDimensions,
+  });
+
+  const [sortedRows, setSortedRows] = useState<Row<TData>[]>([]);
+
+  const rowPinning = useRowPinningByCount({
+    top: pinnedTopRowsCount,
+    sortedRows,
+    gridRef,
+    getRowHeight,
+  });
+
   const table = useReactTable({
     data,
     columns,
     state: {
       columnSizing: columnSizingMap,
       columnOrder,
-      columnPinning: controlledColumnPinning ?? { left: [ROW_ID_COLUMN_ID] },
+      columnPinning,
+      rowPinning,
       sorting,
       pagination,
       rowSelection: rowSelection ?? {},
@@ -247,53 +291,16 @@ export const useDataGridInstance = <TData, TValue>({
     enableRowSelection,
   });
 
-  // Calculate dynamic row heights for wrapped columns
-  const measureRowHeight = useCallback(
-    (rowIndex: number) => {
-      if (wrappedColumnsOptions.length === 0) {
-        return defaultRowHeight;
-      }
-
-      const height = Math.max(
-        ...wrappedColumnsOptions.map((column) => {
-          const value = column.accessorFn(data[rowIndex]);
-          const formattedValue = column.formatter
-            ? column.formatter(value, rowIndex, column.id)
-            : String(value);
-
-          if (value == null || formattedValue === "") {
-            return defaultRowHeight;
-          }
-          const tableColumn = table.getColumn(column.id);
-
-          const cellDimensions = measureBodyCellDimensions(
-            formattedValue,
-            tableColumn?.getSize(),
-          );
-          return cellDimensions.height;
-        }),
-        defaultRowHeight,
-      );
-
-      return height;
-    },
-    [
-      data,
-      defaultRowHeight,
-      measureBodyCellDimensions,
-      table,
-      wrappedColumnsOptions,
-    ],
-  );
-
   // Enable row virtualization only when pagination is disabled
   const enableRowVirtualization = !enablePagination;
   const virtualGrid = useVirtualGrid({
     gridRef,
     table,
     defaultRowHeight,
-    measureRowHeight,
     enableRowVirtualization,
+    getRowHeight,
+    datasetIndexAttributeName,
+    virtualIndexAttributeName,
   });
 
   const measureColumnWidths = useMeasureColumnWidths(
@@ -352,32 +359,36 @@ export const useDataGridInstance = <TData, TValue>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { measureGrid, rowVirtualizer, columnVirtualizer } = virtualGrid;
+  // For pinning row state we need to work with client-side sorted data
+  useLayoutEffect(() => {
+    setSortedRows(table.getSortedRowModel().rows);
+  }, [sorting, data, table]);
+
+  const { measureGrid, columnVirtualizer } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();
   const prevWrappedColumns = useRef<string[]>();
 
-  // Re-measure grid when column sizing or wrapping changes
   useEffect(() => {
     const didColumnSizingChange =
       prevColumnSizing.current != null &&
       !_.isEqual(prevColumnSizing.current, columnSizingMap);
 
+    const wrappedColumnIds = wrappedColumnsOptions.map((column) => column.id);
     const didColumnWrappingChange =
       prevWrappedColumns.current != null &&
-      !_.isEqual(
-        wrappedColumnsOptions.map((column) => column.id),
-        prevWrappedColumns.current,
-      );
+      !_.isEqual(wrappedColumnIds, prevWrappedColumns.current);
 
     if (didColumnSizingChange || didColumnWrappingChange) {
       measureGrid();
     }
 
     prevColumnSizing.current = columnSizingMap;
-    prevWrappedColumns.current = wrappedColumnsOptions.map(
-      (column) => column.id,
-    );
+    prevWrappedColumns.current = wrappedColumnIds;
   }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
+
+  useEffect(() => {
+    columnVirtualizer.measure();
+  }, [columnVirtualizer, columnOrder]);
 
   // Handle column resize from resize observer
   const handleColumnResize = useCallback(
@@ -408,26 +419,31 @@ export const useDataGridInstance = <TData, TValue>({
     onColumnReorder,
   );
 
-  // Scroll to a specific row/column in the virtualized grid
+  const isResizingColumn = !!table.getState().columnSizingInfo.isResizingColumn;
+  const isInteracting = columnsReordering.isDragging || isResizingColumn;
+  useEffect(() => {
+    toggleColumnPinningLimiter(isInteracting);
+  }, [toggleColumnPinningLimiter, isInteracting]);
+
   const scrollTo = useCallback(
-    ({
-      rowIndex,
-      columnIndex,
-    }: {
-      rowIndex?: number;
-      columnIndex?: number;
-    }) => {
-      if (rowIndex != null) {
-        rowVirtualizer.scrollToIndex(rowIndex);
+    ({ row, column }: ScrollToDestinations) => {
+      if (row) {
+        const rowPinningCount = rowPinning.top?.length ?? 0;
+        const rowIndex = Math.max(row.index - rowPinningCount, 0);
+        virtualGrid.rowVirtualizer.scrollToIndex(rowIndex, row.options);
       }
-      if (columnIndex != null) {
-        columnVirtualizer.scrollToIndex(columnIndex);
+      if (column) {
+        const columnPinningCount = columnPinning.left?.length ?? 0;
+        const columnIndex = Math.max(column.index - columnPinningCount, 0);
+        virtualGrid.columnVirtualizer.scrollToIndex(
+          columnIndex,
+          column.options,
+        );
       }
     },
-    [rowVirtualizer, columnVirtualizer],
+    [virtualGrid, rowPinning, columnPinning],
   );
 
-  // Setup cell selection functionality
   const selection = useCellSelection({
     gridRef,
     table,
@@ -449,20 +465,53 @@ export const useDataGridInstance = <TData, TValue>({
     virtualGrid.rowVirtualizer,
   ]);
 
-  // Get rows that should be currently visible in the viewport
-  const getVisibleRows = useCallback(() => {
-    if (enableRowVirtualization) {
-      return virtualGrid.virtualRows.map((virtualRow) => {
-        const row = table.getRowModel().rows[virtualRow.index];
-        return {
-          row,
-          virtualRow,
-        };
-      });
-    }
+  const getPinnedRows = useCallback(
+    (): DataGridRowType<TData>[] =>
+      table.getTopRows().map((row, index) => ({
+        origin: row,
+        displayIndex: index,
+        height: getRowHeight(index),
+      })),
+    [table, getRowHeight],
+  );
 
-    return table.getRowModel().rows;
-  }, [enableRowVirtualization, table, virtualGrid.virtualRows]);
+  const getCenterRows = useCallback((): DataGridRowType<TData>[] => {
+    const centerRows = table.getCenterRows();
+    const pinnedRowsCount = table.getTopRows().length;
+    if (!enableRowVirtualization) {
+      return centerRows.map((row, index) => ({
+        origin: row,
+        displayIndex: index + pinnedRowsCount,
+        height: getRowHeight(row.index),
+      }));
+    }
+    return virtualGrid.virtualRows.map((virtualRow) => ({
+      origin: centerRows[virtualRow.index],
+      virtualItem: virtualRow,
+      displayIndex: virtualRow.index + pinnedRowsCount,
+      height: virtualRow.size,
+    }));
+  }, [enableRowVirtualization, getRowHeight, table, virtualGrid.virtualRows]);
+
+  const getPinnedColumns = useCallback(
+    (): DataGridColumnType<TData>[] =>
+      table.getLeftVisibleLeafColumns().map((column) => ({
+        origin: column,
+        getCell: (row) => row.getLeftVisibleCells()[column.getIndex("left")],
+      })),
+    [table],
+  );
+
+  const getCenterColumns = useCallback((): DataGridColumnType<TData>[] => {
+    const centerColumns = table.getCenterLeafColumns();
+    return virtualGrid.virtualColumns.map((virtualColumn) => {
+      return {
+        origin: centerColumns[virtualColumn.index],
+        virtualItem: virtualColumn,
+        getCell: (row) => row.getCenterVisibleCells()[virtualColumn.index],
+      };
+    });
+  }, [table, virtualGrid.virtualColumns]);
 
   // Auto-adjust column widths when pagination changes
   const previousPagination = usePrevious(pagination);
@@ -536,8 +585,14 @@ export const useDataGridInstance = <TData, TValue>({
     selection,
     enableRowVirtualization,
     getTotalHeight,
-    getVisibleRows,
+    getCenterRows,
+    getCenterColumns,
+    getPinnedColumns,
+    getPinnedRows,
+    rowMeasureRef: virtualGrid.rowMeasureRef,
+    datasetIndexAttributeName,
     enablePagination,
     sorting,
+    scrollTo,
   };
 };

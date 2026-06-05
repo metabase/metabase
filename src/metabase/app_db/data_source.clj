@@ -168,6 +168,5 @@
         properties                              (some-> (not-empty (dissoc spec :classname :subprotocol :subname))
                                                         remove-shadowed-azure-managed-identity-client-id
                                                         connection-pool/map->properties)]
-
     (update-h2/update-if-needed! url)
     (->DataSource url properties)))

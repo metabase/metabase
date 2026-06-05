@@ -1,10 +1,11 @@
 (ns metabase.query-processor.middleware.add-rows-truncated-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-rows-truncated-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.test-metadata :as meta]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (defn- add-rows-truncated [query rows]

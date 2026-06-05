@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import { useDispatch } from "metabase/lib/redux";
-import { Divider, Radio, Stack, Text } from "metabase/ui";
+import { useDispatch } from "metabase/redux";
+import { Button, Divider, Radio, Stack, Text } from "metabase/ui";
 import type { UsageReason } from "metabase-types/api";
 
 import { submitUsageReason } from "../../actions";
@@ -84,7 +83,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
         </Stack>
       </Radio.Group>
       <Divider my="xl" />
-      <Button primary onClick={handleSubmit}>
+      <Button variant="filled" onClick={handleSubmit}>
         {t`Next`}
       </Button>
     </ActiveStep>

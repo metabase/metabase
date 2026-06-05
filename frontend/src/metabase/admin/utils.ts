@@ -2,11 +2,12 @@ import { useLayoutEffect } from "react";
 import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
-import { MetabaseReduxContext, connect } from "metabase/lib/redux";
+import { shouldShowTenantsUpsell } from "metabase/admin/people/selectors";
+import { connect, metabaseReduxContext } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import type { AdminPath } from "metabase/redux/store/admin";
+import { getAdminPaths } from "metabase/selectors/admin";
 import { getSetting } from "metabase/selectors/settings";
-import type { State } from "metabase-types/store";
-import type { AdminPath } from "metabase-types/store/admin";
 
 export const createAdminRouteGuard = (routeKey: string) => {
   const Wrapper = connectedReduxRedirect<any, State>({
@@ -16,7 +17,7 @@ export const createAdminRouteGuard = (routeKey: string) => {
     authenticatedSelector: (state) =>
       getAdminPaths(state)?.find((path) => path.key === routeKey) != null,
     redirectAction: routerActions.replace,
-    context: MetabaseReduxContext,
+    context: metabaseReduxContext,
   });
 
   return Wrapper(({ children }) => children);
@@ -60,9 +61,9 @@ export const createTenantsRouteGuard = () => {
     allowRedirectBack: false,
     authenticatedSelector: (state) =>
       getAdminPaths(state)?.find((path) => path.key === "people") != null &&
-      getSetting(state, "use-tenants"),
+      (getSetting(state, "use-tenants") || shouldShowTenantsUpsell(state)),
     redirectAction: routerActions.replace,
-    context: MetabaseReduxContext,
+    context: metabaseReduxContext,
   });
 
   return Wrapper(({ children }) => children);

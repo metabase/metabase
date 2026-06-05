@@ -1,0 +1,633 @@
+[
+  {
+    "card": {
+      "display": "bar",
+      "visualization_settings": {
+        "column_settings": {},
+        "graph.metrics": ["sum", "avg_3", "avg", "avg_2"],
+        "graph.show_values": true,
+        "graph.show_trendline": true,
+        "graph.dimensions": ["SOURCE"],
+        "graph.x_axis.scale": "ordinal",
+        "series_settings": {
+          "avg_3": {
+            "axis": "left"
+          },
+          "avg_2": {
+            "axis": "right"
+          },
+          "avg": {
+            "axis": "right"
+          },
+          "count": {
+            "axis": "right"
+          },
+          "sum": {
+            "color": "#8A5EB0"
+          }
+        },
+        "graph.y_axis.title_text": "My nice axis",
+        "graph.split_panels": true,
+        "graph.show_goal": false,
+        "graph.label_value_formatting": "full",
+        "graph.label_value_frequency": "fit",
+        "graph.y_axis.scale": "linear",
+        "graph.y_axis.unpin_from_zero": true,
+        "graph.y_axis.split_number": 3,
+        "graph.series_order_dimension": null,
+        "graph.series_order": null
+      },
+      "result_metadata": [
+        {
+          "name": "CREATED_AT",
+          "display_name": "Created At: Year",
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime",
+          "semantic_type": "type/CreationTimestamp",
+          "field_ref": [
+            "field",
+            13,
+            {
+              "temporal-unit": "year"
+            }
+          ],
+          "source": "breakout",
+          "unit": "year",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          }
+        },
+        {
+          "name": "count",
+          "display_name": "Count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "source": "aggregation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 744,
+                "q1": 1681.5,
+                "q3": 6020,
+                "max": 6578,
+                "sd": 2473.8528654711863,
+                "avg": 3752
+              }
+            }
+          }
+        },
+        {
+          "name": "avg",
+          "display_name": "Average of Total",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "field_ref": ["aggregation", 1],
+          "source": "aggregation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 56.662458664541255,
+                "q1": 56.80883246662991,
+                "q3": 87.87344168472816,
+                "max": 88.31329491327396,
+                "sd": 17.016541966969204,
+                "avg": 75.39730024997462
+              }
+            }
+          }
+        },
+        {
+          "name": "avg_2",
+          "display_name": "Average of Discount",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": "type/Discount",
+          "field_ref": ["aggregation", 2],
+          "source": "aggregation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 4.978475039028378,
+                "q1": 5.017631963762648,
+                "q3": 5.318121548792964,
+                "max": 5.410180944362993,
+                "sd": 0.18005111255255948,
+                "avg": 5.1873809171004055
+              }
+            }
+          }
+        },
+        {
+          "name": "avg_3",
+          "display_name": "Average of Discount",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": "type/Discount",
+          "field_ref": ["aggregation", 3],
+          "source": "aggregation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 4.978475039028378,
+                "q1": 5.017631963762648,
+                "q3": 5.318121548792964,
+                "max": 5.410180944362993,
+                "sd": 0.18005111255255948,
+                "avg": 5.1873809171004055
+              }
+            }
+          }
+        }
+      ]
+    },
+    "data": {
+      "rows": [
+        [
+          "2022-01-01T00:00:00Z",
+          "Affiliate",
+          8216.174313355103,
+          57.056766064966,
+          3.9550723441489497,
+          3.9550723441489497
+        ],
+        [
+          "2023-01-01T00:00:00Z",
+          "Affiliate",
+          46252.81597466669,
+          56.434186441115116,
+          4.60369526689447,
+          4.60369526689447
+        ],
+        [
+          "2024-01-01T00:00:00Z",
+          "Affiliate",
+          136991.24984832306,
+          86.74802473580914,
+          5.120266189191466,
+          5.120266189191466
+        ],
+        [
+          "2025-01-01T00:00:00Z",
+          "Affiliate",
+          247629.47303756018,
+          87.11671117262765,
+          5.440068361791237,
+          5.440068361791237
+        ],
+        [
+          "2026-01-01T00:00:00Z",
+          "Affiliate",
+          281997.7992239384,
+          89.03711447248247,
+          5.055658075163702,
+          5.055658075163702
+        ],
+        [
+          "2022-01-01T00:00:00Z",
+          "Facebook",
+          7945.167482140816,
+          56.75119630100583,
+          5.289311805759689,
+          5.289311805759689
+        ],
+        [
+          "2023-01-01T00:00:00Z",
+          "Facebook",
+          52169.411508519566,
+          58.189794771550986,
+          5.853224558229195,
+          5.853224558229195
+        ],
+        [
+          "2024-01-01T00:00:00Z",
+          "Facebook",
+          158227.65733683386,
+          86.71974311391193,
+          4.880100635301968,
+          4.880100635301968
+        ],
+        [
+          "2025-01-01T00:00:00Z",
+          "Facebook",
+          276945.69606933283,
+          87.74430061529856,
+          4.908341385923695,
+          4.908341385923695
+        ],
+        [
+          "2026-01-01T00:00:00Z",
+          "Facebook",
+          314522.90566367214,
+          87.3888595217193,
+          5.562847747616189,
+          5.562847747616189
+        ],
+        [
+          "2022-01-01T00:00:00Z",
+          "Google",
+          8805.67660899727,
+          56.08711215921828,
+          5.436734368974306,
+          5.436734368974306
+        ],
+        [
+          "2023-01-01T00:00:00Z",
+          "Google",
+          50137.663119765566,
+          56.77470674556085,
+          5.433477552549423,
+          5.433477552549423
+        ],
+        [
+          "2024-01-01T00:00:00Z",
+          "Google",
+          155027.38275211427,
+          87.77382396012445,
+          4.933805948428888,
+          4.933805948428888
+        ],
+        [
+          "2025-01-01T00:00:00Z",
+          "Google",
+          270903.64234591037,
+          88.11882858843808,
+          5.466705093169645,
+          5.466705093169645
+        ],
+        [
+          "2026-01-01T00:00:00Z",
+          "Google",
+          306377.23732884077,
+          88.02380889064622,
+          4.259739917588752,
+          4.259739917588752
+        ],
+        [
+          "2022-01-01T00:00:00Z",
+          "Organic",
+          7486.594904044806,
+          56.716628060945496,
+          5.80660201508642,
+          5.80660201508642
+        ],
+        [
+          "2023-01-01T00:00:00Z",
+          "Organic",
+          49412.22609411166,
+          56.80979836052419,
+          5.157002908237665,
+          5.157002908237665
+        ],
+        [
+          "2024-01-01T00:00:00Z",
+          "Organic",
+          152567.16886026657,
+          87.41944302216518,
+          5.053053674309226,
+          5.053053674309226
+        ],
+        [
+          "2025-01-01T00:00:00Z",
+          "Organic",
+          271775.58262877207,
+          89.16111725393081,
+          5.613409440351272,
+          5.613409440351272
+        ],
+        [
+          "2026-01-01T00:00:00Z",
+          "Organic",
+          305584.3924091007,
+          89.67854053137573,
+          5.493439966982223,
+          5.493439966982223
+        ],
+        [
+          "2022-01-01T00:00:00Z",
+          "Twitter",
+          9703.2559378807,
+          56.744186771232165,
+          5.018113697982016,
+          5.018113697982016
+        ],
+        [
+          "2023-01-01T00:00:00Z",
+          "Twitter",
+          49440.77422906918,
+          55.96833562139222,
+          5.960447060988056,
+          5.960447060988056
+        ],
+        [
+          "2024-01-01T00:00:00Z",
+          "Twitter",
+          154644.4663063415,
+          88.40646393048092,
+          4.944924994948296,
+          4.944924994948296
+        ],
+        [
+          "2025-01-01T00:00:00Z",
+          "Twitter",
+          267270.57891198766,
+          86.43600353464785,
+          4.977928447911625,
+          4.977928447911625
+        ],
+        [
+          "2026-01-01T00:00:00Z",
+          "Twitter",
+          302139.3484250793,
+          87.6099736509841,
+          5.629504270041482,
+          5.629504270041482
+        ]
+      ],
+      "cols": [
+        {
+          "name": "CREATED_AT",
+          "display_name": "Created At: Year",
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime",
+          "semantic_type": "type/CreationTimestamp",
+          "field_ref": [
+            "field",
+            13,
+            {
+              "temporal-unit": "year"
+            }
+          ],
+          "source": "breakout",
+          "unit": "year",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          }
+        },
+        {
+          "name": "SOURCE",
+          "display_name": "User → Source",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": "type/Source",
+          "field_ref": [
+            "field",
+            30,
+            {
+              "source-field": 11
+            }
+          ],
+          "source": "breakout",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          }
+        },
+        {
+          "name": "sum",
+          "display_name": "Cumulative sum of Total",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "field_ref": ["aggregation", 0],
+          "source": "aggregation"
+        },
+        {
+          "name": "avg",
+          "display_name": "Average of Total",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "field_ref": ["aggregation", 1],
+          "source": "aggregation"
+        },
+        {
+          "name": "avg_2",
+          "display_name": "Average of Discount",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": "type/Discount",
+          "field_ref": ["aggregation", 2],
+          "source": "aggregation"
+        },
+        {
+          "name": "avg_3",
+          "display_name": "Average of Discount",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": "type/Discount",
+          "field_ref": ["aggregation", 3],
+          "source": "aggregation"
+        }
+      ],
+      "results_metadata": {
+        "columns": [
+          {
+            "name": "CREATED_AT",
+            "display_name": "Created At: Year",
+            "base_type": "type/DateTime",
+            "effective_type": "type/DateTime",
+            "semantic_type": "type/CreationTimestamp",
+            "field_ref": [
+              "field",
+              13,
+              {
+                "temporal-unit": "year"
+              }
+            ],
+            "source": "breakout",
+            "unit": "year",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            }
+          },
+          {
+            "name": "SOURCE",
+            "display_name": "User → Source",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": "type/Source",
+            "field_ref": [
+              "field",
+              30,
+              {
+                "source-field": 11
+              }
+            ],
+            "source": "breakout",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7.4084
+                }
+              }
+            }
+          },
+          {
+            "name": "sum",
+            "display_name": "Cumulative sum of Total",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "field_ref": ["aggregation", 0],
+            "source": "aggregation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 25,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 7486.594904044806,
+                  "q1": 48622.37356425042,
+                  "q3": 273068.1109889123,
+                  "max": 314522.90566367214,
+                  "sd": 118211.32235535975,
+                  "avg": 155686.973652825
+                }
+              }
+            }
+          },
+          {
+            "name": "avg",
+            "display_name": "Average of Total",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "field_ref": ["aggregation", 1],
+            "source": "aggregation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 25,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 55.96833562139222,
+                  "q1": 56.76882913442209,
+                  "q3": 87.8363201927549,
+                  "max": 89.67854053137573,
+                  "sd": 15.55716052395541,
+                  "avg": 75.39661873168615
+                }
+              }
+            }
+          },
+          {
+            "name": "avg_2",
+            "display_name": "Average of Discount",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": "type/Discount",
+            "field_ref": ["aggregation", 2],
+            "source": "aggregation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 25,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 3.9550723441489497,
+                  "q1": 4.942145233318444,
+                  "q3": 5.510791912140714,
+                  "max": 5.960447060988056,
+                  "sd": 0.47602523469392644,
+                  "avg": 5.194139029102794
+                }
+              }
+            }
+          },
+          {
+            "name": "avg_3",
+            "display_name": "Average of Discount",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": "type/Discount",
+            "field_ref": ["aggregation", 3],
+            "source": "aggregation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 25,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 3.9550723441489497,
+                  "q1": 4.942145233318444,
+                  "q3": 5.510791912140714,
+                  "max": 5.960447060988056,
+                  "sd": 0.47602523469392644,
+                  "avg": 5.194139029102794
+                }
+              }
+            }
+          }
+        ]
+      },
+      "results_timezone": "UTC"
+    }
+  }
+]

@@ -1,4 +1,4 @@
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 import type { RawDataRouteParams } from "../../types";
 
@@ -54,6 +54,15 @@ describe("getDataFocusSidebar", () => {
           },
         ],
       ]);
+    });
+
+    it("excludes destination databases from the list", () => {
+      const sidebarData = getDataFocusSidebar(state, getRouteProps({}));
+      const allDbNames = sidebarData?.entityGroups
+        ?.flat()
+        .map((entity: any) => entity.name);
+
+      expect(allDbNames).not.toContain("Destination Database");
     });
   });
 

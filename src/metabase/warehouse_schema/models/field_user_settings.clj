@@ -41,13 +41,12 @@
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 
 (defmethod serdes/generate-path "FieldUserSettings" [_ {:keys [field_id]}]
-  (let [field (t2/select-one 'Field :id field_id)]
-    (conj (serdes/generate-path "Field" field)
-          {:model "FieldUserSettings" :id "1"})))
+  (conj (serdes/generate-path "Field" {:id field_id})
+        {:model "FieldUserSettings" :id "1"}))
 
 (defmethod serdes/dependencies "FieldUserSettings" [fv]
-  ;; Take the path, but drop the FieldUserSettings section at the end, to get the parent Field's path instead.
-  [(pop (serdes/path fv))])
+  (let [db-path (first (serdes/path fv))]
+    [[db-path]]))
 
 (defmethod serdes/load-find-local "FieldUserSettings" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldUserSettings.
@@ -80,4 +79,5 @@
   ;; don't have their own directories.
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
-    (update field-path (dec (count field-path)) str field-values-slug)))
+    (update field-path (dec (count field-path))
+            (fn [segment] (update segment :label str field-values-slug)))))

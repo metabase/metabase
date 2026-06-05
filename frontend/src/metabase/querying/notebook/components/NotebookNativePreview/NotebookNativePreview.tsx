@@ -3,11 +3,12 @@ import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/Pickers/EntityPicker/components/LoadingSpinner";
-import { getEngineNativeType } from "metabase/lib/engine";
-import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
+import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import { CodeMirrorEditor as Editor } from "../../../components/CodeMirrorEditor";
 
 import { createNativeQuestion } from "./utils";
 
@@ -36,6 +37,7 @@ type NotebookNativePreviewProps = {
   onConvertClick: (newQuestion: Question) => void;
   readOnly?: boolean;
   disableDefaultLimit?: boolean;
+  disableConvert?: boolean;
 };
 
 export const NotebookNativePreview = ({
@@ -45,6 +47,7 @@ export const NotebookNativePreview = ({
   onConvertClick,
   readOnly,
   disableDefaultLimit,
+  disableConvert,
 }: NotebookNativePreviewProps) => {
   const database = question.database();
   const engine = database?.engine;
@@ -124,7 +127,7 @@ export const NotebookNativePreview = ({
             variant="subtle"
             p={0}
             onClick={handleConvertClick}
-            disabled={!showQuery}
+            disabled={!showQuery || disableConvert}
           >
             {buttonTitle ?? BUTTON_TITLE[engineType]}
           </Button>

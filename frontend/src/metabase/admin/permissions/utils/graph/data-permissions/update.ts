@@ -8,10 +8,6 @@ import type {
   TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
-  DataPermission,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import {
   isSchemaEntityId,
   isTableEntityId,
 } from "metabase/admin/permissions/utils/data-entity-id";
@@ -22,7 +18,11 @@ import {
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type GroupsPermissions,
+} from "metabase-types/api";
 
 import {
   getFieldsPermission,
@@ -109,7 +109,7 @@ export function updateTablesPermission(
   permission: DataPermission,
 ) {
   const schema = database.schema(schemaName);
-  const tableIds = schema?.getTables().map((t: Table) => t.id);
+  const tableIds = schema?.tables?.map((t: Table) => t.id);
 
   permissions = updateSchemasPermission(
     permissions,
@@ -323,6 +323,60 @@ export function revokeTransformsPermissionIfNeeded(
       groupId,
       databaseId,
       DataPermission.TRANSFORMS,
+      [],
+      DataPermissionValue.NO,
+    );
+  }
+
+  return permissions;
+}
+
+export function revokeWorkspacesPermissionIfNeeded(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  permission: DataPermission,
+  value: DataPermissionValue,
+): GroupsPermissions {
+  if (
+    permission !== DataPermission.VIEW_DATA &&
+    permission !== DataPermission.CREATE_QUERIES
+  ) {
+    return permissions;
+  }
+
+  const { databaseId } = entityId;
+
+  const viewDataValue =
+    permission === DataPermission.VIEW_DATA
+      ? value
+      : getSchemasPermission(
+          permissions,
+          groupId,
+          { databaseId },
+          DataPermission.VIEW_DATA,
+        );
+
+  const createQueriesValue =
+    permission === DataPermission.CREATE_QUERIES
+      ? value
+      : getSchemasPermission(
+          permissions,
+          groupId,
+          { databaseId },
+          DataPermission.CREATE_QUERIES,
+        );
+
+  const hasRequiredPermissions =
+    hasFullViewDataAccess(viewDataValue) &&
+    hasFullCreateQueriesAccess(createQueriesValue);
+
+  if (!hasRequiredPermissions) {
+    return updatePermission(
+      permissions,
+      groupId,
+      databaseId,
+      DataPermission.WORKSPACES,
       [],
       DataPermissionValue.NO,
     );

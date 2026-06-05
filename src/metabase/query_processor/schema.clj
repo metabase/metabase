@@ -13,7 +13,7 @@
   "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized
   yet!
 
-  This schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL,
+  This schema is not very strict because we need to handle different types of queries (legacy MBQL, MBQL 5,
   super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet."
   [:and
    [:map
@@ -69,7 +69,7 @@
 (mr/def ::export-format
   "Schema for valid export formats for downloading query results."
   (into [:enum {:decode/json keyword
-               ;; :api/regex   export-formats-regex
+                ;; :api/regex   export-formats-regex
                 }]
         export-formats))
 

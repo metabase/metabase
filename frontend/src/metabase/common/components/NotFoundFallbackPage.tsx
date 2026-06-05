@@ -3,7 +3,7 @@ import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 
 type DispatchProps = {

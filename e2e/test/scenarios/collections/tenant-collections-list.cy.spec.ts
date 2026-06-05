@@ -9,7 +9,7 @@ describe("scenarios > collections > tenant collections list", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     cy.request("PUT", "/api/setting", { "use-tenants": true });
   });
 

@@ -2,10 +2,10 @@
   "Base OIDC authentication provider. Provides generic OIDC support that concrete
    implementations (Auth0, Okta, etc.) can derive from."
   (:require
-   [clj-http.client :as http]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.oidc.common :as oidc.common]
    [metabase.sso.oidc.discovery :as oidc.discovery]
+   [metabase.sso.oidc.http :as oidc.http]
    [metabase.sso.oidc.schema :as oidc.schema]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.sso.oidc.tokens :as oidc.tokens]
@@ -51,16 +51,12 @@
   [code config]
   (let [token-endpoint (oidc.discovery/get-token-endpoint config)]
     (try
-      (let [response (http/post token-endpoint
-                                {:form-params {:grant_type "authorization_code"
-                                               :code code
-                                               :redirect_uri (:redirect-uri config)
-                                               :client_id (:client-id config)
-                                               :client_secret (:client-secret config)}
-                                 :as :json
-                                 :throw-exceptions false
-                                 :conn-timeout 5000
-                                 :socket-timeout 5000})]
+      (let [response (oidc.http/oidc-post token-endpoint
+                                          {:form-params {:grant_type "authorization_code"
+                                                         :code code
+                                                         :redirect_uri (:redirect-uri config)
+                                                         :client_id (:client-id config)
+                                                         :client_secret (:client-secret config)}})]
         (if (= 200 (:status response))
           (oidc.common/parse-token-response (:body response))
           (do
@@ -91,7 +87,6 @@
         first-name (get claims (keyword firstname-attr))
         last-name (get claims (keyword lastname-attr))
         provider-id (:sub claims)]
-
     (when email
       {:email email
        :first_name first-name
@@ -119,7 +114,6 @@
           {:success? false
            :error :invalid-callback
            :message (get-in validation [:error :description] "Invalid callback parameters")}
-
           ;; Enrich config with discovery once for the entire callback flow
           (let [enriched-config (enrich-config-with-discovery config)
                 code (:code validation)
@@ -128,7 +122,6 @@
               {:success? false
                :error :token-exchange-failed
                :message "Failed to exchange authorization code for tokens"}
-
               ;; Validate ID token
               (let [jwks-uri (oidc.discovery/get-jwks-uri enriched-config)
                     validation-config {:jwks-uri jwks-uri
@@ -143,7 +136,6 @@
                   {:success? false
                    :error :invalid-token
                    :message (:error validation-result)}
-
                   ;; Extract user data from claims
                   (let [claims (:claims validation-result)
                         user-data (extract-user-data claims config)]
@@ -164,7 +156,6 @@
           {:success? false
            :error :configuration-error
            :message "Authorization endpoint not found. Check OIDC configuration or discovery."}
-
           ;; Generate authorization URL
           (let [state (oidc.common/generate-state)
                 nonce (oidc.common/generate-nonce)

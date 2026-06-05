@@ -41,32 +41,25 @@
       (let [bucket (transforms-python.settings/python-storage-s-3-bucket)
             key    (str "test-object-" (random-uuid) ".txt")
             body   (str "Hello, S3! My secret is:" (random-uuid))]
-
         (is (nil? (s3/read-to-string s3-client bucket key)))
         (is (= :default (s3/read-to-string s3-client bucket key :default)))
-
         (let [tmp-file (Files/createTempFile "s3-test" ".txt" (into-array FileAttribute []))]
           (try
             (spit (.toFile tmp-file) body)
-
             (is (s3/upload-file s3-client bucket key (.toFile tmp-file)))
-
             (is (= body (s3/read-to-string s3-client bucket key)))
             (is (= body (s3/read-to-string s3-client bucket key :default)))
-
             (s3/delete s3-client bucket key)
-
             (is (nil? (s3/read-to-string s3-client bucket key)))
             (is (= :default (s3/read-to-string s3-client bucket key :default)))
-
             (finally
               (Files/deleteIfExists tmp-file))))))))
 
 (deftest open-s3-shared-storage-test
   (testing "open-s3-shared-storage! returns closeable derefable"
-    (mt/with-premium-features #{:transforms-python :transforms-basic}
-      (let [table-name->id {"users" 1}
-            storage-ref    (s3/open-shared-storage! table-name->id)
+    (mt/with-premium-features #{:transforms-python :transforms}
+      (let [source-tables [{:alias "users" :table_id 1 :database_id 1 :schema nil}]
+            storage-ref    (s3/open-shared-storage! source-tables)
             {:keys [s3-client bucket-name objects]} @storage-ref]
         (testing "can be dereferenced"
           (doseq [[k {:keys [method path url]}] objects
@@ -88,7 +81,6 @@
                   :put (do
                          (is (http/put url {:body content}))
                          (is (= content (s3/read-to-string s3-client bucket-name path :not-created)))))))))
-
         (testing "closing the ref deletes the files"
           (.close storage-ref)
           (doseq [[k {:keys [path]}] objects]

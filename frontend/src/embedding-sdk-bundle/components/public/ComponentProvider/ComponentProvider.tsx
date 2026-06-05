@@ -4,6 +4,7 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-plugins-ready";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
 import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
@@ -13,17 +14,18 @@ import {
   setEventHandlers,
   setIsGuestEmbed,
   setPlugins,
+  setPluginsReady,
 } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
+import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
-import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
-import { LocaleProvider } from "metabase/public/LocaleProvider";
+import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { initializePlugins } from "sdk-ee-plugins";
 
 import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
@@ -39,23 +41,37 @@ export type ComponentProviderInternalProps = ComponentProviderProps & {
 
 let hasInitializedPlugins = false;
 
-function useInitPlugins() {
+/**
+ * Initializes EE plugins synchronously during render
+ * to avoid an extra frame where children render without plugins.
+ */
+function useInitPlugins(reduxStore: SdkStore) {
   const tokenFeatures = useSelector(
     (state) => state.settings.values["token-features"],
   );
 
-  useEffect(() => {
-    // EAJS already initializes the plugins in its entrypoint, and this
-    // component is used by EAJS we have to make sure we don't re-initialize the
-    // sdk plugins as they could override some of plugins needed by EAJS
-    if (isEmbeddingEajs() || hasInitializedPlugins || !tokenFeatures) {
-      return;
-    }
+  // Modular Embedding already initializes the plugins in its entrypoint.
+  // We have to avoid re-initializing SDK plugins as they could override
+  // some of plugins needed by EAJS
+  const shouldInitialize = !isEmbeddingEajs() && !!tokenFeatures;
 
+  if (shouldInitialize && !hasInitializedPlugins) {
     hasInitializedPlugins = true;
 
     initializePlugins();
-  }, [tokenFeatures]);
+  }
+
+  // Dispatch is deferred to an effect to avoid scheduling updates on other
+  // subscribed components mid-render (React "setState while rendering" warning).
+  useEffect(() => {
+    if (!shouldInitialize) {
+      return;
+    }
+
+    if (!reduxStore.getState().sdk?.pluginsReady) {
+      reduxStore.dispatch(setPluginsReady(true));
+    }
+  }, [shouldInitialize, reduxStore]);
 }
 
 export const ComponentProviderInternal = (
@@ -88,7 +104,7 @@ export const ComponentProviderInternal = (
     isLocalHost,
   });
 
-  useInitPlugins();
+  useInitPlugins(reduxStore);
 
   useSdkCustomLoader();
 
@@ -97,9 +113,7 @@ export const ComponentProviderInternal = (
   }, [reduxStore, isGuestEmbed]);
 
   useEffect(() => {
-    if (fontFamily) {
-      reduxStore.dispatch(setOptions({ font: fontFamily }));
-    }
+    reduxStore.dispatch(setOptions({ font: fontFamily }));
   }, [reduxStore, fontFamily]);
 
   useEffect(() => {
@@ -118,6 +132,11 @@ export const ComponentProviderInternal = (
 
   const ensureSingleInstanceId = useId();
 
+  // Defer ContentTranslationsProvider until EE plugins are assigned to
+  // PLUGIN_CONTENT_TRANSLATION; otherwise useSetupAuthContentTranslations
+  // calls the OSS no-op, and its deps don't re-fire when the EE fn lands.
+  const pluginsReady = useArePluginsReady();
+
   return (
     <EmotionCacheProvider>
       <SdkThemeProvider theme={theme}>
@@ -130,7 +149,9 @@ export const ComponentProviderInternal = (
               <LocaleProvider locale={locale || instanceLocale}>
                 {children}
 
-                {isInstanceToRender && <ContentTranslationsProvider />}
+                {isInstanceToRender && pluginsReady && (
+                  <ContentTranslationsProvider />
+                )}
               </LocaleProvider>
 
               {isInstanceToRender && (

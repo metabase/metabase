@@ -321,6 +321,7 @@ describe("scenarios > admin > tools > logs", () => {
   };
   const log2 = {
     ...log1,
+    process_uuid: "9da436dc-d79c-42f9-89e3-322c22cd0cd3",
     timestamp: "2024-01-10T21:21:58.598Z",
     level: "ERROR",
   };
@@ -343,7 +344,7 @@ describe("scenarios > admin > tools > logs", () => {
       "equal",
       [
         `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log1.timestamp)} DEBUG metabase.server.middleware.log message`,
-        `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
+        `[9da436dc-d79c-42f9-89e3-322c22cd0cd3] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
       ].join("\n"),
     );
   });
@@ -353,7 +354,7 @@ describe("scenarios > admin > tools > logs", () => {
     cy.button(/Download/).click();
     cy.readFile("cypress/downloads/logs.txt").should(
       "equal",
-      `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
+      `[9da436dc-d79c-42f9-89e3-322c22cd0cd3] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
     );
   });
 
@@ -831,8 +832,7 @@ describe("scenarios > admin > tools > task runs filtering", () => {
     cy.location("search").should("contain", "run-type=sync");
     cy.wait("@getTaskRuns");
     cy.log("Filter by started at");
-    getFilterByStartedAt().click();
-    H.popover().findByText("Previous 30 days").click();
+    selectStartedAt("Previous 30 days");
     cy.location("search").should("contain", "started-at=past30days");
     cy.wait("@getTaskRuns");
 
@@ -884,8 +884,7 @@ describe("scenarios > admin > tools > task runs filtering", () => {
     cy.log("Should show tooltip 'Select a start time' when hovering");
     assertFilterByEntityTooltipText("Select a start time first");
 
-    getFilterByStartedAt().click();
-    H.popover().findByText("Previous 30 days").click();
+    selectStartedAt("Previous 30 days");
 
     cy.log("Should show loader while loading entities");
     getFilterByEntity()
@@ -920,8 +919,7 @@ describe("scenarios > admin > tools > task runs filtering", () => {
 
     getFilterByRun().click();
     H.popover().findByText("Alert").click();
-    getFilterByStartedAt().click();
-    H.popover().findByText("Previous 30 days").click();
+    selectStartedAt("Previous 30 days");
     cy.wait("@getEmptyEntities");
 
     getFilterByEntity().should("be.disabled");
@@ -933,7 +931,14 @@ function getFilterByRun() {
   return cy.findByPlaceholderText("Filter by run type");
 }
 function getFilterByStartedAt() {
-  return cy.findByPlaceholderText("Filter by started at");
+  return cy.findByTestId("task-run-date-picker");
+}
+
+function selectStartedAt(label: string) {
+  getFilterByStartedAt().click();
+  H.popover().findByPlaceholderText("Started at").click();
+  H.popover().findByRole("option", { name: label }).click();
+  getFilterByStartedAt().click();
 }
 
 function getFilterByEntity() {

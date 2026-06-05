@@ -7,7 +7,10 @@
   Because functions here don't know where the JDBC spec came from, you can use them to perform the usual application
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations :as custom-migrations]
@@ -83,7 +86,6 @@
         ;; Releasing the locks does not depend on the changesets, so we skip this step as it might require locking.
         (when-not (= :release-locks direction)
           (liquibase/consolidate-liquibase-changesets! conn liquibase))
-
         (log/info "Liquibase is ready.")
         (case direction
           :up            (liquibase/migrate-up-if-needed! liquibase data-source)
@@ -92,21 +94,21 @@
           :down-force    (apply liquibase/rollback-major-version! conn liquibase true args)
           :print         (print-migrations-and-quit-if-needed! liquibase data-source)
           :release-locks (liquibase/force-release-locks! liquibase))
-       ;; Migrations were successful; commit everything and re-enable auto-commit
+        ;; Migrations were successful; commit everything and re-enable auto-commit
         (.commit conn)
         (.setAutoCommit conn true)
         :done
-       ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
-       ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
-       ;; clear the lock in that case, so handle that case separately
+        ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
+        ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
+        ;; clear the lock in that case, so handle that case separately
         (catch LockException e
           (.rollback conn)
           (throw e))
-       ;; If for any reason any part of the migrations fail then rollback all changes
+        ;; If for any reason any part of the migrations fail then rollback all changes
         (catch Throwable e
           (.rollback conn)
-         ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
-         ;; operation without releasing the lock first, the real error will get hidden behind a lock error
+          ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
+          ;; operation without releasing the lock first, the real error will get hidden behind a lock error
           (liquibase/release-lock-if-needed! liquibase)
           (throw e))))))
 
@@ -120,9 +122,46 @@
         [result]    (vals first-row)]
     (= result 1)))
 
-(mu/defn- verify-db-connection
+(defn- load-supported-db-versions
+  []
+  (if-let [resource (io/resource "metabase/app_db/supported-db-versions.edn")]
+    (edn/read-string (slurp resource))
+    (throw (ex-info "Resource not found: metabase/app_db/supported-db-versions.edn"
+                    {:path "metabase/app_db/supported-db-versions.edn"}))))
+
+(def ^:private supported-db-versions
+  "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"
+  (load-supported-db-versions))
+
+(defn- parse-db-version
+  [product-version]
+  (let [[_ major minor patch] (re-find #"^(\d+)(?:\.(\d+))?(?:\.(\d+))?" product-version)]
+    {:major (or (some-> major parse-long) 0)
+     :minor (or (some-> minor parse-long) 0)
+     :patch (or (some-> patch parse-long) 0)}))
+
+(mu/defn- db-version
+  :- [:map
+      [:major [:int {:min 0}]]
+      [:minor [:int {:min 0}]]
+      [:patch [:int {:min 0}]]]
+  [^java.sql.DatabaseMetaData metadata :- (ms/InstanceOfClass java.sql.DatabaseMetaData)]
+  (merge
+   (parse-db-version (.getDatabaseProductVersion metadata))
+   {:major (.getDatabaseMajorVersion metadata)
+    :minor (.getDatabaseMinorVersion metadata)}))
+
+(defn- supported-app-db-version?
+  [db-type {:keys [major minor patch]}]
+  (let [required-version (get supported-db-versions db-type)]
+    (and required-version
+         (not (pos? (compare ((juxt :major :minor :patch) required-version)
+                             [major minor patch]))))))
+
+(mu/defn verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
-  connecting."
+  connecting. Public so [[metabase.app-db.core/verify-application-db-connection!]] can call it from outside this
+  namespace; most callers should use that wrapper instead of invoking this directly."
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
@@ -131,9 +170,27 @@
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-    (let [metadata (.getMetaData conn)]
-      (log/infof "Successfully verified %s %s application database connection. %s"
-                 (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅")))))
+    (let [metadata (.getMetaData conn)
+          db-version (db-version metadata)
+          db-type (or (when (= "MariaDB" (.getDatabaseProductName metadata)) :mariadb)
+                      db-type)]
+      (if (supported-app-db-version? db-type db-version)
+        (log/infof "Successfully verified %s %s application database connection. %s"
+                   (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
+        (throw (ex-info (str/join \newline [(trs "Metabase {0} DB version not supported (found {1}, required {2}). Please upgrade your database to a supported version and try again."
+                                                 (name db-type)
+                                                 (format "%s.%s.%s (%s)"
+                                                         (:major db-version)
+                                                         (:minor db-version)
+                                                         (:patch db-version)
+                                                         (.getDatabaseProductVersion metadata))
+                                                 (let [required-version (get supported-db-versions db-type)]
+                                                   (format "%s.%s.%s"
+                                                           (:major required-version)
+                                                           (:minor required-version)
+                                                           (:patch required-version))))
+                                            "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"])
+                        {}))))))
 
 (mu/defn- check-encryption
   "Ensure encryption env variable is correctly set if needed, and encrypt the database if it needs to be

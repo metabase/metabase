@@ -50,7 +50,6 @@
   (let [avg-execution-time (h2x/cast (int-casting-type) (h2x/round (h2x/+ (h2x/* [:inline 0.9] :average_execution_time)
                                                                           [:inline (* 0.1 execution-time-ms)])
                                                                    [:inline 0]))]
-
     (or
      ;; if it DOES NOT have a query (yet) set that. In 0.31.0 we added the query.query column, and it gets set for all
      ;; new entries, so at some point in the future we can take this out, and save a DB call.
@@ -109,7 +108,7 @@
          :table-id    table-id}))))
 
 (mu/defn query-is-native? :- :boolean
-  "Whether this query (pMBQL or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
+  "Whether this query (MBQL 5 or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
   regardless of whether the Card has a native query or not."
   [query :- [:maybe ::queries.schema/query]]
   (boolean (some-> query not-empty lib/native-only-query?)))

@@ -1,6 +1,7 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
   [[metabase.pulse.dashboard-subscription-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.send-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -23,6 +24,26 @@
     [thunk]
     (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `bun run build-static-viz`\n\n"
       (thunk))))
+
+(deftest channel-recipients-includes-channel-id-test
+  (testing "Slack channel-recipients includes channel_id when present in pulse_channel details"
+    (is (= [{:type    :notification-recipient/raw-value
+             :details {:value "#my-channel" :channel_id "C0ABC123"}}]
+           (#'pulse.send/channel-recipients
+            {:channel_type "slack"
+             :details      {:channel "#my-channel" :channel_id "C0ABC123"}}))))
+  (testing "Slack channel-recipients omits channel_id when absent from pulse_channel details"
+    (is (= [{:type    :notification-recipient/raw-value
+             :details {:value "#my-channel"}}]
+           (#'pulse.send/channel-recipients
+            {:channel_type "slack"
+             :details      {:channel "#my-channel"}}))))
+  (testing "Email recipients are unaffected"
+    (is (= [{:type    :notification-recipient/raw-value
+             :details {:value "test@example.com"}}]
+           (#'pulse.send/channel-recipients
+            {:channel_type "email"
+             :recipients   [{:email "test@example.com"}]})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
@@ -254,7 +275,6 @@
                 (testing "attached-results-text should return nil since it's a slack message"
                   (is (= [nil]
                          (pulse.test-util/output @#'body/attached-results-text))))))}}
-
           "11 rows in the results no longer causes a CSV attachment per issue #36441."
           {:card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 11})
 
@@ -382,7 +402,6 @@
                 (is (=? {:channel "#general"
                          :blocks (default-slack-blocks card-id true)}
                         message)))}}
-
             "with no data"
             {:card
              (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
@@ -391,7 +410,6 @@
              {:email
               (fn [_ emails]
                 (is (empty? emails)))}}
-
             "too much data"
             {:card
              (pulse.test-util/checkins-query-card {:limit 21, :aggregation nil})
@@ -435,7 +453,6 @@
                                                        pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has reached its goal of 5\.9\."))))}}
-
             "no data"
             {:card
              (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-01" "2014-04-01"]
@@ -450,7 +467,6 @@
              {:email
               (fn [_ emails]
                 (is (empty? emails)))}}
-
             "with progress bar"
             {:card
              (merge (pulse.test-util/venues-query-card "max")
@@ -491,7 +507,6 @@
                                                        pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has gone below its goal of 1\.1\."))))}}
-
             "with no satisfying data"
             {:card
              (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
@@ -506,7 +521,6 @@
              {:email
               (fn [_ emails]
                 (is (empty? emails)))}}
-
             "with progress bar"
             {:card
              (merge (pulse.test-util/venues-query-card "min")
@@ -615,7 +629,7 @@
          :model/PulseChannel _              {:pulse_id     pulse-id
                                              :channel_type "slack"
                                              :details      {:channel "#general"}}]
-        (let [original-render-noti (var-get #'channel/render-notification)]
+        (let [original-render-noti (mt/original-fn #'channel/render-notification)]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (if (= :channel/slack (first args))
                                                         (throw (ex-info "Slack failed" {}))
@@ -682,7 +696,7 @@
 (deftest send-skip-alert-test
   (testing "alerts are skipped (#63189)"
     (let [pulse-sent-called? (atom false)]
-      (with-redefs [pulse.send/send-pulse!* (fn [& _args])]
+      (mt/with-dynamic-fn-redefs [pulse.send/send-pulse!* (fn [& _args])]
         (mt/with-temp [:model/Pulse {pulse-id :id
                                      :as pulse}   {:creator_id      (mt/user->id :rasta)
                                                    :name            (mt/random-name)

@@ -1,7 +1,7 @@
 import Color from "color";
 
 import { render, screen } from "__support__/ui";
-import { color as libColors } from "metabase/lib/colors";
+import { color as libColors } from "metabase/ui/colors";
 
 import { ColorRangeSelector } from "./ColorRangeSelector";
 import { getColorRangeLabel } from "./ColorRangeToggle";

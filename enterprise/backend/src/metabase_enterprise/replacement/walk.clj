@@ -15,6 +15,14 @@
   [parameters :- [:sequential :map]]
   (into #{} (keep #(-> % :values_source_config :card_id)) parameters))
 
+(mu/defn walk-parameter-source-card-ids :- [:sequential :map]
+  "Walk the parameters and update the card IDs in `:values_source_config` using the provided function.
+
+  `card-id-fn` will be called with a card ID and should return a new card ID."
+  [parameters :- [:sequential :map]
+   card-id-fn :- fn?]
+  (mapv #(m/update-existing-in % [:values_source_config :card_id] card-id-fn) parameters))
+
 (mu/defn walk-parameter-source-card-refs :- [:sequential :map]
   "Walk the parameters and update the refs in `:value_field` and `:label_field`
   in the `:values_source_config` using the provided function.
@@ -26,7 +34,7 @@
             (try
               ;; `value_field` and `label_field` are legacy refs
               #_{:clj-kondo/ignore [:discouraged-var]}
-              (-> legacy-ref lib/->pMBQL (ref-fn card-id) lib/->legacy-MBQL)
+              (-> legacy-ref lib/->mbql5 (ref-fn card-id) lib/->legacy-MBQL)
               (catch Exception _
                 legacy-ref)))]
     (mapv (fn [parameter]
@@ -63,7 +71,7 @@
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref-or-name [ref-or-name]
             (or (when (vector? ref-or-name)
-                  (when-some [ref (try (lib/->pMBQL ref-or-name) (catch Exception _ nil))]
+                  (when-some [ref (try (lib/->mbql5 ref-or-name) (catch Exception _ nil))]
                     (when-some [ref-or-name' (ref-fn ref)]
                       (when (string? ref-or-name')
                         ref-or-name'))))

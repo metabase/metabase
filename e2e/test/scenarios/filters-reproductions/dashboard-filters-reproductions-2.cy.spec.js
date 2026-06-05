@@ -819,7 +819,7 @@ describe("issue 34955", () => {
       cy.findAllByRole("columnheader").eq(-1).should("have.text", ccName);
       H.tableInteractiveBody()
         .findAllByRole("gridcell")
-        .filter(":contains(May 15, 2024, 8:04 AM)")
+        .filter(":contains(May 15, 2027, 8:04 AM)")
         .should("have.length", 2);
     });
   });
@@ -827,21 +827,21 @@ describe("issue 34955", () => {
   it("should connect specific date filter (`Between`) to the temporal custom column (metabase#34955)", () => {
     cy.get("@dashboardId").then((dashboard_id) => {
       // Apply filter through URL to prevent the typing flakes
-      cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
-      checkAppliedFilter("Between", "January 1, 2024 - March 1, 2024");
+      cy.visit(`/dashboard/${dashboard_id}?on=&between=2027-01-01~2027-03-01`);
+      checkAppliedFilter("Between", "January 1, 2027 - March 1, 2027");
 
       cy.findAllByTestId("cell-data")
-        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .filter(":contains(January 1, 2027, 7:26 AM)")
         .should("have.length", 2);
     });
 
     cy.get("@dashboardId").then((dashboard_id) => {
       // Apply filter through URL to prevent the typing flakes
-      cy.visit(`/dashboard/${dashboard_id}?on=2024-01-01&between=`);
-      checkAppliedFilter("On", "January 1, 2024");
+      cy.visit(`/dashboard/${dashboard_id}?on=2027-01-01&between=`);
+      checkAppliedFilter("On", "January 1, 2027");
 
       cy.findAllByTestId("cell-data")
-        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .filter(":contains(January 1, 2027, 7:26 AM)")
         .should("have.length", 2);
     });
   });
@@ -1629,7 +1629,7 @@ describe("issue 54236", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.clock(new Date("2025-02-26"));
+    cy.clock(new Date("2028-02-26"));
   });
 
   it("should show correct date range in the date picker (metabase#54236)", () => {
@@ -1647,8 +1647,8 @@ describe("issue 54236", () => {
     H.popover().within(() => {
       cy.icon("arrow_left_to_line").click();
       cy.findByDisplayValue("4").clear().type("1");
-      cy.findByText("Jul 1 – Sep 30, 2025").should("be.visible");
-      cy.findByText("Apr 1 – Jun 30, 2025").should("not.exist");
+      cy.findByText("Jul 1 – Sep 30, 2028").should("be.visible");
+      cy.findByText("Apr 1 – Jun 30, 2028").should("not.exist");
     });
   });
 });
@@ -1732,7 +1732,7 @@ describe("issue 48824", { tags: "@skip" }, () => {
   it("should correctly translate relative filters in dashboards (metabase#48824)", () => {
     cy.log("set locale");
     cy.request("GET", "/api/user/current").then(({ body: user }) => {
-      cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
+      cy.request("PUT", `/api/user/${user.id}`, { locale: "en-ZZ" });
     });
 
     cy.log("add a date parameter with a relative default value to a dashboard");
@@ -1761,12 +1761,12 @@ describe("issue 48824", { tags: "@skip" }, () => {
     });
 
     cy.log("Previous 30 days");
-    H.filterWidget().findByText("Vorheriger 30 Tage").should("be.visible");
+    H.filterWidget().findByText("[zz] Previous 30 days").should("be.visible");
     H.filterWidget().icon("revert").click();
 
     cy.log("Previous 30 days, starting 7 days ago");
     H.filterWidget()
-      .findByText("Vorheriger 30 Tage, ab vor 7 tage")
+      .findByText("[zz] Previous 30 days, [zz] starting 7 days ago")
       .should("be.visible");
   });
 });
@@ -1865,7 +1865,7 @@ describe("issue 55678", () => {
     id: "f8ec7c71",
     type: "date/all-options",
     sectionId: "date",
-    default: "2020-01-01~2024-12-31",
+    default: "2020-01-01~2027-12-31",
   };
 
   const questionDetails = {
@@ -1930,7 +1930,7 @@ describe("issue 55678", () => {
     });
     H.popover().findByText("See this Order").click();
     H.queryBuilderFiltersPanel()
-      .findByText("Created At: Month is Apr 1–30, 2022")
+      .findByText("Created At: Month is Apr 1–30, 2025")
       .should("be.visible");
     H.assertQueryBuilderRowCount(1);
   });

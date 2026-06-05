@@ -7,10 +7,12 @@
    Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
    metabase.sql-tools.init to avoid circular dependencies."
   (:require
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as common]
    [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.metrics :as metrics]
    [metabase.sql-tools.settings :as sql-tools.settings]
+   [metabase.sql-tools.sqlglot.core :as sqlglot]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p]))
@@ -18,25 +20,29 @@
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
 (mr/def ::table-spec
-  "Schema for table identifier used in replacements."
+  "Schema for table identifier used in replacements. `:db` is the top-level qualifier for
+  drivers that emit one (BigQuery project, ClickHouse database)."
   [:map
    [:table :string]
-   [:schema {:optional true} [:maybe :string]]])
+   [:schema {:optional true} [:maybe :string]]
+   [:db {:optional true} [:maybe :string]]])
 
 (mr/def ::column-spec
   "Schema for column identifier used in replacements."
   [:map
    [:column :string]
    [:table {:optional true} [:maybe :string]]
-   [:schema {:optional true} [:maybe :string]]])
+   [:schema {:optional true} [:maybe :string]]
+   [:db {:optional true} [:maybe :string]]])
 
 (mr/def ::table-replacement-value
-  "Schema for table replacement target - can be a string or a map with schema/table."
+  "Schema for table replacement target - can be a string or a map with schema/table/db."
   [:or
    :string
    [:map
     [:schema {:optional true} [:maybe :string]]
-    [:table {:optional true} [:maybe :string]]]])
+    [:table {:optional true} [:maybe :string]]
+    [:db {:optional true} [:maybe :string]]]])
 
 (mr/def ::replacements
   "Schema for replace-names replacements map."
@@ -195,3 +201,23 @@
   See [[metabase.sql-tools.common/resolve-field]] for details."
   [driver mp col-spec]
   (common/resolve-field driver mp col-spec))
+
+(def ^:private TranspilationResult
+  [:map
+   [:status [:enum :success :error :skipped]]
+   [:reason {:optional true} [:enum :contains-templates :missing-dialect]]
+   [:error-message {:optional true} :string]
+   [:transpiled-sql {:optional true} :string]])
+
+(mu/defn transpile-sql :- TranspilationResult
+  "Transpile sql from one dialect to another. Returns a map as per `TranspilationResult`."
+  [sql :- :string
+   from-dialect :- [:maybe :string]
+   to-dialect :- [:maybe :string]]
+  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
+                                sql from-dialect to-dialect))
+
+(defn is-single-stmt-of-type?
+  "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
+  [driver sql stmt-type]
+  (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))

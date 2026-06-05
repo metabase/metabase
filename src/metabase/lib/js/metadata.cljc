@@ -1,5 +1,4 @@
 (ns metabase.lib.js.metadata
-  (:refer-clojure :exclude [keywordize-keys])
   (:require
    #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.legacy-mbql.normalize :as legacy-mbql.normalize])
@@ -61,7 +60,7 @@
                        (remove (set skip-keys))
                        (map (fn [k]
                               [k (object-get obj k)]))
-                        ;; ignore values that are functions
+                       ;; ignore values that are functions
                        (remove (fn [[_k v]]
                                  (js-fn? v)))
                        xform)
@@ -505,8 +504,11 @@
 
 (defmethod parse-field-fn :measure
   [_object-type]
-  (fn [_k v]
-    v))
+  (fn [k v]
+    (case k
+      :definition #?(:cljs (js->clj v :keywordize-keys true)
+                     :clj  (perf/keywordize-keys v))
+      v)))
 
 (defmethod parse-objects-default-key :measure
   [_object-type]
@@ -617,8 +619,8 @@
               setting-key
               (setting unparsed-metadata setting-key)))
 
-      ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
-      ;; thing at once.
+       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
+       ;; thing at once.
        clojure.core.protocols/Datafiable
        (datafy [_this]
          (perf/postwalk
@@ -637,5 +639,5 @@
      :clj  (metadata-provider* database-id unparsed-metadata)))
 
 (def parse-column
-  "Parses a JS column provided by the FE into a :metadata/column value for use in MLv2."
+  "Parses a JS column provided by the FE into a :metadata/column value for use in Lib."
   (parse-object-fn :field))

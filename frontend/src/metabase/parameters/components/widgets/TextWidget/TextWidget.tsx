@@ -1,7 +1,7 @@
 import { Component, createRef } from "react";
 import { t } from "ttag";
 
-import { forceRedraw } from "metabase/lib/dom";
+import { forceRedraw } from "metabase/utils/dom";
 
 export type TextWidgetProps = {
   value: string | number;

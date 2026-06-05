@@ -1,7 +1,13 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
-   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.util.i18n :refer [tru]]))
+
+(defn request-jwt
+  "JWT from the request `:params` (which includes both query string and form body) or JSON body (`:body`), in that order."
+  [req]
+  (or (get-in req [:params :jwt])
+      (get-in req [:body :jwt])))
 
 (defn- select-sso-backend
   [req]
@@ -10,11 +16,10 @@
       preferred-method (case preferred-method
                          "jwt"  :jwt
                          "saml" :saml
-                         "slack-connect"  :slack-connect
                          (throw (ex-info "Invalid auth method"
                                          {:preferred-method preferred-method
-                                          :available        [:jwt :saml :slack-connect]})))
-      (contains? (:params req) :jwt) :jwt
+                                          :available        [:jwt :saml]})))
+      (some? (request-jwt req)) :jwt
       :else :saml)))
 
 (defn- sso-backend
@@ -23,17 +28,15 @@
   preferred_method parameter if provided."
   [req]
   (let [enabled-count (count (filter identity
-                                     [(sso-settings/saml-enabled)
-                                      (sso-settings/jwt-enabled)
-                                      (sso-settings/slack-connect-enabled)]))]
+                                     [(ee-sso-settings/saml-enabled)
+                                      (ee-sso-settings/jwt-enabled-and-configured)]))]
     (cond
       ;; Multiple SSO methods enabled - use preferred_method or selection logic
       (> enabled-count 1) (select-sso-backend req)
 
       ;; Single SSO method enabled
-      (sso-settings/saml-enabled) :saml
-      (sso-settings/jwt-enabled)  :jwt
-      (sso-settings/slack-connect-enabled)  :slack-connect
+      (ee-sso-settings/saml-enabled) :saml
+      (ee-sso-settings/jwt-enabled-and-configured)  :jwt
 
       ;; No SSO method enabled
       :else nil)))

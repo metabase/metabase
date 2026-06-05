@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 import type * as Yup from "yup";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -12,6 +11,7 @@ import {
 } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { hasFeature } from "metabase/common/utils/database";
 import {
   Form,
   FormErrorMessage,
@@ -25,12 +25,11 @@ import type {
   SchemaName,
   Transform,
   TransformSource,
-  WorkspaceTransform,
 } from "metabase-types/api";
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
+import { TargetNameInput } from "../../../components/TargetNameInput";
 
-import { TargetNameInput } from "./TargetNameInput";
 import type { NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
 
@@ -45,12 +44,11 @@ type CreateTransformModalProps = {
   onClose: () => void;
   schemasFilter?: SchemasFilter;
   validationSchemaExtension?: ValidationSchemaExtension;
-  handleSubmit?: (
-    values: NewTransformValues,
-  ) => Promise<Transform | WorkspaceTransform>;
+  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
   targetDescription?: string;
   validateOnMount?: boolean;
   showIncrementalSettings?: boolean;
+  closeOnEscape?: boolean;
 };
 
 export function CreateTransformModal({
@@ -64,6 +62,7 @@ export function CreateTransformModal({
   targetDescription,
   validateOnMount,
   showIncrementalSettings,
+  closeOnEscape,
 }: CreateTransformModalProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -102,6 +101,11 @@ export function CreateTransformModal({
     [validationSchemaExtension, defaultSchema],
   );
 
+  const validationContext = useMemo(
+    () => ({ supportsSchemas: Boolean(supportsSchemas) }),
+    [supportsSchemas],
+  );
+
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -115,10 +119,17 @@ export function CreateTransformModal({
   };
 
   return (
-    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
+    <Modal
+      title={t`Save your transform`}
+      opened
+      padding="xl"
+      closeOnEscape={closeOnEscape}
+      onClose={onClose}
+    >
       <FormProvider
         initialValues={initialValues}
         validationSchema={validationSchema}
+        validationContext={validationContext}
         onSubmit={handleSubmit || defaultHandleSubmit}
         validateOnMount={validateOnMount}
       >

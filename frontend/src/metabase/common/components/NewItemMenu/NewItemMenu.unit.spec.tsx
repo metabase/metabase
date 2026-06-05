@@ -1,11 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { NewModals } from "metabase/new/components/NewModals/NewModals";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import {
   createMockCollection,
@@ -13,7 +17,6 @@ import {
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { NewItemMenu } from "./NewItemMenu";
 
@@ -24,6 +27,7 @@ type SetupOpts = {
   databases?: Database[];
   hasModels?: boolean;
   canWrite?: boolean;
+  isConfigured?: boolean;
 };
 
 const SAMPLE_DATABASE = createSampleDatabase();
@@ -32,11 +36,19 @@ const COLLECTION = createMockCollection();
 async function setup({
   databases = [SAMPLE_DATABASE],
   canWrite = true,
+  isConfigured = true,
 }: SetupOpts = {}) {
+  const settings = mockSettings({
+    "llm-metabot-configured?": isConfigured,
+    "metabot-enabled?": true,
+  });
+
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints(databases);
   setupCollectionByIdEndpoint({
     collections: [COLLECTION],
   });
+  setupEnterprisePlugins();
 
   renderWithProviders(
     <>
@@ -45,6 +57,7 @@ async function setup({
     </>,
     {
       storeInitialState: createMockState({
+        settings,
         currentUser: createMockUser({
           permissions: createMockUserPermissions({
             can_create_queries: true,
@@ -74,8 +87,20 @@ describe("NewItemMenu", () => {
     expect(screen.queryByText("Action")).not.toBeInTheDocument();
   });
 
+  it("shows AI exploration when NLQ access exists but AI is not configured", async () => {
+    await setup({ isConfigured: false });
+
+    expect(await screen.findByText("AI exploration")).toBeInTheDocument();
+  });
+
   it("should support keyboard navigation", async () => {
     await setup();
+
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(
+      await screen.findByRole("menuitem", { name: /AI exploration/ }),
+    ).toHaveFocus();
 
     await userEvent.keyboard("{ArrowDown}");
 

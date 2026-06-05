@@ -6,6 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
+import { MetricPage } from "./e2e-metric-page-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
 const { H } = cy;
@@ -14,8 +15,6 @@ const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
 const archivedSnippetsPage = () => cy.findByTestId("archived-snippets-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
-const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
-const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
 
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
@@ -25,26 +24,8 @@ export const DataStudio = {
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
     editTransform: () => cy.findByRole("button", { name: "Edit" }),
-    editDefinitionButton: () =>
-      cy.get(
-        '[data-testid="edit-definition-button"], [data-testid="transform-edit-menu-button"]',
-      ),
-    getEditDefinitionLink: () => {
-      // When workspaces are available, "Edit definition" is inside the "Edit" menu
-      // When workspaces are not available, "Edit definition" is a direct link
-      return DataStudio.Transforms.editDefinitionButton()
-        .first()
-        .then(($el) => {
-          if ($el.attr("data-testid") === "edit-definition-button") {
-            return cy.wrap($el);
-          } else {
-            cy.wrap($el).click();
-            return popover().findByRole("menuitem", {
-              name: /Edit definition/,
-            });
-          }
-        });
-    },
+    editDefinitionButton: () => cy.findByTestId("edit-definition-button"),
+    getEditDefinitionLink: () => DataStudio.Transforms.editDefinitionButton(),
     clickEditDefinition: () => {
       DataStudio.Transforms.getEditDefinitionLink().click();
     },
@@ -61,11 +42,15 @@ export const DataStudio = {
       cy.visit("/data-studio/transforms");
       DataStudio.Transforms.list().should("be.visible");
     },
+    visitTransform: (transformId: TransformId) => {
+      cy.visit(`/data-studio/transforms/${transformId}`);
+    },
     visitInspect: (transformId: TransformId) => {
       cy.visit(`/data-studio/transforms/${transformId}/inspect`);
     },
     visitSettingsTab: (transformId: TransformId) =>
       cy.visit(`/data-studio/transforms/${transformId}/settings`),
+    runButton: () => cy.findAllByTestId("run-button").eq(0),
     pythonResults: () => cy.findByTestId("python-results"),
     enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },
@@ -77,6 +62,7 @@ export const DataStudio = {
   Runs: {
     list: () => cy.findByTestId("transforms-run-list"),
     content: () => cy.findByTestId("transforms-run-content"),
+    sidebar: () => cy.findByTestId("run-list-sidebar"),
   },
   Dependencies: {
     content: () => cy.findByTestId("transforms-dependencies-content"),
@@ -95,25 +81,10 @@ export const DataStudio = {
     saveButton: () => cy.findByRole("button", { name: "Save" }),
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
     editor: codeMirrorHelpers("snippet-editor", {}),
+    visitSnippet: (snippetId: number) =>
+      cy.visit(`/data-studio/library/snippets/${snippetId}`),
   },
-  Metrics: {
-    overviewPage: metricOverviewPage,
-    queryEditor: metricQueryEditor,
-    nameInput: () => metricQueryEditor().findByPlaceholderText("New metric"),
-    saveButton: () =>
-      metricQueryEditor().findByRole("button", { name: "Save" }),
-    cancelButton: () =>
-      metricQueryEditor().findByRole("button", { name: "Cancel" }),
-    header: () => cy.findByTestId("metric-header"),
-    moreMenu: () => DataStudio.Metrics.header().icon("ellipsis"),
-    overviewTab: () => DataStudio.Metrics.header().findByText("Overview"),
-    definitionTab: () => DataStudio.Metrics.header().findByText("Definition"),
-    dependenciesTab: () =>
-      DataStudio.Metrics.header().findByText("Dependencies"),
-    cachingTab: () => DataStudio.Metrics.header().findByText("Caching"),
-    overviewPageDescriptionSidebar: () =>
-      metricOverviewPage().findByTestId("metric-description-sidebar"),
-  },
+  Metrics: MetricPage,
   Tables: {
     overviewPage: () => cy.findByTestId("table-overview-page"),
     fieldsPage: () => cy.findByTestId("table-fields-page"),
@@ -176,15 +147,13 @@ export const DataStudio = {
     noResults: () =>
       libraryPage().findByText("No tables, metrics, or snippets yet"),
     libraryPage,
-    metricItem: (name: string) =>
-      cy.findAllByTestId("metric-name").contains(name),
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>
       DataStudio.Library.allTableItems().contains(name),
     result: (name: string) =>
       libraryPage().findByText(name).closest('[role="row"]'),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
-    collectionItem: (name: string) =>
+    collectionItem: (name: string | RegExp) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
   },
 };

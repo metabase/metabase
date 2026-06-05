@@ -428,7 +428,7 @@
      :inherited-temporal-unit
      :lib/original-binning
      :lib/original-effective-type
-     :qp.pivot/pivot-grouping?])
+     :qp/native-sandbox-column.force-coercion-strategy])
    {:lib/binning          :binning
     :lib/temporal-unit    :temporal-unit
     :lib/ref-name         :name
@@ -587,7 +587,6 @@
                                   :when field]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
-
     ;; Nothing to do if it's already selected, or if this join already has :fields :all.
     ;; Otherwise, append it to the list of fields.
     (if (or (= join-fields :all)
@@ -758,7 +757,7 @@
 
 (mu/defn infer-has-field-values :- ::field-values-search-info.has-field-values
   "Determine the value of `:has-field-values` we should return for column metadata for frontend consumption to power
-  filter search widgets, either when returned by the the REST API or in MLv2 with [[field-values-search-info]].
+  filter search widgets, either when returned by the the REST API or in Lib with [[field-values-search-info]].
 
   Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
   `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by

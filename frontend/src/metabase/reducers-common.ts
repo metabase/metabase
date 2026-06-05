@@ -12,13 +12,14 @@ import { reducer as auth } from "metabase/redux/auth";
 import { reducer as downloads } from "metabase/redux/downloads";
 import { embed } from "metabase/redux/embed";
 import { reducer as embeddingDataPicker } from "metabase/redux/embedding-data-picker";
-import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
-import requests from "metabase/redux/requests";
+import entities from "metabase/redux/entities";
 import { settings } from "metabase/redux/settings";
 import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
+
+import { metabotReducer as metabot } from "./metabot/state";
 
 export const commonReducers = {
   // global reducers
@@ -26,8 +27,6 @@ export const commonReducers = {
   embed,
   embeddingDataPicker,
   currentUser,
-  // "entities" framework needs control over "requests" state
-  requests: enhanceRequestsReducer(requests),
   settings,
   undo,
   entities,
@@ -40,4 +39,5 @@ export const commonReducers = {
   dashboard,
   parameters: combineReducers(parameters),
   downloads,
+  metabot,
 };

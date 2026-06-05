@@ -1,13 +1,13 @@
 import type {
-  CheckReplaceSourceInfo,
-  ReplaceSourceColumnInfo,
-  ReplaceSourceColumnMapping,
-  ReplaceSourceRun,
+  SourceReplacementCheckInfo,
+  SourceReplacementColumnInfo,
+  SourceReplacementColumnMapping,
+  SourceReplacementRun,
 } from "metabase-types/api";
 
 export const createMockReplaceSourceColumnInfo = (
-  opts?: Partial<ReplaceSourceColumnInfo>,
-): ReplaceSourceColumnInfo => ({
+  opts?: Partial<SourceReplacementColumnInfo>,
+): SourceReplacementColumnInfo => ({
   id: 1,
   name: "mock_column",
   display_name: "Mock Column",
@@ -18,8 +18,8 @@ export const createMockReplaceSourceColumnInfo = (
 });
 
 export const createMockReplaceSourceColumnMapping = (
-  opts?: Partial<ReplaceSourceColumnMapping>,
-): ReplaceSourceColumnMapping => ({
+  opts?: Partial<SourceReplacementColumnMapping>,
+): SourceReplacementColumnMapping => ({
   source: createMockReplaceSourceColumnInfo(),
   target: createMockReplaceSourceColumnInfo({
     id: 2,
@@ -30,15 +30,15 @@ export const createMockReplaceSourceColumnMapping = (
 });
 
 export const createMockCheckReplaceSourceInfo = (
-  opts?: Partial<CheckReplaceSourceInfo>,
-): CheckReplaceSourceInfo => ({
+  opts?: Partial<SourceReplacementCheckInfo>,
+): SourceReplacementCheckInfo => ({
   success: true,
   ...opts,
 });
 
 export const createMockReplaceSourceRun = (
-  opts?: Partial<ReplaceSourceRun>,
-): ReplaceSourceRun => ({
+  opts?: Partial<SourceReplacementRun>,
+): SourceReplacementRun => ({
   id: 1,
   status: "started",
   is_active: true,

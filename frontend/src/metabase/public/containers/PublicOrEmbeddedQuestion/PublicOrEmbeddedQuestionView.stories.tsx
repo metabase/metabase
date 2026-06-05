@@ -15,8 +15,12 @@ import {
   StringColumn,
 } from "__support__/visualizations";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
@@ -31,10 +35,6 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import {
   PublicOrEmbeddedQuestionView,
@@ -148,7 +148,11 @@ export const LightThemeDownload = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    await downloadQuestionAsPng(canvasElement, asyncCallback);
+    try {
+      await downloadQuestionAsPng(canvasElement);
+    } finally {
+      asyncCallback();
+    }
   },
 };
 
@@ -285,6 +289,26 @@ export const SmartScalarDarkTheme = {
   },
 };
 
+// Regression guard for metabase#72443: `₂` subscript descender used to clip at the value's line-box edge.
+export const SmartScalarUnicodeSubscript = {
+  render: Template,
+
+  args: {
+    ...SmartScalarLightTheme.args,
+    card: createMockCard({
+      id: getNextId(),
+      display: "smartscalar",
+      visualization_settings: {
+        "graph.dimensions": ["timestamp"],
+        "graph.metrics": ["count"],
+        column_settings: {
+          '["name","Count"]': { suffix: "tCO₂e" },
+        },
+      },
+    }),
+  },
+};
+
 export const SmartScalarLightThemeTooltip = {
   parameters: {
     loki: { skip: true },
@@ -384,10 +408,7 @@ function NarrowContainer(Story: StoryFn) {
   );
 }
 
-const downloadQuestionAsPng = async (
-  canvasElement: HTMLElement,
-  asyncCallback: () => void,
-) => {
+const downloadQuestionAsPng = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
   const downloadButton = await canvas.findByTestId(
@@ -402,5 +423,4 @@ const downloadQuestionAsPng = async (
     await documentElement.findByTestId("download-results-button"),
   );
   await canvas.findByTestId("image-downloaded");
-  asyncCallback();
 };

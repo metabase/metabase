@@ -5,7 +5,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -37,7 +38,6 @@
 (defn- call-command [^GitCommand command]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote false}]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
-
     (try
       (.call command)
       (catch Exception e
@@ -69,10 +69,11 @@
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
         credentials-provider (when token (credentials-provider remote-url token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
-
     (try
-      (-> command
-          (.setCredentialsProvider credentials-provider)
+      (-> (doto command
+            ;; bound the network operation so a stalled connection can't hang the sync forever (GHY-3727)
+            (.setTimeout (int (setting/get :remote-sync-git-timeout-seconds)))
+            (.setCredentialsProvider credentials-provider))
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
@@ -88,13 +89,15 @@
 
   Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
   of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+  Prunes local refs that no longer exist on the remote so deleted branches are reflected locally.
 
   Throws ExceptionInfo if the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
   (when (some? git)
     (log/info "Fetching repository" {:repo (str git)})
-    (u/prog1 (call-remote-command (.fetch git) git-source))
-    (log/info "Successfully fetched repository")))
+    (u/prog1 (call-remote-command (.. git fetch (setRemoveDeletedRefs true))
+                                  git-source)
+      (log/info "Successfully fetched repository"))))
 
 (defn- repo-path [{:keys [^String remote-url ^String token]}]
   (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
@@ -226,26 +229,16 @@
         push-results (->> push-response
                           (map #(into [] (.getRemoteUpdates ^PushResult %)))
                           flatten)]
-
     (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
     push-response))
 
-(defn- path-prefix
-  "Extracts the unique collection identifier from a serialized file path.
-
-  Takes a path string like \"collections/abc123_CollectionName/...\" and returns the collection prefix (e.g.,
-  \"collections/abc123\") which remains stable even when collection names change.
-
-  Returns the original path if no collection prefix is found."
+(defn- top-level-dir
+  "Extracts the first path segment from a file path.
+  E.g., \"databases/my_db/my_db.yaml\" => \"databases\""
   [path]
-  (let [matcher (re-matcher #"^(collections/[^/]{21})_[^/]+/" path)]
-    (if (re-find matcher)
-      (second (re-groups matcher))
-      path)))
-
-(defn- matches-prefix [path prefixes]
-  (some #(or (= % path) (str/starts-with? path %)) prefixes))
+  (when-let [idx (str/index-of path "/")]
+    (subs path 0 idx)))
 
 (defn default-branch
   "Retrieves the default branch name of the git repository.
@@ -267,60 +260,40 @@
 (defn write-files!
   "Writes multiple files to the git repository and commits the changes.
 
-  Takes a snapshot map containing a :git Git instance and :version, a commit message string,
-  and a sequence of file specs (paths should be relative to the repository root).
+  Takes a snapshot map containing a :git Git instance, :version, and :managed-dirs,
+  a commit message string, and a sequence of file specs (maps with :path and :content keys,
+  paths should be relative to the repository root).
 
-  Each file spec is a map with either:
-  - :path and :content keys for writing/updating a file
-  - :path and :remove? true for recursively removing all files at that path
-
-  For writes within collection directories, ALL files in the same collection are replaced
-  (using the collection entity_id prefix to identify the collection scope). This ensures
-  that stale files don't remain when a collection's contents change.
-
-  For removals, all files matching the path as a prefix are deleted (allowing recursive
-  directory deletion). Removal entries with empty paths are no-ops. Removing non-existent
-  paths is also a no-op (idempotent).
+  All existing files within managed directories that are not in the write set are removed.
+  This ensures stale files (from renames, moves, or deletions) are cleaned up automatically.
+  Files outside managed directories are always preserved.
 
   Returns the version written. Throws ExceptionInfo if the write or push
   operation fails."
-  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message files]
+  [{:keys [^Git git ^String version ^String branch managed-dirs] :as snapshot} ^String message files]
   (let [repo (.getRepository git)
         branch-ref (qualify-branch branch)
         parent-id (.resolve repo version)]
-
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
             builder (.builder index)
-            ;; Extract collection prefixes from written paths - all files in these
-            ;; collections will be deleted and replaced with the new files
-            write-prefixes (into #{}
-                                 (comp
-                                  (remove :remove?)
-                                  (map :path)
-                                  (remove str/blank?)
-                                  (map path-prefix))
-                                 files)
-            ;; Collect removal paths/prefixes for explicit deletions
-            removal-prefixes (into #{}
-                                   (comp
-                                    (filter :remove?)
-                                    (map :path)
+            ;; Set of all paths being written in this commit
+            write-paths (into #{}
+                              (comp (map :path)
                                     (remove str/blank?))
-                                   files)]
-
+                              files)]
         ;; Add new/updated files to the index
-        (doseq [{:keys [path content remove?]} files
-                :when (and (not remove?) (not (str/blank? path)))]
+        (doseq [{:keys [path content]} files
+                :when (not (str/blank? path))]
           (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
                 entry (doto (DirCacheEntry. ^String path)
                         (.setFileMode FileMode/REGULAR_FILE)
                         (.setObjectId blob-id))]
             (.add builder entry)))
-
-        ;; Copy existing tree entries, excluding:
-        ;; 1. Files in collections being written to (using write-prefixes)
-        ;; 2. Files matching explicit removal prefixes
+        ;; Copy existing tree entries that should be preserved:
+        ;; - Outside managed directories AND not being overwritten by the write set
+        ;; Files in managed dirs not in write-paths are dropped (stale file cleanup)
+        ;; Files in write-paths are skipped here (already added above with new content)
         (when parent-id
           (with-open [rev-walk (RevWalk. repo)
                       tree-walk (TreeWalk. repo)]
@@ -328,17 +301,14 @@
               (.addTree tree-walk (.getTree commit))
               (.setRecursive tree-walk true)
               (while (.next tree-walk)
-                (let [path (.getPathString tree-walk)
-                      existing-prefix (path-prefix path)]
-                  (when-not (or (contains? write-prefixes existing-prefix)
-                                (matches-prefix path removal-prefixes))
+                (let [path (.getPathString tree-walk)]
+                  (when (and (not (contains? write-paths path))
+                             (not (contains? managed-dirs (top-level-dir path))))
                     (let [entry (doto (DirCacheEntry. path)
                                   (.setFileMode (.getFileMode tree-walk 0))
                                   (.setObjectId (.getObjectId tree-walk 0)))]
                       (.add builder entry))))))))
-
         (.finish builder)
-
         ;; Create commit
         (let [tree-id (.writeTree index inserter)
               commit-builder (doto (CommitBuilder.)
@@ -348,7 +318,6 @@
                                (.setMessage message))]
           (when parent-id
             (.setParentId commit-builder parent-id))
-
           (let [commit-id (.insert inserter commit-builder)]
             (.flush inserter)
             (doto (.updateRef repo branch-ref)
@@ -425,7 +394,7 @@
     (push-branch! (assoc source :branch branch-name))
     branch-name))
 
-(defrecord GitSnapshot [git remote-url branch version token]
+(defrecord GitSnapshot [git remote-url branch version token managed-dirs]
   source.p/SourceSnapshot
 
   (list-files [this]
@@ -470,8 +439,10 @@
   (fetch! source)
   (let [version (commit-sha source (:branch source))]
     (if version
-      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source))
-      (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
+      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
+      (throw (ex-info (str "Invalid branch: " (:branch source))
+                      {:error-type :missing-branch
+                       :branch (:branch source)})))))
 
 (defn- snapshot
   "Creates a snapshot, recovering from stale cache errors by re-cloning."
@@ -488,7 +459,7 @@
             (snapshot* fresh-source)))
         (throw e)))))
 
-(defrecord GitSource [git remote-url branch token]
+(defrecord GitSource [git remote-url branch token managed-dirs]
   source.p/Source
   (branches [source] (branches source))
 
@@ -504,10 +475,12 @@
 (defn git-source
   "Creates a new GitSource instance for a git repository.
 
-  Takes a URL string (the git repository URL), a branch, and an
-  optional token string (authentication token for private repositories).
+  Takes a URL string (the git repository URL), a branch, an
+  optional token string (authentication token for private repositories),
+  and a set of managed top-level directory names. Files in managed directories
+  are fully replaced during writes — any existing file not in the write set is removed.
 
   Returns a GitSource record implementing the Source protocol."
-  [url branch token]
+  [url branch token managed-dirs]
   (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
-               url branch token))
+               url branch token managed-dirs))

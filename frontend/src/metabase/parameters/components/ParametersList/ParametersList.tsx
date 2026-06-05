@@ -1,4 +1,3 @@
-import { PointerSensor, useSensor } from "@dnd-kit/core";
 import cx from "classnames";
 import { forwardRef, useCallback, useMemo } from "react";
 
@@ -7,6 +6,7 @@ import type {
   RenderItemProps,
 } from "metabase/common/components/Sortable";
 import { SortableList } from "metabase/common/components/Sortable";
+import { useDndSensors } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -48,9 +48,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
     },
     ref,
   ) {
-    const pointerSensor = useSensor(PointerSensor, {
-      activationConstraint: { distance: 15 },
-    });
+    const sensors = useDndSensors({ distance: 15 });
 
     const visibleValuePopulatedParameters = useMemo(
       () => getVisibleParameters(parameters, hideParameters),
@@ -112,6 +110,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
 
     return visibleValuePopulatedParameters.length > 0 ? (
       <Flex
+        role="list"
         display="flex"
         direction={vertical ? "column" : "row"}
         align="end"
@@ -132,7 +131,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
             getId={getId}
             renderItem={renderItem}
             onSortEnd={handleSortEnd}
-            sensors={[pointerSensor]}
+            sensors={sensors}
           />
         ) : (
           <>

@@ -1,4 +1,4 @@
-import { humanize, titleize } from "metabase/lib/formatting";
+import { humanize, titleize } from "metabase/utils/formatting";
 import type { SchemaName } from "metabase-types/api";
 
 export function getSchemaDisplayName(schema: SchemaName): string {

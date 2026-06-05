@@ -1,11 +1,11 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
   "There are additional tests in [[metabase.query-processor.failure-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.catch-exceptions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions
@@ -13,6 +13,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users])
   (:import
@@ -108,8 +109,8 @@
   (testing "compile and preprocess should not be called if no exception occurs"
     (let [compile-call-count (atom 0)
           preprocess-call-count (atom 0)]
-      (with-redefs [qp.compile/compile       (fn [_] (swap! compile-call-count inc))
-                    qp.preprocess/preprocess (fn [_] (swap! preprocess-call-count inc))]
+      (mt/with-dynamic-fn-redefs [qp.compile/compile       (fn [_] (swap! compile-call-count inc))
+                                  qp.preprocess/preprocess (fn [_] (swap! preprocess-call-count inc))]
         (is (= {:data {}, :row_count 0, :status :completed}
                (catch-exceptions (fn run []))))
         (is (= 0 @compile-call-count))
@@ -179,7 +180,6 @@
                   (qp/process-query
                    (qp/userland-query
                     (mt/mbql-query venues {:fields [!month.id]})))))))
-
       (testing "They should see it if they have ad-hoc native query perms"
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)

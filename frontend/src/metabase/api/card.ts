@@ -1,4 +1,3 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
 import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
 import type {
@@ -17,9 +16,12 @@ import type {
   GetPublicCard,
   GetRemappedCardParameterValueRequest,
   ListCardsRequest,
+  ParameterId,
+  ParameterValues,
   UpdateCardKeyRequest,
   UpdateCardRequest,
 } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import { Api } from "./api";
 import {
@@ -32,9 +34,19 @@ import {
   provideCardTags,
   provideParameterValuesTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
+
+export type CardParameterValuesRequest = {
+  cardId?: CardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
+};
+
+export type SearchCardParameterValuesRequest = CardParameterValuesRequest & {
+  query: string;
+};
 
 export const cardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -66,10 +78,7 @@ export const cardApi = Api.injectEndpoints({
           params,
         }),
         providesTags: (cards = []) => provideCardListTags(cards),
-        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-          handleQueryFulfilled(queryFulfilled, (data) =>
-            dispatch(updateMetadata(data, [QuestionSchema])),
-          ),
+        onQueryStarted: hydrateMetadataStore([QuestionSchema]),
       }),
       getCard: builder.query<Card, GetCardRequest>({
         query: ({ id, ignore_error, ...params }) => ({
@@ -79,10 +88,7 @@ export const cardApi = Api.injectEndpoints({
           noEvent: ignore_error,
         }),
         providesTags: (card) => (card ? provideCardTags(card) : []),
-        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-          handleQueryFulfilled(queryFulfilled, (data) =>
-            dispatch(updateMetadata(data, QuestionSchema)),
-          ),
+        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
         query: (id) => ({
@@ -91,19 +97,57 @@ export const cardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata, _error, id) =>
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
-        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-          handleQueryFulfilled(queryFulfilled, (data) =>
-            dispatch(updateMetadata(data, QueryMetadataSchema)),
-          ),
+        onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
-      getCardQuery: builder.query<Dataset, CardQueryRequest>({
-        query: ({ cardId, ...body }) => ({
+      getCardQuery: builder.query<
+        Dataset,
+        CardQueryRequest & { _refetchDeps?: unknown }
+      >({
+        // `_refetchDeps` is part of the RTK cache key (so imperative runners can
+        // force a unique key per call) but must not be sent to the server.
+        query: ({ cardId, _refetchDeps, ...body }) => ({
           method: "POST",
           url: `/api/card/${cardId}/query`,
           body,
         }),
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
+      }),
+      getCardQueryPivot: builder.query<
+        Dataset,
+        CardQueryRequest & { _refetchDeps?: unknown }
+      >({
+        query: ({ cardId, _refetchDeps, ...body }) => ({
+          method: "POST",
+          url: `/api/card/pivot/${cardId}/query`,
+          body,
+        }),
+        providesTags: (_data, _error, { cardId }) =>
+          provideCardQueryTags(cardId),
+      }),
+      getCardParameterValues: builder.query<
+        ParameterValues,
+        CardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/card/:cardId/params/:paramId/values",
+          params,
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
+      }),
+      searchCardParameterValues: builder.query<
+        ParameterValues,
+        SearchCardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/card/:cardId/params/:paramId/search/:query",
+          params,
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
       }),
       getRemappedCardParameterValue: builder.query<
         FieldValue,
@@ -137,8 +181,7 @@ export const cardApi = Api.injectEndpoints({
           return {
             method: "POST",
             url: "/api/upload/csv",
-            body: { formData },
-            formData: true,
+            body: formData,
             fetch: true,
           };
         },
@@ -204,8 +247,9 @@ export const cardApi = Api.injectEndpoints({
           method: "POST",
           url: `/api/persist/card/${id}/persist`,
         }),
-        onQueryStarted: (id, { dispatch, queryFulfilled }) =>
-          handleQueryFulfilled(queryFulfilled, () => {
+        onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+          try {
+            await queryFulfilled;
             // we wait to invalidate this tag so the cache refresh has time to start before we refetch
             setTimeout(() => {
               dispatch(
@@ -216,7 +260,10 @@ export const cardApi = Api.injectEndpoints({
                 ]),
               );
             }, PERSISTED_MODEL_REFRESH_DELAY);
-          }),
+          } catch {
+            // mutation failed — nothing to invalidate
+          }
+        },
       }),
       unpersistModel: builder.mutation<void, CardId>({
         query: (id) => ({
@@ -235,8 +282,9 @@ export const cardApi = Api.injectEndpoints({
           method: "POST",
           url: `/api/persist/card/${id}/refresh`,
         }),
-        onQueryStarted: (id, { dispatch, queryFulfilled }) =>
-          handleQueryFulfilled(queryFulfilled, () => {
+        onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+          try {
+            await queryFulfilled;
             // we wait to invalidate this tag so the cache refresh has time to start before we refetch
             setTimeout(() => {
               dispatch(
@@ -247,7 +295,10 @@ export const cardApi = Api.injectEndpoints({
                 ]),
               );
             }, PERSISTED_MODEL_REFRESH_DELAY);
-          }),
+          } catch {
+            // mutation failed — nothing to invalidate
+          }
+        },
       }),
       listEmbeddableCards: builder.query<GetEmbeddableCard[], void>({
         query: (params) => ({
@@ -302,7 +353,7 @@ export const cardApi = Api.injectEndpoints({
         "embedding_params" | "embedding_type"
       >(),
       getCardDashboards: builder.query<
-        { id: DashboardId; name: string }[],
+        { id: DashboardId; name: string; enable_embedding: boolean }[],
         Pick<Card, "id">
       >({
         query: ({ id }) => ({
@@ -336,6 +387,10 @@ export const {
   useGetCardQueryMetadataQuery,
   useGetCardQueryQuery,
   useLazyGetCardQueryQuery,
+  useGetCardQueryPivotQuery,
+  useLazyGetCardQueryPivotQuery,
+  useGetCardParameterValuesQuery,
+  useSearchCardParameterValuesQuery,
   useGetRemappedCardParameterValueQuery,
   useCreateCardMutation,
   useUpdateCardMutation,

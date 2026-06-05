@@ -61,7 +61,28 @@ export type Transform = {
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
 
-export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
+export type TaggedTransform = Transform & { type: "transform" };
+
+export type UnsavedTransform = {
+  type: "unsaved-transform";
+  id: TransformId;
+  name: string;
+  source: DraftTransformSource;
+  target: {
+    name: string;
+    schema: string | null;
+    type: TransformTargetType;
+  };
+};
+
+export type PythonTransformTableEntry = {
+  alias: string;
+  table_id: ConcreteTableId;
+  schema?: SchemaName | null;
+  database_id: DatabaseId;
+};
+
+export type PythonTransformTableAliases = PythonTransformTableEntry[];
 
 export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
@@ -161,6 +182,7 @@ export const TRANSFORM_RUN_SORT_COLUMNS = [
   "status",
   "run-method",
   "transform-tags",
+  "duration",
 ] as const;
 export type TransformRunSortColumn =
   (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];
@@ -179,6 +201,7 @@ export type TransformJob = {
   description: string | null;
   schedule: string;
   ui_display_type: ScheduleDisplayType;
+  active: boolean;
   created_at: string;
   updated_at: string;
 
@@ -225,6 +248,7 @@ export type UpdateTransformJobRequest = {
   description?: string | null;
   schedule?: string;
   ui_display_type?: ScheduleDisplayType;
+  active?: boolean;
   tag_ids?: TransformTagId[];
 };
 
@@ -246,6 +270,7 @@ export type ListTransformsRequest = {
   "last-run-start-time"?: string;
   "last-run-statuses"?: TransformRunStatus[];
   "tag-ids"?: TransformTagId[];
+  "database-id"?: DatabaseId;
 };
 
 export type ListTransformJobsRequest = {

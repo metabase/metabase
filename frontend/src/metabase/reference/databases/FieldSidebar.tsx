@@ -6,15 +6,15 @@ import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
-import MetabaseSettings from "metabase/lib/settings";
-import type { Database, Field, Table } from "metabase-types/api";
+import MetabaseSettings from "metabase/utils/settings";
 
 import { trackReferenceXRayClicked } from "../analytics";
+import type { StubbedDatabase, StubbedField, StubbedTable } from "../types";
 
 interface FieldSidebarProps {
-  database: Database;
-  table: Table;
-  field: Field;
+  database: StubbedDatabase;
+  table: StubbedTable;
+  field: StubbedField;
 }
 
 const FieldSidebar = ({ database, table, field }: FieldSidebarProps) => (

@@ -43,7 +43,7 @@
     (cons first-stage more)))
 
 (mu/defn normalize-card-query :- ::lib.schema.metadata/card
-  "Convert Card's query (`:dataset-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
+  "Convert Card's query (`:dataset-query`) to MBQL 5 as needed; splice in stage metadata and some extra keys."
   [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
    {card-id :id, :as card} :- ::lib.schema.metadata/card]
   (let [persisted-info (:lib/persisted-info card)

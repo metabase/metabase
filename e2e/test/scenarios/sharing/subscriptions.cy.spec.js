@@ -68,7 +68,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByRole("link", { name: /configure Slack/i }).should(
         "have.attr",
         "href",
-        "/admin/settings/notifications",
+        "/admin/settings/slack",
       );
     });
   });
@@ -324,6 +324,29 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
     });
 
+    it("should localize schedule type in the delete-confirmation modal", () => {
+      createEmailSubscription();
+      H.sidebar().findByText("Emailed hourly").should("be.visible");
+
+      cy.request("GET", "/api/user/current").then(({ body: user }) => {
+        cy.request("PUT", `/api/user/${user.id}`, { locale: "en-ZZ" });
+      });
+      cy.reload();
+
+      H.dashboardHeader()
+        .findByLabelText("[zz] Move, trash, and more…")
+        .click();
+      H.popover().findByText("[zz] Subscriptions").click();
+      H.sidebar()
+        .findByText(/\[zz\] hourly/)
+        .click();
+      H.sidebar().findByText("[zz] Delete this subscription").click();
+
+      cy.findByTestId("delete-confirmation-modal-pulse")
+        .findByText("[zz] hourly")
+        .should("be.visible");
+    });
+
     it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
       assignRecipient();
 
@@ -513,6 +536,28 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openDashboardMenu();
       H.popover().findByText("Subscriptions").should("be.visible");
+    });
+
+    it("should persist the immutable Slack channel_id alongside the channel name", () => {
+      cy.intercept("POST", "/api/pulse").as("createPulse");
+
+      openSlackCreationForm();
+
+      cy.findByPlaceholderText("Pick a user or channel...").click();
+      H.popover().findByText("#work").click();
+
+      H.sidebar().findByRole("button", { name: "Done" }).click();
+
+      cy.wait("@createPulse").then(({ request: { body } }) => {
+        // The mocked channel `#work` has id `C001` in e2e-slack-helpers.js.
+        // Storing the immutable channel_id at save time is what makes the
+        // subscription survive future channel renames in Slack.
+        const slackChannel = body.channels.find(
+          (c) => c.channel_type === "slack",
+        );
+        expect(slackChannel.details.channel).to.eq("#work");
+        expect(slackChannel.details.channel_id).to.eq("C001");
+      });
     });
   });
 

@@ -1,6 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.alternative-date-test
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.alternative-date-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.alternative-date-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -8,7 +10,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -423,7 +425,6 @@
                  :bigquery-cloud-sdk
                  :clickhouse
                  :databricks
-                 :druid
                  :snowflake
                  :sparksql
                  :sqlserver

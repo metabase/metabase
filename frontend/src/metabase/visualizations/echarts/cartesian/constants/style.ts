@@ -7,6 +7,7 @@ export const LINE_SIZE: Record<LineSize, number> = {
 };
 
 export const Z_INDEXES = {
+  brushMirror: 100,
   // Note: timeline events use echarts' markline option, which has a fixed z
   // value of 5.
   dataLabels: 8,
@@ -60,4 +61,20 @@ export const CHART_STYLE = {
     areaBlurred: 0.2,
     scatter: 0.8,
   },
+  brush: {
+    fillOpacity: 0.1,
+    borderOpacity: 0.4,
+    borderWidth: 1,
+  },
+  splitPanel: {
+    gapRatio: 2.2,
+    maxGap: 48,
+  },
 };
+
+export function getSplitPanelGap(panelHeight: number): number {
+  return Math.min(
+    panelHeight / CHART_STYLE.splitPanel.gapRatio,
+    CHART_STYLE.splitPanel.maxGap,
+  );
+}

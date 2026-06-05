@@ -5,26 +5,29 @@ import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
   setupBillingEndpoints,
   setupPropertiesEndpoints,
+  setupStoreEECloudAddOnsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { PythonTransformsUpsellModal } from "../PythonTransformsUpsellModal";
 
 export const setup = ({
   isHosted,
   isStoreUser,
+  isAdmin = isStoreUser,
   billingPeriodMonths = 12,
   isEnterprise = false,
 }: {
   isOpen?: boolean;
   isHosted: boolean;
+  isAdmin?: boolean;
   isStoreUser: boolean;
   billingPeriodMonths?: number | undefined;
   isEnterprise?: boolean;
@@ -32,9 +35,10 @@ export const setup = ({
   const onClose = jest.fn();
 
   const storeUserEmail = "store-user@example.com";
-  const currentUser = createMockUser(
-    isStoreUser ? { email: storeUserEmail } : undefined,
-  );
+  const currentUser = createMockUser({
+    ...(isStoreUser ? { email: storeUserEmail } : {}),
+    is_superuser: isAdmin,
+  });
 
   const settings = {
     "is-hosted?": isHosted,
@@ -59,6 +63,7 @@ export const setup = ({
     pluginTokens.forEach(setupEnterpriseOnlyPlugin);
   }
 
+  setupStoreEECloudAddOnsEndpoint(billingPeriodMonths);
   setupBillingEndpoints({
     billingPeriodMonths,
     hasBasicTransformsAddOn: true,

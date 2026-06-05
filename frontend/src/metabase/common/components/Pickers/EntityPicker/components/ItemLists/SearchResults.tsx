@@ -1,21 +1,34 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { getIcon } from "metabase/lib/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Flex, Icon, NavLink, SegmentedControl, Text } from "metabase/ui";
+import {
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  NavLink,
+  SegmentedControl,
+  Text,
+} from "metabase/ui";
 
-import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
+import type {
+  OmniPickerItem,
+  OmniPickerMeasureItem,
+  OmniPickerTableItem,
+  SearchScope,
+} from "../..";
 import { useOmniPickerContext } from "../../context";
 import {
   useCurrentSearchScope,
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
-import { getEntityPickerIcon, isSelectedItem } from "../../utils";
+import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
 export const SearchResults = ({
   searchResults,
@@ -31,11 +44,12 @@ export const SearchResults = ({
   const { path, setPath, isDisabledItem, isSelectableItem, options, onChange } =
     useOmniPickerContext();
   const selectedItem = path?.[path.length - 1];
+  const getEntityPickerIcon = useGetEntityPickerIcon();
 
   if (isLoading || error) {
     return (
       <Box h="100%" w="40rem">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Box>
     );
   }
@@ -90,9 +104,9 @@ export const SearchResults = ({
               }
               active={isSelected}
               leftSection={
-                <Icon
+                <EntityIcon
                   {...getEntityPickerIcon(item, { isSelected })}
-                  size={16}
+                  size="1rem"
                 />
               }
               onClick={(e: React.MouseEvent) => {
@@ -127,6 +141,10 @@ const isTableInDb = (item: OmniPickerItem): item is OmniPickerTableItem => {
   );
 };
 
+const isMeasure = (item: OmniPickerItem): item is OmniPickerMeasureItem => {
+  return item.model === "measure";
+};
+
 const getItemText = (item: OmniPickerItem) => {
   const isTable = isTableInDb(item);
 
@@ -138,18 +156,28 @@ const getItemText = (item: OmniPickerItem) => {
     return "";
   }
 
+  if (isMeasure(item)) {
+    return item.table_display_name ?? item.table_name;
+  }
+
   return isTable
     ? `${item.database_name}${item.schema ? ` (${item.schema})` : ""}`
     : (item?.collection?.name ?? t`Our analytics`);
 };
 
-const getLocationIcon = (item: OmniPickerItem) => {
+const useLocationIcon = (item: OmniPickerItem) => {
+  const getIcon = useGetIcon();
+
   if (
     item.model === "table" ||
     item.model === "schema" ||
     item.model === "database"
   ) {
     return null;
+  }
+
+  if (isMeasure(item)) {
+    return { name: "table" as const };
   }
 
   return getIcon({
@@ -166,12 +194,11 @@ const LocationInfo = ({
   isSelected: boolean;
 }) => {
   const itemText = getItemText(item);
+  const iconProps = useLocationIcon(item);
 
   if (!itemText) {
     return null;
   }
-
-  const iconProps = getLocationIcon(item);
 
   return (
     <Flex gap="xs" align="center">
@@ -189,7 +216,7 @@ const LocationInfo = ({
 };
 
 export function SearchScopeSelector() {
-  const { setSearchScope } = useOmniPickerContext();
+  const { setSearchScope, options: pickerOptions } = useOmniPickerContext();
   const searchScope = useCurrentSearchScope();
 
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
@@ -208,6 +235,10 @@ export function SearchScopeSelector() {
         }
       : null,
   ].filter((i) => i !== null);
+
+  if (pickerOptions.disableSearchScope) {
+    return null;
+  }
 
   return (
     <Flex

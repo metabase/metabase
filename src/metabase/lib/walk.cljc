@@ -7,7 +7,6 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.util :as lib.util]
@@ -24,7 +23,7 @@
      (let [path-to-item (conj (vec path-to-items) absolute-item-number)]
        (walk-item-fn query path-to-item f)))
    query
-    ;; With 3 items, we want (2 1 0), so (range 2 -1 -1).
+   ;; With 3 items, we want (2 1 0), so (range 2 -1 -1).
    (range (dec (count (get-in query path-to-items []))) -1 -1)))
 
 (defn- walk-items-forward* [query path-to-items walk-item-fn f]
@@ -196,12 +195,12 @@
 (mr/def ::path.stages-part
   [:cat
    [:= :stages]
-   ::lib.schema.common/int-greater-than-or-equal-to-zero])
+   nat-int?])
 
 (mr/def ::path.joins-part
   [:cat
    [:= :joins]
-   ::lib.schema.common/int-greater-than-or-equal-to-zero])
+   nat-int?])
 
 ;;; A path to a specific stage.
 (mr/def ::stage-path

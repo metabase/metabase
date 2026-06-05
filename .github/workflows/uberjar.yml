@@ -12,6 +12,8 @@ on:
     branches:
       - master
       - internal-tools
+      - ai-service-port
+      - metabot-mbql-improvements
     paths-ignore:
       # config files
       - ".**"
@@ -30,7 +32,7 @@ on:
 
 jobs:
   check-existing-artifacts:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       ee_exists: ${{ steps.check-ee.outcome == 'success' }}
@@ -38,7 +40,7 @@ jobs:
       should_build: ${{ steps.decide.outputs.should_build }}
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Try to fetch existing EE artifact
         id: check-ee
         continue-on-error: true
@@ -83,13 +85,13 @@ jobs:
     if: |
       !cancelled() &&
       contains(github.ref, 'release-x')
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
       node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -97,7 +99,7 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Get build dependencies
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         id: dependencies
         with:
           script: | # js
@@ -117,7 +119,7 @@ jobs:
       [check-existing-artifacts, get-build-requirements]
     if: always() && !cancelled() && needs.check-existing-artifacts.outputs.should_build == 'true' && (needs.get-build-requirements.result == 'success' || needs.get-build-requirements.result == 'skipped')
     name: Build MB ${{ matrix.edition }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     strategy:
       matrix:
@@ -128,7 +130,7 @@ jobs:
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.commit }}
       - name: Prepare front-end environment
@@ -147,7 +149,7 @@ jobs:
           edition: ${{ matrix.edition }}
 
   check-jar-health:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
     needs: [build, check-existing-artifacts]
     # We only care about the explicit JAR health check on push to `master` and the `release-` branches.
@@ -164,9 +166,9 @@ jobs:
         java-version: [21]
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Prepare JRE (Java Run-time Environment)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.2.0
         with:
           java-package: jre
           java-version: ${{ matrix.java-version }}

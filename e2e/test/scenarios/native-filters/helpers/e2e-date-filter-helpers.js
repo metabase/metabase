@@ -67,7 +67,7 @@ export function setAdHocFilter(
 
   if (includeCurrent) {
     popover()
-      .findByText(/Include/)
+      .findByLabelText(/Include/)
       .click();
   }
 

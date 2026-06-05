@@ -1,16 +1,18 @@
 (ns ^:mb/driver-tests metabase.query-processor.remapping-test
   "Tests for the remapping results"
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.remapping-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.remapping-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -262,7 +264,7 @@
           (is (= [[1 1  14 37.65  2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
                   [2 1 123 110.93  6.1 117.03 nil  "2018-05-15T08:04:04.58Z" 3 "Mediocre Wooden Bench"]]
                  (remappings-with-metadata metadata))))))))
-        ;; doesn't currently work with any other metadata.
+;; doesn't currently work with any other metadata.
 
 (deftest remappings-with-implicit-joins-test
   (mt/with-temporary-setting-values [report-timezone "UTC"]
@@ -398,7 +400,7 @@
                     {:aggregation [[:sum [:field (mt/id :orders :total)]]]
                      :breakout    [[:field
                                     (mt/id :orders :product_id)
-                                    {:base-type    :type/Integer}]]
+                                    {:base-type :type/Integer}]]
                      :limit       3})]
         (is (= [["Aerodynamic Bronze Hat"     144    5753.63]
                 ["Aerodynamic Concrete Bench" 116   10035.81]
@@ -415,7 +417,7 @@
                            {:aggregation [[:sum [:field (mt/id :orders :total)]]]
                             :breakout    [[:field
                                            (mt/id :orders :product_id)
-                                           {:base-type    :type/Integer}]]
+                                           {:base-type :type/Integer}]]
                             :limit       3})
                          {:pivot_rows [0]
                           :pivot_cols []})]
@@ -562,7 +564,7 @@
                                   (qp/process-query query))))))))
 
 (deftest ^:parallel fk-remapped-should-remap-test
-  (testing (format "Check that we return the title when it's remapped")
+  (testing "Check that we return the title when it's remapped"
     (let [mp (-> (mt/metadata-provider)
                  (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                  (mt/id :products :title)))

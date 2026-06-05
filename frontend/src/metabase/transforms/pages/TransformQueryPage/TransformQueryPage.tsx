@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { Route, RouteProps } from "react-router";
 import { push } from "react-router-redux";
@@ -10,12 +11,11 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
@@ -23,8 +23,12 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useDispatch, useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
+import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type {
   Database,
   DatasetQuery,
@@ -33,15 +37,20 @@ import type {
 } from "metabase-types/api";
 
 import {
+  buildIncrementalSource,
+  buildIncrementalTarget,
+  getInitialValues,
+} from "../../components/IncrementalTransform/form";
+import {
   TransformEditor,
   type TransformEditorProps,
 } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
 import { isCompleteSource } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
+import { isMissingIncrementalTableTag } from "./utils";
 
 type TransformQueryPageParams = {
   transformId: string;
@@ -110,6 +119,7 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -118,6 +128,10 @@ function TransformQueryPageBody({
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const isEditMode = !readOnly && !!route.path?.includes("/edit");
+  const [
+    isTurnOffIncrementalShown,
+    { open: openTurnOffIncremental, close: closeTurnOffIncremental },
+  ] = useDisclosure(false);
 
   const lastRunError = useMemo(() => {
     if (!transform.last_run) {
@@ -127,8 +141,12 @@ function TransformQueryPageBody({
       ? (transform.last_run.message ?? undefined)
       : undefined;
   }, [transform.last_run]);
-
-  useRegisterMetabotTransformContext(transform, source, lastRunError);
+  const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
+  useRegisterMetabotTransformContext(
+    transform,
+    source,
+    dryRunError ?? lastRunError,
+  );
 
   const {
     checkData,
@@ -183,7 +201,27 @@ function TransformQueryPageBody({
     if (!isCompleteSource(source)) {
       return;
     }
+    // Editing the SQL of an existing incremental transform to drop the table variable
+    // would leave it in a broken state (and the backend rejects it). Warn first, and on
+    // confirmation turn off incremental processing as part of the save.
+    if (isMissingIncrementalTableTag(transform, source, metadata)) {
+      openTurnOffIncremental();
+      return;
+    }
     await handleInitialSave({ id: transform.id, source });
+  };
+
+  const handleConfirmTurnOffIncremental = async () => {
+    if (!isCompleteSource(source)) {
+      return;
+    }
+    closeTurnOffIncremental();
+    const values = getInitialValues({ incremental: false });
+    await handleInitialSave({
+      id: transform.id,
+      source: buildIncrementalSource(source, values),
+      target: buildIncrementalTarget(transform.target, values),
+    });
   };
 
   const handleCancel = () => {
@@ -244,6 +282,7 @@ function TransformQueryPageBody({
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
+              onDryRunErrorChange={setDryRunError}
             />
           ) : (
             <TransformEditor
@@ -274,6 +313,14 @@ function TransformQueryPageBody({
           onClose={handleCloseConfirmation}
         />
       )}
+      <ConfirmModal
+        opened={isTurnOffIncrementalShown}
+        title={t`Turn off incremental processing?`}
+        message={t`Removing the table variable used by the incremental filter will turn off incremental processing for this transform, so it will reprocess all rows on every run.`}
+        confirmButtonText={t`Turn off incremental processing`}
+        onConfirm={handleConfirmTurnOffIncremental}
+        onClose={closeTurnOffIncremental}
+      />
       <LeaveRouteConfirmModal
         route={route as Route}
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
@@ -298,9 +345,9 @@ export type TransformQueryPageEditorProps = {
   acceptProposed: () => void;
   rejectProposed: () => void;
   uiOptions?: TransformEditorProps["uiOptions"];
+  onDryRunErrorChange?: (error: string | undefined) => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
-  /** Custom run handler for Python transforms (used in workspace for dry-run) */
   onRun?: () => void;
 };
 
@@ -316,6 +363,7 @@ export function TransformQueryPageEditor({
   isEditMode = false,
   acceptProposed,
   rejectProposed,
+  onDryRunErrorChange,
   onRunQueryStart,
   onRunTransform,
   onRun,
@@ -331,6 +379,7 @@ export function TransformQueryPageEditor({
       onChangeSource={setSourceAndRejectProposed}
       onAcceptProposed={acceptProposed}
       onRejectProposed={rejectProposed}
+      onDryRunErrorChange={onDryRunErrorChange}
       onRunTransform={onRunTransform}
       onRun={onRun}
     />

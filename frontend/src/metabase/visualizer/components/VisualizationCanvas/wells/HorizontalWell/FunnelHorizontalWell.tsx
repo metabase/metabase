@@ -17,7 +17,7 @@ import {
 import cx from "classnames";
 
 import { Sortable } from "metabase/common/components/Sortable";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";

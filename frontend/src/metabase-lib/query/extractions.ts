@@ -6,7 +6,6 @@ import type {
   ColumnMetadata,
   DrillThru,
   ExpressionArg,
-  ExpressionClause,
   ExpressionParts,
   Query,
 } from "./types";
@@ -46,15 +45,6 @@ export type ColumnExtractionTag =
   | "host"
   | "subdomain"
   | "path";
-
-export function functionsUsedByExpression(
-  query: Query,
-  stageIndex: number,
-  expression: ExpressionClause,
-): string[] {
-  const parts = expressionParts(query, stageIndex, expression);
-  return walk(parts);
-}
 
 /**
  * Return the functions used by a specific column extraction.

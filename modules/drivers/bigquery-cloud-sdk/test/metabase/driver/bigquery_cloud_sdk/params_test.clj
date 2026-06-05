@@ -1,7 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk.params-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk.params-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)

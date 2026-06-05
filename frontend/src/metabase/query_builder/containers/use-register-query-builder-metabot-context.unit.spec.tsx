@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -16,7 +16,6 @@ import {
   createMockSettings,
   createMockSingleSeries,
   createMockTimelineEvent,
-  createMockTokenFeatures,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
@@ -93,19 +92,6 @@ function createMockData(opts: {
 }
 
 describe("registerQueryBuilderMetabotContextFn", () => {
-  beforeAll(() => {
-    mockSettings(
-      createMockSettings({
-        "token-features": createMockTokenFeatures({
-          ai_entity_analysis: true,
-          metabot_v3: true,
-        }),
-      }),
-    );
-    setupEnterpriseOnlyPlugin("metabot");
-    setupEnterpriseOnlyPlugin("ai-entity-analysis");
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -291,6 +277,7 @@ it("should return populated context when metabot is enabled", async () => {
 });
 
 it("should register without throwing", () => {
+  setupUserMetabotPermissionsEndpoint();
   mockSettings(createMockSettings({ "metabot-enabled?": true }));
 
   expect(() => {

@@ -18,7 +18,6 @@
     ;; > The position this Dashboard should appear in the Dashboards list,
     ;;   lower-numbered positions appearing before higher numbered ones.
     ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
-    :dependency_analysis_version
     :public_uuid :made_public_by_id
     :position :initially_published_at :view_count
     :last_viewed_at})
@@ -166,7 +165,6 @@
                 (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
                (set/subset? keys-changes #{:row :col :size_x :size_y}) (deferred-tru "rearranged the cards")
                :else                                                   (deferred-tru "modified the cards"))))
-
          (when (or (:tabs changes) (:tabs removals))
            (let [prev-tabs     (:tabs prev-dashboard)
                  new-tabs      (:tabs dashboard)

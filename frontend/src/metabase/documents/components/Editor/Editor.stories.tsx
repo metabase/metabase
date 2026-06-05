@@ -1,5 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn } from "@storybook/react/*";
+import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
@@ -7,8 +7,10 @@ import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { commonReducers } from "metabase/reducers-common";
+import { MetabaseReduxProvider } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { PieChart } from "metabase/visualizations/visualizations/PieChart";
@@ -19,8 +21,6 @@ import {
   createMockDataset,
   createMockPieRow,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { Editor, type EditorProps } from "./Editor";
 import Data from "./data/data.json";

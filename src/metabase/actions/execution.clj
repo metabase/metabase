@@ -16,15 +16,15 @@
    [metabase.model-persistence.core :as model-persistence]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.models.query :as query]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (mu/defn- execute-query-action!
@@ -45,7 +45,7 @@
                            (assoc :parameters parameters))]
         (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
         (binding [qp.perms/*card-id* model-id]
-          (qp.writeback/execute-write-query! query)))
+          (qp/execute-write-query! query)))
       (catch Throwable e
         (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
           (api/throw-403 e)
@@ -191,6 +191,7 @@
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   [action request-parameters]
+  (workspaces/check-not-in-workspace-mode! "Actions")
   (let [;; if a value is supplied for a hidden parameter, it should raise an error
         field-settings         (get-in action [:visualization_settings :fields])
         hidden-param-ids       (->> (vals field-settings)

@@ -9,10 +9,10 @@ import { Text } from "@visx/text";
 import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import * as React from "react";
 
+import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import { truncateText } from "metabase/visualizations/lib/text";
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type { Margin } from "metabase/visualizations/shared/types/layout";
-import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 
 import type { SeriesInfo } from "../../types/data";
 import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
@@ -27,7 +27,10 @@ export interface RowChartViewProps<TDatum> {
   yScale: ScaleBand<StringLike>;
   xScale: ScaleContinuousNumeric<number, number, never>;
   seriesData: SeriesData<TDatum, SeriesInfo>[];
-  labelsFormatter: (value: NumberLike) => string;
+  labelsFormatter: (
+    value: NumberLike,
+    bar?: BarData<TDatum, SeriesInfo>,
+  ) => string;
   yTickFormatter: (value: StringLike) => string;
   xTickFormatter: (value: NumberLike) => string;
   xTicks: number[];
@@ -206,7 +209,7 @@ const RowChartView = <TDatum,>({
                     y={y + height / 2}
                     verticalAnchor="middle"
                   >
-                    {labelsFormatter(label)}
+                    {labelsFormatter(label, bar)}
                   </Text>
                 )}
               </React.Fragment>

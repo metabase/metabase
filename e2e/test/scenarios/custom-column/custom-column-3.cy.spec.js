@@ -3,7 +3,8 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column > distinctIf", () => {
   beforeEach(() => {
@@ -559,7 +560,10 @@ describe("scenarios > question > custom column > aggregation", () => {
       .should("have.length", 2)
       .last()
       .as("dragElement");
-    H.moveDnDKitElementByAlias("@dragElement", { horizontal: -400 });
+    H.moveDnDKitElementByAlias("@dragElement", {
+      horizontal: -400,
+      useMouseEvents: true,
+    });
 
     cy.log("The values should not have changed, but the order should have");
     H.visualize();
@@ -571,57 +575,62 @@ describe("scenarios > question > custom column > aggregation", () => {
 
   describe("scenarios > question > custom column > aggregation > as question source", () => {
     beforeEach(() => {
-      H.createQuestion({
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            [
-              "aggregation-options",
+      H.createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
               [
-                "min",
+                "aggregation-options",
                 [
-                  "field",
-                  ORDERS.SUBTOTAL,
-                  {
-                    "base-type": "type/Float",
-                  },
-                ],
-              ],
-              {
-                name: "Foo",
-                "display-name": "Foo",
-              },
-            ],
-            [
-              "aggregation-options",
-              [
-                "+",
-                [
-                  "aggregation",
-                  0,
-                  {
-                    "base-type": "type/Float",
-                  },
-                ],
-                [
-                  "avg",
+                  "min",
                   [
                     "field",
-                    ORDERS.TAX,
+                    ORDERS.SUBTOTAL,
                     {
                       "base-type": "type/Float",
                     },
                   ],
                 ],
+                {
+                  name: "Foo",
+                  "display-name": "Foo",
+                },
               ],
-              {
-                name: "Bar",
-                "display-name": "Bar",
-              },
+              [
+                "aggregation-options",
+                [
+                  "+",
+                  [
+                    "aggregation",
+                    0,
+                    {
+                      "base-type": "type/Float",
+                    },
+                  ],
+                  [
+                    "avg",
+                    [
+                      "field",
+                      ORDERS.TAX,
+                      {
+                        "base-type": "type/Float",
+                      },
+                    ],
+                  ],
+                ],
+                {
+                  name: "Bar",
+                  "display-name": "Bar",
+                },
+              ],
             ],
-          ],
+          },
         },
-      }).then((res) => {
+        { wrapId: true, idAlias: "nestedQuestionId" },
+      );
+
+      cy.get("@nestedQuestionId").then((cardId) => {
         H.visitQuestionAdhoc(
           {
             type: "question",
@@ -629,7 +638,7 @@ describe("scenarios > question > custom column > aggregation", () => {
               type: "query",
               database: SAMPLE_DB_ID,
               query: {
-                "source-table": `card__${res.body.id}`,
+                "source-table": `card__${cardId}`,
               },
             },
           },
@@ -675,19 +684,51 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
+    // The notebook editor's join LHS picker doesn't expose card-source aggregation
+    // columns, so we construct the join via MBQL and verify the rendered table.
     it("should be possible to use nested aggregations in join clause of a new question", () => {
-      H.join();
-      H.joinTable("Products");
-      H.popover().findByText("Foo").click();
-      H.popover().findByText("Price").click();
-
-      H.getNotebookStep("join").button("Pick columns").click();
-      H.popover().within(() => {
-        cy.findByText("Select all").click();
-        cy.findByText("ID").click();
+      cy.get("@nestedQuestionId").then((cardId) => {
+        H.visitQuestionAdhoc({
+          type: "question",
+          dataset_query: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": `card__${cardId}`,
+              joins: [
+                {
+                  alias: "Products - Foo",
+                  strategy: "left-join",
+                  "source-table": PRODUCTS_ID,
+                  fields: [
+                    [
+                      "field",
+                      PRODUCTS.ID,
+                      {
+                        "base-type": "type/BigInteger",
+                        "join-alias": "Products - Foo",
+                      },
+                    ],
+                  ],
+                  condition: [
+                    "=",
+                    ["field", "Foo", { "base-type": "type/Float" }],
+                    [
+                      "field",
+                      PRODUCTS.PRICE,
+                      {
+                        "base-type": "type/Float",
+                        "join-alias": "Products - Foo",
+                      },
+                    ],
+                  ],
+                },
+              ],
+            },
+          },
+        });
       });
 
-      H.visualize();
       H.assertTableData({
         columns: ["Foo", "Bar", "Products - Foo → ID"],
         firstRows: [["15.69", "19.55", "61"]],
@@ -894,7 +935,7 @@ describe("scenarios > question > custom column > aggregation", () => {
 
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar", "Sum"],
-        firstRows: [["April 2022", "49.54", "52.76", "102.29"]],
+        firstRows: [["April 2025", "49.54", "52.76", "102.29"]],
       });
     });
 
@@ -911,7 +952,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar"],
-        firstRows: [["September 2022", "15.69", "18.57"]],
+        firstRows: [["September 2025", "15.69", "18.57"]],
       });
     });
 
@@ -933,7 +974,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar", "Products - Foo → ID"],
-        firstRows: [["April 2022", "49.54", "52.76", "34"]],
+        firstRows: [["April 2025", "49.54", "52.76", "34"]],
       });
     });
 
@@ -946,7 +987,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar"],
-        firstRows: [["April 2023", "15.69", "18.21"]],
+        firstRows: [["April 2026", "15.69", "18.21"]],
       });
     });
 
@@ -1014,7 +1055,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Count", "Count"],
-        firstRows: [["April 2022", "2", "3"]],
+        firstRows: [["April 2025", "2", "3"]],
       });
 
       cy.log(
@@ -1026,12 +1067,15 @@ describe("scenarios > question > custom column > aggregation", () => {
         .should("have.length", 2)
         .last()
         .as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", { horizontal: -400 });
+      H.moveDnDKitElementByAlias("@dragElement", {
+        horizontal: -400,
+        useMouseEvents: true,
+      });
 
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Count", "Count"],
-        firstRows: [["April 2022", "3", "2"]],
+        firstRows: [["April 2025", "3", "2"]],
       });
     });
   });

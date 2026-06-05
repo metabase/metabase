@@ -9,8 +9,8 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.event :as analytics.event]
    [metabase.analytics.settings :as analytics.settings]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
@@ -650,7 +650,7 @@
   [executions]
   (mapv (fn [qe-group]
           {:group (str qe-group) :value (get executions qe-group)})
-        [:interactive_embed :internal :public_link :sdk_embed :static_embed]))
+        [:interactive_embed :internal :public_link :sdk_embed :simple_embed :static_embed]))
 
 (mu/defn- snowplow-grouped-metrics
   :- [:sequential
@@ -795,7 +795,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :sso-slack :scim :sandboxes :email-allow-list :semantic-search]]
+  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list :semantic-search :workspaces]]
     (map
      (fn [feature]
        {:name      feature
@@ -849,6 +849,11 @@
    {:name      :whitelabel
     :available (premium-features/enable-whitelabeling?)
     :enabled   (whitelabeling-in-use?)}
+   {:name      :custom-viz
+    :available (premium-features/enable-custom-viz?)
+    :enabled   (and config/ee-available?
+                    (premium-features/enable-custom-viz?)
+                    (t2/exists? :model/CustomVizPlugin))}
    {:name      :csv-upload
     :available (csv-upload-available?)
     :enabled   (t2/exists? :model/Database :uploads_enabled true)}
@@ -905,18 +910,6 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
-   {:name      :metabot-v3
-    :available (premium-features/enable-metabot-v3?)
-    :enabled   (premium-features/enable-metabot-v3?)}
-   {:name      :ai-entity-analysis
-    :available (premium-features/enable-ai-entity-analysis?)
-    :enabled   (premium-features/enable-ai-entity-analysis?)}
-   {:name      :ai-sql-fixer
-    :available (premium-features/enable-ai-sql-fixer?)
-    :enabled   (premium-features/enable-ai-sql-fixer?)}
-   {:name      :ai-sql-generation
-    :available (premium-features/enable-ai-sql-generation?)
-    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}
@@ -943,15 +936,18 @@
    {:name      :dependencies
     :available (premium-features/enable-dependencies?)
     :enabled   (premium-features/enable-dependencies?)}
+   {:name      :schema-viewer
+    :available (premium-features/enable-schema-viewer?)
+    :enabled   (premium-features/enable-schema-viewer?)}
    {:name      :support-users
     :available (premium-features/enable-support-users?)
     :enabled   (premium-features/enable-support-users?)}
-   {:name      :workspaces
-    :available (premium-features/enable-workspaces?)
-    :enabled   (premium-features/enable-workspaces?)}
    {:name      :writable-connection
     :available (premium-features/enable-writable-connection?)
-    :enabled   (premium-features/enable-writable-connection?)}])
+    :enabled   (premium-features/enable-writable-connection?)}
+   {:name      :ai-controls
+    :available (premium-features/enable-ai-controls?)
+    :enabled   (premium-features/enable-ai-controls?)}])
 
 (defn- snowplow-features
   []
@@ -1055,5 +1051,5 @@
               (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
-      (snowplow/track-event! :snowplow/instance_stats snowplow-data)
+      (analytics.event/track-event! :snowplow/instance_stats snowplow-data)
       (stats-post-cleanup))))

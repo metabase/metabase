@@ -43,10 +43,9 @@
 
 (deftest identity-hash-test
   (testing "Measure hashes are composed of the measure name and table identity-hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Database db {:name "field-db" :engine :h2}
-                     :model/Table table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                     :model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
+    (let [now   #t "2022-09-01T12:34:56Z"
+          table (t2/select-one :model/Table (mt/id :venues))]
+      (mt/with-temp [:model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
                                              :definition (measure-definition (lib/count))}]
         (is (= (serdes/raw-hash ["total sales" (serdes/identity-hash table) (:created_at measure)])
                (serdes/identity-hash measure)))))))
@@ -83,14 +82,12 @@
            Exception
            #"[Cc]ycle"
            (t2/update! :model/Measure measure-1-id {:definition (measure-definition-referencing measure-2-id)})))))
-
 ;;; ------------------------------------------------ Metric Reference Tests ------------------------------------------------
 
   (defn- metric-query
     "Create a metric-style dataset query (a query with a single aggregation)."
     []
     (measure-definition (lib/count)))
-
   (deftest insert-measure-with-metric-reference-test
     (testing "Inserting a measure that references a metric should fail"
       (mt/with-temp [:model/Card {metric-id :id} {:name "Test Metric"
@@ -107,7 +104,6 @@
                             :table_id (mt/id :venues)
                             :creator_id (mt/user->id :rasta)
                             :definition (measure-definition (lib.metadata/metric mp metric-id))})))))))
-
   (deftest insert-measure-with-nested-metric-reference-test
     (testing "Inserting a measure with metric nested in arithmetic expression should fail"
       (mt/with-temp [:model/Card {metric-id :id} {:name "Test Metric"
@@ -123,11 +119,10 @@
                            {:name "Bad Measure"
                             :table_id (mt/id :venues)
                             :creator_id (mt/user->id :rasta)
-                          ;; Metric nested in an arithmetic expression: metric + 1
+                            ;; Metric nested in an arithmetic expression: metric + 1
                             :definition (measure-definition
                                          (lib/+ (lib.metadata/metric mp metric-id)
                                                 1))})))))))
-
   (deftest update-measure-with-metric-reference-test
     (testing "Updating a measure to reference a metric should fail"
       (mt/with-temp [:model/Measure {measure-id :id} {:name "Good Measure"

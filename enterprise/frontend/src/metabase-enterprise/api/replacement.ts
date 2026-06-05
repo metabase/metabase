@@ -1,23 +1,27 @@
 import type {
-  CheckReplaceSourceInfo,
+  ListSourceReplacementRunsRequest,
+  ReplaceModelWithTransformRequest,
+  ReplaceModelWithTransformResponse,
   ReplaceSourceRequest,
   ReplaceSourceResponse,
-  ReplaceSourceRun,
-  ReplaceSourceRunId,
+  SourceReplacementCheckInfo,
+  SourceReplacementRun,
+  SourceReplacementRunId,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import {
   idTag,
   invalidateTags,
-  provideReplaceSourceRunTags,
-  tag,
+  listTag,
+  provideSourceReplacementRunListTags,
+  provideSourceReplacementRunTags,
 } from "./tags";
 
 export const replacementApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     checkReplaceSource: builder.query<
-      CheckReplaceSourceInfo,
+      SourceReplacementCheckInfo,
       ReplaceSourceRequest
     >({
       query: (body) => ({
@@ -40,14 +44,41 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_response, error) =>
-        invalidateTags(error, [tag("table"), tag("card")]),
+        invalidateTags(error, [listTag("source-replacement-run")]),
     }),
-    getReplaceSourceRun: builder.query<ReplaceSourceRun, ReplaceSourceRunId>({
+    listSourceReplacementRuns: builder.query<
+      SourceReplacementRun[],
+      ListSourceReplacementRunsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/replacement/runs",
+        params,
+      }),
+      providesTags: (runs) =>
+        runs ? provideSourceReplacementRunListTags(runs) : [],
+    }),
+    getSourceReplacementRun: builder.query<
+      SourceReplacementRun,
+      SourceReplacementRunId
+    >({
       query: (id) => ({
         method: "GET",
         url: `/api/ee/replacement/runs/${id}`,
       }),
-      providesTags: (run) => (run ? provideReplaceSourceRunTags(run) : []),
+      providesTags: (run) => (run ? provideSourceReplacementRunTags(run) : []),
+    }),
+    replaceModelWithTransform: builder.mutation<
+      ReplaceModelWithTransformResponse,
+      ReplaceModelWithTransformRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/replacement/replace-model-with-transform",
+        body,
+      }),
+      invalidatesTags: (_response, error) =>
+        invalidateTags(error, [listTag("source-replacement-run")]),
     }),
   }),
 });
@@ -55,5 +86,7 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
 export const {
   useCheckReplaceSourceQuery,
   useReplaceSourceMutation,
-  useGetReplaceSourceRunQuery,
+  useListSourceReplacementRunsQuery,
+  useGetSourceReplacementRunQuery,
+  useReplaceModelWithTransformMutation,
 } = replacementApi;

@@ -21,7 +21,7 @@ on:
       runner:
         required: false
         type: string
-        default: ubuntu-22.04
+        default: ${{ vars.DEFAULT_RUNNER_KEY }}
       total_chunks: # number of chunks
         required: false
         type: number
@@ -37,6 +37,19 @@ env:
   HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
   PR_NUMBER: ${{ github.event.pull_request.number || '' }}
   JOB_NAME: ${{ inputs.name }}
+  # ci-conductor failed-tests reporting (DEV-1999). Secret holds the webhooks
+  # base URL (".../webhooks"); the reporter appends the endpoint. Callers pass
+  # `secrets: inherit`; reporting no-ops when it's unset.
+  CI_CONDUCTOR_WEBHOOK_URL: ${{ secrets.CI_CONDUCTOR_WEBHOOK_URL }}
+  # Shared secret sent as the `x-internal-secret` header to authenticate.
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  REPO_ID: ${{ github.event.repository.id }}
+  # Commit + PR target branch under test, so conductor can tie failures to the
+  # right code. On PRs the ambient GITHUB_SHA is the synthetic merge commit and
+  # GITHUB_BASE_REF the target, so we pass the PR head sha / base ref explicitly
+  # (falling back to push-event values). The reporter reads these. DEV-1999.
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 
 jobs:
   e2e-tests:
@@ -53,7 +66,7 @@ jobs:
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -95,7 +108,7 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       - name: Download failed test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         if: github.run_attempt != '1'
         continue-on-error: true
         id: failed-specs
@@ -111,6 +124,15 @@ jobs:
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
+
+      # Export this job's numeric GitHub job id as $JOB_ID for the Cypress runs
+      # below (ci-conductor failed-tests reporting reads it in after:spec).
+      # Snapshot generation is itself a Cypress run that fires after:spec, so
+      # this must precede it. Placed late, not after checkout: the Actions jobs
+      # API is eventually consistent, so the longer the job has been alive the
+      # more reliably the lookup resolves. JOB_ID exported here persists to the
+      # steps below. DEV-1999.
+      - uses: ./.github/actions/resolve-job-id
 
       - name: Generate database snapshots
         env:
@@ -134,7 +156,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="-@mongo+-@python+-@OSS+-@skip" \
+            --expose grepTags="-@mongo+-@python+-@OSS+-@skip" \
             --spec "$SPEC_PATH"
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
@@ -151,12 +173,30 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-          --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
+          --expose grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
           --spec "$SPEC_PATH"
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
         continue-on-error: true
+
+      - name: Rewrite JUnit hook failures (partial rollout)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          if [ -d ./target/junit ]; then
+            echo "fix-junit-hooks: invoking bun"
+            bun e2e/support/fix-junit-hooks.ts ./target/junit \
+              --include sharing/public-resource-downloads \
+              --include sharing/sharing-reproductions \
+              --include visualizations-charts/custom-viz \
+              --include metabot/metabot-query-builder \
+              --include dashboard-filters/dashboard-filters-location
+          else
+            echo "No ./target/junit directory; nothing to process."
+          fi
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -166,8 +206,7 @@ jobs:
           # Related to our custom upload to S3
           output-name: e2e-${{ inputs.name }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           # Related to Trunk uploader
           variant: e2e-tests
@@ -175,7 +214,7 @@ jobs:
           previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: |
           !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
         with:
@@ -186,7 +225,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Failed Tests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: |
           !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
         with:
@@ -198,7 +237,7 @@ jobs:
         id: extract-timings
         if: inputs.split_index >= 0 && github.ref == 'refs/heads/master'
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -232,16 +271,16 @@ jobs:
             }
 
       - name: Upload Timing Data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: steps.extract-timings.outcome == 'success' && steps.extract-timings.outputs.has-changes == 'true'
         with:
-          name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
+          name: timing-data-${{ inputs.name }}
           path: chunkTimings.json
           retention-days: 1 # gets merged immediately by parent workflow
 
       - name: Publish Summary
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | #js
             const {

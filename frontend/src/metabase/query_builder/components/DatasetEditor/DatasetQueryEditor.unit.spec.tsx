@@ -4,11 +4,18 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -16,7 +23,6 @@ import {
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_DB = createSampleDatabase();
 
@@ -36,6 +42,7 @@ const ROOT_COLLECTION = createMockCollection({ id: "root" });
 interface SetupOpts {
   card?: Card;
   height?: number;
+  availableHeight?: number;
   isActive: boolean;
   readOnly?: boolean;
 }
@@ -43,9 +50,11 @@ interface SetupOpts {
 const setup = async ({
   card = TEST_NATIVE_CARD,
   height = 300,
+  availableHeight = 600,
   isActive,
   readOnly = false,
 }: SetupOpts) => {
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
@@ -58,7 +67,7 @@ const setup = async ({
   });
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
-  const query = question.legacyNativeQuery();
+  const query = checkNotNull(question.legacyNativeQuery());
   const DatasetQueryEditor = await importDatasetQueryEditor();
   const onSetDatabaseId = jest.fn();
 
@@ -66,14 +75,19 @@ const setup = async ({
     <DatasetQueryEditor
       isActive={isActive}
       height={height}
+      availableHeight={availableHeight}
       query={query}
       question={question}
       readOnly={readOnly}
       onResizeStop={_.noop}
       onSetDatabaseId={onSetDatabaseId}
+      setDatasetQuery={_.noop}
       isNativeEditorOpen
     />,
   );
+
+  // required for preventing memory leak
+  await waitForLoaderToBeRemoved();
 
   return { query, question, rerender };
 };
@@ -94,15 +108,14 @@ const setup = async ({
  * would have been used in tests instead of the actual implementation.
  */
 const importDatasetQueryEditor = async () => {
-  const { DatasetQueryEditor } = await import(
-    "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
-  );
+  const { DatasetQueryEditor } =
+    await import("metabase/query_builder/components/DatasetEditor/DatasetQueryEditor");
   return DatasetQueryEditor;
 };
 
 describe("DatasetQueryEditor", () => {
   beforeEach(() => {
-    jest.unmock("metabase/query_builder/components/NativeQueryEditor");
+    jest.unmock("metabase/querying/components/NativeQueryEditor");
   });
 
   it("renders sidebar when query tab is active", async () => {
@@ -143,16 +156,21 @@ describe("DatasetQueryEditor", () => {
       <DatasetQueryEditor
         isActive={false}
         height={0}
+        availableHeight={600}
         query={query}
         question={question}
         readOnly={false}
         onResizeStop={_.noop}
         onSetDatabaseId={onSetDatabaseId}
+        setDatasetQuery={_.noop}
+        isNativeEditorOpen
       />,
     );
 
-    expect(
-      screen.queryByTestId("native-query-editor-action-buttons"),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("native-query-editor-action-buttons"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

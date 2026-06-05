@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sqlserver-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlserver-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlserver-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -10,21 +12,24 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [next.jdbc]
@@ -124,7 +129,7 @@
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
       (is (= {:query ["SELECT"
-                      "  TOP(1048575) \"source\".\"name\" AS \"name\""
+                      "  TOP(1048575) \"__mb_source\".\"name\" AS \"name\""
                       "FROM"
                       "  ("
                       "    SELECT"
@@ -133,7 +138,7 @@
                       "      \"dbo\".\"venues\""
                       "    ORDER BY"
                       "      \"dbo\".\"venues\".\"id\" ASC"
-                      "  ) AS \"source\""]
+                      "  ) AS \"__mb_source\""]
               :params nil}
              (-> (mt/mbql-query venues
                    {:source-query {:source-table $$venues
@@ -147,7 +152,7 @@
     (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
                   "clauses that may have been set in the query")
       (is (= {:query  ["SELECT"
-                       "  TOP(10) \"source\".\"name\" AS \"name\""
+                       "  TOP(10) \"__mb_source\".\"name\" AS \"name\""
                        "FROM"
                        "  ("
                        "    SELECT"
@@ -156,7 +161,7 @@
                        "      \"dbo\".\"venues\""
                        "    ORDER BY"
                        "      \"dbo\".\"venues\".\"id\" ASC"
-                       "  ) AS \"source\""]
+                       "  ) AS \"__mb_source\""]
               :params nil}
              (-> (qp.compile/compile
                   (mt/mbql-query venues
@@ -182,7 +187,7 @@
                            (lib/limit nil))]
       (mt/with-metadata-provider (mt/id)
         (is (= {:query  ["SELECT"
-                         "  \"source\".\"name\" AS \"name\""
+                         "  \"__mb_source\".\"name\" AS \"name\""
                          "FROM"
                          "  ("
                          "    SELECT"
@@ -191,9 +196,9 @@
                          "      \"dbo\".\"venues\""
                          "    ORDER BY"
                          "      \"dbo\".\"venues\".\"id\" ASC"
-                         "  ) AS \"source\""
+                         "  ) AS \"__mb_source\""
                          "ORDER BY"
-                         "  \"source\".\"id\" ASC"]
+                         "  \"__mb_source\".\"id\" ASC"]
                 :params nil}
                (-> (driver/mbql->native :sqlserver preprocessed)
                    (update :query (fn [sql]
@@ -793,17 +798,14 @@
       (let [database {:lib/type :metadata/database
                       :details {:user "login_user" :role "db_user"}}]
         (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
-
     (testing "returns nil when no role is configured"
       (let [database {:lib/type :metadata/database
                       :details {:user "login_user"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
-
     (testing "returns nil even when user is 'sa'"
       (let [database {:lib/type :metadata/database
                       :details {:user "sa"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
-
     (testing "ignores user field and only uses role field"
       (let [database {:lib/type :metadata/database
                       :details {:user "login_user" :role "impersonation_user"}}]
@@ -827,7 +829,6 @@
                                          {driver-api/qp.add.source-table  (mt/id :venues)
                                           driver-api/qp.add.source-alias  "name"
                                           driver-api/qp.add.desired-alias "name"}]]}}]
-
         (is (= {:where
                 [:=
                  [::h2x/identifier :field ["JoinedCategories" "LiteralString"]]
@@ -883,3 +884,62 @@
       (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
              (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}
                                                 :output-table "PRODUCTS_COPY"}))))))
+
+(deftest table-privileges-test
+  (mt/test-driver :sqlserver
+    (testing "`current-user-table-privileges` returns correct structure and privileges"
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sqlserver (mt/db) nil
+       (fn [conn]
+         (let [privileges (sql-jdbc.sync/current-user-table-privileges :sqlserver {:connection conn})]
+           (is (seq privileges) "Should return at least one table")
+           (doseq [priv privileges]
+             (is (= #{:role :schema :table :select :update :insert :delete}
+                    (set (keys priv)))
+                 "Should have all required keys")
+             (is (nil? (:role priv)))
+             (is (string? (:schema priv)))
+             (is (string? (:table priv)))
+             (is (boolean? (:select priv)))
+             (is (boolean? (:update priv)))
+             (is (boolean? (:insert priv)))
+             (is (boolean? (:delete priv))))
+           (testing "Test tables should appear with at least SELECT privilege"
+             (let [dbo-orders (filter (fn [priv]
+                                        (and (= "dbo" (:schema priv))
+                                             (= "ORDERS" (u/upper-case-en (:table priv)))))
+                                      privileges)]
+               (when (seq dbo-orders)
+                 (is (every? :select dbo-orders)))))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (mt/test-driver :sqlserver
+    (is (= "REVERT; EXECUTE AS USER = 'role''; SELECT sleep(10); --';"
+           (sql-jdbc.execute/do-with-connection-with-options
+            :sqlserver (mt/id) nil
+            (fn [conn]
+              (driver.sql-jdbc/set-role-statement :sqlserver conn "role'; SELECT sleep(10); --")))))))
+
+(mt/defdataset ^:private datetime-offset
+  [["datetime-offset"
+    [{:field-name "start", :base-type {:native "DATETIMEOFFSET"}}
+     {:field-name "end", :base-type {:native "DATETIMEOFFSET"}}]
+    [["2025-10-10 09:00:00 +02:00" "2025-10-10 10:00:00 +02:00"]
+     ["2025-10-11 09:15:00 +02:00" "2025-10-11 09:30:00 +02:00"]]]])
+
+(deftest ^:parallel datetime-diff-with-datetime-offset-test
+  (mt/test-driver :sqlserver
+    (mt/dataset datetime-offset
+      (let [mp (mt/metadata-provider)
+            datetime-table (lib.metadata/table mp (mt/id :datetime-offset))
+            start-col (lib.metadata/field mp (mt/id :datetime-offset :start))
+            end-col (lib.metadata/field mp (mt/id :datetime-offset :end))
+            diff-minutes (lib/expression-clause :datetime-diff
+                                                [start-col end-col :minute]
+                                                nil)]
+        (is (= [[1 "2025-10-10T07:00:00Z" "2025-10-10T08:00:00Z" 60]
+                [2 "2025-10-11T07:15:00Z" "2025-10-11T07:30:00Z" 15]]
+               (-> (lib/query mp datetime-table)
+                   (lib/expression "diff-minutes" diff-minutes)
+                   (qp/process-query)
+                   (mt/rows))))))))

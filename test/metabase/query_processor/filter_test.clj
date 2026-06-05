@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.filter-test
   "Tests for the `:filter` clause."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.filter-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.filter-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -8,10 +10,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.test :as mt]
@@ -641,7 +643,25 @@
                    (mt/run-mbql-query escaping_table
                      {:filter   [:contains $string1 lit]
                       :order-by [[:asc $id]]
-                      :limit    8})))))))))
+                      :limit    8}))))))
+      (testing "two literal contains filters"
+        (let [mp            (mt/metadata-provider)
+              id-field      (lib.metadata/field mp (mt/id :escaping_table :id))
+              string1-field (lib.metadata/field mp (mt/id :escaping_table :string1))
+              query         (-> (lib/query mp (lib.metadata/table mp (mt/id :escaping_table)))
+                                (lib/filter (lib/and
+                                             (lib/contains string1-field "\\")
+                                             (lib/contains string1-field "%")))
+                                (lib/order-by id-field)
+                                (lib/with-fields [id-field string1-field])
+                                (lib/limit 8))]
+          (is (= [[10 "_many%\\escapes"]
+                  [11 "more%___%esca\\pes%"]
+                  [12 "%backslash\\%before_percent_"]
+                  [13 "\\backslash\\_before%underscore\\"]]
+                 (mt/formatted-rows
+                  [int identity]
+                  (qp/process-query query)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             NESTED AND/OR CLAUSES                                              |
@@ -1040,10 +1060,10 @@
   (testing (str "Filtering on a specific date (DATE column) should work correctly regardless of report timezone/DB"
                 " timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
               checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
               checkins-date     (lib.metadata/field metadata-provider (mt/id :checkins :date))
@@ -1079,10 +1099,10 @@
   (testing (str "Filtering on a specific date (TIMESTAMP WITH TIME ZONE column) should work correctly regardless of"
                 " report timezone/DB timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
               orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))

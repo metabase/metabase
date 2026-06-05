@@ -15,8 +15,8 @@ import {
   DataReferenceInline,
   DataReferenceTriggerButton,
 } from "metabase/actions/containers/ActionCreator/InlineDataReference";
-import { Button } from "metabase/common/components/Button";
-import { isNotNull } from "metabase/lib/types";
+import { Button } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import InlineActionSettings, {
@@ -107,11 +107,15 @@ export default function ActionCreatorView({
           />
           <EditorContainer>{children}</EditorContainer>
           <ModalActions>
-            <Button onClick={onCloseModal} borderless>
+            <Button onClick={onCloseModal} variant="subtle">
               {t`Cancel`}
             </Button>
             {isEditable && (
-              <Button primary disabled={!canSave} onClick={onClickSave}>
+              <Button
+                variant="filled"
+                disabled={!canSave}
+                onClick={onClickSave}
+              >
                 {isNew ? t`Save` : t`Update`}
               </Button>
             )}

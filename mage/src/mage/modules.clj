@@ -88,8 +88,11 @@
 
 (def driver-affecting-overrides
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
-  '#{analytics
+  '#{agent-api
+     analytics
+     analytics-interface
      api
+     api-scope
      api-keys
      appearance
      audit-app
@@ -101,31 +104,42 @@
      collections
      config
      content-verification
+     custom-viz-plugin
      dashboards
+     documents
      eid-translation
      embedding
      enterprise/api
      enterprise/scim
      enterprise/serialization
      enterprise/sso
+     enterprise/transforms
+     enterprise/transforms-inspector
      events
      formatter
      initialization-status
+     interestingness
      internal-stats
+     llm
      login-history
+     mcp
+     metabot
      notification
+     oauth-server
      permissions
      premium-features
      public-sharing
      pulse
      remote-sync
      request
+     sample-data
      search
      secrets
      server
      session
      settings
      setup
+     slackbot
      sso
      startup
      system
@@ -137,7 +151,9 @@
      users
      util
      version
-     view-log})
+     view-log
+     warehouse-schema
+     workspaces})
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -174,6 +190,7 @@
                (c/green "Driver tests " (c/bold "CAN be skipped") "")))))
 
 (defn cli-print-affected-modules
+  "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
   (let [deps (dependencies)
         updated (updated-modules git-ref)
@@ -249,7 +266,6 @@
    :bigquery
    :clickhouse
    :databricks
-   :druid
    :druid-jdbc
    :mongo
    :mongo-ssl
@@ -272,7 +288,6 @@
    "bigquery-cloud-sdk" [:bigquery]
    "clickhouse" [:clickhouse]
    "databricks" [:databricks]
-   "druid" [:druid]
    "druid-jdbc" [:druid-jdbc]
    "mongo" [:mongo :mongo-ssl :mongo-sharded-cluster]
    "oracle" [:oracle]
@@ -323,8 +338,15 @@
     #{}
     (into #{} (map str/trim) (str/split labels-str #","))))
 
-(defn break-quarantine-label [driver]
+(defn break-quarantine-label
+  "PR label string that forces driver tests for `driver` to run even when otherwise quarantined."
+  [driver]
   (str "break-quarantine-" (name driver)))
+
+(defn run-driver-label
+  "PR label string that opts `driver`'s test job into a given CI run."
+  [driver]
+  (str "ci:run-" (name driver)))
 
 (defn- driver-decision
   "Determine if a driver should run and why.
@@ -355,7 +377,15 @@
     {:should-run true
      :reason "H2/Postgres always run"}
 
-    ;; Priority 3: Quarantined drivers (respected even on master/release)
+    ;; Priority 3: ci:run-all-drivers or ci:run-<driver> label
+    (or (contains? pr-labels "ci:run-all-drivers")
+        (contains? pr-labels (run-driver-label driver)))
+    {:should-run true
+     :reason (if (contains? pr-labels "ci:run-all-drivers")
+               "ci:run-all-drivers label"
+               (str (run-driver-label driver) " label"))}
+
+    ;; Priority 4: Quarantined drivers (respected even on master/release)
     (contains? quarantined-drivers driver)
     (do
       (when verbose?
@@ -366,46 +396,46 @@
         {:should-run false
          :reason "driver is quarantined"}))
 
-    ;; Priority 4: Master/release branch - all (non-quarantined) drivers run
+    ;; Priority 5: Master/release branch - all (non-quarantined) drivers run
     is-master-or-release
     {:should-run true
      :reason "master/release branch"}
 
-    ;; Priority 5: Cloud driver + ci:all-cloud-drivers label
+    ;; Priority 6: Cloud driver + ci:all-cloud-drivers label
     (and (contains? cloud-drivers driver)
          (contains? pr-labels "ci:all-cloud-drivers"))
     {:should-run true
      :reason "ci:all-cloud-drivers label"}
 
-    ;; Priority 6: Cloud driver + its files changed
+    ;; Priority 7: Cloud driver + its files changed
     (and (contains? cloud-drivers driver)
          (contains? particular-driver-changed? driver))
     {:should-run true
      :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
 
-    ;; Priority 7: Cloud driver + module triggering cloud dbs updated → run it
+    ;; Priority 8: Cloud driver + module triggering cloud dbs updated → run it
     (and (contains? cloud-drivers driver)
          (seq (set/intersection updated modules-triggering-cloud-drivers)))
     {:should-run true
      :reason "Module updated which explicitly triggers cloud drivers"}
 
-    ;; Priority 8: Cloud driver + driver deps affected (e.g., deps.edn changed)
+    ;; Priority 9: Cloud driver + driver deps affected (e.g., deps.edn changed)
     (and (contains? cloud-drivers driver)
          driver-deps-affected?)
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 9: Cloud driver, no relevant changes → skip
+    ;; Priority 10: Cloud driver, no relevant changes → skip
     (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
-    ;; Priority 10: Driver deps affected by shared code changes
+    ;; Priority 11: Driver deps affected by shared code changes
     driver-deps-affected?
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 11: Self-hosted driver, not affected
+    ;; Priority 12: Self-hosted driver, not affected
     :else
     {:should-run false
      :reason "driver module not affected"}))
@@ -452,7 +482,6 @@
                                                       (not (contains? (:pr-labels ctx)
                                                                       (break-quarantine-label driver))))))
                                        all-drivers)]
-
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (do
@@ -460,7 +489,6 @@
           (println (str (name driver) "-should-run=" should-run)))
         (doseq [driver quarantined-with-changes]
           (println (str (name driver) "-quarantine-conflict=true"))))
-
       (do
         ;; Print module analysis summary
         (println "")
@@ -470,7 +498,6 @@
         (println "Important file changed:" (boolean important-file-changed?))
         (println "Drivers with file changes:" (pr-str particular-driver-changed?))
         (println "")
-
         ;; Print human-readable decision summary
         (println "=== Driver Decisions ===")
         (doseq [{:keys [driver should-run reason]} decisions]
@@ -479,7 +506,6 @@
                            (if should-run (c/green "RUN ") (c/yellow "SKIP"))
                            reason)))
         (println "")
-
         ;; Print GITHUB_OUTPUT preview with colors
         (let [{drivers-to-run true drivers-to-skip false} (group-by :should-run decisions)]
           (println (c/green (str "\n=== Drivers to Run (" (count drivers-to-run) ") ===")))
@@ -488,7 +514,6 @@
           (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
           (doseq [{:keys [driver]} drivers-to-skip]
             (println (str (name driver) "-should-run=false"))))
-
         ;; Output quarantine conflict warnings with colors
         (when (seq quarantined-with-changes)
           (println "")
@@ -497,7 +522,6 @@
           (doseq [driver quarantined-with-changes]
             (println (c/red (str "  • " (name driver) " - add label '" (break-quarantine-label driver) "' to run tests")))
             (println (str (name driver) "-quarantine-conflict=true"))))))
-
     (u/exit 0)))
 
 (defn -main

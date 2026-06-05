@@ -36,8 +36,8 @@
                                              #js ["field" 5 nil]
                                              #js ["field" 6 nil]
                                              #js ["field" 7 nil]]}}
-            ;; Note that the order is not relevant; they get grouped.
-            ;; Duplicates are okay, and are tracked.
+          ;; Note that the order is not relevant; they get grouped.
+          ;; Duplicates are okay, and are tracked.
           field-ids #js [1 2 6 7 3 5 4 4 4]]
       (is (not (lib.js/query= q1 q2))
           "the field-ids must be provided to populate q1")
@@ -75,7 +75,7 @@
                                  "breakout"     #js [#js ["field" 3 nil]]
                                  "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}]
         (is (lib.js/query= q1 q2))))
-    (testing "on pMBQL queries"
+    (testing "on MBQL 5 queries"
       (let [q1 (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                    (lib/expression "some_expr" (lib/+ (meta/field-metadata :orders :subtotal) 1))
                    (lib/aggregate (lib/count))
@@ -115,13 +115,11 @@
                        (query-with-field-opts #js {"base-type" "type/Text"})))
     (is (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Float"})
                        (query-with-field-opts #js {"effective-type" "type/Float"}))))
-
   (testing "mismatched field types are not equal"
     (is (not (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
                             (query-with-field-opts #js {"base-type" "type/Float"}))))
     (is (not (lib.js/query= (query-with-field-opts #js {"effective-type" "type/Text"})
                             (query-with-field-opts #js {"effective-type" "type/Float"})))))
-
   (testing "missing field types are equal"
     (is (lib.js/query= (query-with-field-opts #js {"base-type" "type/Text"})
                        (query-with-field-opts #js {})))
@@ -142,17 +140,6 @@
               {:lib/type :option/join.strategy, :strategy :right-join}
               {:lib/type :option/join.strategy, :strategy :inner-join}]
              (vec strategies))))))
-
-(deftest ^:parallel required-native-extras-test
-  (let [db                (update meta/database :features conj :native-requires-specified-collection)
-        metadata-provider (lib.tu/mock-metadata-provider {:database db})
-        extras            (lib.js/required-native-extras (:id db) metadata-provider)]
-    ;; apparently #js ["collection"] is not equal to #js ["collection"]
-    (is (= js/Array
-           (type extras))
-        "should be a JS array")
-    (is (= ["collection"]
-           (js->clj extras)))))
 
 (defn- add-undefined-params
   "This simulates the FE setting some parameters to js/undefined."
@@ -368,7 +355,6 @@
 
     [:datetime-diff {} [:field {} int?] [:field {} int?] :day]
     (lib.js/expression-clause "datetime-diff" [(meta/field-metadata :products :created-at) (meta/field-metadata :products :created-at) "day"] nil))
-
   (testing "normalizes recursively"
     (is (=?
          [:time-interval {} [:field {} int?]
@@ -411,18 +397,17 @@
         true true
         false false
 
-           ;; Objects
+        ;; Objects
         #js {:foo "bar"}
         #js {:foo "bar"}
         #js {:foo "bar", :baz "quux"}
         #js {:foo "bar", :baz "quux"}
-           ;; Arrays
+        ;; Arrays
         #js ["foo" #js [1 2 3]]
         #js ["foo" #js [1 2 3]]
-           ;; Nesting
+        ;; Nesting
         #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]
         #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]))
-
     (testing "should be false"
       (are [a b] (= false (js= a b))
         7 8
@@ -433,19 +418,19 @@
         true false
         false 7
 
-           ;; Objects
+        ;; Objects
         #js {:foo "bar"} #js {:foo "baz"} ; Different value
         #js {:foo "bar"} #js {}           ; Missing an a key in b
         #js {}           #js {:foo "bar"} ; Missing a b key in a
         #js {:foo nil}   #js {}           ; Missing is not the same as present-but-nil
         #js {}           #js {:foo nil}   ; And likewise in reverse
 
-           ;; Arrays
+        ;; Arrays
         #js ["foo" "bar"] #js ["foo" "baz"] ; Different values
         #js ["foo" "bar"] #js ["foo"]       ; Different lengths
         #js ["foo"]       #js ["foo" "bar"]
 
-           ;; Nesting
+        ;; Nesting
         #js [#js {:foo "bar", :baz #js [4 5 6]}, #js [1 2 3]]
         #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]))))
 
@@ -456,11 +441,9 @@
     (testing "description is present in the display-info for a column"
       (is (= (:description discount)
              (.-description (lib.js/display-info query -1 discount))))
-
       (testing "but if missing from the input, it's missing from the display-info"
         (let [di (lib.js/display-info query -1 (dissoc discount :fingerprint))]
           (is (not (gobject/containsKey di "description"))))))
-
     (testing "fingerprint is included in display-info"
       (let [query      (lib/query meta/metadata-provider (meta/table-metadata :orders))
             by-dca     (m/index-by :lib/desired-column-alias
@@ -519,7 +502,7 @@
                             "b" [:+ [:expression "a"] [:expression "c"]]
                             "x" [:+ [:expression "b"] 1]
                             "s" [:+ [:expression "a"] [:expression "b"] [:expression "c"]]}
-                           lib.convert/->pMBQL)
+                           lib.convert/->mbql5)
         query (reduce-kv (fn [query expr-name expr]
                            (lib/expression query 0 expr-name expr))
                          (lib.tu/venues-query)
@@ -563,13 +546,11 @@
           (let [obj (lib.js/as-returned simple-query stage nil)]
             (is (=? simple-query (.-query obj)))
             (is (=? stage        (.-stageIndex obj)))))
-
         (testing "in the target stage"
           (doseq [stage [1 -1]]
             (let [obj (lib.js/as-returned two-stage stage nil)]
               (is (=? two-stage (.-query obj)))
               (is (=? stage     (.-stageIndex obj)))))))
-
       (testing "uses an existing later stage if it exists"
         (let [obj (lib.js/as-returned two-stage 0 nil)]
           (is (=? two-stage (.-query obj)))
@@ -577,13 +558,11 @@
         (let [obj   (lib.js/as-returned two-stage-agg 0 nil)]
           (is (=? two-stage-agg (.-query obj)))
           (is (=? 1             (.-stageIndex obj)))))
-
       (testing "appends a new stage if necessary"
         (let [obj (lib.js/as-returned two-stage-agg 1 nil)]
           (is (=? (lib/append-stage two-stage-agg)
                   (.-query obj)))
           (is (=? -1 (.-stageIndex obj)))))
-
       (testing "only breakouts"
         (let [brk-only  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                             (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))
@@ -599,7 +578,6 @@
               (is (=? (lib/append-stage brk-only)
                       (.-query obj)))
               (is (=? -1 (.-stageIndex obj)))))))
-
       (testing "only aggregations"
         (let [agg-only  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                             (lib/aggregate (lib/count)))

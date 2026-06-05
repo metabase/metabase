@@ -229,7 +229,6 @@
                  :lib/expression-name expression-name
                  :lib/source :source/expressions}
                 (lib/expression-parts query stage-number [:expression {:base-type :type/Integer} expression-name])))))
-
     (testing "nested expression references"
       (mu/disable-enforcement
         (is (=? {:lib/type :metadata/column
@@ -306,7 +305,6 @@
           (is (=? operator (:operator res)))
           (is (=? options  (:options res)))
           (is (=? (map :id args) (map :id (:args res)))))))
-
     (testing "case pairs should be unflattened in expression clause"
       (doseq [[expected-expression parts] test-cases]
         (let [{:keys [operator options args]} parts
@@ -315,7 +313,6 @@
               [actual-op _ actual-args] actual-expression]
           (is (=? expected-op actual-op))
           (is (=? (map :id expected-args) (map :id actual-args))))))
-
     (testing "case/if should round-trip through expression-parts and expression-clause"
       (doseq [[clause] test-cases]
         (let [parts                     (lib.fe-util/expression-parts query clause)
@@ -324,7 +321,6 @@
                                          (:args parts)
                                          nil)
               round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
-
           (is (=? (:operator parts) (:operator round-tripped-parts)))
           (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))))
 
@@ -339,7 +335,6 @@
                       :args [boolean-field
                              string-field
                              "default"]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -354,7 +349,6 @@
                                       :args [boolean-field
                                              string-field
                                              "default"]}]}]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -365,7 +359,6 @@
                                       :operator :case
                                       :options {}
                                       :args [boolean-field string-field]}]}]}]]
-
         (let [expression (lib.fe-util/expression-clause
                           (:operator parts)
                           (:args parts)
@@ -1154,14 +1147,6 @@
                {:type :native-query-snippet :id 40}]
               (lib/dependent-metadata query nil :question))))))
 
-(deftest ^:parallel table-or-card-dependent-metadata-test
-  (testing "start from table"
-    (is (= [{:type :table, :id (meta/id :checkins)}]
-           (lib/table-or-card-dependent-metadata meta/metadata-provider (meta/id :checkins)))))
-  (testing "start from card"
-    (is (= [{:type :table, :id "card__1"}]
-           (lib/table-or-card-dependent-metadata lib.tu/metadata-provider-with-card "card__1")))))
-
 (deftest ^:parallel expand-temporal-expression-test
   (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
         expr [:=
@@ -1181,3 +1166,21 @@
                       (= false
                          (#'lib.fe-util/expandable-temporal-expression? expr)))
           :minute :day)))))
+
+(deftest ^:parallel expand-temporal-expression-preserves-local-date-test
+  (testing "values with a timezone offset must produce a range on the offset's local calendar day, not UTC (#72937)"
+    ;; The drill-thru/underlying-records path calls expand-temporal-expression directly for `:day`, and the FE
+    ;; can pass values stamped with the report-timezone offset (e.g. Asia/Shanghai +08:00). Truncating those to
+    ;; a calendar day must keep the original date — converting to UTC first shifts the day backwards.
+    (let [field-with-unit (fn [unit] [:field {:lib/uuid "3fcaefe5-5c20-4cbc-98ed-6007b67843a3"
+                                              :temporal-unit unit} 111])
+          expr-with       (fn [unit value] [:= {:lib/uuid "4fcaefe5-5c20-4cbc-98ed-6007b67843a4"}
+                                            (field-with-unit unit) value])]
+      (are [unit value start end]
+           (=? [:between map? [:field {:temporal-unit unit} int?] start end]
+               (#'lib.fe-util/expand-temporal-expression (expr-with unit value)))
+        :day   "2024-05-13T00:00:00Z"      "2024-05-13" "2024-05-13"
+        :day   "2024-05-13T00:00:00+08:00" "2024-05-13" "2024-05-13"
+        :day   "2024-05-13T00:00:00-08:00" "2024-05-13" "2024-05-13"
+        :week  "2024-05-13T00:00:00+08:00" "2024-05-12" "2024-05-18"
+        :month "2024-05-01T00:00:00+08:00" "2024-05-01" "2024-05-31"))))

@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.timezones-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.timezones-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.timezones-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.timezones-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -8,8 +11,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]))
@@ -56,7 +59,7 @@
     (mt/test-drivers (set-timezone-drivers)
       (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00Z"]
                                                       [10 "2014-07-03T19:30:00Z"]]
-                                        "US/Pacific" [[10 "2014-07-03T12:30:00-07:00"]]}]
+                                        "America/Los_Angeles" [[10 "2014-07-03T12:30:00-07:00"]]}]
         (mt/with-temporary-setting-values [report-timezone timezone]
           (is (= expected-rows
                  (mt/formatted-rows
@@ -108,9 +111,10 @@
 
 (defn- field-identifier [table-key field-key]
   (sql.qp/->honeysql driver/*driver*
-                     [:field
-                      (mt/id table-key field-key)
-                      {:metabase.query-processor.util.add-alias-info/source-table (mt/id table-key)}]))
+                     (sql.qp/mbql-clause-with-opts driver/*driver*
+                                                   :field
+                                                   {:metabase.query-processor.util.add-alias-info/source-table (mt/id table-key)}
+                                                   (mt/id table-key field-key))))
 
 (defn- honeysql->sql [honeysql]
   (first (sql.qp/format-honeysql driver/*driver* honeysql)))
@@ -252,7 +256,7 @@
   ;; Oracle doesn't have a time type
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (set-timezone-drivers))
     (mt/dataset attempted-murders
-      (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
+      (doseq [timezone [nil "America/Los_Angeles" "America/New_York" "Asia/Hong_Kong"]]
         (mt/with-temporary-setting-values [report-timezone timezone]
           (let [expected (expected-attempts)
                 actual   (select-keys (attempts) (keys expected))]
@@ -366,7 +370,7 @@
         (mt/with-temp-test-data [["relative_filter"
                                   [{:field-name "created", :base-type :type/DateTimeWithTZ}]
                                   [[expected-datetime]]]]
-          (doseq [timezone ["UTC" "Asia/Hong_Kong" "US/Hawaii" "America/Puerto_Rico"]]
+          (doseq [timezone ["UTC" "Asia/Hong_Kong" "Pacific/Honolulu" "America/Puerto_Rico"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
               (let [query (mt/mbql-query relative_filter {:fields [$created]
                                                           :filter [:time-interval $created -1 :day]})]
@@ -388,8 +392,8 @@
     (testing "Fixed date"
       (mt/dataset tz-test-data
         (let [expected-datetime #t "2014-07-03T01:30:00Z"]
-          (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
-                                          ["US/Eastern" "2014-07-02"]
+          (doseq [[timezone date-filter] [["America/Los_Angeles" "2014-07-02"]
+                                          ["America/New_York" "2014-07-02"]
                                           ["UTC" "2014-07-03"]
                                           ["Asia/Hong_Kong" "2014-07-03"]]
                   :let [expected (-> (u.date/with-time-zone-same-instant expected-datetime timezone)

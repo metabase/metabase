@@ -1,4 +1,4 @@
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -35,8 +35,6 @@ export function useHiddenSourceTables(
 
   return joinTablesInfo.filter(
     (tableInfo) =>
-      !tableInfo.isSourceTable ||
-      (tableInfo.visibilityType !== null &&
-        tableInfo.visibilityType !== "normal"),
+      !tableInfo.isSourceTable || tableInfo.visibilityType !== null,
   );
 }

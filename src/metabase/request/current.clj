@@ -2,7 +2,10 @@
   "Dynamic variables for things associated with the current HTTP request, such as current user and their permissions;
   current limit and offset, etc.
 
-  TODO -- move stuff like `*current-user-id*` into this namespace.")
+  TODO -- move stuff like `*current-user-id*` into this namespace."
+  (:require
+   [clojure.string :as str]
+   [metabase.request.settings :as request.settings]))
 
 (def ^:private ^:dynamic *request*
   nil)
@@ -62,3 +65,21 @@
   {:style/indent :defn}
   [limit offset & body]
   `(do-with-limit-and-offset ~limit ~offset (^:once fn* [] ~@body)))
+
+(defn ip-address
+  "The IP address a Ring `request` came from. Looks at the `request.settings/source-address-header` header (by default
+  `X-Forwarded-For`, or the `(:remote-addr request)` if not set, or if disabled via MB_NOT_BEHIND_PROXY=true."
+  [{:keys [headers remote-addr]}]
+  (let [header-ip-address (some->> (request.settings/source-address-header)
+                                   (get headers))
+        source-address    (if (or (request.settings/not-behind-proxy)
+                                  (not header-ip-address))
+                            remote-addr
+                            header-ip-address)]
+    (some-> source-address
+            ;; first IP (if there are multiple) is the actual client -- see
+            ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
+            (str/split #"\s*,\s*")
+            first
+            ;; strip out non-ip-address characters like square brackets which we get sometimes
+            (str/replace #"[^0-9a-fA-F.:]" ""))))

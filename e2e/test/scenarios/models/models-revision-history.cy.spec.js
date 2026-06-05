@@ -47,5 +47,8 @@ function openRevisionHistory() {
 
 function revertTo(history) {
   const r = new RegExp(history);
-  cy.findByText(r).closest("li").findByTestId("question-revert-button").click();
+  cy.findByText(r)
+    .closest('[data-testid="revision-history-event"]')
+    .findByTestId("question-revert-button")
+    .click();
 }

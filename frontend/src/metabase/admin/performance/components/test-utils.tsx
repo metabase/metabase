@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import {
@@ -12,6 +13,7 @@ import { setupPerformanceEndpoints } from "__support__/server-mocks/performance"
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import {
@@ -23,7 +25,6 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
@@ -89,6 +90,16 @@ export const setupStrategyEditorForDatabases = ({
 
 export const getSaveButton = async () =>
   await screen.findByTestId("strategy-form-submit-button");
+
+/** The strategy picker is a Mantine Select; its options stack a bold title
+ * over a description, so match `name` against the title prefix (e.g. `/^Duration/i`). */
+export const selectCacheStrategy = async (name: RegExp) => {
+  await userEvent.click(await screen.findByTestId("cache-strategy-select"));
+  await userEvent.click(await screen.findByRole("option", { name }));
+};
+
+export const getCacheStrategySelect = () =>
+  screen.getByTestId("cache-strategy-select");
 
 export const changeInput = async (
   label: RegExp,

@@ -1,10 +1,18 @@
 (ns i18n.create-artifacts
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.pprint :as pprint]
+   [clojure.string :as str]
+   [i18n.autofix :as i18n.autofix]
    [i18n.common :as i18n]
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.frontend :as frontend]
+   [i18n.pseudo-locale :as pseudo-locale]
+   [i18n.validation :as i18n.validation]
    [metabuild-common.core :as u]))
+
+(set! *warn-on-reflection* true)
 
 (defn- locales-dot-edn []
   {:locales  (conj (i18n/locales) "en")
@@ -22,17 +30,78 @@
               (pprint/pprint (locales-dot-edn))))
       (u/assert-file-exists file))))
 
-(defn- create-artifacts-for-locale! [locale]
+(defn- msgids-to-drop
+  "Set of `msgid`s to exclude from build artifacts, given a seq of violations. If any plural form
+  of a message has a droppable violation, the entire message is excluded."
+  [violations]
+  (into #{}
+        (comp (filter i18n.validation/drop-from-build?)
+              (map :msgid))
+        violations))
+
+(defn- create-artifacts-for-locale!
+  "Generate frontend + backend artifacts for one `locale`. Parses the `.po` once, runs the autofix
+  pass, then threads the cleaned contents through the scanner and both builders. Returns the
+  violations the scanner flagged (post-autofix) for the aggregate report."
+  [locale]
   (u/step (format "Create artifacts for locale %s" (pr-str locale))
-    (frontend/create-artifact-for-locale! locale)
-    (backend/create-artifact-for-locale! locale)
-    (u/announce "Artifacts for locale %s created successfully." (pr-str locale))))
+    (let [po-contents (i18n.autofix/autofix-po-contents (i18n/po-contents locale))
+          violations  (i18n.validation/invalid-messages-in-po locale po-contents)
+          drop-msgids (msgids-to-drop violations)]
+      (frontend/create-artifact-for-locale! locale drop-msgids po-contents)
+      (backend/create-artifact-for-locale! locale drop-msgids po-contents)
+      (when (seq drop-msgids)
+        (u/announce "Filtered %d invalid translations from %s" (count drop-msgids) locale))
+      (u/announce "Artifacts for locale %s created successfully." (pr-str locale))
+      violations)))
+
+(def ^:private violations-report-directory
+  (u/filename u/project-root-directory "target"))
+
+(def ^:private violations-csv-columns
+  ["locale" "types" "dropped" "backend" "plural_index" "msgid" "msgid_plural" "msgstr"
+   "error" "expected_args" "actual_args" "source_refs"])
+
+(defn- violation->row [{:keys [locale types backend? plural-index msgid msgid-plural msgstr
+                               error expected-arg-counts actual-arg-count source-refs]
+                        :as   violation}]
+  (->>
+   [locale
+    (str/join "+" (sort (map name types)))
+    (boolean (i18n.validation/drop-from-build? violation))
+    (boolean backend?)
+    plural-index
+    msgid
+    msgid-plural
+    msgstr
+    error
+    (some->> expected-arg-counts (str/join ","))
+    actual-arg-count
+    (str/join " " source-refs)]
+   (mapv (fnil str ""))))
+
+(defn- write-violations-report! [violations]
+  (u/step "Write i18n violations report"
+    (u/create-directory-unless-exists! violations-report-directory)
+    (let [csv-file (u/filename violations-report-directory "i18n-violations.csv")
+          edn-file (u/filename violations-report-directory "i18n-violations.edn")]
+      (with-open [w (io/writer csv-file)]
+        (csv/write-csv w (cons violations-csv-columns (map violation->row violations))))
+      (spit edn-file (with-out-str (pprint/pprint (vec violations))))
+      (let [by-type (frequencies (mapcat :types violations))]
+        (u/announce "Wrote %d translation violations to %s" (count violations) csv-file)
+        (doseq [t [:invalid-message-format :skipped-arg-index :arg-count-mismatch]]
+          (u/announce "  %s: %d" (name t) (get by-type t 0)))))))
 
 (defn- create-artifacts-for-all-locales! []
   ;; Empty directory in case some locales were removed
   (u/delete-file-if-exists! backend/target-directory)
   (u/delete-file-if-exists! frontend/target-directory)
-  (doall (pmap create-artifacts-for-locale! (i18n/locales))))
+  (let [per-locale-violations (doall (pmap create-artifacts-for-locale! (i18n/locales)))
+        all-violations        (->> per-locale-violations
+                                   (apply concat)
+                                   (sort-by (juxt :locale (comp str :types) :msgid :plural-index)))]
+    (write-violations-report! all-violations)))
 
 (defn create-all-artifacts!
   "Create backend and frontend i18n artifacts."
@@ -41,6 +110,8 @@
 
   ([_options]
    (u/step "Create i18n artifacts"
+     ;; Generate the `en-ZZ` pseudo-locale .po file
+     (pseudo-locale/generate-pseudo-locale-po!)
      (generate-locales-dot-edn!)
      (create-artifacts-for-all-locales!)
      (u/announce "Translation resources built successfully."))))

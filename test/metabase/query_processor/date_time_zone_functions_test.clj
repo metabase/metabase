@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.date-time-zone-functions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.date-time-zone-functions-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.date-time-zone-functions-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -11,10 +13,10 @@
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -271,23 +273,19 @@
                 :query    {:expressions {"expr" [:abs [:get-year [:field (mt/id :times :dt) nil]]]}
                            :filter      [:= [:field (mt/id :times :index) nil] 1]
                            :fields      [[:expression "expr"]]}}
-
                {:title     "Nested with arithmetic"
                 :expected  [4008]
                 :query     {:expressions {"expr" [:* [:get-year [:field (mt/id :times :dt) nil]] 2]}
                             :filter      [:= [:field (mt/id :times :index) nil] 1]
                             :fields      [[:expression "expr"]]}}
-
                {:title    "Filter using the extracted result - equality"
                 :expected [1]
                 :query    {:filter [:= [:get-year [:field (mt/id :times :dt) nil]] 2004]
                            :fields [[:field (mt/id :times :index) nil]]}}
-
                {:title    "Filter using the extracted result - comparable"
                 :expected [1]
                 :query    {:filter [:< [:get-year [:field (mt/id :times :dt) nil]] 2005]
                            :fields [[:field (mt/id :times :index) nil]]}}
-
                {:title    "Nested expression in fitler"
                 :expected [1]
                 :query    {:filter [:= [:* [:get-year [:field (mt/id :times :dt) nil]] 2] 4008]
@@ -304,7 +302,6 @@
                 :query    {:expressions {"expr" [:abs [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]]]}
                            :filter      [:= [:field (mt/id :times :index) nil] 1]
                            :fields      [[:expression "expr"]]}}
-
                {:title    "Interval addition nested in numeric addition"
                 :expected [2006]
                 :query    {:expressions {"expr" [:+ [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]] 1]}
@@ -598,12 +595,10 @@
                   :expected [2006 2010 2014]
                   :query    {:expressions {"expr" [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]]}
                              :fields      [[:expression "expr"]]}}
-
                  {:title    "Nested date math twice"
                   :expected ["2006-05-19 09:19:09" "2010-08-20 10:20:10" "2015-01-21 11:21:11"]
                   :query    {:expressions {"expr" [:datetime-add [:datetime-add [:field (mt/id :times :dt) nil] 2 :year] 2 :month]}
                              :fields      [[:expression "expr"]]}}
-
                  {:title    "filter with date math"
                   :expected [1]
                   :query    {:filter [:= [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
@@ -829,7 +824,7 @@
 
 (defmethod nested-convert-timezone-test-6-native-query :default
   [_driver card-tag]
-  (format "select * from {{%s}} as source" card-tag))
+  (format "select * from {{%s}} as __mb_source" card-tag))
 
 (defmethod nested-convert-timezone-test-6-native-query :oracle
   [_driver card-tag]
@@ -1047,7 +1042,6 @@
                       (let [a-str "2022-10-02T01:00:00+01:00"  ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
                             b-str "2022-10-03T00:00:00Z"
                             units [:second :minute :hour :day :week :month :quarter :year]]
-
                         (->> (mt/run-mbql-query times
                                {:filter [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
                                 :expressions (into {} (for [unit units]

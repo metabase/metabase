@@ -120,6 +120,30 @@ export const setupRemoteSyncCancelTaskEndpoint = ({
 };
 
 /**
+ * Setup the remote-sync test-connection POST endpoint
+ */
+export const setupRemoteSyncTestConnectionEndpoint = ({
+  error,
+}: {
+  error?: { status: number; message: string };
+} = {}) => {
+  fetchMock.removeRoute("remote-sync-test-connection");
+  if (error) {
+    fetchMock.post(
+      "path:/api/ee/remote-sync/test-connection",
+      { status: error.status, body: { message: error.message } },
+      { name: "remote-sync-test-connection" },
+    );
+  } else {
+    fetchMock.post(
+      "path:/api/ee/remote-sync/test-connection",
+      { status: "success" },
+      { name: "remote-sync-test-connection" },
+    );
+  }
+};
+
+/**
  * Setup all remote-sync endpoints at once
  */
 export const setupRemoteSyncEndpoints = ({
@@ -128,28 +152,35 @@ export const setupRemoteSyncEndpoints = ({
   changedCollections = {},
   hasRemoteChanges = false,
   hasRemoteChangesDelay = 0,
+  hasRemoteChangesError = false,
   settingsResponse = { success: true },
+  testConnectionError,
 }: {
   branches?: string[];
   dirty?: RemoteSyncEntity[];
   changedCollections?: Record<number, boolean>;
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
+  hasRemoteChangesError?: boolean;
   settingsResponse?: Partial<RemoteSyncSettingsResponse> & {
     error?: { status: number; message: string };
   };
+  testConnectionError?: { status: number; message: string };
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
   setupRemoteSyncCurrentTaskEndpoint("idle");
   setupRemoteSyncImportEndpoint();
   setupRemoteSyncSettingsEndpoint(settingsResponse);
+  setupRemoteSyncTestConnectionEndpoint({ error: testConnectionError });
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
   fetchMock.get(
     "path:/api/ee/remote-sync/has-remote-changes",
-    {
-      has_changes: hasRemoteChanges,
-    },
+    hasRemoteChangesError
+      ? 401
+      : {
+          has_changes: hasRemoteChanges,
+        },
     {
       delay: hasRemoteChangesDelay,
     },

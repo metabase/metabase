@@ -14,7 +14,13 @@
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
       "docs/*": ["./docs/*"],
+      "echarts/types/src/*": ["./node_modules/echarts/types/src/*"],
+      "zrender/lib/core/types": ["./node_modules/zrender/lib/core/types"],
       "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "sdk-specific-imports": ["./frontend/src/metabase/utils/noop"],
+      "sdk-iframe-embedding-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "sdk-iframe-embedding-script-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "custom-viz": ["./enterprise/frontend/src/custom-viz/src/index.ts"]
     },
     "plugins": [
       {
@@ -27,13 +33,19 @@
   },
   "include": [
     "frontend/src/**/*",
+    "frontend/build/**/*",
     "enterprise/frontend/src/**/*",
     "frontend/test/**/*",
     "enterprise/frontend/test/**/*",
     "target/cljs_dev/**/*",
+    ".github/scripts/**/*"
   ],
   "exclude": [
     "node_modules",
+    "enterprise/frontend/src/custom-viz",
+    // Vendored custom-viz plugin bundles (pre-built UMD) — opaque to
+    // type-checking; the surrounding story/helper handles the typing.
+    "frontend/test/__support__/custom-viz-fixtures/**/*.js",
     // The following files will load `frontend/src/metabase/app` which will conflict with
     // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
     "frontend/src/metabase/app-main.js",

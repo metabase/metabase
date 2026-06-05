@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
@@ -92,7 +92,6 @@
     (if (and (task/job-exists? task.search-index/reindex-job-key) (or (not ingestion/*force-sync*) config/is-test?))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (search/reindex!) {:message "reindex triggered"}))
-
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 (mu/defn- set-weights!
@@ -172,6 +171,7 @@
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
+  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
@@ -198,6 +198,7 @@
     last-edited-by                      :last_edited_by
     model-ancestors                     :model_ancestors
     search-engine                       :search_engine
+    vector-search-strategy              :vector_search_strategy
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
@@ -218,6 +219,7 @@
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
        [:search_engine                       {:optional true} [:maybe string?]]
+       [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -248,6 +250,7 @@
                 :models                              (not-empty (set models))
                 :offset                              (request/offset)
                 :search-engine                       search-engine
+                :vector-search-strategy              vector-search-strategy
                 :search-native-query                 search-native-query
                 :search-string                       (some-> q str/trim not-empty)
                 :table-db-id                         table-db-id

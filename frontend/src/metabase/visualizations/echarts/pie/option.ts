@@ -1,8 +1,8 @@
 import Color from "color";
 import type { EChartsOption, SunburstSeriesOption } from "echarts";
 
-import { getTextColorForBackground } from "metabase/lib/colors";
-import { checkNotNull } from "metabase/lib/types";
+import { getTextColorForBackground } from "metabase/ui/colors";
+import { checkNotNull } from "metabase/utils/types";
 import { CHAR_ELLIPSES, truncateText } from "metabase/visualizations/lib/text";
 import type {
   ComputedVisualizationSettings,

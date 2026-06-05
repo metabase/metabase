@@ -44,10 +44,7 @@ export function CUSTOM_FETCH_REQUEST_TOKEN_ERROR(params: {
   );
 }
 
-export function DEFAULT_ENDPOINT_ERROR(params: {
-  expected?: string;
-  actual?: string;
-}) {
+export function DEFAULT_ENDPOINT_ERROR(params: { actual?: string }) {
   return new MetabaseError(
     "DEFAULT_ENDPOINT_ERROR",
     `Your JWT server endpoint must return an object with the shape { jwt: string }${params.actual ? `, but instead received ${params.actual}` : ``}`,

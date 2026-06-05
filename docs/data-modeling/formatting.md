@@ -7,7 +7,7 @@ redirect_from:
 
 # Formatting defaults
 
-People all around the world use Metabase, and everyone has different preferences for how dates, times, numbers, and currencies should be formatted and displayed. Metabase lets you to customize these formatting options at three different levels:
+People all around the world use Metabase, and everyone has different preferences for how dates, times, numbers, and currencies should be formatted and displayed. Metabase lets you customize these formatting options at three different levels:
 
 1. **Global**. Set global defaults in Admin -> Settings -> [Localization](../configuring-metabase/localization.md).
 2. **Field**. Set field (column) defaults in Admin -> Table Metadata. Field defaults override global defaults.
@@ -17,11 +17,11 @@ People all around the world use Metabase, and everyone has different preferences
 
 _Admin > Table Metadata > Database > Table > Field > Formatting_
 
-You can override the global defaults for a specific field by going to the `Table Metadata` section of the Admin Panel. Select the database and table of the field in question, then click scroll down to the **Formatting**.
+You can override the global defaults for a specific field by going to the `Table Metadata` section of the Admin Panel. Select the database and table of the field in question, then scroll down to the **Formatting**.
 
 ## Formatting options depend on the data type and the semantic type
 
-The options you'll see here will depend on the field's data type and it's [semantic type](./semantic-types.md).
+The options you'll see here will depend on the field's data type and its [semantic type](./semantic-types.md).
 
 ## Text formatting options
 
@@ -109,7 +109,7 @@ Whether to display the values in the middle, left, or right in table cells.
 
 ### Show a mini bar chart
 
-Only applies to table visualizations. Displays a bar for each value to show large or small it is relative to the other values in the column.
+Only applies to table visualizations. Displays a bar for each value to show how large or small it is relative to the other values in the column.
 
 ### Display as
 

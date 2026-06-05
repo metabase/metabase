@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-introspection-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse]
@@ -568,7 +570,6 @@
                         (catch Throwable _e
                           ::thrown)))
                 "Sync should not throw an exception when encountering a parameterized view")
-
             ;; Verify that the table AFTER the problematic view was still synced
             (let [table-after (t2/select-one :model/Table :db_id (u/the-id db) :name "table_after_view")]
               (is (some? table-after)

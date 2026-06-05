@@ -42,7 +42,7 @@ When people click the action button on a dashboard, they'll be prompted to input
 
 To connect an action field to a filter on a dashboard:
 
-1. On a dashboard with an action button, click the **pencil icon** edit the dashboard.
+1. On a dashboard with an action button, click the **pencil icon** to edit the dashboard.
 2. [Add a filter](./filters.md) to a dashboard, connect the filter to one or more cards, and click **Done** in the bottom of the sidebar.
 3. [Add an action button to the dashboard](#add-an-action-button-to-a-dashboard) (if you haven't already).
 4. Hover over the action button and click on the **gear** icon, and select **Change action**.

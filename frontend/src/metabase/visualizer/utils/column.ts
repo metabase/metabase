@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -83,6 +83,30 @@ export function copyColumn(
   }
 
   return copy;
+}
+
+// Point remapped_from/to at the renamed COLUMN_N so extractRemappedColumns can pair them.
+export function rewriteRemappedReferences(
+  column: DatasetColumn,
+  oldToNew: Map<string, string>,
+): DatasetColumn {
+  const remapped_from =
+    column.remapped_from != null
+      ? oldToNew.get(column.remapped_from)
+      : column.remapped_from;
+  const remapped_to =
+    column.remapped_to != null
+      ? oldToNew.get(column.remapped_to)
+      : column.remapped_to;
+
+  if (
+    remapped_from === column.remapped_from &&
+    remapped_to === column.remapped_to
+  ) {
+    return column;
+  }
+
+  return { ...column, remapped_from, remapped_to };
 }
 
 export function addColumnMapping(

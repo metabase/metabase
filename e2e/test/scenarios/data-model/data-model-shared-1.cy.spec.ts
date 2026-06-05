@@ -35,7 +35,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     getInterceptsForArea(area);
   });
@@ -283,7 +283,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       () => {
         beforeEach(() => {
           H.restore("postgres-writable");
-          H.activateToken("bleeding-edge");
+          H.activateToken("pro-self-hosted");
 
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -433,6 +433,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
       TablePicker.getTables().should("have.length", 8);
 
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("ID");
 
       if (area === "data studio") {
@@ -547,6 +550,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Animals").click();
 
+        if (area === "data studio") {
+          TableSection.clickFieldsTab();
+        }
         TableSection.get()
           .findByText("This table has no fields")
           .should("exist");
@@ -628,6 +634,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           tableId: ORDERS_ID,
         });
 
+        if (area === "data studio") {
+          TableSection.clickFieldsTab();
+        }
         TableSection.getFieldNameInput("Tax").clear().type("New tax").blur();
         cy.wait("@updateField");
         verifyAndCloseToast("Name of Tax updated");
@@ -657,6 +666,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           tableId: ORDERS_ID,
         });
 
+        if (area === "data studio") {
+          TableSection.clickFieldsTab();
+        }
         TableSection.getFieldDescriptionInput("Total")
           .clear()
           .type("New description")
@@ -693,6 +705,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           tableId: ORDERS_ID,
         });
 
+        if (area === "data studio") {
+          TableSection.clickFieldsTab();
+        }
         TableSection.getFieldDescriptionInput("Total").clear().blur();
         cy.wait("@updateField");
         verifyAndCloseToast("Description of Total updated");
@@ -705,14 +720,15 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           column: "Total",
           values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
         });
-        // Use trigger("mouseover") instead of realHover() because Chrome v133+
-        // headless hit-tests CDP mouse events differently, preventing the
-        // HoverCard from appearing. mouseover bubbles and React 18 uses it to
-        // simulate onMouseEnter (which Mantine HoverCard.Target relies on).
-        PreviewSection.get()
-          .findByTestId("header-cell")
-          .findByTestId("cell-data")
-          .trigger("mouseover");
+        // realHover is avoided here because Chrome v133+ headless hit-tests
+        // CDP mouse events differently and the HoverCard wouldn't open. We
+        // dispatch synthetic events instead — both `mouseover` (bubbles, so
+        // React 18 turns it into onMouseEnter for any wrapper) and
+        // `mouseenter` (for any native useEventListener-attached handler on
+        // the cell itself). After `cy.wait("@dataset")` the table re-renders
+        // on a microtask (fetch resolution), so re-query the cell each time
+        // to ensure the events land on the post-render DOM node.
+        hoverHeaderCell();
         H.hovercard().should("not.contain.text", "The total billed amount.");
 
         cy.visit(
@@ -755,6 +771,22 @@ function verifyDataStudioFieldSectionEmptyState() {
   H.DataModel.FieldSection.get().should("not.exist");
 }
 
+// Open the preview's column-description hovercard. After `cy.wait("@dataset")`
+// the table re-renders on a microtask (fetch resolution), so a single
+// `.trigger("mouseover")` chained off an earlier find can land on a stale DOM
+// node. Re-query for each dispatch, and fire both `mouseover` (bubbles → React
+// 18 synthetic onMouseEnter for any wrapper) and `mouseenter` (for native
+// useEventListener handlers Mantine attaches directly).
+function hoverHeaderCell() {
+  const headerCell = () =>
+    cy
+      .findByTestId("header-cell")
+      .findByTestId("cell-data")
+      .should("be.visible");
+  headerCell().trigger("mouseenter", { force: true });
+  headerCell().trigger("mouseover", { force: true });
+}
+
 function verifyTablePreview({
   column,
   description,
@@ -774,11 +806,7 @@ function verifyTablePreview({
     });
 
     if (description != null) {
-      // mouseover bubbles and React 18 uses it to simulate onMouseEnter
-      // (which Mantine HoverCard.Target relies on).
-      cy.findByTestId("header-cell")
-        .findByTestId("cell-data")
-        .trigger("mouseover");
+      hoverHeaderCell();
     }
   });
 

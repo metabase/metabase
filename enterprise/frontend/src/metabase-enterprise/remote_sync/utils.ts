@@ -1,8 +1,11 @@
 import { t } from "ttag";
 
-import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
-import type { Collection, RemoteSyncEntityStatus } from "metabase-types/api";
+import type { ColorName } from "metabase/ui/colors/types";
+import type {
+  Collection,
+  IconName,
+  RemoteSyncEntityStatus,
+} from "metabase-types/api";
 
 import type { CollectionPathSegment } from "./displayGroups";
 

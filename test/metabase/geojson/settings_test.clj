@@ -23,7 +23,7 @@
   (is (@#'geojson.settings/CustomGeoJSONValidator test-custom-geojson)))
 
 (deftest ^:parallel validate-geojson-test
-  (testing "It validates URLs and files appropriately"
+  (testing "It validates URLs and files appropriately (classpath resources disabled by default)"
     (let [examples {;; Internal metadata for GCP
                     "metadata.google.internal"                 false
                     "https://metadata.google.internal"         false
@@ -54,8 +54,8 @@
                     "http://192.0.2.0"                         true
                     ;; this following test flakes in CI for unknown reasons
                     ;;"http://0xc0000200"                        true
-                    ;; Resources (files on classpath) are valid
-                    "c3p0.properties"                          true
+                    ;; Classpath resources are NOT valid when env var is not set
+                    "test.geojson"                             false
                     ;; Other files are not
                     "./README.md"                              false
                     "file:///tmp"                              false
@@ -72,6 +72,16 @@
           (if should-pass?
             (is (valid? geojson geojson) (str url))
             (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson)) (str url))))))))
+
+(deftest classpath-geojson-env-var-test
+  (testing "When MB_ALLOW_CLASSPATH_GEOJSON is true"
+    (mt/with-temp-env-var-value! [mb-allow-classpath-geojson "true"]
+      (testing "classpath resources are accepted"
+        (let [geojson {:deadb33f {:name "Test" :url "test.geojson" :region_key nil :region_name nil}}]
+          (is (#'geojson.settings/validate-geojson geojson geojson))))))
+  (testing "When MB_ALLOW_CLASSPATH_GEOJSON is not set, classpath resources are rejected"
+    (let [geojson {:deadb33f {:name "Test" :url "test.geojson" :region_key nil :region_name nil}}]
+      (is (thrown? clojure.lang.ExceptionInfo (#'geojson.settings/validate-geojson geojson geojson))))))
 
 (deftest custom-geojson-disallow-overriding-builtins-test
   (testing "We shouldn't let people override the builtin GeoJSON and put weird stuff in there; ignore changes to them"

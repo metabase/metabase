@@ -4,9 +4,9 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
-import { getAccentColors } from "metabase/lib/colors/groups";
 import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import { getAccentColors } from "metabase/ui/colors/groups";
 import type { ScalarSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";

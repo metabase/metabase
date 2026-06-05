@@ -2,6 +2,7 @@ export type TagType = (typeof TAG_TYPES)[number];
 
 export const TAG_TYPES = [
   "action",
+  "activity",
   "alert",
   "api-key",
   "bookmark",
@@ -17,6 +18,8 @@ export const TAG_TYPES = [
   "database",
   "dataset",
   "document",
+  "embed-theme",
+  "erd",
   "external-transform",
   "public-document",
   "comment",
@@ -39,10 +42,12 @@ export const TAG_TYPES = [
   "schema",
   "segment",
   "session-properties",
+  "slack-app-info",
   "snippet",
   "subscription",
   "subscription-channel",
   "table",
+  "table-remapping",
   "task",
   "task-run",
   "timeline",
@@ -62,6 +67,11 @@ export const TAG_TYPES = [
   "unique-tasks",
   "user-key-value",
   "tenant",
+  "metabot",
+  "metabot-entities-list",
+  "metabot-prompt-suggestions",
+  "metabot-permissions",
+  "security-advisory",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

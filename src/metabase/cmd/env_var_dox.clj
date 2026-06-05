@@ -69,7 +69,7 @@
   "Formats an environment variable name with the 'MB_' prefix
    Example: MB_ENV_VAR_NAME or MB_OLD_SETTING [DEPRECATED]"
   [env-var]
-  (let [base-name (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (:munged-name env-var)))]
+  (let [base-name (setting/env-var-name (:name env-var))]
     (if (:deprecated env-var)
       (str base-name " [DEPRECATED]")
       base-name)))
@@ -170,16 +170,16 @@
   [env-var]
   (or (false? (:doc env-var))
       (false? (:can-read-from-env? env-var))
-              ;; Ideally, we'd move off of this list completely,
-              ;; but not all environment variables are defsettings.
+      ;; Ideally, we'd move off of this list completely,
+      ;; but not all environment variables are defsettings.
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
 
 (defn- setter-none?
   "Used to remove settings that lack a setter (`:setter :none`).
    For example, settings that are derived from other settings."
   [env-var]
-   ;; If the `defsetting` has a `:doc` key with a string, we should document it.
-   ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.
+  ;; If the `defsetting` has a `:doc` key with a string, we should document it.
+  ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.
   (when-not (boolean (:doc env-var))
     (= :none (:setter env-var))))
 

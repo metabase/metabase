@@ -9,7 +9,7 @@ import {
   getBoxPlotModel,
   getBoxPlotOption,
 } from "metabase/visualizations/echarts/boxplot";
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
+import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 
 import Watermark from "../../watermark.svg?component";
@@ -52,7 +52,7 @@ export function BoxPlotChart({
     height: chartHeight,
   });
 
-  const chartMeasurements = getChartMeasurements(
+  const cartesianLayout = getChartLayout(
     { ...chartModel, dataset: chartModel.boxDataset },
     settings,
     false,
@@ -63,7 +63,7 @@ export function BoxPlotChart({
 
   const layoutModel = getBoxPlotLayoutModel({
     chartModel,
-    chartMeasurements,
+    cartesianLayout,
     settings,
     chartWidth: width,
     renderingContext,

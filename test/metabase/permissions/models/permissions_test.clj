@@ -94,7 +94,6 @@
     [{:collection_id 1337} :write] #{"/collection/1337/"}
     [{:collection_id nil} :read]   #{"/collection/root/read/"}
     [{:collection_id nil} :write]  #{"/collection/root/"})
-
   (testing "invalid input"
     (doseq [[reason inputs] {"map must have `:collection_id` key"
                              [[{} :read]]
@@ -124,7 +123,6 @@
          (perms/revoke-collection-permissions!
           (perms-group/all-users)
           (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
-
     (testing "(should apply to descendants as well)"
       (mt/with-temp [:model/Collection collection {:location (collection/children-location
                                                               (collection/user->personal-collection
@@ -153,7 +151,6 @@
              Exception
              (f (perms-group/all-users)
                 (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
-
         (testing "(should apply to descendants as well)"
           (is (thrown?
                Exception
@@ -251,7 +248,7 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
                  :model/PermissionsGroup {normal-group-id :id} {:is_tenant_group false}]
-    (with-redefs [audit.impl/is-collection-id-audit? (constantly true)]
+    (mt/with-dynamic-fn-redefs [audit.impl/is-collection-id-audit? (constantly true)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
                             (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
       ;; does not throw - it's not a tenant group
@@ -287,6 +284,5 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (testing "admin can create dashboard in any collection"
           (is (true? (mi/can-create? :model/Dashboard {:collection_id (:id coll)}))))
-
         (testing "admin can create dashboard in root collection"
           (is (true? (mi/can-create? :model/Dashboard {}))))))))

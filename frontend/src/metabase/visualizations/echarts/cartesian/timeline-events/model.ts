@@ -13,19 +13,19 @@ import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesi
 import type { RenderingContext } from "metabase/visualizations/types";
 import type { TimelineEvent } from "metabase-types/api";
 
-import type { ChartMeasurements } from "../chart-measurements/types";
+import type { ChartLayout } from "../layout/types";
 import { isTimeSeriesAxis } from "../model/guards";
 
 const getIntervalWidth = (
   range: DateRange,
   interval: TimeSeriesInterval,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
 ) => {
   const intervalsCount = Math.abs(
     dayjs(range[1]).diff(range[0], interval.unit) / interval.count,
   );
 
-  return chartMeasurements.boundaryWidth / intervalsCount;
+  return chartLayout.boundaryWidth / intervalsCount;
 };
 
 const groupEventsByUnitStart = (
@@ -140,7 +140,7 @@ const getTimelineEventsInsideRange = (
 
 export const getTimelineEventsModel = (
   chartModel: BaseCartesianChartModel,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   timelineEvents: TimelineEvent[],
   renderingContext: RenderingContext,
 ) => {
@@ -172,7 +172,7 @@ export const getTimelineEventsModel = (
   const intervalWidth = getIntervalWidth(
     dimensionRange,
     chartModel.xAxisModel.interval,
-    chartMeasurements,
+    chartLayout,
   );
   return mergeOverlappingTimelineEventGroups(
     timelineEventsByUnitStart,

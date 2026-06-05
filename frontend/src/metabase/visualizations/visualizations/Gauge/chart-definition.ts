@@ -2,7 +2,7 @@ import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color as colorHex } from "metabase/lib/colors";
+import { color as colorHex } from "metabase/ui/colors";
 import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { segmentIsValid } from "metabase/visualizations/lib/utils";
@@ -64,9 +64,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["gauge.segments"],
     },
     "gauge.segments": {
-      get section() {
-        return t`Ranges`;
-      },
+      getSection: () => t`Ranges`,
       getDefault(series) {
         let value = 100;
         try {
@@ -87,7 +85,10 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: ChartSettingSegmentsEditor,
       persistDefault: true,
-      noPadding: true,
+      getWrapperStyle: () => ({
+        marginLeft: 0,
+        marginRight: 0,
+      }),
     },
   },
 };

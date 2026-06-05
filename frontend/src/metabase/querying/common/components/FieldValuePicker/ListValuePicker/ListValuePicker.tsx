@@ -71,7 +71,7 @@ function CheckboxListPicker({
           <Checkbox
             variant="stacked"
             label={
-              <Text c="text-secondary">
+              <Text c="text-secondary" lh="inherit">
                 {searchValue ? t`Select these` : t`Select all`}
               </Text>
             }

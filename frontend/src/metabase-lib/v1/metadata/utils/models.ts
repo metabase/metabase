@@ -1,6 +1,5 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   Field,
@@ -93,10 +92,6 @@ function isNativeQueryLike(query: unknown): query is {
     "templateTags" in query &&
     typeof query.templateTags === "function"
   );
-}
-
-export function checkDatabaseCanPersistDatasets(database?: Database | null) {
-  return database && database.supportsPersistence() && database.isPersisted();
 }
 
 export function checkCanBeModel(question: Question) {

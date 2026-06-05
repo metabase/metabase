@@ -14,13 +14,10 @@ import { t } from "ttag";
 import { useKeyboardShortcut } from "metabase/common/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { isSmallScreen, isWithinIframe } from "metabase/lib/dom";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { modelToUrl } from "metabase/lib/urls";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
-import { zoomInRow } from "metabase/query_builder/actions";
-import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { SearchAwareLocation } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
@@ -28,6 +25,10 @@ import {
 } from "metabase/search/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
+import { isSmallScreen } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
+import type { SearchResult } from "metabase-types/api";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";
 import {
@@ -48,11 +49,22 @@ type RouterProps = {
 type OwnProps = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
+  /**
+   * Override how a search result is handled. When omitted, results navigate
+   * via `modelToUrl`. The main-app caller injects a callback that zooms in on
+   * indexed-entity results that match the current QB page.
+   */
+  onSearchItemSelect?: (result: SearchResult) => void;
 };
 
 type Props = RouterProps & OwnProps;
 
-function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
+function SearchBarView({
+  location,
+  onSearchActive,
+  onSearchInactive,
+  onSearchItemSelect: onSearchItemSelectProp,
+}: Props) {
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );
@@ -93,16 +105,14 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, []);
 
   const onSearchItemSelect = useCallback(
-    (result: WrappedResult) => {
-      // if we're already looking at the right model, don't navigate, just update the zoomed in row
-      const isSameModel = result?.model_id === location?.state?.cardId;
-      if (isSameModel && result.model === "indexed-entity") {
-        dispatch(zoomInRow({ objectId: result.id }));
+    (result: SearchResult) => {
+      if (onSearchItemSelectProp) {
+        onSearchItemSelectProp(result);
       } else {
         onChangeLocation(modelToUrl(result));
       }
     },
-    [dispatch, onChangeLocation, location?.state?.cardId],
+    [onSearchItemSelectProp, onChangeLocation],
   );
 
   useOnClickOutside(container, setInactive);

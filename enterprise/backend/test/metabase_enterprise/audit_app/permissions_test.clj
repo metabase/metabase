@@ -12,7 +12,7 @@
    [metabase.permissions.models.collection.graph :refer [update-graph!]]
    [metabase.permissions.models.collection.graph-test :refer [graph]]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -44,9 +44,10 @@
                   {:database audit/audit-db-id
                    :type     :query
                    :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
-
         (testing "A non-native query can be run on views in the audit DB"
-          (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})]
+          (let [audit-view (t2/select-one :model/Table
+                                          :db_id audit/audit-db-id
+                                          {:where [:in [:lower :name] audit-app.permissions/audit-db-view-names]})]
             (when-not (some-> audit-view :name u/lower-case-en (str/starts-with? "v_"))
               (sync/sync-database! (t2/select-one :model/Database audit/audit-db-id)))
             (is (partial=
@@ -68,7 +69,6 @@
                 {:database audit/audit-db-id
                  :type     :native
                  :native   {:query "SELECT * FROM v_audit_log;"}}))))
-
         (testing "Non-native queries are not allowed to run on tables in the audit DB that are not views"
           ;; Nothing should be synced directly from the audit DB, just loaded via serialization, so only the views
           ;; should have metadata present in the app DB in the first place. But in case this changes, we want to
@@ -82,7 +82,6 @@
                   {:database audit/audit-db-id
                    :type     :query
                    :query   {:source-table (u/the-id table)}})))))
-
         (testing "Users without access to the audit collection cannot run any queries on the audit DB, even if they
                    have data perms for the audit DB"
           (mt/with-full-data-perms-for-all-users!

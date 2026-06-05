@@ -1,10 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import type { Location } from "history";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
@@ -14,13 +16,14 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -30,7 +33,6 @@ import type {
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
 import { getValidationResult, isCompleteSource } from "../../utils";
 
@@ -54,12 +56,32 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
     isLoadingDatabases: isLoading,
     databasesError: error,
   } = useTransformPermissions();
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
+    );
+  }
+
+  if (isRemoteSyncReadOnly) {
+    return (
+      <PageContainer pos="relative" data-testid="transform-query-editor">
+        <PaneHeader
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              <Link key="transform-list" to={Urls.transformList()}>
+                {t`Transforms`}
+              </Link>
+            </DataStudioBreadcrumbs>
+          }
+        />
+        <NotFound />
+      </PageContainer>
     );
   }
 
@@ -97,8 +119,10 @@ function NewTransformPageBody({
   const metadata = useSelector(getMetadata);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
+  const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
   const dispatch = useDispatch();
-  useRegisterMetabotTransformContext(undefined, source);
+  const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
+  useRegisterMetabotTransformContext(undefined, source, dryRunError);
 
   const validationResult = useMemo(() => {
     return source.type === "query"
@@ -106,13 +130,21 @@ function NewTransformPageBody({
       : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
   }, [source, metadata]);
 
+  const isSavedRef = useRef(false);
+
   const handleCreate = (transform: Transform) => {
+    isSavedRef.current = true;
     dispatch(push(Urls.transform(transform.id)));
   };
 
   const handleCancel = () => {
     dispatch(push(Urls.transformList()));
   };
+
+  const isLocationAllowed = useCallback(
+    (location?: Location) => !location || isSavedRef.current,
+    [],
+  );
 
   return (
     <>
@@ -166,6 +198,7 @@ function NewTransformPageBody({
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
+              onDryRunErrorChange={setDryRunError}
             />
           ) : (
             <TransformEditor
@@ -188,14 +221,17 @@ function NewTransformPageBody({
         <CreateTransformModal
           source={source}
           defaultValues={getDefaultValues(name, suggestedTransform)}
+          closeOnEscape={!isLeaveWarningOpen}
           onCreate={handleCreate}
           onClose={closeModal}
         />
       )}
       <LeaveRouteConfirmModal
         route={route}
-        isEnabled={isDirty && !isModalOpened}
+        isEnabled={isDirty}
+        isLocationAllowed={isLocationAllowed}
         onConfirm={rejectProposed}
+        onOpenChange={setIsLeaveWarningOpen}
       />
     </>
   );

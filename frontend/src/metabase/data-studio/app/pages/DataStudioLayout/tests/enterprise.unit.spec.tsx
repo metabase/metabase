@@ -2,12 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
+import * as Urls from "metabase/urls";
 
-import {
-  DEFAULT_EE_SETTINGS,
-  DEFAULT_EE_SETTINGS_WITH_WORKSPACES,
-  setup,
-} from "./setup";
+import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
 describe("DataStudioLayout", () => {
   beforeEach(() => {
@@ -153,7 +150,7 @@ describe("DataStudioLayout", () => {
   });
 
   describe("transform dirty indicator", () => {
-    it("should show dirty indicator on Exit tab when transforms have dirty changes", async () => {
+    it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
@@ -162,18 +159,15 @@ describe("DataStudioLayout", () => {
         remoteSyncTransforms: true,
       });
 
+      const transformsTab = await screen.findByLabelText("Transforms");
       await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+        expect(
+          within(transformsTab).getByTestId("remote-sync-status"),
+        ).toBeInTheDocument();
       });
-
-      // Should show the dirty indicator badge on the Exit tab
-      const transformsTab = screen.getByLabelText("Transforms");
-      expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
     });
 
-    it("should not show dirty indicator on Exit tab when no dirty changes", async () => {
+    it("should not show dirty indicator on Transforms tab when no dirty changes", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
@@ -212,29 +206,34 @@ describe("DataStudioLayout", () => {
     });
   });
 
-  describe("workspaces feature", () => {
-    it("should not render WorkspacesSection when workspaces feature is not available", async () => {
-      setup({ isNavbarOpened: true });
+  describe("workspaces tab", () => {
+    it("admin sees the tab and it links to the workspaces index", async () => {
+      setup({ ...DEFAULT_EE_SETTINGS, isAdmin: true });
 
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      expect(
-        screen.queryByTestId("workspaces-section"),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByText("Workspaces")).not.toBeInTheDocument();
+      const tab = await screen.findByLabelText("Workspaces");
+      expect(tab).toHaveAttribute("href", Urls.workspaces());
     });
 
-    it("should render WorkspacesSection when workspaces feature is available", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS_WITH_WORKSPACES, isNavbarOpened: true });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+    it("non-admin with manage-workspaces permission sees the tab linking to the workspaces index", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        isAdmin: false,
+        canManageWorkspaces: true,
       });
 
-      expect(screen.getByTestId("workspaces-section")).toBeInTheDocument();
-      expect(screen.getByText("Workspaces")).toBeInTheDocument();
+      const tab = await screen.findByLabelText("Workspaces");
+      expect(tab).toHaveAttribute("href", Urls.workspaces());
+    });
+
+    it("non-admin without manage-workspaces permission does not see the tab", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        isAdmin: false,
+        canManageWorkspaces: false,
+      });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
     });
   });
 });

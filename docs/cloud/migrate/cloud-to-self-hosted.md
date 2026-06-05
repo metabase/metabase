@@ -48,7 +48,7 @@ If you're migrating from a Metabase Cloud Pro plan to a self-hosted Pro plan, yo
 
 2. **Download the snapshot from Metabase Store**. The email from Metabase Success Engineering will have a link to your download. You'll need to log in to the Metabase Store to access the download.
 
-   The snapshot of your Metabase Cloud application database will be an H2 file database: a file with the extension `.mv.db`. (Metabase Cloud instances use PostgreSQL for application databases, but snapshots are saved in H2 format, so that you can restore to either PostgreSQL or MysQL application databases).
+   The snapshot of your Metabase Cloud application database will be an H2 file database: a file with the extension `.mv.db`. (Metabase Cloud instances use PostgreSQL for application databases, but snapshots are saved in H2 format, so that you can restore to either PostgreSQL or MySQL application databases).
 
    Snapshots expire quickly, but don't sweat it; if your snapshot has expired, just request a new one.
 
@@ -60,4 +60,4 @@ If you're migrating from a Metabase Cloud Pro plan to a self-hosted Pro plan, yo
 
 4. **Pro plans will need to input a license token to activate the paid features**. If you're migrating to a Pro self-hosted plan, [activate your Enterprise Edition token](../../installation-and-operation/activating-the-enterprise-edition.md).
 
-   If you're on a Pro Cloud plan, you'll need to cancel that plan and start a new self-hosted Pro plan to get the token you'll need to activate your paid features . See [Preparing to migrate from cloud to self-hosted](#preparing-to-migrate-from-cloud-to-self-hosted).
+   If you're on a Pro Cloud plan, you'll need to cancel that plan and start a new self-hosted Pro plan to get the token you'll need to activate your paid features. See [Preparing to migrate from cloud to self-hosted](#preparing-to-migrate-from-cloud-to-self-hosted).

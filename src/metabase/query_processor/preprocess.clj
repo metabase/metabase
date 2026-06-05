@@ -27,7 +27,7 @@
    [metabase.query-processor.middleware.measures :as measures]
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.query-processor.middleware.normalize-query :as normalize]
-   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
+   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.persistence :as qp.persistence]
@@ -61,6 +61,7 @@
    #'qp.perms/remove-permissions-key
    #'qp.perms/remove-source-card-keys
    #'qp.perms/remove-sandboxed-table-keys
+   #'qp.perms/remove-persisted-info-native-keys
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'fetch-source-query/resolve-source-cards
@@ -100,7 +101,7 @@
    #'qp.wrap-value-literals/wrap-value-literals
    #'auto-parse-filter-values/auto-parse-filter-values
    #'validate-temporal-bucketing/validate-temporal-bucketing
-   #'optimize-temporal-filters/optimize-temporal-filters
+   #'optimize-temporal-clauses/optimize-temporal-clauses
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
    #'qp.middleware.enterprise/apply-workspace-remapping
@@ -141,7 +142,7 @@
                         [query <>])))
               ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
               (when-not (map? <>)
-                (throw (ex-info (format "Middleware did not return a valid query.")
+                (throw (ex-info "Middleware did not return a valid query."
                                 {:fn middleware-fn, :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
             (let [middleware-fn middleware-fn]

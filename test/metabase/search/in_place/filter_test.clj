@@ -47,61 +47,51 @@
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
-
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by #{1}})))))
-
     (testing "created at"
       (is (= #{"dashboard" "table" "dataset" "document" "collection" "database" "action" "card" "metric" "transform" "measure"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
-
       (is (= #{"dashboard" "table" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
                       :created-at "past3days"})))))
-
     (testing "verified"
       (is (= #{"dashboard" "dataset" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
-
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"dashboard" "dataset" "table"}
                       :verified true})))))
-
     (testing "last edited by"
       (is (= #{"dashboard" "dataset" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:last-edited-by #{1}}))))
-
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models         #{"dashboard" "dataset" "table"}
                       :last-edited-by #{1}})))))
-
     (testing "last edited at"
       (is (= #{"dashboard" "dataset" "action" "metric" "card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:last-edited-at "past3days"}))))
-
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"dashboard" "dataset" "table"}
                       :last-edited-at "past3days"})))))
-
     (testing "search native query"
       (is (= #{"dataset" "action" "card" "metric" "transform"}
              (search.filter/search-context->applicable-models
@@ -117,7 +107,6 @@
                    {:is-superuser? true
                     :models #{"dashboard" "card" "transform"}}))
            "transform")))
-
     (testing "Non-superuser does not see transform in applicable models"
       (is (not (contains?
                 (search.filter/search-context->applicable-models
@@ -125,7 +114,6 @@
                         {:is-superuser? false
                          :models #{"dashboard" "card" "transform"}}))
                 "transform"))))
-
     (testing "Non-superuser with transform in models set - transform is filtered out"
       (is (= #{"dashboard" "card"}
              (search.filter/search-context->applicable-models
@@ -167,7 +155,6 @@
     (is (= [:= :card.archived false]
            (:where (search.filter/build-filters
                     base-search-query "card" default-search-ctx))))
-
     (is (= [:and
             [:= :table.active true]
             [:= :table.visibility_type nil]
@@ -198,7 +185,7 @@
   (mt/with-clock #t "2023-05-04T10:02:05Z[UTC]"
     (are [created-at expected-where]
          (= expected-where (#'search.filter/date-range-filter-clause :card.created_at created-at))
-         ;; absolute datetime
+      ;; absolute datetime
       "Q1-2023"                                 [:and [:>= [:cast :card.created_at :date] #t "2023-01-01"]
                                                  [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
       "2016-04-18~2016-04-23"                   [:and [:>= [:cast :card.created_at :date] #t "2016-04-18"]
@@ -213,7 +200,7 @@
                                                  [:< :card.created_at  #t "2016-04-23T10:01"]]
       "2016-04-18T10:30:00~"                    [:> :card.created_at #t "2016-04-18T10:30"]
       "~2016-04-18T10:30:00"                    [:< :card.created_at #t "2016-04-18T10:31"]
-         ;; relative datetime
+      ;; relative datetime
       "past3days"                               [:and [:>= [:cast :card.created_at :date] #t "2023-05-01"]
                                                  [:< [:cast :card.created_at :date]  #t "2023-05-04"]]
       "past3days~"                              [:and [:>= [:cast :card.created_at :date] #t "2023-05-01"]
@@ -262,7 +249,6 @@
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"}))))
-
     (testing "do not join twice if has both last-edited-at and last-edited-by"
       (is (= {:select [:*]
               :from   [:table]
@@ -278,7 +264,6 @@
               base-search-query "dataset"
               (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"
                                          :last-edited-by #{1}})))))
-
     (testing "for actiion"
       (is (= {:select [:*]
               :from   [:table]
@@ -403,7 +388,7 @@
 
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
-    (with-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
+    (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
       (is (= [:and
               [:or [:like [:lower :model-index-value.name] "%foo%"]]
               [:inline [:= 1 1]]]
@@ -414,7 +399,7 @@
 
 (deftest build-filters-indexed-entity-test-2
   (testing "otherwise search result is empty"
-    (with-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
+    (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
       (is (= [:and
               [:or [:= 0 1]]
               [:inline [:= 1 1]]]

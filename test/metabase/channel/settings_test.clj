@@ -71,7 +71,6 @@
 
 (deftest smtp-override-enabled
   (mt/with-premium-features [:cloud-custom-smtp]
-
     (testing "cannot enable cloud-smtp without hostname set"
       (mt/with-temporary-setting-values [smtp-override-enabled nil
                                          email-smtp-host-override nil]
@@ -81,3 +80,20 @@
       (mt/with-temporary-setting-values [smtp-override-enabled nil
                                          email-smtp-host-override "localhost"]
         (is (= "true" (channel.settings/smtp-override-enabled! true)))))))
+
+(deftest find-cached-slack-channel-or-username-test
+  (let [channels [{:display-name "#general"   :name "general"   :id "C001"}
+                  {:display-name "#data-team" :name "data-team" :id "C002"}
+                  {:display-name "@alice"     :name "alice"     :id "U001"}]]
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-cached-channels-and-usernames (constantly {:channels channels})]
+      (testing "finds by name"
+        (is (= {:display-name "#general" :name "general" :id "C001"}
+               (channel.settings/find-cached-slack-channel-or-username "general"))))
+      (testing "finds by name with # prefix"
+        (is (= {:display-name "#data-team" :name "data-team" :id "C002"}
+               (channel.settings/find-cached-slack-channel-or-username "#data-team"))))
+      (testing "finds by ID"
+        (is (= {:display-name "@alice" :name "alice" :id "U001"}
+               (channel.settings/find-cached-slack-channel-or-username "U001"))))
+      (testing "returns nil when not found"
+        (is (nil? (channel.settings/find-cached-slack-channel-or-username "no-such-channel")))))))

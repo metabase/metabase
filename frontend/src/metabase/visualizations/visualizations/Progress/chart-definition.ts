@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import { ChartSettingGoalInput } from "metabase/visualizations/components/settings/ChartSettingGoalInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -35,9 +35,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
   },
   settings: {
     ...fieldSetting("progress.value", {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Value`;
       },
@@ -69,14 +67,12 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["progress.value"],
     }),
     "progress.goal": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Goal`;
       },
       widget: ChartSettingGoalInput,
-      default: 0,
+      getDefault: () => 0,
       isValid: ([{ data }], settings) => {
         const goalSetting = settings["progress.goal"];
 
@@ -98,14 +94,12 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["progress.value"],
     },
     "progress.color": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Color`;
       },
       widget: "color",
-      default: color("accent1"),
+      getDefault: () => color("accent1"),
     },
   },
 };

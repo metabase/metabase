@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.dashboards-rest.api-test
   "Tests for /api/dashboard endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.dashboards-rest.api-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.dashboards-rest.api-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -15,6 +17,7 @@
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
+   [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -34,16 +37,17 @@
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries-rest.api.card-test :as api.card-test]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
+   [metabase.query-processor.test :as qp]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -64,20 +68,15 @@
                            :COLUMN_5 [{:sourceId "card:abc" :originalName "invalid" :name "COLUMN_5"}]
                            :COLUMN_6 [{:name "No source ID"}]}
           result (#'api.dashboard/update-colvalmap-setting col->val-source id->new-card)]
-
       (testing "should update valid card IDs that exist in the map"
         (is (= "card:456" (-> result :COLUMN_1 first :sourceId)))
         (is (= "card:987" (-> result :COLUMN_2 first :sourceId))))
-
       (testing "should not modify card IDs that don't exist in the map"
         (is (= "card:999" (-> result :COLUMN_3 first :sourceId))))
-
       (testing "should not modify non-card sourceIds"
         (is (= "not-a-card" (-> result :COLUMN_4 first :sourceId))))
-
       (testing "should not modify invalid card IDs (non-numeric)"
         (is (= "card:abc" (-> result :COLUMN_5 first :sourceId))))
-
       (testing "should handle items without sourceId"
         (is (= {:name "No source ID"} (-> result :COLUMN_6 first)))))))
 
@@ -244,7 +243,6 @@
               (is (=? {:collection_id true, :collection_position 1000}
                       (some-> (t2/select-one [:model/Dashboard :collection_id :collection_position] :name dashboard-name)
                               (update :collection_id (partial = (u/the-id collection))))))))
-
           (testing "..but not if we don't have permissions for the Collection"
             (mt/with-temp [:model/Collection collection]
               (let [dashboard-name (mt/random-name)]
@@ -288,33 +286,26 @@
               (-> (m/find-first #(= (:id %) crowberto-dash-id)
                                 (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
                   (update-in [:last-edit-info :timestamp] boolean)))))
-
     (testing "f=all shouldn't return archived dashboards"
       (is (set/subset?
            #{rasta-dash-id crowberto-dash-id}
            (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
-
       (is (not (set/subset?
                 #{archived-dash-id}
                 (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all"))))))
-
       (testing "and should respect read perms"
         (is (set/subset?
              #{rasta-dash-id}
              (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all")))))
-
         (is (not (set/subset?
                   #{crowberto-dash-id archived-dash-id}
                   (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all"))))))))
-
     (testing "f=archvied return archived dashboards"
       (is (= #{archived-dash-id}
              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
-
       (testing "and should return read perms"
         (is (= #{}
                (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "archived")))))))
-
     (testing "f=mine return dashboards created by caller but do not include archived"
       (let [ids (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")))]
         (is (contains? ids crowberto-dash-id)      "Should contain Crowberto's dashboard")
@@ -591,7 +582,6 @@
                     {:url "https://metabase.com"}]
                    (link-card-info-from-resp
                     (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dashboard))))))
-
             (testing "should return restricted if user doesn't have permission to view the models"
               (mt/with-no-data-perms-for-all-users!
                 (is (= #{{:restricted true} {:url "https://metabase.com"}}
@@ -688,6 +678,43 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
 
+(deftest put-dashboard-hides-unreadable-cards-test
+  (testing "PUT /api/dashboard/:id should hide card details from collections the user cannot access (#UXW-3571)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection    {accessible-coll-id :id} {:name "Accessible Collection"}
+                     :model/Collection    {restricted-coll-id :id} {:name "Restricted Collection"}
+                     :model/Card          {readable-card-id :id}   {:name          "Readable Card"
+                                                                    :collection_id accessible-coll-id
+                                                                    :dataset_query (mt/mbql-query venues)}
+                     :model/Card          {restricted-card-id :id} {:name          "Restricted Card"
+                                                                    :collection_id restricted-coll-id
+                                                                    :dataset_query (mt/mbql-query venues)}
+                     :model/Dashboard     {dashboard-id :id}       {:name          "Test Dashboard"
+                                                                    :collection_id accessible-coll-id}
+                     :model/DashboardCard _                        {:dashboard_id dashboard-id
+                                                                    :card_id      readable-card-id}
+                     :model/DashboardCard _                        {:dashboard_id dashboard-id
+                                                                    :card_id      restricted-card-id}]
+        ;; Grant read+write to accessible collection, no access to restricted collection
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) accessible-coll-id)
+        (let [get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))
+              put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                                 {:name "Test Dashboard"})
+              get-cards    (set (map :card (:dashcards get-response)))
+              put-cards    (set (map :card (:dashcards put-response)))]
+          (letfn [(restricted-card [cards]
+                    (first (filter #(= (:id %) restricted-card-id) cards)))
+                  (sensitive-keys [card]
+                    (select-keys card [:name :dataset_query :collection_id :creator_id :result_metadata :database_id]))]
+            (testing "GET hides restricted card details"
+              (is (empty? (sensitive-keys (restricted-card get-cards)))
+                  "Restricted card should not contain sensitive fields"))
+            (testing "PUT hides restricted card details the same way as GET"
+              (is (empty? (sensitive-keys (restricted-card put-cards)))
+                  "Restricted card should not contain sensitive fields"))
+            (testing "PUT and GET return the same card representations for restricted cards"
+              (is (= (restricted-card get-cards) (restricted-card put-cards))))))))))
+
 (deftest fetch-dashboard-in-personal-collection-test
   (testing "GET /api/dashboard/:id"
     (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
@@ -701,11 +728,9 @@
     (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-entity-id :entity_id}
                    {:name "Test Dashboard"}]
       (with-dashboards-in-readable-collection! [dashboard-id]
-
         (testing "GET /api/dashboard/:id works with entity ID"
           (is (=? {:name "Test Dashboard"}
                   (dashboard-response (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-entity-id))))))
-
         (testing "GET /api/dashboard/:id/query_metadata works with entity ID"
           (is (map? (mt/user-http-request :rasta :get 200
                                           (str "dashboard/" dashboard-entity-id "/query_metadata")))))))))
@@ -750,7 +775,6 @@
                        :collection    false
                        :collection_id true}
                       (dashboard-response (t2/select-one :model/Dashboard :id dashboard-id)))))
-
             (testing "PUT response"
               (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                                        {:name        "My Cool Dashboard"
@@ -773,7 +797,6 @@
                 (testing "A PUT should return the updated value so a follow-on GET is not needed (#34828)"
                   (is (= (update put-response :last-edit-info dissoc :timestamp)
                          (update get-response :last-edit-info dissoc :timestamp))))))
-
             (testing "GET after update"
               (is (=? {:name          "My Cool Dashboard"
                        :description   "Some awesome description"
@@ -783,7 +806,6 @@
                        :collection_id true
                        :view_count    1}
                       (dashboard-response (t2/select-one :model/Dashboard :id dashboard-id)))))
-
             (testing "No-op PUT: Do not return 500"
               (mt/with-temp [:model/Card {card-id :id} {}
                              :model/DashboardCard dashcard {:card_id card-id, :dashboard_id dashboard-id}]
@@ -843,7 +865,6 @@
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description nil})
           (is (= nil
                  (t2/select-one-fn :description :model/Dashboard :id (u/the-id dashboard))))
-
           (testing "Set to a blank description"
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description ""})
             (is (= ""
@@ -897,12 +918,10 @@
           (testing "the default dashboard width value is 'fixed'."
             (is (= "fixed"
                    (t2/select-one-fn :width :model/Dashboard :id (u/the-id dashboard)))))
-
           (testing "changing the width setting to 'full' works."
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:width "full"})
             (is (= "full"
                    (t2/select-one-fn :width :model/Dashboard :id (u/the-id dashboard)))))
-
           (testing "values that are not 'fixed' or 'full' error."
             (is (=? {:specific-errors {:width ["should be either \"fixed\" or \"full\", received: 1200"]}
                      :errors          {:width "enum of fixed, full"}}
@@ -916,7 +935,6 @@
           (testing "the dashboard starts with no parameters."
             (is (= []
                    (t2/select-one-fn :parameters :model/Dashboard :id (u/the-id dashboard)))))
-
           (testing "adding a new time granularity parameter works."
             (let [params [{:name      "Time Unit"
                            :slug      "time_unit"
@@ -927,7 +945,6 @@
               (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:parameters params})
               (is (= params
                      (t2/select-one-fn :parameters :model/Dashboard :id (u/the-id dashboard))))))
-
           (testing "Update dashboard with parameters works (#50371)"
             (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
                                                      {:archived :true})]
@@ -994,13 +1011,11 @@
                                 {:collection_position 1})
           (is (= 1
                  (t2/select-one-fn :collection_position :model/Dashboard :id (u/the-id dashboard))))
-
           (testing "...and unset (unpin) it as well?"
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position nil})
             (is (= nil
                    (t2/select-one-fn :collection_position :model/Dashboard :id (u/the-id dashboard))))))
-
         (testing "we shouldn't be able to if we don't have permissions for the Collection"
           (mt/with-temp [:model/Collection collection {}
                          :model/Dashboard  dashboard {:collection_id (u/the-id collection)}]
@@ -1008,7 +1023,6 @@
                                   {:collection_position 1})
             (is (= nil
                    (t2/select-one-fn :collection_position :model/Dashboard :id (u/the-id dashboard)))))
-
           (mt/with-temp [:model/Collection collection {}
                          :model/Dashboard  dashboard {:collection_id (u/the-id collection), :collection_position 1}]
             (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard))
@@ -1033,7 +1047,6 @@
             (move-dashboard! b 4)
             (is (= {"a" 1, "c" 2, "d" 3, "b" 4}
                    (items)))))
-
         (testing "Check that updating a dashboard at position 3 to position 1 will increment the positions before 3, not after"
           (api.card-test/with-ordered-items collection [:model/Card      a
                                                         :model/Pulse     b
@@ -1042,7 +1055,6 @@
             (move-dashboard! c 1)
             (is (= {"c" 1, "a" 2, "b" 3, "d" 4}
                    (items)))))
-
         (testing "Check that updating position 1 to 3 will cause b and c to be decremented"
           (api.card-test/with-ordered-items collection [:model/Dashboard a
                                                         :model/Card      b
@@ -1051,7 +1063,6 @@
             (move-dashboard! a 3)
             (is (= {"b" 1, "c" 2, "a" 3, "d" 4}
                    (items)))))
-
         (testing "Check that updating position 1 to 4 will cause a through c to be decremented"
           (api.card-test/with-ordered-items collection [:model/Dashboard a
                                                         :model/Card      b
@@ -1060,7 +1071,6 @@
             (move-dashboard! a 4)
             (is (= {"b" 1, "c" 2, "d" 3, "a" 4}
                    (items)))))
-
         (testing "Check that updating position 4 to 1 will cause a through c to be incremented"
           (api.card-test/with-ordered-items collection [:model/Card      a
                                                         :model/Pulse     b
@@ -1206,7 +1216,9 @@
         (is (not= dash-id (:id response)))
         (let [copied-cards (t2/select :model/Card :dashboard_id (:id response))]
           (is (= 1 (count copied-cards)))
-          (is (not= card-id (:id (first copied-cards))))))))
+          (is (not= card-id (:id (first copied-cards)))))))))
+
+(deftest copy-dashboard-with-dashboard-questions-2
   (testing "`is_deep_copy=false` errors for dashboards containing dashboard questions"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -1217,7 +1229,9 @@
       (is (= "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."
              (mt/user-http-request :rasta :post 400
                                    (format "dashboard/%d/copy" dash-id)
-                                   {:is_deep_copy false})))))
+                                   {:is_deep_copy false}))))))
+
+(deftest copy-dashboard-with-dashboard-questions-3
   (testing "`is_deep_copy=false` works for a dashboard without any dashboard questions"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -1229,7 +1243,9 @@
                                            {:is_deep_copy false})]
         (is (some? (:id response)))
         (is (not= dash-id (:id response)))
-        (is (zero? (t2/count :model/Card :dashboard_id (:id response)))))))
+        (is (zero? (t2/count :model/Card :dashboard_id (:id response))))))))
+
+(deftest copy-dashboard-with-dashboard-questions-4
   (testing "`is_deep_copy=false` works for a dashboard with archived dashboard questions"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -1633,7 +1649,9 @@
                                                    2 {:id 2}
                                                    3 {:id 3}}
                                                   {1 10
-                                                   2 20})))))
+                                                   2 20}))))))
+
+(deftest update-cards-for-copy-test-2
   (testing "When copy style is deep"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"
@@ -1857,7 +1875,7 @@
                                                        :size_y           4
                                                        :col              1
                                                        :row              1
-                                                      ;; initialy was in tab1, now in tab 2
+                                                       ;; initialy was in tab1, now in tab 2
                                                        :dashboard_tab_id dashtab-id-2
                                                        :card_id          card-id-1}
                                                       {:id               dashcard-id-2
@@ -1879,7 +1897,6 @@
             (is (= "Updated dashboard name"
                    (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
                    (:name resp))))
-
           (testing "tabs got updated correctly "
             (is (=? [{:id           dashtab-id-1
                       :dashboard_id dashboard-id
@@ -1896,7 +1913,6 @@
                     (:tabs resp)))
             (testing "dashtab 3 got deleted"
               (is (nil? (t2/select-one :model/DashboardTab :id dashtab-id-3)))))
-
           (testing "dashcards got updated correctly"
             (let [new-tab-id (t2/select-one-pk :model/DashboardTab :name "New tab" :dashboard_id dashboard-id)]
               (is (=? [{:id               dashcard-id-1
@@ -2012,7 +2028,6 @@
                                                          {:name "Tab 1 moved to second position"
                                                           :id   dashtab-id-1}]
                                                  :dashcards []}))]
-
           (is (=? [{:dashboard_id dashboard-id
                     :name         "Tab new"
                     :position     0}
@@ -2153,7 +2168,6 @@
                         "event"          "dashboard_tab_created"}
                  :user-id (str (mt/user->id :rasta))}]
                (take-last 2 (snowplow-test/pop-event-data-and-user-id!))))))
-
     (testing "send nothing if tabs are unchanged"
       (snowplow-test/with-fake-snowplow-collector
         (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
@@ -2225,7 +2239,6 @@
                                                                                    :card_id card-id
                                                                                    :target [:dimension [:field-id (mt/id :venues :id)]]}]}]}))]
         (is (some? (t2/select-one :model/DashboardCard (:id (first resp))))))))
-
   (testing "PUT /api/dashboard/:id/cards accepts expression as parammeter's target"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {:dataset_query (mt/mbql-query venues {:expressions {"A" [:+ (mt/$ids $venues.price) 1]}})}]
@@ -2528,7 +2541,6 @@
                                                                               :tabs      []})))
           (is (= 1
                  (count (t2/select-pks-set :model/DashboardCard, :dashboard_id dashboard-id)))))))
-
     (testing "prune"
       (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                      :model/Card          {card-id :id}      {}
@@ -2608,17 +2620,14 @@
             (is (= uuid
                    (:uuid (mt/user-http-request :crowberto :post 200
                                                 (format "dashboard/%d/public_link" (u/the-id dashboard))))))))))
-
     (mt/with-temp [:model/Dashboard dashboard]
       (testing "Test that we *cannot* share a Dashboard if we aren't admins"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "dashboard/%d/public_link" (u/the-id dashboard))))))
-
       (testing "Test that we *cannot* share a Dashboard if the setting is disabled"
         (mt/with-temporary-setting-values [enable-public-sharing false]
           (is (= "Public sharing is not enabled."
                  (mt/user-http-request :crowberto :post 400 (format "dashboard/%d/public_link" (u/the-id dashboard))))))))
-
     (testing "Test that we get a 404 if the Dashboard doesn't exist"
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE)))))))
@@ -2631,17 +2640,14 @@
           (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (u/the-id dashboard)))
           (is (= false
                  (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid (:public_uuid dashboard))))))
-
       (testing "Test that we *cannot* unshare a Dashboard if we are not admins"
         (mt/with-temp [:model/Dashboard dashboard (shared-dashboard)]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
-
       (testing "Test that we get a 404 if Dashboard isn't shared"
         (mt/with-temp [:model/Dashboard dashboard]
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
-
       (testing "Test that we get a 404 if Dashboard doesn't exist"
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE))))))))
@@ -2692,7 +2698,6 @@
           [[{:card {:dataset_query (fake-query 1)}}
             ["S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU="
              "F2yzgei1xfnQhNcakBq9c/q3lg0K9QDtWUHYOKGpBsM="]]
-
            [{:card   {:dataset_query (fake-query 2)}
              :series [{:dataset_query (fake-query 3)}
                       {:dataset_query (fake-query 4)}]}
@@ -2916,15 +2921,14 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is (= {:values [["African"] ["American"] ["Artisan"] ["Asian"]] :has_more_values false}
                      (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
-
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
               (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
                      (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
@@ -2964,7 +2968,6 @@
                      (mt/user-http-request :rasta :get 403 (chain-filter-values-url
                                                             (:id dashboard)
                                                             (:category-name param-keys)))))))))
-
       (testing "Should work if Dashboard has multiple mappings for a single param"
         (with-chain-filter-fixtures [{:keys [dashboard card dashcard param-keys]}]
           (mt/with-temp [:model/Card          card-2 (dissoc card :id :entity_id)
@@ -2976,7 +2979,6 @@
                    (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                         (mt/user-http-request :rasta :get 200)
                         (chain-filter-test/take-n-values 3)))))))
-
       (testing "should check perms for the Fields in question"
         (mt/with-temp-copy-of-db
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
@@ -2986,13 +2988,12 @@
               ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
               ;; but 200 on calls that we could just use the cache.
               ;; It's not ideal and we definitely need to have a consistent behavior
-              (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
+              (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
                 (is (= {:values          [["African"] ["American"] ["Artisan"]]
                         :has_more_values false}
                        (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                             (mt/user-http-request :rasta :get 200)
                             (chain-filter-test/take-n-values 3)))))))))
-
       (testing "missing data perms should not affect perms for the Fields in question when users have collection access"
         (mt/with-temp-copy-of-db
           (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
@@ -3439,7 +3440,6 @@
           (is (= {:values          [["African"] ["American"] ["Artisan"] ["Asian"] ["BBQ"]]
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))
-
       (testing "it only returns search matches"
         (mt/let-url [url (chain-filter-search-url dashboard (:card param-keys) "afr")]
           (is (= {:values          [["African"]]
@@ -3450,7 +3450,7 @@
   (testing "fallback to chain-filter"
     (let [mock-chain-filter-result {:has_more_values true
                                     :values [["chain-filter"]]}]
-      (with-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
+      (mt/with-dynamic-fn-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card       {card-id :id} {}
                          :model/Dashboard  dashboard     {:parameters    [{:id                   "abc"
@@ -3508,21 +3508,21 @@
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red")))))))))
 
 (deftest parameter-values-from-card-test-4
-  ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by MLv2,
+  ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by Lib,
   ;; the FE does not use the /api/table/:card__id/query_metadata API call to determine the fields which can be filtered
   ;; on a saved question. It uses `Lib.filterableColumns` instead, which given a saved question with aggregations in the
   ;; last stage will return the pre-aggregation columns on that last stage. That allows linking the dashboard filter not
   ;; to the aggregations and breakouts, but to the pre-aggregation columns which feed into the aggregations.
   ;; This is typically what's wanted for filtering an aggregated query in a dashboard: filtering SUM(subtotal) to a
   ;; time range, product category, etc.
-  ;; This test should either (1) be rehabilitated to use MLv2 to get the set of columns for filtering a dashcard (like
+  ;; This test should either (1) be rehabilitated to use Lib to get the set of columns for filtering a dashcard (like
   ;; the FE); or (2) just be dropped if it's not providing value.
   #_(testing "field selection should compatible with field-id from /api/table/:card__id/query_metadata"
-    ;; FE use the id returned by /api/table/:card__id/query_metadata
-    ;; for the `values_source_config.value_field`, so we need to test to make sure
-    ;; the id is a valid field that we could use to retrieve values.
+      ;; FE use the id returned by /api/table/:card__id/query_metadata
+      ;; for the `values_source_config.value_field`, so we need to test to make sure
+      ;; the id is a valid field that we could use to retrieve values.
       (mt/with-temp
-      ;; card with agggregation and binning columns
+        ;; card with agggregation and binning columns
         [Card {mbql-card-id :id} (merge (mt/card-with-source-metadata-for-query
                                          (mt/mbql-query venues
                                            {:limit 5
@@ -3536,7 +3536,6 @@
                                           {:name        "Native question"
                                            :database_id (mt/id)
                                            :table_id    (mt/id :venues)})]
-
         (let [mbql-card-fields   (card-fields-from-table-metadata mbql-card-id)
               native-card-fields (card-fields-from-table-metadata native-card-id)
               _ (prn "mbql-card-fields" mbql-card-fields)
@@ -3561,7 +3560,7 @@
 (deftest ^:parallel valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
     (letfn [(result= [expected {:keys [filtered filtering]}]
-              (testing (format "\nGET dashboard/params/valid-filter-fields")
+              (testing "\nGET dashboard/params/valid-filter-fields"
                 (is (= expected
                        (mt/user-http-request :rasta :get 200 "dashboard/params/valid-filter-fields"
                                              :filtered filtered :filtering filtering)))))]
@@ -3618,8 +3617,50 @@
                   (mt/user-http-request :rasta :get 200 (format "/dashboard/%d/params/%s/search/%s"
                                                                 (:id dashboard)
                                                                 "_text_"
-                                                              ;; a0 is part of first 2 rows of queried table
+                                                                ;; a0 is part of first 2 rows of queried table
                                                                 "a0")))))))))
+
+(deftest field-filter-uuid-operator-dashboard-test
+  (testing "Dashboard ID filter with operator parameter type on a UUID native field filter (#73758)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :uuid-type
+                                                     :test/uuids-in-create-table-statements)
+      (mt/dataset uuid-dogs
+        (let [uuid-value "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+          (doseq [param-type ["string/=" "number/="]]
+            (testing (str "param type " (pr-str param-type))
+              (mt/with-temp
+                [:model/Card {card-id :id}
+                 {:dataset_query {:database (mt/id)
+                                  :type     :native
+                                  :native   (assoc (mt/count-with-field-filter-query
+                                                    driver/*driver* :people :id uuid-value)
+                                                   :template-tags
+                                                   {"id" {:name         "id"
+                                                          :display-name "id"
+                                                          :type         :dimension
+                                                          :widget-type  :id
+                                                          :dimension    [:field (mt/id :people :id) nil]}})}}
+                 :model/Dashboard {dashboard-id :id}
+                 {:parameters [{:name "id" :slug "id" :id "_id_" :type param-type}]}
+                 :model/DashboardCard {dashcard-id :id}
+                 {:dashboard_id       dashboard-id
+                  :card_id            card-id
+                  :parameter_mappings [{:parameter_id "_id_"
+                                        :card_id      card-id
+                                        :target       [:dimension [:template-tag "id"]]}]}]
+                ;; In production, malli checks are switched off (see metabase.util.malli.fn/instrument-ns?), and
+                ;; this code path produces a non-final intermediate value that doesn't satisfy the legacy
+                ;; ::mbql.s/Filter schema. We disable enforcement here to match production runtime.
+                (mu/disable-enforcement
+                  (is (=? {:row_count 1
+                           :data      {:rows [[1]]}}
+                          (mt/user-http-request :rasta :post 202
+                                                (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                        dashboard-id dashcard-id card-id)
+                                                {:parameters [{:id    "_id_"
+                                                               :type  param-type
+                                                               :target [:dimension [:template-tag "id"]]
+                                                               :value [uuid-value]}]}))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
@@ -3659,7 +3700,19 @@
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
                 (is (malli= (dashboard-card-query-expected-results-schema)
-                            (mt/user-http-request :rasta :post 202 (url)))))))
+                            (mt/user-http-request :rasta :post 202 (url))))))
+            (testing "Should return 403 if user does not have view-data permission (GHY-3228)"
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 (url))))))
+            (testing "Should return 403 for blocked view-data even with invalid parameters (GHY-3228)"
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 (url)
+                                             {:parameters [{:id    "FAKE_PARAM"
+                                                            :value "fake"}]}))))))
           (testing "Validation"
             (testing "404s"
               (testing "Should return 404 if Dashboard doesn't exist"
@@ -3723,7 +3776,6 @@
                           (mt/user-http-request :rasta :post 202 url
                                                 {:parameters [{:id    "_PRICE_"
                                                                :value 4}]})))))
-
           ;; don't let people try to be sneaky and get around our validation by passing in a different `:target`
           (testing "Should ignore incorrect `:target` passed in to API endpoint"
             (is (malli= (dashboard-card-query-expected-results-schema :row-count 6)
@@ -4613,28 +4665,25 @@
               (testing "Notification emails were sent to the dashboard and pulse creators"
                 (emails-received? "rasta@metabase.com")
                 (emails-received? "trashbird@metabase.com"))))))))
-
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
     (test-handle-broken-subscription-notification!
      {:disable-links?            false
       :email-body-pattern        "#my-channel"
       :match-email-body-pattern? true}))
-
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
     (test-handle-broken-subscription-notification!
      {:disable-links?            false
       :email-body-pattern        "href="
       :match-email-body-pattern? true}))
-
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
     (test-handle-broken-subscription-notification!
      {:disable-links?            true
       :email-body-pattern        "href="
       :match-email-body-pattern? false})))
 
-(deftest run-mlv2-dashcard-query-test
+(deftest run-mbql5-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
-    (testing "Should be able to run a query for a DashCard with an MLv2 query (#39024)"
+    (testing "Should be able to run a query for a DashCard with an MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -4790,7 +4839,6 @@
        :model/Dashboard     {dashboard-id :id} {}
        :model/DashboardCard _                  {:card_id      card-id-2
                                                 :dashboard_id dashboard-id}]
-
       (letfn [(query-metadata []
                 (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
                     (api.test-util/select-query-metadata-keys-for-debugging)))]
@@ -4880,7 +4928,7 @@
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))
 
 (deftest ^:synchronized dashboard-query-metadata-cached-test
-  (let [original-admp   @#'lib.metadata.jvm/application-database-metadata-provider-factory
+  (let [original-admp   (mt/original-fn #'lib.metadata.jvm/application-database-metadata-provider-factory)
         uncached-calls  (atom -1)
         expected        [{:name "Some dashboard"}
                          {:tables     [{} {}]
@@ -4904,10 +4952,10 @@
           (reset! uncached-calls (call-count-fn))))
       (testing "cached requests"
         (let [provider-counts (atom {})]
-          (with-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
-                        (fn [database-id]
-                          (swap! provider-counts update database-id (fnil inc 0))
-                          (original-admp database-id))]
+          (mt/with-dynamic-fn-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
+                                      (fn [database-id]
+                                        (swap! provider-counts update database-id (fnil inc 0))
+                                        (original-admp database-id))]
             (t2/with-call-count [call-count-fn]
               (let [load-id (str (random-uuid))]
                 (is (=? expected
@@ -4963,7 +5011,6 @@
       ;; If we need more for _some reason_, this test should be updated accordingly.
       (testing "At most 1 db call should be executed for :metadata/tables"
         (is (<= @cached-calls-count 1)))
-
       (testing "dashboard card /query calls reuse metadata providers"
         (let [providers               (atom [])
               load-id                 (str (random-uuid))]
@@ -5212,7 +5259,6 @@
         (testing "Initial parameter cards are created"
           (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
                              :parameterized_object_id dashboard-id))))
-
         (testing "Dashboard update with unchanged parameters preserves parameter cards"
           (let [original-param-cards (t2/select :model/ParameterCard
                                                 :parameterized_object_type "dashboard"
@@ -5220,7 +5266,6 @@
             (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                   {:name "Updated Dashboard Name"
                                    :description "New description"})
-
             (let [updated-param-cards (t2/select :model/ParameterCard
                                                  :parameterized_object_type "dashboard"
                                                  :parameterized_object_id dashboard-id)]
@@ -5249,7 +5294,6 @@
         (testing "Initial parameter cards are created for card-sourced parameters only"
           (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
                              :parameterized_object_id dashboard-id))))
-
         (testing "Dashboard update with identical parameters preserves parameter cards"
           (let [original-param-cards (t2/select :model/ParameterCard
                                                 :parameterized_object_type "dashboard"
@@ -5258,7 +5302,6 @@
             (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                   {:parameters original-parameters
                                    :description "Updated description"})
-
             (let [updated-param-cards (t2/select :model/ParameterCard
                                                  :parameterized_object_type "dashboard"
                                                  :parameterized_object_id dashboard-id)]
@@ -5290,7 +5333,6 @@
         (testing "Initial parameter cards are created"
           (is (= 2 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
                              :parameterized_object_id dashboard-id))))
-
         (testing "Update with one parameter unchanged, one parameter changed"
           (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                 {:parameters [{:name                 "Category"
@@ -5305,7 +5347,6 @@
                                                :type                 "category"
                                                :values_source_type   "card"
                                                :values_source_config {:card_id source-card-id-2}}]})
-
           (let [param-cards (t2/select :model/ParameterCard
                                        :parameterized_object_type "dashboard"
                                        :parameterized_object_id dashboard-id)]
@@ -5328,7 +5369,6 @@
         (testing "Initial parameter cards are created"
           (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
                              :parameterized_object_id dashboard-id))))
-
         (testing "Dashboard update without parameters field preserves parameter cards"
           (let [original-param-cards (t2/select :model/ParameterCard
                                                 :parameterized_object_type "dashboard"
@@ -5338,7 +5378,6 @@
                                   {:name "Updated Name"
                                    :description "Updated description"
                                    :cache_ttl 3600})
-
             (let [updated-param-cards (t2/select :model/ParameterCard
                                                  :parameterized_object_type "dashboard"
                                                  :parameterized_object_id dashboard-id)]
@@ -5479,3 +5518,115 @@
                                                                               })]
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
+
+;;; +--------------------------------------------------------------------------------------------------+
+;;; |       result_metadata persistence with parameters (QUE2-502)                                     |
+;;; |       See also: metabase.queries-rest.api.card-test (card endpoint tests for native cards)       |
+;;; +--------------------------------------------------------------------------------------------------+
+
+(deftest parameterized-mbql-dashcard-does-not-persist-result-metadata-test
+  ;; QUE2-502
+  (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — MBQL card with parameters should not update result_metadata"
+    (mt/with-temp [:model/Card          {card-id :id}
+                   {:dataset_query (mt/mbql-query orders
+                                     {:aggregation [[:count] [:sum $total]]
+                                      :breakout    [$product_id]})}
+                   :model/Dashboard     {dashboard-id :id}
+                   {:parameters [{:name "Product ID"
+                                  :slug "product_id"
+                                  :id   "_PRODUCT_ID_"
+                                  :type :id}]}
+                   :model/DashboardCard {dashcard-id :id}
+                   {:card_id            card-id
+                    :dashboard_id       dashboard-id
+                    :parameter_mappings [{:parameter_id "_PRODUCT_ID_"
+                                          :card_id      card-id
+                                          :target       [:dimension (mt/$ids orders $product_id)]}]}]
+      ;; Run without parameters to establish baseline metadata
+      (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+        (mt/user-http-request :rasta :post 202 url)
+        (let [baseline-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+          (is (some? baseline-metadata)
+              "Baseline metadata should be established by non-parameterized run")
+          ;; Run with a parameter value — metadata should NOT be updated
+          (mt/user-http-request :rasta :post 202 url
+                                {:parameters [{:id "_PRODUCT_ID_" :value 1}]})
+          (is (= baseline-metadata
+                 (t2/select-one-fn :result_metadata :model/Card :id card-id))
+              "result_metadata should not change when MBQL dashcard is run with parameters")
+          ;; Run with a different parameter value — metadata should still not change
+          (mt/user-http-request :rasta :post 202 url
+                                {:parameters [{:id "_PRODUCT_ID_" :value 50}]})
+          (is (= baseline-metadata
+                 (t2/select-one-fn :result_metadata :model/Card :id card-id))
+              "result_metadata should remain stable across different parameter values"))))))
+
+(deftest parameterized-native-dashcard-does-not-persist-result-metadata-test
+  ;; QUE2-502
+  (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — native card with non-default parameters should not update result_metadata"
+    (let [native-query (mt/native-query
+                        {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
+                         :template-tags {"product_id" {:id           "_PRODUCT_ID_TAG_"
+                                                       :name         "product_id"
+                                                       :display-name "Product ID"
+                                                       :type         :number
+                                                       :required     true
+                                                       :default      "1"}}})]
+      (mt/with-temp [:model/Card          {card-id :id}
+                     {:dataset_query native-query}
+                     :model/Dashboard     {dashboard-id :id}
+                     {:parameters [{:name    "Product ID"
+                                    :slug    "product_id"
+                                    :id      "_DASH_PRODUCT_ID_"
+                                    :type    :number
+                                    :default "1"}]}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:card_id            card-id
+                      :dashboard_id       dashboard-id
+                      :parameter_mappings [{:parameter_id "_DASH_PRODUCT_ID_"
+                                            :card_id      card-id
+                                            :target       [:variable [:template-tag "product_id"]]}]}]
+        (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+          ;; Run without parameters to establish baseline metadata (uses template tag default)
+          (mt/user-http-request :rasta :post 202 url)
+          (let [baseline-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+            (is (some? baseline-metadata)
+                "Baseline metadata should be established by default-value run")
+            ;; Run with a non-default parameter value — metadata should NOT be updated
+            (mt/user-http-request :rasta :post 202 url
+                                  {:parameters [{:id "_DASH_PRODUCT_ID_" :value "50"}]})
+            (is (= baseline-metadata
+                   (t2/select-one-fn :result_metadata :model/Card :id card-id))
+                "result_metadata should not change when native dashcard is run with non-default parameter values")))))))
+
+(deftest native-dashcard-with-default-parameters-persists-result-metadata-test
+  ;; QUE2-502
+  (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — native card with default parameter values SHOULD update result_metadata"
+    (let [native-query (mt/native-query
+                        {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
+                         :template-tags {"product_id" {:id           "_PRODUCT_ID_TAG_"
+                                                       :name         "product_id"
+                                                       :display-name "Product ID"
+                                                       :type         :number
+                                                       :required     true
+                                                       :default      "1"}}})]
+      (mt/with-temp [:model/Card          {card-id :id}
+                     {:dataset_query native-query}
+                     :model/Dashboard     {dashboard-id :id}
+                     {:parameters [{:name    "Product ID"
+                                    :slug    "product_id"
+                                    :id      "_DASH_PRODUCT_ID_"
+                                    :type    :number
+                                    :default "1"}]}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:card_id            card-id
+                      :dashboard_id       dashboard-id
+                      :parameter_mappings [{:parameter_id "_DASH_PRODUCT_ID_"
+                                            :card_id      card-id
+                                            :target       [:variable [:template-tag "product_id"]]}]}]
+        ;; Run with the default value passed explicitly (as the frontend does)
+        (mt/user-http-request :rasta :post 202
+                              (dashboard-card-query-url dashboard-id card-id dashcard-id)
+                              {:parameters [{:id "_DASH_PRODUCT_ID_" :value "1"}]})
+        (is (some? (t2/select-one-fn :result_metadata :model/Card :id card-id))
+            "result_metadata should be persisted when native dashcard runs with default parameter values")))))

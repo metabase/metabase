@@ -1,9 +1,10 @@
 (ns ^:mb/driver-tests metabase.query-processor.constraints-test
   "Test for MBQL `:constraints`"
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.constraints-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (defn- mbql-query []

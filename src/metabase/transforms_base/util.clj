@@ -6,15 +6,17 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-remaps :as remap]
    [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.parameters.dates :as params.dates]
@@ -28,6 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -60,6 +63,32 @@
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
       (lib/native-only-query? query))))
+
+(defn table-template-tag-name
+  "Return the name (key) of the table template tag in `query` that refers to `table-id`, or nil.
+
+  This is the table variable the incremental range filter is injected into (see
+  `inject-filters-into-table-tag`). When `table-id` is nil, any table template tag qualifies."
+  [query table-id]
+  (some (fn [[k v]]
+          (when (and (#{:table "table"} (:type v))
+                     (or (nil? table-id) (= table-id (:table-id v))))
+            k))
+        (lib/template-tags query)))
+
+(defn incremental-table-tag-name
+  "Return the name of the table template tag the incremental range filter targets in `transform`, or
+  nil when the source query has no suitable table variable.
+
+  The range filter is injected into the table variable referring to the checkpoint field's table
+  (see `inject-filters-into-table-tag`); when no checkpoint field has been selected yet, any table
+  variable qualifies. A nil result for a table-incremental native transform is a broken state — there
+  is no table variable to filter on. This can happen when the SQL is edited to drop the table tag
+  after the transform was made incremental."
+  [{:keys [source]}]
+  (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
+        table-id (when field-id (t2/select-one-fn :table_id :model/Field field-id))]
+    (table-template-tag-name (:query source) table-id)))
 
 (defn python-transform?
   "Check if this is a Python transform."
@@ -109,12 +138,31 @@
 
 ;;; ------------------------------------------------- Table Names -------------------------------------------------
 
+(defn- resolve-nil-schema
+  "When a table has nil schema, check if the physical table exists under the driver's
+   default schema. If so, return that schema. Otherwise return nil.
+   This handles the case where transforms create tables without explicit schema
+   but the driver needs a schema to find the table during sync."
+  [driver database table]
+  (when-let [default-schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
+    (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
+      default-schema)))
+
 (defn qualified-table-name
-  "Return the name of the target table of a transform as a possibly qualified symbol."
+  "Return the transform target as a `:schema/name` (or bare `:name`) HoneySQL
+   identifier. Consumers downstream rely on `name`/`namespace` to extract the
+   parts (e.g. `metabase.driver.sql/run-transform! [:sql :table]`), so this stays
+   2-segment.
+
+   The `:db` slot — populated for engines whose `qualified-name-components`
+   includes `:db` (Snowflake / SQL Server / BigQuery / MySQL) — is **not** encoded
+   here. It travels separately on `transform-details` as `:output-db` and is
+   prepended at the SQL emission site. See
+   [[metabase.driver.sql.query-processor/compile-transform :sql]]."
   [_driver {:keys [schema name]}]
-  (if schema
-    (keyword schema name)
-    (keyword name)))
+  (if (str/blank? schema)
+    (keyword name)
+    (keyword schema name)))
 
 (defn temp-table-name
   "Generate a temporary table name with current timestamp in milliseconds.
@@ -150,17 +198,41 @@
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
 
+(defn full-incremental-run?
+  "True when an incremental transform should drop-and-recreate the target rather than append.
+  Fires whenever `last_checkpoint_value` is nil — covers the literal first run, and any run after the
+  `:model/Transform` before-update hook clears the watermark on a `checkpoint-filter-field-id`
+  change. Stays true across failed attempts since the predicate only inspects
+  `:last_checkpoint_value`."
+  [{:keys [target last_checkpoint_value]}]
+  (and (= :table-incremental (keyword (:type target)))
+       (nil? last_checkpoint_value)))
+
 (defn- encode-checkpoint-value [v]
   (if (number? v)
     (str v)
     (u.date/format v)))
 
+(defn checkpoint-span-attrs
+  "Build a map of OTel span attributes from `source-range-params`. Returns an empty
+  map when params are nil. Values are encoded as strings (the same encoding used
+  for persistence) so spans render consistently regardless of base type."
+  [source-range-params]
+  (let [{:keys [checkpoint-filter-field-id]
+         {lo-value :value} :lo
+         {hi-value :value} :hi} source-range-params]
+    (cond-> {}
+      checkpoint-filter-field-id (assoc :transform/checkpoint-field-id checkpoint-filter-field-id)
+      (some? lo-value)           (assoc :transform/checkpoint-lo (encode-checkpoint-value lo-value))
+      (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
+
 (defn save-watermark!
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id source-range-params]
-  (t2/update! :model/Transform
-              transform-id
-              {:last_checkpoint_value (some-> source-range-params :hi :value encode-checkpoint-value)}))
+  (let [hi-value (:value (:hi source-range-params))]
+    (t2/update! :model/Transform
+                transform-id
+                {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
 
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -173,14 +245,31 @@
                     lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
                     hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
+(defn- coerce-to-local-datetime
+  "Coerce a temporal value to LocalDateTime, stripping any timezone information."
+  [t]
+  (condp instance? t
+    OffsetDateTime (t/local-date-time t)
+    ZonedDateTime  (t/local-date-time t)
+    Instant        (t/local-date-time t (t/zone-id "UTC"))
+    t))
+
+(defn- maybe-coerce-temporal
+  [base-type t]
+  (cond-> t
+    (and (isa? base-type :type/DateTime)
+         (not (isa? base-type :type/DateTimeWithTZ)))
+    coerce-to-local-datetime))
+
 (defn- parse-checkpoint-value
-  "Parse a serialized checkpoint value string according to its base-type keyword."
+  "Parse a serialized checkpoint value string according to its base-type keyword.
+  For temporal types, coerces the result to match the column's base-type."
   [base-type s]
   (cond
-    (not (string? s)) s
+    (not (string? s))               (maybe-coerce-temporal base-type s)
     (isa? base-type :type/Float)    (bigdec s)
     (isa? base-type :type/Number)   (biginteger s)
-    (isa? base-type :type/Temporal) (u.date/parse s)
+    (isa? base-type :type/Temporal) (maybe-coerce-temporal base-type (u.date/parse s))
     :else (throw (ex-info (str "Unsupported checkpoint type: " (pr-str base-type))
                           {:base-type base-type}))))
 
@@ -199,16 +288,11 @@
   [query source-range-params]
   (let [{:keys [checkpoint-filter-field-id lo hi column]} source-range-params
         table-id  (:table-id column)
-        tags      (lib/template-tags query)
-        tag-name  (some (fn [[k v]]
-                          (when (and (#{:table "table"} (:type v))
-                                     (= table-id (:table-id v)))
-                            k))
-                        tags)
+        tag-name  (table-template-tag-name query table-id)
         _         (when-not tag-name
                     (throw (ex-info "No table variable found for checkpoint field's table"
                                     {:checkpoint-table-id table-id
-                                     :template-tags       tags})))
+                                     :template-tags       (lib/template-tags query)})))
         filters   (cond-> []
                     lo (conj {:field-id checkpoint-filter-field-id :op :> :value (:value lo)})
                     hi (conj {:field-id checkpoint-filter-field-id :op :<= :value (:value hi)}))]
@@ -224,7 +308,8 @@
    :checkpoint-filter-field-id (the field ID of the checkpoint column)
    Range predicate terms (maps :type, :value), can be nil (in which case the filter clause should be omitted):
    :lo                         values in the source table must be > this :value.
-   :hi                         values in the source table must be <= this :value."
+   :hi                         values in the source table must be <= this :value.
+   :rows-available             count of source rows in (lo, hi] from the same scan; nil if unavailable."
   [{:keys [source target] :as transform}]
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
@@ -255,19 +340,24 @@
             base-type         (:base-type column)
             lo                (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
 
-            max-value
+            ;; Combine max + count in one scan: avoids a second round-trip and pins both
+            ;; numbers to the same point-in-time view of the source.
+            [max-value rows-available]
             (let [table-id          (:table-id column)
                   table-metadata    (lib.metadata/table metadata-provider table-id)
                   base-query        (lib/query metadata-provider table-metadata)
                   filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
-                  query             (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
-                  query-result      (qp/process-query query)]
-              (ffirst (get-in query-result [:data :rows])))]
-        {:column                     column
-         :checkpoint-filter-field-id checkpoint-filter-field-id
-         :lo                         (when lo {:value lo})
-         :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
-                                           lo {:value lo})}))))
+                  query             (-> (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
+                                        (lib/aggregate (lib/count)))
+                  query-result      (qp/process-query query)
+                  [mv cv]           (first (get-in query-result [:data :rows]))]
+              [mv (some-> cv long)])]
+        (cond-> {:column                     column
+                 :checkpoint-filter-field-id checkpoint-filter-field-id
+                 :lo                         (when lo {:value lo})
+                 :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
+                                                   lo {:value lo})}
+          (some? rows-available) (assoc :rows-available rows-available))))))
 
 (defn preprocess-incremental-query
   "Add checkpoint filtering to a query for incremental execution.
@@ -333,14 +423,43 @@
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
+(defn- canonicalize-target
+  "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
+   to-side of an active TableRemapping for `db-id`), return `target` with
+   `:schema` and `:name` swapped back to canonical. Else return `target`
+   unchanged. The transform pipeline mutates `:target.schema` to the workspace
+   output schema in `metabase.transforms.execute/resolve-target` so writes
+   land in isolation; `:model/Table` rows must stay at the canonical schema,
+   so we invert here.
+
+   `canonical-schema+name` returns a `{:db :schema :name}` map with slot
+   values already normalized to `:model/Table` row vocabulary (nil for
+   engines that don't emit a slot, string otherwise) — directly usable as a
+   Table-row predicate without further translation."
+  [db-id target]
+  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
+    (if-let [{:keys [db schema name]} (ws.table-remapping/canonical-schema+name db-id lookup-spec)]
+      (assoc target :db db :schema schema :name name)
+      target)))
+
 (defn- sync-table!
   ([database target] (sync-table! database target nil))
   ([database target {:keys [create?]}]
-   (when-let [table (or (target-table (:id database) target)
-                        (when create?
-                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-     (sync/sync-table! table)
-     table)))
+   (let [target (canonicalize-target (:id database) target)]
+     (when-let [table (or (target-table (:id database) target)
+                          (when create?
+                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+       ;; If the table has nil schema, check if the physical table actually lives under
+       ;; the driver's default schema. If so, fix the Table record before syncing.
+       (let [table (if (nil? (:schema table))
+                     (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                       (do (t2/update! :model/Table (:id table) {:schema actual-schema})
+                           (-> (t2/select-one :model/Table (:id table))
+                               (t2/hydrate :db)))
+                       table)
+                     table)]
+         (sync/sync-table! table)
+         table)))))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
@@ -441,7 +560,6 @@
   "Post-processing steps after a transform has been executed successfully.
 
    Performs:
-   - Save watermark (if source-range-params provided)
    - Sync target table to AppDB
    - Set `transform_id` on the target table
    - Publish Metabase events (unless `:publish-events?` is false)
@@ -452,20 +570,13 @@
    to preserve the correct order of operations."
   [transform opts]
   (let [{:keys [target]} transform
-        {:keys [publish-events? source-range-params]
+        {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (t2/select-one :model/Database db-id)]
-    ;; Save watermark if source-range-params available
-    (when source-range-params
-      (save-watermark! (:id transform) source-range-params))
-    ;; Sync target table
-    (sync-target! target database)
-    ;; Mark the table as owned by this transform
-    (when-let [table (t2/select-one :model/Table
-                                    :db_id db-id
-                                    :schema (:schema target)
-                                    :name (:name target))]
+    ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
+    (when-let [table (sync-target! target database)]
+      (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
       (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
@@ -476,12 +587,12 @@
                                        :output-schema  (:schema target)
                                        :output-table   (qualified-table-name (:engine database) target)}}))))
 
-;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
+(defn output-table
+  "Return the output table created by a transform, looked up via `transform_id`."
+  [transform]
+  (t2/select-one :model/Table :transform_id (:id transform)))
 
-(mu/defn source-tables-vec->alias-id-map :- [:map-of :string [:maybe :int]]
-  "Convert source-table entries to `{alias -> table_id}` map."
-  [entries :- [:sequential ::source-table-entry]]
-  (into {} (map (juxt :alias :table_id)) entries))
+;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
 ;;; ------------------------------------------------- Source Table Resolution -------------------------------------------------
 
@@ -523,8 +634,8 @@
   "A source table entry in the array format. Combines alias with table reference."
   [:map
    [:alias :string]
-   [:database_id {:optional true} :int]
-   [:schema {:optional true} [:maybe :string]]
+   [:database_id :int]
+   [:schema [:maybe :string]]
    [:table {:optional true} :string]
    [:table_id {:optional true} [:maybe :int]]])
 
@@ -534,7 +645,7 @@
   For entries with only :database_id/:schema/:table, looks up :table_id.
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
-  [source-tables :- [:sequential ::source-table-entry]]
+  [source-tables :- [:sequential [:map [:alias :string]]]]
   (let [;; Entries that have table_id but lack table metadata need lookup
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)
@@ -557,7 +668,8 @@
               (and (:table_id entry) (not (:table entry)))
               (merge (int-id->metadata (:table_id entry)) entry)
 
-              ;; Has table metadata but no table_id — look it up
+              ;; Has table metadata but no table_id — look it up. Leaves :table_id nil if the
+              ;; referenced table doesn't exist yet; resolved later at execute time.
               (missing-table-id? entry)
               (assoc entry :table_id (ref-lookup (source-table-ref->key entry)))
 
@@ -565,24 +677,23 @@
               :else entry))
           source-tables)))
 
-(mu/defn resolve-source-tables :- [:map-of :string :int]
-  "Resolve source-table entries to `{alias -> table_id}`. Throws if any table not found.
+(mu/defn resolve-source-tables :- [:sequential ::source-table-entry]
+  "Resolve source-table entries to entries with :table_id filled in. Throws if any table not found.
   For execute time — all entries must resolve to valid table IDs."
   [source-tables :- [:sequential ::source-table-entry]]
   (let [needs-lookup (filter missing-table-id? source-tables)
         lookup       (or (batch-lookup-table-ids needs-lookup) {})
-        resolved     (u/for-map [entry source-tables]
-                       [(:alias entry) (or (:table_id entry) (lookup (source-table-ref->key entry)))])
-        unresolved   (for [entry source-tables
-                           :let [table-id (or (:table_id entry) (lookup (source-table-ref->key entry)))]
-                           :when (nil? table-id)]
-                       {:alias (:alias entry)
-                        :table (if-let [schema (:schema entry)]
-                                 (str schema "." (:table entry))
-                                 (:table entry))
-                        :ref   entry})]
+        resolved     (mapv (fn [entry]
+                             (let [table-id (or (:table_id entry) (lookup (source-table-ref->key entry)))]
+                               (assoc entry :table_id table-id)))
+                           source-tables)
+        unresolved   (filter #(nil? (:table_id %)) resolved)]
     (when (seq unresolved)
-      (throw (ex-info (str "Tables not found: " (str/join ", " (map :table unresolved)))
+      (throw (ex-info (str "Tables not found: " (str/join ", " (map (fn [{:keys [schema table]}]
+                                                                      (if schema
+                                                                        (str schema "." table)
+                                                                        table))
+                                                                    unresolved)))
                       {:unresolved unresolved
                        :transform-message "Input table not found"})))
     resolved))
@@ -631,7 +742,7 @@
                       {:temporal t})))))
 
 (defn utc-timestamp-string
-  "Convert the timestamp t to a string encoding the it in the system timezone."
+  "Convert the timestamp `t` to a UTC ISO-8601 string."
   [t]
   (-> t ->instant str))
 
@@ -681,18 +792,11 @@
   (when-let [table-name (:name table)]
     (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
 
-(defn db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database"
-  [db-or-id]
-  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
-      (some->> (:router-database-id db-or-id)
-               (t2/exists? :model/DatabaseRouter :database_id))))
-
 (defn throw-if-db-routing-enabled!
   "Throws if the database has routing enabled. Call before any driver operations to get a
    clear error message rather than a confusing driver-level failure."
   [transform database]
-  (when (db-routing-enabled? database)
+  (when (database-routing/db-routing-enabled? database)
     (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
                               (:name transform)
                               (:name database))

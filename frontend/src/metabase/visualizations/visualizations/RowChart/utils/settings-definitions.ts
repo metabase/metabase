@@ -7,15 +7,13 @@ import type { Series, VisualizationSettings } from "metabase-types/api";
 
 export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
   "stackable.stack_type": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Stacking`;
     },
     index: 1,
     widget: "radio",
-    default: null,
+    getDefault: () => null,
     getProps: () => ({
       options: [
         {
@@ -41,9 +39,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
   },
   ...GRAPH_GOAL_SETTINGS,
   "graph.x_axis.scale": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -52,15 +48,13 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     },
     index: 4,
     widget: "select",
-    default: "ordinal",
+    getDefault: () => "ordinal",
     getProps: () => {
       return { options: [{ name: t`Ordinal`, value: "ordinal" }] };
     },
   },
   "graph.y_axis.scale": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Scale`;
     },
@@ -69,7 +63,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
       return t`X-axis`;
     },
     widget: "select",
-    default: "linear",
+    getDefault: () => "linear",
     getProps: () => ({
       options: [
         { name: t`Linear`, value: "linear" },
@@ -79,9 +73,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.x_axis.axis_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -106,12 +98,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
         },
       ],
     }),
-    default: true,
+    getDefault: () => true,
   },
   "graph.y_axis.axis_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Show lines and marks`;
     },
@@ -136,12 +126,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
         },
       ],
     }),
-    default: true,
+    getDefault: () => true,
   },
   "graph.y_axis.auto_range": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`X-axis`;
     },
@@ -151,12 +139,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     },
     inline: true,
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
   },
   "graph.y_axis.min": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`X-axis`;
     },
@@ -165,14 +151,12 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Min`;
     },
     widget: "number",
-    default: 0,
+    getDefault: () => 0,
     getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.y_axis.max": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`X-axis`;
     },
@@ -181,14 +165,12 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Max`;
     },
     widget: "number",
-    default: 100,
+    getDefault: () => 100,
     getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.x_axis.labels_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -198,12 +180,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     },
     inline: true,
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
   },
   "graph.x_axis.title_text": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Label`;
     },
@@ -220,9 +200,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.y_axis.labels_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Show label`;
     },
@@ -232,12 +210,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     },
     widget: "toggle",
     inline: true,
-    default: true,
+    getDefault: () => true,
   },
   "graph.y_axis.title_text": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Label`;
     },
@@ -266,9 +242,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["series", "graph.metrics"],
   },
   "graph.show_values": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Show values on data points`;
     },
@@ -276,12 +250,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     inline: true,
     getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["stackable.stack_type"] === "normalized",
-    default: false,
+    getDefault: () => false,
   },
   "graph.label_value_formatting": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Value labels formatting`;
     },
@@ -305,7 +277,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
         },
       ],
     }),
-    default: "full",
+    getDefault: () => "full",
     readDependencies: ["graph.show_values"],
   },
 };

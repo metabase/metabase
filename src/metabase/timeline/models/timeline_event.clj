@@ -131,4 +131,5 @@
    :transform {:created_at  (serdes/date)
                :creator_id  (serdes/fk :model/User)
                :timeline_id (serdes/parent-ref)
-               :timestamp   (serdes/date)}})
+               :timestamp   (serdes/date)}
+   :defaults {:archived false}})

@@ -2,6 +2,9 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { displayNameForColumn } from "metabase/utils/formatting";
+import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
+import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_FORMATTING_SETTING,
@@ -11,23 +14,18 @@ import {
   COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
-} from "metabase/lib/data_grid";
-import { displayNameForColumn } from "metabase/lib/formatting";
-import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
-import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+} from "metabase/visualizations/lib/data_grid";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import {
-  getDimensionReferenceWithoutBaseType,
-  isDimensionReferenceWithOptions,
-} from "metabase-lib/v1/references";
+  getFieldRefForComparison,
+  migratePivotColumnSplitSetting,
+} from "metabase-lib/v1/queries/utils/pivot";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
   DatasetData,
-  DimensionReference,
   PivotTableColumnSplitSetting,
   RawSeries,
   Series,
@@ -52,9 +50,9 @@ export const getTitleForColumn = (
 };
 
 export const settings = {
-  ...columnSettings({ hidden: true }),
+  ...columnSettings({ getHidden: () => true }),
   [COLLAPSED_ROWS_SETTING]: {
-    hidden: true,
+    getHidden: () => true,
     readDependencies: [COLUMN_SPLIT_SETTING],
     getValue: (
       [{ data }]: Series,
@@ -78,9 +76,7 @@ export const settings = {
     },
   },
   [COLUMN_SPLIT_SETTING]: {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     widget: "fieldsPartition",
     persistDefault: true,
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
@@ -127,7 +123,8 @@ export const settings = {
 
         if (dimensions.length < 2) {
           columns = [];
-          rows = [first];
+          // use `dimensions` so `rows` is `[]` when there are zero dimensions, not `[undefined]` (metabase#56235)
+          rows = dimensions;
         } else if (dimensions.length <= 3) {
           columns = [first];
           rows = [second, ...rest];
@@ -149,31 +146,25 @@ export const settings = {
     },
   },
   "pivot.show_row_totals": {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     get title() {
       return t`Show row totals`;
     },
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
     inline: true,
   },
   "pivot.show_column_totals": {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     get title() {
       return t`Show column totals`;
     },
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
     inline: true,
   },
   "pivot.condense_duplicate_totals": {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     get title() {
       return t`Condense duplicate totals`;
     },
@@ -181,7 +172,7 @@ export const settings = {
       return t`Hide additional total elements if the totals are the same`;
     },
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
     inline: true,
     getHidden: (
       _series: RawSeries,
@@ -196,11 +187,8 @@ export const settings = {
   },
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
-    get section() {
-      return t`Conditional Formatting`;
-    },
+    getSection: () => t`Conditional Formatting`,
     widget: ChartSettingsTableFormatting,
-    default: [],
     getDefault: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
@@ -270,7 +258,10 @@ export const _columnSettings = {
     },
     widget: ChartSettingIconRadio,
     inline: true,
-    borderBottom: true,
+    getWrapperStyle: () => ({
+      paddingBottom: "1rem",
+      borderBottom: `1px solid var(--mb-color-border)`,
+    }),
     getProps: () => ({
       options: [
         {
@@ -337,14 +328,3 @@ export const _columnSettings = {
     getDefault: displayNameForColumn,
   },
 };
-
-/*
-  When comparing field refs for pivot viz settings, ignore `base-type`.
-  Sometimes it's present, sometimes it's not. New pivot settings use column
-  names only and do not depend on field refs.
- */
-function getFieldRefForComparison(fieldRef: DimensionReference) {
-  return isDimensionReferenceWithOptions(fieldRef)
-    ? getDimensionReferenceWithoutBaseType(fieldRef)
-    : fieldRef;
-}

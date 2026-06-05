@@ -8,13 +8,14 @@ on:
 
 jobs:
   codespell:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install codespell
         run: pip install codespell
@@ -67,7 +68,7 @@ jobs:
 
       - name: Fix spelling errors with Claude Code
         if: steps.codespell_check.outcome == 'failure'
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
@@ -82,7 +83,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.codespell_check.outcome == 'failure'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: claude-fix/codespell-${{ steps.date.outputs.date }}

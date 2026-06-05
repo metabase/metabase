@@ -2,15 +2,9 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import {
-  Box,
-  type BoxProps,
-  Group,
-  Icon,
-  type IconName,
-  rem,
-} from "metabase/ui";
+import { Ellipsified } from "metabase/ui";
+import { Box, type BoxProps, Group, Icon, rem } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./Breadcrumb.module.css";
 

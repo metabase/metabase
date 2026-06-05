@@ -6,12 +6,14 @@ import {
   getOSSVersion,
 } from "./version-helpers";
 
+type MilestoneState = "open" | "closed" | "all";
+
 export const getMilestones = async ({
   github,
   owner,
   repo,
-  state = "open",
-}: GithubProps & { state?: "open" | "closed" }) => {
+  state = "all",
+}: GithubProps & { state?: MilestoneState }) => {
   const milestones = await github.paginate(github.rest.issues.listMilestones, {
     owner,
     repo,
@@ -27,7 +29,7 @@ export const findMilestone = async ({
   owner,
   repo,
   state,
-}: ReleaseProps & { state?: "open" | "closed" }) => {
+}: ReleaseProps & { state?: MilestoneState }) => {
   const milestones = await getMilestones({ github, owner, repo, state });
   const expectedMilestoneName = getMilestoneName(version);
 
@@ -90,7 +92,7 @@ export const getMilestoneIssues = async ({
   milestoneStatus,
 }: ReleaseProps & {
   state?: "closed" | "open";
-  milestoneStatus?: "open" | "closed";
+  milestoneStatus?: MilestoneState;
 }): Promise<Issue[]> => {
   const milestone = await findMilestone({
     version,
@@ -259,7 +261,24 @@ export async function getLatestGreenCommit({
   return null;
 }
 
-// note: only checks if the commit is the last one released for the major version
+/**
+ * True if `ref` is not strictly newer than the most recent release for this
+ * major — i.e. its code is already shipped. We compare the last release tag
+ * against the branch tip and check membership of `ref` in the returned commits
+ * (which are exactly the commits on the branch that are NOT in the last
+ * release's history). The previous SHA-equality check only caught the case
+ * where `ref` was *the* last release tag's commit, and missed any older commit
+ * further back in history — see DEV-2025.
+ *
+ * Known limitation: `compareCommitsWithBasehead` returns at most 250 commits
+ * in a single page (the `commits` array is truncated even though `total_commits`
+ * reflects the full count). If a release branch ever accumulates more than 250
+ * commits since its last release tag, a candidate beyond the 250th would be
+ * missing from `data.commits` and the gate would incorrectly say "already
+ * released" → skip. Today's release cadence keeps `ahead_by` in single digits,
+ * so this is theoretical, but worth knowing if cadence ever changes — the fix
+ * is `github.paginate(github.rest.repos.compareCommitsWithBasehead, …)`.
+ */
 export async function hasCommitBeenReleased({
   github,
   owner,
@@ -267,7 +286,6 @@ export async function hasCommitBeenReleased({
   ref,
   majorVersion,
 }: GithubProps & { ref: string; majorVersion: number }) {
-  // TODO: a better approach would be to fetch the ref and see if it has any release tags
   const lastTag = await getLastReleaseTag({
     github,
     owner,
@@ -285,9 +303,26 @@ export async function hasCommitBeenReleased({
 
   const lastTagSha = tagDetail.data.object.sha;
 
-  console.log({ lastTag, lastTagSha, ref });
+  // Short-circuit when the candidate IS the last release tag's commit. The
+  // compare API excludes the base from `data.commits`, so this case would
+  // otherwise reach the membership check and return `true` only as a
+  // side effect of "base is not in the commits list" — calling it out
+  // explicitly is clearer and saves an API call.
+  if (lastTagSha === ref) {
+    return true;
+  }
 
-  return lastTagSha === ref;
+  const { data } = await github.rest.repos.compareCommitsWithBasehead({
+    owner,
+    repo,
+    basehead: `${lastTagSha}...refs/heads/release-x.${majorVersion}.x`,
+  });
+
+  const isAheadOfLastRelease = data.commits.some(c => c.sha === ref);
+
+  console.log({ lastTag, lastTagSha, ref, isAheadOfLastRelease });
+
+  return !isAheadOfLastRelease;
 }
 
 export async function getOpenBackportPrs({

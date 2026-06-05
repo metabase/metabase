@@ -6,17 +6,11 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { displayNameForColumn } from "metabase/lib/formatting";
-import {
-  ActionIcon,
-  Flex,
-  type FlexProps,
-  Icon,
-  type IconName,
-} from "metabase/ui";
+import { Ellipsified } from "metabase/ui";
+import { ActionIcon, Flex, type FlexProps, Icon } from "metabase/ui";
+import { displayNameForColumn } from "metabase/utils/formatting";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, IconName } from "metabase-types/api";
 
 import S from "./ColumnsListItem.module.css";
 

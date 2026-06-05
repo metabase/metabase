@@ -1,5 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.nested-queries-test
   "Tests for handling queries with nested expressions."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.nested-queries-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.nested-queries-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.nested-queries-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -20,11 +23,11 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -365,10 +368,10 @@
                                        (count long-col-full-name)))
             ;; Disable truncate-alias when compiling the native query to ensure we don't further truncate the column.
             ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-            native-sub-query   (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
-                                             (fn mock-truncate-alias
-                                               ([ss] ss)
-                                               ([ss _] ss))]
+            native-sub-query   (mt/with-dynamic-fn-redefs [metabase.lib.util.unique-name-generator/truncate-alias
+                                                           (fn mock-truncate-alias
+                                                             ([ss] ss)
+                                                             ([ss _] ss))]
                                  (mu/disable-enforcement
                                    (-> (mt/mbql-query people
                                          {:source-table $$people
@@ -437,14 +440,14 @@
 
 (deftest ^:parallel field-literals-test
   (is (= (honeysql->sql
-          {:select [[:source.ID :ID]
-                    [:source.NAME :NAME]
-                    [:source.CATEGORY_ID :CATEGORY_ID]
-                    [:source.LATITUDE :LATITUDE]
-                    [:source.LONGITUDE :LONGITUDE]
-                    [:source.PRICE :PRICE]]
-           :from   [[venues-source-honeysql :source]]
-           :where  [:= [:raw "\"source\".\"BIRD.ID\""] [:inline 1]]
+          {:select [[:__mb_source.ID :ID]
+                    [:__mb_source.NAME :NAME]
+                    [:__mb_source.CATEGORY_ID :CATEGORY_ID]
+                    [:__mb_source.LATITUDE :LATITUDE]
+                    [:__mb_source.LONGITUDE :LONGITUDE]
+                    [:__mb_source.PRICE :PRICE]]
+           :from   [[venues-source-honeysql :__mb_source]]
+           :where  [:= [:raw "\"__mb_source\".\"BIRD.ID\""] [:inline 1]]
            :limit  [:inline 10]})
          (qp.compile/compile
           {:database (mt/id)
@@ -458,16 +461,16 @@
 (deftest field-literals-date-time-fields-test
   (mt/with-temporary-setting-values [start-of-week :sunday]
     (is (= (honeysql->sql
-            {:select [[:source.ID :ID]
-                      [:source.NAME :NAME]
-                      [:source.CATEGORY_ID :CATEGORY_ID]
-                      [:source.LATITUDE :LATITUDE]
-                      [:source.LONGITUDE :LONGITUDE]
-                      [:source.PRICE :PRICE]]
-             :from   [[venues-source-honeysql :source]]
+            {:select [[:__mb_source.ID :ID]
+                      [:__mb_source.NAME :NAME]
+                      [:__mb_source.CATEGORY_ID :CATEGORY_ID]
+                      [:__mb_source.LATITUDE :LATITUDE]
+                      [:__mb_source.LONGITUDE :LONGITUDE]
+                      [:__mb_source.PRICE :PRICE]]
+             :from   [[venues-source-honeysql :__mb_source]]
              :where  [:and
-                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
-                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
+                      [:>= [:raw "\"__mb_source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
+                      [:< [:raw "\"__mb_source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
              :limit  [:inline 10]})
            (qp.compile/compile
             (mt/mbql-query venues
@@ -480,7 +483,7 @@
   (testing "make sure that aggregation references match up to aggregations from the same level they're from"
     ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
     (is (= {:query ["SELECT"
-                    "  AVG(\"source\".\"stddev\") AS \"avg\""
+                    "  AVG(\"__mb_source\".\"stddev\") AS \"avg\""
                     "FROM"
                     "  ("
                     "    SELECT"
@@ -493,7 +496,7 @@
                     "    ORDER BY"
                     "      \"stddev\" DESC,"
                     "      \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
-                    "  ) AS \"source\""]
+                    "  ) AS \"__mb_source\""]
             :params nil}
            (-> (mt/mbql-query venues
                  {:source-query {:source-table $$venues
@@ -507,7 +510,7 @@
 (deftest ^:parallel handle-incorrect-field-forms-gracefully-test
   (testing "make sure that we handle [:field [:field <name> ...]] forms gracefully, despite that not making any sense"
     (is (= {:query  ["SELECT"
-                     "  \"source\".\"CATEGORY_ID\" AS \"CATEGORY_ID\""
+                     "  \"__mb_source\".\"CATEGORY_ID\" AS \"CATEGORY_ID\""
                      "FROM"
                      "  ("
                      "    SELECT"
@@ -519,11 +522,11 @@
                      "      \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\""
                      "    FROM"
                      "      \"PUBLIC\".\"VENUES\""
-                     "  ) AS \"source\""
+                     "  ) AS \"__mb_source\""
                      "GROUP BY"
-                     "  \"source\".\"CATEGORY_ID\""
+                     "  \"__mb_source\".\"CATEGORY_ID\""
                      "ORDER BY"
-                     "  \"source\".\"CATEGORY_ID\" ASC"
+                     "  \"__mb_source\".\"CATEGORY_ID\" ASC"
                      "LIMIT"
                      "  10"]
             :params nil}
@@ -537,15 +540,15 @@
 (deftest ^:parallel filter-by-string-fields-test
   (testing "Make sure we can filter by string fields from a source query"
     (is (= (honeysql->sql
-            {:select [[:source.ID :ID]
-                      [:source.NAME :NAME]
-                      [:source.CATEGORY_ID :CATEGORY_ID]
-                      [:source.LATITUDE :LATITUDE]
-                      [:source.LONGITUDE :LONGITUDE]
-                      [:source.PRICE :PRICE]]
-             :from   [[venues-source-honeysql :source]]
-             :where  [:or [:not= :source.text "Coo"]
-                      [:= :source.text nil]]
+            {:select [[:__mb_source.ID :ID]
+                      [:__mb_source.NAME :NAME]
+                      [:__mb_source.CATEGORY_ID :CATEGORY_ID]
+                      [:__mb_source.LATITUDE :LATITUDE]
+                      [:__mb_source.LONGITUDE :LONGITUDE]
+                      [:__mb_source.PRICE :PRICE]]
+             :from   [[venues-source-honeysql :__mb_source]]
+             :where  [:or [:not= :__mb_source.text "Coo"]
+                      [:= :__mb_source.text nil]]
              :limit  [:inline 10]})
            (qp.compile/compile
             (mt/mbql-query nil
@@ -556,14 +559,14 @@
 (deftest ^:parallel filter-by-number-fields-test
   (testing "Make sure we can filter by number fields form a source query"
     (is (= (honeysql->sql
-            {:select [[:source.ID :ID]
-                      [:source.NAME :NAME]
-                      [:source.CATEGORY_ID :CATEGORY_ID]
-                      [:source.LATITUDE :LATITUDE]
-                      [:source.LONGITUDE :LONGITUDE]
-                      [:source.PRICE :PRICE]]
-             :from   [[venues-source-honeysql :source]]
-             :where  [:> :source.sender_id [:inline 3]]
+            {:select [[:__mb_source.ID :ID]
+                      [:__mb_source.NAME :NAME]
+                      [:__mb_source.CATEGORY_ID :CATEGORY_ID]
+                      [:__mb_source.LATITUDE :LATITUDE]
+                      [:__mb_source.LONGITUDE :LONGITUDE]
+                      [:__mb_source.PRICE :PRICE]]
+             :from   [[venues-source-honeysql :__mb_source]]
+             :where  [:> :__mb_source.sender_id [:inline 3]]
              :limit  [:inline 10]})
            (qp.compile/compile
             (mt/mbql-query nil
@@ -583,7 +586,7 @@
                                                                                :type         :text
                                                                                :required     true
                                                                                :default      "Widget"}}}}])
-      (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"source\" LIMIT 1048575"
+      (is (= {:query  "SELECT \"__mb_source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"__mb_source\" LIMIT 1048575"
               :params ["Widget"]}
              (qp.compile/compile
               {:database (meta/id)
@@ -783,7 +786,6 @@
               (is (= (mi/perms-objects-set collection :read)
                      (mi/perms-objects-set card-1 :read)
                      (mi/perms-objects-set card-2 :read)))
-
               (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
                 (doseq [[object-name object] {"Collection" collection
                                               "Card 1"     card-1
@@ -792,7 +794,6 @@
                     (testing object-name
                       (is (= false
                              (mi/can-read? object)))))))
-
               (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
                 (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/with-test-user :rasta
@@ -802,7 +803,6 @@
                     (testing object-name
                       (is (true?
                            (mi/can-read? object)))))
-
                   (testing "\nshould be able to run the query"
                     (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
                             [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
@@ -843,7 +843,6 @@
           (perms/grant-collection-read-permissions!      (perms/all-users-group) source-card-collection)
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
           (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
-
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
@@ -853,7 +852,6 @@
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
-
         (testing "Card in a different Collection for which we do not have perms"
           ;; allowing `with-temp` here since we need it to make Collections
           #_{:clj-kondo/ignore [:discouraged-var]}
@@ -862,7 +860,6 @@
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
-
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
             ;; allowing `with-temp` here since we need it to make Collections
@@ -871,7 +868,6 @@
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (= "You don't have permissions to do that."
                      (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
-
           (testing "Try to save in a different Collection for which we do not have perms"
             ;; allowing `with-temp` here since we need it to make Collections
             #_{:clj-kondo/ignore [:discouraged-var]}
@@ -1513,8 +1509,8 @@
                        {:source-query (:query q1)})]
               (when (= driver/*driver* :h2)
                 (is (= (update q1-native :query (fn [s]
-                                                  (format (str "SELECT \"source\".\"count\" AS \"count\" "
-                                                               "FROM (%s) AS \"source\" "
+                                                  (format (str "SELECT \"__mb_source\".\"count\" AS \"count\" "
+                                                               "FROM (%s) AS \"__mb_source\" "
                                                                "LIMIT 1048575")
                                                           s)))
                        (qp.compile/compile q2))))
@@ -1696,7 +1692,6 @@
                                                                  (lib.metadata/field mp (mt/id "space table" "space column"))
                                                                  (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
                                                                                       "Space Table Alias"))])))
-
                     (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :lib/original-join-alias)
                                                    (lib/breakoutable-columns $q)))
                     (lib/append-stage $q)
@@ -1757,3 +1752,17 @@
                          (lib/limit 3))]
       (is (=? (mt/rows (qp/process-query base-query))
               (mt/rows (qp/process-query (lib/append-stage base-query))))))))
+
+(deftest ^:parallel empty-column-alias-test
+  (testing "can query a card that has an empty column alias (#57685)"
+    (let [mp (mt/metadata-provider)
+          card-query (lib/native-query mp "select id as \"\" from orders limit 2")]
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (mt/with-temp [:model/Card card {:dataset_query card-query}]
+        (let [query (->> (lib/query mp (lib.metadata/card mp (:id card)))
+                         lib/append-stage
+                         qp/process-query)]
+          (is (= [[1] [2]]
+                 (mt/rows query)))
+          (is (= ""
+                 (-> query :data :results_metadata :columns first :name))))))))

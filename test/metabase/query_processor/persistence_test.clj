@@ -1,7 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.persistence-test
   {:clj-kondo/config '{:linters
                        ;; allowing with-temp in this namespace since model persistence needs to hit the app DB
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.persistence-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -9,9 +10,9 @@
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.settings :as qp.settings]
+   [metabase.query-processor.test :as qp]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]

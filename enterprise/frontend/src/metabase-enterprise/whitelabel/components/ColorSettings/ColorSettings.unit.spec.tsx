@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import Color from "color";
 
 import { render, screen } from "__support__/ui";
-import { colors, staticVizOverrides } from "metabase/lib/colors/colors";
-import { color } from "metabase/lib/colors/palette";
+import { colors, staticVizOverrides } from "metabase/ui/colors/colors";
+import { color } from "metabase/ui/colors/palette";
 
 import { ColorSettings } from "./ColorSettings";
 

@@ -26,7 +26,8 @@ import {
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -37,7 +38,6 @@ import {
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockDashboardState } from "metabase-types/store/mocks";
 
 const TEST_COLLECTION = createMockCollection();
 
@@ -162,14 +162,18 @@ describe("DashboardApp", () => {
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
       const { dashboardId, history } = await setup();
 
-      history.push("/");
-      history.push(`/dashboard/${dashboardId}`);
+      act(() => {
+        history.push("/");
+        history.push(`/dashboard/${dashboardId}`);
+      });
 
       await waitForLoaderToBeRemoved();
 
       await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(
         screen.queryByTestId("leave-confirmation"),

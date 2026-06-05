@@ -14,7 +14,6 @@
 (p/import-vars
  [metabase.pulse.models.pulse
   card->ref
-  create-pulse!
   retrieve-alerts-for-cards
   update-pulse!]
  [metabase.pulse.update-alerts

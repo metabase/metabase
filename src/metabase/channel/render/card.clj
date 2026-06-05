@@ -26,11 +26,21 @@
    [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
    [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
    [:channel.render/disable-links?             {:description "default: false", :optional true} :boolean]
-   [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]])
+   [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]
+   [:channel.render/padding-x                  {:description "default: 0, horizontal pixels around image", :optional true} [:maybe :int]]
+   [:channel.render/padding-y                  {:description "default: 0, vertical pixels around image", :optional true} [:maybe :int]]])
+
+(mr/def ::adhoc-card
+  "Schema for an ad-hoc (unsaved) card."
+  [:map
+   [:display :keyword]
+   [:visualization_settings {:optional true} [:maybe :map]]
+   [:name {:optional true} [:maybe :string]]])
 
 (defn- card-href
   [card]
-  (h (urls/card-url (u/the-id card))))
+  (when-let [card-id (u/id card)]
+    (h (urls/card-url card-id))))
 
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
@@ -171,6 +181,13 @@
                   (log/error e "Pulse card render error")
                   (body/render :render-error nil nil nil nil nil)))))))
 
+(mu/defn error-rendered-part :- ::body/RenderedPartCard
+  "The placeholder rendered-part shown when an individual card/part of a notification fails to
+  render. Channels substitute this for a failed part so one failure degrades to an error box
+  instead of breaking the whole alert/dashboard subscription."
+  []
+  (body/render :render-error nil nil nil nil nil))
+
 (mu/defn render-pulse-card :- ::body/RenderedPartCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
@@ -263,7 +280,22 @@
            result
            width
            options :- [:maybe ::options]]
-   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result options) width)))
+   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result options) width options)))
+
+(mu/defn render-adhoc-card-to-png :- bytes?
+  "Render an ad-hoc (unsaved) card to PNG."
+  (^bytes [adhoc-card results width]
+   (render-adhoc-card-to-png adhoc-card results width nil))
+
+  (^bytes [adhoc-card :- ::adhoc-card
+           results    :- [:map [:data :map]]
+           width
+           options    :- [:maybe ::options]]
+   (let [timezone-id (qp.timezone/system-timezone-id)]
+     (png/render-html-to-png
+      (render-pulse-card :inline timezone-id adhoc-card nil results options)
+      width
+      options))))
 
 (mu/defn render-pulse-card-to-base64 :- string?
   "Render a `pulse-card` as a PNG and return it as a base64 encoded string."

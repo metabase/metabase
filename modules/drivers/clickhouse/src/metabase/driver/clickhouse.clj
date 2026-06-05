@@ -1,6 +1,5 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
-  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -10,6 +9,7 @@
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -20,8 +20,8 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.performance :refer [not-empty]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
@@ -33,6 +33,9 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
+
+(defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :clickhouse :field s))
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -72,6 +75,14 @@
                               :window-functions/offset          false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
+(defmethod driver/qualified-name-components :clickhouse
+  [_driver]
+  ;; ClickHouse emits 2-part `db.table`. Its "database" sits at the schema AST position
+  ;; (one level above the table) — same position SQLGlot stores in `Table.db`. Per
+  ;; [[driver/qualified-name-components]] this is `:schema`, NOT `:db` (which is reserved
+  ;; for catalog-level / 3-part identifiers like BigQuery's project).
+  [:schema])
+
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
 
@@ -102,6 +113,17 @@
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
 
+(defn- first-db-name
+  "Extract a single database name from a legacy `dbname` value. Older configurations stored
+  multiple databases here, separated by spaces, commas, or both (matching the
+  `:db-filters-patterns` syntax). These values weren't migrated, so we have to keep handling
+  them. The chosen name is just the connection's default database — other databases are
+  reached by qualifying queries (#70798, #73175)."
+  [s]
+  (->> (str/split (or s "") #"[\s,]+")
+       (remove str/blank?)
+       first))
+
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
   (let [;; ensure defaults merge on top of nils
@@ -109,11 +131,7 @@
                            default-connection-details
                            details)
         {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
-        ;; Handling legacy `dbname` values here. `dbname` used to be a space-separated string of
-        ;; the database names. These `dbname` values weren't migrated so they still need to be handled
-        ;; here. This is the original version that takes the first db. This value is just the default
-        ;; db, we hit other dbs by including the db in the queries (#70798).
-        dbname (first (str/split (str/trim dbname) #" "))
+        dbname (first-db-name dbname)
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
@@ -147,9 +165,11 @@
     (try
       ;; Default SELECT 1 is not enough for Metabase test suite,
       ;; as it works slightly differently than expected there
-      (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
-            dbname (first (str/split (str/trim (or (not-empty (:dbname details)) (:db details) "default")) #" "))
-            db    (ddl.i/format-name driver dbname)]
+      (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
+            dbname (or (first-db-name (:dbname details))
+                       (first-db-name (:db details))
+                       "default")
+            db     (ddl.i/format-name driver dbname)]
         (sql-jdbc.execute/do-with-connection-with-options
          driver spec nil
          (fn [^java.sql.Connection conn]
@@ -306,18 +326,35 @@
     (clickhouse-version/is-at-least? 24 4 db)
     false))
 
-(defmethod driver.sql/set-role-statement :clickhouse
-  [_ role]
-  (let [default-role (driver.sql/default-database-role :clickhouse nil)
-        quote-if-needed (fn [r]
-                          (if (or (re-matches #"\".*\"" r) (= role default-role))
-                            r
-                            (format "\"%s\"" r)))
-        quoted-role (->> (str/split role #",")
-                         (map quote-if-needed)
-                         (str/join ","))
-        statement   (format "SET ROLE %s" quoted-role)]
-    statement))
+(defmethod sql-jdbc/set-role-statement :clickhouse
+  [_driver _conn role]
+  ;; Since Clickhouse does not truly support prepared statements with protocol-level safety and has no
+  ;; `quote_ident()` function or similar, escape/quote the identifier client-side.
+  (let [default-role         (driver.sql/default-database-role :clickhouse nil)
+        quote-if-needed      (fn [role]
+                               (if (or (and (str/starts-with? role "\"")
+                                            (str/ends-with? role "\""))
+                                       (= role default-role))
+                                 role
+                                 (str \" role \")))
+        escape-double-quotes #(str/replace % #"(?!^)\"(?<!$)" "\"\"")
+        quoted-role          (->> (str/split role #",")
+                                  (map quote-if-needed)
+                                  (map escape-double-quotes)
+                                  (str/join ","))]
+    (format "SET ROLE %s" quoted-role)))
+
+(defmethod driver/set-role! :clickhouse
+  [driver ^Connection conn role]
+  (let [sql (sql-jdbc/set-role-statement driver conn role)]
+    ;; there seems to be something weird going on with ClickHouse when using `next.jdbc/execute!` in the default impl
+    ;; to set the role (I'm guessing it's a `PreparedStatement` versus `Statement` issue? So just fall back to doing
+    ;; it this way
+    (when-not (string? sql)
+      (throw (UnsupportedOperationException.
+              "The Clickhouse implementation of metabase.driver/set-role! does not support parameterized statements")))
+    (with-open [stmt (.createStatement ^Connection conn)]
+      (.execute stmt ^String sql))))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
@@ -350,7 +387,7 @@
 
 (defmethod driver/create-schema-if-needed! :clickhouse
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
+  (let [sql [[(format "CREATE DATABASE IF NOT EXISTS %s;" (quote-schema schema))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -373,49 +410,67 @@
 
 (defmethod driver/init-workspace-isolation! :clickhouse
   [_driver database workspace]
-  (let [db-name   (driver.u/workspace-isolation-namespace-name workspace)
-        read-user {:user     (driver.u/workspace-isolation-user-name workspace)
-                   :password (driver.u/random-workspace-password)}]
+  (let [db-name             (driver.u/workspace-isolation-namespace-name workspace)
+        canonical-db        (:db (driver.conn/effective-details database))
+        read-user           {:user     (driver.u/workspace-isolation-user-name workspace)
+                             :password (driver.u/random-workspace-password)}
+        quoted-db           (quote-schema db-name)
+        quoted-user         (quote-field (:user read-user))
+        quoted-canonical-db (when-not (str/blank? canonical-db)
+                              (quote-schema canonical-db))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
-                     (format "CREATE USER IF NOT EXISTS `%s` IDENTIFIED BY '%s'"
-                             (:user read-user) (:password read-user))
-                     (format "GRANT ALL ON `%s`.* TO `%s`" db-name (:user read-user))]]
+        (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
+                             (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
+                                     quoted-user (:password read-user))
+                             (format "GRANT ALL ON %s.* TO %s" quoted-db quoted-user)]
+                      quoted-canonical-db
+                      (conj (format "GRANT SHOW DATABASES ON %s.* TO %s"
+                                    quoted-canonical-db quoted-user)))]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [(:password read-user)]))))))
     {:schema           db-name
      :database_details read-user}))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
-  [_driver database workspace tables]
+  [_driver database workspace schemas]
   (let [read-user-name (-> workspace :database_details :user)
-        qu             (sql.u/quote-name :clickhouse :field read-user-name)
-        sqls           (for [table tables]
-                         (format "GRANT SELECT ON %s.%s TO %s"
-                                 (sql.u/quote-name :clickhouse :schema (:schema table))
-                                 (sql.u/quote-name :clickhouse :table (:name table))
-                                 qu))]
+        quoted-user    (quote-field read-user-name)]
     (when-not read-user-name
-      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+      (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no read user — initialization may have failed. Re-run workspace initialization and retry.")
                       {:workspace-id (:id workspace) :step :grant})))
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+    ;; ClickHouse `qualified-name-components` is `[:schema]` — each entry in
+    ;; `schemas` is a database-as-schema. Grant `*` covers all tables in the
+    ;; database; ClickHouse re-resolves `*` so future tables get coverage too.
+    (let [sqls (for [schema schemas
+                     :let [_ (when (str/blank? schema)
+                               (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
+                                               {:database-id (:id database) :step :grant})))]]
+                 (format "GRANT SELECT ON %s.* TO %s"
+                         (quote-schema schema)
+                         quoted-user))]
+      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql sqls]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
   [_driver database workspace]
-  (let [db-name  (driver.u/workspace-isolation-namespace-name workspace)
-        username (driver.u/workspace-isolation-user-name workspace)]
+  (let [db-name      (driver.u/workspace-isolation-namespace-name workspace)
+        username     (driver.u/workspace-isolation-user-name workspace)
+        quoted-db    (quote-schema db-name)
+        quoted-user  (quote-field username)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [;; DROP DATABASE cascades to all tables within it
-                     (format "DROP DATABASE IF EXISTS `%s`" db-name)
-                     (format "DROP USER IF EXISTS `%s`" username)]]
+                     (format "DROP DATABASE IF EXISTS %s" quoted-db)
+                     (format "DROP USER IF EXISTS %s" quoted-user)]]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
-  "llm/prompts/dialects/clickhouse.md")
+  "metabot/prompts/dialects/clickhouse.md")

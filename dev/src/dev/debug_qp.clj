@@ -7,8 +7,6 @@
     ;; run a query with debugging enabled
     (binding [metabase.query-processor.debug/*debug* true]
       (metabase.query-processor/process-query query))"
-  {:clj-kondo/config '{:linters
-                       {:discouraged-var {metabase.lib.util.match/replace {:level :off}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -19,8 +17,8 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [portal.api]
    [toucan2.core :as t2]))
 
@@ -125,22 +123,20 @@
                        (symbol (format "#_\"%s.%s\"" field-name table-name)))))
                  (field-id->name-form [field-id]
                    (list 'do (add-name-to-field-id field-id) field-id))]
-           (lib.util.match/replace-lite form
+           (match/replace form
              [:field (id :guard pos-int?) opts]
              [:field id (add-name-to-field-id id) (cond-> opts
                                                     (pos-int? (:source-field opts))
                                                     (update :source-field field-id->name-form))]
 
-             (m :guard (and (map? m) (pos-int? (:source-table m))))
+             (:and m {:source-table (_ :guard pos-int?)})
              (add-names* (update m :source-table add-table-id-name))
 
-             (m :guard (and (map? m) (pos-int? (:metabase.query-processor.util.add-alias-info/source-table m))))
+             (:and m {:metabase.query-processor.util.add-alias-info/source-table (_ :guard pos-int?)})
              (add-names* (update m :metabase.query-processor.util.add-alias-info/source-table add-table-id-name))
 
-             (m :guard (and (map? m) (pos-int? (:fk-field-id m))))
-             (-> m
-                 (update :fk-field-id field-id->name-form)
-                 add-names*)
+             (:and m {:fk-field-id (_ :guard pos-int?)})
+             (add-names* (update m :fk-field-id field-id->name-form))
 
              ;; don't recursively replace the `do` lists above, other we'll get vectors.
              (l :guard (and (seq? l) (= (first l) 'do)))
@@ -262,7 +258,7 @@
         coll))
 
 (defn- can-symbolize? [x]
-  (lib.util.match/match-lite x
+  (match/match-one x
     (_ :guard string?)
     (not (re-find #"\s+" x))
 
@@ -289,8 +285,9 @@
 
 (defn- expand [form table]
   (try
-    (lib.util.match/replace form
-      ([:field (id :guard pos-int?) nil] :guard can-symbolize?)
+    (match/replace form
+      (:and [:field (id :guard pos-int?) nil]
+            (_ :guard can-symbolize?))
       (let [[table-name field-name] (field-and-table-name id)
             field-name              (some-> field-name u/lower-case-en)
             table-name              (some-> table-name u/lower-case-en)]
@@ -298,25 +295,29 @@
           [::$ field-name]
           [::$ table-name field-name]))
 
-      ([:field (field-name :guard string?) (opts :guard #(= (set (keys %)) #{:base-type}))] :guard can-symbolize?)
-      [::* field-name (name (:base-type opts))]
+      (:and [:field (field-name :guard string?) (:and {:base-type base-type} (opts :guard (= (count opts) 1)))]
+            (_ :guard can-symbolize?))
+      [::* field-name (name base-type)]
 
-      ([:field _ (opts :guard :temporal-unit)] :guard can-symbolize?)
+      (:and [:field _ {:temporal-unit temporal-unit}]
+            (_ :guard can-symbolize?))
       (let [without-unit (mbql.u/update-field-options &match dissoc :temporal-unit)
             expansion    (expand without-unit table)]
-        [::! (name (:temporal-unit opts)) (strip-$ expansion)])
+        [::! (name temporal-unit) (strip-$ expansion)])
 
-      ([:field _ (opts :guard :source-field)] :guard can-symbolize?)
+      (:and [:field _ {:source-field source-field}]
+            (_ :guard can-symbolize?))
       (let [without-source-field   (mbql.u/update-field-options &match dissoc :source-field)
             expansion              (expand without-source-field table)
-            source-as-field-clause [:field (:source-field opts) nil]
+            source-as-field-clause [:field source-field nil]
             source-expansion       (expand source-as-field-clause table)]
         [::-> source-expansion expansion])
 
-      ([:field _ (opts :guard :join-alias)] :guard can-symbolize?)
+      (:and [:field _ {:join-alias join-alias}]
+            (_ :guard can-symbolize?))
       (let [without-join-alias (mbql.u/update-field-options &match dissoc :join-alias)
             expansion          (expand without-join-alias table)]
-        [::& (:join-alias opts) expansion])
+        [::& join-alias expansion])
 
       [:field (id :guard pos-int?) opts]
       (let [without-opts [:field id nil]
@@ -325,12 +326,12 @@
           &match
           [:field [::% (strip-$ expansion)] opts]))
 
-      (m :guard (every-pred map? (comp pos-int? :source-table)))
+      (:and m {:source-table (_ :guard pos-int?)})
       (-> (update m :source-table (fn [table-id]
                                     [::$$ (some-> (t2/select-one-fn :name :model/Table :id table-id) u/lower-case-en)]))
           (expand table))
 
-      (m :guard (every-pred map? (comp pos-int? :fk-field-id)))
+      (:and m {:fk-field-id (_ :guard pos-int?)})
       (-> (update m :fk-field-id (fn [fk-field-id]
                                    (let [[table-name field-name] (field-and-table-name fk-field-id)
                                          field-name              (some-> field-name u/lower-case-en)
@@ -345,10 +346,10 @@
                       e)))))
 
 (defn- no-$ [x]
-  (lib.util.match/replace-lite x [::$ & args] (into [::no-$] args)))
+  (match/replace x [::$ & args] (into [::no-$] args)))
 
 (defn- symbolize [form]
-  (lib.util.match/replace-lite form
+  (match/replace form
     [::-> x y]
     (symbol (format "%s->%s" (symbolize x) (str/replace (symbolize y) #"^\$" "")))
 

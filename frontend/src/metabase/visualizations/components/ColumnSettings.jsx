@@ -82,7 +82,10 @@ export const ColumnSettings = ({
             key={widget.id}
             {...widget}
             unset={storedSettings[widget.id] === undefined}
-            noPadding
+            style={{
+              marginLeft: 0,
+              marginRight: 0,
+            }}
             variant={variant}
           />
         ))

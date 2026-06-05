@@ -4,5 +4,5 @@
    [metabase-enterprise.sso.providers.jwt]
    [metabase-enterprise.sso.providers.oidc]
    [metabase-enterprise.sso.providers.saml]
-   [metabase-enterprise.sso.providers.slack-connect]
-   [metabase-enterprise.sso.settings]))
+   [metabase-enterprise.sso.settings]
+   [metabase.sso.providers.slack-connect]))

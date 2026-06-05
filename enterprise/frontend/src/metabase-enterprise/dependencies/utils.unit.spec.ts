@@ -1,4 +1,3 @@
-import type { IconName } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   AnalysisFindingError,
@@ -7,6 +6,7 @@ import type {
   DependencyGroupType,
   DependencyNode,
   DependencyType,
+  IconName,
 } from "metabase-types/api";
 import {
   createMockAnalysisFindingError,
@@ -57,7 +57,6 @@ import {
   getErrorTypeLabelWithCount,
   getNodeCreatedAt,
   getNodeCreatedBy,
-  getNodeDataSourceEntry,
   getNodeDescription,
   getNodeIcon,
   getNodeId,
@@ -66,6 +65,7 @@ import {
   getNodeLastEditedBy,
   getNodeLink,
   getNodeLocationInfo,
+  getNodeSourceReplacementEntry,
   getNodeTypeInfo,
   getNodeViewCount,
   getSearchQuery,
@@ -956,6 +956,6 @@ describe("getNodeDataSourceEntry", () => {
       expected: null,
     },
   ])("should return $expected for $description", ({ node, expected }) => {
-    expect(getNodeDataSourceEntry(node)).toEqual(expected);
+    expect(getNodeSourceReplacementEntry(node)).toEqual(expected);
   });
 });

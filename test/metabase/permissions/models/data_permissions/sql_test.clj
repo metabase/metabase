@@ -177,3 +177,61 @@
             "Should include table1 from group1")
         (is (some #(and (= (:id %) (:id table2)) (= (:group_id %) (:id group2))) results)
             "Should include table2 from group2")))))
+
+(deftest visible-table-filter-with-cte-include-inactive-test
+  (testing "visible-table-filter-with-cte respects active-only? option"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table active-table {:db_id (:id db) :active true}
+                   :model/Table inactive-table {:db_id (:id db) :active false}
+                   :model/PermissionsGroup group {}
+                   :model/User user {}
+                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}
+                   :model/DataPermissions _ {:db_id (:id db)
+                                             :table_id nil
+                                             :group_id (:id group)
+                                             :perm_type :perms/view-data
+                                             :perm_value :unrestricted}
+                   :model/DataPermissions _ {:db_id (:id db)
+                                             :table_id nil
+                                             :group_id (:id group)
+                                             :perm_type :perms/create-queries
+                                             :perm_value :query-builder}]
+      (let [user-info {:user-id (:id user) :is-superuser? false}
+            permission-mapping {:perms/view-data :unrestricted
+                                :perms/create-queries :query-builder}]
+        (testing "default (active-only? false) includes inactive tables"
+          (let [{:keys [with clause]} (sql/visible-table-filter-with-cte :id user-info permission-mapping)
+                results (t2/query {:with with :select [:id] :from [[:metabase_table]] :where clause})]
+            (is (some #(= (:id %) (:id active-table)) results))
+            (is (some #(= (:id %) (:id inactive-table)) results))))
+        (testing "active-only? true excludes inactive tables"
+          (let [{:keys [with clause]} (sql/visible-table-filter-with-cte :id user-info permission-mapping
+                                                                         {:active-only? true})
+                results (t2/query {:with with :select [:id] :from [[:metabase_table]] :where clause})]
+            (is (some #(= (:id %) (:id active-table)) results))
+            (is (not (some #(= (:id %) (:id inactive-table)) results)))))))))
+
+(deftest visible-table-filter-select-include-inactive-test
+  (testing "visible-table-filter-select respects active-only? option"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table active-table {:db_id (:id db) :active true}
+                   :model/Table inactive-table {:db_id (:id db) :active false}
+                   :model/PermissionsGroup group {}
+                   :model/User user {}
+                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}
+                   :model/DataPermissions _ {:db_id (:id db)
+                                             :table_id nil
+                                             :group_id (:id group)
+                                             :perm_type :perms/view-data
+                                             :perm_value :unrestricted}]
+      (let [user-info {:user-id (:id user) :is-superuser? false}
+            permission-mapping {:perms/view-data :unrestricted}]
+        (testing "default includes inactive tables"
+          (let [results (t2/query (sql/visible-table-filter-select :id user-info permission-mapping))]
+            (is (some #(= (:id %) (:id active-table)) results))
+            (is (some #(= (:id %) (:id inactive-table)) results))))
+        (testing "active-only? true excludes inactive tables"
+          (let [results (t2/query (sql/visible-table-filter-select :id user-info permission-mapping
+                                                                   {:active-only? true}))]
+            (is (some #(= (:id %) (:id active-table)) results))
+            (is (not (some #(= (:id %) (:id inactive-table)) results)))))))))

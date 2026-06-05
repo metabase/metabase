@@ -1,7 +1,6 @@
-import fetchMock from "fetch-mock";
-
 import {
   setupEmbeddableEntitiesEndpoints,
+  setupGenerateRandomTokenEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -28,10 +27,7 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
     dashboards: [createMockDashboard({ name: "My cool dashboard" })],
     cards: [createMockCard({ name: "My cool card" })],
   });
-
-  fetchMock.get("path:/api/util/random_token", {
-    token: "fake-token",
-  });
+  setupGenerateRandomTokenEndpoint("fake-token");
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-embedded-analytics-js",

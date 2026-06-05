@@ -284,7 +284,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         drillCellText: "3,976",
         menuItems: ["Time", "Products", "Created At"],
         filterText: "Products → Category is Doohickey",
-        resultText: "July 31, 2022",
+        resultText: "July 31, 2025",
       });
     });
 
@@ -294,7 +294,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         drillCellText: "3,976",
         menuItems: ["Time", "Products", "Created At"],
         filterText: "Products → Category is Doohickey",
-        resultText: "July 31, 2022",
+        resultText: "July 31, 2025",
       });
     });
   });
@@ -492,7 +492,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
   });
 
   it("should display proper drills on a datetime cell click when there is no value (metabase#44101)", () => {
-    const CANCELLED_AT_INDEX = 9;
+    const CANCELLED_AT_INDEX = 10;
 
     H.openTable({ table: ACCOUNTS_ID, limit: 1 });
     // eslint-disable-next-line metabase/no-unsafe-element-filtering

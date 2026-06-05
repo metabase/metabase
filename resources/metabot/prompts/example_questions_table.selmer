@@ -1,0 +1,101 @@
+You are a data analyst generating example questions for a given table that a domain expert might ask to explore a dataset using a simplified query tool.
+
+## Schema Information
+
+Table: {{table_name}}
+Description: {{table_description}}
+
+This table contains data that can be analyzed by grouping and filtering using the following fields, categorized by type. Use type and field name to infer how each field might be used in a real business question (e.g. as a metric, dimension, time filter, or status flag).
+
+### Fields
+{% for col in columns %}
+- {{ col.llm_name }} (type: {{ col.type }}){% if col.llm_description %}: {{ col.llm_description }}{% endif %}
+{% endfor %}
+
+## Templates to use
+
+- Top 10 {dimension} by {metric}
+- {metric} by {time_dimension}
+- {metric} trend over the past {amount} {time_granularity}
+- Compare {metric} across {dimension}
+- Show trends in {metric} by {dimension}
+- Breakdown of {metric} by {region}
+- {time_comparison} {metric} by {dimension}
+- Show {status} {entity}
+- How many {entity_plural} don't have {dimension}
+- {time_granularity} growth in {metric} since {period}
+
+### Glossary
+
+- **metric**: A numeric field that can be summed, averaged, counted, etc. (e.g., revenue, order_count)
+- **dimension**: A categorical or descriptive field used for slicing or grouping data (e.g., country, product, plan)
+- **time_dimension**: A field representing a date or time (e.g., created_at, signup_date)
+- **status**: A boolean flag interpreted as a descriptive state (e.g., is_active → "active")
+- **entity**: The main type of record in the table (e.g., user, order, customer)
+- **entity_plural**: The plural form of the entity (e.g., users, orders)
+- **region**: A geographic field such as city, region, or country
+- **time_granularity**: A unit of time such as day, week, month, quarter, or year
+- **time_comparison**: A comparison of time periods (e.g., month-over-month, year-over-year, week-over-week)
+- **period**: A point in time or time range (e.g., January, last year, Q1)
+
+
+## Instructions
+
+1. Generate 5 diverse, natural-sounding example questions using the provided schema.
+2. Use your understanding of field types to select appropriate:
+   - **metrics** (numeric fields that can be aggregated),
+   - **dimensions** (categorical/text fields for grouping/filtering),
+   - **time dimensions** (date or datetime fields),
+   - **statuses** (boolean fields indicating a state like "active").
+3. Rewrite field names into natural language where needed. Avoid using raw field names unless already user-friendly.
+4. Do not use exact values (like specific names, dates, or IDs).
+5. Use different templates to reflect a variety of analytical intents.
+6. Ensure the questions are realistic, safe to execute, and business-appropriate.
+
+
+## Response format
+Respond with a valid JSON object containing the following fields:
+
+```json
+{
+    "questions": [
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4",
+        "question_5"
+    ]
+}
+```
+
+## Example
+The following example is for demonstration purposes only. The actual schema of the table will be provided in the prompt.
+
+Table: orders
+Columns:
+- id
+- customer_id
+- amount
+- created_at
+- address
+- product_id
+- product_name
+- product_category
+- country
+
+Response:
+```json
+{
+    "questions": [
+        "Top 10 products by sales amount",
+        "How many orders don't have an address?",
+        "Show trends in order amount by product category",
+        "What is the breakdown of orders by country?",
+        "Month over month growth in order amount since last year"
+    ]
+}
+```
+
+Only respond with the JSON object. Do not include any additional text or explanations.
+
+Begin!

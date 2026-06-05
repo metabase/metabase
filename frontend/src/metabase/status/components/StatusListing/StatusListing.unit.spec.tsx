@@ -1,37 +1,45 @@
 import { callMockEvent } from "__support__/events";
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import {
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
-import type { DownloadsState } from "metabase-types/store";
+import type { DownloadsState } from "metabase/redux/store";
 import {
   createMockDownload,
   createMockState,
   createMockUpload,
-} from "metabase-types/store/mocks";
-import type { FileUploadState } from "metabase-types/store/upload";
+} from "metabase/redux/store/mocks";
+import type { FileUploadState } from "metabase/redux/store/upload";
+import type { Database } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockDatabase,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
-import StatusListing from "./StatusListing";
-
-const DatabaseStatusMock = () => <div>DatabaseStatus</div>;
-
-jest.mock("../../containers/DatabaseStatus", () => DatabaseStatusMock);
+import { StatusListing } from "./StatusListing";
 
 interface setupProps {
   isAdmin?: boolean;
   upload?: FileUploadState;
   downloads?: DownloadsState;
+  databases?: Database[];
 }
 
 const setup = ({
   isAdmin = false,
   upload = {},
   downloads = { datasetRequests: [], isDownloadingToImage: false },
+  databases = [],
 }: setupProps = {}) => {
   setupCollectionsEndpoints({ collections: [createMockCollection({})] });
+  setupDatabasesEndpoints(databases);
 
   return renderWithProviders(<StatusListing />, {
     storeInitialState: createMockState({
       currentUser: createMockUser({
+        id: 1,
         is_superuser: isAdmin,
       }),
       upload,
@@ -45,20 +53,38 @@ describe("StatusListing", () => {
     jest.resetAllMocks();
   });
 
-  it("should render database statuses for admins", () => {
-    setup({ isAdmin: true });
-    expect(screen.getByText("DatabaseStatus")).toBeInTheDocument();
+  it("should render database sync status for admins", async () => {
+    setup({
+      isAdmin: true,
+      databases: [
+        createMockDatabase({
+          creator_id: 1,
+          initial_sync_status: "incomplete",
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Syncing…")).toBeInTheDocument();
   });
 
-  it("should not render database statuses for non-admins", () => {
-    setup();
-    expect(screen.queryByText("DatabaseStatus")).not.toBeInTheDocument();
+  it("should not render database sync status for non-admins", () => {
+    setup({
+      databases: [
+        createMockDatabase({
+          creator_id: 1,
+          initial_sync_status: "incomplete",
+        }),
+      ],
+    });
+
+    expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
 
   it("should not render if no one is logged in", () => {
     setupCollectionsEndpoints({ collections: [createMockCollection({})] });
+    setupDatabasesEndpoints([]);
     renderWithProviders(<StatusListing />);
-    expect(screen.queryByText("DatabaseStatus")).not.toBeInTheDocument();
+    expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
 
   it("should give an alert if a user navigates away from the page during an upload", () => {

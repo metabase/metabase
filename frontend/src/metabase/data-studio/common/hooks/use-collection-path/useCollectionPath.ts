@@ -1,4 +1,3 @@
-import { skipToken } from "metabase/api/api";
 import { useGetCollectionQuery } from "metabase/api/collection";
 import { isRootCollection } from "metabase/collections/utils";
 import type {
@@ -16,9 +15,7 @@ export const useCollectionPath = ({
   namespace,
 }: UseCollectionPathOptions) => {
   const { currentData: collection, isLoading: isLoadingPath } =
-    useGetCollectionQuery(
-      collectionId == null ? skipToken : { id: collectionId, namespace },
-    );
+    useGetCollectionQuery({ id: collectionId ?? "root", namespace });
 
   const ancestors =
     collection?.effective_ancestors?.filter((c) => !isRootCollection(c)) ?? [];

@@ -1,6 +1,6 @@
 import type { BaseQueryFn } from "@reduxjs/toolkit/query/react";
 
-import api from "metabase/lib/api";
+import api from "metabase/api/legacy-client";
 
 type AllowedHTTPMethods = "GET" | "POST" | "PUT" | "DELETE";
 const allowedHTTPMethods = new Set<AllowedHTTPMethods>([
@@ -17,26 +17,29 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
 export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
   const method = typeof args === "string" ? "GET" : (args?.method ?? "GET");
   const url = typeof args === "string" ? args : args.url;
-  const { bodyParamName, noEvent, formData, fetch } = args;
+  const { noEvent, fetch, rawResponse } = args;
 
   if (!isAllowedHTTPMethod(method)) {
     return { error: "Invalid HTTP method" };
   }
 
+  // `FormData` / `URLSearchParams` bodies are forwarded as-is — spreading would
+  // yield an empty object (their entries aren't enumerable as keys) and erase
+  // the body. Other bodies merge with `params` so a single combined object
+  // reaches the legacy client (which doesn't separate them).
+  const rawData =
+    args?.body instanceof FormData || args?.body instanceof URLSearchParams
+      ? args.body
+      : { ...args?.body, ...args?.params };
+
   try {
-    const response = await api[method](url)(
-      // this will transform arrays to objects with numeric keys
-      // we shouldn't be using top level-arrays in the API
-      { ...args?.body, ...args?.params },
-      {
-        signal: ctx.signal,
-        bodyParamName,
-        noEvent,
-        formData,
-        fetch,
-        ...extraOptions,
-      },
-    );
+    const response = await api[method](url)(rawData, {
+      signal: ctx.signal,
+      noEvent,
+      fetch,
+      rawResponse,
+      ...extraOptions,
+    });
     return { data: response };
   } catch (error) {
     return { error };

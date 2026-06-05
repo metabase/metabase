@@ -10,10 +10,10 @@ import { TabRow } from "metabase/common/components/TabRow";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import type { SelectedTabId } from "metabase/redux/store";
 import { Flex, List } from "metabase/ui";
-import type { SelectedTabId } from "metabase-types/store";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
 
 import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";
@@ -134,7 +134,12 @@ export function DashboardTabs() {
           />
         ) : (
           tabs.map((tab) => (
-            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
+            <Sortable
+              key={tab.id}
+              id={tab.id}
+              disabled={!isEditing}
+              role="presentation"
+            >
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}

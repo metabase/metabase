@@ -2,16 +2,16 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
+import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
+import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { useSelector } from "metabase/lib/redux";
-import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
+import { getFullName } from "metabase/utils/user";
 import type { Group, Member, Membership } from "metabase-types/api";
 
 import { AddMemberRow } from "../AddMemberRow";
@@ -50,6 +50,16 @@ export function GroupMembersTable({
     return _.partition(group.members, isApiKeyGroupMember).flat();
   }, [group.members]);
   const groupsPage = members.slice(offset, offset + pageSize);
+  const hasMembers = members.length > 0;
+
+  // An empty group renders just the call to action, without the column header.
+  if (!hasMembers && !showAddUser) {
+    return (
+      <Text c="text-secondary" ta="center" mt="xl">
+        {t`Add members to get started.`}
+      </Text>
+    );
+  }
 
   return (
     <>
@@ -83,7 +93,7 @@ export function GroupMembersTable({
         )}
       </AdminContentTable>
 
-      {members.length > 0 ? (
+      {hasMembers && (
         <Flex align="center" justify="flex-end" p="md">
           <PaginationControls
             page={page}
@@ -94,10 +104,6 @@ export function GroupMembersTable({
             onPreviousPage={handlePreviousPage}
           />
         </Flex>
-      ) : (
-        <Text size="lg" fw="700" ta="center" mt="4rem">
-          {t`A group is only as good as its members.`}
-        </Text>
       )}
     </>
   );

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { displayNameForColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/utils/formatting";
 import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail";
 import {
   columnSettings,
@@ -11,10 +11,7 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 
-import type {
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "../types";
+import type { VisualizationDefinition } from "../types";
 
 const ObjectDetailProperties: VisualizationDefinition = {
   getUiName() {
@@ -31,11 +28,11 @@ const ObjectDetailProperties: VisualizationDefinition = {
   canSavePng: false,
   disableClickBehavior: true,
   settings: {
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     ...tableColumnSettings({ isShowingDetailsOnlyColumns: true }),
   },
   columnSettings: () => {
-    const settings: VisualizationSettingsDefinitions = {
+    return {
       column_title: {
         title: t`Column title`,
         widget: "input",
@@ -45,12 +42,10 @@ const ObjectDetailProperties: VisualizationDefinition = {
 
       // Makes sure `column_settings` doesn't omit these settings,
       // so they can be used for formatting
-      view_as: { hidden: true },
-      link_text: { hidden: true },
-      link_url: { hidden: true },
+      view_as: { getHidden: () => true },
+      link_text: { getHidden: () => true },
+      link_url: { getHidden: () => true },
     };
-
-    return settings;
   },
   isSensible: () => true,
   checkRenderable: () => true,

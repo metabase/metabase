@@ -1,12 +1,13 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/urls";
 import type {
   Task,
   TaskRun,
   TaskRunDateFilterOption,
   TaskRunEntityType,
+  TaskRunStartedAtParam,
   TaskRunStatus,
   TaskRunType,
   TaskStatus,
@@ -50,7 +51,7 @@ export const getEntityUrl = (
 ): string =>
   match(entityType)
     .with("database", () => Urls.viewDatabase(entityId))
-    .with("card", () => Urls.question({ id: entityId, name: entityName }))
+    .with("card", () => Urls.card({ id: entityId, name: entityName }))
     .with("dashboard", () => Urls.dashboard({ id: entityId }))
     .exhaustive();
 
@@ -105,18 +106,30 @@ export const guardTaskRunStatus = (value: string): value is TaskRunStatus =>
     ["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[]
   ).includes(value as TaskRunStatus);
 
+export const toBackendStartedAt = (
+  value: TaskRunDateFilterOption | null,
+  includeToday: boolean,
+): TaskRunStartedAtParam | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  // A trailing "~" makes the date range open-ended on the upper bound,
+  // extending it through today so the current day's runs are included.
+  return includeToday ? `${value}~` : value;
+};
+
 export const guardTaskRunStartedAtRange = (
   value: string,
 ): value is TaskRunDateFilterOption =>
   (
     [
       "thisday",
-      "past1days~",
-      "past1weeks~",
-      "past7days~",
-      "past30days~",
-      "past1months~",
-      "past3months~",
-      "past12months~",
+      "past1days",
+      "past1weeks",
+      "past7days",
+      "past30days",
+      "past1months",
+      "past3months",
+      "past12months",
     ] satisfies TaskRunDateFilterOption[]
   ).includes(value as TaskRunDateFilterOption);

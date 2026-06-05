@@ -11,19 +11,12 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-import { skipToken, useExtractTablesQuery } from "metabase/api";
-import { useHasTokenFeature } from "metabase/common/hooks";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
-import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { useMetabotSQLSuggestion } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type {
-  DatabaseId,
-  DatasetQuery,
-  GenerateSqlResponse,
-} from "metabase-types/api";
+import type { DatabaseId, DatasetQuery } from "metabase-types/api";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
 import {
@@ -32,7 +25,6 @@ import {
   hideEffect,
   toggleEffect,
 } from "./MetabotInlineSQLPromptWidget";
-import type { SelectedTable } from "./TablePillsInput";
 import { extractMetabotBufferContext } from "./utils";
 
 function useRegisterCodeEditorMetabotContext(
@@ -65,60 +57,20 @@ export function useInlineSQLPrompt(
   question: Question,
   bufferId: string,
 ): UseInlineSqlEditResult {
-  const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
-  const isEnabled = useLlmSqlGenerationEnabled();
+  const { canUseSqlGeneration, hasSqlGenerationAccess } =
+    useUserMetabotPermissions();
 
   const databaseId = question.databaseId();
 
-  const [hasEverBeenOpened, setHasEverBeenOpened] = useState(false);
-
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
   const [promptValue, setPromptValue] = useState("");
-  const [selectedTables, setSelectedTables] = useState<SelectedTable[]>([]);
-  const [editorSql, setEditorSql] = useState(() => {
-    const query = question.query();
-    return Lib.queryDisplayInfo(query).isNative
-      ? (Lib.rawNativeQuery(query) ?? "")
-      : "";
-  });
-
-  const debouncedEditorSql = useDebouncedValue(editorSql.trim(), 1000);
-  const tableExtractionEnabled = hasEverBeenOpened && isTableBarEnabled;
-  const { data: extractedTablesData } = useExtractTablesQuery(
-    databaseId && debouncedEditorSql && tableExtractionEnabled
-      ? { database_id: databaseId, sql: debouncedEditorSql }
-      : skipToken,
-  );
+  const onGenerated = useCallback(() => setPromptValue(""), []);
 
   useRegisterCodeEditorMetabotContext(
     portalTarget?.view ?? undefined,
-    question.databaseId(),
+    databaseId,
     bufferId,
   );
-
-  const sourceSqlTables = useMemo(
-    () => extractedTablesData?.tables ?? [],
-    [extractedTablesData],
-  );
-
-  // Merge new tables from extracted data into selected tables
-  useEffect(() => {
-    if (!sourceSqlTables.length) {
-      return;
-    }
-    setSelectedTables((prev) => {
-      const selectedIds = new Set(prev.map((t) => t.id));
-      const newTables = sourceSqlTables.filter((t) => !selectedIds.has(t.id));
-      return newTables.length > 0 ? [...prev, ...newTables] : prev;
-    });
-  }, [sourceSqlTables]);
-
-  const onGenerated = useCallback((res: GenerateSqlResponse | undefined) => {
-    if (res) {
-      setSelectedTables(res.referenced_entities as unknown as SelectedTable[]);
-    }
-    setPromptValue("");
-  }, []);
 
   const {
     source: generatedSource,
@@ -130,24 +82,11 @@ export function useInlineSQLPrompt(
     reset: resetSuggestionState,
     reject,
     suggestionModels,
-  } = PLUGIN_METABOT.useMetabotSQLSuggestion({
-    databaseId,
-    bufferId,
-    onGenerated,
-  });
+  } = useMetabotSQLSuggestion({ databaseId, bufferId, onGenerated });
 
   const getSourceSql = useCallback(() => {
     return portalTarget?.view?.state.doc.toString() ?? "";
   }, [portalTarget?.view]);
-
-  const prevDatabaseIdRef = useRef(databaseId);
-  useEffect(() => {
-    if (prevDatabaseIdRef.current !== databaseId) {
-      setPromptValue("");
-      setSelectedTables([]);
-      prevDatabaseIdRef.current = databaseId;
-    }
-  }, [databaseId]);
 
   const generatedSqlRef = useRef(generatedSource);
   generatedSqlRef.current = generatedSource;
@@ -176,14 +115,22 @@ export function useInlineSQLPrompt(
     [generatedSource, hideInput],
   );
 
+  const prevDatabaseIdRef = useRef(databaseId);
+  useEffect(() => {
+    if (prevDatabaseIdRef.current !== databaseId) {
+      resetSuggestionState();
+      prevDatabaseIdRef.current = databaseId;
+    }
+  }, [databaseId, resetSuggestionState]);
+
   useEffect(
-    function resetOnDbChangeAndUnmount() {
+    function resetOnUnmount() {
       return () => {
         hideInputRef.current();
         resetSuggestionState();
       };
     },
-    [resetSuggestionState, databaseId],
+    [resetSuggestionState],
   );
 
   const resetInput = useCallback(() => {
@@ -193,7 +140,6 @@ export function useInlineSQLPrompt(
 
   const handleClose = () => {
     hideInput();
-    setSelectedTables(sourceSqlTables);
   };
 
   // NOTE: ref is needed for the extension to not be recalculated in the useMemo
@@ -224,7 +170,7 @@ export function useInlineSQLPrompt(
 
   const extensions = useMemo(
     () =>
-      isEnabled
+      hasSqlGenerationAccess
         ? [
             createPromptInputExtension(setPortalTarget),
             keymap.of([
@@ -234,7 +180,6 @@ export function useInlineSQLPrompt(
                   if (generatedSqlRef.current) {
                     resetInputRef.current();
                   }
-                  setHasEverBeenOpened(true);
                   view.dispatch({ effects: toggleEffect.of({ view }) });
                   return true;
                 },
@@ -255,21 +200,15 @@ export function useInlineSQLPrompt(
                 clearSuggestionRef.current();
               }
             }),
-            // Track SQL changes for prefetching table extraction
-            EV.updateListener.of((update) => {
-              if (update.docChanged) {
-                setEditorSql(update.state.doc.toString());
-              }
-            }),
           ]
         : [],
-    [isEnabled],
+    [hasSqlGenerationAccess],
   );
 
   return {
     extensions,
     portalElement:
-      isEnabled && portalTarget
+      hasSqlGenerationAccess && portalTarget
         ? createPortal(
             <MetabotInlineSQLPrompt
               databaseId={databaseId}
@@ -282,15 +221,16 @@ export function useInlineSQLPrompt(
               getSourceSql={getSourceSql}
               value={promptValue}
               onValueChange={setPromptValue}
-              isTableBarEnabled={isTableBarEnabled}
-              selectedTables={selectedTables}
-              onSelectedTablesChange={setSelectedTables}
             />,
             portalTarget.container,
           )
         : null,
-    proposedQuestion: isEnabled ? proposedQuestion : undefined,
-    handleRejectProposed: isEnabled ? handleRejectProposed : undefined,
-    handleAcceptProposed: isEnabled ? handleAcceptProposed : undefined,
+    proposedQuestion: canUseSqlGeneration ? proposedQuestion : undefined,
+    handleRejectProposed: canUseSqlGeneration
+      ? handleRejectProposed
+      : undefined,
+    handleAcceptProposed: canUseSqlGeneration
+      ? handleAcceptProposed
+      : undefined,
   };
 }

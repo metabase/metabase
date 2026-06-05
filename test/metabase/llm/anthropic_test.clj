@@ -3,8 +3,8 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
-   [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.llm.settings :as llm.settings]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -18,7 +18,6 @@
                                :input {:sql "SELECT 1"}}]}]
       (is (= {:sql "SELECT 1"}
              (#'anthropic/extract-tool-input response)))))
-
   (testing "multiple content blocks finds tool_use"
     (let [response {:content [{:type "text" :text "thinking..."}
                               {:type "tool_use"
@@ -27,19 +26,15 @@
                                :input {:sql "SELECT 1" :explanation "Simple query"}}]}]
       (is (= {:sql "SELECT 1" :explanation "Simple query"}
              (#'anthropic/extract-tool-input response)))))
-
   (testing "no tool_use block returns nil"
     (let [response {:content [{:type "text" :text "no tool"}]}]
       (is (nil? (#'anthropic/extract-tool-input response)))))
-
   (testing "empty content returns nil"
     (is (nil? (#'anthropic/extract-tool-input {:content []})))
     (is (nil? (#'anthropic/extract-tool-input {}))))
-
   (testing "tool_use without input returns nil"
     (let [response {:content [{:type "tool_use" :id "123" :name "generate_sql"}]}]
       (is (nil? (#'anthropic/extract-tool-input response)))))
-
   (testing "returns first tool_use when multiple present"
     (let [response {:content [{:type "tool_use"
                                :id "1"
@@ -73,19 +68,16 @@
         (is (= [{:role "user" :content "test"}] (:messages body)))
         (is (vector? (:tools body)))
         (is (= {:type "tool" :name "generate_sql"} (:tool_choice body))))))
-
   (testing "uses configured max_tokens setting"
     (mt/with-temporary-setting-values [llm-max-tokens 8192]
       (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
                                                   :messages [{:role "user" :content "test"}]})]
         (is (= 8192 (:max_tokens body))))))
-
   (testing "includes system prompt when provided"
     (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
                                                 :system "You are a SQL expert"
                                                 :messages [{:role "user" :content "test"}]})]
       (is (= "You are a SQL expert" (:system body)))))
-
   (testing "omits system when not provided"
     (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
                                                 :messages [{:role "user" :content "test"}]})]
@@ -106,7 +98,7 @@
 
 (deftest chat-completion-not-configured-test
   (testing "throws when API key not configured"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"not configured"
@@ -125,7 +117,7 @@
                                           :output_tokens 250}}}]
       (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"
                                          llm-anthropic-model "claude-sonnet-4-5-20250929"]
-        (with-redefs [http/post (constantly mock-response)]
+        (mt/with-dynamic-fn-redefs [http/post (constantly mock-response)]
           (let [result (anthropic/chat-completion {:system   "You are a SQL expert"
                                                    :messages [{:role "user" :content "get all users"}]})]
             (is (=? {:result      {:sql         "SELECT * FROM users"
@@ -135,40 +127,3 @@
                                    :prompt     1500
                                    :completion 250}}
                     result))))))))
-
-;;; ------------------------------------------- list-models Tests -------------------------------------------
-
-(deftest list-models-requires-api-key-test
-  (testing "list-models throws when API key is not configured"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"not configured"
-           (anthropic/list-models))))))
-
-(deftest list-models-success-test
-  (testing "list-models returns sorted models with selected fields"
-    (let [mock-response-body {:data [{:id "claude-sonnet-4-20250514"
-                                      :display_name "Claude Sonnet 4"
-                                      :created_at "2025-05-14T00:00:00Z"
-                                      :type "model"}
-                                     {:id "claude-sonnet-4-5-20250929"
-                                      :display_name "Claude Sonnet 4.5"
-                                      :created_at "2025-09-29T00:00:00Z"
-                                      :type "model"}
-                                     {:id "claude-opus-4-5-20251101"
-                                      :display_name "Claude Opus 4.5"
-                                      :created_at "2025-11-01T00:00:00Z"
-                                      :type "model"}]
-                              :first_id "claude-sonnet-4-20250514"
-                              :last_id "claude-opus-4-5-20251101"
-                              :has_more false}]
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"]
-        (with-redefs [http/get (constantly {:status 200
-                                            :body (json/encode mock-response-body)})]
-          (let [result (anthropic/list-models)]
-            ;; Should be sorted by created_at descending (newest first)
-            (is (= [{:id "claude-opus-4-5-20251101" :display_name "Claude Opus 4.5"}
-                    {:id "claude-sonnet-4-5-20250929" :display_name "Claude Sonnet 4.5"}
-                    {:id "claude-sonnet-4-20250514" :display_name "Claude Sonnet 4"}]
-                   (:models result)))))))))

@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase.events.core :as events]
@@ -99,6 +100,56 @@
                                                   [:table (mt/id :orders)]
                                                   [:table (mt/id :reviews)])
             (is (= {} (:dataset_query (t2/select-one :model/Card card-id))))))))))
+
+(deftest card-swap-source!-updates-parameter-values-source-config-card-id-test
+  (testing "swap-source! should update card_id in card parameter values_source_config for card-to-card swaps"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {old-source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                         :model/Card {new-source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :reviews)))}
+                         :model/Card {card-id :id}
+                         {:dataset_query (lib/native-query mp "SELECT 1")
+                          :parameters    [{:id                   "cat-param"
+                                           :name                 "category"
+                                           :type                 :string/=
+                                           :values_source_type   "card"
+                                           :values_source_config {:card_id     old-source-id
+                                                                  :value_field [:field "ID" {:base-type :type/Integer}]}}]}]
+            (replacement.source-swap/swap-source! [:card card-id]
+                                                  [:card old-source-id]
+                                                  [:card new-source-id])
+            (testing ":parameters JSONB on the card is updated"
+              (is (= new-source-id
+                     (-> (t2/select-one :model/Card card-id)
+                         :parameters first :values_source_config :card_id))))
+            (testing "parameter_card row is synced"
+              (is (= new-source-id
+                     (t2/select-one-fn :card_id :model/ParameterCard
+                                       :parameterized_object_type "card"
+                                       :parameterized_object_id   card-id
+                                       :parameter_id              "cat-param"))))))))))
+
+(deftest card-swap-source!-card-to-table-leaves-parameter-untouched-test
+  (testing "swap-source! should NOT update parameter values_source_config card_id on card-to-table swaps"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {old-source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                         :model/Card {card-id :id}
+                         {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          :parameters    [{:id                   "cat-param"
+                                           :name                 "category"
+                                           :type                 :string/=
+                                           :values_source_type   "card"
+                                           :values_source_config {:card_id     old-source-id
+                                                                  :value_field [:field "ID" {:base-type :type/Integer}]}}]}]
+            (replacement.source-swap/swap-source! [:card card-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (is (= old-source-id
+                   (-> (t2/select-one :model/Card card-id)
+                       :parameters first :values_source_config :card_id)))))))))
 
 ;;; ------------------------------------------------ Transform --------------------------------------------------------
 
@@ -210,6 +261,54 @@
                                                             [:table (mt/id :reviews)])))))))))
 
 ;;; ------------------------------------------------ Dashboard --------------------------------------------------------
+
+(deftest dashboard-swap-source!-updates-parameter-values-source-config-card-id-test
+  (testing "swap-source! should update card_id in dashboard parameter values_source_config for card-to-card swaps"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card      {old-source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                         :model/Card      {new-source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :reviews)))}
+                         :model/Dashboard {dashboard-id :id}
+                         {:parameters [{:id                   "cat-param"
+                                        :name                 "category"
+                                        :type                 :string/=
+                                        :values_source_type   "card"
+                                        :values_source_config {:card_id     old-source-id
+                                                               :value_field [:field "ID" {:base-type :type/Integer}]}}]}]
+            (replacement.source-swap/swap-source! [:dashboard dashboard-id]
+                                                  [:card old-source-id]
+                                                  [:card new-source-id])
+            (testing ":parameters JSONB on the dashboard is updated"
+              (is (= new-source-id
+                     (-> (t2/select-one :model/Dashboard dashboard-id)
+                         :parameters first :values_source_config :card_id))))
+            (testing "parameter_card row is synced"
+              (is (= new-source-id
+                     (t2/select-one-fn :card_id :model/ParameterCard
+                                       :parameterized_object_type "dashboard"
+                                       :parameterized_object_id   dashboard-id
+                                       :parameter_id              "cat-param"))))))))))
+
+(deftest dashboard-swap-source!-card-to-table-leaves-parameter-untouched-test
+  (testing "swap-source! should NOT update dashboard parameter values_source_config card_id on card-to-table swaps"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card      {old-source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                         :model/Dashboard {dashboard-id :id}
+                         {:parameters [{:id                   "cat-param"
+                                        :name                 "category"
+                                        :type                 :string/=
+                                        :values_source_type   "card"
+                                        :values_source_config {:card_id     old-source-id
+                                                               :value_field [:field "ID" {:base-type :type/Integer}]}}]}]
+            (replacement.source-swap/swap-source! [:dashboard dashboard-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (is (= old-source-id
+                   (-> (t2/select-one :model/Dashboard dashboard-id)
+                       :parameters first :values_source_config :card_id)))))))))
 
 (deftest dashboard-swap-source!-parameter-mappings-card-to-card-test
   (testing "swap-source! should walk parameter mapping targets without corruption during card-to-card swap"
@@ -323,6 +422,7 @@
               ;; Create a dependency: card -> orders table
               (events/publish-event! :event/card-create {:object (t2/select-one :model/Card card-id)
                                                          :user-id (mt/user->id :rasta)})
+              (deps.test/synchronously-run-backfill!)
               (is (t2/exists? :model/Dependency
                               :from_entity_type :card :from_entity_id card-id
                               :to_entity_type :table :to_entity_id (mt/id :orders))
@@ -352,6 +452,7 @@
             (mt/with-model-cleanup [:model/Dependency]
               (events/publish-event! :event/segment-create {:object (t2/select-one :model/Segment segment-id)
                                                             :user-id (mt/user->id :rasta)})
+              (deps.test/synchronously-run-backfill!)
               (is (t2/exists? :model/Dependency
                               :from_entity_type :segment :from_entity_id segment-id
                               :to_entity_type :table :to_entity_id (mt/id :orders)))
@@ -381,6 +482,7 @@
             (mt/with-model-cleanup [:model/Dependency]
               (events/publish-event! :event/measure-create {:object (t2/select-one :model/Measure measure-id)
                                                             :user-id (mt/user->id :rasta)})
+              (deps.test/synchronously-run-backfill!)
               (is (t2/exists? :model/Dependency
                               :from_entity_type :measure :from_entity_id measure-id
                               :to_entity_type :table :to_entity_id (mt/id :orders)))
@@ -409,6 +511,7 @@
             (mt/with-model-cleanup [:model/Dependency]
               (events/publish-event! :event/transform-create {:object (t2/select-one :model/Transform transform-id)
                                                               :user-id (mt/user->id :rasta)})
+              (deps.test/synchronously-run-backfill!)
               (is (t2/exists? :model/Dependency
                               :from_entity_type :transform :from_entity_id transform-id
                               :to_entity_type :table :to_entity_id (mt/id :orders)))

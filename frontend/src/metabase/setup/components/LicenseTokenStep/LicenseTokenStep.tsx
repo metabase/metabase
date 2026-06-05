@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useStep } from "metabase/setup/useStep";
 import { Text } from "metabase/ui";
 

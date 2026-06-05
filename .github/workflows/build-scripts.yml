@@ -10,9 +10,9 @@ on:
 jobs:
 
   test-build-scripts:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Prepare back-end environment
       timeout-minutes: 5
       uses: ./.github/actions/prepare-backend

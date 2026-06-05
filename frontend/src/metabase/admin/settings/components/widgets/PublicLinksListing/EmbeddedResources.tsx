@@ -4,8 +4,8 @@ import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type {
   GetEmbeddableCard,
   GetEmbeddableDashboard,
@@ -42,7 +42,7 @@ export const QuestionEmbeddedResources = () => {
       <SettingHeader id="embedded-questions" title={t`Embedded questions`} />
       <PublicLinksListing<GetEmbeddableCard>
         data-testid="-embedded-questions-setting"
-        getUrl={(question) => Urls.question(question)}
+        getUrl={(question) => Urls.card(question)}
         noLinksMessage={t`No questions have been embedded yet.`}
         {...query}
       />

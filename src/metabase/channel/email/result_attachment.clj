@@ -86,14 +86,16 @@
      :description  (format "More results for '%s'" card-name)}))
 
 (defn result-attachment
-  "Create result attachments for an email."
+  "Create result attachments for an email. `creator-id` is the subscription creator, whose download
+  permissions gate the attachment at send time."
   [{{original-card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
     dashcard :dashcard
     result :result
-    :as part}]
+    :as part}
+   creator-id]
   (when (and (or (:include_csv card) (:include_xls card))
              (pos-int? (:row_count result))
-             (not= (perms/download-perms-level (:dataset_query card) (:creator_id card))  :no))
+             (not= (perms/download-perms-level (:dataset_query card) creator-id) :no))
     (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
           result            (:result (maybe-realize-data-rows part))
           visualizer-title (when (and dashcard (get-in dashcard [:visualization_settings :visualization]))

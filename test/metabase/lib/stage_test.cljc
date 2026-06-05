@@ -724,7 +724,7 @@
                                             nonsense-key            (assoc :nonsense-key nonsense-key)
                                             lib-key                 (assoc :lib/nonsense-key lib-key))
                                      clause [:field (meta/id :people :birth-date) opts]]]
-      (testing (pr-str (lib/->pMBQL clause))
+      (testing (pr-str (lib/->mbql5 clause))
         (testing `lib/returned-columns
           (let [query (lib/query
                        meta/metadata-provider

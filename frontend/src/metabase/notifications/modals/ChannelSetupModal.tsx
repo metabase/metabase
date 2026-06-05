@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Button, Icon, type IconName, Modal, Stack, Text } from "metabase/ui";
-
+import { Button, Icon, Modal, Stack, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 const CHANNELS_CONFIG: {
   title: string;
   icon: IconName;
@@ -21,14 +21,14 @@ const CHANNELS_CONFIG: {
       return t`Set up Slack`;
     },
     icon: "slack",
-    link: "/admin/settings/notifications",
+    link: "/admin/settings/slack",
   },
   {
     get title() {
       return t`Add a webhook`;
     },
     icon: "webhook",
-    link: "/admin/settings/notifications",
+    link: "/admin/settings/webhooks",
     testId: "alerts-channel-create-webhook",
   },
 ];

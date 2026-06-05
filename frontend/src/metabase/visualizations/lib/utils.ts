@@ -2,7 +2,7 @@ import crossfilter from "crossfilter";
 import * as d3 from "d3";
 import _ from "underscore";
 
-import { checkNotNull, isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCoordinate,
@@ -55,35 +55,6 @@ export function columnsAreValid(
   );
 
   return Boolean(isValid);
-}
-
-// computed size properties (drop 'px' and convert string -> Number)
-function getComputedSizeProperty(prop: string, element: HTMLElement): number {
-  const val = document.defaultView
-    ?.getComputedStyle(element, null)
-    .getPropertyValue(prop);
-  return val ? parseFloat(val.replace("px", "")) : 0;
-}
-
-/// height available for rendering the card
-export function getAvailableCanvasHeight(element: HTMLElement): number {
-  const parent = checkNotNull(element.parentElement);
-  const parentHeight = getComputedSizeProperty("height", parent);
-  const parentPaddingTop = getComputedSizeProperty("padding-top", parent);
-  const parentPaddingBottom = getComputedSizeProperty("padding-bottom", parent);
-
-  // NOTE: if this magic number is not 3 we can get into infinite re-render loops
-  return parentHeight - parentPaddingTop - parentPaddingBottom - 3; // why the magic number :/
-}
-
-/// width available for rendering the card
-export function getAvailableCanvasWidth(element: HTMLElement): number {
-  const parent = checkNotNull(element.parentElement);
-  const parentWidth = getComputedSizeProperty("width", parent);
-  const parentPaddingLeft = getComputedSizeProperty("padding-left", parent);
-  const parentPaddingRight = getComputedSizeProperty("padding-right", parent);
-
-  return parentWidth - parentPaddingLeft - parentPaddingRight;
 }
 
 function generateSplits(
@@ -204,32 +175,6 @@ export function isSameSeries(
         (b.card && JSON.stringify(b.card.visualization_settings));
       return acc && sameData && sameDisplay && sameVizSettings;
     }, true)
-  );
-}
-
-export function colorShades(color: string, count: number): string[] {
-  return _.range(count).map((i) =>
-    colorShade(color, 1 - Math.min(0.25, 1 / count) * i),
-  );
-}
-
-export function colorShade(hex: string, shade: number = 0): string {
-  const match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
-  if (!match) {
-    return hex;
-  }
-  const components = (
-    match[1] != null ? match.slice(1, 4) : match.slice(4, 7)
-  ).map((d) => parseInt(d, 16));
-  const min = Math.min(...components);
-  const max = Math.max(...components);
-  return (
-    "#" +
-    components
-      .map((c) =>
-        Math.round(min + (max - min) * shade * (c / 255)).toString(16),
-      )
-      .join("")
   );
 }
 
@@ -617,3 +562,6 @@ export const segmentIsValid = (
   const hasMax = typeof max === "number" && Number.isFinite(max);
   return allowOpenEnded ? hasMin || hasMax : hasMin && hasMax;
 };
+
+export const DATA_IMAGE_URI_PATTERN =
+  /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;

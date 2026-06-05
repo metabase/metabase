@@ -49,7 +49,7 @@ jobs:
 
   be-tests-athena-ee:
     if: inputs.driver == 'Athena'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -59,7 +59,7 @@ jobs:
       MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
       MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Athena driver
       uses: ./.github/actions/test-driver
       with:
@@ -68,7 +68,7 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     if: inputs.driver == 'BigQuery'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -80,7 +80,7 @@ jobs:
       MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test BigQuery Cloud SDK driver
       uses: ./.github/actions/test-driver
       with:
@@ -89,7 +89,7 @@ jobs:
 
   be-tests-druid-ee:
     if: inputs.driver == 'Druid'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -102,7 +102,7 @@ jobs:
         env:
           CLUSTER_SIZE: nano-quickstart
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Druid driver
       uses: ./.github/actions/test-driver
       with:
@@ -111,7 +111,7 @@ jobs:
 
   be-tests-mariadb-10-6-ee:
     if: inputs.driver == 'Maria DB'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -119,16 +119,19 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.6
+        image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
         ports:
           - "3306:3306"
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MariaDB driver (10.6)
       uses: ./.github/actions/test-driver
       with:
@@ -137,7 +140,7 @@ jobs:
 
   be-tests-mariadb-latest-ee:
     if: inputs.driver == 'Maria DB (latest)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -145,16 +148,19 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:latest
+        image: mariadb:latest
         ports:
           - "3306:3306"
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MariaDB driver (latest)
       uses: ./.github/actions/test-driver
       with:
@@ -163,7 +169,7 @@ jobs:
 
   be-tests-mongo-4-4-ee:
     if: inputs.driver == 'Mongo 4'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -176,7 +182,7 @@ jobs:
         ports:
           - "27017:27017"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MongoDB driver (4.4)
       uses: ./.github/actions/test-driver
       with:
@@ -185,7 +191,7 @@ jobs:
 
   be-tests-mongo-4-4-ssl-ee:
     if: inputs.driver == 'Mongo 4 (SSL)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -194,7 +200,7 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
       MB_TEST_MONGO_REQUIRES_SSL: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Spin up Mongo docker container
         run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.4 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
       - name: Wait until the port 27017 is ready
@@ -219,7 +225,7 @@ jobs:
 
   be-tests-mongo-5-0-ee:
     if: inputs.driver == 'Mongo 5'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -232,7 +238,7 @@ jobs:
         ports:
           - "27017:27017"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MongoDB driver (5.0)
       uses: ./.github/actions/test-driver
       with:
@@ -241,7 +247,7 @@ jobs:
 
   be-tests-mongo-5-0-ssl-ee:
     if: inputs.driver == 'Mongo 5 (SSL)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -250,7 +256,7 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
       MB_TEST_MONGO_REQUIRES_SSL: true
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Spin up Mongo docker container
       run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-5.0 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
     - name: Wait until the port 27017 is ready
@@ -275,7 +281,7 @@ jobs:
 
   be-tests-mongo-latest-ee:
     if: inputs.driver == 'Mongo (latest)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -284,23 +290,23 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
-        image: circleci/mongo:latest
+        image: mongo:latest
         ports:
           - "27017:27017"
         env:
           MONGO_INITDB_ROOT_USERNAME: metabase
           MONGO_INITDB_ROOT_PASSWORD: metasample123
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MongoDB driver (latest)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-latest-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
-  be-tests-mysql-8-4-ee:
+  be-tests-mysql-8-0-ee:
     if: inputs.driver == 'MySQL'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -308,25 +314,28 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
-        image: cimg/mysql:8.4
+        image: mysql:8.0
         ports:
           - "3306:3306"
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v4
-    - name: Test MySQL driver (8.4)
+    - uses: actions/checkout@v6
+    - name: Test MySQL driver (8.0)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mysql-8-4-ee'
+        junit-name: 'be-tests-mysql-8-0-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-latest-ee:
     if: inputs.driver == 'MySQL (latest)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -334,7 +343,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
       # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
@@ -355,7 +364,7 @@ jobs:
         ports:
         - "3306:3306"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MySQL driver (latest)
       uses: ./.github/actions/test-driver
       with:
@@ -364,7 +373,7 @@ jobs:
 
   be-tests-oracle-18-4-ee:
     if: inputs.driver == 'Oracle 18'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -381,7 +390,7 @@ jobs:
         ports:
           - "1521:1521"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Oracle driver (18.4)
       uses: ./.github/actions/test-driver
       with:
@@ -390,7 +399,7 @@ jobs:
 
   be-tests-oracle-21-3-ee:
     if: inputs.driver == 'Oracle 21'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -416,7 +425,7 @@ jobs:
         ports:
           - "2484:2484"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Oracle driver (21.3)
       uses: ./.github/actions/test-driver
       with:
@@ -425,7 +434,7 @@ jobs:
 
   be-tests-postgres-ee:
     if: inputs.driver == 'Postgres'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -446,7 +455,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Postgres driver (14)
       uses: ./.github/actions/test-driver
       with:
@@ -455,7 +464,7 @@ jobs:
 
   be-tests-postgres-latest-ee:
     if: inputs.driver == 'Postgres (latest)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -463,23 +472,23 @@ jobs:
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
       MB_DB_HOST: localhost
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: circle_test
-      MB_POSTGRESQL_TEST_USER: circle_test
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
       MB_POSTGRES_SSL_TEST_SSL: true
       MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
       MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
     services:
       postgres:
-        image: circleci/postgres:latest
+        image: postgres:latest
         ports:
           - "5432:5432"
         env:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Postgres driver (latest)
       uses: ./.github/actions/test-driver
       with:
@@ -488,7 +497,7 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     if: inputs.driver == 'Presto JDBC'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -509,7 +518,7 @@ jobs:
         env:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Wait for port ${{ env.MB_PRESTO_JDBC_TEST_PORT }} to be ready
       run: while ! nc -z localhost ${{ env.MB_PRESTO_JDBC_TEST_PORT }}; do sleep 0.1; done
       timeout-minutes: 15
@@ -537,7 +546,7 @@ jobs:
 
   be-tests-redshift-ee:
     if: inputs.driver == 'Redshift'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -547,7 +556,7 @@ jobs:
       MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Redshift driver
       uses: ./.github/actions/test-driver
       with:
@@ -556,7 +565,7 @@ jobs:
 
   be-tests-snowflake-ee:
     if: inputs.driver == 'Snowflake'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -568,7 +577,7 @@ jobs:
       MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
       MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Snowflake driver
       uses: ./.github/actions/test-driver
       with:
@@ -577,7 +586,7 @@ jobs:
 
   be-tests-sparksql-ee:
     if: inputs.driver == 'SparkSQL'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -588,7 +597,7 @@ jobs:
         ports:
           - "10000:10000"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Spark driver
       uses: ./.github/actions/test-driver
       with:
@@ -597,13 +606,13 @@ jobs:
 
   be-tests-sqlite-ee:
     if: inputs.driver == 'SQLite'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: sqlite
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test SQLite driver
       uses: ./.github/actions/test-driver
       with:
@@ -612,7 +621,7 @@ jobs:
 
   be-tests-sqlserver-2017-ee:
     if: inputs.driver == 'SQL Server 2017'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -630,7 +639,7 @@ jobs:
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MS SQL Server 2017 driver
       uses: ./.github/actions/test-driver
       with:
@@ -639,7 +648,7 @@ jobs:
 
   be-tests-sqlserver-2022-ee:
     if: inputs.driver == 'SQL Server 2022'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -657,7 +666,7 @@ jobs:
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MS SQL Server 2022 driver
       uses: ./.github/actions/test-driver
       with:
@@ -666,7 +675,7 @@ jobs:
 
   be-tests-starburst-ee:
     if: inputs.driver == 'Starburst'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -680,7 +689,7 @@ jobs:
           - "8080:8080"
     name: Starburst
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Starburst driver
@@ -691,14 +700,14 @@ jobs:
 
   login-to-ecr:
     if: inputs.driver == 'Vertica'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     permissions:
       id-token: write
       contents: read
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
       with:
         role-to-assume: ${{ secrets.CI_IAM_ROLE }}
         role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -720,7 +729,7 @@ jobs:
 
   be-tests-vertica-ee:
     if: inputs.driver == 'Vertica'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: login-to-ecr
     timeout-minutes: 90
     env:
@@ -735,7 +744,7 @@ jobs:
           username: ${{ needs.login-to-ecr.outputs.docker_username }}
           password: ${{ needs.login-to-ecr.outputs.docker_password }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Vertica driver

@@ -2,11 +2,11 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 import { c, msgid, ngettext, t } from "ttag";
 
-import { DEFAULT_TIME_STYLE } from "metabase/lib/formatting/datetime-utils";
 import type {
   DateFilterDisplayOpts,
   DateFilterValue,
 } from "metabase/querying/common/types";
+import { DEFAULT_TIME_STYLE } from "metabase/utils/formatting/datetime-utils";
 import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { DateFormattingSettings } from "metabase-types/api";

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,10 +8,10 @@ import { Input } from "metabase/common/components/Input";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { delay } from "metabase/lib/delay";
 import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Checkbox, Flex, Text } from "metabase/ui";
+import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -55,6 +55,7 @@ export const ListField = ({
   const [selectedValues, setSelectedValues] = useState(
     new Set(normalizedValue),
   );
+  const initiallySelectedValuesRef = useRef(selectedValues);
   const [addedOptions, setAddedOptions] = useState<Option[]>(() =>
     createOptionsFromValuesWithoutOptions(normalizedValue, options),
   );
@@ -72,16 +73,10 @@ export const ListField = ({
     [augmentedOptions, tc],
   );
 
-  /**
-   * Sorts options alphabetically, or by their translation if content
-   * translation is enabled. Selected options are sorted to the top. Since
-   * options are arrays, the last item in the array is used as the name of the
-   * option.
-   */
   const sortOptions = useCallback(
     (optionA: Option, optionB: Option) => {
-      const aSelected = selectedValues.has(optionA[0]),
-        bSelected = selectedValues.has(optionB[0]);
+      const aSelected = initiallySelectedValuesRef.current.has(optionA[0]);
+      const bSelected = initiallySelectedValuesRef.current.has(optionB[0]);
 
       if (aSelected && !bSelected) {
         return -1;
@@ -102,14 +97,12 @@ export const ListField = ({
         ? sortByTranslation(aName, bName)
         : 0;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedValues is omitted from the deps so that selecting a value does not trigger re-sorting
-    [sortByTranslation],
+    [optionsHaveSomeTranslations, sortByTranslation],
   );
 
   const sortedOptions = useMemo(
-    () => augmentedOptions.sort(sortOptions),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [augmentedOptions.length, sortOptions],
+    () => [...augmentedOptions].sort(sortOptions),
+    [augmentedOptions, sortOptions],
   );
 
   const [filter, setFilter] = useState("");
@@ -209,7 +202,7 @@ export const ListField = ({
               <Checkbox
                 variant="stacked"
                 label={
-                  <Text c="text-secondary">
+                  <Text c="text-secondary" lh="inherit">
                     {debouncedFilter ? t`Select these` : t`Select all`}
                   </Text>
                 }

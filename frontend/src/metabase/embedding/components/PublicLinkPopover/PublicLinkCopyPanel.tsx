@@ -1,6 +1,8 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
+import { CopyButton } from "metabase/common/components/CopyButton";
+import type { ExportFormat } from "metabase/common/types/export";
 import {
   Anchor,
   Box,
@@ -11,11 +13,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import {
-  PublicLinkCopyButton,
-  RemoveLinkAnchor,
-} from "./PublicLinkCopyPanel.styled";
-import type { ExportFormatType } from "./types";
+import S from "./PublicLinkCopyPanel.module.css";
 
 export const PublicLinkCopyPanel = ({
   loading = false,
@@ -31,9 +29,9 @@ export const PublicLinkCopyPanel = ({
   loading?: boolean;
   url: string | null;
   onRemoveLink?: MouseEventHandler;
-  selectedExtension?: ExportFormatType;
-  onChangeExtension?: (extension: ExportFormatType) => void;
-  extensions?: ExportFormatType[];
+  selectedExtension?: ExportFormat | null;
+  onChangeExtension?: (extension: ExportFormat | null) => void;
+  extensions?: ExportFormat[];
   removeButtonLabel?: string;
   removeTooltipLabel?: string;
   onCopy?: () => void;
@@ -45,7 +43,11 @@ export const PublicLinkCopyPanel = ({
       placeholder={loading ? t`Loading…` : undefined}
       value={url ?? ""}
       inputWrapperOrder={["label", "input", "error", "description"]}
-      rightSection={url && <PublicLinkCopyButton value={url} onCopy={onCopy} />}
+      rightSection={
+        url && (
+          <CopyButton className={S.copyButton} value={url} onCopy={onCopy} />
+        )
+      }
     />
     <Box pos="relative">
       <Group
@@ -65,15 +67,16 @@ export const PublicLinkCopyPanel = ({
                 </Text>
               }
             >
-              <RemoveLinkAnchor
+              <Anchor
                 component="button"
+                className={S.removeLink}
                 fz="sm"
                 c="error"
                 fw={700}
                 onClick={onRemoveLink}
               >
                 {removeButtonLabel}
-              </RemoveLinkAnchor>
+              </Anchor>
             </Tooltip>
           )}
         </Box>

@@ -1,17 +1,17 @@
 import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
-import { Dashboards } from "metabase/entities/dashboards";
-import { createThunkAction } from "metabase/lib/redux";
-import { CardApi } from "metabase/services";
-import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
-import type { DashCardId, ParameterId } from "metabase-types/api";
+import { cardApi, dashboardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { clickBehaviorIsValid } from "metabase/parameters/utils/click-behavior";
+import { createThunkAction } from "metabase/redux";
+import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
+import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import type {
-  Dispatch,
-  GetState,
-  StoreDashboard,
-  StoreDashcard,
-} from "metabase-types/store";
+  DashCardId,
+  ParameterId,
+  UpdateCardRequest,
+} from "metabase-types/api";
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
@@ -25,15 +25,12 @@ import {
   trackAddedIFrameDashcards,
 } from "./utils";
 
-export const UPDATE_DASHBOARD_AND_CARDS =
-  "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
-
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
   function () {
-    return async function (dispatch: Dispatch, getState: GetState) {
+    return async function (dispatch, getState) {
       const startTime = performance.now();
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
@@ -154,7 +151,13 @@ export const updateDashboardAndCards = createThunkAction(
       await Promise.all(
         dashboard.dashcards
           .filter((dc) => "isDirty" in dc.card && Boolean(dc.card.isDirty))
-          .map(async (dc) => CardApi.update(dc.card)),
+          .map((dc) =>
+            dispatch(
+              cardApi.endpoints.updateCard.initiate(
+                dc.card as UpdateCardRequest,
+              ),
+            ).unwrap(),
+          ),
       );
 
       trackAddedIFrameDashcards(dashboard);
@@ -188,12 +191,14 @@ export const updateDashboardAndCards = createThunkAction(
         .filter((tab) => !tab.isRemoved)
         .map(({ id, name }) => ({ id, name }));
 
-      await dispatch(
-        Dashboards.actions.update({
+      await runRtkEndpoint(
+        {
           ...dashboard,
           dashcards: dashcardsToUpdate,
           tabs: tabsToUpdate,
-        }),
+        },
+        dispatch,
+        dashboardApi.endpoints.updateDashboard,
       );
 
       const endTime = performance.now();
@@ -240,7 +245,7 @@ export const updateDashboardAndCards = createThunkAction(
 export const updateDashboard = createThunkAction(
   UPDATE_DASHBOARD,
   function ({ attributeNames }: { attributeNames: string[] }) {
-    return async function (dispatch: Dispatch, getState: GetState) {
+    return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashboardId } = state.dashboard;
 
@@ -258,8 +263,10 @@ export const updateDashboard = createThunkAction(
       if (attributeNames.length > 0) {
         const attributes = _.pick(dashboard, attributeNames);
 
-        await dispatch(
-          Dashboards.actions.update({ id: dashboardId }, attributes),
+        await runRtkEndpoint(
+          { id: dashboardId, ...attributes },
+          dispatch,
+          dashboardApi.endpoints.updateDashboard,
         );
       }
 

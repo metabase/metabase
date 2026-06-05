@@ -9,16 +9,18 @@ import {
   getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
   getCurrencySymbol,
-  getDateFormatFromStyle,
-  getDateStyleOptionsForUnit,
-  getTimeStyleOptions,
   numberFormatterForOptions,
-} from "metabase/lib/formatting";
-import { hasHour } from "metabase/lib/formatting/datetime-utils";
-import MetabaseSettings from "metabase/lib/settings";
+} from "metabase/utils/formatting";
+import { hasHour } from "metabase/utils/formatting/datetime-utils";
+import MetabaseSettings from "metabase/utils/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { ChartNestedSettingColumns } from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import {
+  getDateFormatFromStyle,
+  getDateStyleOptionsForUnit,
+  getTimeStyleOptions,
+} from "metabase/visualizations/lib/formatting";
 import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
@@ -66,18 +68,17 @@ const DEFAULT_GET_COLUMNS: GetColumnsFn = (series, _vizSettings) =>
 
 export interface ColumnSettingsOptions {
   getColumns?: GetColumnsFn;
-  hidden?: boolean;
-  section?: string;
+  getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
+  getSection?: () => string;
   readDependencies?: string[];
 }
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
-  hidden,
   ...def
 }: ColumnSettingsOptions = {}) {
   return nestedSettings<"column_settings", DatasetColumn>("column_settings", {
-    section: t`Formatting`,
+    getSection: () => t`Formatting`,
     objectName: "column",
     getObjects: getColumns,
     getObjectKey: getColumnKey,
@@ -86,7 +87,6 @@ export function columnSettings({
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInheritedSettingsForColumn,
     useRawSeries: true,
-    hidden,
     ...def,
   });
 }
@@ -156,7 +156,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     },
     isValid: ({ unit }, settings) => {
       const options = getDateStyleOptionsForUnit(unit ?? "default");
-      return !!_.findWhere(options, { value: settings.date_style });
+      return !!_.findWhere(options, {
+        value: settings.date_style ?? undefined,
+      });
     },
     getProps: ({ unit }, settings) => ({
       options: getDateStyleOptionsForUnit(
@@ -177,7 +179,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Date separators`;
     },
     widget: "radio",
-    default: "/",
+    getDefault: () => "/",
     getProps: (_column, settings) => {
       const style = /\//.test(settings.date_style ?? "")
         ? (settings.date_style ?? "")
@@ -198,11 +200,11 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Abbreviate days and months`;
     },
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
     getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(
-        settings.date_style,
+        settings.date_style ?? undefined,
         unit ?? "default",
       );
       return !format || !format.match(/MMMM|dddd/);
@@ -230,7 +232,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Time style`;
     },
     widget: "radio",
-    default: "h:mm A",
+    getDefault: () => "h:mm A",
     getProps: (column) => ({
       options: getTimeStyleOptions(column.unit ?? "default"),
     }),
@@ -534,9 +536,7 @@ export function tableColumnSettings({
 } = {}): VisualizationSettingsDefinitions {
   return {
     "table.columns": {
-      get section() {
-        return t`Columns`;
-      },
+      getSection: () => t`Columns`,
       // title: t`Columns`,
       widget: ChartSettingTableColumns,
       getHidden: (_series, vizSettings) => vizSettings["table.pivot"],

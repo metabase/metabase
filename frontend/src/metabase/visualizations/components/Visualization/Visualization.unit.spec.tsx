@@ -3,7 +3,8 @@ import type { ComponentProps } from "react";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { color } from "metabase/lib/colors";
+import { createMockState } from "metabase/redux/store/mocks";
+import { color } from "metabase/ui/colors";
 import { registerVisualization } from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import registerVisualizations from "metabase/visualizations/register";
@@ -22,7 +23,6 @@ import {
   createMockTokenFeatures,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 registerVisualizations();
 

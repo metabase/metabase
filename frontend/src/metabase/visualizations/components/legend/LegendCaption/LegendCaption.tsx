@@ -2,13 +2,12 @@ import cx from "classnames";
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Markdown } from "metabase/common/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { IconProps } from "metabase/ui";
-import { Icon, Menu, Tooltip } from "metabase/ui";
+import { Ellipsified, Icon, Menu, Tooltip } from "metabase/ui";
 import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/visualizations/lib/image-exports";
 
 import { LegendActions } from "../LegendActions";
@@ -60,7 +59,7 @@ export const LegendCaption = ({
 }: LegendCaptionProps) => {
   /*
    * Optimization: lazy computing the href on title focus & mouseenter only.
-   * Href computation uses getNewCardUrl, which makes a few MLv2 calls,
+   * Href computation uses getNewCardUrl, which makes a few Lib calls,
    * which are expensive.
    * It's a performance issue on dashboards that have hundreds of dashcards
    * (during initial render and after changing dashboard parameters which can

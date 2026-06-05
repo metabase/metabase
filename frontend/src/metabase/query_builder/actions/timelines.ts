@@ -1,7 +1,7 @@
 import { createAction } from "redux-actions";
 
+import type { Dispatch, GetState } from "metabase/redux/store";
 import type { CollectionId, Timeline } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getFetchedTimelines } from "../selectors";
 

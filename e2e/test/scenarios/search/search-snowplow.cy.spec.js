@@ -501,7 +501,7 @@ describe("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("verified-search-filter")
-          .findByText("Verified items only")
+          .findByLabelText("Verified items only")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -523,7 +523,7 @@ describe("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("verified-search-filter")
-          .findByText("Verified items only")
+          .findByLabelText("Verified items only")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -558,7 +558,7 @@ describe("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("search_native_query-search-filter")
-          .findByText("Search the contents of native queries")
+          .findByLabelText("Search the contents of native queries")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -580,7 +580,7 @@ describe("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("search_native_query-search-filter")
-          .findByText("Search the contents of native queries")
+          .findByLabelText("Search the contents of native queries")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -615,7 +615,7 @@ describe("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("archived-search-filter")
-          .findByText("Search items in trash")
+          .findByLabelText("Search items in trash")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -637,7 +637,7 @@ describe("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("archived-search-filter")
-          .findByText("Search items in trash")
+          .findByLabelText("Search items in trash")
           .click();
 
         H.expectUnstructuredSnowplowEvent({

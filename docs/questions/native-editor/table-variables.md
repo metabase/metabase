@@ -37,7 +37,7 @@ FROM
 {% endraw %}
 ```
 
-Metabase inserts the table reference using the schema-qualified name (e.g., `public.orders`), so some databases like PostgreSQL will require you to use an alias. For example: `SELECT t.id FROM {% raw %}{{table}}{% endraw %} t`.
+See [Referencing table variables](#reference-table-variables).
 
 ### Setting the variable type to Table
 
@@ -46,8 +46,39 @@ After adding a `{% raw %}{{variable}}{% endraw %}` to your query:
 1. Open the **Variables** sidebar (it should appear automatically).
 2. Change the variable type to **Table**.
 3. Under **Table to map to**, select a table from the picker (Required).
+4. Depending on how you want to refer to the table variable in the query, toggle **Emit table alias** on or off, see [Referencing table variables](#reference-table-variables).
 
 When you run the query, Metabase replaces the variable with the selected table's schema and table name. To preview the code Metabase will run, click the **eye** icon.
+
+## Reference table variables
+
+There are two ways you can refer to the table variable in the rest of the query:
+
+1. If you want to use the variable's name, you'll need to toggle _on_ **Emit table alias** in the variable's settings. Your queries will look like this:
+
+   ```sql
+   {% raw %}
+   SELECT
+       var_name.id,
+       p.title
+   FROM
+       {{var_name}} JOIN products as p on var_name.product_id = p.id
+
+   {% endraw %}
+   ```
+
+2. If you want to specify an alias, you must toggle **Emit table alias** _off_ and manually add aliases to your query. You may want to specify your own alias if you already have a long query with existing aliases, and you just want to swap the table for a table variable. Your queries will look like this:
+
+   ```sql
+   {% raw %}
+   SELECT
+       o.id,
+       p.title
+   FROM
+       {{var_name}} as o JOIN products as p on o.product_id = p.id
+
+   {% endraw %}
+   ```
 
 ## Using table variables with snippets
 

@@ -7,11 +7,10 @@ import type { TextAreaProps } from "metabase/common/components/TextArea";
 import { TextArea } from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
-export interface FormTextAreaProps
-  extends Omit<
-    TextAreaProps,
-    "value" | "error" | "fullWidth" | "onChange" | "onBlur"
-  > {
+export interface FormTextAreaProps extends Omit<
+  TextAreaProps,
+  "value" | "error" | "fullWidth" | "onChange" | "onBlur"
+> {
   name: string;
   title?: string;
   actions?: ReactNode;

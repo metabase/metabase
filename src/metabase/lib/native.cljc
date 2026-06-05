@@ -2,11 +2,11 @@
   "Functions for working with native queries."
   (:refer-clojure :exclude [some select-keys mapv every? empty? not-empty])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.parameters.parse :as lib.params.parse]
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
@@ -24,7 +24,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? mapv select-keys some empty? not-empty]]))
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [empty? every? mapv not-empty select-keys some]]))
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
@@ -49,20 +50,23 @@
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found            {}
            [current & more] parsed]
-      (match [current]
-        [nil]              found
-        [_ :guard string?] (recur found more)
+      (let [[found more] (match/match-one current
+                           (_ :guard string?) [found more]
 
-        [{:type ::lib.parse/param, :name tag-name}]
-        (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
-          (recur (cond-> found
-                   (and normalized-name (not (found normalized-name)))
-                   (assoc normalized-name (fresh-tag normalized-name)))
-                 more))
+                           {:type ::lib.parse/param, :name tag-name}
+                           (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
+                             [(cond-> found
+                                (and normalized-name (not (found normalized-name)))
+                                (assoc normalized-name (fresh-tag normalized-name)))
+                              more])
 
-        [{:type     ::lib.parse/optional
-          :contents contents}]
-        (recur found (into more contents))))))
+                           {:type ::lib.parse/optional, :contents contents}
+                           [found (into more contents)]
+
+                           _ [found nil])]
+        (if more
+          (recur found more)
+          found)))))
 
 (defn- rename-template-tag
   [existing-tags old-name new-name]
@@ -150,7 +154,7 @@
        ;; Otherwise just an empty map, no tags.
        {}))))
 
-(defn- assert-native-query [stage]
+(defn- assert-native-stage [stage]
   (assert (= (:lib/type stage) :mbql.stage/native) (i18n/tru "Must be a native query")))
 
 (def ^:private all-native-extra-keys
@@ -181,7 +185,7 @@
              stage-without-old-extras (apply dissoc stage extras-to-remove)
              result (merge stage-without-old-extras (select-keys native-extras required-extras))
              missing-keys (set/difference required-extras (set (keys native-extras)))]
-         (assert-native-query (lib.util/query-stage query 0))
+         (assert-native-stage (lib.util/query-stage query 0))
          (assert (empty? missing-keys)
                  (i18n/tru "Missing extra, required keys for native query: {0}"
                            (pr-str missing-keys)))
@@ -190,7 +194,7 @@
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
 
-  Native in this sense means a pMBQL query with a first stage that is a native query."
+  Native in this sense means a MBQL 5 query with a first stage that is a native query."
   ([metadata-providerable     :- ::lib.schema.metadata/metadata-providerable
     sql-or-other-native-query :- ::common/non-blank-string]
    (native-query metadata-providerable sql-or-other-native-query nil nil))
@@ -212,7 +216,7 @@
    Native extras must be provided if the new database requires it."
   [query :- ::lib.schema/query
    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-  (assert-native-query (lib.util/query-stage query 0))
+  (assert-native-stage (lib.util/query-stage query 0))
   (let [stages-without-fields (->> (:stages query)
                                    (mapv (fn [stage]
                                            (update stage :template-tags update-vals #(dissoc % :dimension)))))]
@@ -231,7 +235,7 @@
   (lib.util/update-query-stage
    query 0
    (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query stage)
+     (assert-native-stage stage)
      (assoc stage
             :native inner-query
             :template-tags (extract-template-tags query inner-query existing-tags)))))
@@ -239,7 +243,10 @@
 ;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
 ;;; `with-replaced-template-tags`. It only replaces tags you specify rather then completely setting a new list
 (mu/defn with-template-tags :- ::lib.schema/query
-  "Updates the native query's template tags."
+  "Updates the native query's template tags.
+
+  Note that this only updates existing tags, and will not blindly set them to `template-tags`; however, initializing a
+  query with [[native-query]] should populate them automatically by way of [[extract-template-tags]]."
   [query        :- ::lib.schema/query
    updated-tags :- ::lib.schema.template-tag/template-tag-map]
   (letfn [(update-template-tags [existing-tags]
@@ -248,22 +255,25 @@
             ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759975007383889?thread_ts=1759289751.539169&cid=C0645JP1W81
             ;;
             ;; first, filter out the tags in `updated-tags` not in existing tags, preserving the original order.
-            (let [tags (reduce-kv
-                        (fn [m k v]
-                          (cond-> m
-                            (contains? existing-tags k) (assoc k v)))
-                        {}
-                        updated-tags)]
+            (let [updates (reduce-kv
+                           (fn [m updated-k updated-v]
+                             (let [updated-k (lib.params.parse/match-and-normalize-tag-name updated-k)]
+                               (cond-> m
+                                 (contains? existing-tags updated-k) (assoc updated-k updated-v))))
+                           {}
+                           updated-tags)]
               ;; merge in old values that weren't in the `updated-tags` map
               (reduce-kv
-               (fn [m k v]
-                 (cond-> m
-                   (not (contains? m k)) (assoc k v)))
-               tags
+               (fn [updates existing-k existing-v]
+                 (cond-> updates
+                   (not (contains? updates existing-k)) (assoc existing-k existing-v)))
+               updates
                existing-tags)))
           (update-stage [stage]
-            (assert-native-query stage)
-            (update stage :template-tags update-template-tags))]
+            (assert-native-stage stage)
+            (-> stage
+                (update :template-tags update-template-tags)
+                (->> (lib.normalize/normalize ::lib.schema/stage.native))))]
     (lib.util/update-query-stage query 0 update-stage)))
 
 (mu/defn raw-native-query :- some?
@@ -309,7 +319,7 @@
    This is only filled in by [[metabase.warehouses-rest.api/add-native-perms-info]]
    and added to metadata when pulling a database from the list of dbs in js."
   [query :- ::lib.schema/query]
-  (assert-native-query (lib.util/query-stage query 0))
+  (assert-native-stage (lib.util/query-stage query 0))
   (= :write (:native-permissions (lib.metadata/database query))))
 
 (mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
@@ -346,7 +356,7 @@
   "Returns the database engine.
    Must be a native query"
   [query :- ::lib.schema/query]
-  (assert-native-query (lib.util/query-stage query 0))
+  (assert-native-stage (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))
 
 (defn- get-parameter-value
@@ -402,7 +412,6 @@
                              (keep (fn [[tag-name {:keys [id] :as tag}]]
                                      (or (params-by-id id)
                                          (get-parameter-value query tag-name tag))))
-
                              ttags)]
     (cond-> query
       (seq new-parameters) (assoc :parameters new-parameters))))

@@ -1,3 +1,5 @@
+import path from "path";
+
 import type { StorybookConfig } from "@storybook/react-webpack5";
 const appConfig = require("../rspack.main.config.js");
 const webpack = require("webpack");
@@ -20,7 +22,14 @@ const stories = process.env.STORYBOOK_STORIES_FILTER
 
 const config: StorybookConfig = {
   stories,
-  staticDirs: ["../resources/frontend_client", "./msw-public"],
+  staticDirs: [
+    "../resources/frontend_client",
+    "./msw-public",
+    {
+      from: "../frontend/test/__support__/custom-viz-fixtures/calendar-heatmap",
+      to: "/custom-viz-fixtures/calendar-heatmap",
+    },
+  ],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-essentials",
@@ -36,6 +45,9 @@ const config: StorybookConfig = {
   },
   typescript: {
     reactDocgen: "react-docgen-typescript",
+    reactDocgenTypescriptOptions: {
+      tsconfigPath: path.resolve(__dirname, "../tsconfig.json"),
+    },
   },
 
   webpackFinal: (config) => {
