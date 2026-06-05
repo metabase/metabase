@@ -716,7 +716,11 @@
   (let [head (u/lower-case-en (nth node 0))
         x    (nth node 2)]
     (case head
-      "true"  x
+      ;; Always emit a vector so we don't expose a bare scalar (`["true" {} x]` -> `x`) that a
+      ;; sole-element parent would turn into an un-optioned clause `[x]`, which a later `repair`
+      ;; pass would then "fix" to `[x {}]` - breaking idempotency. A wrapped clause is returned
+      ;; as-is; a wrapped scalar becomes a clause with an empty options map.
+      "true"  (if (vector? x) x [x {}])
       "false" ["not" {} x])))
 
 (defn- unwrap-boolean-wrappers*
@@ -2436,12 +2440,6 @@
       ensure-clause-options*
       unwrap-boolean-wrappers*
       unwrap-nested-field-clauses*
-      ;; Re-run after the unwrap passes: unwrapping a boolean wrapper (`["true" {} x]` -> `x`) that
-      ;; was the sole element of a parent vector exposes a freshly-bare clause (e.g. `[x]`) that the
-      ;; earlier `ensure-clause-options*` never saw. Normalising it here (rather than letting the
-      ;; next `repair` call do it) keeps `repair` idempotent and lets the alias passes below see a
-      ;; properly-optioned clause (e.g. `["eq"]` -> `["eq" {}]` -> `["=" {}]` in one pass).
-      ensure-clause-options*
       rewrite-operator-name-aliases*
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
