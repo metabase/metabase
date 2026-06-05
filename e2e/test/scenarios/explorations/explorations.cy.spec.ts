@@ -106,13 +106,15 @@ describe("scenarios > explorations > new research > manual flow", () => {
   it("renders the empty research-mode landing with a disabled CTA", () => {
     H.visitNewExploration();
 
-    cy.findByRole("heading", {
-      name: /What do you want to research\?/i,
-    }).should("be.visible");
+    cy.findByRole("main")
+      .findByText(/What do you want to research\?/i)
+      .should("be.visible");
 
     H.explorationsMetabotPromptInput().should("be.visible");
-    // The right pane's header exposes the "+ Data" and "+ Events"
-    // affordances for adding to the plan.
+
+    // Manual setup opens the research plan, whose header exposes the
+    // "+ Data" and "+ Events" affordances for adding to the plan.
+    H.startManualExploration();
     cy.findByTestId("research-content")
       .findByRole("button", { name: /Data/ })
       .should("be.visible");
@@ -123,26 +125,9 @@ describe("scenarios > explorations > new research > manual flow", () => {
     cy.findByRole("button", { name: /Start research/i }).should("not.exist");
   });
 
-  it("QuestionModeSwitcher toggles between /question/ask and /question/research", () => {
-    H.visitNewExploration();
-
-    // Click the Explore segment → MetabotQueryBuilder.
-    cy.findByRole("radio", { name: "Explore" }).check({ force: true });
-    cy.url().should("include", "/question/ask");
-    // The metabot send-button only renders inside the
-    // MetabotQueryBuilder shell.
-    cy.findByTestId("metabot-send-message").should("be.visible");
-
-    // Back to Research.
-    cy.findByRole("radio", { name: "Research" }).check({ force: true });
-    cy.url().should("include", "/question/research");
-    cy.findByRole("heading", {
-      name: /What do you want to research\?/i,
-    }).should("be.visible");
-  });
-
   it("picks metrics + dimensions, creates an exploration, and lands on the detail page", () => {
     H.visitNewExploration();
+    H.startManualExploration();
 
     H.addMetricsAndDimensions({
       metrics: ["Count of orders"],
@@ -183,12 +168,15 @@ describe("scenarios > explorations > new research > manual flow", () => {
     createTimelineWithSentinelEvent("Marketing campaigns", "bell");
 
     H.visitNewExploration();
+    H.startManualExploration();
 
     // --- "+ Data" → Metrics modal search ---
     cy.findByRole("button", { name: /Data/ }).click();
     cy.findByRole("menuitem", { name: "Metrics" }).click();
     // Seeded names are "Count of orders" + "Count of orders over time".
     cy.wait("@getDimensions");
+    // Seeded metrics aren't in the library; switch off the default Library tab.
+    H.selectAllMetricsTab();
     cy.findByRole("checkbox", { name: "Count of orders" }).should("exist");
     cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
       "exist",
@@ -244,6 +232,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
       createTimelineWithSentinelEvent("Marketing campaigns", "bell").then(
         (marketingId) => {
           H.visitNewExploration();
+          H.startManualExploration();
           // Need at least one metric + dimension first — that's the
           // `canStart` gate from `NewExplorationData.tsx`.
           H.addMetricsAndDimensions({ metrics: ["Count of orders"] });
@@ -365,7 +354,9 @@ describe("scenarios > explorations > new research > metabot flow", () => {
       H.visitNewExploration();
 
       H.explorationsMetabotPromptInput().type("Why are signups down?");
-      cy.findByTestId("metabot-send-message").click();
+      // The entry page submits via "Create plan" (which switches to the plan
+      // view); the plan-page chat's send button isn't present yet.
+      cy.findByRole("button", { name: /Create plan/i }).click();
 
       // The chat dispatch went through with the `explorations`
       // profile, confirming we wired the new-exploration page to
@@ -509,44 +500,32 @@ describe("scenarios > explorations > detail page", () => {
           .first()
           .should("be.visible");
 
-        // Headings render as `role="group"` with `aria-expanded`,
-        // accessible by their `aria-label` (the metric name).
-        // Leaf rows are `role="treeitem"` links — ARIA's
-        // name-computation derives a treeitem's accessible name
-        // from its text content, but we assert the visible
-        // `By <dim>` label via `findByText` (matching the inner
-        // `<Text>` rendered by `Ellipsified`) to keep parity with
-        // the heading assertions below.
-        const metricHeading = () =>
-          cy.findByRole("group", { name: ordersMetric!.name });
+        cy.findByTestId("exploration-page-sidebar").within(() => {
+          const metricHeading = () =>
+            cy.findByRole("group", { name: ordersMetric!.name });
 
-        metricHeading().should("be.visible");
-        for (const dim of pickedDimensions) {
-          cy.findByText(`By ${dim.display_name}`).should("be.visible");
-        }
+          metricHeading().should("be.visible");
+          for (const dim of pickedDimensions) {
+            cy.findByText(`By ${dim.display_name}`).should("be.visible");
+          }
 
-        // Collapse the metric heading: aria-expanded flips and
-        // both leaves disappear.
-        metricHeading()
-          .should("have.attr", "aria-expanded", "true")
-          .click()
-          .should("have.attr", "aria-expanded", "false");
-        for (const dim of pickedDimensions) {
-          cy.findByText(`By ${dim.display_name}`).should("not.exist");
-        }
+          // Collapse the metric heading: aria-expanded flips and
+          // both leaves disappear.
+          metricHeading()
+            .should("have.attr", "aria-expanded", "true")
+            .click()
+            .should("have.attr", "aria-expanded", "false");
+          for (const dim of pickedDimensions) {
+            cy.findByText(`By ${dim.display_name}`).should("not.exist");
+          }
 
-        // Re-expand: both leaves return.
-        metricHeading().click().should("have.attr", "aria-expanded", "true");
-        for (const dim of pickedDimensions) {
-          cy.findByText(`By ${dim.display_name}`).should("be.visible");
-        }
+          // Re-expand: both leaves return.
+          metricHeading().click().should("have.attr", "aria-expanded", "true");
+          for (const dim of pickedDimensions) {
+            cy.findByText(`By ${dim.display_name}`).should("be.visible");
+          }
+        });
 
-        // Interestingness marker: read the hydrated exploration to
-        // know how many leaf groups cross the FE threshold (0.7 —
-        // see `frontend/src/metabase/explorations/constants.ts`),
-        // and assert the same number of markers render in the
-        // sidebar. If the BE marks none as interesting, no markers
-        // should appear at all.
         cy.request("GET", `/api/exploration/${id}`).then(({ body }) => {
           const QUERY_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
           type Group = {

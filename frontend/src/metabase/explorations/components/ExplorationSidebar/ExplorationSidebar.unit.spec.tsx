@@ -677,16 +677,16 @@ describe("ExplorationSidebar", () => {
         selectedEntityId: { type: "group", id: RUNNING_LEAF_ID },
       });
 
-      // The leaf rows show "By <dimension_name>"; we matched
-      // dimension_name to query name in `createQuery`.
+      // Leaf rows are labelled by the BE-provided group name; each row's status
+      // is derived from that group's own queries.
       expect(
-        within(getRow("Pending leaf q1")).getByLabelText("Loading…"),
+        within(getRow("Still running")).getByLabelText("Loading…"),
       ).toBeInTheDocument();
       expect(
-        within(getRow("Error leaf q1")).getByLabelText("Failed to generate"),
+        within(getRow("Has an error")).getByLabelText("Failed to generate"),
       ).toBeInTheDocument();
       expect(
-        within(getRow("Done leaf q1")).getByLabelText("Ready"),
+        within(getRow("All settled")).getByLabelText("Ready"),
       ).toBeInTheDocument();
 
       // Heading has no status icon — none of the labels appear inside it.
@@ -747,9 +747,8 @@ describe("ExplorationSidebar", () => {
           position: 0,
           type: "auto",
           display_type: "page",
-          // The leaf row label is always `By <dimension_name>`, so the
-          // group's own `name` only matters for analytics — it never
-          // surfaces in the sidebar.
+          // The leaf row is labelled by the BE-provided group name; the
+          // constituent queries are fanned out behind the single row.
           name: "Revenue across regions",
           query_ids: pageQueries.map((q) => q.id),
         },
@@ -762,8 +761,8 @@ describe("ExplorationSidebar", () => {
           selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
         });
 
-        // One leaf row labelled after the first query's dimension_name.
-        expect(getRow("Revenue (US)")).toBeInTheDocument();
+        // One leaf row labelled by the group name.
+        expect(getRow("Revenue across regions")).toBeInTheDocument();
         // The other constituent query name is NOT exposed as its own row.
         const allRows = screen.getAllByRole("treeitem");
         expect(
@@ -782,7 +781,7 @@ describe("ExplorationSidebar", () => {
           selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
         });
 
-        expect(getRow("Revenue (US)")).toHaveAttribute(
+        expect(getRow("Revenue across regions")).toHaveAttribute(
           "href",
           getSelectedEntityIdUrl({ type: "group", id: PAGE_LEAF_ID }),
         );
@@ -795,7 +794,10 @@ describe("ExplorationSidebar", () => {
           selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
         });
 
-        expect(getRow("Revenue (US)")).toHaveAttribute("aria-selected", "true");
+        expect(getRow("Revenue across regions")).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
       });
 
       it("a mixed-status page leaf reports the worst-case status on its single row", () => {
@@ -836,7 +838,7 @@ describe("ExplorationSidebar", () => {
 
         // The error wins — the row's icon is the warning.
         expect(
-          within(getRow("OK query")).getByLabelText("Failed to generate"),
+          within(getRow("Mixed page")).getByLabelText("Failed to generate"),
         ).toBeInTheDocument();
       });
     });

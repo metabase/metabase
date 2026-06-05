@@ -23,14 +23,38 @@ export function enableExplorations(): void {
 export function explorationsMetabotPromptInput(): Cypress.Chainable<
   JQuery<HTMLElement>
 > {
-  return cy.findByTestId("metabot-chat-input");
+  return cy.get(".ProseMirror[contenteditable=true]");
 }
 
 export function visitNewExploration(): void {
   cy.visit("/question/research");
-  // The "+ Data" button is always present; "Start research" only appears
-  // once a block is added, so use the former as the load signal.
+  cy.findByRole("button", { name: /Manual setup/i }).should("be.visible");
+}
+
+/**
+ * Enter the manual data-picking flow from the entry page. The "+ Data" /
+ * "+ Events" pickers (the `research-content` plan pane) only mount after the
+ * user clicks "Manual setup", so manual-flow tests must call this after
+ * `visitNewExploration()`. Waits for the "+ Data" button as the load signal.
+ */
+export function startManualExploration(): void {
+  cy.findByRole("button", { name: /Manual setup/i }).click();
   cy.findByRole("button", { name: /Data/ }).should("be.visible");
+}
+
+/**
+ * The metrics picker opens on the "Library" tab whenever the metrics library is
+ * enabled (it is, under the pro token these specs activate), which lists only
+ * `in_library` metrics and hides ad-hoc seeded test metrics. Switch to the
+ * "All" tab so every metric is listed. No-op when the library is disabled — the
+ * tabs aren't rendered then.
+ */
+export function selectAllMetricsTab(): void {
+  cy.findByRole("dialog").then(($dialog) => {
+    if ($dialog.find('[role="tab"]').length > 0) {
+      cy.findByRole("tab", { name: "All" }).click();
+    }
+  });
 }
 
 export interface AddMetricsAndDimensionsOptions {
@@ -52,6 +76,7 @@ export function addMetricsAndDimensions({
   cy.findByRole("button", { name: /Data/ }).click();
   cy.findByRole("menuitem", { name: "Metrics" }).click();
   cy.wait("@getDimensions");
+  selectAllMetricsTab();
   for (const name of metrics) {
     cy.findByRole("checkbox", { name }).check({ force: true });
   }
@@ -248,11 +273,19 @@ export function createExplorationViaApi({
           semantic_type: d.semantic_type,
         };
       });
+      // The create endpoint persists one `ExplorationThreadGroup` per `:groups`
+      // entry — there's no top-level metrics/dimensions any more. Mirror the
+      // manual UI's one-block-per-metric shape: a metric-anchored group per
+      // metric, each crossed with the chosen dimensions.
+      const groups = metrics.map((metric) => ({
+        type: "metric" as const,
+        metrics: [metric],
+        dimensions,
+      }));
       return cy.request("POST", "/api/exploration", {
         name,
         prompt: null,
-        metrics,
-        dimensions,
+        groups,
         timeline_ids: timelineIds,
       });
     })

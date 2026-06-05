@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 
 import { AddEntitiesModal } from "./AddEntitiesModal";
@@ -49,6 +50,7 @@ export function AddTimelinesModal({
   }, [allTimelines, search]);
 
   const handleAdd = (keys: string[]) => {
+    keys.forEach(() => trackExplorationPlanEdited("manual", "timelines"));
     addTimelinesById(keys.map(Number));
   };
 

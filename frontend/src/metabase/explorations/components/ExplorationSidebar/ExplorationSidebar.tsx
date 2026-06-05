@@ -217,6 +217,7 @@ export function ExplorationSidebar({
       gap="lg"
       pt="3rem"
       mr="2rem"
+      data-testid="exploration-page-sidebar"
     >
       <EditableText
         initialValue={exploration.name}
