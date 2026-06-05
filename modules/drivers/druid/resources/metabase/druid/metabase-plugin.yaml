@@ -4,7 +4,7 @@ info:
   description: Allows Metabase to connect to Druid databases.
 driver:
   name: druid
-  display-name: Druid
+  display-name: Druid (Deprecated)
   lazy-load: true
   connection-properties:
     - group:
@@ -43,6 +43,7 @@ driver:
       visible-if:
         auth-enabled: true
     - default-advanced-options
+superseded-by: druid-jdbc
 init:
   - step: load-namespace
     namespace: metabase.driver.druid
