@@ -9,7 +9,11 @@
   (:import
    (clojure.lang ExceptionInfo)
    (java.io ByteArrayInputStream)
-   (java.net InetAddress)))
+   (java.net InetAddress)
+   (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
+   (org.apache.pdfbox.pdmodel.common PDRectangle)
+   (org.apache.pdfbox.pdmodel.interactive.action PDActionURI)
+   (org.apache.pdfbox.pdmodel.interactive.annotation PDAnnotationLink)))
 
 (set! *warn-on-reflection* true)
 
@@ -149,3 +153,34 @@
     (testing "the run's style keys are carried onto base/reading runs"
       (is (= [{:bold? true :ruby? true :base "x" :reading "y"}]
              (strip (#'pdf/parse-ruby "{x|y}" {:bold? true} nil)))))))
+
+;; --------------------------------------------------------------------------------------------
+;; Clickable links
+;; --------------------------------------------------------------------------------------------
+
+(deftest clickable-href?-test
+  (testing "absolute http/https/mailto links are clickable"
+    (doseq [h ["https://example.com" "http://example.com/a?b=1" "HTTPS://EX.COM" "mailto:a@b.com"]]
+      (is (true? (boolean (#'pdf/clickable-href? h))) (str h))))
+  (testing "relative, scheme-less, and dangerous schemes are not clickable"
+    (doseq [h ["/dashboard/5" "example.com" "javascript:alert(1)" "file:///etc/passwd" "ftp://x/y" "" nil]]
+      (is (false? (boolean (#'pdf/clickable-href? h))) (str h)))))
+
+(deftest link-annotations-test
+  (testing "markdown links become PDF URI link annotations (http/https/mailto only)"
+    (with-open [doc (PDDocument.)]
+      (let [page (PDPage. PDRectangle/A4)]
+        (.addPage doc page)
+        (let [cs (PDPageContentStream. doc page)
+              md "[docs](https://metabase.com) [mail](mailto:a@b.com) [rel](/x) [js](javascript:1)"]
+          (binding [pdf/*fonts*      (#'pdf/load-fonts! doc)
+                    pdf/*link-rects* (atom [])]
+            (#'pdf/draw-markdown-in-cell! doc cs 40.0 800.0 500.0 100.0 md)
+            (.close cs)
+            (#'pdf/add-link-annotations! page @pdf/*link-rects*)))
+        (let [uris (->> (.getAnnotations page)
+                        (filter (partial instance? PDAnnotationLink))
+                        (map #(.getURI ^PDActionURI (.getAction ^PDAnnotationLink %)))
+                        set)]
+          ;; "rel" (relative) and "js" (javascript:) must not be clickable
+          (is (= #{"https://metabase.com" "mailto:a@b.com"} uris)))))))
