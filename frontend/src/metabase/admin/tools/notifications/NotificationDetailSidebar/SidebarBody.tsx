@@ -41,7 +41,7 @@ export const SidebarBody = ({
   const emailRecipientCount = emailHandler?.recipients.length ?? 0;
   const slackChannelCount = slackHandler?.recipients.length ?? 0;
 
-  const cardId = notification.payload.card_id;
+  const cardId = notification.payload?.card_id;
 
   return (
     <Stack gap="xl">
