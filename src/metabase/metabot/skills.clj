@@ -240,21 +240,21 @@
   "Resolve a SQL `engine` (the driver name from viewing context, e.g. \"postgres\") to the dialect name
   its skill is registered under (the dialect file's base name, e.g. \"postgresql\").
   Resolution goes through [[metabase.driver/llm-sql-dialect-resource]], the canonical driver->dialect-file
-  mapping (it isn't 1:1 — `:sparksql` shares databricks.md), falling back to `engine` itself for callers
-  that already pass a dialect name."
+  mapping (it isn't 1:1 — `:sparksql` shares databricks.md)."
   [engine]
-  (or (when-let [path (try
-                        (driver/llm-sql-dialect-resource (keyword engine))
-                        ;; `engine` comes from FE-supplied viewing context and may not name a driver.
-                        (catch Exception _ nil))]
-        (-> path (str/split #"/") peek (str/replace #"\.md$" "")))
-      engine))
+  (when-let [path (try
+                    (driver/llm-sql-dialect-resource (keyword engine))
+                    ;; `engine` comes from FE-supplied viewing context and may not name a driver.
+                    (catch Exception _ nil))]
+    (-> path (str/split #"/") peek (str/replace #"\.md$" ""))))
 
 (defn dialect-skill
-  "The registered dialect skill for SQL `engine` (a driver name from viewing context), or nil."
+  "The registered dialect skill for SQL `engine` (a driver name or dialect name), or nil.
+  Tries `engine` as a dialect name first so bare dialect inputs never touch the driver system."
   [engine]
   (when engine
-    (get-skill (dialect-skill-id (engine->dialect engine)))))
+    (or (get-skill (dialect-skill-id engine))
+        (some-> (engine->dialect engine) dialect-skill-id get-skill))))
 
 (defn dialect-preload-parts
   "Given a SQL `engine` name (e.g. \"postgres\", as extracted from viewing context), return AISDK parts
