@@ -64,6 +64,32 @@
     (let [query (-> transform :source :query)]
       (lib/native-only-query? query))))
 
+(defn table-template-tag-name
+  "Return the name (key) of the table template tag in `query` that refers to `table-id`, or nil.
+
+  This is the table variable the incremental range filter is injected into (see
+  `inject-filters-into-table-tag`). When `table-id` is nil, any table template tag qualifies."
+  [query table-id]
+  (some (fn [[k v]]
+          (when (and (#{:table "table"} (:type v))
+                     (or (nil? table-id) (= table-id (:table-id v))))
+            k))
+        (lib/template-tags query)))
+
+(defn incremental-table-tag-name
+  "Return the name of the table template tag the incremental range filter targets in `transform`, or
+  nil when the source query has no suitable table variable.
+
+  The range filter is injected into the table variable referring to the checkpoint field's table
+  (see `inject-filters-into-table-tag`); when no checkpoint field has been selected yet, any table
+  variable qualifies. A nil result for a table-incremental native transform is a broken state — there
+  is no table variable to filter on. This can happen when the SQL is edited to drop the table tag
+  after the transform was made incremental."
+  [{:keys [source]}]
+  (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
+        table-id (when field-id (t2/select-one-fn :table_id :model/Field field-id))]
+    (table-template-tag-name (:query source) table-id)))
+
 (defn python-transform?
   "Check if this is a Python transform."
   [transform]
@@ -262,16 +288,11 @@
   [query source-range-params]
   (let [{:keys [checkpoint-filter-field-id lo hi column]} source-range-params
         table-id  (:table-id column)
-        tags      (lib/template-tags query)
-        tag-name  (some (fn [[k v]]
-                          (when (and (#{:table "table"} (:type v))
-                                     (= table-id (:table-id v)))
-                            k))
-                        tags)
+        tag-name  (table-template-tag-name query table-id)
         _         (when-not tag-name
                     (throw (ex-info "No table variable found for checkpoint field's table"
                                     {:checkpoint-table-id table-id
-                                     :template-tags       tags})))
+                                     :template-tags       (lib/template-tags query)})))
         filters   (cond-> []
                     lo (conj {:field-id checkpoint-filter-field-id :op :> :value (:value lo)})
                     hi (conj {:field-id checkpoint-filter-field-id :op :<= :value (:value hi)}))]
