@@ -305,35 +305,12 @@
             (push-branch! snapshot)
             (.name commit-id)))))))
 
-(defn write-files!
-  "Writes multiple files to the git repository and commits the changes.
-
-  Takes a snapshot map containing a :git Git instance, :version, and :managed-dirs,
-  a commit message string, and a sequence of file specs (maps with :path and :content keys,
-  paths should be relative to the repository root).
-
-  All existing files within managed directories that are not in the write set are removed.
-  This ensures stale files (from renames, moves, or deletions) are cleaned up automatically.
-  Files outside managed directories are always preserved.
-
-  Returns the version written. Throws ExceptionInfo if the write or push
-  operation fails."
+(defn- write-files!
   [{:keys [managed-dirs] :as snapshot} ^String message files]
   (commit-tree! snapshot message files
                 (fn [path] (not (contains? managed-dirs (top-level-dir path))))))
 
-(defn apply-changes!
-  "Incrementally updates the git repo: writes/overwrites `upserts`, removes `delete-paths`,
-  and PRESERVES every other existing file (including managed-dir files not mentioned).
-
-  Unlike `write-files!`, this does not re-serialize or re-hash the whole tree. Existing tree
-  entries are copied by object id (no blob re-read), only `upserts` are inserted as new blobs.
-  This is the git side of the incremental export fast-path.
-
-  Takes a snapshot map (with :git, :version, :branch), a commit message, a sequence of file
-  specs to upsert ({:path :content}), and a sequence of path strings to delete.
-
-  Returns the version written. Throws ExceptionInfo if the write or push fails."
+(defn- apply-changes!
   [snapshot ^String message upserts delete-paths]
   (let [delete-set (into #{} (remove str/blank?) delete-paths)]
     (commit-tree! snapshot message upserts
