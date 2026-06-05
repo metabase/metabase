@@ -102,10 +102,20 @@
   (time
    (save-card-compilation-results h2-card-ids "h2_mbql5_results.jsonl"))
 
+  (get-compilation-diffs
+   "dev/src/dev/debug_qp/h2_4_to_5"
+   "dev/src/dev/debug_qp/h2_mbql4_results.jsonl"
+   "dev/src/dev/debug_qp/h2_mbql5_results.jsonl")
+
   (def postgres-card-ids (get-card-ids "postgres" 16600))
 
   (time
    (save-card-compilation-results postgres-card-ids "postgres_mbql5_results.jsonl"))
+
+  (get-compilation-diffs
+   "dev/src/dev/debug_qp/postgres_4_to_5"
+   "dev/src/dev/debug_qp/postgres_mbql4_results.jsonl"
+   "dev/src/dev/debug_qp/postgres_mbql5_results.jsonl")
 
   (def redshift-card-ids (get-card-ids "redshift" 16600))
 
@@ -113,6 +123,6 @@
    (save-card-compilation-results redshift-card-ids "redshift_mbql5_results.jsonl"))
 
   (get-compilation-diffs
-   "dev/src/dev/debug_qp/postgres_4_to_5"
-   "dev/src/dev/debug_qp/postgres_mbql4_results.jsonl"
-   "dev/src/dev/debug_qp/postgres_mbql5_results.jsonl"))
+   "dev/src/dev/debug_qp/redshift_4_to_5"
+   "dev/src/dev/debug_qp/redshift_mbql4_results.jsonl"
+   "dev/src/dev/debug_qp/redshift_mbql5_results.jsonl"))
