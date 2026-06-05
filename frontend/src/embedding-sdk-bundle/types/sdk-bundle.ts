@@ -17,6 +17,14 @@ import type {
   ExecuteActionResult,
 } from "embedding-sdk-bundle/lib/execute-action";
 import type {
+  QueryDatasetParams,
+  QueryDatasetResult,
+} from "embedding-sdk-bundle/lib/query-dataset";
+import type {
+  QueryMetricParams,
+  QueryMetricResult,
+} from "embedding-sdk-bundle/lib/query-metric";
+import type {
   QueryQuestionParams,
   QueryQuestionResult,
 } from "embedding-sdk-bundle/lib/query-question";
@@ -78,6 +86,12 @@ type ReduxStoreUtilityFunctionExports = {
   >;
   queryQuestion: ReduxStoreUtilityFunction<
     (params: QueryQuestionParams) => Promise<QueryQuestionResult>
+  >;
+  queryDataset: ReduxStoreUtilityFunction<
+    (params: QueryDatasetParams) => Promise<QueryDatasetResult>
+  >;
+  queryMetric: ReduxStoreUtilityFunction<
+    (params: QueryMetricParams) => Promise<QueryMetricResult>
   >;
 };
 
