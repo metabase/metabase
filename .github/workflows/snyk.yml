@@ -107,9 +107,6 @@ jobs:
           - name: Driver - Databricks
             file: modules/drivers/databricks/pom.xml
             category: driver-databricks
-          - name: Driver - Druid
-            file: modules/drivers/druid/pom.xml
-            category: driver-druid
           - name: Driver - Druid JDBC
             file: modules/drivers/druid-jdbc/pom.xml
             category: driver-druid-jdbc

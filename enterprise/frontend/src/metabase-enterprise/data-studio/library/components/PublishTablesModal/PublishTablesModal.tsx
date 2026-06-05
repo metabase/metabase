@@ -181,7 +181,7 @@ function ModalBody({
                 hasSearch: true,
                 hasRecents: false,
                 hasConfirmButtons: true,
-                canCreateCollections: false,
+                canCreateCollections: true,
               },
             }}
           />

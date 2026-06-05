@@ -115,7 +115,7 @@ const importDatasetQueryEditor = async () => {
 
 describe("DatasetQueryEditor", () => {
   beforeEach(() => {
-    jest.unmock("metabase/query_builder/components/NativeQueryEditor");
+    jest.unmock("metabase/querying/components/NativeQueryEditor");
   });
 
   it("renders sidebar when query tab is active", async () => {

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { Icon } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import {
@@ -120,7 +119,7 @@ export const OptionPopover = ({
           <Button
             disabled={!canSave}
             onClick={() => handleSave(closePopover)}
-            small
+            size="sm"
           >
             {t`Save`}
           </Button>

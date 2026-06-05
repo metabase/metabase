@@ -276,7 +276,7 @@
           ;; openai is not currently in the metabase managed allow-list, but we still
           ;; want to test metering in case we ever enable these providers — bypass the
           ;; validator with `with-redefs` to set the provider directly.
-          (with-redefs [metabot.settings/llm-metabot-provider (constantly "metabase/openai/gpt-4o")]
+          (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-provider (constantly "metabase/openai/gpt-4o")]
             (send-message! conv-id "Hello" "gpt-4o" 600 200)
             (backdate-messages! conv-id yesterday))
           (let [stats (sut/metabot-stats)]
@@ -297,16 +297,16 @@
           ;; openrouter/openai are not currently in the metabase managed allow-list,
           ;; but we still want to test metering in case we ever enable these providers
           ;; — bypass the validator with `with-redefs` to set the provider directly.
-          (with-redefs [metabot.settings/llm-metabot-provider
-                        (constantly "metabase/openrouter/anthropic/claude-haiku-4-5")]
+          (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-provider
+                                      (constantly "metabase/openrouter/anthropic/claude-haiku-4-5")]
             (send-message! conv-1 "Q1" "anthropic/claude-haiku-4-5" 100 50)
             (backdate-messages! conv-1 yesterday))
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                              "metabase/anthropic/claude-sonnet-4-6"]
             (send-message! conv-2 "Q2" "claude-sonnet-4-6" 200 80)
             (backdate-messages! conv-2 yesterday))
-          (with-redefs [metabot.settings/llm-metabot-provider
-                        (constantly "metabase/openai/gpt-4o")]
+          (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-provider
+                                      (constantly "metabase/openai/gpt-4o")]
             (send-message! conv-3 "Q3" "gpt-4o" 300 120)
             (backdate-messages! conv-3 yesterday))
           (let [stats (sut/metabot-stats)]
