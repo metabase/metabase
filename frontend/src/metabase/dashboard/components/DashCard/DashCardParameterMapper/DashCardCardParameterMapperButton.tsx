@@ -2,10 +2,17 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { Box, Ellipsified, Flex, Icon, Popover, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Ellipsified,
+  Flex,
+  Icon,
+  Popover,
+  Tooltip,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, ParameterTarget, VirtualCard } from "metabase-types/api";
@@ -73,15 +80,16 @@ export const DashCardCardParameterMapperButton = ({
           buttonText: t`Unknown Field`,
           buttonIcon: (
             <Button
-              icon="close"
-              iconSize={12}
+              variant="subtle"
               className={S.CloseIconButton}
               aria-label={t`Disconnect`}
               onClick={(e) => {
                 handleChangeTarget(null);
                 e.stopPropagation();
               }}
-            />
+            >
+              <Icon name="close" size={12} />
+            </Button>
           ),
         };
       }
@@ -102,15 +110,16 @@ export const DashCardCardParameterMapperButton = ({
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
             <Button
-              icon="close"
+              variant="subtle"
               className={S.CloseIconButton}
-              role="button"
               aria-label={t`Disconnect`}
               onClick={(e) => {
                 handleChangeTarget(null);
                 e.stopPropagation();
               }}
-            />
+            >
+              <Icon name="close" />
+            </Button>
           ),
         };
       }

@@ -6,9 +6,9 @@ import {
   ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
-import { Button } from "metabase/common/components/Button";
 import { EditBar } from "metabase/common/components/EditBar";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import { Button } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import S from "./MetricEditorHeader.module.css";
@@ -39,9 +39,16 @@ export function MetricEditorHeader({
       className={S.root}
       title={question.displayName() ?? t`New metric`}
       buttons={[
-        <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
+        <Button key="cancel" variant="subtle" size="sm" onClick={onCancel}>
+          {t`Cancel`}
+        </Button>,
         !question.isSaved() ? (
-          <Button key="create" primary small onClick={handleCreate}>
+          <Button
+            key="create"
+            variant="filled"
+            size="sm"
+            onClick={handleCreate}
+          >
             {t`Save`}
           </Button>
         ) : (
