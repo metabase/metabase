@@ -705,7 +705,9 @@
    {:field_metadata_field_id field_id
     :field_metadata_source    (dimension-source-table {:portable_fk portable_fk
                                                        :table_reference table_reference})
-    :field_metadata_reference (when (vector? portable_fk) (json/encode portable_fk))
+    ;; rendered with |safe — escape XML structural chars but keep the JSON's quotes readable,
+    ;; like the `:reference` column in [[format-metric-dimensions-table]]
+    :field_metadata_reference (when (vector? portable_fk) (escape-xml-content (json/encode portable_fk)))
     :field_metadata_value_xml (when value_metadata
                                 (field-values-metadata->xml value_metadata))}))
 

@@ -143,7 +143,15 @@
     (let [xml (llm-shape/field-metadata->xml
                {:field_id 1 :value_metadata {:field_values ["x"]}})]
       (is (not (str/includes? xml "Source table:")))
-      (is (not (str/includes? xml "Reference (copy"))))))
+      (is (not (str/includes? xml "Reference (copy")))))
+  (testing "XML structural chars in a portable-FK segment are escaped (the template uses |safe)"
+    (let [xml (llm-shape/field-metadata->xml
+               {:field_id 1
+                :value_metadata {:field_values ["x"]}
+                :portable_fk ["DB" "public" "t" "a<&>b"]})]
+      (is (str/includes? xml "a&lt;&amp;&gt;b"))
+      (testing "but the JSON's quotes stay readable"
+        (is (str/includes? xml "\"a&lt;&amp;&gt;b\""))))))
 
 (deftest ^:parallel measure->xml-test
   (testing "formats measure with all attributes"
