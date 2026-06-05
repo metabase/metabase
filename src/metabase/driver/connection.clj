@@ -83,14 +83,29 @@
    not directly."
   :default)
 
+(defn do-with-write-connection
+  "Functional core of [[with-write-connection]]. Public so the macro can delegate here instead of
+   expanding `binding` at call sites — that keeps `*connection-type*` referenced only within this namespace."
+  [thunk]
+  (binding [*connection-type* :write-data]
+    (thunk)))
+
 (defmacro with-write-connection
   "Establishes a write-connection context for body.
 
    [[effective-details]] calls within this scope resolve to take `:write-data-details`
    into account (if configured) instead of only primary `:details`."
   [& body]
-  `(binding [*connection-type* :write-data]
-     ~@body))
+  `(do-with-write-connection (fn [] ~@body)))
+
+(defn do-with-admin-connection
+  "Functional core of [[with-admin-connection]]."
+  [thunk]
+  (let [prior *connection-type*]
+    (when (not= prior :admin)
+      (log/infof "Entering :admin connection scope (from %s)" prior))
+    (binding [*connection-type* :admin]
+      (thunk))))
 
 (defmacro with-admin-connection
   "Establishes an admin-connection context for body.
@@ -101,11 +116,13 @@
    ownership, schema management). Code that needs admin access must opt in
    explicitly."
   [& body]
-  `(let [prior# *connection-type*]
-     (when (not= prior# :admin)
-       (log/infof "Entering :admin connection scope (from %s)" prior#))
-     (binding [*connection-type* :admin]
-       ~@body)))
+  `(do-with-admin-connection (fn [] ~@body)))
+
+(defn do-with-transform-connection
+  "Functional core of [[with-transform-connection]]."
+  [thunk]
+  (binding [*connection-type* :transform]
+    (thunk)))
 
 (defmacro with-transform-connection
   "Establishes a transform-connection context for body.
@@ -115,8 +132,7 @@
    through a separate connection pool keyed on `:transform` so the pool can carry its own
    c3p0 properties. See [[*connection-type*]] for the rationale."
   [& body]
-  `(binding [*connection-type* :transform]
-     ~@body))
+  `(do-with-transform-connection (fn [] ~@body)))
 
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
   false)
