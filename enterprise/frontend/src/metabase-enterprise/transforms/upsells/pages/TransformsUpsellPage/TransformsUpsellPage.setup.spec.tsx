@@ -17,6 +17,7 @@ import { TransformsUpsellPage } from "./TransformsUpsellPage";
 
 type SetupOpts = {
   hadTransforms?: boolean;
+  isAdmin?: boolean;
   isHosted: boolean;
   isStoreUser: boolean;
   isOnTrial?: boolean;
@@ -25,10 +26,11 @@ type SetupOpts = {
 export const setup = ({
   isHosted,
   isStoreUser,
+  isAdmin = isStoreUser,
   hadTransforms = false,
   isOnTrial = false,
 }: SetupOpts) => {
-  const currentUser = createMockUser({ is_superuser: isStoreUser });
+  const currentUser = createMockUser({ is_superuser: isAdmin });
   const settings = createMockSettings({
     "is-hosted?": isHosted,
     "token-status": {
