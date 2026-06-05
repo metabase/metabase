@@ -1172,6 +1172,20 @@
           twice (repair/repair trivial-mp once)]
       (is (= once twice)))))
 
+(deftest ^:parallel idempotency-unwrapped-boolean-wrapper-test
+  (testing "unwrapping a boolean wrapper that is the sole element of a parent vector stays idempotent"
+    ;; Regression for a non-idempotency the generative idempotency-property-test surfaced:
+    ;; `unwrap-boolean-wrappers*` rewrites `["true" {} x]` -> `x`, so when the wrapper is the only
+    ;; element of a parent vector it exposes a freshly-bare clause `[x]`. `ensure-clause-options*`
+    ;; must normalise that within the same `repair` call, otherwise a second `repair` appends `{}`
+    ;; to it (`[x]` -> `[x {}]`) and the result is no longer a fixed point. Any non-blank scalar
+    ;; triggers it (the shrunk counterexample minimised `x` to a single NUL char).
+    (let [once (repair/repair trivial-mp [["true" {} "x"]])]
+      (is (= ["x" {}] once)
+          "the exposed bare clause is normalised in one pass")
+      (is (= once (repair/repair trivial-mp once))
+          "and the result is a fixed point"))))
+
 ;;; Property-based fuzz: randomly-shaped inputs go through repair twice and must equal on pass 2.
 
 (def ^:private gen-scalar
