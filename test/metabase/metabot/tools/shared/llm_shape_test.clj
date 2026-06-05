@@ -123,7 +123,12 @@
         (is (str/includes? table "[\"Analytics\",\"customerio_data\",\"campaign\",\"name\"]")))
       (testing "the two campaign_id dimensions are distinguishable by table + reference"
         (is (str/includes? table "[\"Analytics\",\"customerio_enriched\",\"int_customerio_engagement_facts\",\"campaign_id\"]"))
-        (is (str/includes? table "[\"Analytics\",\"customerio_data\",\"campaign\",\"id\"]"))))))
+        (is (str/includes? table "[\"Analytics\",\"customerio_data\",\"campaign\",\"id\"]")))))
+  (testing "a pipe in a value is escaped so it can't break the table row"
+    (let [table (llm-shape/format-metric-dimensions-table
+                 [{:name "weird|name" :field_id 1 :type "string"
+                   :portable_fk ["Analytics" "public" "t" "weird|name"]}])]
+      (is (str/includes? table "weird\\|name")))))
 
 (deftest ^:parallel field-metadata->xml-reference-test
   (testing "a drilled-into field detail surfaces the source table + portable FK when provided"
