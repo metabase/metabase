@@ -431,8 +431,8 @@
                                     (= (:eid @info) (file-entity-id (source.p/read-file snapshot (:new-path @info)))))))
                       (upsert plan)
 
-                      ;; rename: an update whose known stored path differs from the new path. Write the
-                      ;; new file and delete the old one. (A rename with no stored path falls through.)
+                      ;; rename: update whose stored path differs from new path. Write the
+                      ;; new file and delete the old one.
                       (and (= "update" status)
                            (not (str/blank? file_path))
                            (not= file_path (:new-path @info))
