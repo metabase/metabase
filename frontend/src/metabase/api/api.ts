@@ -23,9 +23,11 @@ import { TAG_TYPES } from "./tags";
 const baseQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
   const requestArgs = typeof args === "string" ? { url: args } : args;
   try {
+    const method = requestArgs.method ?? "GET";
     const data = await api.request({
       method: "GET",
       ...requestArgs,
+      retry: method === "GET" || method === "POST",
       signal: ctx.signal,
       ...extraOptions,
     });
