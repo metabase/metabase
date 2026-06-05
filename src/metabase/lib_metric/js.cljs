@@ -710,7 +710,9 @@
   [definition dimension]
   (to-array (lib-metric.projection/available-temporal-buckets definition dimension)))
 
-(mu/defn ^:export withTemporalBucket :- [:schema {:ts/same-as 0} ::lib-metric.schema/dimension-reference]
+(mu/defn ^:export withTemporalBucket :- [:schema {:ts/same-as 0
+                                                  :ts/generic-bound ::lib-metric.schema/dimension-or-reference}
+                                         ::lib-metric.schema/dimension-reference]
   "Apply a temporal bucket to a projection."
   [projection bucket]
   (lib-metric.projection/with-temporal-bucket projection bucket))
@@ -728,7 +730,9 @@
       (or [])
       to-array))
 
-(mu/defn ^:export withBinning :- [:schema {:ts/same-as 0} ::lib-metric.schema/dimension-reference]
+(mu/defn ^:export withBinning :- [:schema {:ts/same-as 0
+                                           :ts/generic-bound ::lib-metric.schema/dimension-or-reference}
+                                  ::lib-metric.schema/dimension-reference]
   "Apply a binning strategy to a projection."
   [projection binning-strategy]
   (lib-metric.projection/with-binning projection binning-strategy))

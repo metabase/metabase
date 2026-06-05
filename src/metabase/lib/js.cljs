@@ -59,7 +59,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [goog.object :as gobject]
-   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.experiment]
@@ -602,7 +601,10 @@
   [a-column-or-clause]
   (lib.core/binning a-column-or-clause))
 
-(mu/defn ^:export with-binning :- [:schema {:ts/same-as 0} ::lib.schema.metadata/column]
+(mu/defn ^:export with-binning :- [:schema {:ts/same-as 0
+                                            :ts/generic-bound [:or ::lib.schema.metadata/column
+                                                               ::lib.schema.ref/ref]}
+                                   ::lib.schema.metadata/column]
   "Given `a-column-or-clause` and a `binning-option`, return a new column/clause with its binning settings updated.
 
   If `binning-option` is `nil`, removes any binning options currently present on `a-column-or-clause`.
@@ -697,7 +699,10 @@
   [a-clause-or-column]
   (lib.core/temporal-bucket a-clause-or-column))
 
-(mu/defn ^:export with-temporal-bucket :- [:schema {:ts/same-as 0} ::lib.schema.metadata/column]
+(mu/defn ^:export with-temporal-bucket :- [:schema {:ts/same-as 0
+                                                    :ts/generic-bound [:or ::lib.schema.metadata/column
+                                                                       ::lib.schema.ref/ref]}
+                                           ::lib.schema.metadata/column]
   "Add the specified `bucketing-option` to `a-clause-or-column`, returning an updated form of the clause or column.
 
   If `bucketing-option` is `nil` (JS `undefined` or `null`), any existing temporal bucketing is removed.
@@ -2624,7 +2629,10 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
 
-(mu/defn ^:export diagnose-expression :- [:any {:ts/object-of [:maybe [:map [:message :string]]]}]
+(mu/defn ^:export diagnose-expression :- [:any {:ts/object-of [:maybe [:map
+                                                                       [:message :string]
+                                                                       [:pos {:optional true} :int]
+                                                                       [:len {:optional true} :int]]]}]
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.
 
   - `expression-mode` specifies what type of thing `expr` is: an \"expression\" (custom column),

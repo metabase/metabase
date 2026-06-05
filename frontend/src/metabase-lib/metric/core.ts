@@ -158,9 +158,9 @@ export function filters(
   sourceInstance?: SourceInstance,
 ): FilterClause[] {
   if (sourceInstance !== undefined) {
-    return LibMetric.filters(definition, sourceInstance) as FilterClause[];
+    return LibMetric.filters(definition, sourceInstance);
   }
-  return LibMetric.filters(definition) as FilterClause[];
+  return LibMetric.filters(definition);
 }
 
 export function filterableDimensions(
@@ -175,12 +175,9 @@ export function filterableDimensions(
   sourceInstance?: SourceInstance,
 ): DimensionMetadata[] {
   if (sourceInstance !== undefined) {
-    return LibMetric.filterableDimensions(
-      definition,
-      sourceInstance,
-    ) as DimensionMetadata[];
+    return LibMetric.filterableDimensions(definition, sourceInstance);
   }
-  return LibMetric.filterableDimensions(definition) as DimensionMetadata[];
+  return LibMetric.filterableDimensions(definition);
 }
 
 export function filter(
@@ -608,7 +605,7 @@ export function defaultTemporalBucket(
 export function binning(
   projection: Clause | DimensionMetadata,
 ): BinningStrategy | null {
-  return LibMetric.binning(projection) as BinningStrategy | null;
+  return LibMetric.binning(projection);
 }
 
 export function availableBinningStrategies(

@@ -12,26 +12,29 @@
   (testing "basic schema transforms"
     (are [res schema] (= res (ts/schema->ts schema))
       "number"                                                  number?
-      "{\n\ta: number;\n\tb: string;\n\t[key: string]: any;\n}" [:map [:a :int] [:b :string]]
-      "{\n\ttype: \"main\";\n\tvalue: string;\n\t[key: string]: any;\n}" [:map [:type [:= :main]] [:value :string]]
+      "{\n\ta: number;\n\tb: string;\n\t[key: string]: unknown;\n}" [:map [:a :int] [:b :string]]
+      "{\n\ttype: \"main\";\n\tvalue: string;\n\t[key: string]: unknown;\n}" [:map [:type [:= :main]] [:value :string]]
       "(string | number)"                                       [:or :string :int]
+      "[string, ...string[]]"                                   [:sequential {:min 1} :string]
       "Record<string, unknown>"                                 [:map-of :keyword :any]
+      "Record<string, number>"                                  [:map-of [:map [:a :string]] :int]
+      "Partial<Record<\"a\" | \"b\", number>>"                [:map-of [:enum :a :b] :int]
       "CustomType"                                               [:any {:typescript "CustomType"}]
       "\"one\" | \"two\""                                   [:enum :one :two]
       "(Record<string, unknown> & {\n\tkey: string;\n})"         [:and
                                                                   [:map-of :keyword :any]
                                                                   [:map {:closed true}
                                                                    [:key string?]]]
-      "({\n\ttype: \"a\";\n\t[key: string]: any;\n} | {\n\ttype: \"b\";\n\t[key: string]: any;\n})" [:multi {:dispatch :type}
-                                                                                                     [:a [:map
-                                                                                                          [:type [:= :a]]]]
-                                                                                                     [:b [:map
-                                                                                                          [:type [:= :b]]]]]))
+      "({\n\ttype: \"a\";\n\t[key: string]: unknown;\n} | {\n\ttype: \"b\";\n\t[key: string]: unknown;\n})" [:multi {:dispatch :type}
+                                                                                                             [:a [:map
+                                                                                                                  [:type [:= :a]]]]
+                                                                                                             [:b [:map
+                                                                                                                  [:type [:= :b]]]]]))
   (testing "closed maps omit index signatures"
     (is (= "{\n\ta: number;\n}"
            (ts/schema->ts [:map {:closed true} [:a :int]]))))
   (testing "open maps include index signatures"
-    (is (= "{\n\ta: number;\n\t[key: string]: any;\n}"
+    (is (= "{\n\ta: number;\n\t[key: string]: unknown;\n}"
            (ts/schema->ts [:map [:a :int]])))))
 
 (deftest union-simplification-test
@@ -54,7 +57,7 @@
     (is (= "string"
            (ts/schema->ts [:and :string [:fn {:typescript "unknown"} any?]]))))
   (testing "merges drop unknown branches because T & unknown is T"
-    (is (= "{\n\ta: string;\n\t[key: string]: any;\n}"
+    (is (= "{\n\ta: string;\n\t[key: string]: unknown;\n}"
            (ts/schema->ts [:merge
                            [:map [:a :string]]
                            [:fn {:typescript "unknown"} any?]])))))
@@ -70,7 +73,7 @@
     (is (= "Metabase_Lib_Schema_Common_NonBlankString"
            (ts/schema->ts ::lib.schema.common/non-blank-string))))
   (testing "refs in maps use type names"
-    (is (= "{\n\tstrategy: Metabase_Lib_Schema_Binning_Strategy;\n\t[key: string]: any;\n}"
+    (is (= "{\n\tstrategy: Metabase_Lib_Schema_Binning_Strategy;\n\t[key: string]: unknown;\n}"
            (ts/schema->ts [:map [:strategy [:ref ::lib.schema.binning/strategy]]])))))
 
 (deftest memoization-context-test
@@ -156,7 +159,21 @@
                 "export function variadic_fn(query: string, stage: number, ...args: unknown[]): string;")
            (#'ts/-fn->ts "variadic-fn"
                          '[query stage & args]
-                         [:=> [:cat :string :int [:sequential :any]] :string])))))
+                         [:=> [:cat :string :int [:sequential :any]] :string]))))
+  (testing "generates generic declaration with explicit generic bound"
+    (is (= (str "/**\n"
+                " * @template {(string | number)} T\n"
+                " * @param {T} value\n"
+                " * @returns {T}\n"
+                " */\n"
+                "export function identity_like<T extends (string | number)>(value: T): T;")
+           (#'ts/-fn->ts "identity-like"
+                         '[value]
+                         [:=>
+                          [:cat :any]
+                          [:schema {:ts/same-as 0
+                                    :ts/generic-bound [:or :string :int]}
+                           :string]])))))
 
 (deftest predicate-schema-test
   (testing "common predicate schemas produce precise primitive types"

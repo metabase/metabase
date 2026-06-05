@@ -39,17 +39,31 @@ export function position(x: Positionable):
   if (typeof x !== "object" || x === null) {
     return undefined;
   }
-  if ("node" in x) {
+  if ("node" in x && isPositionable(x.node)) {
     return position(x.node);
   }
-  if ("token" in x) {
+  if ("token" in x && isPositionable(x.token)) {
     return position(x.token);
   }
-  if ("pos" in x && "len" in x) {
+  if (
+    "pos" in x &&
+    "len" in x &&
+    typeof x.pos === "number" &&
+    typeof x.len === "number"
+  ) {
     return { pos: x.pos, len: x.len };
   }
   if (x instanceof Token) {
     return { pos: x.start, len: x.length };
   }
   return undefined;
+}
+
+function isPositionable(x: unknown): x is Positionable {
+  return (
+    x == null ||
+    x instanceof Token ||
+    (typeof x === "object" &&
+      ("node" in x || "token" in x || "pos" in x || "operator" in x))
+  );
 }

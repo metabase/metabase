@@ -185,7 +185,9 @@ function getRelativeFilterClause(
     value: value.value,
     offsetUnit: value.offsetUnit ?? null,
     offsetValue: value.offsetValue ?? null,
-    options: value.options ?? {},
+    options: {
+      "include-current": value.options?.includeCurrent,
+    },
   });
 }
 

@@ -242,8 +242,11 @@
 
 (defmethod -schema->ts :sequential
   [schema]
-  (let [children (mc/children schema)]
-    (str (schema->ts (first children)) "[]")))
+  (let [[child] (mc/children schema)
+        child-type (schema->ts child)]
+    (if (pos? (:min (mc/properties schema) 0))
+      (str "[" child-type ", ..." child-type "[]]")
+      (str child-type "[]"))))
 
 (defmethod -schema->ts :set
   [schema]
@@ -264,7 +267,7 @@
                        children)
         entries  (cond-> entries
                    (and (not closed?) (seq entries))
-                   (conj "[key: string]: any"))]
+                   (conj "[key: string]: unknown"))]
     (cond
       (seq entries)
       (str "{\n" (str/join ";\n" (map #(str "\t" %) entries)) ";\n}")
@@ -275,11 +278,27 @@
       :else
       "Record<string, unknown>")))
 
+(defn- map-of-key-type
+  "Return a TypeScript key type for a Malli `:map-of` key schema. TypeScript Record keys must be property keys,
+  so structural or unknown Malli key schemas fall back to `string`."
+  [schema]
+  (let [schema-type (mc/type (mc/schema schema))]
+    (case schema-type
+      (:string :keyword :symbol :uuid :uri :re) "string"
+      (:int :double) "number"
+      (let [ts-type (schema->ts schema)]
+        (if (re-matches #"(?:string|number|symbol|(?:\"[^\"]+\"|\d+)(?: \| (?:\"[^\"]+\"|\d+))*)" ts-type)
+          ts-type
+          "string")))))
+
 (defmethod -schema->ts :map-of
   [schema]
-  (let [[left right] (mc/children schema)]
-    (-> (str (schema->ts left) ", " (schema->ts right))
-        (wrap "Record<" ">"))))
+  (let [[left right] (mc/children schema)
+        key-type (map-of-key-type left)
+        value-type (schema->ts right)]
+    (if (= :enum (mc/type (mc/schema left)))
+      (str "Partial<Record<" key-type ", " value-type ">>")
+      (str "Record<" key-type ", " value-type ">"))))
 
 (defmethod -schema->ts :tuple
   [schema]
@@ -813,9 +832,11 @@
   (when (and (= :schema (mc/type out-schema))
              (mc/properties out-schema))
     (when-let [arg-idx (:ts/same-as (mc/properties out-schema))]
-      (let [[base-schema] (mc/children out-schema)]
-        {:arg-idx   arg-idx
-         :base-type base-schema}))))
+      (let [props (mc/properties out-schema)
+            [base-schema] (mc/children out-schema)]
+        {:arg-idx       arg-idx
+         :base-type     base-schema
+         :generic-bound (:ts/generic-bound props)}))))
 
 (defn- -fn->ts
   "Inputs:
@@ -844,8 +865,8 @@
          generic-info (extract-generic-info out-schema)]
      (if generic-info
        ;; Generic function with :ts/same-as
-       (let [{:keys [arg-idx base-type]} generic-info
-             base-type-str (schema->ts base-type)]
+       (let [{:keys [arg-idx base-type generic-bound]} generic-info
+             base-type-str (schema->ts (or generic-bound base-type))]
          (str (format-jsdoc doc arglist arg-schema out-schema arg-idx base-type-str)
               (format "export function %s<T extends %s>(%s): T;"
                       (cljs-munge fnname)
