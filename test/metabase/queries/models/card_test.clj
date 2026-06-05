@@ -1582,14 +1582,15 @@
                    :model/Card     question1    (dependent-card db1-id model)
                    :model/Card     question2    (dependent-card db1-id model)
                    :model/Card     question3    (dependent-card db1-id question1)
-                   :model/Card     question4    (dependent-card db1-id question2)]
+                   :model/Card     question4    (dependent-card db1-id question2)
+                   :model/Card     question5    (dependent-card db1-id question4)]
       (mt/with-test-user :crowberto
         (card/update-card! {:card-before-update model
                             :card-updates       {:dataset_query {:lib/type :mbql/query
                                                                  :database db2-id
                                                                  :stages   [{:lib/type :mbql.stage/native
                                                                              :native   "SELECT 1"}]}}}))
-      (doseq [question [question1 question2 question3 question4]]
-        (let [updated-question (t2/select-one :model/Card :id (:id question))]
-          (is (= db2-id (get-in updated-question [:dataset_query :database])))
-          (is (= db2-id (:database_id updated-question))))))))
+      (doseq [question [question1 question2 question3 question4 question5]]
+        (let [updated-card (t2/select-one :model/Card :id (:id question))]
+          (is (= db2-id (get-in updated-card [:dataset_query :database])))
+          (is (= db2-id (:database_id updated-card))))))))

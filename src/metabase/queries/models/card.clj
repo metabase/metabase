@@ -1191,23 +1191,21 @@
   (let [all-dep-ids (graph/transitive (->SourceCardDependentsGraph) [root-card-id])]
     (when (seq all-dep-ids)
       (into []
-            (filter (fn [{:keys [dataset_query]}]
-                      (and (map? dataset_query) (= (:database dataset_query) old-db-id))))
+            (filter (fn [{:keys [dataset_query]}] (= (:database dataset_query) old-db-id)))
             (t2/select [:model/Card :id :dataset_query :card_schema] :id [:in all-dep-ids])))))
 
 (defn- cascade-database-change-to-dependents!
   "When a card's `database_id` changes, update all cards that use it as a `:source-card` (transitively) so their
   `dataset_query` `:database` key stays in sync. Without this dependent cards would fail with 'Card does not exist'
    because the metadata provider filters cards by database (#74561)."
-  [card-before-update]
+  [card-before-update card-updates]
   (let [card-id   (:id card-before-update)
-        old-db-id (:database_id card-before-update)
-        new-db-id (t2/select-one-fn :database_id :model/Card :id card-id)]
+        old-db-id (-> card-before-update :dataset_query :database)
+        new-db-id (-> card-updates :dataset_query :database)]
     (when (not= old-db-id new-db-id)
       (let [cards-to-update (dependent-cards-to-update card-id old-db-id)]
-        (when (seq cards-to-update)
-          (doseq [{dep-id :id, dep-query :dataset_query} cards-to-update]
-            (t2/update! :model/Card dep-id {:dataset_query (assoc dep-query :database new-db-id)})))))))
+        (doseq [{dep-id :id, dep-query :dataset_query} cards-to-update]
+          (t2/update! :model/Card dep-id {:dataset_query (assoc dep-query :database new-db-id)}))))))
 
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
@@ -1240,7 +1238,7 @@
       ;; ok, now save the Card
       (t2/update! :model/Card (:id card-before-update) updated-fields))
     ;; Update all transitively dependent cards if the database was changed (#74561)
-    (cascade-database-change-to-dependents! card-before-update)
+    (cascade-database-change-to-dependents! card-before-update card-updates)
     ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)
