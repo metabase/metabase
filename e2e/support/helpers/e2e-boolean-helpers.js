@@ -1,12 +1,17 @@
+import { H2_SAMPLE_DB_ID } from "../cypress_data";
+
 import { createNativeQuestion } from "./api";
 
-// until we have a test dataset that includes boolean data, we can use this questions to test booleans
+// The SQLite sample DB has no native boolean type and rejects the `::boolean`
+// casts below, so this runs against the H2 sample DB. Callers must first
+// restore the "default-with-h2" snapshot.
 export function setupBooleanQuery(questionName = "Boolean Query") {
   cy.intercept("POST", "/api/dataset").as("dataset");
 
   createNativeQuestion(
     {
       name: questionName,
+      database: H2_SAMPLE_DB_ID,
       native: {
         query: BOOLEAN_QUERY,
         "template-tags": {},

@@ -1,9 +1,13 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
+
+const { PRODUCTS: H2_PRODUCTS, PRODUCTS_ID: H2_PRODUCTS_ID } =
+  H2_SAMPLE_DATABASE;
 
 describe("scenarios > question > filter", () => {
   beforeEach(() => {
@@ -43,23 +47,29 @@ describe("scenarios > question > filter", () => {
   });
 
   it("'Between Dates' filter should behave consistently (metabase#12872)", () => {
+    // Pin to the H2 sample DB: SQLite stores dates as TEXT (breaks the between
+    // filter) and errors on the self-join alias that matches the table name.
+    // skipCache: the outer beforeEach cached a session stale after this restore.
+    H.restore("default-with-h2");
+    cy.signIn("admin", { skipCache: true });
     H.createQuestion(
       {
         name: "12872",
+        database: H2_SAMPLE_DB_ID,
         query: {
-          "source-table": PRODUCTS_ID,
+          "source-table": H2_PRODUCTS_ID,
           aggregation: [["count"]],
           filter: [
             "and",
             [
               "between",
-              ["field", PRODUCTS.CREATED_AT, null],
+              ["field", H2_PRODUCTS.CREATED_AT, null],
               "2028-04-15",
               "2028-04-15",
             ],
             [
               "between",
-              ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
+              ["field", H2_PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
               "2028-04-15",
               "2028-04-15",
             ],
@@ -69,11 +79,11 @@ describe("scenarios > question > filter", () => {
               alias: "Products",
               condition: [
                 "=",
-                ["field", PRODUCTS.ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ["field", H2_PRODUCTS.ID, null],
+                ["field", H2_PRODUCTS.ID, { "join-alias": "Products" }],
               ],
               fields: "all",
-              "source-table": PRODUCTS_ID,
+              "source-table": H2_PRODUCTS_ID,
             },
           ],
         },

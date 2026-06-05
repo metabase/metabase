@@ -1,5 +1,10 @@
 const { H } = cy;
 
+import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
+
+const { PRODUCTS_ID: H2_PRODUCTS_ID } = H2_SAMPLE_DATABASE;
+
 const STRING_CASES = [
   {
     title: "is",
@@ -469,7 +474,20 @@ describe("scenarios > filters > filter types", () => {
         expectedRowCount,
       }) => {
         it(title, () => {
-          H.openProductsTable({ mode: "notebook" });
+          if (options.includes("Case sensitive")) {
+            // SQLite's LIKE is case-insensitive, so case-sensitive matching
+            // returns the wrong rows. Use the H2 sample DB instead. skipCache:
+            // the outer beforeEach cached a session that is stale after restore.
+            H.restore("default-with-h2");
+            cy.signIn("normal", { skipCache: true });
+            H.openTable({
+              database: H2_SAMPLE_DB_ID,
+              table: H2_PRODUCTS_ID,
+              mode: "notebook",
+            });
+          } else {
+            H.openProductsTable({ mode: "notebook" });
+          }
           H.filter({ mode: "notebook" });
 
           H.clauseStepPopover().findByText(columnName).click();
