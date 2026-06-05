@@ -20,6 +20,12 @@
       "Record<string, number>"                                  [:map-of [:map [:a :string]] :int]
       "Partial<Record<\"a\" | \"b\", number>>"                [:map-of [:enum :a :b] :int]
       "CustomType"                                               [:any {:typescript "CustomType"}]
+      "{\n\tdisplayName: string;\n\tfilterPositions?: number[];\n\tisManyPks?: boolean;\n\tgroup?: {\n\tdisplayName: string;\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n}" [:any {:ts/object-of [:map
+                                                                                                                                                                                                                 [:display-name :string]
+                                                                                                                                                                                                                 [:filter-positions {:optional true} [:sequential :int]]
+                                                                                                                                                                                                                 [:many-pks? {:optional true} :boolean]
+                                                                                                                                                                                                                 [:group {:optional true} [:map [:display-name :string]]]]
+                                                                                                                                                                                                  :ts/key-transform :camelCase}]
       "\"one\" | \"two\""                                   [:enum :one :two]
       "(Record<string, unknown> & {\n\tkey: string;\n})"         [:and
                                                                   [:map-of :keyword :any]

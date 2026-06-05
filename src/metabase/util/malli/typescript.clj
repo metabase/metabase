@@ -113,6 +113,29 @@
 
 (declare schema->ts)
 
+(def ^:dynamic *key-transform* nil)
+
+(defn- camel-case-key
+  "Convert a kebab/snake/camel-ish Clojure key name to camelCase for JS-facing object schemas.
+  Mirrors the common CLJS convention where predicate keys like `:many-pks?` become `isManyPks`."
+  [s]
+  (let [s     (if (str/ends-with? s "?")
+                (str "is-" (str/replace s #"\?$" ""))
+                s)
+        parts (remove str/blank? (str/split s #"[-_\s]+"))]
+    (if (seq parts)
+      (str (first parts)
+           (apply str (map str/capitalize (rest parts))))
+      s)))
+
+(defn- transform-map-key
+  [k]
+  (case *key-transform*
+    :camelCase (if (keyword? k)
+                 (camel-case-key (name k))
+                 (str k))
+    (if (keyword? k) (name k) (str k))))
+
 (defn- fmt-literal
   "Format literal value to a TypeScript literal type."
   [v]
@@ -189,7 +212,8 @@
 
       ;; [:any {:ts/object-of [:map [:key Type] ...]}] => "{ key: Type; ... }"
       (:ts/object-of props)
-      (schema->ts (:ts/object-of props))
+      (binding [*key-transform* (:ts/key-transform props)]
+        (schema->ts (:ts/object-of props)))
 
       ;; [:any {:ts/instance-of "Array"}] — from [:is-a js/Array] transformation
       (:ts/instance-of props)
@@ -259,7 +283,7 @@
   (let [closed? (true? (:closed (mc/properties schema)))
         children (mc/children schema)
         entries  (mapv (fn [[k opts v-schema]]
-                         (let [k-str     (-> (if (keyword? k) (name k) (str k))
+                         (let [k-str     (-> (transform-map-key k)
                                              (quote-if-necessary))
                                optional? (:optional opts)
                                separator (if optional? "?:" ":")]
@@ -524,17 +548,21 @@
       (= t :malli.core/schema)
       (let [form (mc/form schema)]
         (if (and (keyword? form) (namespace form))
-          (do
-            (record-registry-ref! form)
-            (registry-type-name form))
+          (if *key-transform*
+            (schema->ts (mr/resolve-schema form))
+            (do
+              (record-registry-ref! form)
+              (registry-type-name form)))
           ;; If form isn't a qualified keyword, resolve and expand
           (schema->ts (mr/resolve-schema schema))))
 
       ;; For other qualified keyword schemas, output type name and record it
       (and (keyword? t) (namespace t))
-      (do
-        (record-registry-ref! t)
-        (registry-type-name t))
+      (if *key-transform*
+        (schema->ts (mr/resolve-schema t))
+        (do
+          (record-registry-ref! t)
+          (registry-type-name t)))
 
       (:typescript (mc/properties schema))
       (:typescript (mc/properties schema))
@@ -595,7 +623,8 @@
           *argument-context*
           *registry-refs*
           *weak-types*
-          (seq *shared-types*))
+          (seq *shared-types*)
+          *key-transform*)
     (schema->ts-impl schema)
     (schema->ts-memoized schema)))
 

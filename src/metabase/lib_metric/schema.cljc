@@ -526,6 +526,7 @@
    [:effective-type {:optional true} :keyword]
    [:semantic-type {:optional true} :keyword]
    [:description {:optional true} [:maybe :string]]
+   [:column-name {:optional true} :string]
    [:selected {:optional true} :boolean]
    [:default {:optional true} :boolean]
    [:short-name {:optional true} :string]

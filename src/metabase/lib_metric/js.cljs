@@ -842,7 +842,8 @@
   [dimension]
   (types.isa/city? dimension))
 
-(mu/defn ^:export displayInfo :- [:any {:ts/object-of ::lib-metric.schema/display-info}]
+(mu/defn ^:export displayInfo :- [:any {:ts/object-of ::lib-metric.schema/display-info
+                                        :ts/key-transform :camelCase}]
   "Get display info for a displayable item.
    Dispatches on :lib/type to return appropriate display info structure."
   [definition source]
