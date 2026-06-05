@@ -773,6 +773,71 @@ describe("DimensionPickerSidebar", () => {
     ).toBeInTheDocument();
   });
 
+  it("expands all metric accordions while searching all fields", async () => {
+    setup({
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 0: "dim-created-at" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 1: "second-dim-created-at" },
+              },
+            },
+          ],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
+      },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    expect(screen.getByRole("button", { name: "Revenue" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Total Orders" }),
+    ).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Search fields"),
+      "created",
+    );
+
+    expect(screen.getByRole("button", { name: "Revenue" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Total Orders" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByRole("button", { name: "Created At" })).toHaveLength(
+      2,
+    );
+  });
+
   it("shows one See all accordion per metric slot when the same metric is selected twice", async () => {
     setup({
       dimensions: {
