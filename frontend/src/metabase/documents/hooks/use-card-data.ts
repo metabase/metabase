@@ -6,6 +6,7 @@ import {
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
 import { useSelector } from "metabase/redux";
+import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
@@ -18,16 +19,7 @@ interface UseCardDataProps {
   id: number;
 }
 
-export interface UseCardDataResult {
-  card?: Card;
-  dataset?: Dataset;
-  isLoading: boolean;
-  series: RawSeries | null;
-  question?: Question;
-  error?: "not found" | "unknown" | null;
-  draftCard?: Card;
-  regularDataset?: Dataset;
-}
+export type { UseCardDataResult };
 
 function buildAdhocQueryParams(card: Card) {
   return {

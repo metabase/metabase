@@ -8,13 +8,14 @@ import { useAsync, useMount } from "react-use";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { ExternalCardDataProvider } from "metabase/documents/contexts/ExternalCardDataContext";
+import { DocumentEditorHostProvider } from "metabase/documents/components/Editor/DocumentEditorHost";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
+import { ExternalCardDataProvider } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/ExternalCardDataContext";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { MetabotNode } from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
@@ -151,17 +152,19 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
           }}
         >
           {document && editor && (
-            <ExternalCardDataProvider value={externalCardDataValue}>
-              <Box maw={900} mx="auto" p="xl" w="100%">
-                <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
-                <div className={S.editorContent}>
-                  <EditorContent
-                    data-testid="document-content"
-                    editor={editor}
-                  />
-                </div>
-              </Box>
-            </ExternalCardDataProvider>
+            <DocumentEditorHostProvider>
+              <ExternalCardDataProvider value={externalCardDataValue}>
+                <Box maw={900} mx="auto" p="xl" w="100%">
+                  <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
+                  <div className={S.editorContent}>
+                    <EditorContent
+                      data-testid="document-content"
+                      editor={editor}
+                    />
+                  </div>
+                </Box>
+              </ExternalCardDataProvider>
+            </DocumentEditorHostProvider>
           )}
         </LoadingAndErrorWrapper>
       </EmbedFrame>

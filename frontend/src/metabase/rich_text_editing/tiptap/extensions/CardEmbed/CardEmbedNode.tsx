@@ -17,28 +17,12 @@ import { ExplicitSizeRefreshModeContext } from "metabase/common/components/Expli
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { navigateToCardFromDocument } from "metabase/documents/actions";
-import {
-  trackDocumentAddSupportingText,
-  trackDocumentReplaceCard,
-} from "metabase/documents/analytics";
-import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
-import { MAX_GROUP_SIZE } from "metabase/documents/constants";
-import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
-import {
-  loadMetadataForDocumentCard,
-  openVizSettingsSidebar,
-} from "metabase/documents/documents.slice";
-import { useCardData } from "metabase/documents/hooks/use-card-data";
-import { useExternalCardDataLoader } from "metabase/documents/hooks/use-external-card-data";
-import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-  getHasUnsavedChanges,
-  getHoveredChildTargetId,
-} from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import {
+  EDITOR_STYLE_BOUNDARY_CLASS,
+  MAX_GROUP_SIZE,
+} from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -72,6 +56,7 @@ import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
+import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
@@ -175,14 +160,17 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
-    const childTargetId = useSelector(getChildTargetId);
-    const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
-    const document = useSelector(getCurrentDocument);
+    const host = useEditorHost();
+    const childTargetId = useSelector(host.selectors.getChildTargetId);
+    const hoveredChildTargetId = useSelector(
+      host.selectors.getHoveredChildTargetId,
+    );
+    const document = useSelector(host.selectors.getCurrentDocument);
     const externalCardData = useExternalCardData();
     const { _id } = node.attrs;
-    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
+    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id);
 
-    const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
+    const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
     const commentsPath = document
@@ -204,8 +192,8 @@ export const CardEmbedComponent = memo(
 
     // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
     const isExternalDocument = externalCardData != null;
-    const regularCardData = useCardData({ id });
-    const externalCardDataResult = useExternalCardDataLoader(id);
+    const regularCardData = host.useCardData({ id });
+    const externalCardDataResult = host.useExternalCardDataLoader(id);
 
     const { card, dataset, isLoading, series, error } = isExternalDocument
       ? externalCardDataResult
@@ -267,7 +255,7 @@ export const CardEmbedComponent = memo(
             tr.insert(match.start, supportingText);
             editor.view.dispatch(tr);
             editor.commands.focus(match.start + 1);
-            trackDocumentAddSupportingText(document);
+            host.analytics.trackAddSupportingText(document);
             return;
           }
           const flexContainer =
@@ -285,7 +273,7 @@ export const CardEmbedComponent = memo(
 
           editor.view.dispatch(tr);
           editor.commands.focus(match.start + 2);
-          trackDocumentAddSupportingText(document);
+          host.analytics.trackAddSupportingText(document);
         };
 
     const displayName = name || card?.name;
@@ -345,13 +333,13 @@ export const CardEmbedComponent = memo(
     // Load metadata for the card
     useEffect(() => {
       if (card) {
-        dispatch(loadMetadataForDocumentCard(card));
+        dispatch(host.actions.loadMetadataForDocumentCard(card));
       }
-    }, [card, dispatch]);
+    }, [card, dispatch, host]);
 
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {
-        dispatch(openVizSettingsSidebar({ embedIndex }));
+        dispatch(host.actions.openVizSettingsSidebar({ embedIndex }));
       }
     };
 
@@ -364,7 +352,7 @@ export const CardEmbedComponent = memo(
             metadata,
           );
           const url = Urls.question(question);
-          dispatch(navigateToCardFromDocument(url, document));
+          dispatch(host.navigateToCard(url, document));
         } catch (error) {
           console.error("Failed to navigate to question:", error);
         }
@@ -382,12 +370,12 @@ export const CardEmbedComponent = memo(
           name: null,
         });
         if (document) {
-          trackDocumentReplaceCard(document);
+          host.analytics.trackReplaceCard(document);
         }
 
         setIsReplaceModalOpen(false);
       },
-      [updateAttributes, document],
+      [updateAttributes, document, host],
     );
 
     const handleRemoveNode = useCallback(() => {
