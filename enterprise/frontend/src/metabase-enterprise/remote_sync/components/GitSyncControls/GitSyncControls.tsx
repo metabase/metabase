@@ -57,6 +57,9 @@ export const GitSyncControls = () => {
     message: string;
     currentBranch: string | null;
   } | null>(null);
+  // True while the export preflight runs (push, or a dirty pull): it re-serializes the whole library and
+  // reads the remote trees, so it can take a few seconds — show the control as busy meanwhile.
+  const [isCheckingPreflight, setIsCheckingPreflight] = useState(false);
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
   const [sendToast] = useToast();
   const [dropdownView, setDropdownView] = useState<DropdownView>("options");
@@ -75,7 +78,11 @@ export const GitSyncControls = () => {
   const { has_changes: hasRemoteChanges } = hasRemoteChangesData || {};
 
   const isSwitchingBranch = !!nextBranch;
-  const isLoading = isSyncTaskRunning || isSwitchingBranch || isImporting;
+  const isLoading =
+    isSyncTaskRunning ||
+    isSwitchingBranch ||
+    isImporting ||
+    isCheckingPreflight;
 
   // If `error` is a branch-mismatch rejection (another session switched branches), open the
   // out-of-date modal prompting a refresh and return true so the caller can stop. Returns false for
@@ -173,6 +180,7 @@ export const GitSyncControls = () => {
 
     // Find out up front whether the remote has advanced, so we open the right modal directly instead of
     // collecting a commit message and only then discovering the divergence.
+    setIsCheckingPreflight(true);
     try {
       const preflight = await runExportPreflight({
         branch: currentBranch,
@@ -189,6 +197,8 @@ export const GitSyncControls = () => {
         return;
       }
       // fall through to the plain push modal on any other preflight error
+    } finally {
+      setIsCheckingPreflight(false);
     }
     togglePushModal();
   }, [
@@ -210,6 +220,7 @@ export const GitSyncControls = () => {
     // With un-pushed local changes, a straight pull would clobber them. Check whether a clean local
     // merge is possible and let the user choose (merge / force / new branch / discard).
     if (isDirty) {
+      setIsCheckingPreflight(true);
       try {
         const preflight = await runExportPreflight({
           branch: currentBranch,
@@ -219,7 +230,14 @@ export const GitSyncControls = () => {
         if (showBranchMismatchIfPresent(error)) {
           return;
         }
+        // Couldn't determine mergeability; open the modal without the merge option but tell the user why.
         setConflictPreflight(null);
+        sendToast({
+          message: t`Couldn't check whether your changes can be merged. You can still force the pull or stash to a new branch.`,
+          icon: "warning",
+        });
+      } finally {
+        setIsCheckingPreflight(false);
       }
       dispatch(syncConflictVariantUpdated("pull"));
       return;

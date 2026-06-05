@@ -266,6 +266,40 @@ describe("GitSyncControls", () => {
       ).toBeInTheDocument();
     });
 
+    it("toasts when the mergeability check fails on a dirty pull", async () => {
+      // The toaster (UndoListing) isn't mounted in this harness, so assert the dispatched toast via the
+      // undo store rather than the DOM.
+      const { store } = setup({
+        dirty: [createMockDirtyEntity()],
+        hasRemoteChanges: true,
+      });
+
+      // The preflight fails for a non-branch-mismatch reason.
+      fetchMock.removeRoute("remote-sync-export-preflight");
+      fetchMock.get(
+        "path:/api/ee/remote-sync/export-preflight",
+        { status: 500, body: { message: "boom" } },
+        { name: "remote-sync-export-preflight" },
+      );
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      await userEvent.click(await findOption(/Pull changes/));
+
+      await waitFor(() => {
+        const messages = store
+          .getState()
+          .undo.map((undo) => String(undo.message));
+        expect(
+          messages.some((m) =>
+            /Couldn't check whether your changes can be merged/i.test(m),
+          ),
+        ).toBe(true);
+      });
+    });
+
     it("is enabled when there are changes to pull", async () => {
       setup({ hasRemoteChanges: true });
 
