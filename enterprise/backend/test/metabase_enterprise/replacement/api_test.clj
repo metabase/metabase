@@ -246,6 +246,50 @@
               (is (= new-id (get-in child-query [:stages 0 :source-card]))
                   "Child card should now reference the new source card"))))))))
 
+(deftest replace-source-swaps-dashboard-dependency-test
+  (testing "POST /replace-source — rewrites the dashboard->card Dependency edge to the new source"
+    ;; A plain dashcard referencing the old card has no parameter mappings or click-behaviors to
+    ;; rewrite, so dashboard-swap-source! makes no content change and fires no update event. The
+    ;; dependency edge must still be swapped via the unconditional swap-dependency! call; without
+    ;; it, a dashboard->old-card edge survives replacement.
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {old-id :id :as old-card}
+                     {:database_id   (mt/id)
+                      :dataset_query (let [mp (mt/metadata-provider)]
+                                       (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+                      :type          :model
+                      :name          "Old Orders"}
+                     :model/Card {new-id :id}
+                     {:database_id   (mt/id)
+                      :dataset_query (let [mp (mt/metadata-provider)]
+                                       (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+                      :type          :model
+                      :name          "New Orders"}
+                     :model/Dashboard {dashboard-id :id} {:name "Dashboard on Old"}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id :card_id old-id}]
+        (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
+          (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :crowberto)})
+          (deps.test/synchronously-run-backfill!)
+          (is (t2/exists? :model/Dependency
+                          :from_entity_type :dashboard :from_entity_id dashboard-id
+                          :to_entity_type :card :to_entity_id old-id)
+              "Precondition: dashboard depends on the old card before replacement")
+          (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
+                                               {:source_entity_id   old-id
+                                                :source_entity_type :card
+                                                :target_entity_id   new-id
+                                                :target_entity_type :card})
+                final    (poll-run (:run_id response))]
+            (is (= "succeeded" (:status final)))
+            (is (not (t2/exists? :model/Dependency
+                                 :from_entity_type :dashboard :from_entity_id dashboard-id
+                                 :to_entity_type :card :to_entity_id old-id))
+                "Dashboard->old-card dependency should be gone after replacement")
+            (is (t2/exists? :model/Dependency
+                            :from_entity_type :dashboard :from_entity_id dashboard-id
+                            :to_entity_type :card :to_entity_id new-id)
+                "Dashboard should now depend on the new card")))))))
+
 (deftest replace-source-poll-until-complete-test
   (testing "POST replace-source then GET /runs/:id — run reaches 'succeeded' status"
     (mt/with-premium-features #{:dependencies}

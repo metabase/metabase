@@ -98,20 +98,14 @@
               :next_retry_at [:not= nil]))
 
 (defn has-stale-or-outdated?
-  "Returns true if there are any entities needing dependency calculation:
-  stale=true OR version < current, not terminal, and retry delay elapsed."
+  "Returns true if there are any entities needing dependency calculation: no status row yet,
+  stale=true, OR version < current (not terminal, retry delay elapsed). Defined in terms of
+  [[instances-for-dependency-calculation]] so it stays consistent with what the backfill processes."
   []
-  (let [now (t/offset-date-time)]
-    (t2/exists? :model/DependencyStatus
-                {:where [:and
-                         [:or
-                          [:= :stale true]
-                          [:< :dependency_analysis_version
-                           models.dependency/current-dependency-analysis-version]]
-                         [:= :terminal false]
-                         [:or
-                          [:is :next_retry_at nil]
-                          [:<= :next_retry_at now]]]})))
+  (boolean
+   (some (fn [entity-type]
+           (seq (instances-for-dependency-calculation entity-type 1)))
+         deps.dependency-types/backfillable-dependency-types)))
 
 (defn record-failure!
   "Record a failed dependency calculation attempt for an entity.
