@@ -192,12 +192,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           native: {
             query: `
               SELECT
-                STRFTIME('%Y-%m', CREATED_AT) AS "Created At",
+                DATE_TRUNC('month', CREATED_AT) AS "Created At",
                 COUNT(*) AS "count"
               FROM
                 ORDERS
               GROUP BY
-                STRFTIME('%Y-%m', CREATED_AT)
+                DATE_TRUNC('month', CREATED_AT)
               LIMIT
                 5
             `,
@@ -2188,12 +2188,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
           expressions: ["Net"],
           filters: [
-            "User → Longitude is equal to -80",
-            "Product → Title is Doohickey",
-            "ID is 7021",
             "Reviews - Product → Reviewer is Doohickey",
-            "Net is equal to -80",
             "Product → Vendor is Doohickey",
+            "User → Longitude is equal to -80",
+            "ID is 7021",
+            "Net is equal to -80",
+            "Product → Title is Doohickey",
           ],
           aggregations: ["Count", "Sum of Total"],
           breakouts: [

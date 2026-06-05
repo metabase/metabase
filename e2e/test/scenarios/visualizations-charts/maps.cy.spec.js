@@ -64,7 +64,7 @@ describe("scenarios > visualizations > maps", () => {
         name: "14254",
         native: {
           query:
-            'SELECT "PEOPLE"."LONGITUDE" AS "LONGITUDE", "PEOPLE"."LATITUDE" AS "LATITUDE", "PEOPLE"."CITY" AS "CITY"\nFROM "PEOPLE"\nLIMIT 10',
+            'SELECT "PUBLIC"."PEOPLE"."LONGITUDE" AS "LONGITUDE", "PUBLIC"."PEOPLE"."LATITUDE" AS "LATITUDE", "PUBLIC"."PEOPLE"."CITY" AS "CITY"\nFROM "PUBLIC"."PEOPLE"\nLIMIT 10',
           "template-tags": {},
         },
         display: "map",

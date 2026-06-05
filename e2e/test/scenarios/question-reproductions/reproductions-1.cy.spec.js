@@ -1,7 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -13,17 +12,12 @@ const QUESTION_NAME = "Foo";
 const MONGO_DB_ID = 2;
 
 describe("issue 4482", () => {
-  // Pinned to the H2 sample database. SQLite stores temporal values as TEXT, so min/max of a date
-  // column loses its temporal type and renders unformatted, regressing this behavior. H2 preserves
-  // the temporal type, matching the formatted dates asserted below. Default tests stay on SQLite.
-  const { PRODUCTS_ID: H2_PRODUCTS_ID } = H2_SAMPLE_DATABASE;
-
   beforeEach(() => {
-    H.restore("default-with-h2");
+    H.restore();
     cy.signInAsAdmin();
 
     H.openTable({
-      table: H2_PRODUCTS_ID,
+      table: PRODUCTS_ID,
       mode: "notebook",
     });
 

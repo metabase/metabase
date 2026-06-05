@@ -492,7 +492,7 @@ describe("issue 35290", () => {
               ["field", ORDERS.ID, null],
               ["field", ORDERS.ID, null],
             ],
-            alias: "Orders_2",
+            alias: "Orders",
           },
         ],
         limit: 5,

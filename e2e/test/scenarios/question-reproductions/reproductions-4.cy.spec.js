@@ -1033,7 +1033,7 @@ describe("issue 47940", () => {
     cy.log("verify there is a table displayed");
     cy.findByTestId("visualization-root").should(
       "contain",
-      "January 1, 1970, 12:00 AM",
+      "December 31, 1969, 4:00 PM",
     );
   });
 });
@@ -1128,14 +1128,14 @@ describe("issue 32499", () => {
           ],
           joins: [
             {
-              fields: [["field", ORDERS.USER_ID, { "join-alias": "Orders_2" }]],
-              alias: "Orders_2",
+              fields: [["field", ORDERS.USER_ID, { "join-alias": "Orders" }]],
+              alias: "Orders",
               "source-table": ORDERS_ID,
               strategy: "left-join",
               condition: [
                 "=",
                 ["field", ORDERS.ID, null],
-                ["field", ORDERS.ID, { "join-alias": "Orders_2" }],
+                ["field", ORDERS.ID, { "join-alias": "Orders" }],
               ],
             },
           ],
@@ -1147,7 +1147,7 @@ describe("issue 32499", () => {
     H.openQuestionActions("Edit metadata");
 
     const columns = [
-      { original: "Orders_2 → User ID", modified: "JOIN COLUMN" },
+      { original: "Orders → User ID", modified: "JOIN COLUMN" },
       { original: "User ID", modified: "ORIGINAL COLUMN" },
     ];
 

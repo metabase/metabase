@@ -1,7 +1,6 @@
 const { H } = cy;
-import { H2_SAMPLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 
 const {
   ORDERS,
@@ -12,11 +11,6 @@ const {
   REVIEWS_ID,
   ACCOUNTS_ID,
 } = SAMPLE_DATABASE;
-
-// Some drill tests below are pinned to the H2 sample database: SQLite stores dates as text (so
-// DATE_TRUNC and date-extraction drills don't work) and preserves lowercase identifier casing,
-// unlike H2. These local H2 ids are used only by the pinned describes.
-const { ORDERS: H2_ORDERS, ORDERS_ID: H2_ORDERS_ID } = H2_SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   beforeEach(() => {
@@ -306,12 +300,6 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   });
 
   describe("native query", () => {
-    // The aggregated-by-date (DATE_TRUNC) and identifier-casing (lowercase `count`) drills need H2.
-    beforeEach(() => {
-      H.restore("default-with-h2");
-      cy.signInAsAdmin();
-    });
-
     it("should display proper drills on cell click for unaggregated query", () => {
       H.createNativeQuestion(
         {
@@ -403,12 +391,10 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         {
           name: "table_drills",
           native: {
-            // Uppercase the COUNT alias so the header matches on SQLite (which preserves identifier
-            // case) as well as H2 (which uppercases unquoted aliases).
             query: `
                   SELECT
                     REVIEWS.REVIEWER AS REVIEWER,
-                    COUNT(*) AS COUNT
+                    COUNT(*) AS count
                   FROM
                     REVIEWS
                   GROUP BY
@@ -461,7 +447,6 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       H.createNativeQuestion(
         {
           name: "table_drills",
-          database: H2_SAMPLE_DB_ID,
           native: {
             query: `
             SELECT
@@ -559,9 +544,8 @@ describe("Issue 58247", () => {
 });
 
 describe("Issue 40061", () => {
-  // Pinned to H2: extracting day/month from a date expression needs real date typing (SQLite text dates).
   beforeEach(() => {
-    H.restore("default-with-h2");
+    H.restore();
     cy.signInAsNormalUser();
   });
 
@@ -569,13 +553,13 @@ describe("Issue 40061", () => {
     display: "table",
     dataset_query: {
       type: "query",
-      database: H2_SAMPLE_DB_ID,
+      database: SAMPLE_DB_ID,
       query: {
-        "source-table": H2_ORDERS_ID,
+        "source-table": ORDERS_ID,
         expressions: {
           "Created At 2": [
             "field",
-            H2_ORDERS.CREATED_AT,
+            ORDERS.CREATED_AT,
             {
               "base-type": "type/DateTime",
             },

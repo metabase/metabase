@@ -431,7 +431,7 @@ describe("scenarios > question > saved", () => {
               joins: [
                 {
                   "source-table": PRODUCTS_ID,
-                  alias: "Orders_2",
+                  alias: "Orders",
                   condition: [
                     "=",
                     ["field", ORDERS.PRODUCT_ID, null],

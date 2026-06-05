@@ -2,12 +2,7 @@ import { assoc } from "icepick";
 import _ from "underscore";
 
 const { H } = cy;
-import {
-  H2_SAMPLE_DB_ID,
-  SAMPLE_DB_ID,
-  USERS,
-  USER_GROUPS,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
@@ -20,16 +15,10 @@ import {
 } from "metabase-types/api/mocks";
 
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
-const {
-  H2_SAMPLE_DATABASE,
-} = require("e2e/support/cypress_sample_database_h2");
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-// issue 17879 is pinned to the H2 sample database: SQLite stores dates as text, so the date-range
-// parameter mapped from a bucketed CREATED_AT click doesn't resolve. H2 types dates correctly.
-const { ORDERS_ID: H2_ORDERS_ID, ORDERS: H2_ORDERS } = H2_SAMPLE_DATABASE;
 
 function capitalize(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
@@ -493,25 +482,19 @@ describe("issue 17879", () => {
     if (targetDateUnit === "default") {
       H.createQuestion({
         name: "Q1 - 17879",
-        database: H2_SAMPLE_DB_ID,
         query: {
-          "source-table": H2_ORDERS_ID,
+          "source-table": ORDERS_ID,
           limit: 5,
         },
       });
     } else {
       H.createQuestion({
         name: "Q1 - 17879",
-        database: H2_SAMPLE_DB_ID,
         query: {
-          "source-table": H2_ORDERS_ID,
+          "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            [
-              "field",
-              H2_ORDERS.CREATED_AT,
-              { "temporal-unit": targetDateUnit },
-            ],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": targetDateUnit }],
           ],
           limit: 5,
         },
@@ -524,16 +507,11 @@ describe("issue 17879", () => {
         {
           name: "Q2",
           display: "line",
-          database: H2_SAMPLE_DB_ID,
           query: {
-            "source-table": H2_ORDERS_ID,
+            "source-table": ORDERS_ID,
             aggregation: [["count"]],
             breakout: [
-              [
-                "field",
-                H2_ORDERS.CREATED_AT,
-                { "temporal-unit": sourceDateUnit },
-              ],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": sourceDateUnit }],
             ],
             limit: 5,
           },
@@ -582,7 +560,7 @@ describe("issue 17879", () => {
   }
 
   beforeEach(() => {
-    H.restore("default-with-h2");
+    H.restore();
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
@@ -2285,14 +2263,11 @@ describe("issue 64138", () => {
 });
 
 describe("issue 58556, issue 66277", () => {
-  // Pinned to the H2 sample database: hour-granularity bucketing of CREATED_AT needs real date typing,
-  // which SQLite (text-stored dates) lacks.
   const QUESTION = {
-    database: H2_SAMPLE_DB_ID,
     query: {
-      "source-table": H2_ORDERS_ID,
+      "source-table": ORDERS_ID,
       aggregation: [["count"]],
-      breakout: [["field", H2_ORDERS.CREATED_AT, { "temporal-unit": "hour" }]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour" }]],
     },
     display: "table",
   };
@@ -2305,7 +2280,7 @@ describe("issue 58556, issue 66277", () => {
   });
 
   beforeEach(() => {
-    H.restore("default-with-h2");
+    H.restore();
     cy.signInAsNormalUser();
 
     H.createDashboardWithQuestions({

@@ -136,15 +136,15 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         fields: [["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }]],
         joins: [
           {
-            fields: [["field", REVIEWS.RATING, { "join-alias": "Products_2" }]],
-            alias: "Products_2",
+            fields: [["field", REVIEWS.RATING, { "join-alias": "Products" }]],
+            alias: "Products",
             condition: [
               "=",
               ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
               [
                 "field",
                 REVIEWS.PRODUCT_ID,
-                { "base-type": "type/BigInteger", "join-alias": "Products_2" },
+                { "base-type": "type/BigInteger", "join-alias": "Products" },
               ],
             ],
             "source-table": REVIEWS_ID,

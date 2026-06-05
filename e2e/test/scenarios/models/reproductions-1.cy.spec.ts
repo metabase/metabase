@@ -1,8 +1,6 @@
 const { H } = cy;
 
-import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_MODEL_ID,
@@ -13,10 +11,6 @@ import type { CardId, FieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-// issue 39150 uses ceil()/floor() math functions, which the SQLite sample DB doesn't support; that
-// describe is pinned to the H2 sample database via these local ids.
-const { PRODUCTS: H2_PRODUCTS, PRODUCTS_ID: H2_PRODUCTS_ID } =
-  H2_SAMPLE_DATABASE;
 
 describe("issue 29943", () => {
   function reorderTotalAndCustomColumns() {
@@ -246,8 +240,7 @@ describe("issue 23103", () => {
 
 describe("issue 39150", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
-    // 39150-1 uses ceil()/floor() math functions; run those models against the H2 sample database.
-    H.restore("default-with-h2");
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -257,15 +250,14 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     H.createQuestion({
       name: "Source Model",
       type: "model",
-      database: H2_SAMPLE_DB_ID,
       query: {
-        "source-table": H2_PRODUCTS_ID,
+        "source-table": PRODUCTS_ID,
         expressions: {
           [ccName]: [
             "ceil",
             [
               "field",
-              H2_PRODUCTS.RATING,
+              PRODUCTS.RATING,
               {
                 "base-type": "type/Float",
               },
@@ -279,7 +271,6 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
         {
           name: "Nested Model",
           type: "model",
-          database: H2_SAMPLE_DB_ID,
           query: {
             "source-table": `card__${sourceModelId}`,
           },
@@ -601,7 +592,7 @@ describe("issue 33427", () => {
         type: "model",
         native: {
           query: `
-            select o.ID, p1.title as CREATED_BY, p2.title as UPDATED_BY
+            select o.ID, p1.title as created_by, p2.title as updated_by
             from ORDERS o
             join PRODUCTS p1 on p1.ID = o.PRODUCT_ID
             join PRODUCTS p2 on p2.ID = o.USER_ID;
@@ -745,14 +736,33 @@ describe("issue 39749", () => {
 });
 
 describe("issue 25885", () => {
-  // Join aliases are suffixed with `_2`/`_3` (as MBQL-created self-joins are) rather than reusing the
-  // real table name "Orders": an alias that matches a table name collides on SQLite (ambiguous column).
   const mbqlModelDetails: StructuredQuestionDetails = {
     type: "model",
     query: {
       "source-table": ORDERS_ID,
       fields: [["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
       joins: [
+        {
+          fields: [
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Orders",
+          condition: [
+            "=",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+            [
+              "field",
+              ORDERS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Orders" },
+            ],
+          ],
+          "source-table": ORDERS_ID,
+        },
         {
           fields: [
             [
@@ -770,27 +780,6 @@ describe("issue 25885", () => {
               "field",
               ORDERS.ID,
               { "base-type": "type/BigInteger", "join-alias": "Orders_2" },
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-        {
-          fields: [
-            [
-              "field",
-              ORDERS.ID,
-              { "base-type": "type/BigInteger", "join-alias": "Orders_3" },
-            ],
-          ],
-          strategy: "left-join",
-          alias: "Orders_3",
-          condition: [
-            "=",
-            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-            [
-              "field",
-              ORDERS.ID,
-              { "base-type": "type/BigInteger", "join-alias": "Orders_3" },
             ],
           ],
           "source-table": ORDERS_ID,
@@ -828,8 +817,8 @@ describe("issue 25885", () => {
     H.popover().findByText("Edit metadata").click();
     H.waitForLoaderToBeRemoved();
     setColumnName("ID", "ID1");
-    setColumnName("Orders_2 → ID", "ID2");
-    setColumnName("Orders_3 → ID", "ID3");
+    setColumnName("Orders → ID", "ID2");
+    setColumnName("Orders_2 → ID", "ID3");
     verifyColumnName("ID1");
     verifyColumnName("ID2");
     verifyColumnName("ID3");

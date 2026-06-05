@@ -963,7 +963,7 @@ describe("issue 29795", () => {
     H.createNativeQuestion(
       {
         name: NATIVE_QUESTION,
-        native: { query: `SELECT * FROM "ORDERS" LIMIT ${LIMIT}` },
+        native: { query: `SELECT * FROM "PUBLIC"."ORDERS" LIMIT ${LIMIT}` },
       },
       { loadMetadata: true },
     );

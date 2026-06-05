@@ -1,11 +1,7 @@
 const { H } = cy;
-import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
-// Pinned to the H2 sample database: SQLite stores dates/times as text, so native temporal columns
-// (e.g. CAST('10:00' AS TIME)) and date-parameter dimensions lose their temporal type. H2 preserves
-// it, matching the formatted dates/times asserted below.
-import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = H2_SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const dashboardDetails = {
   name: "Test Dashboard",
@@ -14,7 +10,6 @@ const dashboardDetails = {
 const singleBreakoutQuestionDetails = {
   name: "Single breakout",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -25,7 +20,6 @@ const singleBreakoutQuestionDetails = {
 const multiBreakoutQuestionDetails = {
   name: "Multiple breakouts",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -43,7 +37,6 @@ const multiBreakoutQuestionDetails = {
 const noBreakoutQuestionDetails = {
   name: "No breakouts",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -54,7 +47,6 @@ const noBreakoutQuestionDetails = {
 const multiStageQuestionDetails = {
   name: "Multiple stages",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   query: {
     "source-query": {
       "source-table": ORDERS_ID,
@@ -85,7 +77,6 @@ const multiStageQuestionDetails = {
 const expressionBreakoutQuestionDetails = {
   name: "Breakout by expression",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -110,7 +101,6 @@ const expressionBreakoutQuestionDetails = {
 const binningBreakoutQuestionDetails = {
   name: "Breakout by a column with a binning strategy",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -127,7 +117,6 @@ const binningBreakoutQuestionDetails = {
 const nativeQuestionDetails = {
   name: "SQL query",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   native: {
     query: "SELECT * FROM ORDERS",
   },
@@ -136,7 +125,6 @@ const nativeQuestionDetails = {
 const nativeQuestionWithTextParameterDetails = {
   name: "SQL query with a text parameter",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   native: {
     query: "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}}",
     "template-tags": {
@@ -153,7 +141,6 @@ const nativeQuestionWithTextParameterDetails = {
 const nativeQuestionWithDateParameterDetails = {
   name: "SQL query with a date parameter",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   native: {
     query: "SELECT * FROM ORDERS WHERE {{date}}",
     "template-tags": {
@@ -172,7 +159,6 @@ const nativeQuestionWithDateParameterDetails = {
 const nativeUnitQuestionDetails = {
   name: "SQL units",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   native: {
     query:
       "SELECT 'month' AS UNIT " +
@@ -184,14 +170,12 @@ const nativeUnitQuestionDetails = {
 const nativeTimeQuestionDetails = {
   name: "SQL time",
   display: "table",
-  database: H2_SAMPLE_DB_ID,
   native: {
     query: "SELECT CAST('10:00' AS TIME) AS TIME",
   },
 };
 
 const getNativeTimeQuestionBasedQuestionDetails = (card) => ({
-  database: H2_SAMPLE_DB_ID,
   query: {
     "source-table": `card__${card.id}`,
     aggregation: [["count"]],
@@ -225,7 +209,7 @@ const getParameterMapping = (card) => ({
 
 describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
-    H.restore("default-with-h2");
+    H.restore();
     cy.signInAsNormalUser();
 
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
@@ -1050,7 +1034,6 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     it("should be able to use temporal unit parameters in a native query", () => {
       const questionWithoutDefaultValue = {
         name: "Saved question with time grouping",
-        database: H2_SAMPLE_DB_ID,
         native: {
           query: `
         SELECT
@@ -1098,7 +1081,6 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     it("should not be able to use temporal unit parameter with a filter of a different type", () => {
       const questionWithoutDefaultValue = {
         name: "Saved question with time grouping",
-        database: H2_SAMPLE_DB_ID,
         native: {
           query: `
         SELECT

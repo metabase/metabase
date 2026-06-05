@@ -1,7 +1,5 @@
 const { H } = cy;
-import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import type {
   DashboardDetails,
   StructuredQuestionDetails,
@@ -9,15 +7,8 @@ import type {
 import type { CardId, DashboardParameterMapping } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
-// The "dashboards" describe is pinned to the H2 sample database: a boolean custom column isn't
-// available for click-behavior column mapping on the SQLite sample DB (it loses its boolean type).
-const {
-  PEOPLE: H2_PEOPLE,
-  PEOPLE_ID: H2_PEOPLE_ID,
-  PRODUCTS: H2_PRODUCTS,
-  PRODUCTS_ID: H2_PRODUCTS_ID,
-} = H2_SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > custom column > boolean functions", () => {
   const expressionName = "Boolean column";
@@ -122,9 +113,9 @@ describe("scenarios > custom column > boolean functions", () => {
         questionDetails: stringQuestionDetails,
         questionColumns: stringQuestionColumns,
         newExpression: "isNull([Category])",
-        newExpressionRows: [["Gizmo", "0"]],
+        newExpressionRows: [["Gizmo", "false"]],
         modifiedExpression: "notNull([Category])",
-        modifiedExpressionRows: [["Gizmo", "1"]],
+        modifiedExpressionRows: [["Gizmo", "true"]],
       });
     });
 
@@ -133,9 +124,9 @@ describe("scenarios > custom column > boolean functions", () => {
         questionDetails: stringQuestionDetails,
         questionColumns: stringQuestionColumns,
         newExpression: "isEmpty([Category])",
-        newExpressionRows: [["Gizmo", "0"]],
+        newExpressionRows: [["Gizmo", "false"]],
         modifiedExpression: "notEmpty([Category])",
-        modifiedExpressionRows: [["Gizmo", "1"]],
+        modifiedExpressionRows: [["Gizmo", "true"]],
       });
     });
 
@@ -144,9 +135,9 @@ describe("scenarios > custom column > boolean functions", () => {
         questionDetails: stringQuestionDetails,
         questionColumns: stringQuestionColumns,
         newExpression: 'startsWith([Category], "Gi")',
-        newExpressionRows: [["Gizmo", "1"]],
+        newExpressionRows: [["Gizmo", "true"]],
         modifiedExpression: 'startsWith([Category], "mo")',
-        modifiedExpressionRows: [["Gizmo", "0"]],
+        modifiedExpressionRows: [["Gizmo", "false"]],
       });
     });
 
@@ -155,9 +146,9 @@ describe("scenarios > custom column > boolean functions", () => {
         questionDetails: stringQuestionDetails,
         questionColumns: stringQuestionColumns,
         newExpression: 'endsWith([Category], "Gi")',
-        newExpressionRows: [["Gizmo", "0"]],
+        newExpressionRows: [["Gizmo", "false"]],
         modifiedExpression: 'endsWith([Category], "mo")',
-        modifiedExpressionRows: [["Gizmo", "1"]],
+        modifiedExpressionRows: [["Gizmo", "true"]],
       });
     });
 
@@ -166,9 +157,9 @@ describe("scenarios > custom column > boolean functions", () => {
         questionDetails: stringQuestionDetails,
         questionColumns: stringQuestionColumns,
         newExpression: 'contains([Category], "zm")',
-        newExpressionRows: [["Gizmo", "1"]],
+        newExpressionRows: [["Gizmo", "true"]],
         modifiedExpression: 'contains([Category], "mz")',
-        modifiedExpressionRows: [["Gizmo", "0"]],
+        modifiedExpressionRows: [["Gizmo", "false"]],
       });
     });
 
@@ -177,9 +168,9 @@ describe("scenarios > custom column > boolean functions", () => {
         questionDetails: stringQuestionDetails,
         questionColumns: stringQuestionColumns,
         newExpression: 'doesNotContain([Category], "zm")',
-        newExpressionRows: [["Gizmo", "0"]],
+        newExpressionRows: [["Gizmo", "false"]],
         modifiedExpression: 'doesNotContain([Category], "mz")',
-        modifiedExpressionRows: [["Gizmo", "1"]],
+        modifiedExpressionRows: [["Gizmo", "true"]],
       });
     });
 
@@ -188,9 +179,9 @@ describe("scenarios > custom column > boolean functions", () => {
         questionDetails: numberQuestionDetails,
         questionColumns: numberQuestionColumns,
         newExpression: "between([Total], 20, 30)",
-        newExpressionRows: [["39.72", "0"]],
+        newExpressionRows: [["39.72", "false"]],
         modifiedExpression: "between([Total], 30, 40)",
-        modifiedExpressionRows: [["39.72", "1"]],
+        modifiedExpressionRows: [["39.72", "true"]],
       });
     });
 
@@ -199,9 +190,9 @@ describe("scenarios > custom column > boolean functions", () => {
         questionDetails: dateQuestionDetails,
         questionColumns: dateQuestionColumns,
         newExpression: 'interval([Created At], -30, "year")',
-        newExpressionRows: [["April 30, 2025, 6:56 PM", "1"]],
+        newExpressionRows: [["April 30, 2025, 6:56 PM", "true"]],
         modifiedExpression: 'interval([Created At], 2, "month")',
-        modifiedExpressionRows: [["April 30, 2025, 6:56 PM", "0"]],
+        modifiedExpressionRows: [["April 30, 2025, 6:56 PM", "false"]],
       });
     });
   });
@@ -255,7 +246,7 @@ describe("scenarios > custom column > boolean functions", () => {
             "Identity column",
             "Simple expression",
           ],
-          firstRows: [["Gizmo", "1", "1", "0"]],
+          firstRows: [["Gizmo", "true", "true", "false"]],
         });
       });
 
@@ -287,7 +278,7 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.wait("@dataset");
         H.assertTableData({
           columns: [`Min of ${expressionName}`, `Max of ${expressionName}`],
-          firstRows: [["0", "1"]],
+          firstRows: [["false", "true"]],
         });
       });
 
@@ -306,8 +297,8 @@ describe("scenarios > custom column > boolean functions", () => {
         H.assertTableData({
           columns: [expressionName, "Count"],
           firstRows: [
-            ["0", "149"],
-            ["1", "51"],
+            ["false", "149"],
+            ["true", "51"],
           ],
         });
       });
@@ -321,7 +312,7 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.wait("@dataset");
         H.assertTableData({
           columns: ["Category", expressionName],
-          firstRows: [["Doohickey", "0"]],
+          firstRows: [["Doohickey", "false"]],
         });
       });
     });
@@ -358,8 +349,8 @@ describe("scenarios > custom column > boolean functions", () => {
         H.assertTableData({
           columns: [expressionName, "Count", "Simple expression"],
           firstRows: [
-            ["0", "149", "1"],
-            ["1", "51", "0"],
+            ["false", "149", "true"],
+            ["true", "51", "false"],
           ],
         });
       });
@@ -386,35 +377,12 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.wait("@dataset");
         H.assertTableData({
           columns: [`Min of ${expressionName}`],
-          firstRows: [["0"]],
+          firstRows: [["false"]],
         });
       });
 
-      // Pinned to the H2 sample database: this asserts the order of a boolean breakout with equal
-      // group counts, which is rendered as 0/1 and ordered differently on the SQLite sample DB.
       it("should be able to add a post-aggregation breakout and sorting", () => {
-        H.restore("default-with-h2");
-        cy.signInAsNormalUser();
-        H.createQuestion(
-          {
-            database: H2_SAMPLE_DB_ID,
-            query: {
-              "source-table": H2_PRODUCTS_ID,
-              expressions: {
-                [expressionName]: [
-                  "starts-with",
-                  ["field", H2_PRODUCTS.CATEGORY, null],
-                  "Gi",
-                ],
-              },
-              aggregation: [["count"]],
-              breakout: [
-                ["expression", expressionName, { "base-type": "type/Boolean" }],
-              ],
-            },
-          },
-          { visitQuestion: true },
-        );
+        H.createQuestion(questionDetails, { visitQuestion: true });
 
         cy.log("add a breakout");
         H.openNotebook();
@@ -536,7 +504,7 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.wait("@dataset");
         H.assertTableData({
           columns: [`Min of ${expressionName}`],
-          firstRows: [["0"]],
+          firstRows: [["false"]],
         });
       });
 
@@ -559,7 +527,7 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.wait("@dataset");
         H.assertTableData({
           columns: [expressionName],
-          firstRows: [["0"], ["1"]],
+          firstRows: [["false"], ["true"]],
         });
 
         cy.log("add sorting");
@@ -570,7 +538,7 @@ describe("scenarios > custom column > boolean functions", () => {
         H.visualize();
         H.assertTableData({
           columns: [expressionName],
-          firstRows: [["1"], ["0"]],
+          firstRows: [["true"], ["false"]],
         });
       });
     });
@@ -579,17 +547,16 @@ describe("scenarios > custom column > boolean functions", () => {
   describe("dashboards", () => {
     const questionDetails: StructuredQuestionDetails = {
       name: "Q1",
-      database: H2_SAMPLE_DB_ID,
       query: {
-        "source-table": H2_PEOPLE_ID,
+        "source-table": PEOPLE_ID,
         fields: [
-          ["field", H2_PEOPLE.NAME, { "base-type": "type/Text" }],
+          ["field", PEOPLE.NAME, { "base-type": "type/Text" }],
           ["expression", expressionName, { "base-type": "type/Boolean" }],
         ],
         expressions: {
           [expressionName]: [
             "starts-with",
-            ["field", H2_PEOPLE.NAME, null],
+            ["field", PEOPLE.NAME, null],
             "Sydney",
           ],
         },
@@ -615,7 +582,7 @@ describe("scenarios > custom column > boolean functions", () => {
         parameter_id: parameterDetails.id,
         target: [
           "dimension",
-          ["field", H2_PEOPLE.CITY, { "base-type": "type/Text" }],
+          ["field", PEOPLE.CITY, { "base-type": "type/Text" }],
         ],
       };
     }
@@ -642,7 +609,6 @@ describe("scenarios > custom column > boolean functions", () => {
     }
 
     beforeEach(() => {
-      H.restore("default-with-h2");
       cy.signInAsNormalUser();
     });
 

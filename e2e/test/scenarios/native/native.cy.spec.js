@@ -1,18 +1,13 @@
 const { H } = cy;
 import {
-  H2_SAMPLE_DB_ID,
   SAMPLE_DB_ID,
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
-// Time-grouping tests are pinned to the H2 sample database: SQLite stores dates as text, so the
-// {{unit}} temporal-unit grouping loses its date typing and the formatted result is missing.
-const { ORDERS: H2_ORDERS, PEOPLE: H2_PEOPLE } = H2_SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
@@ -211,9 +206,7 @@ describe("scenarios > question > native", () => {
       });
 
       it("should handle required prop for time grouping", () => {
-        H.restore("default-with-h2");
-        cy.signInAsNormalUser();
-        H.startNewNativeQuestion({ database: H2_SAMPLE_DB_ID });
+        H.startNewNativeQuestion();
         H.NativeEditor.type(
           "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
         );
@@ -240,11 +233,8 @@ describe("scenarios > question > native", () => {
       });
 
       it("should run saved question with time grouping", () => {
-        H.restore("default-with-h2");
-        cy.signInAsNormalUser();
         const questionWithDefaultValue = {
           name: "Saved question with time grouping",
-          database: H2_SAMPLE_DB_ID,
           native: {
             query:
               "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
@@ -254,7 +244,7 @@ describe("scenarios > question > native", () => {
                 name: "unit",
                 id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
                 "display-name": "Unit",
-                dimension: ["field", H2_ORDERS.CREATED_AT, null],
+                dimension: ["field", ORDERS.CREATED_AT, null],
                 required: true,
                 default: "year",
               },
@@ -263,7 +253,6 @@ describe("scenarios > question > native", () => {
         };
         const questionWithoutDefaultValue = {
           name: "Saved question with time grouping",
-          database: H2_SAMPLE_DB_ID,
           native: {
             query:
               "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
@@ -273,7 +262,7 @@ describe("scenarios > question > native", () => {
                 name: "unit",
                 id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
                 "display-name": "Unit",
-                dimension: ["field", H2_ORDERS.CREATED_AT, null],
+                dimension: ["field", ORDERS.CREATED_AT, null],
                 required: true,
               },
             },
@@ -371,11 +360,8 @@ describe("scenarios > question > native", () => {
       });
 
       it("should handle time grouping in optional clause", () => {
-        H.restore("default-with-h2");
-        cy.signInAsNormalUser();
         const questionWithDefaultValue = {
           name: "Saved question with time grouping",
-          database: H2_SAMPLE_DB_ID,
           native: {
             query: `
               SELECT
@@ -393,7 +379,7 @@ describe("scenarios > question > native", () => {
                 name: "unit",
                 id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
                 "display-name": "Unit",
-                dimension: ["field", H2_PEOPLE.CREATED_AT, null],
+                dimension: ["field", PEOPLE.CREATED_AT, null],
                 default: "year",
               },
             },

@@ -1,12 +1,11 @@
 import _ from "underscore";
 
 const { H } = cy;
-import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-// Pinned to the H2 sample database: extract drills depend on date/email/url semantic types, which the
-// SQLite sample DB loses (so the "Extract …" options never appear). H2 keeps the semantic types.
-const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = H2_SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -77,7 +76,6 @@ const URL_CASES = [
 ];
 
 const DATE_QUESTION = {
-  database: H2_SAMPLE_DB_ID,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [
@@ -96,7 +94,7 @@ const DATE_QUESTION = {
 
 describe("extract action", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
-    H.restore("default-with-h2");
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -104,11 +102,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     describe("should add a date expression for each option", () => {
       DATE_CASES.forEach(({ option, value, example }) => {
         it(option, () => {
-          H.openTable({
-            database: H2_SAMPLE_DB_ID,
-            table: ORDERS_ID,
-            limit: 1,
-          });
+          H.openOrdersTable({ limit: 1 });
           extractColumnAndCheck({
             column: "Created At",
             option,
@@ -122,7 +116,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
 
     describe("should add a new column after the selected column", () => {
       it("ad-hoc question", () => {
-        H.openTable({ database: H2_SAMPLE_DB_ID, table: ORDERS_ID });
+        H.openOrdersTable();
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
@@ -131,12 +125,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       });
 
       it("saved question without viz settings", () => {
-        // An ad-hoc H2 Orders question (the prebuilt ORDERS_QUESTION_ID fixture is on the SQLite
-        // sample DB, where the date extract option wouldn't appear).
-        H.createQuestion(
-          { database: H2_SAMPLE_DB_ID, query: { "source-table": ORDERS_ID } },
-          { visitQuestion: true },
-        );
+        H.visitQuestion(ORDERS_QUESTION_ID);
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
@@ -147,7 +136,6 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       it("saved question with viz settings", () => {
         H.createQuestion(
           {
-            database: H2_SAMPLE_DB_ID,
             query: {
               "source-table": ORDERS_ID,
               fields: [
@@ -213,7 +201,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     });
 
     it("should handle duplicate expression names", () => {
-      H.openTable({ database: H2_SAMPLE_DB_ID, table: ORDERS_ID, limit: 1 });
+      H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "Hour of day",
@@ -229,7 +217,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     });
 
     it("should be able to modify the expression in the notebook editor", () => {
-      H.openTable({ database: H2_SAMPLE_DB_ID, table: ORDERS_ID, limit: 1 });
+      H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "Year",
@@ -251,7 +239,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       cy.request("GET", "/api/user/current").then(({ body: user }) => {
         cy.request("PUT", `/api/user/${user.id}`, { locale: "en-ZZ" });
       });
-      H.openTable({ database: H2_SAMPLE_DB_ID, table: ORDERS_ID, limit: 1 });
+      H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "[zz] Day of week",
@@ -264,13 +252,13 @@ describe("extract action", { viewportWidth: 1600 }, () => {
 
   describe("email columns", () => {
     beforeEach(() => {
-      H.restore("default-with-h2");
+      H.restore();
       cy.signInAsAdmin();
     });
 
     EMAIL_CASES.forEach(({ option, value, example }) => {
       it(option, () => {
-        H.openTable({ database: H2_SAMPLE_DB_ID, table: PEOPLE_ID, limit: 1 });
+        H.openPeopleTable({ limit: 1 });
         extractColumnAndCheck({
           column: "Email",
           option,
@@ -284,7 +272,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
 
   describe("url columns", () => {
     beforeEach(() => {
-      H.restore("default-with-h2");
+      H.restore();
       cy.signInAsAdmin();
 
       // Make the Email column a URL column for these tests, to avoid having to create a new model
@@ -295,7 +283,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
 
     URL_CASES.forEach(({ option, value, example }) => {
       it(option, () => {
-        H.openTable({ database: H2_SAMPLE_DB_ID, table: PEOPLE_ID, limit: 1 });
+        H.openPeopleTable({ limit: 1 });
 
         extractColumnAndCheck({
           column: "Email",
@@ -325,7 +313,6 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       const CC_NAME = "URL_URL";
       const questionDetails = {
         name: "path from url",
-        database: H2_SAMPLE_DB_ID,
         query: {
           "source-table": PEOPLE_ID,
           limit: 1,
@@ -411,7 +398,7 @@ function extractColumnAndCheck({
 
 describe("extract action", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
-    H.restore("default-with-h2");
+    H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
   });
@@ -421,7 +408,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
   });
 
   it("should create a snowplow event for the column extraction action", () => {
-    H.openTable({ database: H2_SAMPLE_DB_ID, table: ORDERS_ID, limit: 1 });
+    H.openOrdersTable({ limit: 1 });
 
     cy.wait(1);
 
@@ -435,7 +422,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "column_extract_via_column_header",
       custom_expressions_used: ["get-year"],
-      database_id: H2_SAMPLE_DB_ID,
+      database_id: SAMPLE_DB_ID,
     });
   });
 });

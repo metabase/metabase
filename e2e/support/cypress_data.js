@@ -20,32 +20,22 @@ import { ORDERS_PRODUCTS_ACCESS } from "./test_roles";
  */
 
 export const SAMPLE_DB_ID = 1;
-// SQLite reports no schema for the sample DB, so the encoded schema id is `<db-id>:`
-// (empty schema name) rather than H2's `1:PUBLIC`. See generateSchemaId().
-export const SAMPLE_DB_SCHEMA_ID = "1:";
-
-// Secondary, H2-backed copy of the sample data, loaded into the default snapshot alongside the
-// canonical SQLite Sample Database (id 1) so brittle tests coupled to H2 behavior can opt in.
-//
-// It is inserted with this explicit high id (not auto-incremented) so it doesn't consume id 2:
-// the qa-db snapshots derive from the default snapshot and rely on the first database THEY add
-// being id 2 (WRITABLE_DB_ID). See `POST /api/testing/add-h2-sample-database`.
-export const H2_SAMPLE_DB_ID = 9001;
-// H2 reports the "PUBLIC" schema, so the encoded schema id is `<db-id>:PUBLIC`.
-export const H2_SAMPLE_DB_SCHEMA_ID = "9001:PUBLIC";
+export const SAMPLE_DB_SCHEMA_ID = "1:PUBLIC";
 
 // Use only for e2e helpers and custom commands. Never in e2e tests directly!
 // The ids of these tables are determined by our sync processes, especially the result of (metabase.driver.sql-jdbc.sync.describe-database/describe-database)
-// so any changes that affect the order of the tables returned by that function will change the ids of these tables. A common case is when adding a new key to table metadata.
+// so any changes that affect the order of the tables returned by that function will change the ids of these tables. A common case is when adding a new key to table metadata
 export const SAMPLE_DB_TABLES = {
-  STATIC_REVIEWS_ID: 1,
-  STATIC_PRODUCTS_ID: 2,
-  STATIC_ORDERS_ID: 3,
-  STATIC_PEOPLE_ID: 4,
-  STATIC_FEEDBACK_ID: 5,
-  STATIC_ACCOUNTS_ID: 6,
-  STATIC_INVOICES_ID: 7,
-  STATIC_ANALYTIC_EVENTS_ID: 8,
+  // old tables
+  STATIC_PRODUCTS_ID: 7,
+  STATIC_ORDERS_ID: 1,
+  STATIC_PEOPLE_ID: 2,
+  STATIC_REVIEWS_ID: 5,
+  // new tables
+  STATIC_ACCOUNTS_ID: 8,
+  STATIC_ANALYTIC_EVENTS_ID: 4,
+  STATIC_FEEDBACK_ID: 3,
+  STATIC_INVOICES_ID: 6,
 };
 
 // All users and admin groups are the defaults that come with Metabase.

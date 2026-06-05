@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import { loginCache } from "e2e/support/commands/user/authentication";
 import {
-  H2_SAMPLE_DB_ID,
   METABASE_SECRET_KEY,
   SAMPLE_DB_ID,
   SAMPLE_DB_TABLES,
@@ -16,7 +15,6 @@ import {
   restore,
   snapshot,
   updateSetting,
-  withH2SampleDatabase,
   withSampleDatabase,
 } from "e2e/support/helpers";
 
@@ -65,24 +63,7 @@ describe("snapshots", () => {
 
       snapshot("default");
 
-      // Load an H2-backed copy of the sample data as a second database into a SEPARATE snapshot.
-      // Keeping it out of the default snapshot prevents its duplicate table/entity names (Orders,
-      // "Sample Database", etc.) from colliding with name/entity selectors across the whole suite.
-      // Tests coupled to H2-specific sample-data behavior opt in via restore("default-with-h2").
-      addH2SampleDatabase();
-      grantH2SampleDatabasePermissions();
-      withH2SampleDatabase((H2_SAMPLE_DATABASE) => {
-        hideNewSampleTables(H2_SAMPLE_DATABASE);
-        createExampleContentForH2(H2_SAMPLE_DATABASE);
-        cy.writeFile(
-          "e2e/support/cypress_sample_database_h2.json",
-          H2_SAMPLE_DATABASE,
-        );
-      });
-
-      snapshot("default-with-h2");
-
-      // we need to do this after the snapshots because hitting the API populates the audit log
+      // we need to do this after the snapshot because hitting the API populates the audit log
       const instanceData = getDefaultInstanceData();
       cy.writeFile(
         "e2e/support/cypress_sample_instance_data.json",
@@ -302,98 +283,6 @@ describe("snapshots", () => {
       name: "Orders Model",
       query: { "source-table": ORDERS_ID },
       type: "model",
-    });
-  }
-
-  function addH2SampleDatabase() {
-    cy.request("POST", "/api/testing/add-h2-sample-database", {
-      id: H2_SAMPLE_DB_ID,
-    }).then(({ body }) => {
-      expect(body.id).to.eq(H2_SAMPLE_DB_ID);
-    });
-  }
-
-  // Give the H2 sample database the same per-group permissions as the SQLite sample DB so it's a
-  // drop-in for tests that opt into it (e.g. temporal tests that run as non-admin users). The
-  // graph is merged per-group (Object.assign), so each group must re-state its SAMPLE_DB grant.
-  function grantH2SampleDatabasePermissions() {
-    const grants = {
-      [ALL_USERS_GROUP]: {
-        "view-data": "unrestricted",
-        "create-queries": "no",
-      },
-      [DATA_GROUP]: {
-        "view-data": "unrestricted",
-        "create-queries": "query-builder-and-native",
-      },
-      [NOSQL_GROUP]: {
-        "view-data": "unrestricted",
-        "create-queries": "query-builder",
-      },
-      [COLLECTION_GROUP]: {
-        "view-data": "unrestricted",
-        "create-queries": "no",
-      },
-      [READONLY_GROUP]: {
-        "view-data": "unrestricted",
-        "create-queries": "no",
-      },
-    };
-    cy.updatePermissionsGraph(
-      Object.fromEntries(
-        Object.entries(grants).map(([groupId, perms]) => [
-          groupId,
-          { [SAMPLE_DB_ID]: perms, [H2_SAMPLE_DB_ID]: perms },
-        ]),
-      ),
-    );
-  }
-
-  // Duplicate of the root-level example content (Orders question/dashboard/model), but bound to the
-  // H2 sample database and tucked into its own collection so it doesn't collide with the SQLite set.
-  function createExampleContentForH2({ ORDERS, ORDERS_ID }) {
-    cy.request("POST", "/api/collection", {
-      name: "Example (H2)",
-      description: "Example content backed by the H2 sample data",
-      parent_id: null,
-    }).then(({ body: { id: collection_id } }) => {
-      createQuestionAndDashboard({
-        questionDetails: {
-          name: "Orders",
-          database: H2_SAMPLE_DB_ID,
-          query: { "source-table": ORDERS_ID },
-          collection_id,
-        },
-        dashboardDetails: { name: "Orders in a dashboard", collection_id },
-        cardDetails: { size_x: 16, size_y: 8 },
-      });
-
-      createQuestion({
-        name: "Orders, Count",
-        database: H2_SAMPLE_DB_ID,
-        query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-        collection_id,
-      });
-
-      createQuestion({
-        name: "Orders, Count, Grouped by Created At (year)",
-        database: H2_SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-        display: "line",
-        collection_id,
-      });
-
-      createQuestion({
-        name: "Orders Model",
-        database: H2_SAMPLE_DB_ID,
-        query: { "source-table": ORDERS_ID },
-        type: "model",
-        collection_id,
-      });
     });
   }
 

@@ -31,7 +31,6 @@ export function snapshotCrossVersionDev(name) {
  * "setup" |
  * "without-models" |
  * "default" |
- * "default-with-h2" |
  * "mongo-5" |
  * "postgres-12" |
  * "postgres-writable" |

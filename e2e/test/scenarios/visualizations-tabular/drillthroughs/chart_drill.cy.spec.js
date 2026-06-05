@@ -1,23 +1,10 @@
 const { H } = cy;
-import {
-  H2_SAMPLE_DB_ID,
-  SAMPLE_DB_ID,
-  USER_GROUPS,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-// A few date-dependent drill tests are pinned to the H2 sample database (SQLite stores dates as text
-// and rejects parsedatetime/hour bucketing). These local H2 ids are used only by the pinned tests.
-const {
-  ORDERS: H2_ORDERS,
-  ORDERS_ID: H2_ORDERS_ID,
-  PRODUCTS: H2_PRODUCTS,
-  PRODUCTS_ID: H2_PRODUCTS_ID,
-} = H2_SAMPLE_DATABASE;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
@@ -369,13 +356,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
-    // parsedatetime() is an H2 function; run this native question against the H2 sample database.
-    H.restore("default-with-h2");
-    cy.signInAsAdmin();
     H.createNativeQuestion(
       {
         name: "11907",
-        database: H2_SAMPLE_DB_ID,
         native: {
           query:
             "SELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 5 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-02', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-02', 'yyyy-MM-dd') AS \"d\", 4 AS \"c\"",
@@ -414,24 +397,19 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it('should clear the graph.dimensions setting when drilling through on a chart with "graph.dimensions" set (metabase#55484)', () => {
-    // Hour-granularity bucketing of CREATED_AT (and the self/explicit join) needs real date typing,
-    // which SQLite (text-stored dates) lacks; run against the H2 sample database.
-    H.restore("default-with-h2");
-    cy.signInAsAdmin();
     H.createQuestion({
       name: "55484",
       display: "line",
-      database: H2_SAMPLE_DB_ID,
       query: {
-        "source-table": H2_ORDERS_ID,
+        "source-table": ORDERS_ID,
         joins: [
           {
             fields: "all",
-            "source-table": H2_PRODUCTS_ID,
+            "source-table": PRODUCTS_ID,
             condition: [
               "=",
-              ["field", H2_ORDERS.PRODUCT_ID, null],
-              ["field", H2_PRODUCTS.ID, { "join-alias": "Products" }],
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
             ],
             alias: "Products",
           },
@@ -439,8 +417,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         filter: [],
         aggregation: [["count"]],
         breakout: [
-          ["field", H2_PRODUCTS.CREATED_AT, { "temporal-unit": "hour" }],
-          ["field", H2_ORDERS.CREATED_AT, { "temporal-unit": "hour" }],
+          ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "hour" }],
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour" }],
         ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
@@ -481,10 +459,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       dataset_query: {
         type: "native",
         native: {
-          // Uppercase the AXIS/BREAKOUT aliases so the result column names match graph.dimensions on
-          // SQLite (which preserves identifier case) as well as H2 (which uppercases unquoted aliases).
           query:
-            'select 1 as AXIS, 5 as "VALUE", 9 as BREAKOUT union all\nselect 2 as AXIS, 6 as "VALUE", 10 as BREAKOUT union all\nselect 2 as AXIS, 6 as "VALUE", 10 as BREAKOUT',
+            'select 1 as axis, 5 as "VALUE", 9 as breakout union all\nselect 2 as axis, 6 as "VALUE", 10 as breakout union all\nselect 2 as axis, 6 as "VALUE", 10 as breakout',
         },
         database: SAMPLE_DB_ID,
       },

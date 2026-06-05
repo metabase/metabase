@@ -263,9 +263,7 @@ describe("issue 22518", () => {
     H.createNativeQuestion(
       {
         native: {
-          // Uppercase aliases so column headers match on SQLite (which preserves identifier case)
-          // and H2 (which uppercases unquoted identifiers) alike.
-          query: "select 1 ID, 'a' FOO",
+          query: "select 1 id, 'a' foo",
         },
         type: "model",
       },
@@ -278,7 +276,7 @@ describe("issue 22518", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
 
-    H.NativeEditor.focus().type(", 'b' BAR");
+    H.NativeEditor.focus().type(", 'b' bar");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
