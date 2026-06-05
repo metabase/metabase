@@ -29,6 +29,18 @@ export type GetExplorationDataResponse = {
   dimension_groups: ExplorationDimensionGroup[];
 };
 
+// One group Metabot authored via the `add_research_groups` tool: either a metric sliced by chosen
+// dimensions, or a dimension slicing every related metric.
+export type ResearchGroupSpec =
+  | { anchor: "metric"; metric_id: number; dimension_ids?: DimensionId[] }
+  | { anchor: "dimension"; dimension_id: DimensionId };
+
+// Result of the `add_research_groups` tool: the picker hydration for the referenced metrics, plus
+// the validated group specs the chat handler turns into picker blocks.
+export type AddResearchGroupsResponse = GetExplorationDataResponse & {
+  groups: ResearchGroupSpec[];
+};
+
 export type ExplorationId = number;
 export type ExplorationThreadId = number;
 export type ExplorationQueryId = number;

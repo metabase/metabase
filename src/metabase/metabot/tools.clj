@@ -50,7 +50,8 @@
   document-construct-sql-chart-tool
   document-construct-model-chart-tool]
  [tools.explorations
-  select-exploration-metrics-tool
+  get-research-candidates-tool
+  add-research-groups-tool
   set-exploration-name-tool
   select-exploration-timelines-tool]
  [tools.metadata

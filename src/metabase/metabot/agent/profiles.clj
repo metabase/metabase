@@ -177,7 +177,8 @@
   :temperature     0.3
   :tools           [#'tools/search-tool
                     #'tools/read-resource-tool
-                    #'tools/select-exploration-metrics-tool
+                    #'tools/get-research-candidates-tool
+                    #'tools/add-research-groups-tool
                     #'tools/set-exploration-name-tool
                     #'tools/list-timelines-tool
                     #'tools/get-timeline-details-tool

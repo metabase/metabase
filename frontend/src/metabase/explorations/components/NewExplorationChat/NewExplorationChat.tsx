@@ -8,6 +8,7 @@ import {
   trackExplorationPlanEdited,
 } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
+import type { ExplorationMetric } from "metabase/explorations/types";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
@@ -22,13 +23,17 @@ import type {
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
 import { Box, Flex, Stack, Text } from "metabase/ui";
-import type { GetExplorationDataResponse } from "metabase-types/api";
+import type {
+  AddResearchGroupsResponse,
+  DimensionId,
+  ExplorationDimensionGroup,
+} from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
 
 export const EXPLORATIONS_AGENT_ID = "explorations";
 
-const SELECT_RESEARCH_METRICS_TOOL = "select_research_metrics";
+const ADD_RESEARCH_GROUPS_TOOL = "add_research_groups";
 const SET_RESEARCH_NAME_TOOL = "set_research_name";
 const SELECT_RESEARCH_TIMELINES_TOOL = "select_research_timelines";
 
@@ -41,7 +46,7 @@ export interface NewExplorationChatProps {
 }
 
 export function NewExplorationChat({ selection }: NewExplorationChatProps) {
-  const { addMetric, setName, addTimelinesById } = selection;
+  const { addMetric, addDimension, setName, addTimelinesById } = selection;
   const { canUseNlq } = useUserMetabotPermissions();
   const [
     isAiProviderConfigurationModalOpen,
@@ -71,7 +76,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   const [sendToast] = useToast();
 
-  const handleSelectExplorationMetricsToolCallMessages = useCallback(
+  const handleAddResearchGroupsToolCallMessages = useCallback(
     (messages: MetabotToolCallMessageWithResult[]) => {
       if (messages.length === 0) {
         return;
@@ -81,16 +86,62 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         for (const message of messages) {
-          const { metrics, dimension_groups } = JSON.parse(
+          const { metrics, dimension_groups, groups } = JSON.parse(
             message.result,
-          ) as GetExplorationDataResponse;
+          ) as AddResearchGroupsResponse;
+
+          const metricsById = new Map(metrics.map((m) => [m.id, m] as const));
           const dimensionsById = new Map(
             dimension_groups
               .flatMap((g) => g.dimensions)
               .map((d) => [d.id, d] as const),
           );
+          // Any dimension id (not just the head) -> its dimension group, so a dimension-anchored
+          // group authored on any member resolves to the whole group, like the manual picker.
+          const groupByDimensionId = new Map<
+            DimensionId,
+            ExplorationDimensionGroup
+          >();
+          for (const group of dimension_groups) {
+            for (const d of group.dimensions) {
+              groupByDimensionId.set(d.id, group);
+            }
+          }
+          const metricsByDimension = new Map<
+            DimensionId,
+            ExplorationMetric[]
+          >();
           for (const metric of metrics) {
-            addMetric(metric, { dimensionsById });
+            for (const id of metric.dimension_ids) {
+              const list = metricsByDimension.get(id);
+              if (list) {
+                list.push(metric);
+              } else {
+                metricsByDimension.set(id, [metric]);
+              }
+            }
+          }
+
+          for (const group of groups) {
+            if (group.anchor === "metric") {
+              const metric = metricsById.get(group.metric_id);
+              if (metric) {
+                addMetric(metric, {
+                  dimensionsById,
+                  additionalSelectedDimensionIds: new Set(
+                    group.dimension_ids ?? [],
+                  ),
+                });
+              }
+            } else {
+              const dimensionGroup = groupByDimensionId.get(group.dimension_id);
+              if (dimensionGroup) {
+                addDimension(dimensionGroup.dimensions[0], {
+                  group: dimensionGroup,
+                  metricsByDimension,
+                });
+              }
+            }
           }
         }
       } catch (error) {
@@ -98,11 +149,11 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         sendToast({
           icon: "warning_triangle_filled",
           iconColor: "warning",
-          message: t`Failed to add metrics`,
+          message: t`Failed to add research groups`,
         });
       }
     },
-    [addMetric, sendToast],
+    [addMetric, addDimension, sendToast],
   );
 
   const handleSetExplorationNameToolCallMessages = useCallback(
@@ -163,8 +214,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     );
     nextUnprocessedMessageIndexRef.current = messages.length;
 
-    handleSelectExplorationMetricsToolCallMessages(
-      unprocessedMessages.filter(isSelectExplorationMetricsToolCallMessage),
+    handleAddResearchGroupsToolCallMessages(
+      unprocessedMessages.filter(isAddResearchGroupsToolCallMessage),
     );
     handleSetExplorationNameToolCallMessages(
       unprocessedMessages.filter(isSetExplorationNameToolCallMessage),
@@ -174,7 +225,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     );
   }, [
     isDoingScience,
-    handleSelectExplorationMetricsToolCallMessages,
+    handleAddResearchGroupsToolCallMessages,
     handleSetExplorationNameToolCallMessages,
     handleSelectExplorationTimelinesToolCallMessages,
     messages,
@@ -251,13 +302,13 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
   );
 }
 
-function isSelectExplorationMetricsToolCallMessage(
+function isAddResearchGroupsToolCallMessage(
   message: MetabotChatMessage,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&
     message.type === "tool_call" &&
-    message.name === SELECT_RESEARCH_METRICS_TOOL &&
+    message.name === ADD_RESEARCH_GROUPS_TOOL &&
     !message.is_error &&
     !!message.result
   );

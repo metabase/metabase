@@ -10,7 +10,10 @@ import type {
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { GetExplorationDataResponse } from "metabase-types/api";
+import type {
+  AddResearchGroupsResponse,
+  GetExplorationDataResponse,
+} from "metabase-types/api";
 import {
   createMockMetric,
   createMockMetricDimension,
@@ -95,7 +98,13 @@ const searchToolCallMessage: MetabotDebugToolCallMessage = {
   result: "<search-results></search-results>",
 };
 
-const explorationDataResponse: GetExplorationDataResponse = {
+const customerSegmentGroup = {
+  name: "Customer Segment",
+  dimension_interestingness: 0.3,
+  dimensions: [customerSegmentDimension],
+};
+
+const addResearchGroupsResponse: AddResearchGroupsResponse = {
   metrics: [metricRevenue, metricChurn],
   dimension_groups: [
     {
@@ -103,26 +112,32 @@ const explorationDataResponse: GetExplorationDataResponse = {
       dimension_interestingness: 0.85,
       dimensions: [revenueDateDimension],
     },
-    {
-      name: "Customer Segment",
-      dimension_interestingness: 0.3,
-      dimensions: [customerSegmentDimension],
-    },
+    customerSegmentGroup,
     {
       name: "Product Category",
       dimension_interestingness: null,
       dimensions: [productCategoryDimension],
     },
   ],
+  groups: [
+    // metric-anchored: Revenue with an explicitly-chosen dimension
+    {
+      anchor: "metric",
+      metric_id: metricRevenue.id,
+      dimension_ids: [revenueDateDimension.id],
+    },
+    // dimension-anchored: slice every related metric by Customer Segment
+    { anchor: "dimension", dimension_id: customerSegmentDimension.id },
+  ],
 };
 
-const explorationDataToolCallMessage: MetabotDebugToolCallMessage = {
+const addResearchGroupsToolCallMessage: MetabotDebugToolCallMessage = {
   id: "tool-call-2",
   role: "agent",
   type: "tool_call",
-  name: "select_research_metrics",
+  name: "add_research_groups",
   status: "ended",
-  result: JSON.stringify(explorationDataResponse),
+  result: JSON.stringify(addResearchGroupsResponse),
 };
 
 const setNameToolCallMessage: MetabotDebugToolCallMessage = {
@@ -207,7 +222,7 @@ describe("NewExplorationChat", () => {
     jest.clearAllMocks();
   });
 
-  it("adds metrics and dimensions from an exploration data tool call response", async () => {
+  it("adds metric- and dimension-anchored groups from an add_research_groups tool call response", async () => {
     const { selection, rerender } = setup();
 
     rerender({
@@ -218,42 +233,37 @@ describe("NewExplorationChat", () => {
       messages: [
         userMessage,
         searchToolCallMessage,
-        explorationDataToolCallMessage,
+        addResearchGroupsToolCallMessage,
       ],
       isDoingScience: true,
     });
 
     expect(selection.addMetric).not.toHaveBeenCalled();
+    expect(selection.addDimension).not.toHaveBeenCalled();
 
     rerender({
       messages: [
         userMessage,
         searchToolCallMessage,
-        explorationDataToolCallMessage,
+        addResearchGroupsToolCallMessage,
         agentMessage,
       ],
       isDoingScience: false,
     });
 
+    // metric-anchored group -> addMetric, carrying the explicitly-chosen dimension ids
     await waitFor(() => {
-      expect(selection.addMetric).toHaveBeenCalledTimes(2);
+      expect(selection.addMetric).toHaveBeenCalledTimes(1);
     });
-
-    // Each metric is passed to addMetric with a dimensionsById map built
-    // from the response's dimension_groups.
     expect(selection.addMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         id: metricRevenue.id,
         name: metricRevenue.name,
       }),
-      { dimensionsById: expect.any(Map) },
-    );
-    expect(selection.addMetric).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: metricChurn.id,
-        name: metricChurn.name,
-      }),
-      { dimensionsById: expect.any(Map) },
+      {
+        dimensionsById: expect.any(Map),
+        additionalSelectedDimensionIds: new Set([revenueDateDimension.id]),
+      },
     );
 
     // The dimensionsById map should contain every dimension from the groups.
@@ -263,11 +273,15 @@ describe("NewExplorationChat", () => {
     expect(dimensionsById.get(revenueDateDimension.id)).toEqual(
       revenueDateDimension,
     );
-    expect(dimensionsById.get(customerSegmentDimension.id)).toEqual(
-      customerSegmentDimension,
-    );
-    expect(dimensionsById.get(productCategoryDimension.id)).toEqual(
-      productCategoryDimension,
+
+    // dimension-anchored group -> addDimension with the resolved dimension group
+    expect(selection.addDimension).toHaveBeenCalledTimes(1);
+    expect(selection.addDimension).toHaveBeenCalledWith(
+      expect.objectContaining({ id: customerSegmentDimension.id }),
+      {
+        group: customerSegmentGroup,
+        metricsByDimension: expect.any(Map),
+      },
     );
   });
 

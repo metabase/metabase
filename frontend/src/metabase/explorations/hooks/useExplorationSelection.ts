@@ -62,6 +62,9 @@ export function dimensionBlockId(dimensionId: DimensionId): string {
 
 export interface ToggleMetricContext {
   dimensionsById: Map<DimensionId, MetricDimension>;
+  // Dimensions to select in addition to the interesting defaults (e.g. dimensions Metabot
+  // explicitly chose to fit the user's question). Restricted to the metric's own dimensions.
+  additionalSelectedDimensionIds?: Set<DimensionId>;
 }
 
 export interface ToggleDimensionContext {
@@ -118,6 +121,7 @@ function sortDimensionsByInterestingness(
 function buildMetricBlock(
   metric: ExplorationMetric,
   dimensionsById: Map<DimensionId, MetricDimension>,
+  additionalSelectedDimensionIds?: Set<DimensionId>,
 ): MetricBlock {
   const referencedDims = sortDimensionsByInterestingness(
     metric.dimension_ids
@@ -125,14 +129,24 @@ function buildMetricBlock(
       .filter((d): d is MetricDimension => d != null),
   );
   const interesting = referencedDims.filter(isInterestingDimension);
-
-  const selected = interesting.length > 0 ? interesting : referencedDims;
+  // Select the interesting dimensions; fall back to all so the block is
+  // never created with an empty selection (BE rejects a metric with no dims).
+  const base = interesting.length > 0 ? interesting : referencedDims;
+  const selectedDimensionIds = new Set(base.map((d) => d.id));
+  // Add any explicitly-requested dimensions (e.g. Metabot's picks) that the metric actually has.
+  if (additionalSelectedDimensionIds) {
+    for (const d of referencedDims) {
+      if (additionalSelectedDimensionIds.has(d.id)) {
+        selectedDimensionIds.add(d.id);
+      }
+    }
+  }
   return {
     kind: "metric",
     id: metricBlockId(metric.id),
     metric,
     dimensions: referencedDims,
-    selectedDimensionIds: new Set(selected.map((d) => d.id)),
+    selectedDimensionIds,
   };
 }
 
@@ -179,14 +193,24 @@ export function useExplorationSelection(): ExplorationSelection {
   } = useListTimelinesQuery({ include: "events" });
 
   const addMetric = useCallback(
-    (metric: ExplorationMetric, { dimensionsById }: ToggleMetricContext) => {
+    (
+      metric: ExplorationMetric,
+      { dimensionsById, additionalSelectedDimensionIds }: ToggleMetricContext,
+    ) => {
       setBlocks((prevBlocks) => {
         if (
           prevBlocks.some((b) => isMetricBlock(b) && b.metric.id === metric.id)
         ) {
           return prevBlocks;
         }
-        return [...prevBlocks, buildMetricBlock(metric, dimensionsById)];
+        return [
+          ...prevBlocks,
+          buildMetricBlock(
+            metric,
+            dimensionsById,
+            additionalSelectedDimensionIds,
+          ),
+        ];
       });
     },
     [],
