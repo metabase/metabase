@@ -1,4 +1,4 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type {
@@ -93,67 +93,67 @@ function getExplorationQueryTree(
       group.name != null, // don't show anything missing a name
   );
 
-  const headings: ITreeNodeItem<ExplorationTreeNode>[] = [];
-  const headingsById = new Map<
-    ExplorationQueryGroupId,
-    ITreeNodeItem<ExplorationTreeNode>
-  >();
-
-  // first pass - get the headings
-  for (const group of groups) {
-    if (group.parent_group_id != null) {
-      continue;
-    }
-    const heading: ITreeNodeItem<ExplorationTreeNode> = {
-      id: group.id,
-      name: group.name,
-      icon: "empty",
-      data: {
-        type: "heading",
-      },
-      children: [],
-    };
-    headings.push(heading);
-    headingsById.set(group.id, heading);
-  }
-
   const queriesById = new Map<ExplorationQueryId, ExplorationQuery>(
     (thread.queries ?? []).map((query) => [query.id, query]),
   );
 
-  // second pass - assign queries to headings
+  const leafGroupsByParent = new Map<
+    ExplorationQueryGroupId,
+    { group: ExplorationQueryGroup; queries: ExplorationQuery[] }[]
+  >();
   for (const group of groups) {
     if (group.parent_group_id == null) {
       continue;
     }
-    const heading = headingsById.get(group.parent_group_id);
-    if (heading && heading.children) {
-      const groupQueries = group.query_ids
-        .map((id) => queriesById.get(id))
-        .filter((q) => q != null);
-      if (groupQueries.length > 0) {
-        const dimensionName = groupQueries[0].dimension_name;
-        const status = getExplorationQueryGroupStatus(groupQueries);
-        heading.children.push({
-          id: group.id,
-          name: c("${0} indicates the chart's dimension")
-            .t`By ${dimensionName}`,
+    const queries = group.query_ids
+      .map((id) => queriesById.get(id))
+      .filter((q): q is ExplorationQuery => q != null);
+    if (queries.length === 0) {
+      continue;
+    }
+    const siblings = leafGroupsByParent.get(group.parent_group_id) ?? [];
+    siblings.push({ group, queries });
+    leafGroupsByParent.set(group.parent_group_id, siblings);
+  }
+
+  const headings: ITreeNodeItem<ExplorationTreeNode>[] = [];
+
+  for (const group of groups) {
+    if (group.parent_group_id != null) {
+      continue;
+    }
+    const leafGroups = leafGroupsByParent.get(group.id) ?? [];
+
+    const children: ITreeNodeItem<ExplorationTreeNode>[] = leafGroups.map(
+      ({ group: leafGroup, queries }) => {
+        const status = getExplorationQueryGroupStatus(queries);
+        return {
+          id: leafGroup.id,
+          name: leafGroup.name ?? "",
           icon: "lineandbar",
           data: {
             type: "group",
-            group_id: group.id,
-            query_ids: group.query_ids,
-            queries: groupQueries,
+            group_id: leafGroup.id,
+            query_ids: leafGroup.query_ids,
+            queries,
             status,
             interestingness_score:
               status === "done"
-                ? getExplorationQueryGroupInterestingness(groupQueries)
+                ? getExplorationQueryGroupInterestingness(queries)
                 : null,
-            parent_id: group.parent_group_id,
+            parent_id: leafGroup.parent_group_id,
           },
-        });
-      }
-    }
+        };
+      },
+    );
+
+    headings.push({
+      id: group.id,
+      name: group.group_name ?? group.name,
+      icon: "empty",
+      data: { type: "heading" },
+      children,
+    });
   }
 
   return headings

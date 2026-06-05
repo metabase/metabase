@@ -12,6 +12,7 @@
    stays unique when the same `(card, dim)` pair appears in more than one group (a metric
    can be selected in several groups)."
   (:require
+   [metabase.util.i18n :refer [tru]]
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
@@ -40,6 +41,25 @@
   (let [base (some #(when (nil? (:segment_id %)) %) queries)]
     (or (:name base) (:name (first queries)))))
 
+(defn- dimension-anchored?
+  "Whether the persisted group is anchored on its dimension (one dimension crossed with several
+   metrics) rather than its metric. Reads the FE-supplied `:type`; legacy rows (no `:type`) are
+   inferred — a dimension block is the only shape with more than one metric."
+  [group]
+  (case (:type group)
+    "dimension" true
+    "metric"    false
+    (> (count (:metrics group)) 1)))
+
+(defn group-display-name
+  "Sidebar heading for a group: `By <dimension>` for a dimension-anchored block, otherwise the
+   metric's name. `card-name-by-id` maps a metric Card id to its name."
+  [group card-name-by-id]
+  (if (dimension-anchored? group)
+    (let [dim (first (:dimensions group))]
+      (tru "By {0}" (or (:display_name dim) (:dimension_id dim) "")))
+    (or (get card-name-by-id (:card_id (first (:metrics group)))) "")))
+
 (defn- effective-score
   "Per-query score for ordering: contextual when present, else heuristic."
   [query]
@@ -65,24 +85,35 @@
   (str (:id group)))
 
 (defn- leaf-node
-  [group [card-id dim-id] qs]
+  "A sub-item under a group. For a dimension-anchored group the leaves vary by metric, so name
+   each by its metric (Card) name; for a metric-anchored group they vary by dimension, so name
+   each `By <dimension>`."
+  [group [card-id dim-id] qs card-name-by-id]
   {:id              (leaf-id (:id group) card-id dim-id)
    :parent_group_id (group-node-id group)
    :type            "auto"
    :display_type    (if (= 1 (count qs)) "singleton" "page")
-   :name            (leaf-name qs)
+   :name            (if (dimension-anchored? group)
+                      (or (get card-name-by-id card-id) (leaf-name qs))
+                      (if-let [dn (:dimension_name (first qs))]
+                        (tru "By {0}" dn)
+                        (leaf-name qs)))
    :query_ids       (mapv :id qs)
    ::max-score      (max-score qs)})
 
 (defn- group-node
-  [group]
-  {:id              (group-node-id group)
-   :parent_group_id nil
-   :type            "auto"
-   :display_type    "sidebar"
-   :name            (:name group)
-   :query_ids       []
-   ::max-score      nil})
+  [group card-name-by-id]
+  (let [display-name (group-display-name group card-name-by-id)]
+    {:id              (group-node-id group)
+     :parent_group_id nil
+     :type            "auto"
+     :display_type    "sidebar"
+     ;; `:name` keeps any persisted value (legacy rows) but never goes nil — new
+     ;; rows fall back to the computed heading; `:group_name` is the presentation heading.
+     :name            (or (:name group) display-name)
+     :group_name      display-name
+     :query_ids       []
+     ::max-score      nil}))
 
 (defn group-tree
   "Given a thread's persisted `ExplorationThreadGroup` groups (in authoring order) and its
@@ -100,15 +131,15 @@
    `[card_id dimension_id]` leaf children (sorted by interestingness desc). Query rows are
    matched to their group via the `group_id` the planner stamped on each row; rows whose
    group isn't in `groups` are dropped."
-  [groups queries]
+  [groups queries card-name-by-id]
   (let [rows-by-group (group-by :group_id queries)
         depth-first   (mapcat
                        (fn [group]
                          (let [leaves (->> (get rows-by-group (:id group) [])
                                            (group-by (juxt :card_id :dimension_id))
-                                           (map (fn [[k qs]] (leaf-node group k qs)))
+                                           (map (fn [[k qs]] (leaf-node group k qs card-name-by-id)))
                                            (sort-by sort-key))]
-                           (cons (group-node group) leaves)))
+                           (cons (group-node group card-name-by-id) leaves)))
                        groups)]
     (into [] (comp (map-indexed #(assoc %2 :position %1))
                    (map #(dissoc % ::max-score)))

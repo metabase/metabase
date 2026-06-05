@@ -1675,3 +1675,18 @@ databaseChangeLog:
       changes:
         - dropTable:
             tableName: exploration_thread_dimension
+
+  - changeSet:
+      id: v63.expgrouptype
+      author: denisberezin
+      comment: Add exploration_thread_group.type — whether the block is anchored on a metric ("metric") or a dimension ("dimension"). The read side uses it to build the sidebar heading ("By <dimension>" vs the metric name) and sub-item names. Nullable; legacy rows fall back to inferring from the metric count.
+      changes:
+        - addColumn:
+            tableName: exploration_thread_group
+            columns:
+              - column:
+                  name: type
+                  type: ${text.type}
+                  remarks: Block anchor — "metric" or "dimension"
+                  constraints:
+                    nullable: true

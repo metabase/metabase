@@ -109,7 +109,7 @@
     body
     (-> body
         (dissoc :metrics :dimensions)
-        (assoc :groups [{:name "Group" :metrics metrics :dimensions dimensions}]))))
+        (assoc :groups [{:type "metric" :metrics metrics :dimensions dimensions}]))))
 
 (defn- create-exploration!
   "POST a new exploration as `user`, then synchronously run the query planner for
@@ -301,6 +301,47 @@
         (is (= "Releases" (-> timelines first :timeline :name))
             "nested :timeline is hydrated for the picker")))))
 
+(deftest exploration-group-naming-by-type-test
+  (testing "GET builds sidebar names from the group :type"
+    (mt/with-temp [:model/User u {:email "group-naming@example.com"}
+                   :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")
+                   :model/Card signups (assoc (valid-metric-card (:id u)) :name "Signups")]
+      (let [mapping (fn [card-id]
+                      [{:dimension_id "d1"
+                        :table_id (mt/id :venues)
+                        :target ["field" {} (mt/id :venues :price)]
+                        :card_id card-id}])
+            dims    [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]
+            body    {:name   "Naming"
+                     :groups [;; metric-anchored: one metric crossed with a dimension
+                              {:type       "metric"
+                               :metrics    [{:card_id (:id revenue)
+                                             :dimension_mappings (mapping (:id revenue))}]
+                               :dimensions dims}
+                              ;; dimension-anchored: one dimension crossed with two metrics
+                              {:type       "dimension"
+                               :metrics    [{:card_id (:id revenue)
+                                             :dimension_mappings (mapping (:id revenue))}
+                                            {:card_id (:id signups)
+                                             :dimension_mappings (mapping (:id signups))}]
+                               :dimensions dims}]}
+            resp    (create-exploration! u body)
+            groups  (-> resp :threads first :groups)
+            sidebar (filterv #(= "sidebar" (:display_type %)) groups)
+            metric-heading    (first sidebar)
+            dimension-heading (second sidebar)
+            leaves-of (fn [heading]
+                        (->> groups
+                             (filter #(= (:id heading) (:parent_group_id %)))
+                             (map :name)
+                             set))]
+        (testing "metric-anchored group: heading is the metric, sub-items are By <dimension>"
+          (is (= "Revenue" (:group_name metric-heading)))
+          (is (= #{"By Price"} (leaves-of metric-heading))))
+        (testing "dimension-anchored group: heading is By <dimension>, sub-items are the metrics"
+          (is (= "By Price" (:group_name dimension-heading)))
+          (is (= #{"Revenue" "Signups"} (leaves-of dimension-heading))))))))
+
 (deftest exploration-create-persists-groups-verbatim-test
   (testing "POST / persists each :groups entry as its own ExplorationThreadGroup row — no dedup across groups"
     (mt/with-temp [:model/User u {:email "groups@example.com"}
@@ -316,11 +357,11 @@
             body {:name         "Grouped create"
                   :prompt       "via groups"
                   :timeline_ids [(:id tl)]
-                  :groups       [{:name       "Revenue"
+                  :groups       [{:type       "metric"
                                   :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                                   :dimensions [{:dimension_id "d1" :display_name "Price"
                                                 :effective_type "type/Number"}]}
-                                 {:name       "By Category"
+                                 {:type       "dimension"
                                   :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                                   :dimensions [{:dimension_id "d2" :display_name "Category"
                                                 :effective_type "type/Text"}]}]}
@@ -330,7 +371,7 @@
                               :exploration_thread_id tid {:order-by [[:position :asc]]})]
         (is (= "Grouped create" (:name resp)))
         (is (= 2 (count groups)) "one row per group, no dedup")
-        (is (= ["Revenue" "By Category"] (map :name groups)) "names stored in payload order")
+        (is (= ["metric" "dimension"] (map :type groups)) "anchor type stored in payload order")
         (is (= [0 1] (map :position groups)))
         (testing "each group keeps its own metrics + dimensions selection"
           (is (= [(:id metric) (:id metric)] (map #(-> % :metrics first :card_id) groups)))
@@ -1514,7 +1555,8 @@
                    {:id 2 :group_id 1 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)" :interestingness_score 0.7}
                    {:id 3 :group_id 1 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)" :interestingness_score 0.3}
                    {:id 4 :group_id 1 :card_id 10 :dimension_id "d2" :segment_id nil :name "Rev by D2"      :interestingness_score 0.4}
-                   {:id 5 :group_id 2 :card_id 20 :dimension_id "d1" :segment_id nil :name "Cnt by D1"      :interestingness_score 0.9}])
+                   {:id 5 :group_id 2 :card_id 20 :dimension_id "d1" :segment_id nil :name "Cnt by D1"      :interestingness_score 0.9}]
+                  {})
           by-id  (into {} (map (juxt :id identity)) groups)]
       (is (= 5 (count groups)) "2 group nodes + 3 leaf (card, dim) nodes")
       (is (= #{"1" "2" "auto:1:10:d1" "auto:1:10:d2" "auto:2:20:d1"}
@@ -1548,7 +1590,8 @@
                   [{:id 10 :name "Revenue"} {:id 20 :name "Count"}]
                   [{:id 1 :group_id 10 :card_id 1 :dimension_id "d1" :segment_id nil :name "Rev by D1" :interestingness_score 0.9}
                    {:id 2 :group_id 10 :card_id 1 :dimension_id "d2" :segment_id nil :name "Rev by D2" :interestingness_score 0.4}
-                   {:id 3 :group_id 20 :card_id 2 :dimension_id "d1" :segment_id nil :name "Cnt by D1" :interestingness_score 0.8}])]
+                   {:id 3 :group_id 20 :card_id 2 :dimension_id "d1" :segment_id nil :name "Cnt by D1" :interestingness_score 0.8}]
+                  {})]
       (is (= ["10" "auto:10:1:d1" "auto:10:1:d2" "20" "auto:20:2:d1"]
              (mapv :id groups))
           "groups in authoring order; each immediately followed by its leaves, sorted by score within")
@@ -1560,13 +1603,15 @@
     (testing "single query → 'sidebar' group node + 'singleton' leaf"
       (let [groups (explorations.groups/group-tree
                     [{:id 5 :name "Solo block"}]
-                    [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "solo"}])]
+                    [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "solo"}]
+                    {})]
         (is (= ["sidebar" "singleton"] (mapv :display_type groups)))))
     (testing "multiple queries sharing (card, dim) → 'sidebar' group node + 'page' leaf"
       (let [groups (explorations.groups/group-tree
                     [{:id 5 :name "Multi block"}]
                     [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "base"}
-                     {:id 2 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 100 :name "seg"}])]
+                     {:id 2 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 100 :name "seg"}]
+                    {})]
         (is (= ["sidebar" "page"] (mapv :display_type groups)))))))
 
 (deftest group-tree-leaf-name-from-unsegmented-base-test
@@ -1575,7 +1620,8 @@
                   [{:id 5 :name "Revenue"}]
                   [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)"}
                    {:id 2 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "Rev by D1"}
-                   {:id 3 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)"}])
+                   {:id 3 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)"}]
+                  {})
           [grp leaf] groups]
       (is (= 2 (count groups)))
       (is (= "Revenue"   (:name grp)) "group node name is the group's name")
@@ -1589,7 +1635,8 @@
                   [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "High heuristic low contextual"
                     :interestingness_score 0.95 :contextual_interestingness_score 0.2}
                    {:id 2 :group_id 5 :card_id 10 :dimension_id "d2" :segment_id nil :name "Low heuristic high contextual"
-                    :interestingness_score 0.1 :contextual_interestingness_score 0.85}])
+                    :interestingness_score 0.1 :contextual_interestingness_score 0.85}]
+                  {})
           leaves (->> groups
                       (filter #(= "5" (:parent_group_id %)))
                       (mapv :name))]
@@ -1602,7 +1649,8 @@
                   [{:id 5 :name "Block"}]
                   [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "mid"  :interestingness_score 0.4}
                    {:id 2 :group_id 5 :card_id 10 :dimension_id "d2" :segment_id nil :name "high" :interestingness_score 0.9}
-                   {:id 3 :group_id 5 :card_id 10 :dimension_id "d3" :segment_id nil :name "none" :interestingness_score nil}])
+                   {:id 3 :group_id 5 :card_id 10 :dimension_id "d3" :segment_id nil :name "none" :interestingness_score nil}]
+                  {})
           leaf-names (->> groups (filter #(= "5" (:parent_group_id %))) (mapv :name))]
       (is (= ["high" "mid" "none"] leaf-names))
       (is (= (vec (range (count groups))) (mapv :position groups))
@@ -1610,10 +1658,10 @@
 
 (deftest group-tree-empty-input-test
   (testing "No groups returns an empty vector (no nil)"
-    (is (= [] (explorations.groups/group-tree [] [])))
-    (is (= [] (explorations.groups/group-tree [] [{:id 1 :group_id 1 :card_id 1 :dimension_id "d"}]))))
+    (is (= [] (explorations.groups/group-tree [] [] {})))
+    (is (= [] (explorations.groups/group-tree [] [{:id 1 :group_id 1 :card_id 1 :dimension_id "d"}] {}))))
   (testing "a group with no materialized queries still emits its node"
-    (is (= ["7"] (mapv :id (explorations.groups/group-tree [{:id 7 :name "Empty"}] []))))))
+    (is (= ["7"] (mapv :id (explorations.groups/group-tree [{:id 7 :name "Empty"}] [] {}))))))
 
 (deftest exploration-get-includes-groups-test
   (testing "GET /:id attaches :groups to each thread, with one metric-level wrapper and (card, dim) leaves underneath"
@@ -1646,7 +1694,8 @@
         (testing "group node"
           (is (= 1 (count group-nodes)) "one group — one top-level node")
           (let [[g] group-nodes]
-            (is (= "Group" (:name g)) "node name is the group's name")
+            (is (= "Revenue" (:group_name g))
+                "metric-anchored heading is the metric name")
             (is (nil? (:parent_group_id g)))
             (is (= [] (:query_ids g)) "group nodes carry no direct queries — queries live on leaves")
             (is (= group-id (:id g)) "node id is the persisted group PK as a string")))
@@ -1677,16 +1726,9 @@
                     pair-set (set (map (juxt :card_id :dimension_id) members))]
                 (is (= 1 (count pair-set))
                     (str "leaf " (:id g) " bundles a single (card, dim) partition"))))))
-        (testing "leaf :name is the unsegmented base query's name"
-          (let [qid->name (into {} (map (juxt :id :name)) queries)]
-            (doseq [g leaf-nodes]
-              (let [base-name (some (fn [qid]
-                                      (let [q (some #(when (= qid (:id %)) %) queries)]
-                                        (when (nil? (:segment_id q)) (:name q))))
-                                    (:query_ids g))]
-                (is (= base-name (:name g))
-                    (str "leaf " (:id g) " name matches the base query"))
-                (is (contains? (set (vals qid->name)) (:name g)))))))))))
+        (testing "metric-anchored leaves are named 'By <dimension>'"
+          (is (= #{"By Category" "By Price"}
+                 (set (map :name leaf-nodes)))))))))
 
 (deftest exploration-get-multiple-groups-test
   (testing "Threads with multiple groups emit one 'sidebar' node per group, each parenting its own leaves"
@@ -1696,10 +1738,10 @@
       (let [dims [{:dimension_id "category" :display_name "Category"}
                   {:dimension_id "price"    :display_name "Price"}]
             body {:name "multi"
-                  :groups [{:name       "Revenue block"
+                  :groups [{:type       "metric"
                             :metrics    [{:card_id (:id m1) :dimension_mappings (venues-dimension-mappings)}]
                             :dimensions dims}
-                           {:name       "Order count block"
+                           {:type       "metric"
                             :metrics    [{:card_id (:id m2) :dimension_mappings (venues-dimension-mappings)}]
                             :dimensions dims}]}
             {eid :id} (create-exploration! u body)
@@ -1714,7 +1756,9 @@
         (is (= 2 (count (get by-display "singleton"))) "price dim → one singleton leaf per group = 2")
         (is (= 2 (count (get by-display "page")))      "category dim → one page leaf per group = 2")
         (is (= 2 (count (get by-display "sidebar")))   "two groups → two top-level nodes")
-        (is (= #{"Revenue block" "Order count block"} (set (map :name (get by-display "sidebar")))))
+        (is (= #{"Revenue" "Order count"}
+               (set (map :group_name (get by-display "sidebar"))))
+            "metric-anchored headings are the metric names")
         (is (every? #(string? (:id %)) (get by-display "sidebar")))
         (testing "leaves are partitioned across the two group nodes"
           (let [leaves-by-parent (group-by :parent_group_id non-sidebar)]

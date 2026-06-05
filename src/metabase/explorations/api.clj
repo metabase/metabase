@@ -139,10 +139,15 @@
   "Compute the read-side `:groups` tree and per-query `:dimension_name` labels for `thread`
   from its persisted groups, selecting the groups once and threading them through both."
   [thread]
-  (let [groups (thread-groups (:id thread))]
-    (-> thread
-        (attach-query-dimension-labels groups)
-        (assoc :groups (explorations.groups/group-tree groups (:queries thread))))))
+  (let [groups          (thread-groups (:id thread))
+        card-ids        (distinct (mapcat #(map :card_id (:metrics %)) groups))
+        card-name-by-id (if (seq card-ids)
+                          (t2/select-pk->fn :name [:model/Card :id :name] :id [:in card-ids])
+                          {})
+        ;; Label queries first so group-tree can name metric-anchored leaves "By <dimension>".
+        labeled         (attach-query-dimension-labels thread groups)]
+    (assoc labeled :groups (explorations.groups/group-tree
+                            groups (:queries labeled) card-name-by-id))))
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
@@ -179,7 +184,7 @@
   (when (seq groups)
     (t2/insert! :model/ExplorationThreadGroup
                 (positional-rows thread-id
-                                 (map #(select-keys % [:name :metrics :dimensions]) groups)))))
+                                 (map #(select-keys % [:type :metrics :dimensions]) groups)))))
 
 (defn- insert-thread-timelines! [thread-id timeline-ids]
   (when (seq timeline-ids)
@@ -232,7 +237,9 @@
    `ExplorationThreadGroup` row; the planners cross this group's metrics with this group's
    dimensions only. `:name` is the FE-supplied sidebar heading."
   [:map
-   [:name       {:optional true} [:maybe :string]]
+   ;; Whether the block is anchored on its metric or its dimension. The read side
+   ;; uses this to build the sidebar heading + sub-item names.
+   [:type       {:optional true} [:maybe [:enum "metric" "dimension"]]]
    [:metrics    {:optional true} [:maybe [:sequential MetricSelection]]]
    [:dimensions {:optional true} [:maybe [:sequential DimensionSelection]]]])
 
@@ -290,6 +297,8 @@
    [:type            [:enum "auto"]]
    [:display_type    [:enum "page" "singleton" "sidebar"]]
    [:name            [:maybe :string]]
+   ;; Presentation heading for a `"sidebar"` group node ("By <dimension>" or the metric name).
+   [:group_name      {:optional true} [:maybe :string]]
    [:query_ids       [:sequential ms/PositiveInt]]])
 
 (mr/def ::ExplorationDocument

@@ -242,7 +242,7 @@ describe("NewExplorationData (Research plan)", () => {
       ]);
     });
 
-    it("sends thread-scoped timeline_ids at the top level (not per group) and names each block", () => {
+    it("sends thread-scoped timeline_ids at the top level (not per group) and tags each block's anchor type", () => {
       const request = buildCreateExplorationRequest(
         "My exploration",
         "",
@@ -259,9 +259,8 @@ describe("NewExplorationData (Research plan)", () => {
       for (const group of request.groups) {
         expect(group).not.toHaveProperty("timeline_ids");
       }
-      // metric block named by its metric; dimension block by its anchor dimension
-      expect(request.groups[0].name).toBe(revenueMetric.name);
-      expect(request.groups[1].name).toBe(dimPlan.display_name);
+      expect(request.groups[0].type).toBe("metric");
+      expect(request.groups[1].type).toBe("dimension");
     });
 
     it("uses empty timeline_ids when none are selected", () => {

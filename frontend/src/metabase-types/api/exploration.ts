@@ -51,8 +51,7 @@ export interface CreateExplorationRequest {
   // Timelines are thread-scoped, not per-group.
   timeline_ids?: TimelineId[];
   groups: {
-    // FE-supplied display name for the block (the sidebar heading).
-    name?: string | null;
+    type: "metric" | "dimension";
     metrics: ExplorationMetricSelection[];
     dimensions: ExplorationDimensionSelection[];
   }[];
@@ -196,6 +195,7 @@ export interface ExplorationQueryGroup {
   type: "auto";
   display_type: ExplorationQueryGroupDisplayType;
   name: string | null;
+  group_name?: string | null;
   query_ids: ExplorationQueryId[];
 }
 

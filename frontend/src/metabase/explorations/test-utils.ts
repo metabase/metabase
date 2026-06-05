@@ -270,6 +270,7 @@ export function metricGroup(
   id: string,
   name: string,
   position: number,
+  groupName?: string,
 ): ExplorationQueryGroup {
   return {
     id,
@@ -278,6 +279,7 @@ export function metricGroup(
     type: "auto",
     display_type: "sidebar",
     name,
+    group_name: groupName ?? name,
     query_ids: [],
   };
 }

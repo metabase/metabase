@@ -69,7 +69,7 @@ function dimensionToSelection(d: MetricDimension) {
 function blockToGroup(block: ExplorationBlock) {
   if (isMetricBlock(block)) {
     return {
-      name: block.metric.name,
+      type: "metric" as const,
       metrics: [metricToSelection(block.metric)],
       dimensions: block.dimensions
         .filter((d) => block.selectedDimensionIds.has(d.id))
@@ -77,7 +77,7 @@ function blockToGroup(block: ExplorationBlock) {
     };
   }
   return {
-    name: block.dimension.display_name ?? block.dimension.id,
+    type: "dimension" as const,
     metrics: block.metrics
       .filter((m) => block.selectedMetricIds.has(m.id))
       .map(metricToSelection),

@@ -207,6 +207,43 @@ describe("getExplorationSidebarTree sorting", () => {
   });
 });
 
+describe("getExplorationSidebarTree passes BE-computed names through", () => {
+  const DIM_GROUP = "dim:country";
+
+  it("uses the group's group_name for the heading and each leaf's name for sub-items", () => {
+    const signups = createQuery({
+      id: 1,
+      name: "Signups",
+      status: "done",
+      interestingness_score: 0.9,
+    });
+    const revenue = createQuery({
+      id: 2,
+      name: "Revenue",
+      status: "done",
+      interestingness_score: 0.8,
+    });
+
+    const tree = getExplorationSidebarTree(
+      createExploration({
+        queries: [signups, revenue],
+        groups: [
+          metricGroup(DIM_GROUP, "Country", 0, "By Country"),
+          leafGroup("auto:country:10", DIM_GROUP, [signups.id], 0, "Signups"),
+          leafGroup("auto:country:11", DIM_GROUP, [revenue.id], 1, "Revenue"),
+        ],
+      }),
+    );
+
+    const heading = getMetricHeadings(tree)[0];
+    expect(heading?.name).toBe("By Country");
+    expect((heading?.children ?? []).map((child) => child.name)).toEqual([
+      "Signups",
+      "Revenue",
+    ]);
+  });
+});
+
 describe("pickInitialSidebarEntity", () => {
   const METRIC_A = "metric:a";
 
