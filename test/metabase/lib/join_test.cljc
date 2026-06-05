@@ -92,10 +92,10 @@
   "Refs in `query` that point into `a-join` but don't resolve to a column its inner pipeline returns.
   Empty means the join's projection is coherent."
   [query a-join]
-  (let [alias     (:alias a-join)
-        inner     (lib.metadata.calculation/returned-columns (assoc query :stages (:stages a-join)))
-        into-join (lib.util.match/match-many query
-                    [:field (o :guard (= (:join-alias o) alias)) _] &match)]
+  (let [join-alias (:alias a-join)
+        inner      (lib.metadata.calculation/returned-columns (assoc query :stages (:stages a-join)))
+        into-join  (lib.util.match/match-many query
+                     [:field (o :guard (= (:join-alias o) join-alias)) _] &match)]
     (into #{}
           (remove (fn [r]
                     (lib.equality/find-matching-column

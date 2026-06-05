@@ -823,9 +823,9 @@
           total    (->> (lib.metadata.calculation/visible-columns base 1)
                         (m/find-first (comp #{"TOTAL"} :name)))
           base     (lib/order-by base 1 total :asc)
-          keep     (->> (lib.metadata.calculation/returned-columns base 0)
+          kept     (->> (lib.metadata.calculation/returned-columns base 0)
                         (filter (comp #{"ID" "TOTAL"} :name)))
-          narrowed (lib/with-fields base 0 keep)]
+          narrowed (lib/with-fields base 0 kept)]
       (is (empty? (lib.validate/find-bad-refs narrowed))))))
 
 (deftest ^:parallel newly-stranded-downstream-refs-test
