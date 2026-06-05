@@ -197,6 +197,30 @@
       api/read-check
       (actions/fetch-values (json/decode parameters))))
 
+(defn- remap-parameter-keys
+  "Translate incoming `parameters` keys to the destination parameter `:id` the
+   downstream executor expects.
+
+   Query-action parameters have UUID `:id`s with human-readable `:slug` aliases;
+   the FE typically sends keys by `:slug` (that's what shows up in the typed
+   schema export and in the action editor UI). Implicit-action parameters use
+   a slug-form value as their `:id`, so the keys already match.
+
+   Resolution order per incoming key:
+     1. Already matches a destination `:id` → passed through.
+     2. Matches a destination `:slug` → remapped to that parameter's `:id`.
+     3. No match → passed through unchanged so the downstream validator still
+        reports it as 'no destination parameter found'."
+  [{action-params :parameters} parameters]
+  (let [valid-ids (into #{} (map :id) action-params)
+        slug->id  (into {} (keep (fn [p] (when-let [s (:slug p)] [s (:id p)]))) action-params)]
+    (update-keys parameters
+                 (fn [k]
+                   (cond
+                     (contains? valid-ids k) k
+                     (contains? slug->id k)  (get slug->id k)
+                     :else                   k)))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -220,4 +244,6 @@
                              :source    :model_detail
                              :type      type
                              :action_id id})
-    (actions/execute-action! action (update-keys parameters name))))
+    (actions/execute-action! action
+                             (remap-parameter-keys action
+                                                   (update-keys parameters name)))))

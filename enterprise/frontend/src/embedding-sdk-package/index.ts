@@ -29,6 +29,19 @@ export { useCurrentUser } from "./hooks/public/use-current-user";
 export { useMetabot } from "./hooks/public/use-metabot";
 export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
+export { useAction } from "./hooks/public/use-action";
+export type {
+  ActionExecuteError,
+  ActionKind,
+  ActionResultForBulk,
+  ActionResultForCreate,
+  ActionResultForDelete,
+  ActionResultForKind,
+  ActionResultForQuery,
+  ActionResultForUpdate,
+  AnyActionResult,
+  UseActionResult,
+} from "./hooks/public/use-action";
 
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";

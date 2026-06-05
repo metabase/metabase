@@ -2,6 +2,7 @@ import {
   InteractiveQuestion,
   type MetabaseDashboard,
   MetabaseProvider,
+  useAction,
   useApplicationName,
   useAvailableFonts,
   useCreateDashboardApi,
@@ -247,6 +248,209 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
       );
 
       cy.findByTestId("fonts-list").should("contain.text", "Lato");
+    });
+  });
+
+  describe("useAction", () => {
+    const STUB_ACTION_ID = 12345;
+
+    const ComponentWithHook = () => {
+      const { execute, result, error, isExecuting } = useAction<{
+        amount: number;
+      }>(STUB_ACTION_ID);
+
+      useEffect(() => {
+        execute({ amount: 1 }).catch(() => {
+          // error is captured into hook state; ignore the rethrow
+        });
+      }, [execute]);
+
+      return (
+        <>
+          <div data-testid="action-result">
+            {result
+              ? JSON.stringify(result)
+              : isExecuting
+                ? "executing"
+                : "idle"}
+          </div>
+          <div data-testid="action-error">
+            {error ? (error.data.message ?? "") : ""}
+          </div>
+        </>
+      );
+    };
+
+    beforeEach(() => {
+      cy.intercept("POST", `/api/action/${STUB_ACTION_ID}/execute`, {
+        statusCode: 200,
+        body: { "rows-affected": 7 },
+      }).as("executeAction");
+    });
+
+    it("should execute the action when called inside MetabaseProvider", () => {
+      mountSdk(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <ComponentWithHook />
+
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      cy.wait("@executeAction")
+        .its("request.body")
+        .should("deep.equal", { parameters: { amount: 1 } });
+
+      cy.findByTestId("action-result").should(
+        "contain.text",
+        '"rows-affected":7',
+      );
+    });
+
+    it("should execute the action when called outside MetabaseProvider", () => {
+      mountSdk(
+        <>
+          <ComponentWithHook />
+
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        </>,
+      );
+
+      cy.wait("@executeAction");
+
+      cy.findByTestId("action-result").should(
+        "contain.text",
+        '"rows-affected":7',
+      );
+    });
+
+    it("should execute the action when called without rendered SDK components", () => {
+      mountSdk(
+        <>
+          <ComponentWithHook />
+
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+        </>,
+      );
+
+      cy.wait("@executeAction");
+
+      cy.findByTestId("action-result").should(
+        "contain.text",
+        '"rows-affected":7',
+      );
+    });
+
+    it("should surface a permission-denied error from the execute endpoint", () => {
+      // Override the beforeEach intercept — the last-registered Cypress
+      // intercept for a matching route wins.
+      cy.intercept("POST", `/api/action/${STUB_ACTION_ID}/execute`, {
+        statusCode: 403,
+        body: { message: "You don't have permissions to do that." },
+      }).as("executeActionForbidden");
+
+      mountSdk(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <ComponentWithHook />
+
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      cy.wait("@executeActionForbidden")
+        .its("response.statusCode")
+        .should("eq", 403);
+
+      cy.findByTestId("action-error").should(
+        "contain.text",
+        "You don't have permissions to do that.",
+      );
+
+      // result stays idle because execute threw before setResult.
+      cy.findByTestId("action-result").should("have.text", "idle");
+    });
+
+    it("should surface a basic-action create response shape verbatim", () => {
+      // Override the beforeEach intercept with the `create` kind's response
+      // shape. The hook is kind-agnostic at runtime (no per-kind branching) —
+      // covering one basic-action shape is enough to lock the JSON-body
+      // pass-through contract; update/delete/bulk would exercise the same
+      // code path.
+      cy.intercept("POST", `/api/action/${STUB_ACTION_ID}/execute`, {
+        statusCode: 200,
+        body: { "created-row": { id: 99, amount: 1 } },
+      }).as("executeActionCreate");
+
+      mountSdk(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <ComponentWithHook />
+
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      cy.wait("@executeActionCreate");
+
+      cy.findByTestId("action-result").should(
+        "contain.text",
+        '"created-row":{"id":99,"amount":1}',
+      );
+    });
+
+    it("should clear result and error when reset() is called", () => {
+      const ComponentWithResetButton = () => {
+        const { execute, result, error, isExecuting, reset } = useAction<{
+          amount: number;
+        }>(STUB_ACTION_ID);
+
+        useEffect(() => {
+          execute({ amount: 1 }).catch(() => {
+            // error is captured into hook state; ignore the rethrow
+          });
+        }, [execute]);
+
+        return (
+          <>
+            <div data-testid="action-result">
+              {result
+                ? JSON.stringify(result)
+                : isExecuting
+                  ? "executing"
+                  : "idle"}
+            </div>
+            <div data-testid="action-error">
+              {error
+                ? ((error as { data?: { message?: string } }).data?.message ??
+                  String(error))
+                : ""}
+            </div>
+            <button data-testid="action-reset" onClick={() => reset()}>
+              reset
+            </button>
+          </>
+        );
+      };
+
+      mountSdk(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <ComponentWithResetButton />
+
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      cy.wait("@executeAction");
+      cy.findByTestId("action-result").should(
+        "contain.text",
+        '"rows-affected":7',
+      );
+
+      cy.findByTestId("action-reset").click();
+
+      cy.findByTestId("action-result").should("have.text", "idle");
+      cy.findByTestId("action-error").should("have.text", "");
     });
   });
 
