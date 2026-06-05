@@ -149,7 +149,7 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
     case "pulse":
       return item.name;
     case "question-notification":
-      return item.payload.card?.name || t`Alert`;
+      return item.payload?.card?.name || t`Alert`;
   }
 };
 
