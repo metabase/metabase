@@ -498,10 +498,11 @@
   full export: re-serializes the entire synced set, writes it, marks all RemoteSyncObject rows synced,
   and records each entity's `file_path` so future renames/deletes can go incremental.
 
-  Returns a map with :status (either :success or :error), :version, and optionally :message keys. Various
-  exceptions may be thrown during export and are caught and converted to error status maps."
+  Returns a map with {:status :success}, {:status :error}, or throws an exception with an appropriate message."
   [^SourceSnapshot snapshot task-id message & {:keys [pre-task-branch]}]
-  (when (branch-changed-since-scheduling? pre-task-branch)
+  ;; Defense-in-depth: refuse to run if the branch setting drifted between scheduling and now.
+  (when (and (some? pre-task-branch)
+             (not= pre-task-branch (settings/remote-sync-branch)))
     (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
                pre-task-branch (settings/remote-sync-branch))
     (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
