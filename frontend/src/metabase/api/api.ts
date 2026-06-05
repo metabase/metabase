@@ -20,7 +20,7 @@ import { TAG_TYPES } from "./tags";
 // abort signal off the query lifecycle context and turn the client's
 // resolve/throw into RTK's `{ data } | { error }` shape. All request-shaping and
 // validation lives in the client itself.
-const baseQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
+export const baseQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
   const requestArgs = typeof args === "string" ? { url: args } : args;
   try {
     const method = requestArgs.method ?? "GET";
