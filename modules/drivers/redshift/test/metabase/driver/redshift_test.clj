@@ -846,3 +846,74 @@
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           tenant))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           grantor))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           dummy)))))))
+
+(deftest ^:synchronized workspace-destroy-survives-foreign-grantor-default-priv-test
+  ;; GHY-3709 destroy-path integration test (Redshift counterpart to the PG test
+  ;; of the same name). PG sidesteps this via `DROP OWNED BY <iso-user>`, which
+  ;; removes default-priv ACL entries where the iso-user is grantee regardless
+  ;; of grantor. Redshift has no equivalent, so destroy has to enumerate
+  ;; `pg_default_acl` and issue `ALTER DEFAULT PRIVILEGES FOR USER <grantor>
+  ;; REVOKE` per discovered (grantor, schema) pair before `DROP USER`.
+  ;;
+  ;; Repro shape:
+  ;;   1. Provision an iso-user via `init-workspace-isolation!`.
+  ;;   2. Connect as a foreign role (not the current connection user) and
+  ;;      `ALTER DEFAULT PRIVILEGES IN SCHEMA <s> GRANT SELECT ON TABLES TO
+  ;;      <iso-user>` -- catalog row is owned by that foreign grantor.
+  ;;   3. Run `destroy-workspace-isolation!`. Without the fix, `DROP USER`
+  ;;      fails with "user cannot be dropped because some objects depend on
+  ;;      it / privileges for default privileges on new relations belonging
+  ;;      to user <grantor> in schema <s>". With the fix, destroy enumerates
+  ;;      the row, REVOKEs it FOR USER the grantor, and DROP USER succeeds.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          grantor    (str "ws_dest_grantor_" suffix)
+          schema     (str "ws_dest_schema_" suffix)
+          password   "Pwd_ws_dest_1!"
+          workspace  {:id   (rand-int Integer/MAX_VALUE)
+                      :name (str "wsd-dest-foreign-" suffix)}]
+      (try
+        (execute! (str
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
+                   (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
+        (let [init-result    (driver/init-workspace-isolation! :redshift (mt/db) workspace)
+              iso-user       (-> init-result :database_details :user)
+              workspace+det  (merge workspace init-result)]
+          (try
+            ;; Seed the foreign-grantor default-priv: connect as the foreign role
+            ;; and issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl
+            ;; row's grantor (defacluser) is the foreign role, not current_user.
+            ;; This is the exact production shape that reproduced GHY-3709.
+            (sql-jdbc.conn/with-connection-spec-for-testing-connection
+             [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                             :user grantor
+                                             :password password)]]
+              (jdbc/execute! grantor-spec
+                             [(format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT SELECT ON TABLES TO \"%s\""
+                                      schema iso-user)]))
+            (testing "destroy completes without error despite foreign-grantor default-priv row"
+              (is (some? (driver/destroy-workspace-isolation! :redshift (mt/db) workspace+det))))
+            (testing "iso-user is gone from pg_user after destroy"
+              (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_user WHERE usename = ?" iso-user]))))
+            (finally
+              ;; Belt-and-suspenders: if destroy raised, the iso-user may still
+              ;; exist with the foreign-grantor row still pinned to it. Revoke
+              ;; as the grantor (only they can drop their own default-priv) and
+              ;; force-drop the iso-user so CI re-runs don't accumulate orphans.
+              (try
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                                 :user grantor
+                                                 :password password)]]
+                  (try-execute! grantor-spec
+                                (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                        schema iso-user)))
+                (catch Throwable t
+                  (log/warn t "Test cleanup: connecting as foreign grantor failed")))
+              (try-execute! admin-spec (format "DROP OWNED BY \"%s\""       iso-user))
+              (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                  grantor))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""            grantor)))))))
