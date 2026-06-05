@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.metabot.skills.init]
    [metabase.metabot.tools.skills :as tools.skills]))
 
 (set! *warn-on-reflection* true)

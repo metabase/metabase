@@ -149,10 +149,14 @@
 
 (defn load-skills!
   "Scan the skill resource directories and (re)populate the registry.
-  Called from [[metabase.metabot.skills.init]] on system launch."
+  Runs at namespace load; public so a REPL can refresh the registry after editing skill files."
   []
+  ;; clear first so re-initializing (e.g. a dev reload) drops removed or renamed skills
+  (reset! *skills {})
   (register-markdown-skills!)
   (register-dialect-skills!))
+
+(load-skills!)
 
 ;;; Lookup / resolution
 
