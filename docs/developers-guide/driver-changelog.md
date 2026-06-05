@@ -11,10 +11,9 @@ title: Driver interface changelog
   `:metadata/key-constraints`.
 
   - JDBC-based drivers can implement `metabase.driver.sql-jdbc.sync.describe-table/describe-fks-sql` to take advantage
-    of the default `:sql-jdbc` implementation of `describe-fks`.
-
-  - SQL-JDBC drivers now have a default implementation of `describe-fks` that uses JDBC metadata for each matching
-    table, similar to the old default implementation of `describe-table-fks`.
+    of a more performant shared `:sql-jdbc` implementation of `describe-fks`; if they do not implement this method
+    they will fall back to a default implementation of `describe-fks` that uses JDBC metadata for each matching table,
+    similar to the old default implementation of `describe-table-fks`.
 
   - The `metabase.driver.sql-jdbc.sync/describe-table-fks` helper function has been removed, but helper functions
     `metabase.driver.sql-jdbc.sync/reducible-fks-for-tables-matching-options` and

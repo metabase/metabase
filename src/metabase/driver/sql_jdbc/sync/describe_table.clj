@@ -403,7 +403,7 @@
      (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
      (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (driver.conn/effective-details db)))))))
 
-(mu/defn reducible-table-fks-from-jdbc-metadata
+(mu/defn reducible-table-fks-from-jdbc-metadata :- ::driver/describe-fks.result
   "Part of the implementation for [[describe-fks-with-jdbc-metadata]], which is the default implementation
   of [[metabase.driver/describe-fks]]. Made available if you'd like to implement [[metabase.driver/describe-fks]]
   individually for each Table.
@@ -456,8 +456,7 @@
          database
          nil
          (fn [^Connection conn]
-           (let [xform         (mapcat (fn [table]
-                                         (f conn table)))
+           (let [xform         (mapcat (partial f conn)) ; (f conn table) => [fk1 fk2 ...]
                  reducible-fks (eduction xform reducible-tables)]
              (reduce rf init reducible-fks))))))))
 

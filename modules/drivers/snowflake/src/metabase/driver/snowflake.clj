@@ -29,6 +29,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -37,7 +38,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? not-empty select-keys]]
+   [metabase.util.performance :refer [empty? mapv not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -829,25 +830,20 @@
           []
           (throw e))))))
 
-(defn- reducible-table-fks-from-jdbc-metadata
+(mu/defn- reducible-table-fks-from-jdbc-metadata :- ::driver/describe-fks.result
   "Wrapper around [[metabase.driver.sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata]].
   The only changes are that it escapes `schema` and `table-name`, and catches errors when trying to get FKs for
   dynamic tables."
-  [^Connection conn ^String db-name ^String schema ^String table-name]
+  [^Connection       conn       :- (lib.schema.common/instance-of-class Connection)
+   ^DatabaseMetaData metadata   :- (lib.schema.common/instance-of-class DatabaseMetaData)
+   ^String           db-name    :- [:maybe :string]
+   ^String           schema     :- [:maybe :string]
+   ^String           table-name :- :string]
   ;; Snowflake bug: schema and table name are interpreted as patterns
   (let [schema     (escape-name-for-metadata schema)
         table-name (escape-name-for-metadata table-name)]
-    (reify clojure.lang.IReduceInit
-      (reduce [_this rf init]
-        (try
-          (let [metadata      (.getMetaData conn)
-                reducible-fks (sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata metadata db-name schema table-name)]
-            (reduce reducible-fks rf init))
-          (catch SnowflakeSQLException e
-            ;; dynamic tables doesn't support fks so it's fine to suppress the exception
-            (if (dynamic-table? conn db-name schema table-name)
-              #{}
-              (throw e))))))))
+    (when-not (dynamic-table? conn db-name schema table-name)
+      (sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata metadata db-name schema table-name))))
 
 (mu/defmethod driver/describe-fks :snowflake :- ::driver/describe-fks.result
   [driver   :- :keyword
@@ -855,7 +851,8 @@
    options  :- ::driver/describe-fks.options]
   (let [db-name (db-name database)
         f       (fn f [^Connection conn table]
-                  (reducible-table-fks-from-jdbc-metadata conn db-name (:schema table) (:name table)))]
+                  (let [metadata (.getMetaData conn)]
+                    (reducible-table-fks-from-jdbc-metadata conn metadata db-name (:schema table) (:name table))))]
     (sql-jdbc.sync/reducible-fks-for-tables-matching-options driver database options f)))
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake [_] :%current_timestamp)

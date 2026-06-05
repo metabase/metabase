@@ -462,7 +462,7 @@
 (mu/defn reducible-sync-tables
   "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`.
 
-  Returns tables in by of `[schema name]` so results match the order expected by [[metabase.driver/describe-fks]]."
+  Returns tables ordered by `[schema name]` so results match the order expected by [[metabase.driver/describe-fks]]."
   [database-or-id                       :- [:or
                                             ::lib.schema.id/database
                                             [:map
