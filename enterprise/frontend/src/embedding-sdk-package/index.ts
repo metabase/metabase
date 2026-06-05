@@ -198,7 +198,23 @@ export type {
   UseQuestionQueryOptions,
   UseQuestionQueryResult,
 } from "./hooks/public/use-question-query";
+export type {
+  MetricBreakout,
+  MetricFilter,
+  UseMetricQueryOptions,
+  UseMetricQueryResult,
+} from "./hooks/public/use-metric-query";
+export type {
+  MetricSchema,
+  QuestionSchema,
+  QueryData,
+  SchemaColumn,
+  SchemaJavaScriptType,
+  SchemaParameter,
+  SchemaRow,
+} from "./hooks/public/data-schema";
 export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
+export type { QueryMetricResult } from "embedding-sdk-bundle/lib/query-metric";
 
 export type {
   EmbeddingEntityType,
