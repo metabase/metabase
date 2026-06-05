@@ -32,10 +32,11 @@ interface TagEditorSidebarProps {
   query: NativeQuery;
   databases?: Database[];
   question: Question;
+  originalQuestion?: Question;
   sampleDatabaseId?: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig?: (
+  setTemplateTagConfig: (
     tag: TemplateTag,
     config: ParameterValuesConfig,
   ) => void;
@@ -49,6 +50,7 @@ export function TagEditorSidebar({
   query,
   databases,
   question,
+  originalQuestion,
   sampleDatabaseId,
   setDatasetQuery,
   setTemplateTag,
@@ -92,6 +94,7 @@ export function TagEditorSidebar({
             parametersById={parametersById}
             database={database}
             databases={databases as Database[]}
+            originalQuestion={originalQuestion}
             setTemplateTag={setTemplateTag}
             setTemplateTagConfig={setTemplateTagConfig}
             setParameterValue={setParameterValue}
@@ -118,8 +121,9 @@ interface SettingsPaneProps {
   database?: Database | null;
   databases: Database[];
   parametersById: Record<ParameterId, Parameter>;
+  originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig?: (
+  setTemplateTagConfig: (
     tag: TemplateTag,
     config: ParameterValuesConfig,
   ) => void;
@@ -133,6 +137,7 @@ const SettingsPane = ({
   parametersById,
   database,
   databases,
+  originalQuestion,
   setTemplateTag,
   setTemplateTagConfig,
   setParameterValue,
@@ -152,6 +157,7 @@ const SettingsPane = ({
         }
         database={database}
         databases={databases}
+        originalQuestion={originalQuestion}
         setTemplateTag={setTemplateTag}
         setTemplateTagConfig={setTemplateTagConfig}
         setParameterValue={setParameterValue}

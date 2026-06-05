@@ -1,7 +1,7 @@
 import {
   canFormatForEngine,
   formatQuery,
-} from "metabase/query_builder/components/NativeQueryEditor/utils";
+} from "metabase/querying/components/NativeQueryEditor/utils";
 
 const formattingTestCases = [
   {

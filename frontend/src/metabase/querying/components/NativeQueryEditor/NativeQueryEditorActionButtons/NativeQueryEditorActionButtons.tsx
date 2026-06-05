@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
-import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
-import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
-import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
+import { DataReferenceButton } from "metabase/querying/components/NativeQueryEditor/DataReferenceButton";
+import { NativeVariablesButton } from "metabase/querying/components/NativeQueryEditor/NativeVariablesButton";
+import { PreviewQueryButton } from "metabase/querying/components/NativeQueryEditor/PreviewQueryButton";
+import { SnippetSidebarButton } from "metabase/querying/components/NativeQueryEditor/SnippetSidebarButton";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SidebarFeatures } from "metabase/querying/editor/types";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";

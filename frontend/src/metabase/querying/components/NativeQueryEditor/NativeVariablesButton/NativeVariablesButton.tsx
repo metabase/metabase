@@ -1,8 +1,6 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
-import { useDispatch } from "metabase/redux";
 import { Box, Icon, Tooltip } from "metabase/ui";
 
 import NativeVariablesButtonS from "./NativeVariablesButton.module.css";
@@ -20,7 +18,6 @@ export const NativeVariablesButton = ({
   onClick,
   size,
 }: NativeVariablesButtonProps) => {
-  const dispatch = useDispatch();
   return (
     <Tooltip label={t`Variables`}>
       <Box
@@ -31,17 +28,7 @@ export const NativeVariablesButton = ({
           [NativeVariablesButtonS.isSelected]: isShowingTemplateTagsEditor,
         })}
       >
-        <Icon
-          name="variable"
-          size={size}
-          onClick={() => {
-            if (onClick) {
-              onClick();
-            } else {
-              dispatch(toggleTemplateTagsEditor());
-            }
-          }}
-        />
+        <Icon name="variable" size={size} onClick={onClick} />
       </Box>
     </Tooltip>
   );

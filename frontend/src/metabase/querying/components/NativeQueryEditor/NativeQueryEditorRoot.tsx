@@ -17,13 +17,13 @@ import { t } from "ttag";
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
-import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import {
   CodeMirrorEditor,
   type CodeMirrorEditorProps,
   type CodeMirrorEditorRef,
 } from "metabase/querying/components/CodeMirrorEditor";
+import { SnippetFormModal } from "metabase/querying/components/NativeQueryEditor/SnippetFormModal";
+import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { useSelector } from "metabase/redux";
