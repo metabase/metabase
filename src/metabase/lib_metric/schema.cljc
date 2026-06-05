@@ -8,7 +8,6 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.number :as u.number]
    [metabase.util.performance :refer [some]]))
 
 (comment lib.schema.ref/keep-me)
@@ -164,7 +163,7 @@
   [:map [:include-current {:optional true} :boolean]])
 
 (mr/def ::number-filter-value
-  [:or :double [:fn {:typescript "bigint"} u.number/bigint?]])
+  :metabase.lib.schema.filter/number-filter-value)
 
 (mr/def ::string-filter-parts
   [:any {:ts/object-of [:map
@@ -401,6 +400,41 @@
 (mr/def ::typed-projections
   "A sequence of typed projections."
   [:sequential ::typed-projection])
+
+;;; ------------------------------------------------- JS-facing Metric Definition Serialization -------------------------------------------------
+;;; These schemas describe objects returned by metabase.lib-metric.js helpers after CLJS->JS conversion.
+
+(mr/def ::source-instance.js
+  "Serialized expression leaf instance returned by sourceInstances: [\"metric\"|\"measure\", {\"lib/uuid\": uuid}, id]."
+  [:tuple
+   [:enum "metric" "measure"]
+   [:map ["lib/uuid" ::lib.schema.common/non-blank-string]]
+   pos-int?])
+
+(mr/def ::instance-filter.js
+  "Serialized per-instance filter in a JS metric definition."
+  [:map
+   ["lib/uuid" ::lib.schema.common/non-blank-string]
+   [:filter :any]])
+
+(mr/def ::typed-projection.js
+  "Serialized typed projection in a JS metric definition."
+  [:map
+   [:type [:enum "metric" "measure"]]
+   [:id pos-int?]
+   ["lib/uuid" ::lib.schema.common/non-blank-string]
+   [:projection [:sequential ::dimension-reference]]])
+
+(mr/def ::metric-expression.js
+  "Serialized metric math expression. Arithmetic operands can nest recursively, so keep nested operands broad for now."
+  [:any {:typescript "Metabase_LibMetric_Schema_SourceInstanceJs | number | [\"+\" | \"-\" | \"*\" | \"/\", Record<string, unknown>, unknown, unknown, ...unknown[]]"}])
+
+(mr/def ::metric-definition.js
+  "JS object produced by toJsMetricDefinition for API serialization."
+  [:map
+   [:expression ::metric-expression.js]
+   [:filters {:optional true} [:sequential ::instance-filter.js]]
+   [:projections {:optional true} [:sequential ::typed-projection.js]]])
 
 ;;; ------------------------------------------------- Persisted Dimensions -------------------------------------------------
 ;;; These schemas are used for storage format in the database.

@@ -218,7 +218,7 @@
                        (->metadata-provider definition)
                        {:lib/type :metadata/measure, :id #{measure-id}})))))
 
-(mu/defn ^:export sourceInstances :- [:any {:ts/array-of [:tuple :string :map :int]}]
+(mu/defn ^:export sourceInstances :- [:any {:ts/array-of ::lib-metric.schema/source-instance.js}]
   "Get expression leaf instances as JS arrays.
    Returns a JS array of ['metric'|'measure', {'lib/uuid': '...'}, id] arrays."
   [definition]
@@ -345,10 +345,7 @@
     (gobject/set obj "projection" (to-array (map expression->js projection)))
     obj))
 
-(mu/defn ^:export toJsMetricDefinition :- [:any {:ts/object-of [:map
-                                                                [:expression :any]
-                                                                [:filters {:optional true} [:sequential :map]]
-                                                                [:projections {:optional true} [:sequential :map]]]}]
+(mu/defn ^:export toJsMetricDefinition :- [:any {:ts/object-of ::lib-metric.schema/metric-definition.js}]
   "Convert a MetricDefinition to a JS object for JSON serialization.
 
    Produces format compatible with POST /api/metric/dataset:

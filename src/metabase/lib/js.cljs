@@ -102,7 +102,6 @@
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
@@ -1241,7 +1240,7 @@
 (mu/defn ^:export number-filter-parts :- [:maybe [:any {:ts/object-of [:map
                                                                        [:operator ::lib.schema.filter/number-filter-operator]
                                                                        [:column ::lib.schema.metadata/column]
-                                                                       [:values [:sequential :double]]]}]]
+                                                                       [:values [:sequential ::lib.schema.filter/number-filter-value]]]}]]
   "Destructures a numeric filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match
   the expected shape."
   [a-query stage-number a-filter-clause]
@@ -1264,7 +1263,7 @@
                                                                            [:operator ::lib.schema.filter/coordinate-filter-operator]
                                                                            [:column ::lib.schema.metadata/column]
                                                                            [:longitudeColumn [:maybe ::lib.schema.metadata/column]]
-                                                                           [:values [:sequential :double]]]}]]
+                                                                           [:values [:sequential ::lib.schema.filter/number-filter-value]]]}]]
   "Destructures a coordinate filter clause created by [[coordinate-filter-clause]]. Returns `nil` if the clause does not
   match the expected shape. Unlike regular numeric filters, coordinate filters do not support `:is-null` and
   `:not-null`. There is also a special `:inside` operator that requires both latitude and longitude columns."
