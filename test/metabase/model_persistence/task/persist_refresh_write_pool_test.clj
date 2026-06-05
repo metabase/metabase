@@ -22,7 +22,8 @@
             (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
           (let [test-refresher (reify task.persist-refresh/Refresher
                                  (refresh! [_ database _definition _card]
-                                   (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+                                   (driver.conn/with-write-connection
+                                     (sql-jdbc.conn/db->pooled-connection-spec (:id database)))
                                    {:state :success})
                                  (unpersist! [_ _database _persisted-info]))]
             (mt/with-temp [:model/Card model {:type :model :database_id db-id}
@@ -50,7 +51,8 @@
                                  (refresh! [_ _database _definition _card]
                                    {:state :success})
                                  (unpersist! [_ database _persisted-info]
-                                   (sql-jdbc.conn/db->pooled-connection-spec (:id database))))]
+                                   (driver.conn/with-write-connection
+                                     (sql-jdbc.conn/db->pooled-connection-spec (:id database)))))]
             (mt/with-temp [:model/Card model {:type :model :database_id db-id}
                            :model/PersistedInfo pi {:card_id         (:id model)
                                                     :database_id     db-id
