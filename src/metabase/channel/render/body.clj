@@ -14,12 +14,15 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.pivot.core :as pivot.core]
+   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
@@ -415,6 +418,122 @@
                  :src   (:image-src image-bundle)}]]})
       :html
       {:content [:div content] :attachments nil})))
+
+;;; ------------------------------------------------ pivot tables ------------------------------------------------
+
+(defn- pivot-cell->str
+  "Display string for an assembled pivot cell (a formatter wrapper, a plain string, or nil)."
+  [x]
+  (cond
+    (nil? x)    ""
+    (string? x) x
+    :else       (or (:num-str x) (:text-str x) (str x))))
+
+(defn- pivot-formatters
+  "Per-column value formatters for the given column `indexes`, matching the pivot export path."
+  [columns indexes timezone settings format-rows?]
+  (let [formatter-for (memoize (fn [col] (formatter/create-formatter timezone col settings format-rows?)))]
+    (mapv (fn [idx]
+            (let [fmt (formatter-for (nth columns idx))]
+              (fn [value] (fmt (streaming.common/format-value value)))))
+          indexes)))
+
+(defn- pivot->hiccup
+  "Render the assembled 2D pivot `rows` (header row first, then data rows) as an HTML table. Cells are
+  `white-space: nowrap` so the table takes whatever width it needs (the surrounding pulse body provides
+  horizontal scrolling). `opts` may include `:color-selector` (from [[js.color/make-color-selector]]),
+  `:left-width` (number of leading row-label columns), and `:measure-names` (ordered measure column names)
+  to apply the card's conditional formatting to the measure value cells."
+  [rows {:keys [color-selector left-width measure-names]}]
+  (let [measure-count (max 1 (count measure-names))
+        cell-bg       (fn [cell ^long c ^long r]
+                        ;; value cells are NumericWrapper; map each value column back to its measure column
+                        ;; so the right conditional-formatting rule applies
+                        (when (and color-selector (formatter/NumericWrapper? cell))
+                          (let [vpos (- c (long left-width))]
+                            (when (nat-int? vpos)
+                              (let [mname (nth measure-names (mod vpos measure-count))]
+                                (js.color/get-background-color color-selector cell mname (dec r)))))))]
+    [:table {:style (style/style (merge (style/font-style)
+                                        {:border-collapse :collapse
+                                         :font-size       (format "%spx" style/font-size)}))}
+     [:tbody
+      (map-indexed
+       (fn [r row]
+         [:tr
+          (map-indexed
+           (fn [c cell]
+             (let [header?    (zero? r)
+                   label?     (and (pos? r) (zero? c))
+                   bg         (cell-bg cell c r)
+                   cell-style (merge {:border (str "1px solid " style/color-border) :padding "5px 10px" :white-space :nowrap}
+                                     (cond
+                                       header? {:background style/color-pivot-header-bg :font-weight 700 :text-align :left}
+                                       label?  {:background style/color-pivot-label-bg :font-weight 600 :text-align :left}
+                                       :else   {:text-align :right})
+                                     (when bg {:background-color bg}))]
+               [(if (or header? label?) :th :td)
+                {:style (style/style cell-style)}
+                (h (pivot-cell->str cell))]))
+           row)])
+       rows)]]))
+
+(defn- pivot-table-content
+  "Assemble a `:pivot` card's flat (pivot-grouping) result into a Hiccup pivot table, or nil if it can't be
+  assembled — no column split, a native pivot without a pivot-grouping column, etc. Reuses the pivot-export
+  assembly ([[qp.pivot.postprocess/build-pivot-output]] + [[pivot.core]]) and the row/col/measure indices the
+  pivot QP already computed in `:pivot-export-options`."
+  [card dashcard {:keys [cols pivot-export-options] :as data}]
+  (let [settings (merge (:visualization_settings card) (:visualization_settings dashcard))
+        split    (or (get settings :pivot_table.column_split) (get settings "pivot_table.column_split"))
+        pg-idx   (qp.pivot.postprocess/pivot-grouping-index (mapv :name cols))]
+    (when (and split pivot-export-options pg-idx)
+      (let [columns  (pivot.core/columns-without-pivot-group cols)
+            row-idxs (vec (:pivot-rows pivot-export-options))
+            col-idxs (vec (:pivot-cols pivot-export-options))
+            ;; The pivot QP only fills :pivot-measures when the split's measure names resolve to result
+            ;; columns; when they don't (e.g. a casing mismatch) default to every non row/col column,
+            ;; mirroring qp.pivot.postprocess/add-pivot-measures.
+            val-idxs (let [measures (vec (:pivot-measures pivot-export-options))]
+                       (if (seq measures)
+                         measures
+                         (vec (remove (set (concat row-idxs col-idxs)) (range (count columns))))))]
+        (when (and (seq val-idxs) (or (seq row-idxs) (seq col-idxs)))
+          (let [tz     (:results_timezone data)
+                fr?    (get data :format-rows? true)
+                peo    {:pivot-rows         row-idxs
+                        :pivot-cols         col-idxs
+                        :pivot-measures     val-idxs
+                        :show-row-totals    (get pivot-export-options :show-row-totals true)
+                        :show-column-totals (get pivot-export-options :show-column-totals true)}
+                fmts   {:row-formatters (pivot-formatters columns row-idxs tz settings fr?)
+                        :col-formatters (pivot-formatters columns col-idxs tz settings fr?)
+                        :val-formatters (pivot-formatters columns val-idxs tz settings fr?)}
+                output (qp.pivot.postprocess/build-pivot-output
+                        {:data data :settings settings :format-rows? fr? :pivot-export-options peo}
+                        fmts)
+                ;; Build a color selector from the card's conditional formatting, over the displayed data
+                ;; (group=0 rows with the pivot-grouping column removed, aligned with `columns`).
+                formatting     (or (:table.column_formatting settings) (get settings "table.column_formatting"))
+                color-selector (when (seq formatting)
+                                 (let [base-rows (into [] (comp (filter #(= 0 (nth % pg-idx)))
+                                                                (map #(vec (m/remove-nth pg-idx %))))
+                                                       (:rows data))]
+                                   (js.color/make-color-selector {:cols columns :rows base-rows} settings)))]
+            (pivot->hiccup output {:color-selector color-selector
+                                   :left-width     (count row-idxs)
+                                   :measure-names  (mapv #(:name (nth columns %)) val-idxs)})))))))
+
+(mu/defmethod render :pivot :- ::RenderedPartCard
+  [_chart-type render-type timezone-id card dashcard data]
+  (or (try
+        (when-let [content (pivot-table-content card dashcard data)]
+          {:content content :attachments nil})
+        (catch Throwable e
+          (log/warn e "Failed to render pivot table; falling back to a flat table")
+          nil))
+      ;; Native pivots, field-ref splits, or assembly errors degrade to the existing flat table.
+      (render :table render-type timezone-id card dashcard data)))
 
 (defn- smart-scalar-comparison-statement
   [unit value]

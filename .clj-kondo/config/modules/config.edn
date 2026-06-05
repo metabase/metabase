@@ -498,6 +498,7 @@
            notification
            parameters
            permissions
+           pivot
            premium-features
            query-processor
            settings
@@ -1771,6 +1772,7 @@
               metabase.query-processor.parameters.values
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
+              metabase.query-processor.pivot.postprocess
               metabase.query-processor.preprocess
               metabase.query-processor.schema
               metabase.query-processor.store

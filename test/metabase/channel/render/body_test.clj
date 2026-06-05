@@ -9,6 +9,7 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.js.color :as js.color]
    [metabase.config.core :as config]
    [metabase.formatter.core :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
@@ -1088,9 +1089,14 @@
                                                  :breakout    [$category !year.created_at]})}]
         (mt/with-current-user (mt/user->id :rasta)
           (let [card-doc        (render.tu/render-pivot-card-as-hickory! card-id)
-                card-header-els (hik.s/select (hik.s/tag :th) card-doc)]
-            (is (=  ["Category" "Created At: Year" "Sum of Price"]
-                    (mapv (comp first :content) card-header-els)))))))))
+                card-header-els (hik.s/select (hik.s/tag :th) card-doc)
+                headers         (mapv (comp first :content) card-header-els)]
+            ;; A pivot card renders as an assembled (transposed) table: the row-dimension label is the
+            ;; top-left header, the pivot-grouping column is excluded, and row/grand totals are added.
+            (is (= "Category" (first headers)))
+            (is (not (some #{"pivot-grouping"} headers)))
+            (is (some #{"Row totals"} headers))
+            (is (> (count headers) 3))))))))
 
 (deftest render-sankey-chart-test
   (testing "The static-viz sankey chart renders correctly."
@@ -1247,3 +1253,50 @@
                    "ID"
                    "Product ID [external remap]"]
                   (map (comp :title second) (-> table :content second (nth 2) second last)))))))))
+
+(deftest ^:parallel render-pivot-test
+  (let [split {:rows ["R"] :columns ["C"] :values ["m"]}
+        cols  [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
+               {:name "pivot-grouping" :base_type :type/Integer} {:name "m" :base_type :type/Integer}]
+        ;; the pivot QP populates :pivot-export-options with the row/col/measure column indices
+        ;; (into the pivot-grouping-free column space: R=0, C=1, m=2)
+        peo   {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]
+               :show-row-totals false :show-column-totals false}
+        data  {:cols                 cols
+               :rows                 [["a" "x" 0 10] ["a" "y" 0 20] ["b" "x" 0 30] ["b" "y" 0 40]]
+               :format-rows?         true
+               :pivot-export-options peo}
+        pcard {:display :pivot :visualization_settings {:pivot_table.column_split split}}]
+    (testing "a pivot card renders as an assembled (transposed) pivot table"
+      (let [part (body/render :pivot :inline "UTC" pcard nil data)
+            h    (html (:content part))]
+        (is (= :table (-> part :content first)))
+        (is (nil? (:attachments part)))
+        (is (not (str/includes? h "pivot-grouping")))
+        (is (every? #(str/includes? h %) ["x" "y" "a" "b" "10" "20" "30" "40"]))
+        ;; transposed pivot: header (x, y) + a + b + grand-totals row = 4 <tr> (a flat table would be 5)
+        (is (= 4 (count (re-seq #"<tr" h))))))
+    (testing "measures are derived from the non row/col columns when the QP left :pivot-measures empty"
+      ;; happens when the split's measure name doesn't resolve to a result column (e.g. a casing mismatch)
+      (let [data (assoc data :pivot-export-options (assoc peo :pivot-measures []))
+            h    (html (:content (body/render :pivot :inline "UTC" pcard nil data)))]
+        (is (not (str/includes? h "pivot-grouping")))
+        (is (every? #(str/includes? h %) ["x" "y" "a" "b" "10" "20" "30" "40"]))))
+    (testing "a pivot card with no column split degrades to a flat table without erroring"
+      (let [part (body/render :pivot :inline "UTC"
+                              {:display :pivot :visualization_settings {}} nil
+                              {:cols [{:name "a" :base_type :type/Text} {:name "b" :base_type :type/Number}]
+                               :rows [["x" 1]]})]
+        (is (some? (:content part)))))
+    (testing "the card's conditional formatting colors the measure value cells"
+      (mt/with-dynamic-fn-redefs [js.color/make-color-selector  (fn [_ _] ::selector)
+                                  js.color/get-background-color (fn [_sel cell _col _row]
+                                                                  (when (formatter/NumericWrapper? cell)
+                                                                    "rgb(1, 2, 3)"))]
+        (let [pcard {:display                 :pivot
+                     :visualization_settings  {:pivot_table.column_split split
+                                               :table.column_formatting [{:type "single" :columns ["m"]
+                                                                          :color "#ff0000" :operator ">" :value 0}]}}
+              h     (html (:content (body/render :pivot :inline "UTC" pcard nil data)))]
+          ;; numeric cells get the (stubbed) conditional-formatting background; headers/labels don't
+          (is (str/includes? h "rgb(1, 2, 3)")))))))
