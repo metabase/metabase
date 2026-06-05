@@ -7,6 +7,8 @@ import type {
   NotificationHandlerSlack,
 } from "metabase-types/api";
 
+import { trackAlertsManagementRunHistoryViewAllClicked } from "../analytics";
+
 import { DetailsSection } from "./DetailsSection";
 import { DetailsTable } from "./DetailsTable";
 import { NotificationRunSummaryLog } from "./NotificationRunSummaryLog";
@@ -39,7 +41,7 @@ export const SidebarBody = ({
   const emailRecipientCount = emailHandler?.recipients.length ?? 0;
   const slackChannelCount = slackHandler?.recipients.length ?? 0;
 
-  const cardId = notification.payload.card_id;
+  const cardId = notification.payload?.card_id;
 
   return (
     <Stack gap="xl">
@@ -54,12 +56,18 @@ export const SidebarBody = ({
         runs={detail?.check_history}
         isLoading={isDetailFetching}
         cardId={cardId}
+        onViewAllClick={() =>
+          trackAlertsManagementRunHistoryViewAllClicked(cardId, "check")
+        }
       />
       <NotificationRunSummaryLog
         title={t`Send history`}
         runs={detail?.send_history}
         isLoading={isDetailFetching}
         cardId={cardId}
+        onViewAllClick={() =>
+          trackAlertsManagementRunHistoryViewAllClicked(cardId, "send")
+        }
       />
       {emailHandler && emailRecipientCount > 0 && (
         <SidebarSection title={getEmailRecipientLabel(emailRecipientCount)}>

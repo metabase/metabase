@@ -7,11 +7,10 @@ import {
   getSubmitButtonColor,
   getSubmitButtonLabel,
 } from "metabase/actions/utils";
-import { Button } from "metabase/common/components/Button";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
-import { Flex } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import type {
   ActionFormInitialValues,
   ParameterId,

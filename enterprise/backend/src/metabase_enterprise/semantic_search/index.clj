@@ -621,14 +621,15 @@
 
 (def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
 
-(defn- semantic-search-query
-  "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage."
-  [index embedding search-context]
-  (let [filters (search-filters search-context)
-        embedding-literal (format-embedding embedding)
-        ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
-        ;; TODO: only pull in necessary extra columns from configured filters
-        hnsw-query {:select (into common-search-columns
+(defn- hnsw-search-query
+  "Build the semantic vector subquery using the HNSW index, applying `filters` after candidate selection."
+  [index embedding-literal filters]
+  ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner
+  ;; uses the HNSW index. The filters only run in the outer query, so this is approximate: when the
+  ;; globally-closest rows are dominated by a cluster the filters reject, slightly-further survivors that
+  ;; would have passed the filters never enter the candidate set. `brute-force-search-query` is exact.
+  ;; TODO: only pull in necessary extra columns from configured filters
+  (let [hnsw-query {:select (into common-search-columns
                                   [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                     :from   [(keyword (:table-name index))]
                     :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
@@ -636,13 +637,52 @@
         base-query {:with [[:vector_candidates hnsw-query]]
                     :select (into common-search-columns
                                   [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                                   [:distance :semantic_score]])
+                                   [:distance :semantic_distance]])
                     :from [:vector_candidates]
                     :where [:<= :distance max-cosine-distance]
                     :order-by [[:semantic_rank :asc]]}]
     (if filters
       (update base-query :where #(into [:and] [% filters]))
       base-query)))
+
+(defn- brute-force-search-query
+  "Build the semantic vector subquery as an exact, filter-first search over the rows matching `filters`."
+  [index embedding-literal filters]
+  ;; The filtered rows and their cosine distance are computed once, inside a MATERIALIZED CTE: that fences
+  ;; the planner off the HNSW index (so the scan is exact) and stores the `distance` column, so the outer
+  ;; query reads it rather than recomputing it. The cutoff and ranking run in the outer query.
+  ;; We deliberately don't push the cutoff into the CTE to avoid materializing rows beyond it: that would
+  ;; either recompute the distance for the qual, or need a subquery optimization fence (Postgres pulls a
+  ;; plain subquery back up and re-inlines the expression) -- not worth it for an exact scan that already
+  ;; touches every filtered row.
+  (let [filtered-query (cond-> {:select (into common-search-columns
+                                              [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
+                                :from   [(keyword (:table-name index))]}
+                         filters (assoc :where filters))]
+    {:with     [[:vector_candidates filtered-query :materialized]]
+     :select   (into common-search-columns
+                     [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
+                      [:distance :semantic_distance]])
+     :from     [:vector_candidates]
+     :where    [:<= :distance max-cosine-distance]
+     :order-by [[:semantic_rank :asc]]
+     :limit    (semantic-settings/semantic-search-results-limit)}))
+
+(defn- vector-search-strategy
+  "Resolve the vector-search strategy for `search-context`, falling back to the configured default setting."
+  [search-context]
+  (or (:vector-search-strategy search-context)
+      (semantic-settings/semantic-search-vector-strategy)))
+
+(defn- semantic-search-query
+  "Build the semantic vector subquery, dispatching on the resolved [[vector-search-strategy]].
+  `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed."
+  [index embedding search-context]
+  (let [filters           (search-filters search-context)
+        embedding-literal (format-embedding embedding)]
+    (case (vector-search-strategy search-context)
+      :brute-force (brute-force-search-query index embedding-literal filters)
+      (hnsw-search-query index embedding-literal filters))))
 
 (defn- flatten-ctes
   "Flatten nested :with clauses into a single top-level :with.
@@ -654,9 +694,10 @@
   (if-not (:with query)
     {:ctes [] :query query}
     (let [ctes (reduce
-                (fn [acc [cte-name cte-query]]
+                ;; `opts` carries any trailing CTE options (e.g. `:materialized`) so they survive hoisting.
+                (fn [acc [cte-name cte-query & opts]]
                   (let [{:keys [ctes query]} (flatten-ctes cte-query)]
-                    (into acc (conj ctes [cte-name query]))))
+                    (into acc (conj ctes (into [cte-name query] opts)))))
                 []
                 (:with query))]
       {:ctes ctes
@@ -682,6 +723,7 @@
                     :select (into
                              (mapv hybrid-select common-search-columns)
                              [[:v.semantic_rank :semantic_rank]
+                              [:v.semantic_distance :semantic_distance]
                               [:t.keyword_rank :keyword_rank]])
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
@@ -702,7 +744,7 @@
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
         full-query {:with all-ctes
-                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :keyword_rank]
+                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :semantic_distance :keyword_rank]
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))

@@ -1,0 +1,489 @@
+import { Component } from "react";
+import { t } from "ttag";
+import _ from "underscore";
+
+import { fieldApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
+import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
+import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
+import { type DispatchFn, connect } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Box } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
+import {
+  getDefaultParameterOptions,
+  getDefaultParameterWidgetType,
+  getParameterOptionsForField,
+} from "metabase-lib/v1/parameters/utils/template-tag-options";
+import type {
+  DimensionReference,
+  EmbeddingParameterVisibility,
+  FieldId,
+  Parameter,
+  ParameterValuesConfig,
+  RowValue,
+  TableId,
+  TemplateTag,
+  TemplateTagId,
+  TemplateTagType,
+  TemporalUnit,
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
+
+import TagEditorParamS from "./TagEditorParam.module.css";
+import {
+  DefaultRequiredValueControl,
+  FieldMappingSelect,
+  FilterWidgetLabelInput,
+  FilterWidgetTypeSelect,
+  TableMappingSelect,
+  VariableTypeSelect,
+} from "./TagEditorParamParts";
+import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
+import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
+import {
+  ContainerLabel,
+  InputContainer,
+} from "./TagEditorParamParts/TagEditorParam";
+
+interface StateProps {
+  metadata: Metadata;
+}
+
+interface DispatchProps {
+  fetchField: (fieldId: FieldId, force?: boolean) => void;
+}
+
+interface OwnProps {
+  tag: TemplateTag;
+  /**
+   * parameter can be undefined when it's an incomplete "Field Filter", i.e. when
+   * `field` ("Field to map to" input) is not set yet.
+   */
+  parameter: Parameter | undefined;
+  embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
+  database?: Database | null;
+  databases: Database[];
+  /**
+   * The originally saved question, used to restore a tag's value-source config
+   * when its type is switched back to the original. Optional: contexts without a
+   * saved original (e.g. the standalone query editor) simply pass nothing.
+   */
+  originalQuestion?: Question;
+  setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
+  setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
+  parametersAreUserVisible?: boolean;
+}
+
+function mapStateToProps(state: State) {
+  return {
+    metadata: getMetadata(state),
+  };
+}
+
+const mapDispatchToProps = (dispatch: DispatchFn): DispatchProps => {
+  return {
+    async fetchField(fieldId, force) {
+      const field = await runRtkEndpoint(
+        { id: fieldId },
+        dispatch,
+        fieldApi.endpoints.getField,
+        { forceRefetch: force ?? false },
+      );
+      const remapId = field?.dimensions?.[0]?.human_readable_field_id;
+      if (remapId != null) {
+        await runRtkEndpoint(
+          { id: remapId },
+          dispatch,
+          fieldApi.endpoints.getField,
+          { forceRefetch: force ?? false },
+        );
+      }
+    },
+  };
+};
+
+const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
+  isMultiSelect: false,
+  values_query_type: undefined,
+  values_source_type: undefined,
+  values_source_config: undefined,
+  temporal_units: undefined,
+};
+
+class TagEditorParamInner extends Component<
+  OwnProps & StateProps & DispatchProps
+> {
+  UNSAFE_componentWillMount() {
+    const { tag, fetchField } = this.props;
+
+    if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
+      const fieldId = tag.dimension[1];
+      // Field values might already have been loaded so force the load of other field information too
+      fetchField(fieldId, true);
+    }
+  }
+
+  getTemplateTagConfigAfterTypeChange = (
+    newType: TemplateTagType,
+  ): ParameterValuesConfig => {
+    const { tag, parameter, originalQuestion } = this.props;
+    if (!parameter) {
+      return EMPTY_VALUES_CONFIG;
+    }
+
+    const newConfig: ParameterValuesConfig = {
+      ...EMPTY_VALUES_CONFIG,
+      isMultiSelect: isSingleOrMultiSelectable(parameter)
+        ? parameter.isMultiSelect
+        : false,
+    };
+    if (!originalQuestion) {
+      return newConfig;
+    }
+
+    const originalQuery = originalQuestion.query();
+    const originalQueryInfo = Lib.queryDisplayInfo(originalQuery);
+    if (!originalQueryInfo.isNative) {
+      return newConfig;
+    }
+
+    const originalTag = Lib.templateTags(originalQuery)[tag.name];
+    const originalParameter = originalQuestion
+      .parameters()
+      .find(({ id }) => id === parameter.id);
+    if (!originalTag || originalTag.type !== newType || !originalParameter) {
+      return newConfig;
+    }
+
+    return {
+      ...newConfig,
+      values_source_type: originalParameter.values_source_type,
+      values_source_config: originalParameter.values_source_config,
+      values_query_type: originalParameter.values_query_type,
+    };
+  };
+
+  setType = (type: TemplateTagType) => {
+    const { tag, setTemplateTag, setParameterValue, setTemplateTagConfig } =
+      this.props;
+
+    if (tag.type !== type) {
+      setTemplateTag({
+        ...tag,
+        type: type,
+        default: undefined,
+        dimension: undefined,
+        alias: undefined,
+        "emit-alias": type === "table" ? true : undefined,
+        "widget-type": type === "dimension" ? "none" : undefined,
+        "table-id": undefined,
+      });
+
+      setParameterValue(tag.id, null);
+      setTemplateTagConfig(tag, this.getTemplateTagConfigAfterTypeChange(type));
+    }
+  };
+
+  setWidgetType = (widgetType: string) => {
+    const { tag, setTemplateTag, setParameterValue } = this.props;
+
+    if (tag["widget-type"] !== widgetType) {
+      const newTag = {
+        ...tag,
+        "widget-type": widgetType,
+      };
+
+      setTemplateTag({
+        ...newTag,
+        // When we change widget types (e.g. date/relative -> date/single)
+        // the previous default is likely to be incorrect
+        default: null,
+        options: getDefaultParameterOptions(newTag),
+      });
+
+      setParameterValue(tag.id, null);
+    }
+  };
+
+  setRequired = (required: boolean) => {
+    const { tag, parameter, setTemplateTag, setParameterValue } = this.props;
+
+    if (tag.required !== required) {
+      setTemplateTag({ ...tag, required: required });
+    }
+
+    if (!parameter) {
+      // this handler is attached to a component rendered only when parameter is truthy
+      // so this case should never happen
+      return;
+    }
+
+    if (!parameter.value && required && tag.default) {
+      setParameterValue(tag.id, tag.default);
+    }
+  };
+
+  setQueryType = (queryType: ValuesQueryType) => {
+    const { tag, parameter, setTemplateTagConfig } = this.props;
+
+    setTemplateTagConfig(tag, {
+      ...(parameter ?? {}),
+      values_query_type: queryType,
+    });
+  };
+
+  setSourceSettings = (
+    sourceType: ValuesSourceType,
+    sourceConfig: ValuesSourceConfig,
+  ) => {
+    const { tag, parameter, setTemplateTagConfig } = this.props;
+
+    setTemplateTagConfig(tag, {
+      ...(parameter ?? {}),
+      values_source_type: sourceType,
+      values_source_config: sourceConfig,
+    });
+  };
+
+  setTemplateTagAttribute(attr: keyof TemplateTag, val: any) {
+    // only register an update if the value actually changes
+    if (this.props.tag[attr] !== val) {
+      this.props.setTemplateTag({
+        ...this.props.tag,
+        [attr]: val?.length > 0 ? val : null,
+      });
+    }
+  }
+
+  setDimension = (fieldId: FieldId) => {
+    const { tag, setTemplateTag, metadata } = this.props;
+
+    // TODO Fix raw MBQL usage
+    const dimension: DimensionReference = ["field", fieldId, null];
+
+    if (!_.isEqual(tag.dimension, dimension)) {
+      const field = metadata.field(dimension[1]);
+      if (!field) {
+        return;
+      }
+
+      const newTag: TemplateTag = {
+        ...tag,
+        dimension,
+        alias: undefined,
+        ...(tag.type === "dimension"
+          ? { "widget-type": getDefaultParameterWidgetType(tag, field) }
+          : {}),
+      };
+
+      setTemplateTag({
+        ...newTag,
+        options: getDefaultParameterOptions(newTag),
+      });
+    }
+  };
+
+  setTableId = (tableId: TableId | undefined) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag["table-id"] !== tableId) {
+      setTemplateTag({ ...tag, "table-id": tableId });
+    }
+  };
+
+  setEmitAlias = (emitAlias: boolean) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag["emit-alias"] !== emitAlias) {
+      setTemplateTag({ ...tag, "emit-alias": emitAlias });
+    }
+  };
+
+  setAlias = (alias: string | undefined) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag.alias !== alias) {
+      setTemplateTag({ ...tag, alias });
+    }
+  };
+
+  getFilterWidgetTypeValue = (tag: TemplateTag) => {
+    // avoid `undefined` value because it makes the component "uncontrollable"
+    // (see Uncontrollable.jsx, metabase#13825)
+    const widgetType = tag["widget-type"] || "none";
+
+    const isOldWidgetType =
+      widgetType.startsWith("location") || widgetType === "category";
+
+    // old parameters with widget-type of `location/state` etc. need be remapped to string/= so that the
+    // dropdown is correctly populated with a set option
+    if (isOldWidgetType) {
+      return "string/=";
+    }
+
+    return widgetType;
+  };
+
+  render() {
+    const {
+      tag,
+      database,
+      databases,
+      metadata,
+      parameter,
+      embeddedParameterVisibility,
+      setTemplateTagConfig,
+      parametersAreUserVisible = true,
+    } = this.props;
+
+    const isDimension = tag.type === "dimension";
+    const isTemporalUnit = tag.type === "temporal-unit";
+    const isTable = tag.type === "table";
+    const field = Array.isArray(tag.dimension)
+      ? metadata.field(tag.dimension[1])
+      : null;
+    const widgetOptions =
+      field != null ? getParameterOptionsForField(field) : [];
+
+    return (
+      <Box
+        className={TagEditorParamS.TagContainer}
+        data-testid={`tag-editor-variable-${tag.name}`}
+      >
+        <ContainerLabel>{t`Variable name`}</ContainerLabel>
+        <Box component="h3" className={TagEditorParamS.TagName}>
+          {tag.name}
+        </Box>
+        <VariableTypeSelect value={tag.type} onChange={this.setType} />
+
+        {(isDimension || isTemporalUnit) && (
+          <FieldMappingSelect
+            tag={tag}
+            field={field}
+            database={database}
+            databases={databases}
+            setFieldFn={this.setDimension}
+          />
+        )}
+
+        {isTable && (
+          <TableMappingSelect
+            tag={tag}
+            database={database}
+            databases={databases}
+            onChange={this.setTableId}
+            onChangeEmitAlias={this.setEmitAlias}
+          />
+        )}
+
+        {(isDimension || isTemporalUnit) && field != null && (
+          <FieldAliasInput tag={tag} onChange={this.setAlias} />
+        )}
+
+        {isDimension && field != null && (
+          <FilterWidgetTypeSelect
+            tag={tag}
+            value={this.getFilterWidgetTypeValue(tag)}
+            onChange={this.setWidgetType}
+            options={widgetOptions}
+          />
+        )}
+
+        {parametersAreUserVisible &&
+          ((!isDimension && !isTable) || widgetOptions.length > 0) && (
+            <FilterWidgetLabelInput
+              tag={tag}
+              onChange={(value) =>
+                this.setTemplateTagAttribute("display-name", value)
+              }
+            />
+          )}
+
+        {parametersAreUserVisible && parameter && isTemporalUnit && (
+          <>
+            <ContainerLabel>{t`Time grouping options`}</ContainerLabel>
+            <Box mb="xl">
+              <TemporalUnitSettings
+                parameter={parameter}
+                onChangeTemporalUnits={(newTemporalUnits) => {
+                  setTemplateTagConfig(tag, {
+                    temporal_units: newTemporalUnits,
+                  });
+
+                  if (tag.default != null) {
+                    if (
+                      !newTemporalUnits.includes(tag.default as TemporalUnit)
+                    ) {
+                      // reset value as it's not on the new list of available options
+                      this.setTemplateTagAttribute("default", null);
+                      this.props.setParameterValue(tag.id, null);
+                    }
+                  }
+                }}
+              />
+            </Box>
+          </>
+        )}
+
+        {parametersAreUserVisible &&
+          parameter &&
+          canUseCustomSource(parameter) && (
+            <InputContainer>
+              <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
+              <ValuesSourceSettings
+                parameter={parameter}
+                onChangeQueryType={this.setQueryType}
+                onChangeSourceSettings={this.setSourceSettings}
+              />
+            </InputContainer>
+          )}
+
+        {parametersAreUserVisible &&
+          parameter &&
+          isSingleOrMultiSelectable(parameter) && (
+            <ParameterMultiSelectInput
+              tag={tag}
+              parameter={parameter}
+              onChangeMultiSelect={(isMultiSelect) =>
+                setTemplateTagConfig(tag, { isMultiSelect })
+              }
+            />
+          )}
+
+        {parameter && (
+          <DefaultRequiredValueControl
+            tag={tag}
+            parameter={parameter}
+            isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
+            onChangeDefaultValue={(value) => {
+              this.setTemplateTagAttribute("default", value);
+              this.props.setParameterValue(tag.id, value);
+            }}
+            onChangeRequired={this.setRequired}
+            parametersAreUserVisible={parametersAreUserVisible}
+          />
+        )}
+      </Box>
+    );
+  }
+}
+
+export const TagEditorParam = connect<
+  StateProps,
+  DispatchProps,
+  OwnProps,
+  State
+>(
+  mapStateToProps,
+  mapDispatchToProps,
+)(TagEditorParamInner);

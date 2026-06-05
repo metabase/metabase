@@ -9,7 +9,7 @@ import { CheckBox } from "metabase/common/components/CheckBox";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import { registerVisualization } from "metabase/visualizations/index";
 import { formatValue } from "metabase/visualizations/lib/formatting";
@@ -18,7 +18,7 @@ import { Table } from "metabase/visualizations/visualizations/Table/Table";
 
 import { getColumnName, getRowValuesByColumns } from "../../lib/mode";
 
-import { HeaderCell, RowCell } from "./AuditTableVisualization.styled";
+import S from "./AuditTableVisualization.module.css";
 
 const propTypes = {
   series: PropTypes.array,
@@ -137,11 +137,14 @@ export class AuditTableVisualization extends Component {
                 sorting && sorting.column === getColumnName(column);
 
               return (
-                <HeaderCell
+                <Box
+                  component="th"
                   key={colIndex}
-                  isSortable={isSortable}
-                  isSortedByColumn={isSortedByColumn}
-                  isRightAligned={isColumnRightAligned(column)}
+                  className={cx(S.headerCell, {
+                    [S.sortable]: isSortable,
+                    [S.sortedByColumn]: isSortedByColumn,
+                    [S.rightAligned]: isColumnRightAligned(column),
+                  })}
                   onClick={() => this.handleColumnHeaderClick(column)}
                 >
                   {displayNameForColumn(cols[colIndex])}
@@ -152,7 +155,7 @@ export class AuditTableVisualization extends Component {
                       size={10}
                     />
                   )}
-                </HeaderCell>
+                </Box>
               );
             })}
           </tr>
@@ -195,10 +198,13 @@ export class AuditTableVisualization extends Component {
                 };
 
                 return (
-                  <RowCell
+                  <Box
+                    component="td"
                     key={colIndex}
-                    isClickable={clickable}
-                    isRightAligned={isColumnRightAligned(column)}
+                    className={cx({
+                      [S.clickable]: clickable,
+                      [S.rightAligned]: isColumnRightAligned(column),
+                    })}
                     onClick={handleClick}
                   >
                     <div
@@ -223,7 +229,7 @@ export class AuditTableVisualization extends Component {
                         local: true,
                       })}
                     </div>
-                  </RowCell>
+                  </Box>
                 );
               })}
             </tr>
