@@ -23,10 +23,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
       - name: Add `latest` dist-tag to npm release
         run: |
-          echo //registry.npmjs.org/:_authToken="${NPM_RELEASE_TOKEN}" > .npmrc
           npm dist-tag add @metabase/embedding-sdk-react@${{ inputs.version }} latest
           echo "Tagged @metabase/embedding-sdk-react@${{ inputs.version }} as latest" >> "$GITHUB_STEP_SUMMARY"
         env:
-          NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
