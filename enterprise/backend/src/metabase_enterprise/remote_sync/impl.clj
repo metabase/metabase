@@ -222,15 +222,6 @@
     {:conflicts (vec all-conflicts)
      :summary (into #{} (map :category) all-conflicts)}))
 
-(defn- branch-changed-since-scheduling?
-  "Returns true if `pre-task-branch` was captured by the async-* function and the
-   `remote-sync-branch` setting has since drifted to a different value. Used as a
-   defense-in-depth check against any future code path that bypasses the operation-level
-   guards and mutates the setting between scheduling and the work running."
-  [pre-task-branch]
-  (and (some? pre-task-branch)
-       (not= pre-task-branch (settings/remote-sync-branch))))
-
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
 
@@ -246,7 +237,8 @@
   Returns a map with :status (either :success or :error), :version, and :message keys. Various exceptions may be
   thrown during import and are caught and converted to error status maps."
   [^SourceSnapshot snapshot task-id & {:keys [force? pre-task-branch]}]
-  (when (branch-changed-since-scheduling? pre-task-branch)
+  (when (and (some? pre-task-branch)
+             (not= pre-task-branch (settings/remote-sync-branch)))
     (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
                pre-task-branch (settings/remote-sync-branch))
     (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
