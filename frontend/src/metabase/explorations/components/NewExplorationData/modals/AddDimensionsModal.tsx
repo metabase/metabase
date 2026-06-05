@@ -128,9 +128,9 @@ export function AddDimensionsModal({
   const tabs = showTabs ? (
     <Tabs value={activeTab} onChange={(value) => value && setTab(value)}>
       <Tabs.List>
-        <Tabs.Tab value={ALL_TAB}>{t`All`}</Tabs.Tab>
+        <Tabs.Tab value={ALL_TAB} px="md">{t`All`}</Tabs.Tab>
         {presentTypes.map((key) => (
-          <Tabs.Tab key={key} value={key}>
+          <Tabs.Tab key={key} value={key} px="md">
             {getDimensionTypeLabel(key)}
           </Tabs.Tab>
         ))}

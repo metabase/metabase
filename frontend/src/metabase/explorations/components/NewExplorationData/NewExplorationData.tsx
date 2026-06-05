@@ -234,7 +234,9 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
 
       <Box flex={1} mih={0} mt="md" style={{ overflowY: "auto" }}>
         {blocks.length === 0 ? (
-          <ResearchPlanEmptyState />
+          <Center h="100%" mt="-3rem">
+            <ResearchModeIntro />
+          </Center>
         ) : (
           <Stack gap="md">
             {blocks.map((block) =>
@@ -300,13 +302,5 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         selection={selection}
       />
     </Stack>
-  );
-}
-
-function ResearchPlanEmptyState() {
-  return (
-    <Center h="100%">
-      <ResearchModeIntro />
-    </Center>
   );
 }
