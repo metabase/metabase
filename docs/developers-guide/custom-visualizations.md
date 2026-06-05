@@ -73,7 +73,7 @@ The scaffold ships a complete, working example: a chart that shows a thumbs-up e
 
 To develop your plugin against a live Metabase with hot reload:
 
-1. Start Metabase with the following `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable. Like any Metabase that runs custom visualizations, this local instance needs a [Pro or Enterprise](https://www.metabase.com/pricing/) token.
+1. Start Metabase with the `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable. Like any Metabase that runs custom visualizations, this local instance needs a [Pro or Enterprise](https://www.metabase.com/pricing/) token.
 2. Run `npm run dev` in your project. By default, the dev server listens on `http://localhost:5174`.
 3. In Metabase, go to **Admin** > **Settings** > **Custom visualizations** > **Development** and set the **Dev server URL** to your dev server's address.
 
@@ -348,7 +348,7 @@ For layout math (like fitting labels or sizing axes), `measureText(text, { size,
 
 To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 
-Canvas-based charting libraries (ECharts, Chart.js, and most chart libraries) can't read CSS variables, so there you branch on the `colorScheme` prop (`"light"` or `"dark"`) and pass explicit colors. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
+Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you branch on the `colorScheme` prop (`"light"` or `"dark"`) and pass explicit colors. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
 
 ## Bundling assets
 
@@ -356,7 +356,7 @@ The build produces a single JavaScript bundle (`dist/index.js`), and the [icon](
 
 Bundled images always render, including when an admin has turned on [Restrict image domains](../configuring-metabase/settings.md#restrict-image-domains). That Content Security Policy setting limits which external hosts images can load from, but inline and `data:` images ship inside your bundle, so they're never blocked.
 
-Your `npm` dependencies are bundled in too. You can pull in a charting library (the calendar-heatmap example bundles [ECharts](https://echarts.apache.org/)), but everything ships in that single `dist/index.js`, so the whole bundle (your code plus its dependencies) has to stay under the [5 MiB limit](#build-and-package-the-plugin).
+Your `npm` dependencies are bundled in too. You can pull in a charting library (the calendar-heatmap example bundles [ECharts](https://echarts.apache.org/)), but everything ships in that single `dist/index.js`, so your code and its dependencies all count toward the packaged plugin's [size limits](#build-and-package-the-plugin).
 
 So anything your visualization renders has to live inside that bundle. For images, you have a few options:
 
@@ -417,7 +417,7 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 
 ### Custom visualizations only render in the live app
 
-Custom visualizations only render in the live, interactive app. Static renders, like dashboard subscriptions sent by [email](../dashboards/subscriptions.md), Slack, or webhook, fall back to a default visualization for any card that uses a custom visualization. The same goes for [embedded](../embedding/introduction.md) questions and dashboards: a card that uses a custom visualization falls back to a default visualization.
+Custom visualizations only render in the live, interactive app. Static renders, like dashboard subscriptions sent by [email](../dashboards/subscriptions.md), Slack, or webhook, fall back to a table for any card that uses a custom visualization. The same goes for [embedded](../embedding/introduction.md) questions and dashboards: a card that uses a custom visualization falls back to a table.
 
 ## Example plugins
 
