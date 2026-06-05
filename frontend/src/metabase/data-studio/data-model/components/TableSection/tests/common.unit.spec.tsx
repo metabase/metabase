@@ -71,28 +71,22 @@ describe("TableSection", () => {
       );
 
       expect(
-        await screen.findByRole("menuitem", { name: /Schema viewer/ }),
+        await screen.findByRole("menuitem", { name: /View Schema/ }),
       ).toBeInTheDocument();
     });
 
-    it("should not expose sync actions when the database is datawarehouse attached", async () => {
+    it("should not expose sync actions when the database is datawarehouse attached", () => {
       setup({
         database: createMockDatabase({ is_attached_dwh: true }),
       });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "More actions" }),
-      );
-
-      // Schema viewer is always available, but the sync actions are not.
+      // With no sync actions and no source replacement, the menu collapses to a
+      // standalone schema viewer link rather than a "More actions" menu.
       expect(
-        await screen.findByRole("menuitem", { name: /Schema viewer/ }),
+        screen.getByRole("link", { name: /View Schema/ }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("menuitem", { name: /Re-sync schema/ }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("menuitem", { name: /Re-scan field values/ }),
+        screen.queryByRole("button", { name: "More actions" }),
       ).not.toBeInTheDocument();
     });
   });
