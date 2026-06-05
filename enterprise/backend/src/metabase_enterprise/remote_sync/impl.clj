@@ -508,57 +508,52 @@
     (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
                     {:pre-task-branch pre-task-branch
                      :current-branch  (settings/remote-sync-branch)})))
-  (if snapshot
-    (let [sync-timestamp (t/instant)]
-      (try
-        (analytics/inc! :metabase-remote-sync/exports)
-        (serdes/with-cache
-          (let [dirty-rows (remote-sync.object/dirty-rows)
-                plan       (when (and (seq dirty-rows) (not (needs-full-reconcile? snapshot)))
-                             (incremental-plan snapshot dirty-rows))]
-            (if plan
-              ;; Incremental fast-path: write only the changed entities and delete only the removed
-              ;; ones, preserving every other file. Avoids re-serializing the entire synced set.
-              (let [{:keys [upserts delete-paths synced removed-ids]} plan]
-                (remote-sync.task/update-progress! task-id 0.3)
-                (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
-                  (remote-sync.task/set-version! task-id written-version))
-                (doseq [{:keys [id file_path]} synced]
-                  (t2/update! :model/RemoteSyncObject :id id
-                              {:status "synced" :file_path file_path :status_changed_at sync-timestamp}))
-                (when (seq removed-ids)
-                  (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-                (log/infof "Remote sync incremental export: wrote %d, deleted %d"
-                           (count upserts) (count delete-paths))
-                {:status :success
-                 :version (source.p/version snapshot)})
-              ;; Full export: re-serialize the entire synced set (first export, creates, name
-              ;; collisions, collection or path-model changes, or missing file_path).
-              (if-let [models (spec/extract-entities-for-export)]
-                (do
-                  (remote-sync.task/update-progress! task-id 0.3)
-                  (let [{:keys [version entries]} (source/store! models snapshot task-id message)]
-                    (remote-sync.task/set-version! task-id version)
-                    (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-                    (record-exported-paths! entries))
-                  {:status :success
-                   :version (source.p/version snapshot)})
-                {:status :error
-                 :message "No remote-syncable content available."}))))
-        (catch Exception e
-          (if (:cancelled? (ex-data e))
-            (log/info "Export to git repository was cancelled")
-            (do
-              (log/errorf e "Failed to export to git repository: %s" (ex-message e))
-              (analytics/inc! :metabase-remote-sync/exports-failed)
-              (remote-sync.task/fail-sync-task! task-id (ex-message e))
-              {:status :error
-               :version (source.p/version snapshot)
-               :message (format "Failed to export to git repository: %s" (ex-message e))})))
-        (finally
-          (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis)))))
-    {:status :error
-     :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
+
+  (when (not snapshot)
+    (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable." {})))
+
+  (let [sync-timestamp (t/instant)]
+    (try
+      (analytics/inc! :metabase-remote-sync/exports)
+      (serdes/with-cache
+        (let [dirty-rows (remote-sync.object/dirty-rows)
+              plan       (when (and (seq dirty-rows) (not (needs-full-reconcile? snapshot)))
+                           (incremental-plan snapshot dirty-rows))]
+          (if plan
+            ;; Incremental fast-path: write only the changed entities and delete only the removed
+            ;; ones, preserving every other file. Avoids re-serializing the entire synced set.
+            (let [{:keys [upserts delete-paths synced removed-ids]} plan]
+              (remote-sync.task/update-progress! task-id 0.3)
+              (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
+                (remote-sync.task/set-version! task-id written-version))
+              (doseq [{:keys [id file_path]} synced]
+                (t2/update! :model/RemoteSyncObject :id id
+                            {:status "synced" :file_path file_path :status_changed_at sync-timestamp}))
+              (when (seq removed-ids)
+                (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+              (log/infof "Remote sync incremental export: wrote %d, deleted %d"
+                         (count upserts) (count delete-paths))
+              {:status :success})
+            ;; Full export: re-serialize the entire synced set (first export, creates, name
+            ;; collisions, collection or path-model changes, or missing file_path).
+            (let [models (spec/extract-entities-for-export)]
+              (when (not models)
+                (throw (ex-info "No remote-syncable content available." {})))
+              (remote-sync.task/update-progress! task-id 0.3)
+              (let [{:keys [version entries]} (source/store! models snapshot task-id message)]
+                (remote-sync.task/set-version! task-id version)
+                (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                (record-exported-paths! entries))
+              {:status :success}))))
+      (catch Exception e
+        ;; handle-task-result! records the failure on this result, and skips entirely when the task
+        ;; was already cancelled (ended_at set) — so cancellation needs no special case here.
+        (log/errorf e "Failed to export to git repository: %s" (ex-message e))
+        (analytics/inc! :metabase-remote-sync/exports-failed)
+        {:status :error
+         :message (format "Failed to export to git repository: %s" (ex-message e))})
+      (finally
+        (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))))
 
 (defn create-task-with-lock!
   "Takes a cluster-wide lock and either returns an existing in-progress RemoteSyncTask ID or creates a new one.
