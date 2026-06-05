@@ -107,6 +107,7 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
     query,
     card,
     questionId,
+    token,
     title,
     withDownloads,
     isSaveEnabled,
@@ -141,6 +142,11 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
     () => resolveDeserializedCard({ card, query }),
     [card, query],
   );
+
+  // For query prop: `useMetabaseQueryObject` returns `null` when SDK bundle is still loading
+  if (query === null && questionId === undefined && token === undefined) {
+    return null;
+  }
 
   return (
     <SdkQuestion

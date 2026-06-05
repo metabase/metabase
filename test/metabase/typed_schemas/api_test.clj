@@ -237,6 +237,7 @@
                                              :name         "Orders"
                                              :databaseId   1
                                              :databaseName "Boba"
+                                             :tableName    "orders"
                                              :fields       {"paymentMethod" {:name         "payment_method"
                                                                              :displayName  "Payment Method"
                                                                              :baseType     "type/Text"
@@ -315,12 +316,14 @@
                                                :columns       [{:name "count" :jsType "number"}]}}})]
     (is (str/includes? body (str "/" "/ Display name: Payment Method")))
     (is (str/includes? body (str "/" "/ Semantic type: type/Category")))
+    (is (not (str/includes? body (str "/" "/ Generated key:"))))
+    (is (not (str/includes? body (str "/" "/ Table: orders"))))
     (is (not (str/includes? body (str "/" "/ id: 3970"))))
     (is (str/includes? body "paymentMethod: {\n        name: \"payment_method\""))
     (is (str/includes? body "fieldId: 3970"))
     (is (str/includes? body "tableId: 10"))
     (is (not (str/includes? body "displayName: \"Payment Method\"")))
-    (is (not (str/includes? body "baseType: \"type/Text\"")))
+    (is (str/includes? body "baseType: \"type/Text\""))
     (is (str/includes? body (str "/" "/ Description: Total order revenue")))
     (is (str/includes? body "databaseId: 1"))
     (is (str/includes? body "sourceTableId: 10"))

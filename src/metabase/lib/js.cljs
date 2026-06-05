@@ -559,6 +559,22 @@
    (-> (lib.core/available-binning-strategies a-query stage-number x)
        to-array)))
 
+(defn- binning-options-js->clj
+  [binning-options]
+  (some-> binning-options
+          (js->clj :keywordize-keys true)
+          (update :strategy keyword)))
+
+(defn ^:export binning-strategy?
+  "Returns true if `binning-option` matches the provided JS binning options.
+
+  `binning-option` should be one of the opaque values returned by [[available-binning-strategies]].
+  `binning-options` should be a JS object like `{ strategy: \"num-bins\", \"num-bins\": 10 }`.
+
+  > **Code health:** Healthy"
+  [binning-option binning-options]
+  (lib.binning/strategy= binning-option (binning-options-js->clj binning-options)))
+
 (def ^:private aggregation-display-name-patterns-for-locale
   "Cached aggregation patterns, keyed by locale."
   (memoize/lru (fn [_locale] (lib.aggregation/aggregation-display-name-patterns)) :lru/threshold 2))
@@ -2122,6 +2138,15 @@
   [a-query stage-number]
   (to-array (lib.core/available-measures a-query stage-number)))
 
+(defn ^:export measure-metadata
+  "Given an integer `measure-id`, returns the Measure's metadata.
+
+  Returns `nil` (JS `null`) if no matching measure is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider measure-id]
+  (lib.metadata/measure query-or-metadata-provider measure-id))
+
 (defn ^:export available-metrics
   "Returns a JS array of opaque metadata values for those Metrics that could be used as aggregations on
   `a-query`.
@@ -2129,6 +2154,15 @@
   > **Code health:** Healthy."
   [a-query stage-number]
   (to-array (lib.core/available-metrics a-query stage-number)))
+
+(defn ^:export metric-metadata
+  "Given an integer `metric-id`, returns the Metric's metadata.
+
+  Returns `nil` (JS `null`) if no matching metric is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider metric-id]
+  (lib.metadata/metric query-or-metadata-provider metric-id))
 
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 

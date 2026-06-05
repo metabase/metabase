@@ -2,11 +2,23 @@ import type {
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
+import type {
+  BooleanFilterOperator,
+  DefaultFilterOperator,
+  ExcludeDateFilterOperator,
+  FilterOperator as LibFilterOperator,
+  StringFilterOperator as LibStringFilterOperator,
+  NumberFilterOperator,
+  SpecificDateFilterOperator,
+  TimeFilterOperator,
+} from "metabase-lib/common";
+import type { BinningOptions } from "metabase-lib/query";
 import type { TemporalUnit } from "metabase-types/api";
 
 import type {
   FieldSchema,
   InferSchema,
+  MetricSchema,
   QueryData,
   QuestionSchema,
   SchemaColumn,
@@ -15,7 +27,6 @@ import type {
   TableSchema,
 } from "../data-schema";
 
-export type ID = string | number;
 type Values<T> = T[keyof T];
 type UnionToIntersection<TUnion> = (
   TUnion extends unknown ? (value: TUnion) => void : never
@@ -50,13 +61,13 @@ type DimensionInput<TEntity> = [DimensionValues<TEntity>] extends [never]
   : DimensionValues<TEntity>;
 
 export type MetricReference<TMappedTableId extends number = number> = {
-  id: ID;
-  databaseId?: ID;
-  sourceTableId?: ID;
-  sourceCardId?: ID;
+  id: number;
+  databaseId?: number;
+  sourceTableId?: number;
+  sourceCardId?: number;
   mappedTableIds: readonly TMappedTableId[];
   columns?: readonly SchemaColumn[];
-  dimensions?: Record<string, Record<string, FieldSchema>>;
+  dimensions?: MetricSchema["dimensions"];
 };
 
 export type SegmentReference<TTableId extends number = number> = {
@@ -195,63 +206,22 @@ type MetricBreakoutForMetric<TMetric> = [
   : MetabaseBreakoutObjectForDimension<MetricDimensionValues<TMetric>>;
 
 export type FilterOperator =
-  | "="
-  | "!="
-  | ">"
-  | ">="
-  | "<"
-  | "<="
-  | "between"
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-with"
-  | "is-empty"
-  | "not-empty"
-  | "is-null"
-  | "not-null"
+  | Exclude<LibFilterOperator, "inside">
   | "time-interval";
 
 type UnaryFilterOperator = "is-empty" | "not-empty" | "is-null" | "not-null";
 
 type BetweenFilterOperator = "between";
 
-type StringFilterOperator =
-  | "="
-  | "!="
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-with"
-  | "is-empty"
-  | "not-empty"
-  | "is-null"
-  | "not-null";
-
-type NumberFilterOperator =
-  | "="
-  | "!="
-  | ">"
-  | ">="
-  | "<"
-  | "<="
-  | "between"
-  | "is-null"
-  | "not-null";
-
-type BooleanFilterOperator = "=" | "is-null" | "not-null";
+type StringFilterOperator = LibStringFilterOperator | DefaultFilterOperator;
 
 type DateFilterOperator =
-  | "="
-  | "!="
-  | ">"
+  | SpecificDateFilterOperator
+  | ExcludeDateFilterOperator
+  | TimeFilterOperator
   | ">="
-  | "<"
   | "<="
-  | "between"
-  | "time-interval"
-  | "is-null"
-  | "not-null";
+  | "time-interval";
 
 type FilterOperatorForDimension<TDimension> = TDimension extends {
   jsType?: infer TJavaScriptType;
@@ -303,12 +273,6 @@ export type MetabaseDimensionFilterForOperator<
   values?: readonly unknown[];
 };
 
-type BreakoutBinning = {
-  strategy: "default" | "bin-width" | "num-bins";
-  "bin-width"?: number;
-  "num-bins"?: number;
-};
-
 type DateBucketDimension<TDimension> = TDimension extends unknown
   ? TDimension extends { jsType?: infer TJavaScriptType }
     ? "Date" extends NonNullable<TJavaScriptType>
@@ -326,19 +290,14 @@ type NonDateBucketDimension<TDimension> = TDimension extends unknown
   : never;
 
 /**
- * @notExported BreakoutBinning
+ * @notExported BinningOptions
  * @notExported DateBucketDimension
  */
 export type BreakoutOptionsArgument<TDimension> = [
   DateBucketDimension<TDimension>,
 ] extends [never]
-  ? {
-      binning?: BreakoutBinning;
-    }
-  : {
-      bucket?: TemporalUnit;
-      binning?: BreakoutBinning;
-    };
+  ? { binning?: BinningOptions }
+  : { bucket?: TemporalUnit; binning?: BinningOptions };
 
 type MetabaseBreakoutForDimension<TDimension> =
   | TDimension
@@ -350,18 +309,19 @@ type MetabaseBreakoutObjectForDimension<TDimension> =
       : {
           dimension: DateBucketDimension<TDimension>;
           bucket?: TemporalUnit;
-          binning?: BreakoutBinning;
+          binning?: BinningOptions;
         })
   | ([NonDateBucketDimension<TDimension>] extends [never]
       ? never
       : {
           dimension: NonDateBucketDimension<TDimension>;
-          binning?: BreakoutBinning;
+          binning?: BinningOptions;
         });
 
 /**
  * @notExported DimensionInput
  * @notExported DimensionValues
+ * @notExported BinningOptions
  * @notExported MetabaseBreakoutForDimension
  */
 export type MetabaseBreakout<TEntity = unknown> = [
@@ -372,11 +332,7 @@ export type MetabaseBreakout<TEntity = unknown> = [
       | {
           dimension: DimensionInput<TEntity>;
           bucket?: TemporalUnit;
-          binning?: {
-            strategy: "default" | "bin-width" | "num-bins";
-            "bin-width"?: number;
-            "num-bins"?: number;
-          };
+          binning?: BinningOptions;
         }
   : MetabaseBreakoutForDimension<DimensionValues<TEntity>>;
 
@@ -414,17 +370,9 @@ export type QuestionQuery<TQuestion> = {
   enabled?: boolean;
 };
 
-type TableReference<TTable> =
-  | {
-      table: TTable extends TableSchema ? TTable : TableSchema;
-      tableId?: never;
-      databaseId?: never;
-    }
-  | {
-      table?: never;
-      tableId: ID;
-      databaseId?: ID;
-    };
+type TableReference<TTable> = {
+  table: TTable extends TableSchema ? TTable : TableSchema;
+};
 
 export type TableQuery<TTable> = TableReference<TTable> & {
   questionId?: never;
@@ -584,6 +532,7 @@ export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
 };
 
 /**
+ * @notExported UseMetabaseQuery
  * @notExported QueryEntity
  * @notExported QuestionSchema
  * @notExported TableSchema

@@ -177,6 +177,11 @@ const StaticQuestionInner = (
     );
   };
 
+  // For query prop: `useMetabaseQueryObject` returns `null` when SDK bundle is still loading
+  if (query === null && questionId === undefined && token === undefined) {
+    return null;
+  }
+
   return (
     <SdkQuestion
       questionId={questionId}

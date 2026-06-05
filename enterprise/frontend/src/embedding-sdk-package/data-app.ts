@@ -33,3 +33,4 @@ export type {
   DataAppFactory,
   DataAppMetabaseProviderProps,
 } from "metabase-enterprise/data_apps/sandbox";
+export type { DatasetQuery } from "metabase-types/api";
