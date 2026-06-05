@@ -1,35 +1,56 @@
+import { getMetricMappedTableIdsFromInput } from "embedding-sdk-shared/lib/create-metabase-query/input-accessors";
+import { isTableFieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import type { FieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+
 import {
-  getMetricMappedTableIds,
   isCountAggregation,
   isFieldAggregation,
   isMeasureSchema,
   isSegmentSchema,
   isTableDimensionFilter,
-  isTableFieldSchema,
 } from "./guards";
-import type { MetricQueryRuntime } from "./runtime-types";
+import type { MetricQueryInput } from "./input-types";
+import { getMetricDimensionValues, normalizeBreakout } from "./input-utils";
 
-export const validateMetricTableScopedInputs = (query: MetricQueryRuntime) =>
+export const validateMetricTableScopedInputs = (input: MetricQueryInput) =>
   validateTableScopedInputs({
-    allowedTableIds: getMetricMappedTableIds(query),
-    breakouts: query.breakouts,
-    filters: query.filters,
-    measures: query.measures,
+    allowedTableIds: getMetricMappedTableIdsFromInput(input),
+    breakouts: input.breakouts,
+    filters: input.filters,
+    measures: input.measures,
     context: "Metric query",
   });
 
+export function validateMetricGeneratedDimensions(input: MetricQueryInput) {
+  input.filters?.forEach((filter) => {
+    if (isTableDimensionFilter(filter)) {
+      validateMetricDimensionForTableField(input, filter.dimension);
+    }
+  });
+
+  input.breakouts?.forEach((breakout) => {
+    const field = getTableFieldFromBreakout(breakout);
+
+    if (field) {
+      validateMetricDimensionForTableField(input, field);
+    }
+  });
+}
+
 export function validateTableScopedInputs({
   allowedTableIds,
+  context,
+
   filters,
   measures,
   breakouts,
-  context,
 }: {
   allowedTableIds: readonly number[] | null;
+  context: string;
+
   filters?: readonly unknown[];
   measures?: readonly unknown[];
   breakouts?: readonly unknown[];
-  context: string;
 }) {
   if (!allowedTableIds) {
     return;
@@ -97,21 +118,33 @@ export function validateTableScopedInputs({
 }
 
 function getTableFieldFromBreakout(breakout: unknown) {
-  if (isTableFieldSchema(breakout)) {
-    return breakout;
-  }
+  const { dimension } = normalizeBreakout(breakout);
 
-  if (
-    typeof breakout === "object" &&
-    breakout != null &&
-    "dimension" in breakout &&
-    isTableFieldSchema(breakout.dimension)
-  ) {
-    return breakout.dimension;
-  }
-
-  return null;
+  return isTableFieldSchema(dimension) ? dimension : null;
 }
+
+export function validateMetricDimensionForTableField(
+  input: MetricQueryInput,
+  field: FieldSchema,
+) {
+  const dimension = getMetricDimensionFields(input).find((dimension) => {
+    return fieldsMatch(dimension, field);
+  });
+
+  if (!dimension) {
+    throw new Error(
+      "Metric query table-field filters must match a generated metric dimension for the metric. Use schema.metrics.*.dimensions.* or pass the full generated metric object.",
+    );
+  }
+}
+
+export const getMetricDimensionFields = (input: MetricQueryInput) =>
+  getMetricDimensionValues(input.metric, isTableFieldSchema);
+
+const fieldsMatch = (left: FieldSchema, right: FieldSchema) =>
+  left.tableId === right.tableId &&
+  ((left.fieldId != null && left.fieldId === right.fieldId) ||
+    left.name === right.name);
 
 function validateGeneratedMeasure({
   measure,
@@ -135,12 +168,12 @@ function validateGeneratedMeasure({
 
 function validateGeneratedTableId({
   tableId,
-  allowedTableIds,
   context,
+  allowedTableIds,
 }: {
   tableId: number;
-  allowedTableIds: readonly number[] | null;
   context: string;
+  allowedTableIds: readonly number[] | null;
 }) {
   if (!allowedTableIds || allowedTableIds.includes(tableId)) {
     return;

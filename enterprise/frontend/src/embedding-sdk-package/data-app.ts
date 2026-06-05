@@ -31,3 +31,4 @@ export type {
   ActionKindFromDataAppSchema,
   ActionParametersFromDataAppSchema,
 } from "./hooks/public/use-action";
+export type { DatasetQuery } from "metabase-types/api";

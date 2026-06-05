@@ -14,6 +14,7 @@ Keep the semantic layer and presentation layer separate.
 - Use `useMetabaseQuery`, `useMetabaseQueryObject`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react/data-app`.
 - Data apps must install the published data-app SDK tag: `npm install @metabase/embedding-sdk-react@63-data-apps`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
+- Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, or table/metric IDs to `InteractiveQuestion`, `StaticQuestion`, `useMetabaseQuery`, or `useMetabaseQueryObject`. Build queries from generated schema objects instead.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it in the query instead of manually recreating the concept from raw rows.
 - Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
@@ -147,17 +148,20 @@ const { data, isLoading, error } = useMetabaseQuery({
 Use keyed schema objects:
 
 - Saved questions: `questionId: schema.questions.someQuestion.id`
-- Tables: `tableId: table.id`, `table.fields.*`, `table.segments.*`, `table.measures.*`
+- Tables: `table: table`, `table.fields.*`, `table.segments.*`, `table.measures.*`
 - Metrics: `metric: schema.metrics.someMetric`, `metric.dimensions.<table>.*`
 
 Do not pass raw dimension strings like `"created_at"` or `"segment"`. Metric dimensions are compact table-namespaced aliases to valid mapped table fields; use `metric.dimensions.<table>.*` for the shortest safe path. Direct `schema.tables.*.fields.*`, segments, and measures are valid with metrics only when their table is included in the metric's `mappedTableIds`.
 
-`useMetabaseQuery` and `useMetabaseQueryObject` take different shapes for tables:
+For table queries, pass the generated table object from the schema:
 
-- `useMetabaseQuery` (row-data hook): `{ tableId: table.id, ... }`.
-- `useMetabaseQueryObject` (query-object for `InteractiveQuestion`/`StaticQuestion`): `{ table: table, ... }` — pass the full generated table object (it carries `databaseId`), not `tableId`.
+```ts
+useMetabaseQuery({
+  table: schema.tables.records,
+});
+```
 
-Passing `tableId` to `useMetabaseQueryObject` throws `Query creation requires a generated table schema, generated metric schema, or databaseId.` at runtime.
+The minimal technical table shape is `{ id, databaseId }`, but generated schema objects are preferred because they also carry typed fields, segments, and measures.
 
 ## Query Recipes
 
@@ -181,7 +185,7 @@ const recordsTable = schema.tables.records;
 type RecordsTable = typeof recordsTable;
 
 const { data } = useMetabaseQuery<RecordsTable>({
-  tableId: recordsTable.id,
+  table: recordsTable,
   filters: [
     recordsTable.segments.activeRecords,
     filter(recordsTable.fields.amount, ">", 100),
@@ -195,7 +199,7 @@ For grouped counts, use a curated count measure from the generated schema:
 
 ```ts
 useMetabaseQuery<RecordsTable>({
-  tableId: recordsTable.id,
+  table: recordsTable,
   filters: [recordsTable.segments.activeRecords],
   aggregations: [recordsTable.measures.recordCount],
   breakouts: [breakout(recordsTable.fields.category)],
@@ -206,7 +210,7 @@ For basic field aggregations, use curated measures from the generated schema. If
 
 ```ts
 useMetabaseQuery<RecordsTable>({
-  tableId: recordsTable.id,
+  table: recordsTable,
   aggregations: [
     recordsTable.measures.totalAmount,
     recordsTable.measures.averageAmount,
@@ -259,7 +263,7 @@ Measures must come from tables in the metric's `mappedTableIds`. Fields, segment
 
 Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass it through the SDK question component's `card` prop.
 
-`useMetabaseQueryObject` supports generated table objects and generated metric objects. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization.
+`useMetabaseQueryObject` supports generated table objects and generated metric objects. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns a typed `DatasetQuery | null`, not query result rows.
 
 The basic prop contract is:
 
@@ -463,7 +467,7 @@ const eventsTable = schema.tables.events;
 type EventsTable = typeof eventsTable;
 
 const { data } = useMetabaseQuery<EventsTable>({
-  tableId: eventsTable.id,
+  table: eventsTable,
   filters: [
     eventsTable.segments.recentRecords,
     filter(eventsTable.fields.amount, ">", 1000),

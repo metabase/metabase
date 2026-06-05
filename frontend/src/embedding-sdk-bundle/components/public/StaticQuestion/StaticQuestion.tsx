@@ -69,8 +69,6 @@ type StaticQuestionBaseProps = PropsWithChildren<
  * @interface
  * @expand
  * @category StaticQuestion
- * @notExported SdkQuestionQuery
- * @notExported StructuredDatasetQuery
  */
 export type StaticQuestionProps = StaticQuestionBaseProps &
   SdkQuestionEntityPublicProps;
@@ -178,6 +176,11 @@ const StaticQuestionInner = (
       })
     );
   };
+
+  // For query prop: `useMetabaseQueryObject` returns `null` when SDK bundle is still loading
+  if (query === null && questionId === undefined && token === undefined) {
+    return null;
+  }
 
   return (
     <SdkQuestion

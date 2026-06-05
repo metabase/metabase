@@ -42,27 +42,6 @@ export type {
   AnyActionResult,
   UseActionResult,
 } from "./hooks/public/use-action";
-/** @internal */
-export {
-  avg,
-  breakout,
-  count,
-  createMetabaseQuery,
-  distinct,
-  filter,
-  max,
-  median,
-  min,
-  sum,
-  useMetabaseQuery,
-  useMetabaseQueryObject,
-} from "./hooks/public/use-metabase-query";
-/** @internal */
-export type {
-  MetabaseBreakout,
-  MetabaseQueryOptions,
-  UseMetabaseQueryResult,
-} from "./hooks/public/use-metabase-query";
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 

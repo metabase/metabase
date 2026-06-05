@@ -1,28 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
+import {
+  isMetricInput,
+  isQuestionInput,
+  isTableInput,
+  isUnaryOperator,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
 import type {
   QuestionSchema,
   SchemaJavaScriptType,
   TableSchema,
 } from "../data-schema";
-import { mapQueryData } from "../data-schema";
+import { mapRowsToObjects } from "../data-schema";
 
-import {
-  getTableDatabaseId,
-  isMetricQuery,
-  isQuestionQuery,
-  isTableQuery,
-  isUnaryOperator,
-} from "./guards";
 import { mapDatasetQueryData } from "./map-dataset-query-data";
-import { buildMetricDatasetQuery } from "./metric-query-builder";
 import { stableStringifyQuery } from "./stable-query-key";
-import { buildTableDatasetQuery } from "./table-query-builder";
 import type {
   BetweenFilterOperatorForDimension,
   BreakoutOptionsArgument,
@@ -151,6 +150,19 @@ const isOrderableJavaScriptType = (
   value === "boolean" ||
   value === "Date";
 
+function mapQueryData<TRow>(result: QueryQuestionResult) {
+  const rawRows = result.rows;
+
+  return {
+    ...result,
+    rows: mapRowsToObjects<TRow>(result.columns, rawRows),
+    rawRows,
+  };
+}
+
+const getCreateMetabaseQueryFromBundle = () =>
+  getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createMetabaseQuery;
+
 export function filter<
   TDimension,
   TOperator extends ValueFilterOperatorForDimension<TDimension>,
@@ -258,7 +270,7 @@ const useMetabaseQueryImpl = <
     setError(null);
 
     try {
-      if (isQuestionQuery(currentQuery)) {
+      if (isQuestionInput(currentQuery)) {
         if (!queryQuestion) {
           return;
         }
@@ -272,31 +284,16 @@ const useMetabaseQueryImpl = <
         return;
       }
 
-      if (isTableQuery(currentQuery)) {
+      if (isTableInput(currentQuery) || isMetricInput(currentQuery)) {
         if (!queryDataset) {
           return;
         }
 
-        const datasetQuery =
-          getTableDatabaseId(currentQuery) == null
-            ? buildTableDatasetQuery(currentQuery)
-            : createMetabaseQuery(currentQuery);
-
+        const datasetQuery = createMetabaseQuery(currentQuery);
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
         return;
-      }
-
-      if (isMetricQuery(currentQuery)) {
-        if (!queryDataset) {
-          return;
-        }
-
-        const datasetQuery = buildMetricDatasetQuery(currentQuery);
-        const result = await queryDataset(reduxStore)({ datasetQuery });
-
-        setData(mapDatasetQueryData(result));
       }
     } catch (err) {
       setError(err);
@@ -326,34 +323,41 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 /** @notExported useMetabaseQueryObject */
 export function useMetabaseQueryObject(
   query: TableQuery<unknown> | MetricQuery<unknown>,
-): StructuredDatasetQuery {
+): DatasetQuery | null {
+  const { loadingState } = useSdkLoadingState();
+
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
 
   queryRef.current = query;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
-  return useMemo(() => createMetabaseQuery(queryRef.current), [queryKey]);
+  return useMemo(
+    () => {
+      const createQuery = getCreateMetabaseQueryFromBundle();
+
+      if (!createQuery) {
+        return null;
+      }
+
+      return createQuery(queryRef.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
+    [loadingState, queryKey],
+  );
 }
 
 /** @notExported createMetabaseQuery */
 export function createMetabaseQuery(
   query: TableQuery<unknown> | MetricQuery<unknown>,
-): StructuredDatasetQuery {
-  if (isMetricQuery(query)) {
-    return buildMetricDatasetQuery(query);
-  }
+): DatasetQuery {
+  const createQuery = getCreateMetabaseQueryFromBundle();
 
-  const databaseId = getTableDatabaseId(query);
-
-  if (databaseId == null) {
+  if (!createQuery) {
     throw new Error(
-      "Query creation requires a generated table schema, generated metric schema, or databaseId.",
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Internal SDK developer error.
+      "createMetabaseQuery requires the Metabase Embedding SDK bundle to be loaded.",
     );
   }
 
-  return {
-    ...buildTableDatasetQuery(query),
-    database: Number(databaseId),
-  };
+  return createQuery(query);
 }
