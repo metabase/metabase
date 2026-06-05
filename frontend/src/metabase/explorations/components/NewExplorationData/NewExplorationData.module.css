@@ -2,6 +2,14 @@
   border-left: 1px solid var(--mb-color-border);
 }
 
+.blocksContainer {
+  overflow-y: auto;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
 .block {
   background: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
@@ -55,11 +63,11 @@
   align-items: center;
   gap: 0.25rem;
   max-width: 100%;
-  padding: 0.625rem 0.75rem;
+  padding: 0.5rem 0.75rem;
   border-radius: var(--border-radius-xl);
   background: var(--mb-color-background-secondary);
-  color: var(--mb-color-text-secondary);
-  font-weight: 500;
+  color: var(--mb-color-text-primary);
+  font-weight: 600;
   line-height: 1rem;
 
   &:hover {
@@ -70,4 +78,9 @@
 .togglePillSelected {
   background: var(--mb-color-background-brand);
   color: var(--mb-color-brand);
+}
+
+.timelineTogglePill {
+  padding: 0.625rem 0.75rem;
+  font-weight: 500;
 }

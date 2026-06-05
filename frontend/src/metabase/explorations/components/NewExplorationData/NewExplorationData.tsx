@@ -183,7 +183,8 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       bg="background-primary"
       flex={1}
       px="xl"
-      py="md"
+      pt="lg"
+      pb="md"
       h="100%"
       w="100%"
     >
@@ -232,7 +233,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         </Button>
       </Group>
 
-      <Box flex={1} mih={0} mt="md" style={{ overflowY: "auto" }}>
+      <Box className={S.blocksContainer} flex={1} mih={0} mt="md">
         {blocks.length === 0 ? (
           <Center h="100%" mt="-3rem">
             <ResearchModeIntro />

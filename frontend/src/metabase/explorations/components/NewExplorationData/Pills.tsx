@@ -73,7 +73,7 @@ export function SelectedTimelinePills({
   return (
     <>
       <UnstyledButton
-        className={cx(S.togglePill, S.togglePillSelected)}
+        className={cx(S.togglePill, S.togglePillSelected, S.timelineTogglePill)}
         onClick={() => onRemoveTimeline(primary)}
         aria-label={t`Remove ${primary.name}`}
       >
@@ -149,7 +149,7 @@ export function TogglePill({
       aria-pressed={selected}
       data-interestingness={interestingness || "null"}
     >
-      {selected && <Icon name="check" size={10} aria-hidden />}
+      {selected && <Icon name="check" size={12} aria-hidden />}
       <Ellipsified>{label}</Ellipsified>
     </UnstyledButton>
   );
