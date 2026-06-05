@@ -51,29 +51,42 @@
    [:bad_transforms {:optional true} [:sequential ::transforms.schema/transform]]])
 
 (mu/defn- broken-cards-response :- ::broken-cards-response
+  "Build the `check-*` response from a breakage map.
+
+  `bad_cards` and `bad_transforms` are sorted by `id` ascending so the response order is stable.
+  The FE renders these entities in the order the BE returns them, so the ordering is part of the
+  contract, not an implementation detail. We sort here, after the `filter`/`map` passes (rather than
+  via an `:order-by` on the query), so the guarantee can't be silently broken by an upstream
+  transformation that doesn't preserve order."
   [{:keys [card transform]}]
   (let [broken-card-ids (keys card)
-        ;; Order by id so the response is deterministic; `(keys card)` and an `IN` query without
-        ;; an `:order-by` would otherwise return cards in an arbitrary order.
         broken-cards (when (seq broken-card-ids)
-                       (-> (t2/select :model/Card :id [:in broken-card-ids] {:order-by [[:id :asc]]})
+                       (-> (t2/select :model/Card :id [:in broken-card-ids])
                            (t2/hydrate [:collection :effective_ancestors] :dashboard :document)))
         broken-transform-ids (keys transform)
         broken-transforms (when (seq broken-transform-ids)
-                            (t2/select :model/Transform :id [:in broken-transform-ids] {:order-by [[:id :asc]]}))]
+                            (t2/select :model/Transform :id [:in broken-transform-ids]))]
     {:success (and (empty? broken-card-ids)
                    (empty? broken-transform-ids))
-     :bad_cards (into [] (comp (filter mi/can-read?)
-                               (map (fn [card]
-                                      (-> card
-                                          collection.root/hydrate-root-collection
-                                          (update :dashboard #(some-> % (select-keys [:id :name])))
-                                          (update :document #(some-> % (select-keys [:id :name])))))))
-                      broken-cards)
-     :bad_transforms (into [] (filter mi/can-read?) broken-transforms)}))
+     :bad_cards (->> broken-cards
+                     (filter mi/can-read?)
+                     (map (fn [card]
+                            (-> card
+                                collection.root/hydrate-root-collection
+                                (update :dashboard #(some-> % (select-keys [:id :name])))
+                                (update :document #(some-> % (select-keys [:id :name]))))))
+                     (sort-by :id)
+                     vec)
+     :bad_transforms (->> broken-transforms
+                          (filter mi/can-read?)
+                          (sort-by :id)
+                          vec)}))
 
 (api.macros/defendpoint :post "/check-card" :- ::broken-cards-response
-  "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
+  "Check a proposed edit to a card, and return the cards/transforms this edit will break.
+
+  `bad_cards` and `bad_transforms` are sorted by `id` ascending. This order is stable and may be
+  relied upon (the FE renders the entities in this order)."
   [_route-params
    _query-params
    body :- ::card-body]
