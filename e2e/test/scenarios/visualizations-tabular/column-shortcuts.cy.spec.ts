@@ -1,10 +1,12 @@
 import _ from "underscore";
 
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 
-const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+// Pinned to the H2 sample database: extract shortcuts depend on date/email/url semantic types, which
+// the SQLite sample DB loses. H2 keeps them.
+const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = H2_SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -83,7 +85,7 @@ const URL_CASES = [
 
 describe("extract shortcut", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     H.resetSnowplow();
 
     cy.signInAsAdmin();
@@ -97,7 +99,11 @@ describe("extract shortcut", () => {
     describe("should add a date expression for each option", () => {
       DATE_CASES.forEach(({ option, value, example, expressions }) => {
         it(option, () => {
-          H.openOrdersTable({ limit: 1 });
+          H.openTable({
+            database: H2_SAMPLE_DB_ID,
+            table: ORDERS_ID,
+            limit: 1,
+          });
           extractColumnAndCheck({
             column: "Created At",
             option,
@@ -107,14 +113,14 @@ describe("extract shortcut", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "column_extract_via_plus_modal",
             custom_expressions_used: expressions,
-            database_id: SAMPLE_DB_ID,
+            database_id: H2_SAMPLE_DB_ID,
           });
         });
       });
     });
 
     it("should handle duplicate expression names", () => {
-      H.openOrdersTable({ limit: 1 });
+      H.openTable({ database: H2_SAMPLE_DB_ID, table: ORDERS_ID, limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "Hour of day",
@@ -128,7 +134,7 @@ describe("extract shortcut", () => {
     });
 
     it("should be able to modify the expression in the notebook editor", () => {
-      H.openOrdersTable({ limit: 1 });
+      H.openTable({ database: H2_SAMPLE_DB_ID, table: ORDERS_ID, limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "Year",
@@ -149,7 +155,7 @@ describe("extract shortcut", () => {
 
   describe("email columns", () => {
     beforeEach(() => {
-      H.restore();
+      H.restore("default-with-h2");
       cy.signInAsAdmin();
     });
 
@@ -157,6 +163,7 @@ describe("extract shortcut", () => {
       it(option, () => {
         H.createQuestion(
           {
+            database: H2_SAMPLE_DB_ID,
             query: {
               "source-table": PEOPLE_ID,
               limit: 1,
@@ -176,7 +183,7 @@ describe("extract shortcut", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
-          database_id: SAMPLE_DB_ID,
+          database_id: H2_SAMPLE_DB_ID,
         });
       });
     });
@@ -184,7 +191,7 @@ describe("extract shortcut", () => {
 
   describe("url columns", () => {
     beforeEach(() => {
-      H.restore();
+      H.restore("default-with-h2");
       cy.signInAsAdmin();
 
       // Make the Email column a URL column for these tests, to avoid having to create a new model
@@ -197,6 +204,7 @@ describe("extract shortcut", () => {
       it(option, () => {
         H.createQuestion(
           {
+            database: H2_SAMPLE_DB_ID,
             query: {
               "source-table": PEOPLE_ID,
               limit: 1,
@@ -216,7 +224,7 @@ describe("extract shortcut", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
-          database_id: SAMPLE_DB_ID,
+          database_id: H2_SAMPLE_DB_ID,
         });
       });
     });
@@ -225,6 +233,7 @@ describe("extract shortcut", () => {
   it("should disable the scroll behaviour after it has been rendered", () => {
     H.createQuestion(
       {
+        database: H2_SAMPLE_DB_ID,
         query: {
           "source-table": PEOPLE_ID,
           limit: 1,
@@ -256,6 +265,7 @@ describe("extract shortcut", () => {
   it("should be possible to extract columns from a summarized table", () => {
     H.createQuestion(
       {
+        database: H2_SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           limit: 1,
@@ -282,6 +292,7 @@ describe("extract shortcut", () => {
   it("should be possible to extract columns from table with breakouts", () => {
     H.createQuestion(
       {
+        database: H2_SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           limit: 5,
@@ -395,7 +406,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     cy.signInAsNormalUser();
     H.resetSnowplow();
   });
@@ -407,6 +418,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
   it("should be possible add a new column through the combine columns shortcut", () => {
     H.createQuestion(
       {
+        database: H2_SAMPLE_DB_ID,
         query: {
           "source-table": PEOPLE_ID,
           limit: 1,
@@ -431,13 +443,14 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.expectUnstructuredSnowplowEvent({
       event: "column_combine_via_plus_modal",
       custom_expressions_used: ["concat"],
-      database_id: SAMPLE_DB_ID,
+      database_id: H2_SAMPLE_DB_ID,
     });
   });
 
   it("should allow combining columns when aggregating", function () {
     H.createQuestion(
       {
+        database: H2_SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           limit: 1,
@@ -464,6 +477,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
   it("should allow combining columns on a table with just breakouts", () => {
     H.createQuestion(
       {
+        database: H2_SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           limit: 1,

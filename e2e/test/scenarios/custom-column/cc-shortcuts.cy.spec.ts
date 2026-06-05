@@ -1,8 +1,10 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+// Pinned to the H2 sample database: extract shortcuts depend on date/email/url semantic types, which
+// the SQLite sample DB loses. H2 keeps them.
+const { ORDERS_ID, ORDERS } = H2_SAMPLE_DATABASE;
 
 function selectExtractColumn() {
   H.popover().findByText("Extract columns").click();
@@ -115,7 +117,7 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
   ];
 
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     cy.signInAsAdmin();
 
     // Make the PRODUCT_ID column a URL column for these tests, to avoid having to create a new model
@@ -126,7 +128,12 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
 
   for (const extraction of EXTRACTIONS) {
     it(`should be possible to use the ${extraction.name} extraction on ${extraction.column}`, () => {
-      H.openTable({ mode: "notebook", limit: 1, table: extraction.table });
+      H.openTable({
+        database: H2_SAMPLE_DB_ID,
+        mode: "notebook",
+        limit: 1,
+        table: extraction.table,
+      });
       H.addCustomColumn();
       selectExtractColumn();
 
@@ -144,7 +151,12 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
   }
 
   it("should be possible to create the same extraction multiple times", () => {
-    H.openOrdersTable({ mode: "notebook", limit: 5 });
+    H.openTable({
+      database: H2_SAMPLE_DB_ID,
+      table: ORDERS_ID,
+      mode: "notebook",
+      limit: 5,
+    });
     H.addCustomColumn();
     selectExtractColumn();
 
@@ -170,7 +182,12 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
   });
 
   it("should be possible to edit a previous stages' columns when an aggregation is present (metabase#43226)", () => {
-    H.openOrdersTable({ mode: "notebook", limit: 5 });
+    H.openTable({
+      database: H2_SAMPLE_DB_ID,
+      table: ORDERS_ID,
+      mode: "notebook",
+      limit: 5,
+    });
 
     cy.button("Summarize").click();
     H.popover().findByText("Count of rows").click();
@@ -190,7 +207,7 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
 
 describe("scenarios > question > custom column > expression shortcuts > extract", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     H.resetSnowplow();
     cy.signInAsNormalUser();
   });
@@ -200,7 +217,12 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
   });
 
   it("should track column extraction via shortcut", () => {
-    H.openTable({ mode: "notebook", limit: 1, table: ORDERS_ID });
+    H.openTable({
+      database: H2_SAMPLE_DB_ID,
+      mode: "notebook",
+      limit: 1,
+      table: ORDERS_ID,
+    });
     H.addCustomColumn();
     selectExtractColumn();
 
@@ -211,7 +233,7 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
     H.expectUnstructuredSnowplowEvent({
       event: "column_extract_via_shortcut",
       custom_expressions_used: ["get-hour"],
-      database_id: SAMPLE_DB_ID,
+      database_id: H2_SAMPLE_DB_ID,
       question_id: 0,
     });
   });
@@ -225,12 +247,17 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   }
 
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     cy.signInAsNormalUser();
   });
 
   it("should be possible to select a combine columns shortcut", () => {
-    H.openOrdersTable({ mode: "notebook", limit: 5 });
+    H.openTable({
+      database: H2_SAMPLE_DB_ID,
+      table: ORDERS_ID,
+      mode: "notebook",
+      limit: 5,
+    });
     H.addCustomColumn();
 
     selectCombineColumns();
@@ -271,7 +298,11 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   });
 
   it("should be possible to cancel when using the combine column shortcut", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openTable({
+      database: H2_SAMPLE_DB_ID,
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
     H.addCustomColumn();
     selectCombineColumns();
 
@@ -288,7 +319,11 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   });
 
   it("should be possible to add and remove more than one column", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openTable({
+      database: H2_SAMPLE_DB_ID,
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
     H.addCustomColumn();
     selectCombineColumns();
 
@@ -312,7 +347,11 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   });
 
   it("should pick the correct default separator based on the type of the first column", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openTable({
+      database: H2_SAMPLE_DB_ID,
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
     H.addCustomColumn();
     selectCombineColumns();
 
@@ -329,7 +368,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
 describe("scenarios > question > custom column > combine shortcuts", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("default-with-h2");
     H.resetSnowplow();
     cy.signInAsNormalUser();
   });
@@ -339,7 +378,11 @@ describe("scenarios > question > custom column > combine shortcuts", () => {
   });
 
   it("should send an event for combine columns", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openTable({
+      database: H2_SAMPLE_DB_ID,
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
     H.addCustomColumn();
     selectCombineColumns();
 
@@ -351,7 +394,7 @@ describe("scenarios > question > custom column > combine shortcuts", () => {
     H.expectUnstructuredSnowplowEvent({
       event: "column_combine_via_shortcut",
       custom_expressions_used: ["concat"],
-      database_id: SAMPLE_DB_ID,
+      database_id: H2_SAMPLE_DB_ID,
       question_id: 0,
     });
   });
