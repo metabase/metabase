@@ -1,4 +1,4 @@
-import { extractFailedTests } from "./ci_conductor";
+import { extractFailedTests, resolveScreenshotPath } from "./ci_conductor";
 
 // jest.mock is hoisted; the mocked default must be referenced via a `mock`-
 // prefixed variable. node-fetch is unused by extractFailedTests, so mocking it
@@ -68,6 +68,13 @@ const test = (
   duration,
   attempts: attemptStates.map((state) => ({ state })),
 });
+
+// Build a `results.screenshots`-shaped array from bare paths (the only field we
+// read). Cypress leaves `name` null for automatic failure shots.
+const screenshotsFromPaths = (...paths: string[]) =>
+  paths.map((path) => ({
+    path,
+  })) as unknown as CypressCommandLine.RunResult["screenshots"];
 
 describe("extractFailedTests", () => {
   // Pin the default to "first attempt" so these tests are deterministic even
@@ -242,6 +249,102 @@ describe("extractFailedTests", () => {
     });
 
     expect(extractFailedTests(spec, results)).toEqual([]);
+  });
+
+  it("attaches screenshotPath for a failed test with a matching screenshot", () => {
+    const path =
+      "/cy/screenshots/foo.cy.spec.js/a -- shows an error (failed).png";
+    const results = makeResults({
+      tests: [test(["a", "shows an error"], ["failed"], "boom")],
+      screenshots: screenshotsFromPaths(path),
+    });
+
+    expect(extractFailedTests(spec, results)[0]).toMatchObject({
+      name: "shows an error",
+      screenshotPath: path,
+    });
+  });
+
+  it("omits screenshotPath when no screenshot matches the test", () => {
+    const unrelated =
+      "/cy/screenshots/foo/a -- a totally different test (failed).png";
+    const results = makeResults({
+      tests: [test(["a", "shows an error"], ["failed"], "boom")],
+      screenshots: screenshotsFromPaths(unrelated),
+    });
+
+    expect(extractFailedTests(spec, results)[0]).not.toHaveProperty(
+      "screenshotPath",
+    );
+  });
+
+  it("omits screenshotPath when the spec produced no screenshots", () => {
+    const results = makeResults({
+      tests: [test(["a", "shows an error"], ["failed"], "boom")],
+    });
+
+    expect(extractFailedTests(spec, results)[0]).not.toHaveProperty(
+      "screenshotPath",
+    );
+  });
+});
+
+describe("resolveScreenshotPath", () => {
+  const shots = (...paths: string[]) => paths.map((path) => ({ path }));
+
+  it("returns undefined with no screenshots, no title, or no match", () => {
+    expect(resolveScreenshotPath(["a", "b"], undefined)).toBeUndefined();
+    expect(resolveScreenshotPath(["a", "b"], [])).toBeUndefined();
+    expect(
+      resolveScreenshotPath(undefined, shots("/x/a (failed).png")),
+    ).toBeUndefined();
+    expect(
+      resolveScreenshotPath(["a", "b"], shots("/x/unrelated (failed).png")),
+    ).toBeUndefined();
+  });
+
+  it("matches the real on-disk basename despite spaces, ` -- ` and `>` stripping", () => {
+    // Verbatim from a local run: describe("scenarios > models > create") →
+    // Cypress writes "scenarios  models  create -- <test> (failed).png".
+    const path =
+      "/home/dev/code/metabase/cypress/screenshots/create.cy.spec.js/scenarios  models  create -- user without a collection access should still be able to create and save a model in his own personal collection (failed).png";
+    expect(
+      resolveScreenshotPath(
+        [
+          "scenarios > models > create",
+          "user without a collection access should still be able to create and save a model in his own personal collection",
+        ],
+        shots(path),
+      ),
+    ).toBe(path);
+  });
+
+  it("excludes manual screenshots (no `(failed)` anchor)", () => {
+    // A manual cy.screenshot() is named "<title>.png" — no "(failed)".
+    const manual = "/x/a -- renders the chart.png";
+    expect(
+      resolveScreenshotPath(["a", "renders the chart"], shots(manual)),
+    ).toBeUndefined();
+  });
+
+  it("picks the first attempt over its retry", () => {
+    const first = "/x/a -- flaky (failed).png";
+    const retry = "/x/a -- flaky (failed) (attempt 2).png";
+    expect(resolveScreenshotPath(["a", "flaky"], shots(retry, first))).toBe(
+      first,
+    );
+  });
+
+  it("anchors on `(failed)`, so a prefix title can't steal a longer test's shot", () => {
+    const shortShot = "/x/a -- loads (failed).png";
+    const longShot = "/x/a -- loads quickly (failed).png";
+    // "loads" anchors on "loadsfailed"; "loadsquickly…" can't match it.
+    expect(
+      resolveScreenshotPath(["a", "loads"], shots(longShot, shortShot)),
+    ).toBe(shortShot);
+    expect(
+      resolveScreenshotPath(["a", "loads quickly"], shots(longShot, shortShot)),
+    ).toBe(longShot);
   });
 });
 
@@ -475,6 +578,52 @@ describe("reportFailedTestsToConductor", () => {
     await reportFailedTestsToConductor(oneTest);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("500"));
     (console.error as jest.Mock).mockRestore();
+  });
+
+  it("inlines a resolved screenshot as base64 and drops screenshotPath", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const pathMod = await import("node:path");
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]); // PNG magic
+    const file = pathMod.join(os.tmpdir(), "ci-conductor-shot.png");
+    fs.writeFileSync(file, bytes);
+    try {
+      const { reportFailedTestsToConductor } = await loadConductor({
+        CI_CONDUCTOR_WEBHOOK_URL: url,
+      });
+      await reportFailedTestsToConductor([
+        { name: "t", file: "f.cy.spec.ts", screenshotPath: file },
+      ]);
+      const sent = JSON.parse(mockFetch.mock.calls[0][1].body).tests[0];
+      expect(sent.failure_screenshot).toBe(
+        `data:image/png;base64,${bytes.toString("base64")}`,
+      );
+      expect(sent).not.toHaveProperty("screenshotPath");
+    } finally {
+      fs.unlinkSync(file);
+    }
+  });
+
+  it("omits the screenshot (and screenshotPath) when the file can't be read", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_WEBHOOK_URL: url,
+    });
+
+    await reportFailedTestsToConductor([
+      { name: "t", file: "f.cy.spec.ts", screenshotPath: "/no/such/file.png" },
+    ]);
+
+    const sent = JSON.parse(mockFetch.mock.calls[0][1].body).tests[0];
+    expect(sent).not.toHaveProperty("failure_screenshot");
+    expect(sent).not.toHaveProperty("screenshotPath");
+    // The read failure is logged (best-effort), not thrown.
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("failed to read screenshot"),
+      "/no/such/file.png",
+      expect.anything(),
+    );
+    errorSpy.mockRestore();
   });
 
   it("never throws even when fetch throws synchronously", async () => {
