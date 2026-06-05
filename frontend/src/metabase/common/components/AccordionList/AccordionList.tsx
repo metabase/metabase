@@ -20,6 +20,7 @@ import {
   type Cursor,
   getNextCursor,
   getPrevCursor,
+  getRowKey,
   searchFilter,
 } from "./utils";
 
@@ -473,7 +474,7 @@ export class AccordionList<
       >
         {rows.map((row, index) => (
           <AccordionListCell<TItem, TSection>
-            key={index}
+            key={getRowKey(row)}
             {...this.props}
             row={row}
             sections={sections}

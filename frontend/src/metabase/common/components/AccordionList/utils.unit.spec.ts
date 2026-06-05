@@ -1,4 +1,5 @@
-import { getNextCursor, getPrevCursor } from "./utils";
+import type { Row } from "./types";
+import { getNextCursor, getPrevCursor, getRowKey } from "./utils";
 
 const canSelectSection = () => true;
 const cannotSelectSection = () => false;
@@ -223,5 +224,64 @@ describe("getPrevCursor", () => {
         cannotSelectSection,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: 1 });
+  });
+});
+
+describe("getRowKey", () => {
+  const headerRow = (name: string, sectionIndex: number): Row<any, any> => ({
+    type: "header",
+    section: { name },
+    sectionIndex,
+    isLastSection: false,
+  });
+
+  it("keys a row by its section name rather than its position", () => {
+    expect(getRowKey(headerRow("Writable Postgres12", 1))).toBe(
+      getRowKey(headerRow("Writable Postgres12", 2)),
+    );
+  });
+
+  it("keeps a row's key stable when a section is inserted ahead of it (metabase#52411)", () => {
+    // Before "Saved Questions" loads, the database is at index 1; after it is
+    // prepended, the same database shifts to index 2. Its key must not change,
+    // otherwise React remounts it and detaches it mid-click.
+    const before = headerRow("Writable Postgres12", 1);
+    const after = headerRow("Writable Postgres12", 2);
+    expect(getRowKey(before)).toBe(getRowKey(after));
+  });
+
+  it("prefers an explicit section key over the name", () => {
+    const row: Row<any, any> = {
+      type: "header",
+      section: { key: "db-7", name: "Writable Postgres12" },
+      sectionIndex: 3,
+      isLastSection: false,
+    };
+    expect(getRowKey(row)).toBe("db-7::header");
+  });
+
+  it("falls back to the section index when there is no stable identity", () => {
+    const row: Row<any, any> = {
+      type: "header",
+      section: {},
+      sectionIndex: 2,
+      isLastSection: false,
+    };
+    expect(getRowKey(row)).toBe("index:2::header");
+  });
+
+  it("disambiguates items within a section by their item index", () => {
+    const section = { name: "Wild" };
+    const item0: Row<any, any> = {
+      type: "item",
+      section,
+      sectionIndex: 0,
+      itemIndex: 0,
+      isLastItem: false,
+      isLastSection: true,
+      item: { id: 1 },
+    };
+    const item1: Row<any, any> = { ...item0, itemIndex: 1, item: { id: 2 } };
+    expect(getRowKey(item0)).not.toBe(getRowKey(item1));
   });
 });
