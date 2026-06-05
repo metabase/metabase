@@ -75,7 +75,7 @@
                      vec)
      :bad_transforms (->> broken-transforms
                           (filter mi/can-read?)
-                          (sort-by :id)
+                          (sort-by (juxt :created_at :id))
                           vec)}))
 
 (api.macros/defendpoint :post "/check-card" :- ::broken-cards-response
