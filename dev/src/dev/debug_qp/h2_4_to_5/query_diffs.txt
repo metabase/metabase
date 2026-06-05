@@ -1,0 +1,14 @@
+--- dev/src/dev/debug_qp/h2_4_to_5/card_5218_mbql4.sql	2026-06-04 15:41:18
++++ dev/src/dev/debug_qp/h2_4_to_5/card_5218_mbql5.sql	2026-06-04 15:41:18
+@@ -24,8 +24,8 @@
+       "PUBLIC"."ORDERS"."CREATED_AT" AS "CREATED_AT",
+       "PUBLIC"."ORDERS"."QUANTITY" AS "QUANTITY",
+       "PEOPLE__via__USER_ID"."NAME" AS "PEOPLE__via__USER_ID__NAME",
+-      "PEOPLE__via__USER_ID"."SOURCE" AS "PEOPLE__via__USER_ID__SOURCE",
+-      "PEOPLE__via__USER_ID"."STATE" AS "PEOPLE__via__USER_ID__STATE"
++      "PEOPLE__via__USER_ID"."STATE" AS "PEOPLE__via__USER_ID__STATE",
++      "PEOPLE__via__USER_ID"."SOURCE" AS "PEOPLE__via__USER_ID__SOURCE"
+     FROM
+       "PUBLIC"."ORDERS"
+       LEFT JOIN (
+
