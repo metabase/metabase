@@ -54,12 +54,26 @@
         (testing "a success 30m ago is within the hourly window"
           (insert-succeeded-run! (:id t) (t/minus now (t/minutes 30)))
           (is (= #{(:id t)} (freshness/fresh-dep-ids now #{(:id t)}))))))
-    (testing "a dep with a tag but no scheduling job is never skipped, even with a recent success"
-      (mt/with-temp [:model/TransformTag          tag {:name "unscheduled-tag"}
-                     :model/Transform             t   {:name "unscheduled-dep"}
+    (testing "a dep with no active scheduling job is fresh once it has succeeded at least once"
+      (mt/with-temp [:model/TransformTag          tag   {:name "unscheduled-tag"}
+                     :model/Transform             ran   {:name "unscheduled-ran"}
+                     :model/TransformTransformTag _      {:transform_id (:id ran) :tag_id (:id tag) :position 0}
+                     :model/Transform             never {:name "unscheduled-never"}
+                     :model/TransformTransformTag _      {:transform_id (:id never) :tag_id (:id tag) :position 0}]
+        ;; old success — would be stale under any cadence, but there is no cadence asking to refresh it
+        (insert-succeeded-run! (:id ran) (t/minus now (t/days 365)))
+        (is (= #{(:id ran)}
+               (freshness/fresh-dep-ids now #{(:id ran) (:id never)}))
+            "the one that has run is skipped; the one that never has is not")))
+    (testing "an inactive job does not establish a cadence (so the dep is fresh once it has run)"
+      (mt/with-temp [:model/TransformTag          tag {:name "inactive-tag"}
+                     :model/TransformJob          job {:name "inactive-job" :schedule daily-cron :active false}
+                     :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                     :model/Transform             t   {:name "inactively-scheduled"}
                      :model/TransformTransformTag _   {:transform_id (:id t) :tag_id (:id tag) :position 0}]
-        (insert-succeeded-run! (:id t) (t/minus now (t/minutes 1)))
-        (is (= #{} (freshness/fresh-dep-ids now #{(:id t)})))))
+        ;; stale for the daily cadence, but the only job is inactive → treated as unscheduled
+        (insert-succeeded-run! (:id t) (t/minus now (t/days 2)))
+        (is (= #{(:id t)} (freshness/fresh-dep-ids now #{(:id t)})))))
     (testing "a scheduled dep with no successful run is not skipped"
       (mt/with-temp [:model/TransformTag          tag {:name "daily-tag-3"}
                      :model/TransformJob          job {:name "daily-job-3" :schedule daily-cron}

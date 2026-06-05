@@ -35,7 +35,8 @@
        first))
 
 (defn fresh-dep-ids
-  "Subset of `dep-ids` whose most recent succeeded run is within their cadence as of `now`."
+  "Subset of `dep-ids` safe to skip as of `now`: a dep that has never succeeded is never fresh; a
+  scheduled one is fresh within its cadence; an unscheduled one is fresh once it has succeeded."
   [now dep-ids]
   (when (seq dep-ids)
     (let [schedules-by-id (transform-tag/schedules-for-transforms dep-ids)
@@ -43,8 +44,8 @@
           now-date        (Date/from (t/instant now))]
       (into #{}
             (keep (fn [id]
-                    (when-let [w (window now-date (schedules-by-id id))]
-                      (when-let [ran (last-success id)]
-                        (when (t/after? ran (t/minus now w))
-                          id)))))
+                    (when-let [ran (last-success id)]
+                      (if-let [w (window now-date (schedules-by-id id))]
+                        (when (t/after? ran (t/minus now w)) id)
+                        id))))
             dep-ids))))

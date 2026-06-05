@@ -6,7 +6,6 @@
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
    [flatland.ordered.set :as ordered-set]
-   [java-time.api :as t]
    [metabase.channel.urls :as urls]
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
@@ -160,6 +159,10 @@
   (when-let [{:keys [database schema name]} (:target transform)]
     [database schema name]))
 
+(defn- app-db-now
+  []
+  (:now (t2/query-one {:select [[[:raw "current_timestamp"] :now]]})))
+
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
 
@@ -183,7 +186,7 @@
         ;; Only deps pulled into the plan (not directly requested) are freshness-gated. Seeding them
         ;; as :succeeded lets their dependents dispatch while they themselves are never submitted.
         skip         (if skip-fresh-deps?
-                       (freshness/fresh-dep-ids (t/offset-date-time) (set/difference closure requested))
+                       (freshness/fresh-dep-ids (app-db-now) (set/difference closure requested))
                        #{})
         n            (max 1 (transforms.settings/transform-run-job-sql-concurrency))
         sql-executor (Executors/newFixedThreadPool n (named-thread-factory "transforms-sql-worker-%d"))
