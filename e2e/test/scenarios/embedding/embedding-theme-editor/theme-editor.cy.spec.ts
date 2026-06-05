@@ -269,7 +269,10 @@ describe(
           expect(settings.colors?.brand).to.eq("#ff0000ff");
         });
 
-        H.undoToast().findByText("Theme saved").should("exist");
+        // An earlier undo toast (e.g. "reset to defaults") may still be on
+        // screen, so use the toast list (plural) and filter by text — using
+        // `undoToast()` (singular) yields undefined when multiple toasts match.
+        H.undoToastList().contains("Theme saved").should("be.visible");
       });
     });
 
