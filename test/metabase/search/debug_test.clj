@@ -89,6 +89,17 @@
             (mt/with-test-user :rasta
               (is (=? {:type :not-permitted :details {:excluded-by :collection-permissions}}
                       (diagnose {:search-string "quarterly"} "card" card-id))))))))
+    (testing "A read-checked model denied by collection permissions reports the post-query permission label"
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection coll {:name "Locked"}
+                       :model/Card {metric-id :id} {:name "Quarterly Metric"
+                                                    :collection_id (:id coll)
+                                                    :type :metric}]
+          (search/reindex! {:async? false :in-place? true})
+          (mt/with-non-admin-groups-no-collection-perms coll
+            (mt/with-test-user :rasta
+              (is (=? {:type :not-permitted :details {:excluded-by :permissions}}
+                      (diagnose {:search-string "quarterly"} "metric" metric-id))))))))
     (testing "A denial from the post-query permission check wins over an overlapping structural filter"
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Collection coll {:name "Read Only"}

@@ -243,8 +243,10 @@
 
           ;; Perms-first invariant from `search.engine/diagnose`: an access denial is reported ahead of any query
           ;; filter. The post-query permission check runs first since it can deny rows the SQL layers admit
-          ;; (archived-write, table query perms, …); inside `first-excluding-layer` the SQL permission layers
-          ;; (collection/table) likewise precede the structural filter clauses (including `:models`).
+          ;; (archived-write, table query perms, …). For read-checked models, that means a collection/table denial
+          ;; may be reported as the generic `:permissions` instead of the more specific SQL-layer label.
+          ;; Inside `first-excluding-layer` the SQL permission layers (collection/table) likewise precede the
+          ;; structural filter clauses (including `:models`).
           :else
           (if-not (search.impl/check-result-permissions search-ctx (rehydrate {} [] index-row))
             {:type :filtered :details {:excluded-by :permissions}}
