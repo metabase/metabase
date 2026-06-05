@@ -68,7 +68,7 @@
   [limit]
   (t2/select :health_inspector_runs {:limit limit :order-by [[:run_at :desc]]}))
 
-(task/defjob ^:private SaveReport [_]
+(task/defjob ^:private ^{org.quartz.DisallowConcurrentExecution true} SaveReport [_]
   (when (setting/health-inspector-enabled)
     ;; background job should always be the lowest priority
     (.setPriority (Thread/currentThread) 1)
@@ -88,6 +88,9 @@
                  (triggers/with-identity trigger-key)
                  (triggers/for-job job-key)
                  (triggers/start-now)
-                 ;; 2AM every day
-                 (triggers/with-schedule (cron/cron-schedule "0 0 2 * * ? *")))]
+                 ;; 2:28AM every day
+                 (triggers/with-schedule
+                  (cron/schedule
+                   (cron/cron-schedule "0 28 2 * * ? *")
+                   (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)))
