@@ -29,6 +29,7 @@ interface EntityBlockProps {
   iconLabel: string;
   title: string;
   expanded: boolean;
+  disabled: boolean;
   onToggleExpand: () => void;
   onRemoveBlock: () => void;
   children: React.ReactNode;
@@ -39,6 +40,7 @@ export function EntityBlock({
   iconLabel,
   title,
   expanded,
+  disabled,
   onToggleExpand,
   onRemoveBlock,
   children,
@@ -76,6 +78,7 @@ export function EntityBlock({
           <ActionIcon
             size="sm"
             variant="subtle"
+            disabled={disabled}
             onClick={(event) => {
               event.stopPropagation();
               onRemoveBlock();
@@ -94,6 +97,7 @@ export function EntityBlock({
 interface MetricBlockItemProps {
   block: MetricBlock;
   expanded: boolean;
+  disabled: boolean;
   onToggleExpand: () => void;
   onRemoveBlock: () => void;
   onToggleDimension: (dimensionId: DimensionId) => void;
@@ -102,6 +106,7 @@ interface MetricBlockItemProps {
 export function MetricBlockItem({
   block,
   expanded,
+  disabled,
   onToggleExpand,
   onRemoveBlock,
   onToggleDimension,
@@ -131,6 +136,7 @@ export function MetricBlockItem({
       iconLabel={t`Metric`}
       title={block.metric.name}
       expanded={expanded}
+      disabled={disabled}
       onToggleExpand={onToggleExpand}
       onRemoveBlock={onRemoveBlock}
     >
@@ -150,6 +156,7 @@ export function MetricBlockItem({
                     key={dimension.id}
                     label={dimension.display_name ?? dimension.id}
                     selected={block.selectedDimensionIds.has(dimension.id)}
+                    disabled={disabled}
                     interestingness={dimension.dimension_interestingness}
                     onToggle={() => onToggleDimension(dimension.id)}
                   />
@@ -168,6 +175,7 @@ export function MetricBlockItem({
 interface DimensionBlockItemProps {
   block: DimensionBlock;
   expanded: boolean;
+  disabled: boolean;
   onToggleExpand: () => void;
   onRemoveBlock: () => void;
   onToggleMetric: (metricId: ExplorationMetric["id"]) => void;
@@ -176,6 +184,7 @@ interface DimensionBlockItemProps {
 export function DimensionBlockItem({
   block,
   expanded,
+  disabled,
   onToggleExpand,
   onRemoveBlock,
   onToggleMetric,
@@ -193,6 +202,7 @@ export function DimensionBlockItem({
       iconLabel={t`Dimension`}
       title={formatDimensionLabel(block.dimension)}
       expanded={expanded}
+      disabled={disabled}
       onToggleExpand={onToggleExpand}
       onRemoveBlock={onRemoveBlock}
     >
@@ -212,6 +222,7 @@ export function DimensionBlockItem({
                   key={metric.id}
                   label={metric.name}
                   selected={block.selectedMetricIds.has(metric.id)}
+                  disabled={disabled}
                   onToggle={() => onToggleMetric(metric.id)}
                 />
               ))}

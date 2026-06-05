@@ -122,9 +122,12 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   const [createExploration, { isLoading: isStarting }] =
     useCreateExplorationMutation();
 
-  const { messages } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
+  const { messages, isDoingScience } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
+  const canStart = blocks.length > 0;
 
-  const isExpanded = useCallback(
+  const isManualDataPickingDisabled = isDoingScience;
+
+  const getIsExpanded = useCallback(
     (blockId: string) => expandedIds.has(blockId),
     [expandedIds],
   );
@@ -173,8 +176,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     sendToast,
   ]);
 
-  const canStart = blocks.length > 0;
-
   return (
     <Stack
       className={S.container}
@@ -197,6 +198,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
                 variant="outline"
                 color="text-secondary"
                 size="sm"
+                disabled={isManualDataPickingDisabled}
                 leftSection={<Icon name="add" size={12} />}
               >{t`Data`}</Button>
             </Menu.Target>
@@ -216,8 +218,14 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         {timelines.length > 0 && (
           <SelectedTimelinePills
             timelines={timelines}
+            disabled={isManualDataPickingDisabled}
             onRemoveTimeline={toggleTimeline}
-            onShowMore={() => setActiveModal("events")}
+            onShowMore={() => {
+              if (isManualDataPickingDisabled) {
+                return;
+              }
+              setActiveModal("events");
+            }}
           />
         )}
         <Button
@@ -226,6 +234,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           size="sm"
           bd="1px dashed border"
           bdrs="xl"
+          disabled={isManualDataPickingDisabled}
           leftSection={<Icon name="add" c="text-secondary" size={12} />}
           onClick={() => setActiveModal("events")}
         >
@@ -239,13 +248,14 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
             <ResearchModeIntro />
           </Center>
         ) : (
-          <Stack gap="md">
+          <Stack gap="md" mb="lg">
             {blocks.map((block) =>
               isMetricBlock(block) ? (
                 <MetricBlockItem
                   key={block.id}
                   block={block}
-                  expanded={isExpanded(block.id)}
+                  expanded={getIsExpanded(block.id)}
+                  disabled={isManualDataPickingDisabled}
                   onToggleExpand={() => toggleExpanded(block.id)}
                   onRemoveBlock={() => removeBlock(block.id)}
                   onToggleDimension={(dimensionId) =>
@@ -256,7 +266,8 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
                 <DimensionBlockItem
                   key={block.id}
                   block={block}
-                  expanded={isExpanded(block.id)}
+                  expanded={getIsExpanded(block.id)}
+                  disabled={isManualDataPickingDisabled}
                   onToggleExpand={() => toggleExpanded(block.id)}
                   onRemoveBlock={() => removeBlock(block.id)}
                   onToggleMetric={(metricId) =>
@@ -281,7 +292,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
             flex="none"
             variant="filled"
             loading={isStarting}
-            disabled={isStarting}
+            disabled={isStarting || isManualDataPickingDisabled}
             onClick={handleStart}
           >{t`Start research`}</Button>
         )}

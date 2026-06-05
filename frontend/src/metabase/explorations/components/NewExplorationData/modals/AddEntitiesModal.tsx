@@ -121,8 +121,6 @@ export function AddEntitiesModal({
                           {item.groupLabel}
                         </Text>
                       )}
-                      {/* The whole card is the checkbox's <label>, so a click
-                          anywhere inside it toggles the contained input once. */}
                       <Box
                         component="label"
                         className={cx(S.card, {

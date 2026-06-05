@@ -342,6 +342,43 @@
           (is (= "By Price" (:group_name dimension-heading)))
           (is (= #{"Revenue" "Signups"} (leaves-of dimension-heading))))))))
 
+(deftest exploration-dimension-group-heading-disambiguation-test
+  (testing "GET qualifies same-named dimension-anchored group headings by their source"
+    ;; Suppress the post-insert dimension auto-sync so our fixture dims survive on the Card.
+    (with-redefs [card/*syncing-metric-dimensions* true]
+      (let [users-created  "00000000-0000-0000-0000-0000000a1111"
+            orders-created "00000000-0000-0000-0000-0000000b2222"]
+        (mt/with-temp
+          [:model/User u {:email "dim-heading@example.com"}
+           :model/Card revenue (assoc (valid-metric-card (:id u))
+                                      :name "Revenue"
+                                      :dimensions
+                                      [{:id users-created  :name "CREATED_AT" :display_name "Created At"
+                                        :group {:id "g-users"  :type "main"       :display_name "Users"}}
+                                       {:id orders-created :name "CREATED_AT" :display_name "Created At"
+                                        :group {:id "g-orders" :type "connection" :display_name "Orders"}}])]
+          (let [mapping  (fn [dim-id field-id]
+                           [{:dimension_id dim-id :table_id 1 :target ["field" {} field-id]}])
+                dim-grp  (fn [dim-id field-id]
+                           {:type       "dimension"
+                            :metrics    [{:card_id (:id revenue)
+                                          :dimension_mappings (mapping dim-id field-id)}]
+                            :dimensions [{:dimension_id dim-id :display_name "Created At"}]})
+                headings (fn [body]
+                           (->> (create-exploration! u body) :threads first :groups
+                                (filter #(= "sidebar" (:display_type %)))
+                                (map :group_name)
+                                set))]
+            (testing "two dimension groups sharing a base name → headings qualified by source"
+              (is (= #{"By Users - Created At" "By Orders - Created At"}
+                     (headings {:name   "ambig-headings"
+                                :groups [(dim-grp users-created 1)
+                                         (dim-grp orders-created 2)]}))))
+            (testing "a single dimension group keeps the plain heading even with a known source"
+              (is (= #{"By Created At"}
+                     (headings {:name   "single-heading"
+                                :groups [(dim-grp users-created 1)]}))))))))))
+
 (deftest exploration-create-persists-groups-verbatim-test
   (testing "POST / persists each :groups entry as its own ExplorationThreadGroup row — no dedup across groups"
     (mt/with-temp [:model/User u {:email "groups@example.com"}

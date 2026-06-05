@@ -52,6 +52,7 @@ export function SelectedPills({ pills }: SelectedPillsProps) {
 
 interface SelectedTimelinePillsProps {
   timelines: Timeline[];
+  disabled: boolean;
   onRemoveTimeline: (timeline: Timeline) => void;
   onShowMore: () => void;
 }
@@ -63,6 +64,7 @@ interface SelectedTimelinePillsProps {
  */
 export function SelectedTimelinePills({
   timelines,
+  disabled,
   onRemoveTimeline,
   onShowMore,
 }: SelectedTimelinePillsProps) {
@@ -74,8 +76,13 @@ export function SelectedTimelinePills({
     <>
       <UnstyledButton
         className={cx(S.togglePill, S.togglePillSelected, S.timelineTogglePill)}
-        onClick={() => onRemoveTimeline(primary)}
         aria-label={t`Remove ${primary.name}`}
+        onClick={() => {
+          if (disabled) {
+            return;
+          }
+          onRemoveTimeline(primary);
+        }}
       >
         <Ellipsified>{primary.name}</Ellipsified>
       </UnstyledButton>
@@ -132,6 +139,7 @@ function PillItem({
 interface TogglePillProps {
   label: string;
   selected: boolean;
+  disabled: boolean;
   interestingness?: number | null;
   onToggle: () => void;
 }
@@ -139,15 +147,17 @@ interface TogglePillProps {
 export function TogglePill({
   label,
   selected,
+  disabled,
   interestingness,
   onToggle,
 }: TogglePillProps) {
   return (
     <UnstyledButton
       className={cx(S.togglePill, { [S.togglePillSelected]: selected })}
-      onClick={onToggle}
+      disabled={disabled}
       aria-pressed={selected}
       data-interestingness={interestingness || "null"}
+      onClick={onToggle}
     >
       {selected && <Icon name="check" size={12} aria-hidden />}
       <Ellipsified>{label}</Ellipsified>

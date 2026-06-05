@@ -1,9 +1,21 @@
 import { useEffect } from "react";
+import { t } from "ttag";
 
 import { explorationApi } from "metabase/api/exploration";
 import { EditableText } from "metabase/common/components/EditableText";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Box, Center, Flex, Group, Paper, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  Group,
+  Icon,
+  Paper,
+  Stack,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import {
   EXPLORATION_NAME_MAX_LENGTH,
@@ -29,17 +41,28 @@ export function NewExplorationPlan({ selection }: NewExplorationPlanProps) {
 
   return (
     <Stack h="100%" gap={0} bg="background-primary" miw="50rem">
-      <Box pt="2rem" pb="2.5rem" px="3rem">
-        <EditableText
-          initialValue={name}
-          onChange={setName}
-          placeholder={getDefaultExplorationName()}
-          bd="none"
-          fw="bold"
-          fz="h2"
-          lh="1.875rem"
-          maxLength={EXPLORATION_NAME_MAX_LENGTH}
-        />
+      <Box pt="1.5rem" pb="1rem" px="3rem">
+        <Group w="100%" maw="93.75rem" mx="auto">
+          <Button
+            component={ForwardRefLink}
+            to={Urls.newExploration()}
+            c="text-secondary"
+            bd="none"
+            leftSection={<Icon name="arrow_left" c="brand" />}
+          >
+            {t`All projects`}
+          </Button>
+          <EditableText
+            initialValue={name}
+            onChange={setName}
+            placeholder={getDefaultExplorationName()}
+            bd="none"
+            fw="bold"
+            fz="h2"
+            lh="1.875rem"
+            maxLength={EXPLORATION_NAME_MAX_LENGTH}
+          />
+        </Group>
       </Box>
       <Center px="3rem" pb="3rem" flex={1} mih={0}>
         <Paper

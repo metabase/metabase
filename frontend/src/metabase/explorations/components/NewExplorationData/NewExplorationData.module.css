@@ -73,6 +73,11 @@
   &:hover {
     border-color: var(--mb-color-brand);
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.75;
+  }
 }
 
 .togglePillSelected {

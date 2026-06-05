@@ -106,24 +106,28 @@
              :exploration_thread_id thread-id
              {:order-by [[:position :asc] [:id :asc]]}))
 
+(defn- enrich-group-dimensions
+  "Attach each group dimension's `:group` (source) label from `card-dim-by-id` so the read tree
+  can qualify same-named dimension headings by their source."
+  [groups card-dim-by-id]
+  (mapv (fn [group]
+          (update group :dimensions
+                  (fn [dims]
+                    (mapv #(thread-group/enrich-with-card-group % card-dim-by-id) dims))))
+        groups))
+
 (defn- attach-query-dimension-labels
   "Attach `:dimension_name` to each query on `thread`. Dimension snapshots come from the
-  thread's `groups` (deduped by id); each is enriched with `:group` looked up from the metric
-  Cards' snapshotted `:dimensions` (the only place that group metadata lives), then
-  `exploration-query-dim-label` is applied with ambiguity scoped to the thread's dimensions."
-  [thread groups]
-  (let [card-ids       (distinct (mapcat #(map :card_id (:metrics %)) groups))
-        card-dims      (when (seq card-ids)
-                         (t2/select-pk->fn :dimensions [:model/Card :id :dimensions]
-                                           :id [:in card-ids]))
-        card-dim-by-id (into {}
-                             (mapcat (fn [dims] (map (juxt :id identity) dims)))
-                             (vals card-dims))
-        thread-dims    (vals (u/index-by :dimension_id (mapcat :dimensions groups)))
-        enriched-dims  (mapv #(thread-group/enrich-with-card-group % card-dim-by-id)
-                             thread-dims)
-        dim-by-id      (u/index-by :dimension_id enriched-dims)
-        name-counts    (frequencies (keep :display_name enriched-dims))]
+  thread's `groups` (deduped by id); each is enriched with `:group` looked up from
+  `card-dim-by-id` (the metric Cards' snapshotted `:dimensions`, the only place that group
+  metadata lives), then `exploration-query-dim-label` is applied with ambiguity scoped to the
+  thread's dimensions."
+  [thread groups card-dim-by-id]
+  (let [thread-dims   (vals (u/index-by :dimension_id (mapcat :dimensions groups)))
+        enriched-dims (mapv #(thread-group/enrich-with-card-group % card-dim-by-id)
+                            thread-dims)
+        dim-by-id     (u/index-by :dimension_id enriched-dims)
+        name-counts   (frequencies (keep :display_name enriched-dims))]
     (update thread :queries
             (fn [queries]
               (some->> queries
@@ -137,17 +141,22 @@
 
 (defn- attach-thread-read-data
   "Compute the read-side `:groups` tree and per-query `:dimension_name` labels for `thread`
-  from its persisted groups, selecting the groups once and threading them through both."
+  from its persisted groups, selecting the metric Cards once (for both names and dimension
+  source metadata) and threading everything through both."
   [thread]
   (let [groups          (thread-groups (:id thread))
         card-ids        (distinct (mapcat #(map :card_id (:metrics %)) groups))
-        card-name-by-id (if (seq card-ids)
-                          (t2/select-pk->fn :name [:model/Card :id :name] :id [:in card-ids])
-                          {})
+        cards           (when (seq card-ids)
+                          (t2/select [:model/Card :id :name :dimensions] :id [:in card-ids]))
+        card-name-by-id (into {} (map (juxt :id :name)) cards)
+        card-dim-by-id  (into {}
+                              (mapcat (fn [c] (map (juxt :id identity) (:dimensions c))))
+                              cards)
+        enriched-groups (enrich-group-dimensions groups card-dim-by-id)
         ;; Label queries first so group-tree can name metric-anchored leaves "By <dimension>".
-        labeled         (attach-query-dimension-labels thread groups)]
+        labeled         (attach-query-dimension-labels thread enriched-groups card-dim-by-id)]
     (assoc labeled :groups (explorations.groups/group-tree
-                            groups (:queries labeled) card-name-by-id))))
+                            enriched-groups (:queries labeled) card-name-by-id))))
 
 (defn- hydrate-exploration [exploration]
   (-> exploration

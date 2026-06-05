@@ -12,6 +12,7 @@
    stays unique when the same `(card, dim)` pair appears in more than one group (a metric
    can be selected in several groups)."
   (:require
+   [clojure.string :as str]
    [metabase.util.i18n :refer [tru]]
    [ring.util.codec :as codec]))
 
@@ -51,14 +52,39 @@
     "metric"    false
     (> (count (:metrics group)) 1)))
 
+(defn- anchor-dimension
+  "The dimension a dimension-anchored group is built around (its first/only dimension)."
+  [group]
+  (first (:dimensions group)))
+
+(defn- dimension-base-name
+  [dim]
+  (or (:display_name dim) (:dimension_id dim) ""))
+
+(defn- dimension-long-name
+  "Disambiguated dimension label `<source> - <name>` when the dim carries a source (`:group`)
+   label, else the plain base name."
+  [dim]
+  (let [base   (dimension-base-name dim)
+        source (some-> dim :group :display_name)]
+    (if (str/blank? source)
+      base
+      (tru "{0} - {1}" source base))))
+
 (defn group-display-name
   "Sidebar heading for a group: `By <dimension>` for a dimension-anchored block, otherwise the
-   metric's name. `card-name-by-id` maps a metric Card id to its name."
-  [group card-name-by-id]
-  (if (dimension-anchored? group)
-    (let [dim (first (:dimensions group))]
-      (tru "By {0}" (or (:display_name dim) (:dimension_id dim) "")))
-    (or (get card-name-by-id (:card_id (first (:metrics group)))) "")))
+   metric's name. `card-name-by-id` maps a metric Card id to its name. When `ambiguous?` (the
+   base dimension name is shared by another group), the dimension is qualified by its source —
+   `By <source> - <dimension>` — so same-named groups stay identifiable."
+  ([group card-name-by-id]
+   (group-display-name group card-name-by-id false))
+  ([group card-name-by-id ambiguous?]
+   (if (dimension-anchored? group)
+     (let [dim (anchor-dimension group)]
+       (tru "By {0}" (if ambiguous?
+                       (dimension-long-name dim)
+                       (dimension-base-name dim))))
+     (or (get card-name-by-id (:card_id (first (:metrics group)))) ""))))
 
 (defn- effective-score
   "Per-query score for ordering: contextual when present, else heuristic."
@@ -102,8 +128,8 @@
    ::max-score      (max-score qs)})
 
 (defn- group-node
-  [group card-name-by-id]
-  (let [display-name (group-display-name group card-name-by-id)]
+  [group card-name-by-id ambiguous?]
+  (let [display-name (group-display-name group card-name-by-id ambiguous?)]
     {:id              (group-node-id group)
      :parent_group_id nil
      :type            "auto"
@@ -132,14 +158,23 @@
    matched to their group via the `group_id` the planner stamped on each row; rows whose
    group isn't in `groups` are dropped."
   [groups queries card-name-by-id]
-  (let [rows-by-group (group-by :group_id queries)
+  (let [base-name-counts (->> groups
+                              (filter dimension-anchored?)
+                              (map #(dimension-base-name (anchor-dimension %)))
+                              frequencies)
+        ambiguous?    (fn [group]
+                        (and (dimension-anchored? group)
+                             (> (get base-name-counts
+                                     (dimension-base-name (anchor-dimension group)) 0)
+                                1)))
+        rows-by-group (group-by :group_id queries)
         depth-first   (mapcat
                        (fn [group]
                          (let [leaves (->> (get rows-by-group (:id group) [])
                                            (group-by (juxt :card_id :dimension_id))
                                            (map (fn [[k qs]] (leaf-node group k qs card-name-by-id)))
                                            (sort-by sort-key))]
-                           (cons (group-node group card-name-by-id) leaves)))
+                           (cons (group-node group card-name-by-id (ambiguous? group)) leaves)))
                        groups)]
     (into [] (comp (map-indexed #(assoc %2 :position %1))
                    (map #(dissoc % ::max-score)))
