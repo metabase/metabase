@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.users.models.user :as user]
@@ -105,3 +106,12 @@
        ;; returning `false` for users who should actually be sandboxes.
        (throw (ex-info (str (tru "No current user found"))
                        {:status-code 403}))))))
+
+(defenterprise card-query-touches-sandboxed-table?
+  "True when the current user has an enforced sandbox on any source table of `card`'s `:dataset_query`. Superusers are
+  never sandboxed; reads the per-request sandbox cache, so it only filters inside a request context."
+  :feature :sandboxes
+  [card]
+  (boolean
+   (when-let [table-ids (some-> card :dataset_query not-empty lib/all-source-table-ids not-empty)]
+     (seq (enforced-sandboxes-for-tables table-ids)))))

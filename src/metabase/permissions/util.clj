@@ -323,6 +323,15 @@
   ;; becomes available
   false)
 
+(defenterprise card-query-touches-sandboxed-table?
+  "True when the current user has an enforced sandbox (column- or row-level) on any source table of `card`'s
+  `:dataset_query`. Lets callers that bypass the query processor — e.g. `read_resource` MBR extraction, which goes
+  through the admin-oriented serdes pipeline — decide whether a card's `:dataset_query`/`:result_metadata` may be
+  exposed as-is or must be withheld to avoid leaking sandboxed table/column names. OSS always returns `false`."
+  metabase-enterprise.sandbox.api.util
+  [_card]
+  false)
+
 (defenterprise impersonated-user?
   "Returns a boolean if the current user uses connection impersonation for any database. In OSS this is always false.
   Will throw an error if [[api/*current-user-id*]] is not bound."

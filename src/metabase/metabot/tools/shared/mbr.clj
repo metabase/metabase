@@ -23,6 +23,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.warehouses.models.database :as warehouses.database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -128,6 +129,31 @@
   (str (table-uri db-name schema table-name)
        "/field/" (enc field-name)))
 
+(def ^:private sandbox-redacted-card-keys
+  "Card MBR keys that name the underlying warehouse tables/columns. Serdes extracts them
+   unfiltered (it is an admin-export pipeline), so for a user with a data sandbox on any table
+   the card touches we withhold them — otherwise the MBR would leak column/table names the
+   sandbox hides. See `~/dv/mb/ai-reports/mbr-read-resource-sandbox-leak.md`."
+  [:dataset_query :result_metadata])
+
+(defn redact-sandboxed
+  "Strip sandbox-revealing keys from `mbr` when the current user is sandboxed on the warehouse
+   data behind `instance`.
+
+   Currently only Cards (questions / models / metrics) carry such keys inline. When the user has
+   an enforced sandbox on any source table of the card's query, drop `:dataset_query` and
+   `:result_metadata` (identity + FK references stay). For every other model, and for
+   non-sandboxed users / superusers / OSS, `mbr` is returned unchanged.
+
+   Fail-closed by construction: the predicate is an EE `defenterprise` that defaults to `false`
+   only on OSS / no-sandbox; when a sandbox is configured but its source card's metadata is
+   missing, the underlying sandbox machinery still reports the table as sandboxed, so we redact."
+  [model instance mbr]
+  (if (and (= model "Card")
+           (perms/card-query-touches-sandboxed-table? instance))
+    (apply dissoc mbr sandbox-redacted-card-keys)
+    mbr))
+
 (defn ->mbr
   "Run serdes/extract-all for a single instance, producing an MBR map.
 
@@ -151,7 +177,7 @@
                    (binding [warehouses.database/*include-h2-in-extract?* true]
                      (into [] (serdes/extract-all model {:where [:= :id (:id instance)]})))
                    (into [] (serdes/extract-all model {:where [:= :id (:id instance)]})))]
-    (first pipeline)))
+    (redact-sandboxed model instance (first pipeline))))
 
 (defn extract-as-user
   "Permission-gated MBR extraction.
@@ -234,7 +260,8 @@
                                                 (extract))
                                               (extract))]
                       (into [] (keep (fn [inst]
-                                       (get extracted-by-path (serdes/generate-path model inst))))
+                                       (some->> (get extracted-by-path (serdes/generate-path model inst))
+                                                (redact-sandboxed model inst))))
                             sliced)))]
      (if limit
        {:items mbrs :total total}
