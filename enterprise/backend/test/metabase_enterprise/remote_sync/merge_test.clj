@@ -94,6 +94,20 @@
       (is (empty? (:merged result)))
       (is (= {:added 0 :updated 0 :removed 0} (:summary result))))))
 
+(deftest duplicate-entity-id-on-one-side-throws-test
+  (testing "two specs on the same side sharing an entity_id is corruption -> throw, not silently drop one"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Duplicate serdes identity"
+         (remote-sync.merge/three-way-merge
+          [(card "A" "a")]
+          [(card "A" "bar") (card "A" "baz")] ; same entity_id "A" at two different paths
+          [(card "A" "a")]))))
+  (testing "the same entity_id appearing once per side is fine (that's the normal rename/edit case)"
+    (is (some? (remote-sync.merge/three-way-merge
+                [(card "A" "a")]
+                [(card "A" "bar")]
+                [(card "A" "baz")])))))
+
 (deftest conflict-label-test
   (testing "conflict-label uses the entity's name and path"
     (is (= "bar (collections/bar.yaml)"

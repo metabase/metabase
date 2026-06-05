@@ -45,14 +45,23 @@
       [::by-path path]))
 
 (defn- index-by-key
-  "Builds a map of identity-key -> `{:path :content}` for a sequence of file specs."
+  "Builds a map of identity-key -> `{:path :content}` for a sequence of file specs.
+
+  Throws if two specs on the same side share a serdes identity (the same model + entity_id at two
+  paths): silently keeping one would drop the other, which is data corruption, so a duplicate entity_id
+  is surfaced as an error. A duplicate path-fallback key (two non-serdes files at the same path, which a
+  real tree shouldn't contain) only warns and keeps the last."
   [specs]
   (persistent!
    (reduce (fn [acc {:keys [path] :as spec}]
              (let [k (file-key spec)]
                (when (contains? acc k)
-                 (log/warnf "Duplicate serdes identity %s for paths %s and %s during merge"
-                            k (:path (get acc k)) path))
+                 (if (= ::by-path (first k))
+                   (log/warnf "Duplicate path %s during merge; keeping the last occurrence" path)
+                   (throw (ex-info (format "Duplicate serdes identity %s during merge: paths %s and %s share the same entity_id"
+                                           k (:path (get acc k)) path)
+                                   {:identity k
+                                    :paths    [(:path (get acc k)) path]}))))
                (assoc! acc k (select-keys spec [:path :content]))))
            (transient {})
            specs)))
