@@ -4,11 +4,13 @@
 
   &:hover {
     .content {
-      color: var(--mb-color-brand);
+      color: var(--active-color);
     }
   }
 }
 
 .content {
+  --active-color: var(--mb-color-brand);
+
   color: var(--mb-color-text-tertiary);
 }

@@ -58,7 +58,6 @@ export const CollectionBreadcrumbs = ({
       <>
         <CollectionBadge
           collectionId={parts[0].id}
-          isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
         {separator}
@@ -75,7 +74,6 @@ export const CollectionBreadcrumbs = ({
         <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}
-            isSingleLine
             onClick={onClick ? () => onClick(collection) : undefined}
           />
           {separator}
@@ -89,7 +87,6 @@ export const CollectionBreadcrumbs = ({
         {content}
         <CollectionBadge
           collectionId={collection.id}
-          isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
       </Flex>
