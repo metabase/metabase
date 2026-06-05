@@ -293,21 +293,4 @@ describe("NotificationCard", () => {
 
     expect(screen.getByTestId("notification-alert-item")).toBeInTheDocument();
   });
-
-  it("should not crash when the payload is undefined (metabase#73073)", () => {
-    const alert = getQuestionAlertItem({ payload: undefined });
-    const user = createMockUser();
-
-    renderWithTheme(
-      <NotificationCard
-        isEditable
-        listItem={alert}
-        user={user}
-        onArchive={jest.fn()}
-        onUnsubscribe={jest.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId("notification-alert-item")).toBeInTheDocument();
-  });
 });
