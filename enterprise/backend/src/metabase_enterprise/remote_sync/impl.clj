@@ -293,13 +293,28 @@
   Remote-originated changes end up 'synced'; the un-pushed local changes are preserved as dirty so they
   can be pushed later. Sets the last version to the remote tip (so the branch is no longer 'behind').
 
-  On a genuine same-entity conflict, returns `:conflict` without touching local state."
+  On a genuine same-entity conflict, returns `:conflict` without touching local state.
+
+  `base-snapshot` is nil only when no safe 3-way merge is possible (no prior sync, or the base commit was
+  orphaned by a force-push/rebase) — that surfaces as a conflict. When the remote has not advanced past
+  the base, there is nothing to fold in, so it is a no-op success that keeps local changes dirty."
   [snapshot base-snapshot task-id sync-timestamp]
-  (if (nil? base-snapshot)
+  (cond
+    (nil? base-snapshot)
     {:status    :conflict
      :version   (source.p/version snapshot)
      :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
      :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
+
+    ;; The remote hasn't advanced past the merge base — nothing to fold in. Keep local changes as-is (still
+    ;; dirty, to be pushed later); a no-op success, not a spurious "history was rewritten" conflict.
+    (= (source.p/version base-snapshot) (source.p/version snapshot))
+    (u/prog1 {:status        :success
+              :version       (source.p/version snapshot)
+              :merge-summary {:added 0 :updated 0 :removed 0}}
+      (log/info "Pull merge: remote has not advanced; keeping local changes unchanged"))
+
+    :else
     (let [models (spec/extract-entities-for-export)
           {:keys [merged conflicts summary]}
           (source/compute-merge models snapshot base-snapshot task-id)]
@@ -738,13 +753,15 @@
         source                 (source/source-from-settings branch)
         has-dirty?             (remote-sync.object/dirty?)
         snapshot               (source.p/snapshot source)
-        ;; the merge base, resolved only for a merge when the remote has advanced; nil means no safe
-        ;; 3-way merge is possible (no prior sync, or the base commit was orphaned by force-push/rebase)
+        ;; the merge base for a merge pull. When the remote has not advanced it is the remote tip itself
+        ;; (base == theirs, so import-merged! no-ops and keeps local dirty). When the remote has advanced
+        ;; it's the last-synced commit, which may be nil if orphaned by a force-push/rebase (→ conflict).
+        ;; nil also when there's no prior sync. Resolved only for a merge.
         last-task-version      (remote-sync.task/last-version)
-        base-snapshot          (when (and merge?
-                                          (some? last-task-version)
-                                          (not= last-task-version (source.p/version snapshot)))
-                                 (source.p/snapshot-at source last-task-version))]
+        base-snapshot          (when (and merge? (some? last-task-version))
+                                 (if (= last-task-version (source.p/version snapshot))
+                                   snapshot
+                                   (source.p/snapshot-at source last-task-version)))]
     (when (and has-dirty? (not force?) (not merge?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400

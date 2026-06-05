@@ -256,6 +256,14 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
+      // Wait until the dirty state has settled (push disabled, since nothing is dirty) so the pull takes
+      // the non-dirty direct-import path deterministically.
+      await waitFor(async () => {
+        expect(await findOption(/Push changes/)).toHaveAttribute(
+          "data-combobox-disabled",
+          "true",
+        );
+      });
       await userEvent.click(await findOption(/Pull changes/));
 
       expect(
@@ -286,6 +294,10 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
+      // Wait until the dirty state has settled (push enabled) so the pull takes the dirty/merge path.
+      await waitFor(async () => {
+        expect(await findOption(/Push changes/)).toBeEnabled();
+      });
       await userEvent.click(await findOption(/Pull changes/));
 
       await waitFor(() => {
@@ -379,6 +391,40 @@ describe("GitSyncControls", () => {
           screen.getByPlaceholderText("Find or create a branch..."),
         ).toBeInTheDocument();
       });
+    });
+
+    it("shows a refresh modal when a clean branch switch is rejected for a stale branch", async () => {
+      setup({ branches: ["main", "develop"] });
+
+      // Another session already switched the branch; the import CAS guard rejects the switch.
+      fetchMock.removeRoute("remote-sync-import");
+      fetchMock.post(
+        "path:/api/ee/remote-sync/import",
+        {
+          status: 409,
+          body: {
+            message:
+              "The sync branch changed to 'develop' in another session. Refresh and try again.",
+            branch_mismatch: true,
+            current_branch: "develop",
+          },
+        },
+        { name: "remote-sync-import" },
+      );
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      await userEvent.click(await findOption(/Switch branch/));
+      await userEvent.click(await findOption(/develop/));
+
+      expect(
+        await screen.findByText(/changed .* in another session/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Refresh/ }),
+      ).toBeInTheDocument();
     });
   });
 });

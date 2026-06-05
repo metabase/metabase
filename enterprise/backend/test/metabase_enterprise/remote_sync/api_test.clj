@@ -326,6 +326,29 @@
                     completed-task (wait-for-task-completion task_id)]
                 (is (remote-sync.task/successful? completed-task))))))))))
 
+(deftest import-merge-noop-when-remote-not-advanced-test
+  (testing "POST /import merge=true when the remote has NOT advanced is a no-op success that keeps local dirty (not a spurious 'history was rewritten' conflict)"
+    (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}
+                   ;; last-synced version == the mock's current version -> not diverged
+                   :model/RemoteSyncTask _ {:sync_task_type "foo" :ended_at :%now :version "mock-version"}]
+      (let [mock-main (test-helpers/create-mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "main"]
+          (t2/insert! :model/RemoteSyncObject {:model_type "Card"
+                                               :model_id 1
+                                               :model_name "Test Card"
+                                               :model_collection_id 1
+                                               :status "update"
+                                               :status_changed_at (java.time.OffsetDateTime/now)})
+          (with-redefs [source/source-from-settings (constantly mock-main)]
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+                  completed-task (wait-for-task-completion task_id)]
+              (is (remote-sync.task/successful? completed-task)
+                  "a merge pull with nothing new on the remote succeeds instead of failing as a history-rewritten conflict")
+              (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 1))
+                  "the un-pushed local change is left untouched (still dirty)"))))))))
+
 ;;; ------------------------------------------------- Export Endpoint -------------------------------------------------
 
 (deftest export-errors-in-read-only-mode-test

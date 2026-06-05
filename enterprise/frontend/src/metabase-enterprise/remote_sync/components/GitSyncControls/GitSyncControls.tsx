@@ -115,11 +115,12 @@ export const GitSyncControls = () => {
           return;
         }
         // expected_branch is the branch we're switching away from: reject if another session already
-        // moved off it, so we don't switch from a stale base.
+        // moved off it, so we don't switch from a stale base. unwrap() so a rejection (e.g. the CAS 409)
+        // throws and reaches handleBranchSelect's catch instead of resolving silently.
         await importChanges({
           branch,
           expected_branch: currentBranch,
-        });
+        }).unwrap();
 
         trackBranchSwitched({
           triggeredFrom: "app-bar",
