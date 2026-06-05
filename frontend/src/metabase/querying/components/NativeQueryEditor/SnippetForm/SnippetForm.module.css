@@ -8,3 +8,9 @@
     line-height: 1.5em;
   }
 }
+
+.ArchiveButton {
+  &[data-variant="subtle"]:hover {
+    background-color: var(--mb-color-background-secondary);
+  }
+}

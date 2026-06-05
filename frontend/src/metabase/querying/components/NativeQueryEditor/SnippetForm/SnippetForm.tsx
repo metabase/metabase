@@ -6,10 +6,9 @@ import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Form, FormProvider } from "metabase/forms";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { Button, Flex, Icon } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
@@ -109,8 +108,11 @@ function SnippetFormInner({
               {isEditing && (
                 <Button
                   type="button"
+                  className={S.ArchiveButton}
                   leftSection={<Icon name="archive" />}
                   variant="subtle"
+                  color="text-secondary"
+                  size="sm"
                   onClick={onArchive}
                 >
                   {t`Archive`}
@@ -120,12 +122,15 @@ function SnippetFormInner({
             </Flex>
             <Flex align="center" justify="center" gap="sm" mt="md">
               {!!onCancel && (
-                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+                <Button type="button" size="sm" onClick={onCancel}>
+                  {t`Cancel`}
+                </Button>
               )}
               <FormSubmitButton
-                title={t`Save`}
+                label={t`Save`}
                 disabled={!dirty && !isInitiallyDirty}
-                primary
+                variant="filled"
+                size="sm"
               />
             </Flex>
           </Flex>
