@@ -25,6 +25,8 @@ const SDK_TRACKER_NAME = "sdk";
 
 let trackerInitialized = false;
 
+// Unused until the collection work wires these into the component lifecycle (EMB-1786).
+//
 // Initialize the SDK's Snowplow tracker, pointed at the instance proxy. Idempotent —
 // safe under React 18 StrictMode double-mount and nested providers.
 export const initSdkTracker = (metabaseInstanceUrl: string): void => {
