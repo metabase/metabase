@@ -402,6 +402,9 @@
                             (:identity (spec/spec-for-model-type (:model_type row))))
                       (reduced nil)
 
+                      (not (#{"create" "update" "removed" "delete"} status))
+                      (reduced nil)
+
                       (and (#{"removed" "delete"} status) ;; removed/delete with no stored path needs a full export
                            (str/blank? file_path))
                       (reduced nil)
@@ -411,14 +414,12 @@
                           (update :delete-paths conj file_path)
                           (update :removed-ids conj (:id row)))
 
-                      (not (#{"create" "update"} status))
-                      (reduced nil)
-
+                      ;; past here, we're seeing create and update statuses
                       (not @info) ;; entity no longer exists
                       (reduced nil)
 
-                      ;; create: brand-new file, no old path to delete. Target must be free or already
-                      ;; this entity (guards against a dedup name collision).
+                      ;; create: brand-new file, no old path to delete.
+                      ;; Target must be free or same entity id
                       (and (= "create" status)
                            (path-free-for? snapshot (:new-path @info) (:eid @info)))
                       (upsert plan)

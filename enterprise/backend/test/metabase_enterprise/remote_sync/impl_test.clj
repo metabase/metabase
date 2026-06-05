@@ -166,12 +166,12 @@
 ;; export! tests
 
 (deftest export!-with-no-source-configured-test
-  (testing "export! with no source configured"
+  (testing "export! with no source configured throws"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
-            result (impl/export! nil task-id "Test commit")]
-        (is (= :error (:status result)))
-        (is (re-find #"Remote sync source is not enabled" (:message result)))))))
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Remote sync source is not enabled"
+                              (impl/export! nil task-id "Test commit")))))))
 
 (deftest export!-with-no-remote-synced-collections-test
   (testing "export! errors when there are no remote-synced collections"
@@ -182,7 +182,7 @@
             (let [mock-source (test-helpers/create-mock-source)
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
               (is (= :error (:status result)))
-              (is (= "No remote-syncable content available." (:message result))))))))))
+              (is (re-find #"No remote-syncable content available" (:message result))))))))))
 
 (deftest export!-successful-with-default-collections-test
   (testing "export! successful with default collections"

@@ -166,6 +166,9 @@
       (let [a-eid  (t2/select-one-fn :entity_id :model/Card :id card-a)
             b-eid  (t2/select-one-fn :entity_id :model/Card :id card-b)
             b-path (path-for-eid mock b-eid)]
+        ;; A real delete means the entity is archived, so it can't be re-serialized — the incremental
+        ;; delete must work from the stored file_path alone, without re-extracting the entity.
+        (t2/update! :model/Card card-b {:archived true})
         (set-status! "Card" card-b "delete")
         (let [task        (new-task!)
               result      (impl/export! (source.p/snapshot mock) task "delete B")
