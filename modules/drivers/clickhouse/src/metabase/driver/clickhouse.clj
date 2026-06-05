@@ -390,7 +390,7 @@
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/describe-fks :clickhouse
-  [_driver _database _spec]
+  [_driver _database & {:as _options}]
   (log/warn "Clickhouse does not support foreign keys. `describe-fks` should not have been called!")
   nil)
 

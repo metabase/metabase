@@ -456,9 +456,9 @@
 (declare database-supports?)
 
 (mu/defmethod describe-fks ::driver :- ::describe-fks.result
-  [driver   :- :keyword
-   database :- ::lib.schema.metadata/database
-   _options :- ::describe-fks.options]
+  [driver           :- :keyword
+   database         :- ::lib.schema.metadata/database
+   & {:as _options} :- ::describe-fks.options]
   (if (database-supports? driver :metadata/key-constraints database)
     (throw (ex-info "Drivers that support :metadata/key-constraints must implement metabase.driver/describe-fks"
                     {:driver driver, :type ::qp.error-type/driver}))

@@ -86,9 +86,9 @@
   (get (sync-test-tables) (:name table)))
 
 (mu/defmethod driver/describe-fks ::sync-test :- ::driver/describe-fks.result
-  [_driver                             :- :keyword
-   _database                           :- ::lib.schema.metadata/database
-   {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
+  [_driver                               :- :keyword
+   _database                             :- ::lib.schema.metadata/database
+   & {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
   (when (or (empty? table-names)
             (contains? (set table-names) "movie"))
     [{:fk-table-schema (when *supports-schemas?* "default")

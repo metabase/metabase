@@ -846,9 +846,9 @@
       (sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata metadata db-name schema table-name))))
 
 (mu/defmethod driver/describe-fks :snowflake :- ::driver/describe-fks.result
-  [driver   :- :keyword
-   database :- ::lib.schema.metadata/database
-   options  :- ::driver/describe-fks.options]
+  [driver          :- :keyword
+   database        :- ::lib.schema.metadata/database
+   & {:as options} :- ::driver/describe-fks.options]
   (let [db-name (db-name database)
         f       (fn f [^Connection conn table]
                   (let [metadata (.getMetaData conn)]

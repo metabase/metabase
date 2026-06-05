@@ -87,9 +87,9 @@
                                              (assoc field :database-position idx))))))
 
 (mu/defmethod driver/describe-fks ::moviedb :- ::driver/describe-fks.result
-  [_driver                             :- :keyword
-   _database                           :- ::lib.schema.metadata/database
-   {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
+  [_driver                               :- :keyword
+   _database                             :- ::lib.schema.metadata/database
+   & {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
   (for [[table-name table] moviedb-tables
         :when              (or (empty? table-names)
                                (contains? (set table-names) table-name))
