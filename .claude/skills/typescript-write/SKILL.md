@@ -13,7 +13,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 
 - **New code must not introduce `any`, explicit or implicit.** No `any` annotations, no `as any` / `as unknown as`, no untyped parameters or returns that infer `any`, no implicitly-`any` destructures or array/object literals.
 - **Untyped third-party / boundary values** must be typed at the boundary (a declared type, `unknown` + type guard, or a small typed wrapper) — never let `any` propagate inward.
-- **Mandatory LSP verification.** After writing or editing any TS/TSX, inspect the changed symbols with the TypeScript Language Server (hover to read inferred types; `goToDefinition` to confirm sources) and run the project type-check. .
+- **Mandatory LSP verification.** After writing or editing any TS/TSX, inspect the changed symbols with the TypeScript Language Server (hover to read inferred types; `goToDefinition` to confirm sources) and run the project type-check.
 
 ## Type tightening
 
@@ -49,7 +49,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 - **Sensible defaults for optional values**. Use `?.` and `??` at the consumer.
 - **Lists should be filtered** before being used in a map or other iteration.
 - **Avoid non-strict null comparisons** (`X != null`) when `X` can never be `null` — use a strict check or narrow the type. Use `checkNotNull` where necessary.
-- **Check actual nullability agains API implementation**. Find the API endpoint implementation and check if the field can actually be null.
+- **Check actual nullability against API implementation**. Find the API endpoint implementation and check if the field can actually be null.
 
 ## Naming
 
@@ -66,10 +66,12 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 - **Extract distinct complex JSX into named components**. Choose same-file vs separate-file by reuse, coupling, testability, and readability.
 
 ## Comments
+
 - **No comments by default**. Well-named identifiers carry the `what`.
 - **Comments should be concise**. Add a short, concise comment only when the `why` is non-obvious: a workaround, a hidden invariant, a subtle ordering constraint, a clever reduction. Never document the actual implementation, focus on the intent and the why.
 
-## Typescript Migration
+## TypeScript Migration
+
 **When touching existing JavaScript files, propose to convert them to TypeScript first**. Create a separate PR for the conversion, then implement the changes.
 
 ## Verify before done
