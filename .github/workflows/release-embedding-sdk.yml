@@ -94,6 +94,7 @@ jobs:
         "test",
         "build-sdk",
         "publish-npm",
+        "tag-latest",
         "git-tag",
       ]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -387,12 +388,17 @@ jobs:
         working-directory: sdk
         run: |
           npm publish --tag 62-beta
-      # ⚠️ This step should only be executed on the latest stable (gold) release branch.
-      # Only uncomment this when the new release branch becomes stable (gold).
-      # - name: Add `latest` tag to the latest release branch (e.g. `release-x.61.x`) deployment
-      #   working-directory: sdk
-      #   run: |
-      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+
+  tag-latest:
+    name: Tag npm release as latest
+    # ⚠️ This should only run on the most recent release branch (e.g. `release-x.61.x`),
+    # and only once it becomes stable (gold). Delete this line when gold — do not delete during the pre-gold window.
+    if: false
+    needs: [publish-npm, determine-sdk-version]
+    uses: ./.github/workflows/embedding-sdk-tag-latest.yml
+    with:
+      version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
+    secrets: inherit
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]
