@@ -40,7 +40,9 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.notification.payload.execute :as notification.execute]
+   [metabase.parameters.shared :as shared.params]
    [metabase.request.core :as request]
+   [metabase.system.core :as system]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -85,6 +87,8 @@
 (def ^:private text-card-pt 10.5)
 (def ^:private chart-title-pt 11.0)
 (def ^:private chart-desc-pt 9.0)
+(def ^:private param-pt 9.5)
+(def ^:private param-chip-gap 16.0)
 (def ^:private line-height-factor 1.3)
 (def ^:private ruby-scale
   "Furigana (ruby) reading font size as a fraction of the base text size; the reading is drawn
@@ -948,16 +952,18 @@
   "Produce positioned pages for one section (a tab, or the whole untabbed dashboard). `idx` is
   the section's index; only the very first section's first page carries the dashboard title,
   and (when tabbed) every section's first page carries the tab title."
-  [section idx {:keys [unit rows]} tabbed? dash-name]
+  [section idx {:keys [unit rows]} tabbed? dash-name param-lines param-rows]
   (let [dash-rows (rows-for-pt (header-block-pt dashboard-title-pt) unit)
         tab-rows  (rows-for-pt (header-block-pt tab-title-pt) unit)
-        first-hdr (+ (if (zero? idx) dash-rows 0)
+        ;; the parameter bar shows once, on the dashboard's very first page (section 0)
+        first-hdr (+ (if (zero? idx) (+ dash-rows param-rows) 0)
                      (if tabbed? tab-rows 0))]
     (map-indexed
      (fn [pi pg]
        (assoc pg
               :dashboard-title (when (and (zero? idx) (zero? pi)) dash-name)
-              :tab-title       (when (and tabbed? (zero? pi)) (:tab-name section))))
+              :tab-title       (when (and tabbed? (zero? pi)) (:tab-name section))
+              :param-lines     (when (and (zero? idx) (zero? pi)) param-lines)))
      (paginate (:cells section) rows first-hdr))))
 
 ;; --------------------------------------------------------------------------------------------
@@ -1062,15 +1068,84 @@
         (when-let [body (card-body-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
           (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card") x body-top cell-w body-h))))))
 
+;; --------------------------------------------------------------------------------------------
+;; Parameter bar -- the dashboard's active (non-inline) filter values, shown once at the very top
+;; of the dashboard (like the email subscription filter bar). Chips flow and wrap across lines, so
+;; dashboards with many parameters take however many rows they need.
+;; --------------------------------------------------------------------------------------------
+
+(defn- dashboard-param-chips
+  "Build the parameter chips to show at the top of the dashboard: top-level (non-inline) parameters
+  that have a value, formatted like the email filter bar via `value-string`. Each chip carries its
+  measured widths for layout. Requires `*fonts*` bound."
+  [params inline-ids]
+  (let [locale (system/site-locale)
+        sep-w  (text-width (regular-font) param-pt ": ")]
+    (vec (for [p     params
+               ;; only top-level (non-inline) parameters that actually have a value
+               :when (and (not (contains? inline-ids (:id p))) (some? (:value p)))
+               :let  [v (some-> (shared.params/value-string p locale) str str/trim)]
+               :when (not (str/blank? v))
+               :let  [nm (str (:name p))]]
+           {:name nm :value v
+            :name-w (text-width (bold-font) param-pt nm)
+            :sep-w  sep-w
+            :width  (+ (text-width (bold-font) param-pt nm) sep-w (text-width (regular-font) param-pt v))}))))
+
+(defn- layout-param-chips
+  "Greedily pack chips into lines fitting `content-w`, giving each an `:x` offset within the content
+  area. Returns a vector of lines (each a vector of placed chips)."
+  [chips content-w]
+  (loop [chips chips, line [], line-w 0.0, lines []]
+    (if (empty? chips)
+      (cond-> lines (seq line) (conj line))
+      (let [c   (first chips)
+            gap (if (seq line) param-chip-gap 0.0)
+            adv (+ gap (:width c))]
+        (if (and (seq line) (> (+ line-w adv) content-w))
+          (recur chips [] 0.0 (conj lines line))
+          (recur (rest chips) (conj line (assoc c :x (+ line-w gap))) (+ line-w adv) lines))))))
+
+(defn- param-lines-rows
+  "Whole grid rows the parameter bar consumes (0 when there are no params)."
+  [param-lines unit]
+  (if (seq param-lines)
+    (rows-for-pt (+ (* (count param-lines) (* param-pt line-height-factor)) header-pad-pt) unit)
+    0))
+
+(defn- draw-param-chip!
+  [^PDPageContentStream cs x baseline {:keys [name value name-w sep-w]}]
+  (draw-line! cs (bold-font) param-pt x baseline name)
+  (draw-line! cs (regular-font) param-pt (+ x name-w) baseline ": ")
+  (.setNonStrokingColor cs ^Color desc-color)
+  (draw-line! cs (regular-font) param-pt (+ x name-w sep-w) baseline value)
+  (.setNonStrokingColor cs Color/BLACK))
+
+(defn- draw-param-lines!
+  "Draw the parameter bar from `top-y`, returning the y below it."
+  [^PDPageContentStream cs param-lines top-y]
+  (loop [lines param-lines, y (double top-y)]
+    (if (empty? lines)
+      (- y 4.0)
+      (do
+        (doseq [chip (first lines)]
+          (draw-param-chip! cs (+ margin (:x chip)) (- y param-pt) chip))
+        (recur (rest lines) (- y (* param-pt line-height-factor)))))))
+
 (defn- draw-header!
-  [^PDPageContentStream cs page-height {:keys [dashboard-title tab-title]}]
+  [^PDPageContentStream cs page-height {:keys [dashboard-title tab-title param-lines]}]
   (let [bold (bold-font)
-        top  (- (double page-height) margin)]
-    (when dashboard-title
-      (draw-line! cs bold dashboard-title-pt margin (- top dashboard-title-pt) dashboard-title))
+        top  (- (double page-height) margin)
+        ;; order: dashboard title, then the dashboard-wide parameter bar, then the tab title
+        y1   (if dashboard-title
+               (do (draw-line! cs bold dashboard-title-pt margin (- top dashboard-title-pt) dashboard-title)
+                   (- top (header-block-pt dashboard-title-pt)))
+               top)
+        y2   (if (seq param-lines)
+               (draw-param-lines! cs param-lines y1)
+               y1)]
     (when tab-title
-      (let [y (if dashboard-title (- top (header-block-pt dashboard-title-pt)) top)]
-        (draw-line! cs bold tab-title-pt margin (- y tab-title-pt) tab-title)))))
+      (draw-line! cs bold tab-title-pt margin (- y2 tab-title-pt) tab-title))))
 
 (defn- add-link-annotations!
   "Add a clickable URI link annotation to `pg` for each collected rectangle (invisible border --
@@ -1162,9 +1237,13 @@
            doc      (PDDocument.)]
        (try
          (binding [*fonts* (load-fonts! doc)]
-           (doseq [[idx section] (map-indexed vector sections)
-                   page          (pages-for-section section idx dims tabbed? (:name dash))]
-             (render-page! doc dims timezone page))
+           (let [content-w   (* grid-cols (:unit dims))
+                 inline-ids  (into #{} (mapcat :inline_parameters) dcs)
+                 param-lines (layout-param-chips (dashboard-param-chips resolved inline-ids) content-w)
+                 param-rows  (param-lines-rows param-lines (:unit dims))]
+             (doseq [[idx section] (map-indexed vector sections)
+                     page          (pages-for-section section idx dims tabbed? (:name dash) param-lines param-rows)]
+               (render-page! doc dims timezone page)))
            (when (zero? (.getNumberOfPages doc))
              (.addPage doc (PDPage. ^PDRectangle (:rect dims))))
            (with-open [os (ByteArrayOutputStream.)]
