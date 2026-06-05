@@ -340,6 +340,11 @@ describe("scenarios > filters > bulk filtering", () => {
 
   describe("boolean filters", () => {
     beforeEach(() => {
+      // setupBooleanQuery needs the H2 sample DB (SQLite has no boolean type).
+      // skipCache: the outer beforeEach already cached the admin session, which
+      // is stale after this restore.
+      H.restore("default-with-h2");
+      cy.signIn("admin", { skipCache: true });
       H.setupBooleanQuery();
       H.filter();
     });

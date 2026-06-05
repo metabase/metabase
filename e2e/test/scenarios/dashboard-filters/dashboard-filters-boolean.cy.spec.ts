@@ -1,7 +1,7 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { H2_SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { H2_SAMPLE_DATABASE } from "e2e/support/cypress_sample_database_h2";
 import type {
   DashboardDetails,
   NativeQuestionDetails,
@@ -12,7 +12,11 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+// The MBQL boolean custom column loses its boolean type on the SQLite sample DB
+// (renders 0/1, not offered for click-behavior column mapping), so the MBQL
+// describe is pinned to the H2 sample DB where the column stays boolean.
+const { PRODUCTS: H2_PRODUCTS, PRODUCTS_ID: H2_PRODUCTS_ID } =
+  H2_SAMPLE_DATABASE;
 
 const DIALECT = "postgres";
 const TABLE_NAME = "many_data_types";
@@ -36,6 +40,15 @@ describe(
     });
 
     describe("mbql queries", () => {
+      // Pin to the H2 sample DB: the boolean custom column keeps its boolean type
+      // (renders true/false, available for click-behavior column mapping).
+      // skipCache forces a real login: the parent beforeEach already restored a
+      // different snapshot and cached the admin session, which is stale here.
+      beforeEach(() => {
+        H.restore("default-with-h2");
+        cy.signIn("admin", { skipCache: true });
+      });
+
       it("should allow to map a boolean parameter to a boolean column of an MBQL query and drill-thru", () => {
         createQuestionAndDashboard().then(({ dashboardId }) =>
           H.visitDashboard(dashboardId),
@@ -291,14 +304,15 @@ function createQuestionAndDashboard({
 } = {}) {
   const questionDetails: StructuredQuestionDetails = {
     name: questionName,
+    database: H2_SAMPLE_DB_ID,
     query: {
       fields: [
-        ["field", PRODUCTS.ID, null],
+        ["field", H2_PRODUCTS.ID, null],
         ["expression", "Boolean"],
       ],
-      "source-table": PRODUCTS_ID,
+      "source-table": H2_PRODUCTS_ID,
       expressions: {
-        [COLUMN_NAME]: ["=", ["field", PRODUCTS.ID, null], 1],
+        [COLUMN_NAME]: ["=", ["field", H2_PRODUCTS.ID, null], 1],
       },
     },
   };

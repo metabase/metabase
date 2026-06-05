@@ -911,7 +911,14 @@ describe("scenarios > question > filter", () => {
     const integerAssociatedWithCondition = condition === "True" ? "0" : "1";
 
     describe(`should be able to filter on the boolean column ${condition.toUpperCase()} (metabase#16386)`, () => {
-      beforeEach(H.setupBooleanQuery);
+      beforeEach(() => {
+        // setupBooleanQuery needs the H2 sample DB (SQLite has no boolean type).
+        // skipCache: the outer beforeEach already cached the admin session, which
+        // is stale after this restore.
+        H.restore("default-with-h2");
+        cy.signIn("admin", { skipCache: true });
+        H.setupBooleanQuery();
+      });
 
       it("from the column popover (metabase#16386-1)", () => {
         H.tableHeaderClick("boolean");
@@ -982,7 +989,14 @@ describe("scenarios > question > filter", () => {
   });
 
   describe("should handle boolean arguments", () => {
-    beforeEach(H.setupBooleanQuery);
+    beforeEach(() => {
+      // setupBooleanQuery needs the H2 sample DB (SQLite has no boolean type).
+      // skipCache: the outer beforeEach already cached the admin session, which
+      // is stale after this restore.
+      H.restore("default-with-h2");
+      cy.signIn("admin", { skipCache: true });
+      H.setupBooleanQuery();
+    });
 
     it("with case", () => {
       H.openNotebook();
