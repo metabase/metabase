@@ -32,6 +32,11 @@ runs:
         # into one array so the filter sees all jobs, not just the first 100 —
         # without it the lookup returned null whenever this job sorted past
         # position 100 (DEV-2117).
+        #
+        # gh rejects `--slurp` together with `--jq` ("the --slurp option is not
+        # supported with --jq"), so we slurp with gh and run the filter through a
+        # standalone `jq`. The earlier `--slurp --jq` form errored on every
+        # attempt — swallowed by 2>/dev/null — leaving JOB_ID permanently unset.
         set +e
         api_url="/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100"
         jq_filter="[.[].jobs[] | select(.runner_name == \"$RUNNER_NAME\" and .status == \"in_progress\" and .completed_at == null)] | max_by(.started_at) | \"\(.id) \(.html_url)\""
@@ -41,7 +46,7 @@ runs:
         # response. Retry briefly to absorb that.
         out=""
         for attempt in 1 2 3 4 5; do
-          out=$(gh api --paginate --slurp "$api_url" --jq "$jq_filter" 2>/dev/null)
+          out=$(gh api --paginate --slurp "$api_url" 2>/dev/null | jq -r "$jq_filter" 2>/dev/null)
           if [ -n "$out" ] && [ "$out" != "null null" ]; then
             break
           fi
