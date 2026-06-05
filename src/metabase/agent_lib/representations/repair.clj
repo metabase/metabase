@@ -2535,8 +2535,9 @@
     1.5. normalise `expressions:` shape - accept map form `{Name: clause, …}` or the
        canonical sequential form, always output sequential with `lib/expression-name`
        stamped into each clause's options from the map key when missing;
-    1.75. strip stray surrounding double-quotes from `field` clause targets (portable-FK
-       column segments and cross-stage column-name refs), e.g. `\"col\"` → `col`;
+    1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
+       portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
+       to the resolution-aware cross-stage matching in pass 5);
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query and stages;
