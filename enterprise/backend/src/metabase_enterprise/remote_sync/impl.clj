@@ -261,8 +261,8 @@
             (and first-import? (not force?) (seq conflicts))
             (u/prog1 {:status :conflict
                       :version (source.p/version snapshot)
-                      :conflicts summary  ; Keep backward compatibility: return set of category names
-                      :conflict-details conflicts  ; New: detailed conflict info
+                      :conflicts summary          ; Keep backward compatibility: return set of category names
+                      :conflict-details conflicts ; New: detailed conflict info
                       :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
               (log/infof (:message <>)))
 
