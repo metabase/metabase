@@ -283,17 +283,10 @@
         f (if *memoize-supports?* memoized-features* features*)]
     (f driver database)))
 
-(mu/defn- supported-in-environment?
-  "Returns true if a driver is supported in the the current metabase environment. As implemented this just disallows the
-  sqlite driver on hosted metabase because hosted metabase does not support uploading a SQLite file for use."
-  ; TODO explain this better. Should we just delete this entirely now that SQLite is used for sample data?
-  [_driver :- :keyword]
-  true)
-
 (defn available-drivers
   "Return a set of all currently available drivers."
   []
-  (into #{} (filter #(and (driver/available? %) (supported-in-environment? %)))
+  (into #{} (filter #(driver/available? %))
         (descendants driver/hierarchy :metabase.driver/driver)))
 
 (mu/defn semantic-version-gte :- :boolean
