@@ -13,9 +13,6 @@ on:
         description: "npm version to tag as latest, e.g. 0.61.5"
         type: string
         required: true
-    secrets:
-      NPM_RELEASE_TOKEN:
-        required: true
 
 jobs:
   tag-latest:

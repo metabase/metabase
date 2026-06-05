@@ -409,8 +409,7 @@ jobs:
     uses: ./.github/workflows/embedding-sdk-tag-latest.yml
     with:
       version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
-    secrets:
-      NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
+    secrets: inherit
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]
