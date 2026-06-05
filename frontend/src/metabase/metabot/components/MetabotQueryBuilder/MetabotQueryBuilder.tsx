@@ -182,98 +182,96 @@ const MetabotQueryBuilderInner = () => {
 
   return (
     <Box className={S.page}>
-      <Box className={S.centeredContainer}>
-        <Stack gap="lg" className={S.inputWrapper}>
-          <Flex align="center" justify="space-between">
-            <Text fz="xl" fw={600} c="text-primary">
-              {title}
-            </Text>
-            <Button
-              component={ForwardRefLink}
-              to={Urls.newExploration()}
-              bd="none"
-              leftSection={<Icon name="learn" c="brand" />}
-            >
-              {t`Research`}
-            </Button>
-          </Flex>
-          <Paper
-            className={cx(
-              S.inputContainer,
-              isDoingScience && S.inputContainerLoading,
-            )}
+      <Stack gap="lg" className={S.inputWrapper}>
+        <Flex align="center" justify="space-between">
+          <Text fz="xl" fw={600} c="text-primary" mt="4rem">
+            {title}
+          </Text>
+          <Button
+            component={ForwardRefLink}
+            to={Urls.newExploration()}
+            bd="none"
+            leftSection={<Icon name="learn" c="brand" />}
           >
-            <Box className={S.editorWrapper}>
-              {!canUseNlq ? (
-                <AIProviderConfigurationNotice
-                  py="0.5rem"
-                  featureName={t`AI explorations`}
-                  inline
-                  onConfigureAi={openAiProviderConfigurationModal}
-                />
-              ) : (
-                <MetabotPromptInput
-                  ref={promptInputRef}
-                  value={prompt}
-                  autoFocus
-                  disabled={isDoingScience}
-                  placeholder={t`Ask about your data, and type @ to mention an item`}
-                  onChange={setPrompt}
-                  onSubmit={handleEditorSubmit}
-                  onStop={cancelRequest}
-                  suggestionConfig={{
-                    suggestionModels: [...defaultSuggestionModels],
-                  }}
-                />
-              )}
-            </Box>
-            <Box className={S.inputActions}>
-              {hasError ? (
-                <Text c="error" ta="center">
-                  {t`Something went wrong. Please try again.`}
-                </Text>
-              ) : (
-                <div />
-              )}
-              <ActionIcon
-                className={S.sendButton}
-                variant="filled"
-                size="2rem"
-                disabled={!canUseNlq || inputDisabled}
-                loading={isDoingScience}
-                onClick={handleEditorSubmit}
-                data-testid="metabot-send-message"
-                aria-label={t`Send`}
-              >
-                <Icon name="arrow_up" />
-              </ActionIcon>
-            </Box>
-          </Paper>
-
-          <Box className={S.promptSuggestionsContainer}>
-            {canUseNlq
-              ? suggestedPrompts?.map(({ prompt: suggestedPrompt }, index) => (
-                  <UnstyledButton
-                    key={index}
-                    className={cx(S.promptSuggestion, {
-                      [S.promptSuggestionShow]: !isDoingScience,
-                      [S.promptSuggestionHide]: isDoingScience,
-                    })}
-                    style={{
-                      animationDelay: isDoingScience
-                        ? `${(suggestedPromptCount - index - 1) * 50}ms`
-                        : `${index * 75}ms`,
-                    }}
-                    onClick={() => handleSubmitPrompt(suggestedPrompt)}
-                    disabled={isDoingScience}
-                  >
-                    <Text>{suggestedPrompt}</Text>
-                  </UnstyledButton>
-                ))
-              : null}
+            {t`Research`}
+          </Button>
+        </Flex>
+        <Paper
+          className={cx(
+            S.inputContainer,
+            isDoingScience && S.inputContainerLoading,
+          )}
+        >
+          <Box className={S.editorWrapper}>
+            {!canUseNlq ? (
+              <AIProviderConfigurationNotice
+                py="0.5rem"
+                featureName={t`AI explorations`}
+                inline
+                onConfigureAi={openAiProviderConfigurationModal}
+              />
+            ) : (
+              <MetabotPromptInput
+                ref={promptInputRef}
+                value={prompt}
+                autoFocus
+                disabled={isDoingScience}
+                placeholder={t`Ask about your data, and type @ to mention an item`}
+                onChange={setPrompt}
+                onSubmit={handleEditorSubmit}
+                onStop={cancelRequest}
+                suggestionConfig={{
+                  suggestionModels: [...defaultSuggestionModels],
+                }}
+              />
+            )}
           </Box>
-        </Stack>
-      </Box>
+          <Box className={S.inputActions}>
+            {hasError ? (
+              <Text c="error" ta="center">
+                {t`Something went wrong. Please try again.`}
+              </Text>
+            ) : (
+              <div />
+            )}
+            <ActionIcon
+              className={S.sendButton}
+              variant="filled"
+              size="2rem"
+              disabled={!canUseNlq || inputDisabled}
+              loading={isDoingScience}
+              onClick={handleEditorSubmit}
+              data-testid="metabot-send-message"
+              aria-label={t`Send`}
+            >
+              <Icon name="arrow_up" />
+            </ActionIcon>
+          </Box>
+        </Paper>
+
+        <Box className={S.promptSuggestionsContainer}>
+          {canUseNlq
+            ? suggestedPrompts?.map(({ prompt: suggestedPrompt }, index) => (
+                <UnstyledButton
+                  key={index}
+                  className={cx(S.promptSuggestion, {
+                    [S.promptSuggestionShow]: !isDoingScience,
+                    [S.promptSuggestionHide]: isDoingScience,
+                  })}
+                  style={{
+                    animationDelay: isDoingScience
+                      ? `${(suggestedPromptCount - index - 1) * 50}ms`
+                      : `${index * 75}ms`,
+                  }}
+                  onClick={() => handleSubmitPrompt(suggestedPrompt)}
+                  disabled={isDoingScience}
+                >
+                  <Text>{suggestedPrompt}</Text>
+                </UnstyledButton>
+              ))
+            : null}
+        </Box>
+      </Stack>
       <AIProviderConfigurationModal
         opened={isAiProviderConfigurationModalOpen}
         onClose={closeAiProviderConfigurationModal}
