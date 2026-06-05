@@ -237,9 +237,14 @@
   deletes synced content not present in the snapshot, and refreshes the RemoteSyncObject table.
 
   Shared by [[import!]] (the pull path) and the post-merge reconcile in [[export!]] (where a clean merge
-  brought remote changes that must now be applied locally). Returns the imported-data map. Does not set
-  the task version — callers own that."
-  [snapshot task-id sync-timestamp]
+  brought remote changes that must now be applied locally). Returns the imported-data map.
+
+  Does not set the task version — callers own that, but should pass it (and any other version/status
+  bookkeeping) as the `:finalize!` thunk, which runs inside the same transaction as the object-table
+  reconcile. That keeps the version pointer, RemoteSyncObject statuses, and the reconcile atomic: either
+  they all commit or all roll back, so a crash can never leave the version advanced past stale local
+  state or drop captured dirty markers (see [[import-merged!]])."
+  [snapshot task-id sync-timestamp & {:keys [finalize!]}]
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
         has-transforms?     (snapshot-has-transforms? base-ingestable)
@@ -255,7 +260,8 @@
       (settings/remote-sync-transforms! true))
     (t2/with-transaction [_conn]
       (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
-      (sync-objects! sync-timestamp imported-data))
+      (sync-objects! sync-timestamp imported-data)
+      (when finalize! (finalize!)))
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms))
       (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
@@ -306,10 +312,13 @@
                      (count conflicts) (str/join ", " (:conflicts <>))))
         ;; Capture the local (un-pushed) changes before loading; the clean merge guarantees they are
         ;; disjoint from the remote changes, so restoring them reproduces exactly the local diff vs remote.
+        ;; Restore + set-version run inside the load's transaction so that a crash can't leave the dirty
+        ;; markers overwritten by the load (which would lose them — a retry captures nothing).
         (let [dirty-objects (capture-dirty-objects)]
-          (load-snapshot! (source/specs->snapshot merged) task-id sync-timestamp)
-          (restore-dirty-objects! dirty-objects sync-timestamp)
-          (remote-sync.task/set-version! task-id (source.p/version snapshot))
+          (load-snapshot! (source/specs->snapshot merged) task-id sync-timestamp
+                          :finalize! (fn []
+                                       (restore-dirty-objects! dirty-objects sync-timestamp)
+                                       (remote-sync.task/set-version! task-id (source.p/version snapshot))))
           (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
                      (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
                      (count dirty-objects))
@@ -370,10 +379,8 @@
 
               :else
               (do
-                (load-snapshot! snapshot task-id sync-timestamp)
-                (remote-sync.task/set-version!
-                 task-id
-                 (source.p/version snapshot))
+                (load-snapshot! snapshot task-id sync-timestamp
+                                :finalize! #(remote-sync.task/set-version! task-id (source.p/version snapshot)))
                 (log/info "Successfully reloaded entities from git repository")
                 {:status :success
                  :version (source.p/version snapshot)
@@ -406,13 +413,17 @@
                    (count conflicts) (str/join ", " (:conflicts <>))))
 
       :success
-      (do
-        (remote-sync.task/set-version! task-id version)
+      (let [finalize! (fn []
+                        (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                        (remote-sync.task/set-version! task-id version))]
         ;; Fold-in pull: the merge brought remote changes that aren't in the local app DB yet. Load the
-        ;; merged result so local state matches what we just pushed.
-        (when-let [merged-snapshot (source.p/snapshot-at source version)]
-          (load-snapshot! merged-snapshot task-id sync-timestamp))
-        (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+        ;; merged result so local state matches what we just pushed, marking everything synced and
+        ;; advancing the version atomically with the reconcile. set-version! runs only after the load, so
+        ;; a crash leaves the version at the old base and a retry re-merges (the push is idempotent)
+        ;; rather than advancing the pointer past un-reconciled local state.
+        (if-let [merged-snapshot (source.p/snapshot-at source version)]
+          (load-snapshot! merged-snapshot task-id sync-timestamp :finalize! finalize!)
+          (t2/with-transaction [_conn] (finalize!)))
         (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d)"
                    (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary))
         {:status :success :version version :merge-summary summary}))))

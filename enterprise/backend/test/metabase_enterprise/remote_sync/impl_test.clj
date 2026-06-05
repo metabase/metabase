@@ -1620,7 +1620,9 @@ serdes/meta:
                       source/merge-and-store!          (fn [_ _ _ _ _]
                                                          {:status :success :version "merged-M"
                                                           :summary {:added 2 :updated 1 :removed 0}})
-                      impl/load-snapshot!              (fn [snap _ _] (reset! reconciled (source.p/version snap)))]
+                      impl/load-snapshot!              (fn [snap _ _ & {:keys [finalize!]}]
+                                                         (reset! reconciled (source.p/version snap))
+                                                         (when finalize! (finalize!)))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :merge? true
                                      :source (export-test-source)
@@ -1777,11 +1779,13 @@ serdes/meta:
                                            {:merged   [{:path "collections/x.yaml" :content "y"}]
                                             :conflicts []
                                             :summary  {:added 1 :updated 0 :removed 0}})
-                    ;; simulate the load marking everything synced (what sync-objects! does)
-                    impl/load-snapshot!  (fn [_ _ _]
+                    ;; simulate the load marking everything synced (what sync-objects! does), then running
+                    ;; the in-transaction finalize (restore-dirty + set-version)
+                    impl/load-snapshot!  (fn [_ _ _ & {:keys [finalize!]}]
                                            (t2/update! :model/RemoteSyncObject
                                                        :model_id [:in [9991 9992]]
-                                                       {:status "synced"}))]
+                                                       {:status "synced"})
+                                           (when finalize! (finalize!)))]
         (let [result (impl/import! (export-test-snapshot "remote-R") task-id
                                    :merge? true
                                    :base-snapshot (export-test-snapshot "base-B"))]
@@ -1801,9 +1805,11 @@ serdes/meta:
                                               :model_name "Deleted Card" :status_changed_at :%now}]
       (with-redefs [source/compute-merge (fn [_ _ _ _]
                                            {:merged [] :conflicts [] :summary {:added 0 :updated 0 :removed 0}})
-                    ;; simulate the load wiping and not re-inserting the deleted entity's row
-                    impl/load-snapshot!  (fn [_ _ _]
-                                           (t2/delete! :model/RemoteSyncObject :model_id 8881))]
+                    ;; simulate the load wiping and not re-inserting the deleted entity's row, then the
+                    ;; in-transaction finalize (restore-dirty + set-version)
+                    impl/load-snapshot!  (fn [_ _ _ & {:keys [finalize!]}]
+                                           (t2/delete! :model/RemoteSyncObject :model_id 8881)
+                                           (when finalize! (finalize!)))]
         (let [result (impl/import! (export-test-snapshot "remote-R") task-id
                                    :merge? true
                                    :base-snapshot (export-test-snapshot "base-B"))]
