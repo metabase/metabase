@@ -2,13 +2,16 @@ import type { StoryFn } from "@storybook/react";
 import type { CSSProperties, JSXElementConstructor } from "react";
 import { useMemo } from "react";
 
-import type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types";
 import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider";
 import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
 
+import type { QueryData } from "../data-schema";
+
 import { useQuestionQuery } from "./use-question-query";
+
+type StoryQueryData = QueryData<Record<string, unknown>>;
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 const config = getStorybookSdkAuthConfigForUser("admin");
@@ -100,7 +103,7 @@ function CustomSalesVisualization({
   data,
   chart,
 }: {
-  data: QueryQuestionResult;
+  data: StoryQueryData;
   chart: ChartModel | null;
 }) {
   if (!chart) {
@@ -164,7 +167,7 @@ function CustomSalesVisualization({
   );
 }
 
-function RowsTable({ data }: { data: QueryQuestionResult }) {
+function RowsTable({ data }: { data: StoryQueryData }) {
   return (
     <section style={panelStyle}>
       <div style={tableIntroStyle}>
@@ -186,7 +189,7 @@ function RowsTable({ data }: { data: QueryQuestionResult }) {
           </tr>
         </thead>
         <tbody>
-          {data.rows.slice(0, 8).map((row, rowIndex) => (
+          {data.rawRows.slice(0, 8).map((row, rowIndex) => (
             <tr key={rowIndex}>
               {row.map((value, valueIndex) => (
                 <td key={valueIndex} style={tableCellStyle}>
@@ -217,7 +220,7 @@ type ChartModel = {
   }[];
 };
 
-function buildChartModel(data: QueryQuestionResult): ChartModel | null {
+function buildChartModel(data: StoryQueryData): ChartModel | null {
   const dateIndex = data.columns.findIndex((column) =>
     [column.base_type, column.effective_type].some((type) =>
       type?.includes("DateTime"),
@@ -243,7 +246,7 @@ function buildChartModel(data: QueryQuestionResult): ChartModel | null {
   const totalsByMonth = new Map<string, Map<string, number>>();
   const categorySet = new Set<string>();
 
-  for (const row of data.rows) {
+  for (const row of data.rawRows) {
     const month = getMonthKey(row[dateIndex]);
     const category = String(row[categoryIndex] ?? "Unknown");
     const value = Number(row[metricIndex] ?? 0);

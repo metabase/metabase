@@ -43,6 +43,12 @@ export type {
   UseActionResult,
 } from "./hooks/public/use-action";
 export { useQuestionQuery } from "./hooks/public/use-question-query";
+export { useMetricQuery } from "./hooks/public/use-metric-query";
+export { useMetabaseQuery } from "./hooks/public/use-metabase-query";
+export type {
+  MetabaseQueryOptions,
+  UseMetabaseQueryResult,
+} from "./hooks/public/use-metabase-query";
 
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
@@ -165,7 +171,23 @@ export type {
   UseQuestionQueryOptions,
   UseQuestionQueryResult,
 } from "./hooks/public/use-question-query";
+export type {
+  MetricBreakout,
+  MetricFilter,
+  UseMetricQueryOptions,
+  UseMetricQueryResult,
+} from "./hooks/public/use-metric-query";
+export type {
+  MetricSchema,
+  QuestionSchema,
+  QueryData,
+  SchemaColumn,
+  SchemaJavaScriptType,
+  SchemaParameter,
+  SchemaRow,
+} from "./hooks/public/data-schema";
 export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
+export type { QueryMetricResult } from "embedding-sdk-bundle/lib/query-metric";
 
 export type {
   EmbeddingEntityType,
