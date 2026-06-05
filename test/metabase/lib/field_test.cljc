@@ -25,6 +25,7 @@
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.validate :as lib.validate]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -802,6 +803,50 @@
       (is (=? [{:name "ID"}
                {:name "myadd"}]
               metadatas)))))
+
+(deftest ^:parallel with-fields-throws-on-stranded-downstream-refs-test
+  (testing "narrowing a stage's :fields throws if it strands a later-stage reference"
+    (let [base   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     lib/append-stage)
+          total  (->> (lib.metadata.calculation/visible-columns base 1)
+                      (m/find-first (comp #{"TOTAL"} :name)))
+          base   (lib/order-by base 1 total :asc)
+          id-col (->> (lib.metadata.calculation/returned-columns base 0)
+                      (m/find-first (comp #{"ID"} :name)))]
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                   (lib/with-fields base 0 [id-col]))))))
+
+(deftest ^:parallel with-fields-allows-safe-narrowing-test
+  (testing "narrowing that keeps every referenced column does not throw"
+    (let [base     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       lib/append-stage)
+          total    (->> (lib.metadata.calculation/visible-columns base 1)
+                        (m/find-first (comp #{"TOTAL"} :name)))
+          base     (lib/order-by base 1 total :asc)
+          keep     (->> (lib.metadata.calculation/returned-columns base 0)
+                        (filter (comp #{"ID" "TOTAL"} :name)))
+          narrowed (lib/with-fields base 0 keep)]
+      (is (empty? (lib.validate/find-bad-refs narrowed))))))
+
+(deftest ^:parallel newly-stranded-downstream-refs-test
+  (let [before    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      lib/append-stage)
+        total     (->> (lib.metadata.calculation/visible-columns before 1)
+                       (m/find-first (comp #{"TOTAL"} :name)))
+        before    (lib/order-by before 1 total :asc)
+        id-ref    (lib/ref (->> (lib.metadata.calculation/returned-columns before 0)
+                                (m/find-first (comp #{"ID"} :name))))
+        total-ref (lib/ref (->> (lib.metadata.calculation/returned-columns before 0)
+                                (m/find-first (comp #{"TOTAL"} :name))))
+        narrow    (fn [refs] (lib.util/update-query-stage before 0 assoc :fields refs))]
+    (testing "reports a later-stage ref the narrowing drops"
+      (is (= #{"TOTAL"}
+             (into #{} (map peek)
+                   (#'lib.field/newly-stranded-downstream-refs before (narrow [id-ref]) 0)))))
+    (testing "reports nothing when the narrowing keeps the referenced column"
+      (is (empty? (#'lib.field/newly-stranded-downstream-refs before (narrow [id-ref total-ref]) 0))))
+    (testing "considers only stages after stage-number"
+      (is (empty? (#'lib.field/newly-stranded-downstream-refs before (narrow [id-ref]) 1))))))
 
 (deftest ^:parallel fieldable-columns-test
   (testing "query with no :fields"

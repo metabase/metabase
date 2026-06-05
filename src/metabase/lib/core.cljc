@@ -1030,9 +1030,8 @@
   "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
   column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
 
-  Preconditions:
-    - the join's first stage must be an MBQL stage. Native-stage inner has no `:fields` semantics; passing one throws.
-    - `cols` must come from the join's source. Mismatched cols produce refs the source can't resolve.
+  Throws if the join's first stage is not an MBQL stage, or if narrowing the source to `cols` would strand a column the
+  join still references in its conditions or its exposed `:fields`.
 
   For what the join EXPOSES to its outer stage, see [[with-join-fields]].
 

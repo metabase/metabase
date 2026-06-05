@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -16,7 +17,8 @@
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.match :as lib.util.match]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -85,6 +87,72 @@
                                        #"requires the join's first stage to be an MBQL stage"
                                        (lib/with-join-source-fields native-join
                                          [(meta/field-metadata :categories :id)]))))))))
+
+(defn- dangling-join-refs
+  "Refs in `query` that point into `a-join` but don't resolve to a column its inner pipeline returns.
+  Empty means the join's projection is coherent."
+  [query a-join]
+  (let [alias     (:alias a-join)
+        inner     (lib.metadata.calculation/returned-columns (assoc query :stages (:stages a-join)))
+        into-join (lib.util.match/match-many query
+                    [:field (o :guard (= (:join-alias o) alias)) _] &match)]
+    (into #{}
+          (remove (fn [r]
+                    (lib.equality/find-matching-column
+                     query -1 (lib.options/update-options r dissoc :join-alias :source-field) inner)))
+          into-join)))
+
+(deftest ^:parallel with-join-source-fields-throws-on-stranded-refs-test
+  (let [base     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        a-join   (-> (lib/join-clause (meta/table-metadata :products)
+                                      [(lib/= (meta/field-metadata :orders :product-id)
+                                              (meta/field-metadata :products :id))])
+                     (lib/with-join-fields [(meta/field-metadata :products :category)]))
+        query    (lib/join base a-join)
+        the-join (first (lib/joins query))]
+    (testing "throws when narrowing drops a column the join condition references"
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                   (lib/with-join-source-fields the-join [(meta/field-metadata :products :category)]))))
+    (testing "throws when narrowing drops a column the join exposes"
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                   (lib/with-join-source-fields the-join [(meta/field-metadata :products :id)]))))))
+
+(deftest ^:parallel with-join-source-fields-allows-safe-narrowing-test
+  (testing "narrowing that keeps the condition and exposed columns does not throw"
+    (let [base     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          a-join   (-> (lib/join-clause (meta/table-metadata :products)
+                                        [(lib/= (meta/field-metadata :orders :product-id)
+                                                (meta/field-metadata :products :id))])
+                       (lib/with-join-fields [(meta/field-metadata :products :category)]))
+          query    (lib/join base a-join)
+          the-join (first (lib/joins query))
+          narrowed (lib/with-join-source-fields the-join [(meta/field-metadata :products :id)
+                                                          (meta/field-metadata :products :category)])
+          query'   (assoc-in query [:stages 0 :joins 0] narrowed)]
+      (is (empty? (dangling-join-refs query' narrowed))))))
+
+(deftest ^:parallel stranded-join-refs-test
+  (let [query    (lib/join (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (-> (lib/join-clause (meta/table-metadata :products)
+                                                [(lib/= (meta/field-metadata :orders :product-id)
+                                                        (meta/field-metadata :products :id))])
+                               (lib/with-join-fields [(meta/field-metadata :products :category)])))
+        the-join (first (lib/joins query))
+        id-col   (meta/field-metadata :products :id)
+        cat-col  (meta/field-metadata :products :category)]
+    (testing "nothing stranded when cols cover the condition and exposed columns"
+      (is (empty? (#'lib.join/stranded-join-refs the-join [id-col cat-col]))))
+    (testing "reports the condition column when cols drop it"
+      (is (= [(:id id-col)]
+             (mapv peek (#'lib.join/stranded-join-refs the-join [cat-col])))))
+    (testing "reports an exposed column when cols drop it"
+      (is (= [(:id cat-col)]
+             (mapv peek (#'lib.join/stranded-join-refs the-join [id-col])))))
+    (testing "a join with no alias and :fields :all has nothing to strand"
+      (let [raw (lib/join-clause (meta/table-metadata :categories)
+                                 [(lib/= (meta/field-metadata :venues :category-id)
+                                         (meta/field-metadata :categories :id))])]
+        (is (empty? (#'lib.join/stranded-join-refs raw [(meta/field-metadata :categories :id)])))))))
 
 (deftest ^:parallel join-clause-test
   (testing "Should have :fields :all by default (#32419)"
