@@ -2436,6 +2436,12 @@
       ensure-clause-options*
       unwrap-boolean-wrappers*
       unwrap-nested-field-clauses*
+      ;; Re-run after the unwrap passes: unwrapping a boolean wrapper (`["true" {} x]` -> `x`) that
+      ;; was the sole element of a parent vector exposes a freshly-bare clause (e.g. `[x]`) that the
+      ;; earlier `ensure-clause-options*` never saw. Normalising it here (rather than letting the
+      ;; next `repair` call do it) keeps `repair` idempotent and lets the alias passes below see a
+      ;; properly-optioned clause (e.g. `["eq"]` -> `["eq" {}]` -> `["=" {}]` in one pass).
+      ensure-clause-options*
       rewrite-operator-name-aliases*
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
