@@ -334,20 +334,6 @@
                     (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-e2e-" run-id)
                                                              :creator_id (mt/user->id :crowberto)})]
                       (try
-                        ;; --- Pre-cleanup: delete any stale BigQuery service account whose
-                        ;; name collides with the one provisioning will create. In CI the
-                        ;; app DB is fresh each run so workspace IDs restart at 1, but the
-                        ;; shared GCP project may still hold `mb-ws-1` from a prior run.
-                        ;; A stale SA carries outdated IAM bindings; reusing it causes
-                        ;; `listDatasets` under impersonation to return empty within the
-                        ;; wait window, triggering "cannot find any matching datasets".
-                        (when (= admin-driver :bigquery-cloud-sdk)
-                          (let [iam ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/iam-client) admin-details)
-                                pid ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/project-id) admin-details)]
-                            (try
-                              ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/delete-sa-direct!)
-                               iam pid {:id ws-id})
-                              (finally (.close ^java.lang.AutoCloseable iam)))))
                         ;; --- Stage 1: provision via the workspace provisioning entrypoint.
                         ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
                         ;; multimethods, but through `provisioning/provision-single!`, which writes
