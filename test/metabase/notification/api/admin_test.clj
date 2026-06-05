@@ -534,7 +534,10 @@
                                                           :ended_at    (t/instant)}]
       (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin")]
         (is (=? {:last_check {:status "failing"}}
-                (find-row-by-id data nid)))))))
+                (find-row-by-id data nid)))
+        (testing "abandoned runs have no task_history message, so we synthesize a reason"
+          (is (re-find #"abandoned"
+                       (get-in (find-row-by-id data nid) [:last_check :error]))))))))
 
 (deftest last-check-skips-in-flight-runs-test
   (testing "an :started in-flight run is invisible to the admin list — last_check stays nil"
@@ -622,6 +625,76 @@
           (is (contains? ids (:id fail-n)))
           (is (not (contains? ids (:id success-n))))
           (is (not (contains? ids (:id no-send-n)))))))))
+
+(deftest filter-by-last-check-status-test
+  (testing "?last_check_status=failing catches run failures the send filter misses (abandoned, query failures)"
+    (mt/with-temp [:model/Card             {ok-card :id}         {:archived false}
+                   :model/Card             {abandoned-card :id}  {:archived false}
+                   :model/Card             {query-fail-card :id} {:archived false}
+                   :model/NotificationCard {nc-ok :id}           {:card_id ok-card}
+                   :model/NotificationCard {nc-abandoned :id}    {:card_id abandoned-card}
+                   :model/NotificationCard {nc-query-fail :id}   {:card_id query-fail-card}
+                   :model/Notification     ok-n                  {:payload_type :notification/card
+                                                                  :payload_id   nc-ok
+                                                                  :creator_id   (mt/user->id :crowberto)}
+                   :model/Notification     abandoned-n           {:payload_type :notification/card
+                                                                  :payload_id   nc-abandoned
+                                                                  :creator_id   (mt/user->id :crowberto)}
+                   :model/Notification     query-fail-n          {:payload_type :notification/card
+                                                                  :payload_id   nc-query-fail
+                                                                  :creator_id   (mt/user->id :crowberto)}
+                   :model/TaskRun          {ok-run :id}          {:run_type    :alert
+                                                                  :entity_type :card
+                                                                  :entity_id   ok-card
+                                                                  :status      :success
+                                                                  :started_at  (t/instant)
+                                                                  :ended_at    (t/instant)}
+                   ;; heartbeat-killed run that never reached the channel-send step
+                   :model/TaskRun          _abandoned-run        {:run_type    :alert
+                                                                  :entity_type :card
+                                                                  :entity_id   abandoned-card
+                                                                  :status      :abandoned
+                                                                  :started_at  (t/instant)
+                                                                  :ended_at    (t/instant)}
+                   ;; query failure: notification-send failed, never produced a channel-send row
+                   :model/TaskRun          {qf-run :id}          {:run_type    :alert
+                                                                  :entity_type :card
+                                                                  :entity_id   query-fail-card
+                                                                  :status      :failed
+                                                                  :started_at  (t/instant)
+                                                                  :ended_at    (t/instant)}
+                   :model/TaskHistory      _ok-th                {:task         "channel-send"
+                                                                  :run_id       ok-run
+                                                                  :status       :success
+                                                                  :started_at   (t/instant)
+                                                                  :ended_at     (t/instant)
+                                                                  :task_details {:channel_type "channel/email"}}
+                   :model/TaskHistory      _qf-th                {:task         "notification-send"
+                                                                  :run_id       qf-run
+                                                                  :status       :failed
+                                                                  :started_at   (t/instant)
+                                                                  :ended_at     (t/instant)
+                                                                  :task_details {:message "Query timed out"}}]
+      (testing "last_check_status=failing surfaces abandoned + query failures"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin"
+                                                   :last_check_status "failing")
+              ids            (set (map :id data))]
+          (is (contains? ids (:id abandoned-n)))
+          (is (contains? ids (:id query-fail-n)))
+          (is (not (contains? ids (:id ok-n))))))
+      (testing "last_send_status=failing misses them — no channel-send failure exists (the original bug)"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin"
+                                                   :last_send_status "failing")
+              ids            (set (map :id data))]
+          (is (not (contains? ids (:id abandoned-n))))
+          (is (not (contains? ids (:id query-fail-n))))))
+      (testing "last_check_status=successful matches only the healthy run"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin"
+                                                   :last_check_status "successful")
+              ids            (set (map :id data))]
+          (is (contains? ids (:id ok-n)))
+          (is (not (contains? ids (:id abandoned-n))))
+          (is (not (contains? ids (:id query-fail-n)))))))))
 
 (deftest filter-compound-test
   (testing "multiple filters AND together (active + owner_id)"
