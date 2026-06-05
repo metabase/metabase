@@ -150,8 +150,10 @@
 
 (deftest ^:parallel describe-fks-test
   (mt/test-driver :databricks
-    (let [fks (vec (driver/describe-fks :databricks (mt/db) {:schema-names [(maybe-qualify-schema "test-data")]
-                                                             :table-names ["orders"]}))]
+    (let [fks (vec (driver/describe-fks :databricks
+                                        (lib.metadata/database (mt/metadata-provider))
+                                        {:schema-names [(maybe-qualify-schema "test-data")]
+                                         :table-names ["orders"]}))]
       (testing "Only fks from current catalog are registered"
         (is (= 2 (count fks))))
       (testing "Expected fks are returned"
