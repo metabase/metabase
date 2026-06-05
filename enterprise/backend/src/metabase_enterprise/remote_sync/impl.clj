@@ -413,20 +413,28 @@
                    (count conflicts) (str/join ", " (:conflicts <>))))
 
       :success
-      (let [finalize! (fn []
-                        (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-                        (remote-sync.task/set-version! task-id version))]
-        ;; Fold-in pull: the merge brought remote changes that aren't in the local app DB yet. Load the
-        ;; merged result so local state matches what we just pushed, marking everything synced and
-        ;; advancing the version atomically with the reconcile. set-version! runs only after the load, so
-        ;; a crash leaves the version at the old base and a retry re-merges (the push is idempotent)
-        ;; rather than advancing the pointer past un-reconciled local state.
-        (if-let [merged-snapshot (source.p/snapshot-at source version)]
-          (load-snapshot! merged-snapshot task-id sync-timestamp :finalize! finalize!)
-          (t2/with-transaction [_conn] (finalize!)))
-        (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d)"
-                   (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary))
-        {:status :success :version version :merge-summary summary}))))
+      ;; Fold-in pull: the merge brought remote changes that aren't in the local app DB yet. Load the
+      ;; merged result so local state matches what we just pushed, marking everything synced and advancing
+      ;; the version atomically with the reconcile (set-version! runs only after the load, so a crash leaves
+      ;; the version at the old base and a retry re-merges — the push is idempotent — rather than advancing
+      ;; the pointer past un-reconciled local state).
+      (if-let [merged-snapshot (source.p/snapshot-at source version)]
+        (do
+          (load-snapshot! merged-snapshot task-id sync-timestamp
+                          :finalize! (fn []
+                                       (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                                       (remote-sync.task/set-version! task-id version)))
+          (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d)"
+                     (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary))
+          {:status :success :version version :merge-summary summary})
+        ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
+        ;; write-files! updates the local ref before returning). Fail loudly rather than silently advancing
+        ;; the version while skipping the reconcile, which would leave local missing the folded-in remote
+        ;; changes. The push already landed, so a retry sees the divergence and re-merges + reconciles.
+        (throw (ex-info (format (str "Merge pushed to %s but its commit could not be resolved locally to "
+                                     "reconcile the app DB; re-run the export to pull the merged changes.")
+                                version)
+                        {:version version}))))))
 
 (defn export!
   "Exports remote-synced collections to a remote source repository.

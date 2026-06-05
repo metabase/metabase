@@ -1656,6 +1656,31 @@ serdes/meta:
             (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
                 "the task version is not advanced on conflict")))))))
 
+(deftest export!-merge-fails-when-merged-commit-unresolvable-test
+  (testing "if the pushed merge commit can't be resolved locally, export! fails loudly without advancing the version or reconciling"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :version "base-B"}]
+      (let [reconciled?       (atom false)
+            no-resolve-source (reify source.p/Source
+                                (branches [_] ["main"])
+                                (create-branch [_ _ _] nil)
+                                (default-branch [_] "main")
+                                (snapshot [_] (export-test-snapshot "remote-R"))
+                                (snapshot-at [_ _] nil))]
+        (with-redefs [remote-sync.task/last-version    (constantly "base-B")
+                      spec/extract-entities-for-export (constantly [{:dummy true}])
+                      source/merge-and-store!          (fn [_ _ _ _ _]
+                                                         {:status :success :version "merged-M"
+                                                          :summary {:added 1 :updated 0 :removed 0}})
+                      impl/load-snapshot!              (fn [_ _ _ & _] (reset! reconciled? true))]
+          (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                     :merge? true
+                                     :source no-resolve-source
+                                     :base-snapshot (export-test-snapshot "base-B"))]
+            (is (= :error (:status result)))
+            (is (false? @reconciled?) "no reconcile load happens when the merged commit can't be resolved")
+            (is (= "base-B" (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
+                "the version is not advanced past the un-reconciled state, so a retry re-merges")))))))
+
 (deftest export!-conflict-when-merge-base-unreachable-test
   (testing "when merge is requested but the merge base is gone (force-push/rebase), export! returns :conflict"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
