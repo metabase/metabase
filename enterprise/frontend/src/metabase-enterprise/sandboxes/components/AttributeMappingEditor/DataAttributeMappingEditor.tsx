@@ -24,6 +24,7 @@ import {
 import type {
   DimensionRef,
   GroupTableAccessPolicy,
+  ParameterTarget,
   Table,
   UserAttributeKey,
 } from "metabase-types/api";
@@ -207,8 +208,11 @@ const ColumnPicker = ({
     return (
       <Box miw={200}>
         <QuestionParameterTargetWidget
-          target={value}
-          onChange={onChange}
+          // ColumnPicker shares ValueType (string | DimensionRef | null) with
+          // AttributePicker, but in this branch the value is always a
+          // ParameterTarget (or null) and onChange always emits one.
+          target={value as ParameterTarget | null}
+          onChange={onChange as unknown as (target: ParameterTarget) => void}
           questionObject={
             filterByTableColumn && policyTable
               ? getRawDataQuestionForTable(policyTable)
