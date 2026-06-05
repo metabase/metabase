@@ -1842,6 +1842,36 @@ serdes/meta:
           (is (= "delete" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 8881))
               "the pending deletion is preserved so it can be pushed later"))))))
 
+(deftest import!-merge-folds-remote-change-and-keeps-local-deletion-test
+  (testing "a single pull merge folds in an unrelated remote change while preserving a pending local deletion as dirty"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}
+                   ;; a pending local deletion (no app-db row) and a synced remote-origin card
+                   :model/RemoteSyncObject _ {:model_type "Card" :model_id 8881 :status "delete"
+                                              :model_name "Locally Deleted" :status_changed_at :%now}
+                   :model/RemoteSyncObject _ {:model_type "Card" :model_id 9992 :status "synced"
+                                              :model_name "Remote Card" :status_changed_at :%now}]
+      (with-redefs [source/compute-merge (fn [_ _ _ _]
+                                           {:merged   [{:path "collections/remote.yaml" :content "y"}]
+                                            :conflicts []
+                                            :summary  {:added 0 :updated 1 :removed 0}})
+                    ;; simulate the load: the remote change is applied (9992 stays synced), the deleted
+                    ;; entity's row is wiped (the load doesn't re-create it), then the finalize runs.
+                    impl/load-snapshot! (fn [_ _ _ & {:keys [finalize!]}]
+                                          (t2/delete! :model/RemoteSyncObject :model_id 8881)
+                                          (t2/update! :model/RemoteSyncObject :model_id 9992 {:status "synced"})
+                                          (when finalize! (finalize!)))]
+        (let [result (impl/import! (export-test-snapshot "remote-R") task-id
+                                   :merge? true
+                                   :base-snapshot (export-test-snapshot "base-B"))]
+          (is (= :success (:status result)))
+          (is (= {:added 0 :updated 1 :removed 0} (:merge-summary result)))
+          (testing "the unrelated remote change is folded in (stays synced)"
+            (is (= "synced" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 9992))))
+          (testing "the pending local deletion is preserved as dirty (re-inserted by restore-dirty-objects!)"
+            (is (= "delete" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 8881))))
+          (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
+              "the version advances to the remote tip"))))))
+
 (deftest import!-merge-conflict-test
   (testing "a local-only merge with a genuine conflict returns :conflict and does not load"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
