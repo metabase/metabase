@@ -130,7 +130,7 @@ Note that in the raw link, there is no `/blob/` directory in the URL.
 
 ### Custom fonts and Content Security Policy
 
-When you add a custom font hosted on another domain, Metabase automatically allows that domain in the browser's Content Security Policy for fonts. You don't need to configure anything for it to work.
+When you add a custom font hosted on another domain, Metabase automatically allows that domain in the browser's Content Security Policy for fonts. You don't need to configure anything for the font to work.
 
 If you don't add any custom fonts, Metabase only allows fonts served from your own instance.
 
