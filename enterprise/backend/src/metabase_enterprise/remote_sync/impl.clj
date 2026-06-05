@@ -469,9 +469,7 @@
     (if i (subs path 0 i) path)))
 
 (defn- disabled-content-dirs
-  "Top-level repo directories whose content is disabled by the current settings. A full export removes
-  leftover files in these dirs via `write-files!` reconciliation; the incremental path preserves every
-  untouched file and can't, so it must fall back when such files are still present."
+  "Top-level repo directories whose content is disabled by the current settings."
   []
   (cond-> #{}
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
