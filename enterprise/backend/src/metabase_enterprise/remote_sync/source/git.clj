@@ -252,118 +252,42 @@
               (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
         (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
-(defn write-files!
-  "Writes multiple files to the git repository and commits the changes.
+(defn- commit-tree!
+  "Builds a commit on the branch tip and pushes it. Inserts `upserts` (file specs with :path/:content)
+  as new blobs, then copies forward each existing tree entry whose path is not being upserted and for
+  which `(keep-existing? path)` returns true. Commits on the current version as parent, updates the
+  branch ref, and pushes.
 
-  Takes a snapshot map containing a :git Git instance, :version, and :managed-dirs,
-  a commit message string, and a sequence of file specs (maps with :path and :content keys,
-  paths should be relative to the repository root).
-
-  All existing files within managed directories that are not in the write set are removed.
-  This ensures stale files (from renames, moves, or deletions) are cleaned up automatically.
-  Files outside managed directories are always preserved.
-
-  Returns the version written. Throws ExceptionInfo if the write or push
-  operation fails."
-  [{:keys [^Git git ^String version ^String branch managed-dirs] :as snapshot} ^String message files]
-  (let [repo (.getRepository git)
-        branch-ref (qualify-branch branch)
-        parent-id (.resolve repo version)]
-    (with-open [inserter (.newObjectInserter repo)]
-      (let [index (DirCache/newInCore)
-            builder (.builder index)
-            ;; Set of all paths being written in this commit
-            write-paths (into #{}
-                              (comp (map :path)
-                                    (remove str/blank?))
-                              files)]
-        ;; Add new/updated files to the index
-        (doseq [{:keys [path content]} files
-                :when (not (str/blank? path))]
-          (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
-                entry (doto (DirCacheEntry. ^String path)
-                        (.setFileMode FileMode/REGULAR_FILE)
-                        (.setObjectId blob-id))]
-            (.add builder entry)))
-        ;; Copy existing tree entries that should be preserved:
-        ;; - Outside managed directories AND not being overwritten by the write set
-        ;; Files in managed dirs not in write-paths are dropped (stale file cleanup)
-        ;; Files in write-paths are skipped here (already added above with new content)
-        (when parent-id
-          (with-open [rev-walk (RevWalk. repo)
-                      tree-walk (TreeWalk. repo)]
-            (let [commit (.parseCommit rev-walk parent-id)]
-              (.addTree tree-walk (.getTree commit))
-              (.setRecursive tree-walk true)
-              (while (.next tree-walk)
-                (let [path (.getPathString tree-walk)]
-                  (when (and (not (contains? write-paths path))
-                             (not (contains? managed-dirs (top-level-dir path))))
-                    (let [entry (doto (DirCacheEntry. path)
-                                  (.setFileMode (.getFileMode tree-walk 0))
-                                  (.setObjectId (.getObjectId tree-walk 0)))]
-                      (.add builder entry))))))))
-        (.finish builder)
-        ;; Create commit
-        (let [tree-id (.writeTree index inserter)
-              commit-builder (doto (CommitBuilder.)
-                               (.setTreeId tree-id)
-                               (.setAuthor (PersonIdent. "Metabase Library" "library@metabase.com"))
-                               (.setCommitter (PersonIdent. "Metabase Library" "library@metabase.com"))
-                               (.setMessage message))]
-          (when parent-id
-            (.setParentId commit-builder parent-id))
-          (let [commit-id (.insert inserter commit-builder)]
-            (.flush inserter)
-            (doto (.updateRef repo branch-ref)
-              (.setNewObjectId commit-id)
-              (.update))
-            (push-branch! snapshot)
-            (.name commit-id)))))))
-
-(defn apply-changes!
-  "Incrementally updates the git repo: writes/overwrites `upserts`, removes `delete-paths`,
-  and PRESERVES every other existing file (including managed-dir files not mentioned).
-
-  Unlike `write-files!`, this does not re-serialize or re-hash the whole tree. Existing tree
-  entries are copied by object id (no blob re-read), only `upserts` are inserted as new blobs.
-  This is the git side of the incremental export fast-path.
-
-  Takes a snapshot map (with :git, :version, :branch), a commit message, a sequence of file
-  specs to upsert ({:path :content}), and a sequence of path strings to delete.
-
-  Returns the version written. Throws ExceptionInfo if the write or push fails."
-  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message upserts delete-paths]
+  Returns the new commit sha. Throws ExceptionInfo if the write or push fails."
+  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message upserts keep-existing?]
   (let [repo         (.getRepository git)
         branch-ref   (qualify-branch branch)
         parent-id    (.resolve repo version)
-        upsert-paths (into #{} (comp (map :path) (remove str/blank?)) upserts)
-        delete-set   (into #{} (remove str/blank?) delete-paths)]
+        upsert-paths (into #{} (comp (map :path) (remove str/blank?)) upserts)]
     (with-open [inserter (.newObjectInserter repo)]
       (let [index   (DirCache/newInCore)
             builder (.builder index)]
-        ;; Seed the index from the existing tree, copying every entry by object id except those
-        ;; being overwritten (upsert-paths) or removed (delete-set). No blob is re-read or re-hashed.
-        (when parent-id
-          (with-open [rev-walk  (RevWalk. repo)
-                      tree-walk (TreeWalk. repo)]
-            (let [commit (.parseCommit rev-walk parent-id)]
-              (.addTree tree-walk (.getTree commit))
-              (.setRecursive tree-walk true)
-              (while (.next tree-walk)
-                (let [path (.getPathString tree-walk)]
-                  (when (and (not (contains? upsert-paths path))
-                             (not (contains? delete-set path)))
-                    (.add builder (doto (DirCacheEntry. path)
-                                    (.setFileMode (.getFileMode tree-walk 0))
-                                    (.setObjectId (.getObjectId tree-walk 0))))))))))
-        ;; Insert the upserted files as new blobs.
+        ;; Add the upserted files as new blobs.
         (doseq [{:keys [path content]} upserts
                 :when (not (str/blank? path))]
           (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))]
             (.add builder (doto (DirCacheEntry. ^String path)
                             (.setFileMode FileMode/REGULAR_FILE)
                             (.setObjectId blob-id)))))
+        ;; Copy forward existing entries that aren't being upserted and that `keep-existing?` keeps.
+        ;; Entries are copied by object id (no blob re-read).
+        (when parent-id
+          (with-open [rev-walk  (RevWalk. repo)
+                      tree-walk (TreeWalk. repo)]
+            (.addTree tree-walk (.getTree (.parseCommit rev-walk parent-id)))
+            (.setRecursive tree-walk true)
+            (while (.next tree-walk)
+              (let [path (.getPathString tree-walk)]
+                (when (and (not (contains? upsert-paths path))
+                           (keep-existing? path))
+                  (.add builder (doto (DirCacheEntry. path)
+                                  (.setFileMode (.getFileMode tree-walk 0))
+                                  (.setObjectId (.getObjectId tree-walk 0)))))))))
         (.finish builder)
         (let [tree-id        (.writeTree index inserter)
               commit-builder (doto (CommitBuilder.)
@@ -380,6 +304,40 @@
               (.update))
             (push-branch! snapshot)
             (.name commit-id)))))))
+
+(defn write-files!
+  "Writes multiple files to the git repository and commits the changes.
+
+  Takes a snapshot map containing a :git Git instance, :version, and :managed-dirs,
+  a commit message string, and a sequence of file specs (maps with :path and :content keys,
+  paths should be relative to the repository root).
+
+  All existing files within managed directories that are not in the write set are removed.
+  This ensures stale files (from renames, moves, or deletions) are cleaned up automatically.
+  Files outside managed directories are always preserved.
+
+  Returns the version written. Throws ExceptionInfo if the write or push
+  operation fails."
+  [{:keys [managed-dirs] :as snapshot} ^String message files]
+  (commit-tree! snapshot message files
+                (fn [path] (not (contains? managed-dirs (top-level-dir path))))))
+
+(defn apply-changes!
+  "Incrementally updates the git repo: writes/overwrites `upserts`, removes `delete-paths`,
+  and PRESERVES every other existing file (including managed-dir files not mentioned).
+
+  Unlike `write-files!`, this does not re-serialize or re-hash the whole tree. Existing tree
+  entries are copied by object id (no blob re-read), only `upserts` are inserted as new blobs.
+  This is the git side of the incremental export fast-path.
+
+  Takes a snapshot map (with :git, :version, :branch), a commit message, a sequence of file
+  specs to upsert ({:path :content}), and a sequence of path strings to delete.
+
+  Returns the version written. Throws ExceptionInfo if the write or push fails."
+  [snapshot ^String message upserts delete-paths]
+  (let [delete-set (into #{} (remove str/blank?) delete-paths)]
+    (commit-tree! snapshot message upserts
+                  (fn [path] (not (contains? delete-set path))))))
 
 (defn branches
   "Retrieves all branch names from the remote repository.

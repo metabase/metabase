@@ -324,8 +324,8 @@
       (catch Exception _ nil))))
 
 (defn- entity-id-model?
-  "True if `model-type` is a remote-sync model whose identity is entity-id (the only kind the
-  incremental fast-path handles). Path/hybrid models (Table/Field/Segment/Measure) return false."
+  "True if `model-type` is a remote-sync model whose identity is entity-id. Path/hybrid
+  models (Table/Field/Segment/Measure) return false."
   [model-type]
   (= :entity-id (:identity (spec/spec-for-model-type model-type))))
 
@@ -381,13 +381,6 @@
           specs    (mapv (fn [e] [(source/entity->file-spec opts e) (:entity_id e)]) entities)]
       (when (every? (fn [[spec eid]] (path-free-for? snapshot (:path spec) eid)) specs)
         (mapv first specs)))))
-
-(defn- distinct-upsert-paths?
-  "True if no two upserts in `plan` target the same path. Two same-named new entities in one batch
-  could otherwise resolve to the same file and clobber each other."
-  [plan]
-  (let [paths (map :path (:upserts plan))]
-    (or (< (count paths) 2) (apply distinct? paths))))
 
 (defn- incremental-plan
   "Builds a plan for a safe incremental export of the current `dirty-rows`, or nil if any row can't be
@@ -461,9 +454,7 @@
               dirty-rows)]
     (when plan
       (when-let [deps (dep-upserts snapshot opts (:pull plan))]
-        (let [plan (-> plan (update :upserts into deps) (dissoc :pull))]
-          (when (distinct-upsert-paths? plan)
-            plan))))))
+        (-> plan (update :upserts into deps) (dissoc :pull))))))
 
 (defn- record-exported-paths!
   "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
