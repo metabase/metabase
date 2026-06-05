@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { CopyDashboardFormConnected } from "metabase/common/components/CopyDashboardForm";
+import { DocumentCopyForm } from "metabase/common/components/DocumentCopyForm/DocumentCopyForm";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { DocumentCopyForm } from "metabase/documents/components/DocumentCopyForm/DocumentCopyForm";
 import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
 import { Modal } from "metabase/ui";
 
