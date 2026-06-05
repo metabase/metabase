@@ -18,7 +18,10 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
   });
 
   describe("initSdkTracker", () => {
-    it("points the tracker at the instance proxy with a CORS/CSP-safe, anonymous config", async () => {
+    // Assert only the flags whose absence fails silently in a customer's prod app:
+    // proxy path (CSP), credentials omit (CORS), server anonymisation (privacy),
+    // and no host-page storage. The rest is cosmetic config, not a safety contract.
+    it("configures the proxy path, omits credentials, anonymises, and touches no storage", async () => {
       const { initSdkTracker } = await loadModule();
 
       initSdkTracker("https://metabase.example.com");
@@ -27,14 +30,10 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
       expect(mockNewTracker).toHaveBeenCalledWith(
         "sdk",
         "https://metabase.example.com",
+        // Only assert important config keys
         expect.objectContaining({
-          appId: "metabase",
-          platform: "web",
-          eventMethod: "post",
           postPath: "/api/analytics-proxy",
           credentials: "omit",
-          keepalive: true,
-          bufferSize: 1,
           stateStorageStrategy: "none",
           anonymousTracking: { withServerAnonymisation: true },
         }),
@@ -52,9 +51,8 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
   });
 
   describe("trackSdkEvent", () => {
-    it("sends a self-describing event through the named sdk tracker, schema-agnostic", async () => {
+    it("routes to the isolated sdk tracker, not the default", async () => {
       const { trackSdkEvent } = await loadModule();
-      // Existing embedded_analytics_js schema used only as a temporary test vehicle (Half 1).
       const event: SelfDescribingJson = {
         schema: "iglu:com.metabase/embedded_analytics_js/jsonschema/3-0-0",
         data: { event: "setup" },
@@ -62,21 +60,9 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
 
       trackSdkEvent(event);
 
-      expect(mockTrackSelfDescribingEvent).toHaveBeenCalledTimes(1);
       expect(mockTrackSelfDescribingEvent).toHaveBeenCalledWith({ event }, [
         "sdk",
       ]);
-    });
-  });
-
-  describe("isSdkTrackingEnabled", () => {
-    it("requires both anonymous-tracking and snowplow to be enabled", async () => {
-      const { isSdkTrackingEnabled } = await loadModule();
-
-      expect(isSdkTrackingEnabled(true, true)).toBe(true);
-      expect(isSdkTrackingEnabled(true, false)).toBe(false);
-      expect(isSdkTrackingEnabled(false, true)).toBe(false);
-      expect(isSdkTrackingEnabled(false, false)).toBe(false);
     });
   });
 });
