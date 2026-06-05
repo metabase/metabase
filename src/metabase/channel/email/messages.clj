@@ -224,8 +224,10 @@
                                                       [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
-  "Format and send an email informing the user about errors in the persistent model refresh task."
-  [database-id persisted-infos trigger]
+  "Format and send an email informing the user about errors in the persistent model refresh task.
+  `trigger-label` is the human-readable label (e.g. \"Scheduled\" or \"Manual\") rendered as
+  `Last run trigger` in the email."
+  [database-id persisted-infos trigger-label]
   {:pre [(seq persisted-infos)]}
   (let [database (:database (first persisted-infos))
         emails (admin-or-ee-monitoring-details-emails database-id)
@@ -243,7 +245,7 @@
                     :collection-name (:name collection)
                     ;; February 1, 2022, 3:10 PM
                     :last-run-at (t/format "MMMM d, yyyy, h:mm a z" (t/zoned-date-time (:refresh_begin persisted-info) timezone))
-                    :last-run-trigger trigger
+                    :last-run-trigger trigger-label
                     :card-url (urls/card-url (:id card))
                     :collection-url (urls/collection-url (:id collection))
                     :caching-log-details-url (urls/tools-caching-details-url (:id persisted-info))})}
