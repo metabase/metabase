@@ -1,0 +1,148 @@
+--- dev/src/dev/debug_qp/postgres_4_to_5/card_18249_mbql4.sql	2026-06-04 15:40:19
++++ dev/src/dev/debug_qp/postgres_4_to_5/card_18249_mbql5.sql	2026-06-04 15:40:19
+@@ -205,11 +205,7 @@
+             FROM
+               (
+                 SELECT
+-                  "__mb_source"."created_at" AS "created_at"
+-                FROM
+                   (
+-                    SELECT
+-                      (
+                         CAST(
+                           DATE_TRUNC(
+                             'week',
+@@ -321,7 +317,6 @@
+                           )
+                       ) AS "__mb_source"
+                   ) AS "__mb_source"
+-              ) AS "__mb_source"
+             GROUP BY
+               "__mb_source"."created_at"
+             ORDER BY
+
+--- dev/src/dev/debug_qp/postgres_4_to_5/card_24804_mbql4.sql	2026-06-04 15:40:19
++++ dev/src/dev/debug_qp/postgres_4_to_5/card_24804_mbql5.sql	2026-06-04 15:40:19
+@@ -59,7 +59,6 @@
+   ("__mb_source"."page_url" = ?)
+   AND ("__mb_source"."page_view_at" >= ?)
+   AND ("__mb_source"."utm_source" = ?)
+-  AND ("__mb_source"."page_view_at" >= ?)
+   AND ("__mb_source"."page_view_at" < ?)
+   AND ("__mb_source"."page_view_in_session_index" > 1)
+ GROUP BY
+
+--- dev/src/dev/debug_qp/postgres_4_to_5/card_26136_mbql4.sql	2026-06-04 15:40:19
++++ dev/src/dev/debug_qp/postgres_4_to_5/card_26136_mbql5.sql	2026-06-04 15:40:19
+@@ -79,10 +79,6 @@
+         FROM
+           (
+             SELECT
+-              "__mb_source"."updated_at" AS "updated_at"
+-            FROM
+-              (
+-                SELECT
+                   DATE_TRUNC('month', "__mb_source"."updated_at") AS "updated_at"
+                 FROM
+                   (
+@@ -126,7 +122,6 @@
+                   ("__mb_source"."is_active" = FALSE)
+                   AND ("__mb_source"."type" = ?)
+               ) AS "__mb_source"
+-          ) AS "__mb_source"
+         GROUP BY
+           "__mb_source"."updated_at"
+         ORDER BY
+
+--- dev/src/dev/debug_qp/postgres_4_to_5/card_37555_mbql4.sql	2026-06-04 15:40:19
++++ dev/src/dev/debug_qp/postgres_4_to_5/card_37555_mbql5.sql	2026-06-04 15:40:19
+@@ -205,11 +205,7 @@
+             FROM
+               (
+                 SELECT
+-                  "__mb_source"."created_at" AS "created_at"
+-                FROM
+                   (
+-                    SELECT
+-                      (
+                         CAST(
+                           DATE_TRUNC(
+                             'week',
+@@ -321,7 +317,6 @@
+                           )
+                       ) AS "__mb_source"
+                   ) AS "__mb_source"
+-              ) AS "__mb_source"
+             GROUP BY
+               "__mb_source"."created_at"
+             ORDER BY
+
+--- dev/src/dev/debug_qp/postgres_4_to_5/card_37720_mbql4.sql	2026-06-04 15:40:19
++++ dev/src/dev/debug_qp/postgres_4_to_5/card_37720_mbql5.sql	2026-06-04 15:40:19
+@@ -205,11 +205,7 @@
+             FROM
+               (
+                 SELECT
+-                  "__mb_source"."created_at" AS "created_at"
+-                FROM
+                   (
+-                    SELECT
+-                      (
+                         CAST(
+                           DATE_TRUNC(
+                             'week',
+@@ -321,7 +317,6 @@
+                           )
+                       ) AS "__mb_source"
+                   ) AS "__mb_source"
+-              ) AS "__mb_source"
+             GROUP BY
+               "__mb_source"."created_at"
+             ORDER BY
+
+--- dev/src/dev/debug_qp/postgres_4_to_5/card_37721_mbql4.sql	2026-06-04 15:40:19
++++ dev/src/dev/debug_qp/postgres_4_to_5/card_37721_mbql5.sql	2026-06-04 15:40:19
+@@ -205,11 +205,7 @@
+             FROM
+               (
+                 SELECT
+-                  "__mb_source"."created_at" AS "created_at"
+-                FROM
+                   (
+-                    SELECT
+-                      (
+                         CAST(
+                           DATE_TRUNC(
+                             'week',
+@@ -321,7 +317,6 @@
+                           )
+                       ) AS "__mb_source"
+                   ) AS "__mb_source"
+-              ) AS "__mb_source"
+             GROUP BY
+               "__mb_source"."created_at"
+             ORDER BY
+
+--- dev/src/dev/debug_qp/postgres_4_to_5/card_37893_mbql4.sql	2026-06-04 15:40:19
++++ dev/src/dev/debug_qp/postgres_4_to_5/card_37893_mbql5.sql	2026-06-04 15:40:19
+@@ -205,11 +205,7 @@
+             FROM
+               (
+                 SELECT
+-                  "__mb_source"."created_at" AS "created_at"
+-                FROM
+                   (
+-                    SELECT
+-                      (
+                         CAST(
+                           DATE_TRUNC(
+                             'week',
+@@ -321,7 +317,6 @@
+                           )
+                       ) AS "__mb_source"
+                   ) AS "__mb_source"
+-              ) AS "__mb_source"
+             GROUP BY
+               "__mb_source"."created_at"
+             ORDER BY
+
