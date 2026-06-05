@@ -677,7 +677,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
 
     if (isNative) {
       const isNewQuestion = !originalQuestion;
-      const rawQuery = Lib.rawNativeQuery(question.query());
+      const rawQuery = Lib.rawNativeQuery(question.query()) ?? "";
 
       if (isNewQuestion) {
         return rawQuery.length > 0;
@@ -953,7 +953,7 @@ export const getNativeEditorCursorOffset = createSelector(
       return null;
     }
     const query = question.query();
-    const queryText = Lib.rawNativeQuery(query);
+    const queryText = Lib.rawNativeQuery(query) ?? "";
     return getOffsetForQueryAndPosition(queryText, selectedRange.end);
   },
 );
@@ -965,7 +965,7 @@ export const getNativeEditorSelectedText = createSelector(
       return null;
     }
     const query = question.query();
-    const queryText = Lib.rawNativeQuery(query);
+    const queryText = Lib.rawNativeQuery(query) ?? "";
     const start = getOffsetForQueryAndPosition(queryText, selectedRange.start);
     const end = getOffsetForQueryAndPosition(queryText, selectedRange.end);
     return queryText.slice(start, end);
@@ -984,7 +984,7 @@ export const getAllNativeEditorSelectedText = createSelector(
       return null;
     }
     const query = question.query();
-    const queryText = Lib.rawNativeQuery(query);
+    const queryText = Lib.rawNativeQuery(query) ?? "";
     const selectedText = selectedRanges.map((range) =>
       queryText.slice(
         getOffsetForQueryAndPosition(queryText, range.start),

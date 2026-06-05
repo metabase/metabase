@@ -394,7 +394,7 @@
   [dimension]
   (to-array (map name (lib-metric.filter/filterable-dimension-operators dimension))))
 
-(defn ^:export availableSegments
+(mu/defn ^:export availableSegments :- [:any {:ts/array-of ::lib.schema.metadata/segment}]
   "Return segments that can be applied as filters on this metric definition.
    Segments are scoped to the source table(s) of the definition's expression leaves.
    Each segment metadata is annotated with `:lib-metric/instance-uuid` so the FE
@@ -403,23 +403,23 @@
   [definition]
   (to-array (lib-metric.filter/available-segments definition)))
 
-(defn ^:export isSegmentFilter
+(mu/defn ^:export isSegmentFilter :- :boolean
   "Return true if the filter-clause is a segment reference."
   [filter-clause]
   (lib-metric.filter/segment-clause? filter-clause))
 
-(defn ^:export segmentMetadataForFilter
+(mu/defn ^:export segmentMetadataForFilter :- [:maybe ::lib.schema.metadata/segment]
   "Return the segment metadata referenced by a segment filter-clause, or nil."
   [definition filter-clause]
   (lib-metric.filter/segment-metadata-for-clause definition filter-clause))
 
-(defn ^:export addSegmentFilter
+(mu/defn ^:export addSegmentFilter :- ::lib-metric.schema/metric-definition
   "Add a segment as a filter on this metric definition. `segment-metadata` is an
    opaque CLJS segment metadata map returned by `availableSegments`."
   [definition segment-metadata]
   (lib-metric.filter/add-segment-filter definition segment-metadata))
 
-(defn ^:export segmentMetadataId
+(mu/defn ^:export segmentMetadataId :- [:maybe :int]
   "Return the numeric id of a segment metadata map returned by `availableSegments`
    or `segmentMetadataForFilter`."
   [segment-metadata]
@@ -893,7 +893,7 @@
      (when (and (seq sources1) (seq sources2))
        (some (set sources1) sources2)))))
 
-(defn ^:export isCompatibleType
+(mu/defn ^:export isCompatibleType :- :boolean
   "Check if two dimensions have compatible effective types for cross-database matching.
    Two date/datetime dimensions are compatible, two time dimensions are compatible,
    otherwise requires exact type match. Returns false if either type is nil."

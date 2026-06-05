@@ -275,7 +275,10 @@ export function removeJoin(
   return ML.remove_join(query, stageIndex, joinSpec);
 }
 
-export function joinedThing(query: Query, join: Join): Joinable | null {
+export function joinedThing(
+  query: Query,
+  join: Join,
+): TableMetadata | CardMetadata | null {
   return ML.joined_thing(query, join);
 }
 

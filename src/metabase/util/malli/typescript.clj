@@ -200,6 +200,8 @@
           "unknown"))))
 (defmethod -schema->ts :re       [_] "string")
 (defmethod -schema->ts 'pos-int? [_] "number")
+(defmethod -schema->ts 'nat-int? [_] "number")
+(defmethod -schema->ts 'neg-int? [_] "number")
 (defmethod -schema->ts 'int      [_] "number")
 (defmethod -schema->ts 'number?  [_] "number")
 (defmethod -schema->ts 'string?  [_] "string")

@@ -3,7 +3,9 @@ import type * as AggregationLib from "cljs/metabase.lib.aggregation";
 import type * as ColumnGroupLib from "cljs/metabase.lib.column_group";
 import type { Metabase_Lib_Schema_Filter_Operator } from "cljs/metabase.lib.filter";
 import type {
+  Metabase_Lib_Aggregation_Aggregable,
   Metabase_Lib_Metadata_Protocols_MetadataProvider,
+  Metabase_Lib_Schema_Aggregation_Aggregation,
   Metabase_Lib_Schema_Binning_Binning,
   Metabase_Lib_Schema_Binning_BinningOption,
   Metabase_Lib_Schema_DrillThru_DrillThru,
@@ -70,10 +72,9 @@ export type MetricMetadata = Metabase_Lib_Schema_Metadata_Metric;
 
 export type MeasureMetadata = Metabase_Lib_Schema_Metadata_Measure;
 
-export type AggregationClause =
-  AggregationLib.Metabase_Lib_Schema_Aggregation_Aggregation;
+export type AggregationClause = Metabase_Lib_Schema_Aggregation_Aggregation;
 
-export type Aggregable = AggregationLib.Metabase_Lib_Aggregation_Aggregable;
+export type Aggregable = Metabase_Lib_Aggregation_Aggregable;
 
 export type AggregationOperator = NonNullable<
   ReturnType<typeof AggregationLib.available_aggregation_operators>

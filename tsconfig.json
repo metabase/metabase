@@ -13,7 +13,6 @@
       ],
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
-      "docs/*": ["./docs/*"],
       "echarts/types/src/*": ["./node_modules/echarts/types/src/*"],
       "zrender/lib/core/types": ["./node_modules/zrender/lib/core/types"],
       "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],

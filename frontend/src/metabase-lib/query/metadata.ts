@@ -137,6 +137,14 @@ export function displayInfo(
   stageIndex: number,
   tableLike: CardMetadata | TableMetadata,
 ): CardDisplayInfo | TableDisplayInfo;
+// OrderByClause (asc/desc tuples) is structurally a subset of the broad
+// AggregationClause union, so its overload must precede AggregationClause's to
+// dispatch correctly.
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  orderByClause: OrderByClause,
+): OrderByClauseDisplayInfo;
 export function displayInfo(
   query: Query,
   stageIndex: number,
@@ -152,11 +160,6 @@ export function displayInfo(
   stageIndex: number,
   breakoutClause: BreakoutClause,
 ): BreakoutClauseDisplayInfo;
-export function displayInfo(
-  query: Query,
-  stageIndex: number,
-  orderByClause: OrderByClause,
-): OrderByClauseDisplayInfo;
 export function displayInfo(
   query: Query,
   stageIndex: number,

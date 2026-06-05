@@ -35,8 +35,12 @@ export interface FieldTypeInfo {
  * @example
  * isa(field.semantic_type, TYPE.Currency);
  */
-export const isa = (x: string | null | undefined, y: string): boolean =>
-  cljs_isa(x, y);
+export const isa = (x: string | null | undefined, y: string): boolean => {
+  if (x == null) {
+    return false;
+  }
+  return cljs_isa(x, y);
+};
 
 // convenience functions since these operations are super-common
 // this will also make it easier to tweak how these checks work in the future,
