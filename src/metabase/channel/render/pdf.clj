@@ -891,9 +891,24 @@
 ;; Cell building -- turn dashcards into renderable cells, preserving grid geometry
 ;; --------------------------------------------------------------------------------------------
 
+(defn- iframe-url
+  "Extract the target URL from an iframe card's `:iframe` setting, which is either a bare URL or an
+  `<iframe src=\"...\">` embed snippet (mirrors the frontend's handling). Adds an `https://` scheme
+  if missing. Returns nil if no URL can be found."
+  [iframe-setting]
+  (when-let [s (some-> iframe-setting str str/trim not-empty)]
+    (when-let [raw (if (str/starts-with? s "<iframe")
+                     (second (re-find #"(?i)\bsrc\s*=\s*[\"']([^\"']+)[\"']" s))
+                     s)]
+      (let [raw (str/trim raw)]
+        (when (not-empty raw)
+          (if (re-find #"(?i)^[a-z][a-z0-9+.-]*://" raw)
+            raw
+            (str "https://" (str/replace raw #"^//" ""))))))))
+
 (defn- dashcard->cell
   "Build a renderable cell from a dashcard, preserving its grid geometry. Returns nil for
-  dashcard kinds we don't render (iframe/placeholder/action) or cards that fail/are empty."
+  dashcard kinds we don't render (placeholder/action) or cards that fail/are empty."
   [dc parameters]
   (let [geom (select-keys dc [:row :col :size_x :size_y])]
     (cond
@@ -916,6 +931,12 @@
       (notification.execute/virtual-card-of-type? dc "link")
       (when-let [part (notification.execute/dashcard-link-card->part dc)]
         (assoc geom :kind :text :text (:text part)))
+
+      ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
+      ;; clickable link instead (autolinked bare URL).
+      (notification.execute/virtual-card-of-type? dc "iframe")
+      (when-let [url (iframe-url (get-in dc [:visualization_settings :iframe]))]
+        (assoc geom :kind :text :text url))
 
       :else nil)))
 
