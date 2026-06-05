@@ -97,7 +97,7 @@ You must turn on this setting to enable [Custom visualizations](../questions/vis
 
 ## Allowed domains for images
 
-When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, and any domains listed here.
+When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, and any domains listed on this page.
 
 Leave this input empty to only allow images hosted by your Metabase instance.
 

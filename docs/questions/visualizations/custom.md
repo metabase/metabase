@@ -47,7 +47,7 @@ On a question, dashboard or document card, open the visualization sidebar (the *
 
 ![Gondola line chart](../images/gondola-line-chart.png)
 
-If a custom visualization can't render the current query results (for example, the query is missing a column the visualization needs), Metabase shows the error message from the plugin so you can adjust the query or pick a different chart.
+If a custom visualization can't render the current query results (for example, if the query is missing a column the visualization needs), Metabase shows the error message from the plugin so you can adjust the query or pick a different chart.
 
 Custom visualizations behave like built-in charts in most places:
 
