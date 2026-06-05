@@ -296,54 +296,6 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  be-tests-druid-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.druid-should-run == 'true' || needs.determine-driver-skips.outputs.druid-quarantine-conflict == 'true' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
-    env:
-      CI: 'true'
-      DRIVERS: druid
-    services:
-      druid:
-        image: metabase/druid:0.20.2
-        ports:
-          - "8082:8082"
-        env:
-          CLUSTER_SIZE: nano-quickstart
-    name: Druid (Legacy)
-    steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.druid-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Druid driver is quarantined but you changed files in modules/drivers/druid/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Druid tests, add the label: break-quarantine-druid"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Druid driver!"
-        exit 1
-    - uses: actions/checkout@v6
-    - name: Test Druid driver
-      id: test-driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-druid-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-          :exclude-tags [:mb/transforms-python-test]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' || needs.determine-driver-skips.outputs.druid-jdbc-quarantine-conflict == 'true' }}
@@ -1629,7 +1581,6 @@ jobs:
       # these are not reliable, but we want to run them anyway to gather data about failures
       # - be-tests-snowflake-ee
       # - be-tests-bigquery-cloud-sdk-ee
-      - be-tests-druid-ee
       - be-tests-databricks-ee
       - be-tests-druid-jdbc-ee
       - be-tests-mysql-mariadb

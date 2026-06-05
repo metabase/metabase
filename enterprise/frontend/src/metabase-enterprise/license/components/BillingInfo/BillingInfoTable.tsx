@@ -3,17 +3,15 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
-import { Card, Icon, Text } from "metabase/ui";
+import { Card, Flex, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
 
-import {
-  BillingExternalLink,
-  BillingInfoRowContainer,
-  BillingInternalLink,
-} from "./BillingInfo.styled";
+import S from "./BillingInfo.module.css";
 import {
   formatBillingValue,
   getBillingInfoId,
@@ -40,7 +38,8 @@ const BillingInfoValue = ({
 
   if (lineItem.display === "internal-link") {
     return (
-      <BillingInternalLink
+      <Link
+        className={S.link}
         to={internalLinkMap[lineItem.link]}
         href={internalLinkMap[lineItem.link]}
         data-testid="test-link"
@@ -49,18 +48,18 @@ const BillingInfoValue = ({
         <Text fw="bold" color="currentColor">
           {formattedValue}
         </Text>
-      </BillingInternalLink>
+      </Link>
     );
   }
 
   if (lineItem.display === "external-link") {
     return (
-      <BillingExternalLink href={lineItem.link} {...props}>
+      <ExternalLink className={S.link} href={lineItem.link} {...props}>
         <Text fw="bold" color="currentColor">
           {formattedValue}
         </Text>
         <Icon ml="sm" size="16" name="external" />
-      </BillingExternalLink>
+      </ExternalLink>
     );
   }
 
@@ -94,7 +93,14 @@ function BillingInfoRow({
   // changes in a way the current application doesn't expect
   return (
     <ErrorBoundary errorComponent={EmptyErrorComponent}>
-      <BillingInfoRowContainer extraPadding={extraPadding} {...props}>
+      <Flex
+        className={S.row}
+        align="center"
+        justify="space-between"
+        px="md"
+        py={extraPadding ? "lg" : "sm"}
+        {...props}
+      >
         <Text
           c="text-secondary"
           maw="15rem"
@@ -106,7 +112,7 @@ function BillingInfoRow({
           lineItem={lineItem}
           data-testid={`billing-info-value-${id}`}
         />
-      </BillingInfoRowContainer>
+      </Flex>
     </ErrorBoundary>
   );
 }

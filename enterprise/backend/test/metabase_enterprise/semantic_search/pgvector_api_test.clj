@@ -186,9 +186,9 @@
               (is (= api-results index-results))))
           ;; it would be better to test permissions at a higher level than we currently do, but for now to save time...
           (testing "assumption: permissions are applied at the index query level, check the expected fn is called"
-            (let [query-index semantic.index/query-index
+            (let [query-index (mt/original-fn #'semantic.index/query-index)
                   called      (atom false)]
-              (with-redefs [semantic.index/query-index (fn [& args] (reset! called true) (apply query-index args))]
+              (mt/with-dynamic-fn-redefs [semantic.index/query-index (fn [& args] (reset! called true) (apply query-index args))]
                 (sut pgvector index-metadata search)
                 (is @called))))
           (testing "same results after reinit"

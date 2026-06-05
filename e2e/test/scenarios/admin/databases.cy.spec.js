@@ -449,7 +449,7 @@ describe("database page > side panel", () => {
       { name: "Amazon Redshift", file: "redshift" },
       { name: "ClickHouse", file: "clickhouse" },
       { name: "Databricks", file: "databricks" },
-      { name: "Druid", file: "druid" },
+      { name: "Druid JDBC", file: "druid" },
       { name: "MongoDB", file: "mongo" },
       { name: "MySQL", file: "mysql" },
       { name: "PostgreSQL", file: "postgresql" },

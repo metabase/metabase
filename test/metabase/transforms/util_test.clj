@@ -4,6 +4,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -20,6 +21,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as transforms.canceling]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -495,6 +497,146 @@
              (fn [_cancel-chan _range-params]
                (reset! driver-observed-timeout-ms driver.settings/*query-timeout-ms*))))))
       (is (= (u/minutes->ms 90) @driver-observed-timeout-ms)))))
+
+;;; -------------------------------------------------- `:metabase-transforms/incremental-rows` --------------------------------------------------
+
+(defn- run-cancelable-with-mocks!
+  "Drive `run-cancelable-transform!` with stubbed lifecycle (schema, checkpoint, watermark, canceling) and wrap `driver-result` in the production `{:status :succeeded :result …}` envelope."
+  ([transform source-range-params driver-result]
+   (run-cancelable-with-mocks! transform source-range-params driver-result :h2))
+  ([transform source-range-params driver-result driver]
+   (with-redefs [driver/schema-exists?                            (constantly true)
+                 driver/create-schema-if-needed!                  (constantly nil)
+                 transforms-base.u/get-source-range-params        (constantly source-range-params)
+                 transforms-base.u/save-run-checkpoint-range!     (constantly nil)
+                 transforms-base.u/save-watermark!                (constantly nil)
+                 transforms.canceling/chan-start-timeout-vthread! (constantly nil)
+                 transforms.canceling/chan-start-run!             (constantly nil)
+                 transforms.canceling/chan-end-run!               (constantly nil)
+                 transform-run/succeed-started-run!               (constantly nil)]
+     (mt/with-premium-features #{:transforms-basic}
+       (transforms.u/run-cancelable-transform!
+        1 transform driver {:db-id 1 :conn-spec nil :output-schema "x"}
+        (fn [_cancel-chan _range-params]
+          {:status :succeeded :result driver-result}))))))
+
+(deftest run-cancelable-transform!-emits-incremental-rows-test
+  (mt/with-prometheus-system! [_ system]
+    (testing "Non-incremental transform: `get-source-range-params` returns nil → no emission, both branches stay at zero"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table"}}
+       nil
+       {:rows-affected 100})
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "true"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "true"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "First incremental run (no watermark) → {full-incremental-run=true}, both types bumped from the same scan"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
+       {:checkpoint-filter-field-id 42 :rows-available 1000}
+       {:rows-affected 1000})
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "true"}))))
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "true"}))))
+      (is (== 1000 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                          {:type "available" :full-incremental-run "true"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"})))))
+    (testing "Subsequent incremental run (watermark present) → {full-incremental-run=false}, attrition surfaces as sum mismatch"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42 :rows-available 500}
+       {:rows-affected 120})
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"}))))
+      (is (== 500 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Driver result missing :rows-affected (defensive contract) → no emission on either side"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42 :rows-available 999}
+       {:some-other-shape "no rows-affected here"})
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Python-shaped driver result (clj-http response augmented with :rows-affected by run-python-transform-impl!) emits the metric"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42 :rows-available 800}
+       {:status 200 :body {:exit_code 0} :rows-affected 750})
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"}))))
+      (is (== 800 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 750 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Incremental run whose source-range-params lacks :rows-available → no emission on either side"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42}
+       {:rows-affected 100})
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Unreliable driver (`:transforms/accurate-rows-affected` false) on the CTAS path emits nothing — neither rows-available nor rows-processed, since the driver's full-rebuild count is untrustworthy"
+      (defmethod driver/database-supports? [:h2 :transforms/accurate-rows-affected] [_ _ _] false)
+      (try
+        (analytics/clear! :metabase-transforms/incremental-rows)
+        (run-cancelable-with-mocks!
+         {:id 1 :target {:type "table-incremental" :schema "x" :name "tgt"} :last_checkpoint_value nil}
+         {:checkpoint-filter-field-id 42 :rows-available 1000}
+         {:rows-affected 0})
+        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                           {:type "available" :full-incremental-run "true"})))
+            "rows-available is suppressed for an unreliable driver's full-rebuild run")
+        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                           {:type "processed" :full-incremental-run "true"})))
+            "rows-processed is suppressed — the driver's full-rebuild count is untrustworthy")
+        (finally
+          (remove-method driver/database-supports? [:h2 :transforms/accurate-rows-affected]))))
+    (testing "Unreliable driver on the INSERT path still emits the driver count (rows-affected is accurate on the cumulative-target INSERT path even when CTAS counts are not)"
+      (defmethod driver/database-supports? [:h2 :transforms/accurate-rows-affected] [_ _ _] false)
+      (try
+        (analytics/clear! :metabase-transforms/incremental-rows)
+        (run-cancelable-with-mocks!
+         {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+         {:checkpoint-filter-field-id 42 :rows-available 500}
+         {:rows-affected 120})
+        (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                           {:type "processed" :full-incremental-run "false"})))
+            "INSERT path records the driver's count (120); it stays accurate on unreliable-CTAS drivers")
+        (finally
+          (remove-method driver/database-supports? [:h2 :transforms/accurate-rows-affected]))))
+    (testing "A throw from the emission helper must NOT escape into the outer try/catch — the run already succeeded"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (mt/with-dynamic-fn-redefs [transforms.instrumentation/record-incremental-rows!
+                                  (fn [& _] (throw (ex-info "Synthetic emission failure" {})))]
+        (is (= {:status :succeeded :result {:rows-affected 1000}}
+               (run-cancelable-with-mocks!
+                {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
+                {:checkpoint-filter-field-id 42 :rows-available 1000}
+                {:rows-affected 1000}))
+            "run-cancelable-transform! returns the success envelope; the emission throw is swallowed.")))))
 
 (deftest ^:parallel massage-sql-query-test
   (testing "massage-sql-query sets disable-remaps? and disable-max-results?"
