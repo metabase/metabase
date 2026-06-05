@@ -14,7 +14,7 @@ describe("app banner utils", () => {
       ).toBe(false);
     });
 
-    it.each([3, 2, 1, 0])(
+    it.each([7, 3, 2, 1, 0])(
       "should return true if daysRemaining is %s but the banner was never dismissed",
       (daysRemaining) => {
         expect(
@@ -64,7 +64,7 @@ describe("app banner utils", () => {
       },
     );
 
-    it.each([42, 180, 14])(
+    it.each([7, 6, 4])(
       "should return false if daysRemaining is %s and the banner was dismissed at any point in the past",
       (daysRemaining) => {
         expect(
@@ -78,7 +78,7 @@ describe("app banner utils", () => {
       },
     );
 
-    it.each([42, 180, 14])(
+    it.each([7, 6, 4])(
       "should return true if daysRemaining is %s but the banner was never dismissed",
       (daysRemaining) => {
         expect(
@@ -92,7 +92,7 @@ describe("app banner utils", () => {
       },
     );
 
-    it.each([42, 180, 14])(
+    it.each([7, 6, 4])(
       "should return true if daysRemaining is %s but the banner dismissal information is not available",
       (daysRemaining) => {
         expect(
@@ -103,6 +103,20 @@ describe("app banner utils", () => {
             lastDismissed: undefined,
           }),
         ).toBe(true);
+      },
+    );
+
+    it.each([8, 14, 42, 180])(
+      "should return false if daysRemaining is %s (more than 7 days left)",
+      (daysRemaining) => {
+        expect(
+          shouldShowTrialBanner({
+            isWithinIframe: false,
+            tokenExpiryTimestamp: "2021-11-27",
+            daysRemaining,
+            lastDismissed: null,
+          }),
+        ).toBe(false);
       },
     );
 

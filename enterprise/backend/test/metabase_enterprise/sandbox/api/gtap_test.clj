@@ -152,7 +152,7 @@
                                            :card_id              card-id
                                            :attribute_remappings {"foo" 1}}))))))
       (testing "A database without the saved question sandboxing features returns a 400 error"
-        (with-redefs [driver.util/supports? (fn [_ feature _] (not= feature :saved-question-sandboxing))]
+        (mt/with-dynamic-fn-redefs [driver.util/supports? (fn [_ feature _] (not= feature :saved-question-sandboxing))]
           (mt/with-temp [:model/Card {card-id :id}]
             (with-gtap-cleanup!
               (is (=? {:message  "Sandboxing with a saved question is not enabled for this database."}

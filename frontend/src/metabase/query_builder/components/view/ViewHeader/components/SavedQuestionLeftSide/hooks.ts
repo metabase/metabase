@@ -35,8 +35,6 @@ export function useHiddenSourceTables(
 
   return joinTablesInfo.filter(
     (tableInfo) =>
-      !tableInfo.isSourceTable ||
-      (tableInfo.visibilityType !== null &&
-        tableInfo.visibilityType !== "normal"),
+      !tableInfo.isSourceTable || tableInfo.visibilityType !== null,
   );
 }
