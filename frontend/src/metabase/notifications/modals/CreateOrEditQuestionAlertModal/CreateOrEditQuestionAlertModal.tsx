@@ -375,7 +375,7 @@ export const CreateOrEditQuestionAlertModal = ({
               <Select
                 data-testid="alert-goal-select"
                 data={triggerOptions}
-                value={notification.payload?.send_condition ?? undefined}
+                value={notification.payload?.send_condition}
                 w={276}
                 onChange={(value) => {
                   setNotification({
