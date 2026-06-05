@@ -200,6 +200,28 @@
                                                              :link {:url "https://example.com"}}}
                                    []))))))
 
+(deftest iframe-url-test
+  (testing "a bare URL is used as-is"
+    (is (= "https://youtu.be/x" (#'pdf/iframe-url "https://youtu.be/x"))))
+  (testing "src is extracted from an <iframe> embed snippet"
+    (is (= "https://www.youtube.com/embed/x"
+           (#'pdf/iframe-url "<iframe width=\"560\" src=\"https://www.youtube.com/embed/x\" allowfullscreen></iframe>"))))
+  (testing "a scheme-less URL gets https://"
+    (is (= "https://vimeo.com/123" (#'pdf/iframe-url "vimeo.com/123")))
+    (is (= "https://vimeo.com/123" (#'pdf/iframe-url "//vimeo.com/123"))))
+  (testing "blank/nil or an empty iframe yields nil"
+    (is (nil? (#'pdf/iframe-url nil)))
+    (is (nil? (#'pdf/iframe-url "   ")))
+    (is (nil? (#'pdf/iframe-url "<iframe></iframe>")))))
+
+(deftest iframe-card-cell-test
+  (testing "an iframe dashcard becomes a clickable link text cell to its target"
+    (is (= {:row 0 :col 0 :size_x 4 :size_y 3 :kind :text :text "https://youtu.be/abc"}
+           (#'pdf/dashcard->cell {:row 0 :col 0 :size_x 4 :size_y 3
+                                  :visualization_settings {:virtual_card {:display "iframe"}
+                                                           :iframe "https://youtu.be/abc"}}
+                                 [])))))
+
 ;; --------------------------------------------------------------------------------------------
 ;; Parameter bar layout (flow + wrap)
 ;; --------------------------------------------------------------------------------------------
