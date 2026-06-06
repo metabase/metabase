@@ -14,18 +14,25 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          # A fresh checkout is shallow + single-branch, so the release branches
+          # aren't present. blob:none makes this a partial clone: the per-version
+          # branch fetch below pulls only commits + trees, and `git archive`
+          # lazy-fetches just that version's docs blobs — instead of ~26 full
+          # repo snapshots.
+          filter: blob:none
 
-      - name: Pull docs
-        run: bin/build-versioned-docs.sh
+      - name: Pull docs sources for every version
+        # FETCH=1: resolve the versions from origin (origin/master -> latest,
+        # origin/release-x.NN.x -> NN) and shallow-fetch the ones that exist.
+        # Without it the script is local-only and finds nothing in a fresh
+        # checkout ("Nothing buildable").
+        run: FETCH=1 bin/build-versioned-docs.sh
 
-      - name: Setup docs app
-        run: cd docs-build && bun install --frozen-lockfile
-
-      - name: Pull docs sources
-        run: bin/build-versioned-docs.sh
-
-      - name: Build docs site
+      - name: Build the versioned docs site
+        # Installs docs-build/ deps and renders each build/<version> into
+        # build/docs/<base>. Requires `bun` on the runner.
         run: bin/render-versioned-docs.sh
 
-      - name: list built docs
-        run: ls build/docs
+      - name: List built docs
+        run: ls -1 build/docs

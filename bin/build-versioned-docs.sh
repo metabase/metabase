@@ -182,7 +182,19 @@ if [[ "$FETCH" == "1" ]]; then
     done
     if ((${#to_fetch[@]})); then
       echo "Shallow-fetching ${#to_fetch[@]}: ${to_fetch[*]}"
-      git fetch --no-tags --depth=1 "$REMOTE" "${to_fetch[@]}"
+      # Use explicit refspecs, NOT bare branch names: a fresh CI checkout
+      # (actions/checkout) configures a single-branch fetch refspec, so a bare
+      # `git fetch origin release-x.55.x` only updates FETCH_HEAD and never
+      # creates refs/remotes/origin/release-x.55.x — leaving resolve_ref unable
+      # to find it. An explicit "+src:dst" refspec forces the tracking ref.
+      # No --filter here: in a partial clone (e.g. checkout filter:blob:none)
+      # the fetch inherits blob:none and git archive lazy-fetches docs blobs;
+      # in a full clone it fetches normally.
+      fetch_refspecs=()
+      for name in "${to_fetch[@]}"; do
+        fetch_refspecs+=("+refs/heads/$name:refs/remotes/$REMOTE/$name")
+      done
+      git fetch --no-tags --depth=1 "$REMOTE" "${fetch_refspecs[@]}"
       snapshot_refs
     fi
   fi
