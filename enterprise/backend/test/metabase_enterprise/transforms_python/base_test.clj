@@ -7,7 +7,7 @@
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
-   [metabase.util :as u])
+   [metabase.util-be.core :as util-be])
   (:import
    (java.io ByteArrayInputStream File)
    (java.nio.file Files)
@@ -18,7 +18,7 @@
 (defn- jsonl-temp-file
   ^File [^String contents]
   (let [path (Files/createTempFile "transforms-python-base-test-" ".jsonl"
-                                   (u/varargs FileAttribute))
+                                   (util-be/varargs FileAttribute))
         f    (.toFile path)]
     (.deleteOnExit f)
     (spit f contents)
