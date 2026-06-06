@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
+import type { SdkActionId } from "embedding-sdk-bundle/types/action";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
@@ -83,10 +84,26 @@ describe("useAction", () => {
     await waitFor(() => expect(onResolved).toHaveBeenCalledWith(null));
     expect(fetchMock.callHistory.calls(EXECUTE_PATH)).toHaveLength(0);
   });
+
+  it("accepts an entity_id string as actionId and routes the call to /api/action/:eid/execute", async () => {
+    const ENTITY_ID = "abc123def456abc123def";
+    const eidPath = `path:/api/action/${ENTITY_ID}/execute`;
+    fetchMock.post(eidPath, { status: 200, body: { "rows-affected": 1 } });
+
+    const { onResolved } = setup({ actionId: ENTITY_ID });
+
+    await userEvent.click(screen.getByText("execute"));
+
+    await waitFor(() =>
+      expect(onResolved).toHaveBeenCalledWith({ "rows-affected": 1 }),
+    );
+    expect(fetchMock.callHistory.calls(eidPath)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(EXECUTE_PATH)).toHaveLength(0);
+  });
 });
 
 type SetupProps = {
-  actionId?: number | null;
+  actionId?: SdkActionId | null;
   status?: number;
   body?: Record<string, unknown>;
   bundleLoaded?: boolean;
@@ -123,7 +140,7 @@ const TestComponent = ({
   actionId,
   onResolved,
 }: {
-  actionId: number | null;
+  actionId: SdkActionId | null;
   onResolved: (value: unknown) => void;
 }) => {
   const { execute, isExecuting, result, error, reset } = useAction<{

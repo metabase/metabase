@@ -1,11 +1,10 @@
 import { POST } from "metabase/api/legacy-client";
+import { SdkActionId } from "embedding-sdk-bundle/types/action";
 
-export type ActionId = number;
-
-export type ActionParametersPayload = Record<string, unknown>;
+type ActionParametersPayload = Record<string, unknown>;
 
 export type ExecuteActionParams = {
-  actionId: ActionId;
+  actionId: SdkActionId;
   parameters?: ActionParametersPayload;
 };
 

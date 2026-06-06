@@ -1,9 +1,6 @@
 import { useCallback, useState } from "react";
 
-import type {
-  ActionId,
-  ExecuteActionResult,
-} from "embedding-sdk-bundle/lib/execute-action";
+import type { ExecuteActionResult } from "embedding-sdk-bundle/lib/execute-action";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
@@ -13,6 +10,7 @@ import type {
   ActionKind,
   ActionResultForKind,
 } from "./types";
+import { SdkActionId } from "embedding-sdk-bundle/types/action";
 
 /**
  * @interface
@@ -71,7 +69,7 @@ export const useAction = <
   TParameters extends Record<string, unknown> = Record<string, unknown>,
   TKind extends ActionKind | undefined = undefined,
 >(
-  actionId: ActionId | null,
+  actionId: SdkActionId | null,
 ): UseActionResult<TParameters, TKind> => {
   const {
     state: {

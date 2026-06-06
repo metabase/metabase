@@ -20,7 +20,7 @@ const { execute, isExecuting, result, error, reset } = useAction<
 >(actionId);
 ```
 
-- `actionId` — the action's numeric id, or `null`. Find it in Metabase (open the action editor and copy the id from the URL), or fetch it via `GET /api/action`. When `null`, `execute` is a no-op that resolves to `null`.
+- `actionId` — the action's numeric id, its `entity_id` string, or `null`. Find the numeric id in Metabase by opening the action editor and copying it from the URL.
 - `TParameters` — a TypeScript type describing the parameters object that will be passed to `execute`. Keys are the action's parameter slugs (the names shown in the action editor).
 - `TKind` (optional) — the action's kind literal. Pass one of `"create"`, `"update"`, `"delete"`, `"bulk"`, or `"query"` to get a typed `result` for that single shape. Omit it and `result` defaults to a union of every possible response body (`AnyActionResult`), narrowable with `"<key>" in result`. See [Typing the response](#typing-the-response).
 - `execute(parameters)` — call this from an event handler to trigger the action. Resolves to the response body on success, throws on failure, or resolves to `null` if `actionId` is `null` or the SDK is not yet initialized. The same error is also written to `error` state so render-time consumers can read it.
