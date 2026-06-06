@@ -1277,7 +1277,7 @@
         (ns nested-setting-test
           (:require
            [metabase.settings.models.setting :refer [defsetting]]
-           [metabase.util.i18n :as i18n :refer [deferred-tru]]))
+           [metabase.util.i18n-be.core :as i18n :refer [deferred-tru]]))
         (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)
         (catch Exception e
           (is (=? {:existing-setting
