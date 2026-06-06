@@ -89,23 +89,22 @@
         [(str/trim (subs after-open 0 close-idx))
          (str/triml (subs after-open (+ close-idx (count "\n---"))))]))))
 
-(defn register-skill!
-  "Register a skill, either from a markdown resource path (relative to `metabot/skills/`) or from a
-  fully-specified skill map.
+(defn- resolve-skill
+  "Resolve `skill-or-path` — a markdown resource path (relative to `metabot/skills/`) or a
+  fully-specified skill map — into a validated skill map.
   The markdown form parses YAML frontmatter for metadata and uses the remaining text as `:body`."
   [skill-or-path]
-  (let [skill (if (map? skill-or-path)
-                skill-or-path
-                (let [resource (io/resource (str skills-dir "/" skill-or-path))]
-                  (when-not resource
-                    (throw (ex-info "Skill resource not found" {:path skill-or-path})))
-                  (let [[fm body] (or (split-frontmatter (slurp resource))
-                                      (throw (ex-info "Skill file is missing YAML frontmatter"
-                                                      {:path skill-or-path})))]
-                    (assoc (yaml/parse-string fm) :body (str/trim body)))))
-        skill (-> skill normalize-skill validate-skill!)]
-    (swap! *skills assoc (:id skill) skill)
-    (:id skill)))
+  (-> (if (map? skill-or-path)
+        skill-or-path
+        (let [resource (io/resource (str skills-dir "/" skill-or-path))]
+          (when-not resource
+            (throw (ex-info "Skill resource not found" {:path skill-or-path})))
+          (let [[fm body] (or (split-frontmatter (slurp resource))
+                              (throw (ex-info "Skill file is missing YAML frontmatter"
+                                              {:path skill-or-path})))]
+            (assoc (yaml/parse-string fm) :body (str/trim body)))))
+      normalize-skill
+      validate-skill!))
 
 ;;; Registry — markdown skills
 
@@ -122,9 +121,8 @@
          sort
          vec)))
 
-(defn- register-markdown-skills! []
-  (doseq [filename (markdown-resource-names skills-dir)]
-    (register-skill! filename)))
+(defn- markdown-skills []
+  (map resolve-skill (markdown-resource-names skills-dir)))
 
 ;;; Registry — dialect skills (programmatic, hidden from catalog)
 
@@ -135,26 +133,28 @@
   [engine]
   (keyword (str "sql-dialect-" engine)))
 
-(defn- register-dialect-skills!
-  "Register a hidden skill per dialect instruction file under resources/metabot/prompts/dialects/.
+(defn- dialect-skills
+  "A hidden skill per dialect instruction file under resources/metabot/prompts/dialects/.
   The file name (sans extension) is the engine name (the lowercased `sql_engine` from viewing context)."
   []
-  (doseq [filename (markdown-resource-names dialects-dir)
-          :let [engine (str/replace filename #"\.md$" "")]]
-    (register-skill! {:id          (dialect-skill-id engine)
-                      :title       (str engine " SQL dialect")
-                      :description (str "SQL dialect instructions for " engine ".")
-                      :dialect     engine
-                      :body        (str/trim (slurp (io/resource (str dialects-dir "/" filename))))})))
+  (for [filename (markdown-resource-names dialects-dir)
+        :let [engine (str/replace filename #"\.md$" "")]]
+    (resolve-skill {:id          (dialect-skill-id engine)
+                    :title       (str engine " SQL dialect")
+                    :description (str "SQL dialect instructions for " engine ".")
+                    :dialect     engine
+                    :body        (str/trim (slurp (io/resource (str dialects-dir "/" filename))))})))
 
 (defn load-skills!
   "Scan the skill resource directories and (re)populate the registry.
   Runs at namespace load; public so a REPL can refresh the registry after editing skill files."
   []
-  ;; clear first so re-initializing (e.g. a dev reload) drops removed or renamed skills
-  (reset! *skills {})
-  (register-markdown-skills!)
-  (register-dialect-skills!))
+  ;; Build the full map before touching the registry: a failed refresh (e.g. a malformed skill file)
+  ;; throws without clobbering the existing registry, and readers never observe a partial one.
+  ;; The reset! also means re-initializing drops removed or renamed skills.
+  (reset! *skills (into {}
+                        (map (juxt :id identity))
+                        (concat (markdown-skills) (dialect-skills)))))
 
 (load-skills!)
 

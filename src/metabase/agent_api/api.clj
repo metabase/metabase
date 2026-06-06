@@ -714,6 +714,15 @@
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 
+(defn- frontend-url
+  "Prefix `path` with the configured site URL when available; otherwise return the relative path.
+  channel.urls' formatters render a literal \"null\" prefix when site-url is unset."
+  [path]
+  (let [base (channel.urls/site-url)]
+    (if (str/blank? base)
+      path
+      (str base path))))
+
 (mr/def ::card-display
   "Display types accepted by Card. Validates LLM-passed values so a bogus
    value (e.g. `\"potato\"`) gets a 400 rather than persisting junk."
@@ -785,7 +794,7 @@
                 {:id api/*current-user-id*})]
       {:id              (:id card)
        :name            (:name card)
-       :url             (channel.urls/card-url (:id card))
+       :url             (frontend-url (str "/question/" (:id card)))
        :display         (name (:display card))
        :collection_id   (:collection_id card)
        :collection_path (collection-path (:collection_id card))
@@ -971,7 +980,7 @@
       (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
       {:id              (:id dash)
        :name            (:name dash)
-       :url             (channel.urls/dashboard-url (:id dash))
+       :url             (frontend-url (str "/dashboard/" (:id dash)))
        :collection_id   (:collection_id dash)
        :collection_path (collection-path (:collection_id dash))
        :description     (:description dash)

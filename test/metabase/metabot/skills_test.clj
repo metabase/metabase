@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.scope :as scope]
-   [metabase.metabot.skills :as skills]))
+   [metabase.metabot.skills :as skills]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,6 +100,12 @@
     ;; the FE sends the driver name (`postgres`), not the dialect file's name (`postgresql`)
     (let [parts (skills/dialect-preload-parts "postgres")]
       (is (= ["sql-dialect-postgresql"] (get-in (first parts) [:arguments :ids])))))
+  (testing "a bare dialect name resolves from the registry without touching the driver system"
+    (mt/with-dynamic-fn-redefs [skills/engine->dialect
+                                (fn [engine]
+                                  (throw (ex-info "driver lookup should not run" {:engine engine})))]
+      (is (= ["sql-dialect-postgresql"]
+             (get-in (first (skills/dialect-preload-parts "postgresql")) [:arguments :ids])))))
   (testing "returns empty when no dialect is given"
     (is (= [] (skills/dialect-preload-parts nil))))
   (testing "returns empty when the dialect has no registered skill"
