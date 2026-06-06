@@ -59,6 +59,11 @@
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
                               :test/jvm-timezone-setting        false
+                              ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
+                              ;; falls back to a native `COUNT(*)` on the CTAS path.
+                              ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL
+                              ;; statements by using a different driver-native API for affected-row counts.
+                              :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
                               :transforms/index-ddl             false

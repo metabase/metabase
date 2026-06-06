@@ -193,15 +193,17 @@ export function adminToolsTaskRunDetails(runId: number) {
 export function adminToolsTasksRunsFor(opts: {
   runType: TaskRunType;
   entityType: TaskRunEntityType;
-  entityId: number;
+  entityId?: number;
   startedAt?: TaskRunDateFilterOption;
   includeToday?: boolean;
 }) {
   const params: Record<string, string> = {
     "run-type": opts.runType,
     "entity-type": opts.entityType,
-    "entity-id": String(opts.entityId),
   };
+  if (opts.entityId) {
+    params["entity-id"] = String(opts.entityId);
+  }
   if (opts.startedAt) {
     params["started-at"] = opts.startedAt;
   }

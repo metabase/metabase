@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { ResizableBoxProps } from "react-resizable";
 
-import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
+import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { Box } from "metabase/ui";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { checkNotNull } from "metabase/utils/types";

@@ -1361,6 +1361,10 @@
     :snowflake
     (let [original-set-current-user-timezone! @#'test.data.snowflake/set-current-user-timezone!
           original-dbdef->connection-details (get-method tx/dbdef->connection-details :snowflake)]
+      ;; load dataset as the default user before we switch to the belize-based
+      ;; user who may not have permission to create the dataset
+      (mt/dataset good-datetimes-in-belize
+        (mt/id :GOOD_DATETIMES))
       (with-redefs [test.data.snowflake/set-current-user-timezone!
                     (fn [_timezone]
                       (original-set-current-user-timezone! "America/Belize"))
