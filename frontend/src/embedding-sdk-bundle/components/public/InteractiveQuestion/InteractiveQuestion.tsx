@@ -1,6 +1,7 @@
 import type { FC } from "react";
 import { useMemo } from "react";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/sdk-component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import {
@@ -34,6 +35,7 @@ import {
 import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
+  SdkQuestionId,
 } from "embedding-sdk-bundle/types/question";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 
@@ -101,10 +103,49 @@ export type InteractiveQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-function InteractiveQuestionInner({
-  query,
-  ...rest
-}: InteractiveQuestionInternalProps) {
+function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
+  const { query, ...rest } = props;
+
+  // InteractiveQuestionInternalProps is an intersection with a discriminated
+  // union — TypeScript can't narrow .questionId directly, so we read it via a
+  // typed cast. The value is only used for analytics; no control flow depends on it.
+  const questionId = (props as { questionId?: SdkQuestionId | null })
+    .questionId;
+  const title = (props as { title?: unknown }).title;
+  const withDownloads: boolean =
+    (props as { withDownloads?: boolean }).withDownloads ?? false;
+  const isSaveEnabled: boolean =
+    (props as { isSaveEnabled?: boolean }).isSaveEnabled ?? true;
+  const withAlerts: boolean =
+    (props as { withAlerts?: boolean }).withAlerts ?? false;
+
+  const isNewQuestion = questionId === "new" || questionId === "new-native";
+  const entityId = isNewQuestion
+    ? null
+    : questionId != null
+      ? questionId
+      : null;
+
+  useTrackSdkComponentMount(
+    "InteractiveQuestion",
+    entityId,
+    isNewQuestion
+      ? {
+          id_new: questionId === "new",
+          id_new_native: questionId === "new-native",
+          is_save_enabled: isSaveEnabled,
+          with_title: title !== false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
+        }
+      : {
+          is_save_enabled: isSaveEnabled,
+          with_title: title !== false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
+        },
+  );
+
   const deserializedCard = useMemo(
     () => (query ? deserializeCardFromQuery(query) : undefined),
     [query],

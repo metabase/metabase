@@ -4,6 +4,9 @@ import {
   trackSelfDescribingEvent,
 } from "@snowplow/browser-tracker";
 
+import { getSdkStore } from "embedding-sdk-bundle/store";
+import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+
 // The SDK runs inside the customer's app. A direct POST to the Snowplow
 // collector (`sp.metabase.com`) is cross-origin and blocked by a strict
 // `connect-src` CSP. We instead point the tracker at the customer's own
@@ -15,16 +18,23 @@ import {
 const SDK_TRACKER_NAME = "sdk";
 
 let trackerInitialized = false;
+let sdkAuthMethod: string | null = null;
 
-// Unused until the collection work wires these into the component lifecycle (EMB-1786).
-//
-// Initialize the SDK's Snowplow tracker, pointed at the instance proxy. Idempotent —
-// safe under React 18 StrictMode double-mount and nested providers.
-export const initSdkTracker = (metabaseInstanceUrl: string): void => {
+// Initialize the SDK's Snowplow tracker, pointed at the instance proxy. Returns
+// true when the tracker is freshly initialized, false when already initialized
+// (idempotent — safe under React 18 StrictMode double-mount and nested providers).
+export const initSdkTracker = (
+  metabaseInstanceUrl: string,
+  authMethod: string | null = null,
+  externalStore?: { getState: () => SdkStoreState },
+): boolean => {
   if (trackerInitialized) {
-    return;
+    return false;
   }
   trackerInitialized = true;
+  sdkAuthMethod = authMethod;
+
+  const store = externalStore ?? getSdkStore();
 
   newTracker(SDK_TRACKER_NAME, metabaseInstanceUrl, {
     appId: "metabase",
@@ -44,8 +54,41 @@ export const initSdkTracker = (metabaseInstanceUrl: string): void => {
     // The proxy endpoint uses `Access-Control-Allow-Origin: *`. Wildcard CORS rejects
     // credentialed requests, so credentials must be omitted.
     withCredentials: false,
+    plugins: [createSdkInstanceContextPlugin(store)],
   });
+  return true;
 };
+
+// Returns the auth method captured during tracker initialization, or null if
+// the tracker has not been initialized yet.
+export const getSdkAuthMethod = (): string | null => sdkAuthMethod;
+
+const createSdkInstanceContextPlugin = (store: {
+  getState: () => SdkStoreState;
+}) => ({
+  contexts: (): SelfDescribingJson[] => {
+    const settings = store.getState().settings?.values;
+    if (!settings) {
+      return [];
+    }
+
+    const version = settings["version"] ?? {};
+
+    return [
+      {
+        schema: "iglu:com.metabase/instance/jsonschema/1-1-0",
+        data: {
+          id: settings["analytics-uuid"],
+          version: {
+            tag: (version as { tag?: string }).tag,
+          },
+          created_at: settings["instance-creation"],
+          token_features: settings["token-features"],
+        },
+      },
+    ];
+  },
+});
 
 // Send a self-describing event through the SDK tracker. Schema-agnostic: the caller
 // supplies the Iglu schema + data, so the transport stays decoupled from the event shape.

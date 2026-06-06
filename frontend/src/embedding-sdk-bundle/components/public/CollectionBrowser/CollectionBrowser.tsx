@@ -1,6 +1,7 @@
 import { type ComponentType, useEffect } from "react";
 import { t } from "ttag";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/sdk-component-events";
 import {
   CollectionNotFoundError,
   SdkLoader,
@@ -106,6 +107,8 @@ export const CollectionBrowserInner = ({
   className,
   style,
 }: CollectionBrowserProps) => {
+  useTrackSdkComponentMount("CollectionBrowser", null, { used: true });
+
   const {
     baseCollectionId,
     internalCollectionId,
