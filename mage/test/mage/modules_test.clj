@@ -350,7 +350,9 @@
           ;; 2026-03-10 Bumped to 40 for lib-metric + metrics (Metrics Explorer #68961)
           ;;            Added premium-features to driver-affecting-overrides (#69561)
           ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
-          max-allowed-count 41]
+          ;; 2026-06-05 Bumped to 42 for util-be — drivers depend on it for JVM-only helpers
+          ;;            (varargs, host-port-up?, etc.) extracted out of slim metabase.util
+          max-allowed-count 42]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
