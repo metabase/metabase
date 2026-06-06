@@ -14,6 +14,11 @@ on:
         required: false
         type: boolean
         default: false
+      stats_dump:
+        description: "Load a recent app DB stats dump on first env creation"
+        required: false
+        type: boolean
+        default: false
 jobs:
   build:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -118,19 +123,109 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
       - name: Create app database if not exists
+        id: create_app_db
         run: |
           export PGPASSWORD="${PR_ENV_DB_PASSWORD}"
           export PGUSER="${PR_ENV_DB_USER}"
           export PGHOST="${PR_ENV_DB_HOST}"
           export PGDATABASE="${PR_ENV_DB_NAME}"
-          psql -tc "SELECT 1 FROM pg_database WHERE datname = 'hosting_pr${{ github.event.number }}'" \
-          | grep -q 1 \
-          || psql -c "CREATE DATABASE hosting_pr${{ github.event.number }}"
+          if psql -tc "SELECT 1 FROM pg_database WHERE datname = 'hosting_pr${{ github.event.number }}'" | grep -q 1; then
+            echo "db_created=false" >> "$GITHUB_OUTPUT"
+          else
+            psql -c "CREATE DATABASE hosting_pr${{ github.event.number }}"
+            echo "db_created=true" >> "$GITHUB_OUTPUT"
+          fi
         env:
           PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
           PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
           PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
           PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
+      - name: Locate latest stats dump in S3
+        id: locate_stats_dump
+        if: ${{ inputs.stats_dump && steps.create_app_db.outputs.db_created == 'true' }}
+        env:
+          STATS_DUMP_BUCKET: metabase-cloud-stats-backups-coredev
+        run: |
+          LATEST_KEY=$(aws s3api list-objects-v2 \
+            --bucket "${STATS_DUMP_BUCKET}" \
+            --query "reverse(sort_by(Contents[?ends_with(Key, '.dump')], &LastModified))[0].Key" \
+            --output text)
+          if [ -z "$LATEST_KEY" ] || [ "$LATEST_KEY" = "None" ]; then
+            echo "No *.dump found in s3://${STATS_DUMP_BUCKET}" >&2
+            exit 1
+          fi
+          echo "Latest dump: $LATEST_KEY"
+          echo "key=$LATEST_KEY" >> "$GITHUB_OUTPUT"
+      - name: Download stats dump
+        if: ${{ inputs.stats_dump && steps.create_app_db.outputs.db_created == 'true' }}
+        env:
+          STATS_DUMP_BUCKET: metabase-cloud-stats-backups-coredev
+        run: |
+          aws s3 cp --no-progress \
+            "s3://${STATS_DUMP_BUCKET}/${{ steps.locate_stats_dump.outputs.key }}" \
+            /tmp/stats-dump.dump
+      - name: Prepare app database schema
+        if: ${{ inputs.stats_dump && steps.create_app_db.outputs.db_created == 'true' }}
+        run: |
+          PGPASSWORD="${PR_ENV_DB_PASSWORD}" psql \
+            -h "${PR_ENV_DB_HOST}" \
+            -U "${PR_ENV_DB_USER}" \
+            -d "hosting_pr${{ github.event.number }}" \
+            --no-align --tuples-only --expanded \
+            --command='DROP SCHEMA public CASCADE; CREATE SCHEMA public; CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;'
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+      - name: Restore stats dump into app database
+        if: ${{ inputs.stats_dump && steps.create_app_db.outputs.db_created == 'true' }}
+        run: |
+          set -e
+          cleanup_on_failure() {
+            echo "Restore failed; dropping hosting_pr${{ github.event.number }} so the next run retries from scratch."
+            PGPASSWORD="${PR_ENV_DB_PASSWORD}" psql \
+              -h "${PR_ENV_DB_HOST}" -U "${PR_ENV_DB_USER}" -d "${PR_ENV_DB_NAME}" \
+              -c "DROP DATABASE IF EXISTS hosting_pr${{ github.event.number }};" || true
+          }
+          trap cleanup_on_failure ERR
+          PGPASSWORD="${PR_ENV_DB_PASSWORD}" pg_restore \
+            -h "${PR_ENV_DB_HOST}" \
+            -U "${PR_ENV_DB_USER}" \
+            -d "hosting_pr${{ github.event.number }}" \
+            --single-transaction \
+            --no-acl \
+            --no-owner \
+            --schema=public \
+            /tmp/stats-dump.dump
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+          PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
+      - name: Disable notifications in restored app database
+        if: ${{ inputs.stats_dump && steps.create_app_db.outputs.db_created == 'true' }}
+        run: |
+          export PGPASSWORD="${PR_ENV_DB_PASSWORD}"
+          PSQL="psql -h ${PR_ENV_DB_HOST} -U ${PR_ENV_DB_USER} -d hosting_pr${{ github.event.number }} -v ON_ERROR_STOP=0 -c"
+          # Wipe each table independently so a missing table in an older dump doesn't abort the rest.
+          for table in \
+            pulse_channel_recipient \
+            pulse_channel \
+            pulse_card \
+            pulse \
+            notification_recipient \
+            notification_handler \
+            notification_card \
+            notification_subscription \
+            notification \
+            channel_template \
+            channel; do
+            $PSQL "TRUNCATE TABLE ${table} CASCADE;" || echo "Skipped ${table} (likely absent in this dump)."
+          done
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
       - name: Download Deployment YAML template
         if: ${{ !inputs.self_hosting }}
         run: aws s3 cp s3://metabase-pr-env/metabase.yml.tmpl ./metabase.yml.tmpl
@@ -209,4 +304,4 @@ jobs:
             ✅ Preview:
                 https://pr${{ github.event.number }}.coredev.metabase.com
             🗒️ [login instructions](https://www.notion.so/metabase/Ephemeral-PR-Environments-c74a3710c87a460dbf4fc0007a001458)
-            📦 Deployment type: ${{ inputs.self_hosting && 'PR-Env-self-hosting' || (inputs.analytics_dev_mode && 'PR-Env-analytics-dev' || 'PR-Env') }}
+            📦 Deployment type: ${{ inputs.self_hosting && 'PR-Env-self-hosting' || (inputs.analytics_dev_mode && 'PR-Env-analytics-dev' || (inputs.stats_dump && 'PR-Env-Stats-Dump' || 'PR-Env')) }}
