@@ -830,6 +830,12 @@ function resolveSubtypeFallback(
   );
 }
 
+/**
+ * Resolve a stored breakout to a dimension in `dimensions` by exact identity:
+ * first by dimension id, then by matching an already-mapped slot's reference
+ * and requiring a shared underlying source (same physical column/table) via
+ * `LibMetric.isSameSource`.
+ */
 function findExactColumnMatch(
   dimensions: Map<string, DimensionDescriptor>,
   dimensionBreakout: StoredMetricsViewerDimensionBreakout,
@@ -868,14 +874,6 @@ function findStrictExactColumnMatch(
         info.dimensionMetadata,
         reference.dimensionMetadata,
       )
-    ) {
-      return info;
-    }
-
-    if (
-      reference.group?.id &&
-      info.group?.id === reference.group.id &&
-      info.displayName === reference.displayName
     ) {
       return info;
     }

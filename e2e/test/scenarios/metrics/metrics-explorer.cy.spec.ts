@@ -186,7 +186,7 @@ const selectBreakout = (
   binning?: string,
 ) => {
   H.MetricsViewer.searchBarPills().contains(cardname).click();
-  H.popover().findByText("Break out").click();
+  H.popover().findByText("Add a series breakout").click();
   const breakout = H.popover()
     .findAllByText(dimensionName)
     .should("have.length.at.least", index)
@@ -609,7 +609,7 @@ describe("scenarios > metrics > explorer", () => {
         .should("have.length", 5);
 
       H.MetricsViewer.searchBarPills().contains("Count of orders").click();
-      H.popover().findByText("Change breakout").click();
+      H.popover().findByText("Change series breakout").click();
       H.popover().findByText("Category").click();
 
       H.MetricsViewer.breakoutLegend()
@@ -617,7 +617,7 @@ describe("scenarios > metrics > explorer", () => {
         .should("be.visible");
 
       H.MetricsViewer.searchBarPills().contains("Count of orders").click();
-      H.popover().findByText("Remove breakout").click();
+      H.popover().findByText("Remove series breakout").click();
       H.MetricsViewer.breakoutLegend().should("not.exist");
     });
 
@@ -699,7 +699,7 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Apply breakout to first instance of Count of orders");
       H.MetricsViewer.searchBarPills().eq(0).click();
-      H.popover().findByText("Break out").click();
+      H.popover().findByText("Add a series breakout").click();
       H.popover().findByText("Source").click();
       cy.wait("@dataset");
 
@@ -743,7 +743,7 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Apply breakout to second instance of Count of orders");
       H.MetricsViewer.searchBarPills().eq(2).click();
-      H.popover().findByText("Break out").click();
+      H.popover().findByText("Add a series breakout").click();
       H.popover().findByText("Source").click();
       cy.wait("@dataset");
 
@@ -774,7 +774,7 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Remove breakout from first instance");
       H.MetricsViewer.searchBarPills().eq(0).click();
-      H.popover().findByText("Remove breakout").click();
+      H.popover().findByText("Remove series breakout").click();
 
       cy.log(
         "Legend should still be visible because second instance has breakout",
@@ -816,7 +816,7 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Apply breakout to first instance of Count of orders");
       H.MetricsViewer.searchBarPills().eq(0).click();
-      H.popover().findByText("Break out").click();
+      H.popover().findByText("Add a series breakout").click();
       H.popover().findByText("Source").click();
       cy.wait("@dataset");
 
@@ -904,9 +904,9 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByRole("menuitem", { name: "rename icon Rename" }).should(
           "exist",
         );
-        cy.findByText(/Break out/).should("not.exist");
-        cy.findByText(/Change breakout/).should("not.exist");
-        cy.findByText(/Remove breakout/).should("not.exist");
+        cy.findByText(/Add a series breakout/).should("not.exist");
+        cy.findByText(/Change series breakout/).should("not.exist");
+        cy.findByText(/Remove series breakout/).should("not.exist");
       });
     });
   });
@@ -1349,7 +1349,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getMetricVisualization().should("be.visible");
 
       H.MetricsViewer.openDimensionPickerSidebar().within(() => {
-        cy.findByRole("heading", { name: "Break out by" }).should("be.visible");
+        cy.findByRole("heading", { name: "Break out" }).should("be.visible");
         cy.findByLabelText("Search fields").should("be.visible");
         cy.findByRole("button", { name: "Time" }).should("be.visible");
         cy.findByRole("button", { name: "Category" }).should("be.visible");
@@ -1389,7 +1389,7 @@ describe("scenarios > metrics > explorer", () => {
         .click();
 
       H.MetricsViewer.dimensionPickerSidebar().within(() => {
-        cy.findByRole("heading", { name: "Break out by" }).should("be.visible");
+        cy.findByRole("heading", { name: "Break out" }).should("be.visible");
         cy.findByRole("button", { name: "No breakout" }).should(
           "have.attr",
           "aria-pressed",
@@ -1413,7 +1413,7 @@ describe("scenarios > metrics > explorer", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "metrics_viewer_dimension_selected",
       });
-      H.MetricsViewer.assertAllVizTypes("Map", 2);
+      H.MetricsViewer.assertAllVizTypes("Map");
 
       selectDimensionBreakout("Category");
       cy.wait("@dataset");

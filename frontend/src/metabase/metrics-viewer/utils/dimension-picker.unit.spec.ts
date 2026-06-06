@@ -327,6 +327,44 @@ describe("buildDimensionPickerSections", () => {
       expect.objectContaining({ name: "Orders", isShared: true }),
     ]);
   });
+
+  it("orders main dimension groups before related groups", () => {
+    const sections = buildDimensionPickerSections({
+      availableDimensions: {
+        shared: [
+          {
+            icon: "label",
+            group: { id: "users", type: "connection", displayName: "Users" },
+            dimensionBreakoutInfo: {
+              type: "category",
+              label: "User Name",
+              dimensionMapping: { 0: "dim-user-name", 1: "dim-user-name" },
+            },
+          },
+          {
+            icon: "calendar",
+            group: { id: "orders", type: "main", displayName: "Orders" },
+            dimensionBreakoutInfo: {
+              type: "time",
+              label: "Created At",
+              dimensionMapping: { 0: "dim-created-at", 1: "dim-created-at" },
+            },
+          },
+        ],
+        bySource: {},
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+    });
+
+    expect(sections.map((section) => section.name)).toEqual([
+      "Orders",
+      "Users",
+    ]);
+  });
 });
 
 describe("buildDimensionPickerSidebarCategories", () => {
@@ -455,6 +493,51 @@ describe("buildDimensionPickerSidebarCategories", () => {
         }),
       }),
     ]);
+  });
+
+  it("prefers default dimensions when building grouped time categories", () => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions: {
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              isPreferred: false,
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Updated At",
+                dimensionMapping: { 0: "dim-updated-at" },
+              },
+            },
+            {
+              icon: "calendar",
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 0: "dim-created-at" },
+              },
+            },
+          ],
+        },
+      },
+      sourceOrder: [REVENUE_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+      },
+      metricSlots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+      ],
+    });
+
+    expect(categories.find((category) => category.name === "Time")).toEqual(
+      expect.objectContaining({
+        dimensionBreakoutInfo: expect.objectContaining({
+          dimensionMapping: { 0: "dim-created-at" },
+        }),
+      }),
+    );
   });
 
   it("groups country fields across tables when every metric slot has one", () => {

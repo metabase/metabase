@@ -21,29 +21,27 @@ import type {
   MetricsViewerPageState,
   SelectedMetric,
   UseViewerStateResult,
-} from "../types/viewer-state";
+} from "../types";
 import {
   getInitialMetricsViewerPageState,
   isExpressionEntry,
   isMetricEntry,
-} from "../types/viewer-state";
-import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
-import { getEffectiveDefinitionEntry } from "../utils/definition-entries";
+} from "../types";
 import {
+  applySerializedDefinitionInfo,
   areDimensionBreakoutDimensionsValid,
   assignDimensionsForUnmappedSlots,
+  buildBinnedBreakoutDefinition,
   computeDefaultDimensionBreakouts,
   createDimensionBreakoutFromInfo,
-  getValidSelectedDimensionBreakoutId,
-} from "../utils/dimension-breakouts";
-import { computeMetricSlots } from "../utils/metric-slots";
-import { remapDimensionMappings } from "../utils/remap-dimension-mappings";
-import {
   createMeasureSourceId,
   createMetricSourceId,
   createSourceId,
-} from "../utils/source-ids";
-import { applySerializedDefinitionInfo } from "../utils/url-serialization";
+  getEffectiveDefinitionEntry,
+  getValidSelectedDimensionBreakoutId,
+} from "../utils";
+import { computeMetricSlots } from "../utils/metric-slots";
+import { remapDimensionMappings } from "../utils/remap-dimension-mappings";
 
 import { useViewerDerivedData } from "./use-viewer-derived-data";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";

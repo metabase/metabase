@@ -91,12 +91,13 @@ export function CategoryItem({
 function isRedundantSingleOption(
   categorySelectRows: ReturnType<typeof getCategorySelectRows>,
 ) {
-  if (categorySelectRows.length !== 1) {
+  if (categorySelectRows.length === 0) {
     return false;
   }
 
-  const [row] = categorySelectRows;
-  return row.options.length === 1 && row.value === row.options[0].value;
+  return categorySelectRows.every(
+    (row) => row.options.length === 1 && row.value === row.options[0].value,
+  );
 }
 
 function getCategorySelectRows({

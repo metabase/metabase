@@ -220,14 +220,16 @@ export function MetricPill({
                   leftSection={<Icon name="close" />}
                   onClick={handleRemoveBreakout}
                 >
-                  {t`Remove breakout`}
+                  {t`Remove series breakout`}
                 </Menu.Item>
               )}
               <Menu.Item
                 leftSection={<Icon name="arrow_split" />}
                 onClick={handleOpenBreakoutPicker}
               >
-                {breakoutDimension ? t`Change breakout` : t`Break out`}
+                {breakoutDimension
+                  ? t`Change series breakout`
+                  : t`Add a series breakout`}
               </Menu.Item>
             </>
           )}

@@ -127,7 +127,7 @@ describe("DimensionPickerSidebar", () => {
   it("renders the active dimension as selected", () => {
     setup();
 
-    expect(screen.getByText("Break out by")).toBeInTheDocument();
+    expect(screen.getByText("Break out")).toBeInTheDocument();
     expect(screen.getByText("Dimensions")).toBeInTheDocument();
     expect(screen.queryByText("Shared dimensions")).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText("Search fields")).toBeInTheDocument();
@@ -1044,6 +1044,48 @@ describe("DimensionPickerSidebar", () => {
     });
   });
 
+  it("does not show settings when every metric has only one exact column", () => {
+    setup({
+      dimensionBreakout: {
+        ...timeDimensionBreakout,
+        label: "Time",
+        dimensionMapping: {
+          0: "dim-created-at",
+          1: "dim-second-created-at",
+        },
+      },
+      dimensions: {
+        shared: [
+          {
+            icon: "calendar",
+            dimensionBreakoutInfo: {
+              type: "time",
+              label: "Time",
+              dimensionMapping: {
+                0: "dim-created-at",
+                1: "dim-second-created-at",
+              },
+            },
+          },
+        ],
+        bySource: {},
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Feedback, Count" },
+      },
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Configure Time" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows per-metric column selects from the settings button for multiple metrics", async () => {
     setup({
       dimensionBreakout: {
@@ -1067,7 +1109,28 @@ describe("DimensionPickerSidebar", () => {
             },
           },
         ],
-        bySource: {},
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Order Date",
+                dimensionMapping: { 0: "dim-order-date" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Order Date",
+                dimensionMapping: { 1: "dim-second-order-date" },
+              },
+            },
+          ],
+        },
       },
       slots: [
         { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
@@ -1198,6 +1261,6 @@ describe("DimensionPickerSidebar", () => {
     });
     expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
     expect(trackSimpleEvent).not.toHaveBeenCalled();
-    expect(screen.getByText("Break out by")).toBeInTheDocument();
+    expect(screen.getByText("Break out")).toBeInTheDocument();
   });
 });

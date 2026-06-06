@@ -27,7 +27,7 @@ export function BreakoutLegend() {
       pt="md"
       pr="lg"
       pb="md"
-      pl={0}
+      pl="sm"
       data-testid="metrics-viewer-breakout-legend"
     >
       <Paper withBorder radius="md" p="lg">

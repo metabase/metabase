@@ -8,8 +8,6 @@ import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewe
 import {
   type DimensionPickerItem,
   type DimensionPickerSidebarCategory,
-  buildDimensionPickerSections,
-  buildDimensionPickerSidebarCategories,
   getComparableDimensionMapping,
   getDimensionBreakoutConfig,
   getScalarDimensionBreakoutLabel,
@@ -31,6 +29,8 @@ import {
 import S from "./DimensionPickerSidebar.module.css";
 import { AllFieldsList } from "./components/AllFieldsList";
 import { CategoryItem } from "./components/CategoryItem";
+import { useDimensionPickerSidebarCategories } from "./hooks/useDimensionPickerSidebarCategories";
+import { useDimensionPickerSidebarSections } from "./hooks/useDimensionPickerSidebarSections";
 import {
   filterSections,
   getDimensionBreakoutId,
@@ -47,14 +47,11 @@ type DimensionPickerSidebarProps = {
   activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
 };
 
-export function DimensionPickerSidebar({
-  activeDimensionBreakout,
-}: DimensionPickerSidebarProps) {
+export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
+  const { activeDimensionBreakout } = props;
   const {
-    sidebarAvailableDimensions: availableDimensions,
     metricSlots,
     sourceColors,
-    sourceOrder,
     sourceDataById,
     selectDimensionBreakout: onSelectDimensionBreakout,
     updateActiveDimensionBreakout: onUpdateActiveDimensionBreakout,
@@ -66,26 +63,8 @@ export function DimensionPickerSidebar({
     null,
   );
 
-  const categories = useMemo(
-    () =>
-      buildDimensionPickerSidebarCategories({
-        availableDimensions,
-        sourceOrder,
-        sourceDataById,
-        metricSlots,
-      }),
-    [availableDimensions, sourceOrder, sourceDataById, metricSlots],
-  );
-
-  const sections = useMemo(
-    () =>
-      buildDimensionPickerSections({
-        availableDimensions,
-        sourceOrder,
-        sourceDataById,
-      }),
-    [availableDimensions, sourceOrder, sourceDataById],
-  );
+  const categories = useDimensionPickerSidebarCategories();
+  const sections = useDimensionPickerSidebarSections();
 
   const filteredSections = useMemo(
     () => filterSections(sections, searchText),
@@ -288,7 +267,7 @@ export function DimensionPickerSidebar({
             </ActionIcon>
           )}
           <Title order={3} size="h4" fw="bold">
-            {showAllFields ? t`All fields` : t`Break out by`}
+            {showAllFields ? t`All fields` : t`Break out`}
           </Title>
         </Flex>
         <ActionIcon

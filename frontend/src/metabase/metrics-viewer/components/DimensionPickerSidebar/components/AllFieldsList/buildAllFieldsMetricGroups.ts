@@ -125,8 +125,10 @@ export function buildAllFieldsMetricGroups({
   metricSlots: MetricSlot[];
   sourceColors: SourceColorMap;
 }): AllFieldsMetricGroup[] {
-  const hasRepeatedSources =
-    new Set(metricSlots.map((slot) => slot.sourceId)).size < metricSlots.length;
+  const uniqueSourceIds = [
+    ...new Set(metricSlots.map((slot) => slot.sourceId)),
+  ];
+  const hasRepeatedSources = uniqueSourceIds.length < metricSlots.length;
 
   if (hasRepeatedSources) {
     return metricSlots
@@ -152,10 +154,6 @@ export function buildAllFieldsMetricGroups({
       })
       .filter((group) => group.sections.length > 0);
   }
-
-  const uniqueSourceIds = [
-    ...new Set(metricSlots.map((slot) => slot.sourceId)),
-  ];
 
   return uniqueSourceIds
     .map((sourceId) => {
