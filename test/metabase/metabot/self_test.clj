@@ -47,6 +47,7 @@
 (deftest ^:parallel resolve-adapter-test
   (testing "resolves known providers to adapter functions"
     (is (fn? (#'self/resolve-adapter "anthropic")))
+    (is (fn? (#'self/resolve-adapter "edenai")))
     (is (fn? (#'self/resolve-adapter "openai")))
     (is (fn? (#'self/resolve-adapter "openrouter"))))
   (testing "throws for unknown provider"

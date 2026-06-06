@@ -97,7 +97,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "openai" "openrouter"})
+  #{"anthropic" "edenai" "openai" "openrouter"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -231,6 +231,7 @@
   [provider]
   (case provider
     "anthropic"  (llm.settings/llm-anthropic-api-key)
+    "edenai"     (llm.settings/llm-edenai-api-key)
     "openai"     (llm.settings/llm-openai-api-key)
     "openrouter" (llm.settings/llm-openrouter-api-key)
     nil))

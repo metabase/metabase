@@ -80,6 +80,16 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  edenai: {
+    value: "edenai/openai/gpt-4o-mini",
+    models: [
+      {
+        id: "openai/gpt-4o-mini",
+        display_name: "openai/gpt-4o-mini",
+        group: "OpenAI",
+      },
+    ],
+  },
 };
 
 type MetabotUsageQuota = {
@@ -96,6 +106,7 @@ type MetabotSettingsApiResponse =
 type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
+  | "llm-edenai-api-key"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key";
 
@@ -177,6 +188,7 @@ async function setup({
 
   const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
     anthropic: "**********45",
+    edenai: null,
     openai: null,
     openrouter: null,
     ...apiKeyValues,
@@ -229,6 +241,10 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-edenai-api-key": createMockSettingDefinition({
+      key: "llm-edenai-api-key",
+      value: mergedApiKeyValues.edenai ?? undefined,
     }),
   };
 
@@ -309,7 +325,9 @@ async function setup({
           ? "llm-anthropic-api-key"
           : body.provider === "openai"
             ? "llm-openai-api-key"
-            : "llm-openrouter-api-key";
+            : body.provider === "edenai"
+              ? "llm-edenai-api-key"
+              : "llm-openrouter-api-key";
       const maskedApiKey = body["api-key"]
         ? `**********${String(body["api-key"]).slice(-2)}`
         : undefined;
@@ -483,7 +501,12 @@ describe("MetabotSetup", () => {
     });
     expect(openrouterOption).toHaveAttribute("data-combobox-disabled");
 
-    expect(screen.getAllByText("Coming soon")).toHaveLength(2);
+    const edenaiOption = await screen.findByRole("option", {
+      name: /Eden AI/,
+    });
+    expect(edenaiOption).toHaveAttribute("data-combobox-disabled");
+
+    expect(screen.getAllByText("Coming soon")).toHaveLength(3);
   });
 
   it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {
