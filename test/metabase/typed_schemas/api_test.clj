@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.api :as typed-schemas.api]))
@@ -176,4 +177,81 @@
       (is (= 2 (get-in response [:body :schemaVersion])))
       (is (= {} (get-in response [:body :questions])))
       (is (= {} (get-in response [:body :tables])))
+      (is (= {} (get-in response [:body :metrics])))))
+
+  (testing "questions=true returns only questions for a numeric database id"
+    (let [response (mt/user-http-request-full-response
+                    :crowberto
+                    :get
+                    200
+                    (format "typed-schemas/v1/json?database=%s&questions=true" (mt/id)))]
+      (is (= 2 (get-in response [:body :schemaVersion])))
+      (is (map? (get-in response [:body :questions])))
+      (is (= {} (get-in response [:body :tables])))
       (is (= {} (get-in response [:body :metrics]))))))
+
+(deftest library-and-database-are-mutually-exclusive-test
+  (mt/user-http-request-full-response
+   :crowberto
+   :get
+   400
+   "typed-schemas/v1/json?library=1&database=1")
+  (mt/user-http-request-full-response
+   :crowberto
+   :get
+   400
+   "typed-schemas/v1/json?library=1&questions=true")
+  (mt/user-http-request-full-response
+   :crowberto
+   :get
+   400
+   "typed-schemas/v1/json?questions=true"))
+
+(deftest library-collection-scope-accepts-subcollection-id-test
+  (mt/with-temp [:model/Collection root  {:name "Library"
+                                          :type "library"
+                                          :location "/"}
+                 :model/Collection data  {:name "Data"
+                                          :type "library-data"
+                                          :location (collection/children-location root)}
+                 :model/Collection child {:name "Boba Data"
+                                          :type "library-data"
+                                          :location (collection/children-location data)}]
+    (mt/with-test-user :crowberto
+      (is (= {:collection-ids        #{(:id child)}
+              :data-collection-ids   #{(:id child)}
+              :metric-collection-ids #{}}
+             (select-keys (#'typed-schemas.api/library-collection-scope (str (:id child)))
+                          [:collection-ids :data-collection-ids :metric-collection-ids]))))))
+
+(deftest library-schema-includes-metric-mapped-tables-test
+  (let [selected-table-ids (atom nil)]
+    (with-redefs [typed-schemas.api/library-collection-scope
+                  (constantly {:metric-collection-ids #{20}
+                               :data-collection-ids   #{10}})
+                  typed-schemas.api/model-schemas
+                  (constantly [{:kind "model", :key "allModelsAreAlwaysIncluded", :id 100}])
+                  typed-schemas.api/metric-schemas
+                  (fn [_database-ids collection-ids]
+                    (is (= #{20} collection-ids))
+                    [{:kind           "metric"
+                      :key            "revenue"
+                      :id             1
+                      :name           "Revenue"
+                      :columns        [{:name "Revenue", :displayName "Revenue", :jsType "number"}]
+                      :mappedTableIds [42]}])
+                  typed-schemas.api/select-library-tables
+                  (constantly [{:id 10}])
+                  typed-schemas.api/select-tables
+                  (fn [_database-ids table-ids]
+                    (reset! selected-table-ids table-ids)
+                    [{:id 10} {:id 42}])
+                  typed-schemas.api/table-schemas
+                  (constantly [{:kind "table", :key "publishedTable", :id 10}
+                               {:kind "table", :key "mappedTable", :id 42}])]
+      (let [schema (#'typed-schemas.api/typed-schema {:library "123"})]
+        (is (= #{10 42} @selected-table-ids))
+        (is (= {} (:questions schema)))
+        (is (= #{100} (->> (:models schema) vals (map :id) set)))
+        (is (= #{10 42} (->> (:tables schema) vals (map :id) set)))
+        (is (= #{1} (->> (:metrics schema) vals (map :id) set)))))))
