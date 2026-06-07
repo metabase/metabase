@@ -105,7 +105,6 @@
         notification    (t2/select-one :model/Notification notification-id)]
     (log/with-context {:subscription-id subscription-id
                        :notification-id notification-id}
-
       (cond
         (:active notification)
         (tracing/with-span :tasks "task.notification.send" {:notification/subscription-id subscription-id

@@ -70,6 +70,7 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
+  DatasetColumn,
   RawSeries,
   TimelineEvent,
   TimelineEventId,
@@ -302,6 +303,7 @@ const computeDiffWithPreviousPeriod = (
 export const canBrush = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
+  dimensionColumn: DatasetColumn | undefined,
   onChangeCardAndRun?: OnChangeCardAndRun | null,
   onBrush?: ((range: { start: number; end: number }) => void) | null,
 ) => {
@@ -315,6 +317,11 @@ export const canBrush = (
 
   if (onBrush) {
     return true;
+  }
+
+  // Can't filter an aggregation in the stage that produces it (metabase#71073).
+  if (dimensionColumn?.source === "aggregation") {
+    return false;
   }
 
   const hasCombinedCards = series.length > 1;

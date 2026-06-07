@@ -18,7 +18,6 @@
 
 (p/import-vars
  [source]
-
  [source.p
   ->ingestable])
 

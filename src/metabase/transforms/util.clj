@@ -14,14 +14,17 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -34,8 +37,8 @@
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
   (cond
-    (transforms-base.u/query-transform? transform) (transforms.gating/query-transforms-enabled?)
-    (transforms-base.u/python-transform? transform) (transforms.gating/python-transforms-enabled?)
+    (transforms-base.u/query-transform? transform) (premium-features/query-transforms-enabled?)
+    (transforms-base.u/python-transform? transform) (premium-features/python-transforms-enabled?)
     :else false))
 
 (defn enabled-source-types-for-user
@@ -117,16 +120,27 @@
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (try
-    (when-not (driver/schema-exists? driver db-id output-schema)
+    (when (and (not (str/blank? output-schema))
+               (not (driver/schema-exists? driver db-id output-schema)))
       (driver/create-schema-if-needed! driver conn-spec output-schema))
     (let [source-range-params  (transforms-base.u/get-source-range-params transform)
           transform-timeout    (transforms.settings/transform-timeout)
-          transform-timeout-ms (u/minutes->ms transform-timeout)]
+          transform-timeout-ms (u/minutes->ms transform-timeout)
+          full-incremental?    (transforms-base.u/full-incremental-run? transform)
+          ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
+          ;; rows-affected count can be trusted. On drivers that declare
+          ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus
+          ;; count, so we skip emitting efficiency metrics for those runs entirely. The INSERT path's
+          ;; count is accurate even on those drivers.
+          reliable-row-count?  (or (driver.u/supports? driver :transforms/accurate-rows-affected
+                                                       {:lib/type :metadata/database :id db-id})
+                                   (not full-incremental?))]
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
-      ;; Enrich the active task.transform.* span with checkpoint range attrs for
-      ;; incremental runs. No-op when tracing is disabled or no span is active.
-      (when source-range-params
-        (tracing/add-span-attrs! :tasks (transforms-base.u/checkpoint-span-attrs source-range-params)))
+      (when-let [{:keys [rows-available] :as srp} source-range-params]
+        (tracing/add-span-attrs! :tasks
+                                 (cond-> (transforms-base.u/checkpoint-span-attrs srp)
+                                   (and reliable-row-count? rows-available)
+                                   (assoc :transform/rows-available rows-available))))
       (canceling/chan-start-timeout-vthread! run-id transform-timeout)
       (let [cancel-chan (a/promise-chan)
             ret (driver.conn/with-transform-connection
@@ -142,6 +156,19 @@
                     (run-transform! cancel-chan source-range-params)))]
         (transforms-base.u/save-watermark! (:id transform) source-range-params)
         (transform-run/succeed-started-run! run-id)
+        ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
+        ;; fail-started-run! after succeed-started-run! has already fired.
+        (when reliable-row-count?
+          (try
+            (when-some [rows-available (:rows-available source-range-params)]
+              (when-some [rp (:rows-affected (:result ret))]
+                (tracing/add-span-attrs! :tasks {:transform/rows-processed rp})
+                (transforms.instrumentation/record-incremental-rows!
+                 rows-available
+                 rp
+                 full-incremental?)))
+            (catch Throwable t
+              (log/warnf t "Failed to emit incremental-rows metric for transform %s" (:id transform)))))
         ret))
     (catch Throwable t
       (if (:timeout (ex-data t))
@@ -155,5 +182,5 @@
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
   [table]
   (boolean
-   (when-let [table-name (and (transforms.gating/any-transforms-enabled?) (:name table))]
+   (when-let [table-name (and (premium-features/any-transforms-enabled?) (:name table))]
      (str/starts-with? (u/lower-case-en table-name) driver.u/transform-temp-table-prefix))))

@@ -1,17 +1,23 @@
 (ns metabase.metabot.persistence-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.persistence :as metabot-persistence]
+   [metabase.metabot.query-analyzer :as nqa]
+   [metabase.metabot.used-tables :as used-tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
-(deftest message->chat-messages-test
+(deftest ^:parallel message->chat-messages-test
   (testing "user text block"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :user
@@ -19,31 +25,35 @@
       (is (= 1 (count result)))
       (is (= {:role "user" :type "text" :message "hello"}
              (select-keys (first result) [:role :type :message])))
-      (is (string? (:id (first result))))))
+      (is (string? (:id (first result)))))))
 
+(deftest ^:parallel message->chat-messages-test-2
   (testing "assistant standard text block preserves block id"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
                    :data [{:type "text" :text "hi there" :id "block-1"}]})]
       (is (= [{:id "block-1" :role "agent" :type "text" :message "hi there"}]
-             (mapv #(select-keys % [:id :role :type :message]) result)))))
+             (mapv #(select-keys % [:id :role :type :message]) result))))))
 
+(deftest ^:parallel message->chat-messages-test-3
   (testing "assistant standard text block without id gets a generated one"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
                    :data [{:type "text" :text "no id"}]})]
       (is (= 1 (count result)))
       (is (string? (:id (first result))))
-      (is (= "no id" (:message (first result))))))
+      (is (= "no id" (:message (first result)))))))
 
+(deftest ^:parallel message->chat-messages-test-4
   (testing "assistant slack-format text block"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
                    :data [{:role "assistant" :_type "TEXT" :content "from slack"}]})]
       (is (= 1 (count result)))
       (is (= {:role "agent" :type "text" :message "from slack"}
-             (select-keys (first result) [:role :type :message])))))
+             (select-keys (first result) [:role :type :message]))))))
 
+(deftest ^:parallel message->chat-messages-test-5
   (testing "tool-input merged with matching tool-output"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
@@ -59,16 +69,18 @@
               :is_error false}
              (select-keys (first result) [:id :role :type :name :status :is_error])))
       (is (= {:query "foo"} (json/decode+kw (:args (first result)))))
-      (is (= {:rows [1 2 3]} (json/decode+kw (:result (first result)))))))
+      (is (= {:rows [1 2 3]} (json/decode+kw (:result (first result))))))))
 
+(deftest ^:parallel message->chat-messages-test-6
   (testing "tool-output flagged as error"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
                    :data [{:type "tool-input" :id "call-2" :function "boom" :arguments {}}
                           {:type "tool-output" :id "call-2" :error "exploded"}]})]
       (is (true? (:is_error (first result))))
-      (is (nil? (:result (first result))))))
+      (is (nil? (:result (first result)))))))
 
+(deftest ^:parallel message->chat-messages-test-7
   (testing "tool-input without matching output is left as-is"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
@@ -76,15 +88,17 @@
       (is (= 1 (count result)))
       (is (= "tool_call" (:type (first result))))
       (is (not (contains? (first result) :result)))
-      (is (not (contains? (first result) :is_error)))))
+      (is (not (contains? (first result) :is_error))))))
 
+(deftest ^:parallel message->chat-messages-test-8
   (testing "unknown block types are dropped"
     (is (= []
            (metabot-persistence/message->chat-messages
             {:role :assistant
              :data [{:type "data-foo" :payload {}}
-                    {:type "mystery"}]}))))
+                    {:type "mystery"}]})))))
 
+(deftest ^:parallel message->chat-messages-test-9
   (testing "data parts are converted to data_part chat messages"
     (let [blocks [{:type "data" :data-type "navigate_to" :data "/question/1"}
                   {:type "data" :data-type "todo_list"   :version 1 :data [{:id "t1"}]}
@@ -92,12 +106,13 @@
       (is (=? [{:role "agent" :type "data_part" :part {:type "navigate_to" :version 1 :value "/question/1"}}
                {:role "agent" :type "data_part" :part {:type "todo_list"   :version 1 :value [{:id "t1"}]}}
                {:role "agent" :type "data_part" :part {:type "code_edit"   :version 1 :value {:buffer_id "b" :value "v"}}}]
-              (metabot-persistence/message->chat-messages {:role :assistant :data blocks})))))
+              (metabot-persistence/message->chat-messages {:role :assistant :data blocks}))))))
 
+(deftest ^:parallel message->chat-messages-test-10
   (testing "nil :data yields no messages"
     (is (= [] (metabot-persistence/message->chat-messages {:role :user :data nil})))))
 
-(deftest messages->chat-messages-flattens-across-messages-test
+(deftest ^:parallel messages->chat-messages-flattens-across-messages-test
   (let [result (metabot-persistence/messages->chat-messages
                 [{:role :user      :data [{:role "user" :content "hi"}]}
                  {:role :assistant :data [{:type "text" :text "hello!" :id "b1"}
@@ -111,7 +126,7 @@
     (is (= {:ok true} (json/decode+kw (:result (nth result 2)))))))
 
 (deftest start-turn-persists-slack-conversation-metadata-test
-  (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+  (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [conversation-id (str (random-uuid))
           team-id         "T123"
           channel-id      "C123"
@@ -131,7 +146,7 @@
         (is (= channel-id (:slack_channel_id conversation)))
         (is (= thread-ts (:slack_thread_ts conversation)))))))
 
-(deftest combine-text-parts-xf-merges-consecutive-text-test
+(deftest ^:parallel combine-text-parts-xf-merges-consecutive-text-test
   (testing "consecutive :text parts coalesce; non-text parts split runs"
     (let [parts [{:type :text :text "Hello, "}
                  {:type :text :text "world"}
@@ -154,7 +169,7 @@
   (testing "start-turn! lands slack-team-id / channel-id / slack-thread-ts on the conversation row,
             and slack-msg-id / channel-id / user-id on the user message row, plus user-id on the
             assistant placeholder row"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))
             team-id         "T-NATIVE"
             channel-id      "C-NATIVE"
@@ -195,7 +210,7 @@
 
 (deftest start-turn-does-not-overwrite-slack-metadata-on-subsequent-turns-test
   (testing "conversation-level slack metadata is set once and never overwritten by a later turn"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (metabot-persistence/start-turn!
@@ -217,7 +232,7 @@
 (deftest start-turn-returns-assistant-pk-and-external-id-test
   (testing "start-turn! returns the assistant placeholder PK and a fresh external_id;
             inserts exactly one user row + one assistant placeholder row"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (let [{:keys [assistant-msg-id assistant-external-id]}
@@ -238,7 +253,7 @@
 
 (deftest finalize-assistant-turn-updates-placeholder-in-place-test
   (testing "finalize-assistant-turn! UPDATEs the placeholder; row count and created_at unchanged"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
@@ -263,7 +278,7 @@
 
 (deftest finalize-assistant-turn-passes-through-aborted-and-errored-test
   (testing "finalize-assistant-turn! preserves :finished? false and JSON-encodes :error"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (mt/with-current-user (mt/user->id :rasta)
         (testing "aborted: finished false flows through"
           (let [conversation-id (str (random-uuid))
@@ -291,7 +306,7 @@
 
 (deftest start-turn-pins-ordering-under-abort-then-retry-test
   (testing "an aborted turn whose finalize fires after a retry still sorts before the retry's rows"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           ;; Turn A: starts and is left in-flight
@@ -327,7 +342,7 @@
 (deftest start-turn-user-and-placeholder-share-created-at-test
   (testing "user-message and assistant-placeholder rows inserted by start-turn! share an instant;
             readers must tiebreak on :id to preserve user-before-assistant ordering"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           (metabot-persistence/start-turn!
@@ -343,7 +358,7 @@
 
 (deftest conversation-detail-drops-errored-pair-under-created-at-collision-test
   (testing "drop-errored-pairs works correctly when the errored user/asst rows share created_at"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))]
         (mt/with-current-user (mt/user->id :rasta)
           ;; Errored turn: user-msg and asst-row share created_at via start-turn!'s transaction.
@@ -389,7 +404,7 @@
 
 (deftest conversation-detail-filters-soft-deleted-messages-and-orders-ascending-test
   (testing "conversation-detail returns only non-deleted messages, ordered by :created_at ascending"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
       (let [conversation-id (str (random-uuid))
             user-id         (mt/user->id :rasta)
             now             (java.time.OffsetDateTime/now)
@@ -566,15 +581,13 @@
               "stringified :data still carries enough info for triage"))))))
 
 (deftest finalize-assistant-turn-persists-finished-and-error-test
-  (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+  (t2/with-transaction [_conn nil {:rollback-only true}]
     (testing "default: finished true, no error"
       (let [[row] (start-and-finalize!)]
         (is (=? {:finished true :error nil} row))))
-
     (testing "aborted: finished false flows through, no error"
       (let [[row] (start-and-finalize! :finished? false)]
         (is (=? {:finished false :error nil} row))))
-
     (testing "errored map: JSON-encoded into column, decoded onto chat msg; partial parts persisted"
       (let [error-data     {:message "agent loop API error: 503"
                             :type    "java.lang.RuntimeException"
@@ -583,7 +596,6 @@
         (is (=? {:finished true :error string? :data seq} row))
         (is (= error-data (json/decode+kw (:error row))))
         (is (= error-data (:error chat-msg)))))
-
     (testing "errored string: any JSON-serializable value accepted"
       (let [[row chat-msg] (start-and-finalize! :error "boom")]
         (is (= "\"boom\"" (:error row)))
@@ -620,3 +632,198 @@
                  (mapv :message (metabot-persistence/messages->chat-messages
                                  [user-msg errored] {:include-errored? true})))
               "audit read keeps both rows; the empty-data stub renders so the FE has somewhere to hang the error alert"))))))
+
+;;; ---------------------------------------- used-table recording ----------------------------------------
+
+(defn- ->notebook-parts
+  "Build a minimal `construct_notebook_query` tool-input/output pair whose query references the given table id."
+  [call-id source-table-id]
+  (let [mp    (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp source-table-id))]
+    [{:type      :tool-input
+      :id        call-id
+      :function  "construct_notebook_query"
+      :arguments {:reasoning "x"}}
+     {:type   :tool-output
+      :id     call-id
+      :result {:output            "<result>...</result>"
+               :structured-output {:query-id "qid"
+                                   :query    query}}}]))
+
+(deftest finalize-records-used-tables-test
+  (testing "finalize-assistant-turn! inserts metabot_used_table rows for successful query-generating tool calls"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [table-id                   (mt/id :orders)
+              conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "internal"
+                                          {:role "user" :content "go"})]
+          (binding [used-tables/*run-synchronously?* true]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id
+             assistant-msg-id
+             (into [{:type :text :text "ok"}] (->notebook-parts "c1" table-id))))
+          (is (=? [{:message_id assistant-msg-id
+                    :table_id table-id}]
+                  (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
+
+(deftest finalize-records-used-tables-in-background-test
+  (testing "with the default (non-synchronous) path, finalize-assistant-turn! eventually records used tables on the background worker"
+    ;; No rollback transaction and no `*run-synchronously?*` binding: the extraction + insert run on
+    ;; the background executor (its own connection), so we commit real rows and clean up in `finally`.
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [table-id                   (mt/id :orders)
+            conversation-id            (str (random-uuid))
+            {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                        conversation-id
+                                        "internal"
+                                        {:role "user" :content "go"})]
+        (try
+          (metabot-persistence/finalize-assistant-turn!
+           conversation-id
+           assistant-msg-id
+           (into [{:type :text :text "ok"}] (->notebook-parts "c1" table-id)))
+          (is (=? [{:message_id assistant-msg-id
+                    :table_id   table-id}]
+                  (tu/poll-until 5000
+                                 (seq (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))
+          (finally
+            ;; CASCADE from metabot_message cleans up the used-table row.
+            (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
+            (t2/delete! :model/MetabotConversation :id conversation-id)))))))
+
+(defn- ->transform-python-parts
+  "Build a `write_transform_python` tool-input/output pair that declares `table-id` as its single source table.
+  Used to verify the end-to-end transform extraction path."
+  [call-id table-id]
+  [{:type      :tool-input
+    :id        call-id
+    :function  "write_transform_python"
+    :arguments {:transform_name "T"
+                :edit_action    {:mode        "replace"
+                                 :new_content "def transform(): pass"}
+                :source_tables  [{:alias       "t"
+                                  :table_id    table-id
+                                  :schema      "PUBLIC"
+                                  :database_id (mt/id)}]}}
+   {:type   :tool-output
+    :id     call-id
+    :result {:output            "ok"
+             :structured-output {:transform {:source {:type "python"}}
+                                 :thinking  "x"
+                                 :message   "Transform Python updated successfully."}}}])
+
+(defn- ->transform-sql-parts
+  "Build a `write_transform_sql` tool-input/output pair whose suggested transform's `[:source :query]` is a native query.
+  The structured-output's `:transform` key is dropped by `strip-tool-output-bloat`, so this pair exercises finalize's
+  pre-strip extraction path."
+  [call-id db-id sql]
+  (let [query (lib/native-query (mt/metadata-provider) sql)]
+    [{:type      :tool-input
+      :id        call-id
+      :function  "write_transform_sql"
+      :arguments {:database_id db-id
+                  :edit_action {:mode "replace" :new_content sql}}}
+     {:type   :tool-output
+      :id     call-id
+      :result {:output "ok"
+               :structured-output
+               {:transform {:id          nil
+                            :name        "T"
+                            :description ""
+                            :target      {:type "table" :name "" :database db-id :schema nil}
+                            :source      {:type  "query"
+                                          :query query}}
+                :thinking  "x"
+                :message   "Transform SQL updated successfully."}}}]))
+
+(deftest finalize-records-used-tables-for-python-transform-test
+  (testing "finalize-assistant-turn! records `metabot_used_table` rows for a write_transform_python tool call."
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [table-id                   (mt/id :orders)
+              conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "transforms_codegen"
+                                          {:role "user" :content "make a transform"})]
+          (binding [used-tables/*run-synchronously?* true]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id
+             assistant-msg-id
+             (into [{:type :text :text "ok"}] (->transform-python-parts "t1" table-id))))
+          (is (=? [{:message_id assistant-msg-id
+                    :table_id   table-id}]
+                  (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
+
+(deftest finalize-records-used-tables-for-sql-transform-test
+  (testing "finalize-assistant-turn! parses the SQL transform's native query."
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [orders-id                  (mt/id :orders)
+              conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "transforms_codegen"
+                                          {:role "user" :content "make a SQL transform"})]
+          (binding [used-tables/*run-synchronously?* true]
+            (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
+              (metabot-persistence/finalize-assistant-turn!
+               conversation-id
+               assistant-msg-id
+               (into [{:type :text :text "ok"}]
+                     (->transform-sql-parts "t1" (mt/id) "SELECT * FROM orders")))))
+          (is (=? [{:message_id assistant-msg-id :table_id orders-id}]
+                  (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
+
+(deftest finalize-records-nothing-without-query-tools-test
+  (testing "finalize-assistant-turn! inserts no used-table rows for text-only or non-query tool turns"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "internal"
+                                          {:role "user" :content "go"})]
+          (binding [used-tables/*run-synchronously?* true]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id
+             assistant-msg-id
+             [{:type      :text
+               :text      "just text"}
+              {:type      :tool-input
+               :id        "n1"
+               :function  "navigate_user"
+               :arguments {}}
+              {:type      :tool-output
+               :id        "n1"
+               :result    {:output "ok"}}]))
+          (is (zero? (t2/count :model/MetabotUsedTable :message_id assistant-msg-id))))))))
+
+(deftest insert-failure-does-not-fail-finalize-test
+  (testing "a failed used-table INSERT is logged and finalize still completes"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id
+                                          "internal"
+                                          {:role "user" :content "go"})]
+          (with-redefs [used-tables/extract-used-tables-with-timing! (fn [_ _]
+                                                                       [{:message_id assistant-msg-id :table_id 1}])
+                        t2/insert! (fn [& _]
+                                     (throw (ex-info "boom" {})))]
+            (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
+              (binding [used-tables/*run-synchronously?* true]
+                (metabot-persistence/finalize-assistant-turn!
+                 conversation-id
+                 assistant-msg-id
+                 [{:type :text :text "ok"}]))
+              (is (=? {:finished true
+                       :data     [{:type "text" :text "ok"}]}
+                      (t2/select-one :model/MetabotMessage assistant-msg-id))
+                  "message UPDATE still landed")
+              (is (some #(re-find #"Failed to record metabot used tables" (:message %)) (logs))
+                  "warn line captured"))))))))

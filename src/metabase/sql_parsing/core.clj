@@ -61,7 +61,7 @@
          ;; This is necessary because future-cancel doesn't stop GraalVM execution
          (python.pool/interrupt! ~ctx 1000)
          (python.pool/poison! ~ctx)
-         (analytics/inc! :metabase-sql-parsing/timeouts)
+         (analytics/inc! :metabase-sql-parsing/context-timeouts)
          (log/warn "Python execution timed out after" ~timeout-ms "ms - GraalVM interrupted")
          (throw (TimeoutException. (str "Python execution timed out after " ~timeout-ms "ms"))))
        result#)))
@@ -537,14 +537,19 @@
   "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
    and returns the query reconstructed from the parsed AST."
   [dialect sql stmt-type]
-  (let [sql (strip-large-values sql)]
-    (-> (with-open [^Closeable ctx (python.pool/python-context)]
-          (with-python-timeout ctx default-timeout-ms
-            (-> ^Value (common/eval-python ctx "sql_tools.is_single_stmt_of_type")
-                (.execute ^Value (object-array [sql stmt-type dialect]))
-                .asString)))
-        json/decode+kw
-        (perf/update-keys (comp keyword u/->kebab-case-en)))))
+  (let [stripped-sql (strip-large-values sql)
+        result (-> (with-open [^Closeable ctx (python.pool/python-context)]
+                     (with-python-timeout ctx default-timeout-ms
+                       (-> ^Value (common/eval-python ctx "sql_tools.is_single_stmt_of_type")
+                           (.execute ^Value (object-array [stripped-sql stmt-type dialect]))
+                           .asString)))
+                   json/decode+kw
+                   (perf/update-keys (comp keyword u/->kebab-case-en)))]
+    ;; The `:sql` in the `result` is the reconstructed SQL from the SQLGlot parser.
+    ;; We generally want to use the reconstructed SQL, but if the original SQL had its values stripped (to avoid GraalPy OOM)
+    ;; then we need to return the original SQL to preserve the values. (#74284)
+    (cond-> result
+      (not= sql stripped-sql) (assoc :sql sql))))
 
 (comment
   (referenced-tables "postgres" "select * from transactions")

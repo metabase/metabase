@@ -6,8 +6,9 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Api } from "metabase/api";
+import { Api, cardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { deletePermanently } from "metabase/archive/actions";
 import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -16,7 +17,6 @@ import { Toaster } from "metabase/common/components/Toaster";
 import { useSetCollection } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Questions } from "metabase/entities/questions";
 import {
   rememberLastUsedDatabase,
   runOrCancelQuestionOrSelectedQuery,
@@ -25,6 +25,7 @@ import {
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { connect, useDispatch } from "metabase/redux";
+import { updateQuestionCard } from "metabase/redux/cards";
 import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -297,14 +298,13 @@ const ViewInner = forwardRef(function ViewInnerImpl(propsIn, ref) {
 const mapDispatchToProps = (dispatch) => ({
   onSetDatabaseId: (id) => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: async (question) => {
-    await dispatch(
-      Questions.actions.update({ id: question.id() }, { archived: false }),
-    );
+    await dispatch(updateQuestionCard({ id: question.id(), archived: false }));
     await dispatch(setArchivedQuestion(question, false));
     dispatch(Api.util.invalidateTags([listTag("bookmark")]));
   },
   onDeletePermanently: (id) => {
-    const deleteAction = Questions.actions.delete({ id });
+    const deleteAction = (dispatch) =>
+      runRtkEndpoint(id, dispatch, cardApi.endpoints.deleteCard);
     dispatch(deletePermanently(deleteAction));
   },
   runQuery: () => {

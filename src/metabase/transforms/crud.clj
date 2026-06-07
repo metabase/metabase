@@ -77,6 +77,19 @@
                                      (:name field)
                                      (pr-str (:base_type field))))))))
 
+(defn validate-incremental-table-tag!
+  "Reject a table-incremental native-query transform whose source query has no table template tag for
+  the incremental range filter to target.
+
+  Without that table variable the incremental filter has nowhere to be injected, so the transform is
+  in a broken state. This surfaces the error eagerly at create/update time instead of only when the
+  transform is run."
+  [{:keys [target] :as transform}]
+  (when (and (= :table-incremental (keyword (:type target)))
+             (transforms-base.u/native-query-transform? transform))
+    (api/check-400 (transforms-base.u/incremental-table-tag-name transform)
+                   (deferred-tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field."))))
+
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
@@ -114,6 +127,7 @@
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
    (validate-target-schema! body)
+   (validate-incremental-table-tag! body)
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -144,13 +158,15 @@
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
-
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
                       (when (contains? body :target)
                         (validate-target-schema! new))
-                      (validate-incremental-column-type! new)
+                      (when (contains? body :source)
+                        (validate-incremental-column-type! new))
+                      (when (or (contains? body :source) (contains? body :target))
+                        (validate-incremental-table-tag! new))
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
                         (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]

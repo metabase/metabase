@@ -4,6 +4,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -20,6 +21,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as transforms.canceling]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -31,14 +33,12 @@
   (testing "temp-table-name generates valid table names respecting driver limits"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (let [driver driver/*driver*]
-
         (testing "Basic table name generation"
           (let [result (driver.u/temp-table-name driver nil)
                 table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
             (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" table-name))))
-
         (testing "Table name preserves namespace when present"
           (let [result (driver.u/temp-table-name driver :schema/orders)]
             (is (= "schema" (namespace result)))
@@ -98,7 +98,6 @@
             (testing "Creating table with ordered columns"
               (transforms-base.u/create-table-from-schema! driver db-id table-schema)
               (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
-
             (when (get-method driver/describe-table driver)
               (testing "Column order matches schema definition order (not alphabetical)"
                 (let [table-metadata {:schema schema-name :name (name table-name)}
@@ -109,7 +108,6 @@
                   (is (= expected-names column-names)
                       (str "Expected column order " expected-names
                            " but got " column-names)))))
-
             (finally
               (try
                 (driver/drop-table! driver db-id qualified-table-name)
@@ -128,7 +126,6 @@
           range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
           range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
           range-end-only      {:start nil :end "2024-02-01T00:00:00Z"}]
-
       (testing "with both start and end bounds"
         (are [expected timestamp]
              (= expected (matching-timestamp? {:start_time timestamp} field-path range-jan-feb))
@@ -168,17 +165,14 @@
       (testing "returns nil for empty input"
         (is (nil? (transforms-base.u/batch-lookup-table-ids [])))
         (is (nil? (transforms-base.u/batch-lookup-table-ids nil))))
-
       (testing "looks up table without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}]
               result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) nil "table_one"] (:id t1)} result))))
-
       (testing "looks up table with schema"
         (let [refs [{:database_id (:id db) :schema "my_schema" :table "table_two"}]
               result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) "my_schema" "table_two"] (:id t2)} result))))
-
       (testing "handles mixed refs with and without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}
                     {:database_id (:id db) :schema "my_schema" :table "table_two"}]
@@ -186,7 +180,6 @@
           (is (= {[(:id db) nil "table_one"] (:id t1)
                   [(:id db) "my_schema" "table_two"] (:id t2)}
                  result))))
-
       (testing "returns empty for non-existent table"
         (let [refs [{:database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms-base.u/batch-lookup-table-ids refs)]
@@ -202,26 +195,21 @@
           (is (= (:id db) (:database_id entry)))
           (is (= "existing_table" (:table entry)))
           (is (= (:id t1) (:table_id entry)))))
-
       (testing "throws for non-existent table_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found for ids: 999999"
                               (transforms-base.u/normalize-source-tables [{:alias "t" :table_id 999999}]))))
-
       (testing "populates table_id for existing table ref"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "existing_table"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= (:id t1) (:table_id (first result))))))
-
       (testing "preserves existing table_id when table metadata present"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "existing_table" :table_id 999}]
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= 999 (:table_id (first result))))))
-
       (testing "leaves :table_id nil for non-existent table ref"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (nil? (:table_id (first result))))))
-
       (testing "handles entries needing different kinds of enrichment"
         (let [source-tables [{:alias "t1" :table_id (:id t1)}
                              {:alias "t2" :database_id (:id db) :schema nil :table "existing_table"}]
@@ -239,22 +227,18 @@
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]
               result        (transforms-base.u/resolve-source-tables source-tables)]
           (is (= (:id t1) (:table_id (first result))))))
-
       (testing "looks up table_id for entry without it"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]
               result        (transforms-base.u/resolve-source-tables source-tables)]
           (is (= (:id t1) (:table_id (first result))))))
-
       (testing "throws for non-existent table"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: nonexistent"
                                 (transforms-base.u/resolve-source-tables source-tables)))))
-
       (testing "throws with schema in error message"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema "my_schema" :table "nonexistent"}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
                                 (transforms-base.u/resolve-source-tables source-tables)))))
-
       (testing "handles multiple entries"
         (let [source-tables [{:alias "t1" :table_id (:id t1) :database_id (:id db) :schema nil}
                              {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]
@@ -274,12 +258,10 @@
                 (let [transform {:source {:type :query
                                           :query {:database db-id}}}]
                   (is (true? (transforms.u/source-tables-readable? transform)))))
-
               (testing "returns true for python transform when user can read all source tables"
                 (let [transform {:source {:type :python
                                           :source-tables [{:alias "t1" :table_id table-id}]}}]
                   (is (true? (transforms.u/source-tables-readable? transform)))))
-
               (testing "handles source tables with table_id"
                 (let [transform {:source {:type :python
                                           :source-tables [{:alias "t1" :table_id table-id}]}}]
@@ -292,7 +274,6 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
                        :model/Table {table1-id :id} {:db_id db-id :name "test_table_1"}
                        :model/Table {table2-id :id} {:db_id db-id :name "test_table_2"}]
-
           (testing "Query transforms - blocked database access"
             (let [transform {:source {:type  :query
                                       :query {:database db-id}}}]
@@ -303,7 +284,6 @@
                     (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.u/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source database")))))))
-
           (testing "Python transforms - blocked database access"
             (let [transform {:source {:type          :python
                                       :source-tables [{:alias "t1" :table_id table1-id}]}}]
@@ -314,7 +294,6 @@
                     (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.u/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source tables")))))))
-
           (testing "Python transforms - granular access but missing some tables"
             (let [transform {:source {:type          :python
                                       :source-tables [{:alias "t1" :table_id table1-id}
@@ -407,7 +386,6 @@
           (let [hydrated (t2/hydrate table :transform)]
             (is (some? (:transform hydrated)))
             (is (= transform-id (-> hydrated :transform :id))))))))
-
   (testing "hydrating :transform returns nil when transform_id is nil"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Table table {:transform_id nil}]
@@ -520,6 +498,146 @@
                (reset! driver-observed-timeout-ms driver.settings/*query-timeout-ms*))))))
       (is (= (u/minutes->ms 90) @driver-observed-timeout-ms)))))
 
+;;; -------------------------------------------------- `:metabase-transforms/incremental-rows` --------------------------------------------------
+
+(defn- run-cancelable-with-mocks!
+  "Drive `run-cancelable-transform!` with stubbed lifecycle (schema, checkpoint, watermark, canceling) and wrap `driver-result` in the production `{:status :succeeded :result …}` envelope."
+  ([transform source-range-params driver-result]
+   (run-cancelable-with-mocks! transform source-range-params driver-result :h2))
+  ([transform source-range-params driver-result driver]
+   (with-redefs [driver/schema-exists?                            (constantly true)
+                 driver/create-schema-if-needed!                  (constantly nil)
+                 transforms-base.u/get-source-range-params        (constantly source-range-params)
+                 transforms-base.u/save-run-checkpoint-range!     (constantly nil)
+                 transforms-base.u/save-watermark!                (constantly nil)
+                 transforms.canceling/chan-start-timeout-vthread! (constantly nil)
+                 transforms.canceling/chan-start-run!             (constantly nil)
+                 transforms.canceling/chan-end-run!               (constantly nil)
+                 transform-run/succeed-started-run!               (constantly nil)]
+     (mt/with-premium-features #{:transforms-basic}
+       (transforms.u/run-cancelable-transform!
+        1 transform driver {:db-id 1 :conn-spec nil :output-schema "x"}
+        (fn [_cancel-chan _range-params]
+          {:status :succeeded :result driver-result}))))))
+
+(deftest run-cancelable-transform!-emits-incremental-rows-test
+  (mt/with-prometheus-system! [_ system]
+    (testing "Non-incremental transform: `get-source-range-params` returns nil → no emission, both branches stay at zero"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table"}}
+       nil
+       {:rows-affected 100})
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "true"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "true"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "First incremental run (no watermark) → {full-incremental-run=true}, both types bumped from the same scan"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
+       {:checkpoint-filter-field-id 42 :rows-available 1000}
+       {:rows-affected 1000})
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "true"}))))
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "true"}))))
+      (is (== 1000 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                          {:type "available" :full-incremental-run "true"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"})))))
+    (testing "Subsequent incremental run (watermark present) → {full-incremental-run=false}, attrition surfaces as sum mismatch"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42 :rows-available 500}
+       {:rows-affected 120})
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"}))))
+      (is (== 500 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Driver result missing :rows-affected (defensive contract) → no emission on either side"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42 :rows-available 999}
+       {:some-other-shape "no rows-affected here"})
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Python-shaped driver result (clj-http response augmented with :rows-affected by run-python-transform-impl!) emits the metric"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42 :rows-available 800}
+       {:status 200 :body {:exit_code 0} :rows-affected 750})
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"}))))
+      (is (== 800 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 750 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Incremental run whose source-range-params lacks :rows-available → no emission on either side"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42}
+       {:rows-affected 100})
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Unreliable driver (`:transforms/accurate-rows-affected` false) on the CTAS path emits nothing — neither rows-available nor rows-processed, since the driver's full-rebuild count is untrustworthy"
+      (defmethod driver/database-supports? [:h2 :transforms/accurate-rows-affected] [_ _ _] false)
+      (try
+        (analytics/clear! :metabase-transforms/incremental-rows)
+        (run-cancelable-with-mocks!
+         {:id 1 :target {:type "table-incremental" :schema "x" :name "tgt"} :last_checkpoint_value nil}
+         {:checkpoint-filter-field-id 42 :rows-available 1000}
+         {:rows-affected 0})
+        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                           {:type "available" :full-incremental-run "true"})))
+            "rows-available is suppressed for an unreliable driver's full-rebuild run")
+        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                           {:type "processed" :full-incremental-run "true"})))
+            "rows-processed is suppressed — the driver's full-rebuild count is untrustworthy")
+        (finally
+          (remove-method driver/database-supports? [:h2 :transforms/accurate-rows-affected]))))
+    (testing "Unreliable driver on the INSERT path still emits the driver count (rows-affected is accurate on the cumulative-target INSERT path even when CTAS counts are not)"
+      (defmethod driver/database-supports? [:h2 :transforms/accurate-rows-affected] [_ _ _] false)
+      (try
+        (analytics/clear! :metabase-transforms/incremental-rows)
+        (run-cancelable-with-mocks!
+         {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+         {:checkpoint-filter-field-id 42 :rows-available 500}
+         {:rows-affected 120})
+        (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                           {:type "processed" :full-incremental-run "false"})))
+            "INSERT path records the driver's count (120); it stays accurate on unreliable-CTAS drivers")
+        (finally
+          (remove-method driver/database-supports? [:h2 :transforms/accurate-rows-affected]))))
+    (testing "A throw from the emission helper must NOT escape into the outer try/catch — the run already succeeded"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (mt/with-dynamic-fn-redefs [transforms.instrumentation/record-incremental-rows!
+                                  (fn [& _] (throw (ex-info "Synthetic emission failure" {})))]
+        (is (= {:status :succeeded :result {:rows-affected 1000}}
+               (run-cancelable-with-mocks!
+                {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
+                {:checkpoint-filter-field-id 42 :rows-available 1000}
+                {:rows-affected 1000}))
+            "run-cancelable-transform! returns the success envelope; the emission throw is swallowed.")))))
+
 (deftest ^:parallel massage-sql-query-test
   (testing "massage-sql-query sets disable-remaps? and disable-max-results?"
     (let [query    {:database 1, :type :query, :query {:source-table 1}}
@@ -564,7 +682,6 @@
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (= "PUBLIC" (:schema table))
                 "Table schema should be updated to the driver's default schema"))))))
-
   (testing "activate-table-and-mark-computed! leaves nil schema when physical table has no default schema"
     (let [target {:type "table" :schema nil :name "test_nil_schema_no_default"}
           synced-table (atom nil)]

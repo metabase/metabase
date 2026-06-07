@@ -5,17 +5,19 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.connection :as driver.conn]
-   [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.driver.sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
-   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.parameters.values :as params.values]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -23,7 +25,8 @@
    [metabase.util.performance :refer [mapv]]
    [potemkin :as p]))
 
-(comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
+(comment metabase.driver.sql.parameters.substitution/keep-me
+         metabase.driver.sql.normalize/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
 (driver/register! :sql, :abstract? true)
 
@@ -56,6 +59,13 @@
                  :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
+;; True when the driver's `run-transform!` `:rows-affected` reflects rows actually written.
+;; Drivers whose CTAS count is unreliable override to false; the transforms layer then falls back
+;; to a native `COUNT(*)` on the target.
+(defmethod driver/database-supports? [:sql :transforms/accurate-rows-affected]
+  [_driver _feature _db]
+  true)
+
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
   [driver _feat db]
   (and
@@ -70,15 +80,16 @@
   [driver native-form]
   (sql.u/format-sql-and-fix-params driver native-form))
 
-(mu/defmethod driver/substitute-native-parameters :sql
-  [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query driver-api/schema.common.non-blank-string}]]]
-  (let [params-map          (params.values/query->params-map inner-query)
-        referenced-card-ids (params.values/referenced-card-ids params-map)
-        [query params]      (-> query
-                                lib/parse-parameters
-                                (sql.params.substitute/substitute params-map))]
-    (cond-> (assoc inner-query
-                   :query  query
+(mu/defmethod driver/substitute-native-parameters-in-stage-method :sql :- ::lib.schema/stage.native
+  [_driver                                  :- :keyword
+   metadata-providerable                    :- ::lib.schema.metadata/metadata-providerable
+   {native-query :native, :as native-stage} :- ::lib.schema/stage.native]
+  (let [params-map            (params.values/stage->params-map metadata-providerable native-stage)
+        referenced-card-ids   (params.values/referenced-card-ids params-map)
+        parsed-query          (lib/parse-parameters native-query)
+        [native-query params] (sql.params.substitute/substitute metadata-providerable parsed-query params-map)]
+    (cond-> (assoc native-stage
+                   :native native-query
                    :params params)
       (seq referenced-card-ids)
       (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))
@@ -161,9 +172,10 @@
 
 (defn- create-table-and-insert-data!
   [driver transform-details conn-spec]
-  (let [create-query  (driver/compile-transform driver transform-details)
-        rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
-    rows-affected))
+  (let [create-query (driver/compile-transform driver transform-details)]
+    ;; `execute-raw-queries!` returns one `{:rows-affected N}` map per statement; the last
+    ;; statement's map is the transform's row count. Return it as-is — callers propagate it.
+    (last (driver/execute-raw-queries! driver conn-spec [create-query]))))
 
 (defn- run-with-rename-tables-strategy!
   [driver database output-table transform-details conn-spec]
@@ -171,11 +183,11 @@
         old-temp (driver.u/temp-table-name driver output-table)]
     (try
       (let [new-temp-details (assoc transform-details :output-table new-temp)
-            rows-affected    (create-table-and-insert-data! driver new-temp-details conn-spec)]
+            result           (create-table-and-insert-data! driver new-temp-details conn-spec)]
         (driver/rename-tables! driver (:id database) {output-table old-temp
                                                       new-temp     output-table})
         (driver/drop-table! driver (:id database) old-temp)
-        {:rows-affected rows-affected})
+        result)
       (catch Exception e
         (log/error e "Failed to run transform using rename-tables strategy")
         (try (driver/drop-table! driver (:id database) new-temp) (catch Exception _))
@@ -186,10 +198,10 @@
   (let [tmp-table (driver.u/temp-table-name driver output-table)]
     (try
       (let [tmp-table-details (assoc transform-details :output-table tmp-table)
-            rows-affected     (create-table-and-insert-data! driver tmp-table-details conn-spec)]
+            result            (create-table-and-insert-data! driver tmp-table-details conn-spec)]
         (driver/drop-table! driver (:id database) output-table)
         (driver/rename-table! driver (:id database) tmp-table output-table)
-        {:rows-affected rows-affected})
+        result)
       (catch Exception e
         (log/error e "Failed to run transform using create-drop-rename strategy")
         (try (driver/drop-table! driver (:id database) tmp-table) (catch Exception _))
@@ -199,7 +211,7 @@
   [driver database output-table transform-details conn-spec]
   (try
     (driver/drop-table! driver (:id database) output-table)
-    {:rows-affected (create-table-and-insert-data! driver transform-details conn-spec)}
+    (create-table-and-insert-data! driver transform-details conn-spec)
     (catch Exception e
       (log/error e "Failed to run transform using drop-create strategy")
       (throw e))))
@@ -234,7 +246,8 @@
                   (driver/compile-insert driver transform-details)
                   (driver/compile-transform driver transform-details))]
     (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
-    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
+    ;; `execute-raw-queries!` already yields `{:rows-affected N}` maps; take the last as-is.
+    (last (driver/execute-raw-queries! driver conn-spec [queries]))))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -308,5 +321,5 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p/import-vars
- [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution]
- [sql.normalize default-schema normalize-error normalize-name reserved-literal])
+ [metabase.driver.sql.parameters.substitution ->prepared-substitution PreparedStatementSubstitution]
+ [metabase.driver.sql.normalize default-schema normalize-error normalize-name reserved-literal])

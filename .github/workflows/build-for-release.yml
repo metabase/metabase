@@ -218,12 +218,12 @@ jobs:
 
         echo "VERSION=$version" >> $GITHUB_ENV
     - name: Setup Java ${{ needs.get-build-requirements.outputs.java_version }}
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5.2.0
       with:
         distribution: 'temurin'
         java-version: ${{ needs.get-build-requirements.outputs.java_version }}
     - name: Setup Node.js ${{ needs.get-build-requirements.outputs.node_version }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6.4.0
       with:
         node-version: ${{ needs.get-build-requirements.outputs.node_version }}.x
     - name: Check out the code

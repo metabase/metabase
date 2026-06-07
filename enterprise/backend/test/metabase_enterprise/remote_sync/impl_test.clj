@@ -109,7 +109,6 @@
                       :error :metabase-enterprise.serialization.v2.load/not-found})]
       (is (= "Import failed: Database 'clickhouse' does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
              (impl/source-error-message e)))))
-
   (testing "source-error-message produces helpful message for FK database-not-found errors"
     (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
                          {:table-id ["clickhouse" nil "some_table"]})
@@ -226,23 +225,19 @@
               export-result (impl/export! (source.p/snapshot mock-main) (:id export-task) "Test export")]
           (remote-sync.task/complete-sync-task! (:id export-task))
           (is (= :success (:status export-result)))
-
           (let [files-after-export (get @(:files-atom mock-main) "test-branch")]
             (is (map? files-after-export))
             (is (not-empty files-after-export))
             (is (some #(str/includes? % "collection") (keys files-after-export)))
             (is (some #(str/includes? % "card") (keys files-after-export))))
-
           (t2/delete! :model/RemoteSyncTask :id (:id export-task))
           (let [import-task (t2/with-connection [_conn (app-db/app-db) (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})])
                 import-result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
             (remote-sync.task/complete-sync-task! (:id import-task))
             (is (= :success (:status import-result)))
             (is (= "Successfully reloaded from git repository" (:message import-result)))
-
             (is (t2/exists? :model/Collection :id coll-id))
             (is (t2/exists? :model/Card :id card-id))
-
             (let [collection (t2/select-one :model/Collection :id coll-id)
                   card (t2/select-one :model/Card :id card-id)]
               (is (= "Test Collection" (:name collection)))
@@ -266,7 +261,6 @@
               mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
               result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
           (is (= :success (:status result)))
-
           (is (t2/exists? :model/Card :id card1-id))
           (is (not (t2/exists? :model/Collection :id coll2-id)))
           (is (not (t2/exists? :model/Card :id card2-id))))))))
@@ -285,9 +279,9 @@
       (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
         (let [mock-source (test-helpers/create-mock-source)
               progress-calls (atom [])]
-          (with-redefs [remote-sync.task/update-progress!
-                        (fn [task-id progress]
-                          (swap! progress-calls conj {:task-id task-id :progress progress}))]
+          (mt/with-dynamic-fn-redefs [remote-sync.task/update-progress!
+                                      (fn [task-id progress]
+                                        (swap! progress-calls conj {:task-id task-id :progress progress}))]
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
               (is (= 5 (count @progress-calls)))
@@ -308,9 +302,9 @@
                          :model/Card _ {:collection_id coll-id}]
             (let [mock-source (test-helpers/create-mock-source)
                   progress-calls (atom [])]
-              (with-redefs [remote-sync.task/update-progress!
-                            (fn [task-id progress]
-                              (swap! progress-calls conj {:task-id task-id :progress progress}))]
+              (mt/with-dynamic-fn-redefs [remote-sync.task/update-progress!
+                                          (fn [task-id progress]
+                                            (swap! progress-calls conj {:task-id task-id :progress progress}))]
                 (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
                   (is (= :success (:status result)))
                   (is (pos? (count @progress-calls)))
@@ -489,8 +483,8 @@
         (mt/with-temporary-setting-values [remote-sync-enabled true
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-branch ""]
-          (with-redefs [source/source-from-settings (constantly mock-source)
-                        impl/async-import! (fn [& _args] (reset! import-started? true) 123)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                      impl/async-import! (fn [& _args] (reset! import-started? true) 123)]
             (impl/finish-remote-config!)
             (is (= "main" (setting/get :remote-sync-branch))
                 "Should set branch to default branch")))))))
@@ -505,8 +499,8 @@
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-branch "main"
                                              remote-sync-type :read-only]
-            (with-redefs [source/source-from-settings (constantly mock-source)
-                          impl/async-import! (fn [& _args] (reset! import-called? true) {:id 123})]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                        impl/async-import! (fn [& _args] (reset! import-called? true) {:id 123})]
               (let [task-id (impl/finish-remote-config!)]
                 (is (= 123 task-id)
                     "Should return task ID from async-import!")
@@ -523,8 +517,8 @@
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-branch "main"
                                              remote-sync-type :read-write]
-            (with-redefs [source/source-from-settings (constantly mock-source)
-                          impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                        impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
               (let [result (impl/finish-remote-config!)]
                 (is (nil? result)
                     "Should return nil when nothing is done")
@@ -538,7 +532,7 @@
         (mt/with-temp [:model/Collection _ {:name "Remote Collection" :is_remote_synced true :location "/"}]
           (mt/with-temporary-setting-values [remote-sync-url     nil
                                              remote-sync-enabled false]
-            (with-redefs [collection/clear-remote-synced-collection! (fn [] (reset! clear-called? true))]
+            (mt/with-dynamic-fn-redefs [collection/clear-remote-synced-collection! (fn [] (reset! clear-called? true))]
               (let [result (impl/finish-remote-config!)]
                 (is (nil? result)
                     "Should return nil when remote sync is disabled")
@@ -1249,7 +1243,7 @@ serdes/meta:
                                           :type "library"
                                           :entity_id collection/library-entity-id
                                           :location "/"}]
-        (with-redefs [remote-sync.task/last-version (constantly "previous-version")]
+        (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "previous-version")]
           (let [test-files {"main" {"collections/main/lib/lib.yaml"
                                     (test-helpers/generate-collection-yaml collection/library-entity-id "Remote Library")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)

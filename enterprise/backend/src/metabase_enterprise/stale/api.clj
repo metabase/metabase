@@ -114,7 +114,6 @@
                                [nil :dashboard_id]
                                [nil :location]
                                [nil :database_id]]
-
                               :id [:in (set (map :id dashboards))])
                    :can_write :can_delete :can_restore [:collection :effective_location])
        annotate-dashboard-with-collection-info

@@ -10,6 +10,8 @@ import type {
   RemoteSyncConfigurationSettings,
   RemoteSyncHasChangesResponse,
   RemoteSyncTask,
+  TestRemoteSyncConnectionRequest,
+  TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncConfigurationResponse,
 } from "metabase-types/api";
 
@@ -140,6 +142,16 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: () => [tag("remote-sync-current-task")],
     }),
+    testRemoteSyncConnection: builder.mutation<
+      TestRemoteSyncConnectionResponse,
+      TestRemoteSyncConnectionRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/ee/remote-sync/test-connection`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -154,4 +166,5 @@ export const {
   useImportChangesMutation,
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
+  useTestRemoteSyncConnectionMutation,
 } = remoteSyncApi;

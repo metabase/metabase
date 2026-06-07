@@ -92,7 +92,7 @@ const setupState = ({
   });
 };
 
-export function setupQuestionSharingMenu({
+export async function setupQuestionSharingMenu({
   isPublicSharingEnabled = false,
   isEmbeddingEnabled = false,
   isEmailSetup = false,
@@ -147,8 +147,19 @@ export function setupQuestionSharingMenu({
     </div>,
     { storeInitialState: state },
   );
+
+  // QuestionSharingMenu eagerly mounts QuestionPublicLinkPopover, whose
+  // useAsync hook flips its loading state shortly after mount. Wait for the
+  // sharing menu button to settle so that async update stays wrapped in act.
+  // Some scenarios (models, archived questions) render nothing at all, so we
+  // only wait when the button is expected to appear.
+  const isModel = questionOverrides.type === "model";
+  const isArchived = questionOverrides.archived === true;
+  if (!isModel && !isArchived) {
+    await screen.findByTestId("sharing-menu-button");
+  }
 }
 
-export const openMenu = () => {
-  return userEvent.click(screen.getByTestId("sharing-menu-button"));
+export const openMenu = async () => {
+  await userEvent.click(screen.getByTestId("sharing-menu-button"));
 };

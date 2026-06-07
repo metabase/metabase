@@ -1,6 +1,6 @@
 (ns metabase.mcp.api
   "MCP (Model Context Protocol) Streamable HTTP transport handler.
-   Exposes Metabase's agent tools via JSON-RPC 2.0 over a single `/api/mcp` endpoint."
+   Exposes Metabase's agent tools via JSON-RPC 2.0 over each of the MCP endpoints."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -67,16 +67,33 @@
   (jsonrpc-response
    id
    {:protocolVersion protocol-version
-    :capabilities    {:tools {} :resources {}}
+    :capabilities    {:tools {:listChanged true} :resources {}}
     :serverInfo      server-info}))
 
-(defn- handle-tools-list [id _params token-scopes]
-  (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes)}))
+(defn- mcp-app-ui-capability?
+  "Return true if initialize params advertise support for MCP Apps HTML resources."
+  [params]
+  ;; `json/decode+kw` preserves the slash in the JSON extension key `"io.modelcontextprotocol/ui"` as the
+  ;; namespaced keyword `:io.modelcontextprotocol/ui`.
+  (contains?
+   (set (get-in params [:capabilities :extensions :io.modelcontextprotocol/ui :mimeTypes]))
+   "text/html;profile=mcp-app"))
+
+(defn- handle-tools-list [id _params session-id token-scopes]
+  (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
+    (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes {:supports-mcp-ui?
+                                                                     supports-mcp-ui?})})))
 
 (defn- handle-tools-call [id params session-id token-scopes]
   (let [tool-name (:name params)
-        arguments (or (:arguments params) {})]
-    (jsonrpc-response id (mcp.tools/call-tool token-scopes session-id tool-name arguments))))
+        arguments (or (:arguments params) {})
+        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
+    (jsonrpc-response id (mcp.tools/call-tool token-scopes
+                                              session-id
+                                              tool-name
+                                              arguments
+                                              {:supports-mcp-ui?
+                                               supports-mcp-ui?}))))
 
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
@@ -103,7 +120,7 @@
   (try
     (case method
       "notifications/initialized" nil
-      "tools/list"                (handle-tools-list id params token-scopes)
+      "tools/list"                (handle-tools-list id params session-id token-scopes)
       "tools/call"                (handle-tools-call id params session-id token-scopes)
       "resources/list"            (handle-resources-list id params token-scopes)
       "resources/read"            (handle-resources-read id params session-id token-scopes)
@@ -230,7 +247,10 @@
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (= "initialize" (:method body)))
-      (let [session-id    (mcp.session/create! user-id)
+      (let [params           (:params body)
+            supports-mcp-ui? (mcp-app-ui-capability? params)
+            session-id       (mcp.session/create! user-id {:supports-mcp-ui?
+                                                           supports-mcp-ui?})
             init-response (handle-initialize (:id body) (:params body))]
         (if (accepts-sse? request)
           (sse-response [init-response] {"Mcp-Session-Id" session-id})
@@ -256,10 +276,18 @@
               :else
               (json-response 200 responses))))))))
 
+(def ^:private tools-list-changed-notification
+  {:jsonrpc "2.0" :method "notifications/tools/list_changed"})
+
 (defn- handle-get
-  "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
+  "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
+   Polls the tool manifest hash on each keepalive tick — if the visible tool set has
+   changed since the previous tick, emits an MCP `notifications/tools/list_changed`
+   message so the client knows to refetch `tools/list`. Stateless: each connection
+   tracks its own last-seen hash; no shared registry."
   [user-id request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])
+        token-scopes (:token-scopes request)
         {:keys [error]} (require-valid-session user-id session-id)]
     (cond
       (some? error)
@@ -272,12 +300,16 @@
                    :status       200}
                   [os canceled-chan]
                    (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-                     (loop []
+                     (loop [last-hash (mcp.tools/tools-hash token-scopes)]
                        (when-not (a/poll! canceled-chan)
                          (.write writer ": keepalive\n\n")
                          (.flush writer)
                          (Thread/sleep 30000)
-                         (recur)))))]
+                         (let [current-hash (mcp.tools/tools-hash token-scopes)]
+                           (when (not= current-hash last-hash)
+                             (.write writer ^String (sse-body [tools-list-changed-notification]))
+                             (.flush writer))
+                           (recur current-hash))))))]
         (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
@@ -315,8 +347,23 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
-(defn- www-authenticate-discovery []
-  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource/api/mcp\""))
+;; Source of truth for the route aliases — keep in sync with the route-map in
+;; [[metabase.api-routes.routes]] and resource-metadata endpoints in [[metabase.oauth-server.api.metadata]].
+(def ^:private endpoint-paths
+  "URL paths that serve the MCP endpoint, relative to site-url.
+   `/api/metabase-mcp` is canonical (the advertised URL); `/api/mcp` is a legacy alias kept for
+   back-compat with existing clients."
+  #{"/api/metabase-mcp" "/api/mcp"})
+
+(defn- www-authenticate-discovery
+  "Build the `WWW-Authenticate` header advertising OAuth discovery for the path the client hit.
+   A client connecting via an alias is pointed at that same alias as the protected resource."
+  [request]
+  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
+  ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
+  (let [uri  (str/replace (:uri request) #"/+$" "")
+        path (if (contains? endpoint-paths uri) uri "/api/metabase-mcp")]
+    (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\"")))
 
 (def +mcp-enabled
   "Wrap routes so they may only be accessed when the MCP server is enabled."
@@ -368,5 +415,5 @@
            ;; No auth at all — return 401 with discovery
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")
-                                   {"WWW-Authenticate" (www-authenticate-discovery)}))))))
+                                   {"WWW-Authenticate" (www-authenticate-discovery request)}))))))
    (constantly nil)))

@@ -682,7 +682,7 @@
                                                           :content "SELECT 1"
                                                           :creator_id (mt/user->id :crowberto)}]
           ;; remove native permissions
-          (with-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
+          (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
             (testing "Returns 403 when user lacks native query execution permissions"
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :post 403 "ee/dependencies/check-snippet"
@@ -724,8 +724,8 @@
                                  :dataset_query (:dataset_query base-card)}]
               (deps.test/synchronously-run-backfill!)
               ;; Mock errors-from-proposed-edits to report the transform as broken
-              (with-redefs [dependencies/errors-from-proposed-edits
-                            (constantly {:transform {(:id transform) #{:some-error}}})]
+              (mt/with-dynamic-fn-redefs [dependencies/errors-from-proposed-edits
+                                          (constantly {:transform {(:id transform) #{:some-error}}})]
                 (testing "Admin sees broken transforms in response"
                   (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check-card"
                                                        proposed-card)]
@@ -2706,14 +2706,12 @@
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set))))
-
           (testing "both tables returned with unused_only=false"
             (is (= #{table-1-id table-2-id}
                    (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only false)
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set))))
-
           (mt/with-temp [:model/Card card {:database_id   db-id
                                            :table_id      table-1-id
                                            :dataset_query {:database db-id
