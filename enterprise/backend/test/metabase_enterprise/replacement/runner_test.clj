@@ -248,12 +248,12 @@
               (doseq [card [old-card child-1 child-2]]
                 (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
               (deps.test/synchronously-run-backfill!)
-              (let [original-swap! replacement.source-swap/swap-source!]
-                (with-redefs [replacement.source-swap/swap-source!
-                              (fn [entity object old-source new-source]
-                                (if (= (second entity) child-1-id)
-                                  (throw (ex-info "Simulated swap failure" {:entity entity}))
-                                  (original-swap! entity object old-source new-source)))]
+              (let [original-swap! (mt/original-fn #'replacement.source-swap/swap-source!)]
+                (mt/with-dynamic-fn-redefs [replacement.source-swap/swap-source!
+                                            (fn [entity object old-source new-source]
+                                              (if (= (second entity) child-1-id)
+                                                (throw (ex-info "Simulated swap failure" {:entity entity}))
+                                                (original-swap! entity object old-source new-source)))]
                   (let [ex (is (thrown-with-msg? clojure.lang.ExceptionInfo #"1 of 2 entities failed"
                                                  (replacement.runner/run-swap-source!
                                                   [:card old-id] [:card new-id])))]

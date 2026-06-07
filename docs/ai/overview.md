@@ -50,7 +50,7 @@ See [full docs for MCP server](mcp.md).
 
 **Best for: developers creating stuff that other people will use.**
 
-Use a coding agent like Claude Code to understand your database's metadata, generate Metabase content as YAML files locally, verify the schema, then sync and import the generated content into your production Metabase. Sky's the limit on what you can accomplish.
+Use a coding agent like Claude Code with the Metabase CLI to create Metabase content directly in a development instance, then version that content as YAML files and pull the changes into your production Metabase.
 
 **Controls**: Only admins can sync content to Metabase instances.
 

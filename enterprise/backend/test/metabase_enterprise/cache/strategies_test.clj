@@ -128,7 +128,7 @@
               (testing "strategy = ttl"
                 (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                   (mt/with-clock (t 0)
-                    (let [q (with-redefs [query/average-execution-time-ms (constantly 1000)]
+                    (let [q (mt/with-dynamic-fn-redefs [query/average-execution-time-ms (constantly 1000)]
                               (#'qp.card/query-for-card card1 [] {} {} {}))]
                       (is (=? {:type :ttl :multiplier 100}
                               (:cache-strategy q)))

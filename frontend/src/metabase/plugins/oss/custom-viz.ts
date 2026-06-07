@@ -1,3 +1,4 @@
+import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
 import type { IconData } from "metabase/common/utils/icon";
@@ -44,6 +45,16 @@ const getDefaultPluginCustomViz = () => ({
 
   // Must be functional in OSS — pure string check used by getSensibleVisualizations
   isCustomVizDisplay,
+
+  /**
+   *  Always false in OSS as there is no plugin to produce a mount handle.
+   */
+  isWidgetMount: (_value: unknown): _value is WidgetMount => false,
+
+  CustomVizSettingWidget: PluginPlaceholder<{
+    mount: WidgetMount;
+    widgetProps: Record<string, unknown>;
+  }>,
 });
 
 export const PLUGIN_CUSTOM_VIZ = getDefaultPluginCustomViz();

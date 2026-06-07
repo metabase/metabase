@@ -19,7 +19,8 @@
 (tx/add-test-extensions! :mongo)
 
 (doseq [feature [:test/time-type
-                 :test/timestamptz-type]]
+                 :test/timestamptz-type
+                 :test/date-type]]
   (defmethod driver/database-supports? [:mongo feature]
     [_driver _feature _database]
     false))

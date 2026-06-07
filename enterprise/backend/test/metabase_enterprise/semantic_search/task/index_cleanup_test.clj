@@ -100,8 +100,8 @@
               (is (semantic.tu/table-exists-in-db? recent-table))
               (is (semantic.tu/table-exists-in-db? active-table))
               ;; Run cleanup function and ensure only the stale & orphaned tables is dropped
-              (with-redefs [semantic.env/get-pgvector-datasource! (constantly pgvector)
-                            semantic.env/get-index-metadata (constantly index-metadata)]
+              (mt/with-dynamic-fn-redefs [semantic.env/get-pgvector-datasource! (constantly pgvector)
+                                          semantic.env/get-index-metadata (constantly index-metadata)]
                 (mt/with-temporary-setting-values [semantic.settings/stale-index-retention-hours retention-hours]
                   (cleanup-stale-indexes! pgvector index-metadata)))
               (is (not (semantic.tu/table-exists-in-db? stale-table)))
@@ -122,9 +122,9 @@
                                                :vector-dimensions 1024
                                                :index-created-at old-time})
             (is (not (semantic.tu/table-exists-in-db? nonexistent-table)))
-            (with-redefs [semantic.settings/stale-index-retention-hours (constantly retention-hours)
-                          semantic.env/get-pgvector-datasource! (constantly pgvector)
-                          semantic.env/get-index-metadata (constantly index-metadata)]
+            (mt/with-dynamic-fn-redefs [semantic.settings/stale-index-retention-hours (constantly retention-hours)
+                                        semantic.env/get-pgvector-datasource! (constantly pgvector)
+                                        semantic.env/get-index-metadata (constantly index-metadata)]
               (cleanup-stale-indexes! pgvector index-metadata)
               (is (not (semantic.tu/table-exists-in-db? nonexistent-table))))))))))
 
@@ -242,7 +242,7 @@
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" old-repair-table-name)])
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" recent-repair-table-name)])
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" non-repair-table-name)])
-            (with-redefs [semantic.settings/repair-table-retention-hours (constantly retention-hours)]
+            (mt/with-dynamic-fn-redefs [semantic.settings/repair-table-retention-hours (constantly retention-hours)]
               (let [orphan-tables (#'sut/orphan-repair-tables pgvector)]
                 (is (= #{old-repair-table-name} (set orphan-tables))
                     "Only old repair table should be detected as orphan"))

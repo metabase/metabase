@@ -98,6 +98,30 @@ describe("scenarios > browse", () => {
     });
   });
 
+  it("opens a table at a clean /table/:slug URL that falls back to /question on edit", () => {
+    cy.visit("/");
+    H.browseDatabases().click();
+    cy.findByRole("heading", { name: "Sample Database" }).click();
+    cy.findByRole("heading", { name: "Products" }).click();
+
+    cy.log("a pristine table view keeps the canonical /table/:slug URL");
+    cy.findByRole("button", { name: /Summarize/ }).should("be.visible");
+    cy.location("pathname").should("eq", `/table/${PRODUCTS_ID}-products`);
+
+    cy.log("the clean URL survives a reload");
+    cy.reload();
+    cy.findByRole("button", { name: /Summarize/ }).should("be.visible");
+    cy.location("pathname").should("eq", `/table/${PRODUCTS_ID}-products`);
+
+    cy.log("editing the question falls back to the ad-hoc /question#hash form");
+    H.tableHeaderClick("Category");
+    H.popover()
+      .findByTestId("click-actions-sort-control-sort.ascending")
+      .click();
+    cy.location("pathname").should("eq", "/question");
+    cy.location("hash").should("not.be.empty");
+  });
+
   it("can generate x-ray dashboard from a browse page", () => {
     cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
 

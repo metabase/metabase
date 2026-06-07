@@ -4,8 +4,6 @@ title: Druid
 
 # Druid
 
-> Prefer the Druid JDBC connection.
-
 To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 ## Edit connection details
@@ -34,15 +32,11 @@ See our [guide to SSH tunneling](../ssh-tunnel.md).
 
 ### Allow unfolding of JSON columns
 
-> Only available for the Druid JDBC connection.
-
 This enables unfolding of JSON columns into their component fields.
 
 See [JSON unfolding](../../data-modeling/json-unfolding.md).
 
 ### Authentication
-
-> Only available for the Druid JDBC connection.
 
 Toggle on to enable basic authentication with a username and password.
 
