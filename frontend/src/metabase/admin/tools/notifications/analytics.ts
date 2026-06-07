@@ -1,5 +1,5 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { NotificationId } from "metabase-types/api";
+import type { CardId, NotificationId } from "metabase-types/api";
 
 import type { NotificationsTab } from "./NotificationsAdminPage/types";
 
@@ -72,7 +72,7 @@ export const trackAlertsManagementOwnerChanged = (
 };
 
 export const trackAlertsManagementRunHistoryViewAllClicked = (
-  cardId: number,
+  cardId: CardId | undefined,
   runType: "check" | "send",
 ) => {
   trackSimpleEvent({
