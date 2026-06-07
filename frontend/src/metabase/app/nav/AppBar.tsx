@@ -2,6 +2,7 @@ import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 
 import { useInitialCollectionId } from "metabase/collections/hooks";
+import { getDashboardCrumb } from "metabase/dashboard/selectors";
 import {
   getCommentSidebarOpen,
   getSidebarOpen,
@@ -88,7 +89,8 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
 
   const { pathname } = props.location;
   const dashboard =
-    pathname && isQuestionPath(pathname) ? question?.dashboard() : undefined;
+    useSelector(getDashboardCrumb) ??
+    (pathname && isQuestionPath(pathname) ? question?.dashboard() : undefined);
 
   const locationState = props.location.state as { cardId?: number } | undefined;
 

@@ -11,14 +11,14 @@ import type {
   Collection,
   CollectionEssentials,
   CollectionId,
-  Dashboard,
+  DashboardCrumb,
 } from "metabase-types/api";
 
 import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
   collection?: Collection;
-  dashboard?: Dashboard;
+  dashboard?: DashboardCrumb;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
 }

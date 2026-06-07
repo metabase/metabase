@@ -4,6 +4,7 @@ import { createMockEntitiesState } from "__support__/store";
 import {
   getClickBehaviorSidebarDashcard,
   getDashboardComplete,
+  getDashboardCrumb,
   getDashboardHeaderParameters,
   getEditingParameterId,
   getIsEditingParameter,
@@ -460,6 +461,58 @@ describe("dashboard/selectors", () => {
       expect(cards[2].card.id).toBe(0);
       expect(cards[1].card.id).toBe(1);
       expect(cards[0].card.id).toBe(2);
+    });
+  });
+
+  describe("getDashboardCrumb", () => {
+    it("should return undefined when the current card has no dashboard", () => {
+      const state = chain(STATE)
+        .assocIn(["qb", "card"], createMockCard())
+        .value();
+
+      expect(getDashboardCrumb(state)).toBeUndefined();
+    });
+
+    it("should return undefined when the dashboard does not exist", () => {
+      const state = chain(STATE)
+        .assocIn(
+          ["qb", "card"],
+          createMockCard({
+            dashboard: {
+              id: 123,
+              name: "stale name",
+            },
+          }),
+        )
+        .value();
+
+      expect(getDashboardCrumb(state)).toBeUndefined();
+    });
+
+    it("should use the dashboard name from entities", () => {
+      const state = chain(STATE)
+        .assocIn(
+          ["qb", "card"],
+          createMockCard({
+            dashboard: {
+              id: 123,
+              name: "stale name",
+            },
+          }),
+        )
+        .assocIn(
+          ["dashboard", "dashboards", 123],
+          createMockDashboard({
+            id: 123,
+            name: "Updated Dashboard Name",
+          }),
+        )
+        .value();
+
+      expect(getDashboardCrumb(state)).toEqual({
+        id: 123,
+        name: "Updated Dashboard Name",
+      });
     });
   });
 });
