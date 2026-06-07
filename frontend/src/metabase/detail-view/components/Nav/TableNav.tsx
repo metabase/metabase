@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Table } from "metabase-types/api";
+import { type Table, isConcreteTableId } from "metabase-types/api";
 
 import { Breadcrumb } from "./Breadcrumb";
 import { Separator } from "./Separator";
@@ -43,7 +43,13 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
 
       <Separator />
 
-      <Breadcrumb href={Urls.tableRowsQuery(table.db_id, table.id)}>
+      <Breadcrumb
+        href={
+          isConcreteTableId(table.id)
+            ? Urls.table({ id: table.id, name: table.display_name })
+            : Urls.tableRowsQuery(table.db_id, table.id)
+        }
+      >
         {table.display_name}
       </Breadcrumb>
 
