@@ -1761,7 +1761,7 @@
     ;; To guard against a fix that simply disables the filter, the sandbox query below also joins in a column from
     ;; another table (`orders.total`) — that one *must* still be filtered out.
     (let [mp            (lib.tu/mock-metadata-provider
-                         {:database {:id 1 :name "db" :dialect :mongo :engine :mongo}
+                         {:database {:id 1 :name "db" :dialect :h2 :engine :h2}
                           :tables   [{:id 100 :name "customers" :db-id 1}
                                      {:id 200 :name "orders" :db-id 1}]
                           :fields   [{:id 1001 :name "id" :base-type :type/Integer :table-id 100
