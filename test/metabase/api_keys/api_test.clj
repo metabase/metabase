@@ -279,7 +279,6 @@
 (deftest api-keys-can-be-deleted
   (mt/with-empty-h2-app-db!
     (is (= [] (mt/user-http-request :crowberto :get 200 "api-key")))
-
     (let [{id :id} (mt/user-http-request :crowberto
                                          :post 200 "api-key"
                                          {:group_id (:id (perms-group/all-users))

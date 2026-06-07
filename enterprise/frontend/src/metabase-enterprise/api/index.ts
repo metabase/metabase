@@ -1,3 +1,4 @@
+export * from "./advanced-config";
 export * from "./ai-controls";
 export * from "./api";
 export * from "./audit-info";
@@ -7,6 +8,7 @@ export * from "./content-translation";
 export * from "./custom-viz-plugin";
 export * from "./db-routing";
 export * from "./dependencies";
+export * from "./erd";
 export * from "./gdrive";
 export * from "./library";
 export * from "./metabot";

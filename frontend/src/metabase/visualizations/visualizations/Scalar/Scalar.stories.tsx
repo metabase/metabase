@@ -82,14 +82,16 @@ WithFormattingAndHover.play = async ({
   canvasElement: HTMLCanvasElement;
 }) => {
   const asyncCallback = createAsyncCallback();
-  const canvas = within(canvasElement.parentElement as HTMLElement);
-  const value = (await canvas.findAllByTestId("scalar-value"))[2];
+  try {
+    const canvas = within(canvasElement.parentElement as HTMLElement);
+    const value = (await canvas.findAllByTestId("scalar-value"))[2];
 
-  await userEvent.hover(value);
-  value.classList.add("pseudo-hover");
+    await userEvent.hover(value);
+    value.classList.add("pseudo-hover");
 
-  await expect(await canvas.findByRole("tooltip")).toBeInTheDocument();
-  expect(value.classList.contains("pseudo-hover")).toBe(true);
-
-  asyncCallback();
+    await expect(await canvas.findByRole("tooltip")).toBeInTheDocument();
+    expect(value.classList.contains("pseudo-hover")).toBe(true);
+  } finally {
+    asyncCallback();
+  }
 };

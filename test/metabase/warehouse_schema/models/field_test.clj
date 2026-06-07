@@ -64,7 +64,6 @@
              (field/nested-field-names->field-id table-id ["top"])))
       (is (= nested-field-id
              (field/nested-field-names->field-id table-id ["top" "nested"]))))
-
     (testing "return nothing if field does not exist"
       (is (= nil
              (field/nested-field-names->field-id table-id ["top" "nested" "not-exists"]))))))
@@ -258,7 +257,6 @@
                          :coercion_strategy nil
                          :position          0
                          :database_position 0})))]
-
              ["t2/insert! with effective_type only set (no coercion)"
               (fn [table-id]
                 (first (t2/insert-returning-pks!
@@ -271,7 +269,6 @@
                          :effective_type    :type/Integer
                          :position          0
                          :database_position 0})))]
-
              ["t2/update! sets effective_type to differ from base_type without coercion"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -286,7 +283,6 @@
                                   :database_position 0}))]
                   (t2/update! :model/Field id {:effective_type :type/Text})
                   id))]
-
              ["t2/update! clears coercion_strategy but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -302,7 +298,6 @@
                                   :database_position 0}))]
                   (t2/update! :model/Field id {:coercion_strategy nil})
                   id))]
-
              ["t2/update! changes base_type but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -317,7 +312,6 @@
                                   :database_position 0}))]
                   (t2/update! :model/Field id {:base_type :type/Number})
                   id))]
-
              ["t2/update! sets both effective_type AND coercion_strategy=nil to mismatched values"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -333,7 +327,6 @@
                   (t2/update! :model/Field id {:effective_type    :type/Text
                                                :coercion_strategy nil})
                   id))]
-
              ["upsert-user-settings writes broken effective_type then any field update fires the merge-back overlay"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
@@ -353,7 +346,6 @@
                   ;; trigger before-update (which runs sync-user-settings overlay merge)
                   (t2/update! :model/Field id {:display_name "trigger merge"})
                   id))]]]
-
       (testing label
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table {table-id :id} {:db_id db-id}]

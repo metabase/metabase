@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.search.config :as search.config]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]))
 
 (def ^:private seconds-in-a-day 86400)
@@ -22,6 +24,26 @@
   "Prefer it when the given value is a completion of a specific (non-null) value"
   [column value]
   [:coalesce [:case [:like column (str (str/replace value "%" "%%") "%")] [:inline 1] :else [:inline 0]] [:inline 0]])
+
+(defn normalize-text-expr
+  "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
+  lower-case, replace commas with spaces, collapse whitespace runs to one space, trim.
+  `db-type` picks the regexp_replace dialect -- Postgres needs the 'g' flag; H2 replaces all by default and
+  rejects 'g'."
+  ([expr] (normalize-text-expr (mdb/db-type) expr))
+  ([db-type expr]
+   ;; Replace commas with a space, not nothing, so `a,b` doesn't collapse into `ab`.
+   (let [stripped [:replace [:lower expr] [:inline ","] [:inline " "]]
+         collapsed (case db-type
+                     :postgres [:regexp_replace stripped [:inline "\\s+"] [:inline " "] [:inline "g"]]
+                     :h2       [:regexp_replace stripped [:inline "\\s+"] [:inline " "]])]
+     [:trim collapsed])))
+
+(defn normalize-text
+  "Clojure analogue of `normalize-text-expr`, for callers that must normalize a search string in code (the
+  :prefix scorer builds a LIKE pattern). Keep in lock-step with the SQL version."
+  [s]
+  (-> (u/lower-case-en s) (str/replace "," " ") (str/replace #"\s+" " ") str/trim))
 
 (defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
@@ -83,6 +105,29 @@
                 [:= :search_index.model [:inline "dataset"]] [:inline "card"]
                 [:= :search_index.model [:inline "metric"]] [:inline "card"]
                 :else :search_index.model]]]}))
+
+(defn library-score-expr
+  "Score expression: 1 when `:root_collection_type` is one of the library collection types, else 0."
+  []
+  ;; `:root-collection-type` is set at ingestion via `collection/root-collection-type` (walks the
+  ;; materialized path), so deeply nested items in a library tree still match.
+  [:case
+   (into [:or]
+         (for [t (sort collection/library-collection-types)]
+           [:= :root_collection_type [:inline t]]))
+   [:inline 1]
+   :else [:inline 0]])
+
+(defn data-layer-score-expr
+  "Score expression: per-tier weight when `:data_layer` is `final`/`internal`/`hidden`, else 0.
+  Per-tier weights are read from `:data-layer/*` keys via [[search.config/scorer-param]]."
+  [search-ctx]
+  (let [tier-weight #(or (search.config/scorer-param search-ctx :data-layer %) 0)]
+    [:case
+     [:= :data_layer [:inline "final"]]    [:inline (tier-weight :final)]
+     [:= :data_layer [:inline "internal"]] [:inline (tier-weight :internal)]
+     [:= :data_layer [:inline "hidden"]]   [:inline (tier-weight :hidden)]
+     :else                                 [:inline 0]]))
 
 (defn model-rank-expr
   "Score an item based on its :model type."

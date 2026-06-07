@@ -194,7 +194,7 @@
                                           :filter [:and
                                                    ;; This still gets :default bucketing! auto-bucket-datetimes
                                                    ;; puts :day bucketing on both parts of this filter, since it's
-                                                   ;; matching a YYYY-mm-dd string. Then optimize-temporal-filters
+                                                   ;; matching a YYYY-mm-dd string. Then optimize-temporal-clauses
                                                    ;; sees that the
                                                    ;; :type/Date column already has :day
                                                    ;; granularity, and switches both to :default
@@ -876,7 +876,6 @@
           (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
             (is (= save-chan
                    chan))))
-
         (testing "Run it again, should be cached"
           (let [result (run-query)]
             (is (true?
@@ -1252,7 +1251,6 @@
               (is (= "persisted" (:state persisted-info))
                   "Model failed to persist")
               (is (string? (:table_name persisted-info)))
-
               (let [query (mt/mbql-query nil
                             ;; just generate a select count(*) from card__<id>
                             {:aggregation [:count]
@@ -1412,14 +1410,12 @@
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))
-
         (testing "with jwt_attributes"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" 50}
                                                                      :login_attributes {}}
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))
-
         (testing "login_attributes override jwt_attributes when both present"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" 40}
                                                                      :login_attributes {"cat" 50}}
@@ -1438,7 +1434,6 @@
             (mt/with-test-user :rasta
               (is (= #{[nil 45] [1 10]}
                      (set (run-checkins-count-broken-out-by-price-query)))))))
-
         (testing "login_attributes take precedence for conflicting keys"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"user" 3, "price" 2}
                                                                      :login_attributes {"user" 5, "price" 1}}
@@ -1456,7 +1451,6 @@
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))
-
         (testing "Numeric string coercion works with jwt_attributes"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" "50"}
                                                                      :login_attributes {}}
@@ -1476,7 +1470,6 @@
                    clojure.lang.ExceptionInfo
                    #"Query requires user attribute `cat`"
                    (mt/run-mbql-query venues {:aggregation [[:count]]}))))))
-
         (testing "Nil attribute in jwt_attributes throws error"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" nil}
                                                                      :login_attributes {}}
@@ -1504,11 +1497,9 @@
                          (:cached (:cache/details result))))
                   (is (= [[10]]
                          (mt/rows result)))))))
-
           (testing "Cache entry saved"
             (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
               (is (= save-chan chan))))
-
           (testing "Different jwt_attributes don't use cached result"
             (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" 40}
                                                                        :login_attributes {}}
@@ -1600,7 +1591,6 @@
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))
-
         (testing "Numeric string coercion with attributes-only GTAP"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" "50"}
                                                                      :login_attributes {}}

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -134,6 +134,19 @@ function TemplateTagsSidebar({
 }: NativeQuerySidebarProps) {
   const sampleDatabaseId = useSelector(getSampleDatabaseId);
 
+  // The template-tag editor fires several query mutations within a single event
+  // handler (e.g. switching a variable's type updates both the tag and its
+  // value-source config). React props don't update between those synchronous
+  // calls, so we track the latest query in a ref and compose each change on top
+  // of it; otherwise the second `onChangeQuery` would clobber the first.
+  const latestQueryRef = useRef(query);
+  latestQueryRef.current = query;
+
+  const commitQuery = (newQuery: Lib.Query) => {
+    latestQueryRef.current = newQuery;
+    onChangeQuery(newQuery);
+  };
+
   return (
     <TagEditorSidebar
       question={question}
@@ -141,13 +154,14 @@ function TemplateTagsSidebar({
       onClose={onToggleTemplateTagsSidebar}
       sampleDatabaseId={sampleDatabaseId}
       setTemplateTag={(tag) => {
-        const templateTags = Lib.templateTags(query);
-        const newQuery = Lib.withTemplateTags(query, {
-          ...templateTags,
-          [tag.name]: tag,
-        });
-
-        onChangeQuery(newQuery);
+        const currentQuery = latestQueryRef.current;
+        const templateTags = Lib.templateTags(currentQuery);
+        commitQuery(
+          Lib.withTemplateTags(currentQuery, {
+            ...templateTags,
+            [tag.name]: tag,
+          }),
+        );
       }}
       setParameterValue={(tagId, value) => {
         setParameterValues({
@@ -155,9 +169,15 @@ function TemplateTagsSidebar({
           [tagId]: value,
         });
       }}
+      setTemplateTagConfig={(tag, config) => {
+        const newQuery = question
+          .setQuery(latestQueryRef.current)
+          .legacyNativeQuery()!
+          .setTemplateTagConfig(tag, config);
+        commitQuery(newQuery.question().query());
+      }}
       setDatasetQuery={(newQuery) => {
-        const newQuestion = question.setDatasetQuery(newQuery);
-        onChangeQuery(newQuestion.query());
+        commitQuery(question.setDatasetQuery(newQuery).query());
       }}
       getEmbeddedParameterVisibility={VISIBILITY_ALWAYS_ENABLED}
       parametersAreUserVisible={parametersAreUserVisible}

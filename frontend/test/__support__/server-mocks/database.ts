@@ -31,10 +31,23 @@ export function setupDatabaseEndpoints(db: Database) {
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints({ database: db });
   db.tables?.forEach((table) => setupTableEndpoints({ ...table, db }));
+  setupUpdateDatabaseEndpoint(db);
+}
 
+export function setupUpdateDatabaseEndpoint(db: Database) {
   fetchMock.put(`path:/api/database/${db.id}`, async (call) => {
     const body = await call?.request?.json();
     return { ...db, ...body };
+  });
+}
+
+export function setupUpdateDatabaseEndpointError(databaseId: Database["id"]) {
+  fetchMock.put(`path:/api/database/${databaseId}`, { status: 500 });
+}
+
+export function setupDatabaseHealthcheckEndpoint(databaseId: Database["id"]) {
+  fetchMock.get(`path:/api/database/${databaseId}/healthcheck`, {
+    body: { status: "ok" },
   });
 }
 

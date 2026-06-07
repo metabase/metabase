@@ -617,6 +617,9 @@
    [:legacy
     [:ref :metabase.legacy-mbql.schema/legacy-column-metadata]]])
 
+;;; TODO (Cam 2026-05-26) check whether we can change `::card.query` to point to `:metabase.lib.schema/query` now that
+;;; Cards should always have MBQL 5
+
 (defn- normalize-card-query [query]
   (when query
     (let [query (lib.schema.common/normalize-map query)]

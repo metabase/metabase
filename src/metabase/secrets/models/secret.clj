@@ -184,7 +184,6 @@
       (throw (ex-info
               (tru "{0} (a local file path) cannot be used in Metabase hosted environment" (:path kws))
               {:invalid-db-details-entry (select-keys details [(:path kws)])})))
-
     (when (and secret-map
                ;; If the client sent us back protected-password then it should be ignored and value loaded from Secret.
                (not= (seq (:value secret-map))

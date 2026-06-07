@@ -4,11 +4,13 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
   Button,
   Card,
+  Divider,
   FixedSizeIcon,
   Group,
   Stack,
@@ -18,72 +20,93 @@ import {
 import * as Urls from "metabase/urls";
 import type { Workspace } from "metabase-types/api";
 
+import { trackWorkspaceSetupButtonClicked } from "../../../analytics";
+import { canManageWorkspaceInstance } from "../../../selectors";
 import { NewWorkspaceModal } from "../NewWorkspaceModal";
+import { SetupWorkspaceModal } from "../SetupWorkspaceModal";
 
 import S from "./WorkspaceEmptyState.module.css";
 
 export function WorkspaceEmptyState() {
-  const [opened, { open, close }] = useDisclosure(false);
+  const [isCreateOpen, { open: openCreate, close: closeCreate }] =
+    useDisclosure(false);
+  const [isSetupOpen, { open: openSetup, close: closeSetup }] =
+    useDisclosure(false);
   const dispatch = useDispatch();
+  const canManageInstance = useSelector(canManageWorkspaceInstance);
+  const applicationName = useSelector(getApplicationName);
+
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
   const { url: remoteSyncDocsUrl, showMetabaseLinks: showRemoteSyncLink } =
     useDocsUrl("installation-and-operation/remote-sync");
 
   const handleCreate = (workspace: Workspace) => {
-    close();
+    closeCreate();
     dispatch(push(Urls.workspace(workspace.id)));
   };
 
+  const handleSetupClick = () => {
+    trackWorkspaceSetupButtonClicked();
+    openSetup();
+  };
+
   return (
-    <Card p="xl" maw="40rem" mx="auto" shadow="none" withBorder>
-      <Box p="md">
-        <Title
-          order={3}
-          mb="sm"
-        >{t`Isolated spaces for agents and developers`}</Title>
-        <Text c="text-secondary" mb="sm">
-          {t`Develop and run transforms, and build your semantic layer without touching your production tables.`}
-        </Text>
-        <Text c="text-secondary" mb="md">
-          {
-            // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
-            t`Create a workspace here, or with Metabase’s CLI. That will set up an isolated sandbox with a dedicated schema and database user in the data warehouse(s) you choose.`
-          }
-        </Text>
-        <Box pb="xl">
-          <Button variant="filled" onClick={open}>
-            {t`Create a workspace`}
-          </Button>
-        </Box>
-        {(showFileBasedDevLink || showRemoteSyncLink) && (
-          <Group pt="md" gap="sm" align="stretch">
-            {showFileBasedDevLink && (
-              <DocsLink
-                title={t`File-based development`}
-                description={t`How to use the CLI to develop content locally.`}
-                link={fileBasedDevDocsUrl}
-              />
-            )}
-            {showRemoteSyncLink && (
-              <DocsLink
-                title={t`Using remote sync`}
-                description={
-                  // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
-                  t`How to sync and review Metabase content with git.`
-                }
-                link={remoteSyncDocsUrl}
-              />
+    <>
+      <Card p="xl" maw="40rem" mx="auto" shadow="none" withBorder>
+        <Box p="md">
+          <Title
+            order={3}
+            mb="sm"
+          >{t`Use Workspaces to develop your semantic layer safely`}</Title>
+          <Text mb="md">
+            {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
+          </Text>
+          <Text mb="lg">
+            {t`If this is your production instance, create and download a workspace config here to use in a development instance.`}
+            {canManageInstance &&
+              ` ${t`If you're using this ${applicationName} instance for development, you can upload a workspace config file to put this instance into that workspace.`}`}
+          </Text>
+          <Group gap="md">
+            <Button variant="filled" onClick={openCreate}>
+              {t`Create a workspace`}
+            </Button>
+            {canManageInstance && (
+              <Button variant="default" onClick={handleSetupClick}>
+                {t`Upload a workspace config`}
+              </Button>
             )}
           </Group>
-        )}
-      </Box>
+          {(showFileBasedDevLink || showRemoteSyncLink) && (
+            <>
+              <Divider my="xl" />
+              <Group gap="sm" align="stretch">
+                {showFileBasedDevLink && (
+                  <DocsLink
+                    title={t`Agent-driven development`}
+                    description={t`How to use the CLI to develop content locally.`}
+                    link={fileBasedDevDocsUrl}
+                  />
+                )}
+                {showRemoteSyncLink && (
+                  <DocsLink
+                    title={t`Using remote sync`}
+                    description={t`How to sync and review ${applicationName} content with git.`}
+                    link={remoteSyncDocsUrl}
+                  />
+                )}
+              </Group>
+            </>
+          )}
+        </Box>
+      </Card>
       <NewWorkspaceModal
-        opened={opened}
+        opened={isCreateOpen}
         onCreate={handleCreate}
-        onClose={close}
+        onClose={closeCreate}
       />
-    </Card>
+      <SetupWorkspaceModal opened={isSetupOpen} onClose={closeSetup} />
+    </>
   );
 }
 

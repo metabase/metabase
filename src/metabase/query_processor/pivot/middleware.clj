@@ -44,11 +44,7 @@
             rf            (rff metadata')
             group-bitmask (pivot.common/group-bitmask num-unremapped-breakouts unremapped-breakout-combination)
             xform         (map (fn [row]
-                                 (vec
-                                  (concat
-                                   (take num-remapped-breakouts row)
-                                   [group-bitmask]
-                                   (drop num-remapped-breakouts row)))))]
+                                 (perf/insert row num-remapped-breakouts group-bitmask)))]
         (xform rf)))))
 
 ;; this is mainly for documentation purposes

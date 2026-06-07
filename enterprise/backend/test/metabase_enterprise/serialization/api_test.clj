@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.metadata-file-import :as metadata-file-import]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.serialization :as serdes]
@@ -140,13 +141,11 @@
                                               :all_collections false :data_model false :settings true)]
                   (is (= #{:log :settings :transform :python-library}
                          (tar-file-types f)))))
-
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
                   (is (= #{:log :collection-entity :transform :python-library}
                          (tar-file-types f)))))
-
               (testing "We can export two collections"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :collection (:id coll2)
@@ -154,25 +153,21 @@
                   (is (some #(= :collection-entity (first %))
                             (tar-file-types f true))
                       "Export should contain collection entities")))
-
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
                   (is (= #{:log :collection-entity :transform :python-library}
                          (tar-file-types f)))))
-
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
                   (is (= #{:log :collection-entity :transform :python-library}
                          (tar-file-types f)))))
-
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
                   (is (= #{:transform :log :collection-entity :settings :schema :database :python-library}
                          (tar-file-types f)))))
-
               (testing "On exception API returns tar.gz with error in export.log"
                 (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                                   (mt/dynamic-value serdes/extract-one))]
@@ -183,12 +178,10 @@
                     (testing "export.log inside the archive contains error details"
                       (is (some? log) "export.log should be present in the archive")
                       (is (re-find #"deliberate error message" log)))))))
-
             (testing "You can pass specific directory name"
               (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                             :dirname "check" :all_collections false :data_model false :settings false)]
                 (is (str/starts-with? (first-entry-name f) "check/")))))
-
           (testing "Invalid entity ID returns an error instead of falling back to root collection"
             (let [fake-eid "abcdefghijklmnopqrstu"
                   res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
@@ -222,14 +215,12 @@
       (search/delete! :model/Card [(str (:id card))])
       (is (= 0 (search-result-count "dashboard" "thraddash")))
       (is (= 0 (search-result-count "dataset" "frobinate")))
-
       (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                           :collection (:id coll) :data_model false :settings false)
                     io/input-stream)
             ba  (#'api.serialization/ba-copy res)]
         (testing "Archive contains correct number of files"
           (is (= 13 (count (filter #(not (str/ends-with? % "/")) (entry-names ba))))))
-
         (testing "Snowplow export event was sent"
           (is (=? {"event"           "serialization"
                    "direction"       "export"
@@ -247,22 +238,38 @@
                    "error_message"   nil}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
 
+(deftest export-log-captures-extract-warnings-test
+  (testing "export.log captures escape-analysis warnings emitted during the eager extract phase (GHY-3802)"
+    ;; A dashboard in the exported collection references a card living in a different collection. Escape analysis
+    ;; runs eagerly inside extract/extract (before storage streaming) and warns about the escaped card. That warning
+    ;; must still land in export.log even though extract happens outside the storage logging block.
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Collection    target       {:name "Target Collection"}
+                     :model/Collection    other        {:name "Other Collection"}
+                     :model/Card          outside-card {:collection_id (:id other) :name "OutsideCard"}
+                     :model/Dashboard     dash         {:collection_id (:id target) :name "DashWithOutsideCard"}
+                     :model/DashboardCard _            {:dashboard_id (:id dash) :card_id (:id outside-card)}]
+        (let [res (binding [api.serialization/*additive-logging* false]
+                    (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                          :collection (:id target) :data_model false :settings false))
+              log (read-export-log res)]
+          (is (some? log) "export.log should be present in the archive")
+          (is (re-find #"outside requested collections" log)
+              "export.log should contain the escape-analysis warning emitted during extract"))))))
+
 (deftest import-restores-entities-test
   (testing "Import restores deleted/renamed entities and updates search index"
     (with-serialization-test-data! [coll dash card]
       ;; Clear entities from search index
       (search/delete! :model/Dashboard [(str (:id dash))])
       (search/delete! :model/Card [(str (:id card))])
-
       ;; Export the data
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
-
         ;; Modify entities in the database
         (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
         (t2/delete! :model/Card (:id card))
-
         (let [re-indexed? (atom false)
               _res        (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
                             (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
@@ -271,7 +278,6 @@
           (testing "Entities are restored in the database"
             (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
             (is (= (:name card) (t2/select-one-fn :name :model/Card :entity_id (:entity_id card)))))
-
           (testing "Snowplow import event was sent"
             (is (=? {"event"         "serialization"
                      "direction"     "import"
@@ -283,10 +289,8 @@
                      "success"       true
                      "error_message" nil}
                     (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
-
           (testing "Full reindex was not triggered (reindex=false)"
             (is (false? @re-indexed?)))
-
           (testing "Entities are added to the search index"
             (is (= 1 (search-result-count "dashboard" "thraddash")))
             (is (= 0 (search-result-count "dashboard" "urquan")))
@@ -298,7 +302,6 @@
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
-
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
@@ -311,7 +314,6 @@
                 log (slurp (io/input-stream res))]
             (testing "Error message indicates missing collection"
               (is (re-find #"Collection 'DoesNotExist' was not found" log)))
-
             (testing "Snowplow failure event was sent"
               (is (=? {"success"       false
                        "event"         "serialization"
@@ -329,7 +331,6 @@
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
-
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
@@ -342,7 +343,6 @@
                 log (slurp (io/input-stream res))]
             (testing "Log contains the missing-collection error"
               (is (re-find #"Collection 'DoesNotExist' was not found" log)))
-
             (testing "Snowplow event shows partial success with error count"
               (is (=? {"success"     true
                        "event"       "serialization"
@@ -380,7 +380,6 @@
                       :table     :report_card
                       :cause     "[test] deliberate error message"}
                      (extract-and-sanitize-exception-map log))))))
-
         (testing "Snowplow failure event was sent"
           (is (=? {"event"           "serialization"
                    "direction"       "export"
@@ -396,7 +395,6 @@
                    "success"         false
                    "error_message"   #"(?s)Error extracting Card \d+ .*"}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
-
         (testing "full_stacktrace parameter includes full stack trace in export.log"
           (binding [api.serialization/*additive-logging* false]
             (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
@@ -417,7 +415,6 @@
                                         :continue_on_error true)]
           (testing "Log contains the deliberate error"
             (is (re-find #"deliberate error message" (read-export-log res)))))
-
         (testing "Snowplow event shows partial success with error count"
           (is (=? {"event"           "serialization"
                    "direction"       "export"
@@ -435,13 +432,46 @@
                    "error_message"   nil}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
 
+(deftest export-eager-error-honors-full-stacktrace-test
+  (testing "a server-side failure during eager extraction setup (before streaming) honors full_stacktrace (GDGT-2491)"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-dynamic-fn-redefs [v2.extract/extract (fn [& _] (throw (ex-info "deliberate eager failure" {})))]
+          (testing "stripped one-liner by default"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+              (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                    :collection coll-id :data_model false :settings false)
+              (let [errs (filter #(str/starts-with? (str (:message %)) "Error during serialization export")
+                                 (messages))]
+                (is (seq errs) "the eager failure is logged")
+                (is (every? (comp nil? :e) errs)
+                    "no throwable attached when full_stacktrace is off"))))
+          (testing "full trace when full_stacktrace=true"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+              (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                    :collection coll-id :data_model false :settings false
+                                    :full_stacktrace true)
+              (is (some :e (messages))
+                  "the throwable is attached when full_stacktrace is on"))))))))
+
+(deftest export-eager-input-error-is-not-logged-test
+  (testing "a bad collection id fails eager extraction with a clean 4xx and is not logged as a server error (GDGT-2491)"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+        ;; well-formed (21-char) but non-existent entity id: passes endpoint validation, then
+        ;; parse-target throws an ex-info carrying a :status-code, so it surfaces as a 4xx
+        (mt/user-http-request :crowberto :post 400 "ee/serialization/export"
+                              :collection "0123456789abcdef01234" :data_model false :settings false)
+        (is (empty? (filter #(str/starts-with? (str (:message %)) "Error during serialization export")
+                            (messages)))
+            "client input errors are not logged as server errors")))))
+
 (deftest serialization-permissions-test
   (testing "Only admins can export/import"
     (mt/with-premium-features #{:serialization}
       (testing "Non-admin cannot export"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/serialization/export"))))
-
       (testing "Non-admin cannot import"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/serialization/import"
@@ -822,7 +852,6 @@
         (let [ba (do-export (:id coll))]
           ;; Consume the export response
           (snowplow-test/pop-event-data-and-user-id!)
-
           ;; Do an import to exercise that code path too
           (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
                                           {:request-options {:headers {"content-type" "multipart/form-data"}}}
@@ -830,7 +859,6 @@
             ;; Consume the import response
             (slurp (io/input-stream res))
             (snowplow-test/pop-event-data-and-user-id!))))
-
       ;; Verify no new files were left behind
       ;; if this breaks, check if you consumed every response with io/input-stream. Or `future` is taking too long
       ;; in `api/on-response!`, so maybe add some Thread/sleep here.

@@ -51,12 +51,12 @@ const databaseTestCases = [
     ],
   },
   {
-    engine: "Druid",
+    engine: "Druid JDBC",
     connectionString:
       "jdbc:avatica:remote:url=http://localhost:8888/druid/v2/sql/avatica/;transparent_reconnection=true",
     expectedFields: [
       { label: "Host", value: "localhost" },
-      { label: "Broker node port", value: "8888" },
+      { label: "Router node port", value: "8888" },
     ],
   },
   {

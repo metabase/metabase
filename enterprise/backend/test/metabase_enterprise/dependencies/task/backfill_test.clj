@@ -267,7 +267,6 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         (mark-stale! :card card-id)
         (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
         (let [compute-attempts (volatile! 0)
               failures (inc @#'dependencies.backfill/max-retries)]
           (with-redefs [env/env (assoc env/env
@@ -281,10 +280,8 @@
             ;; fail MAX_RETRIES + 1 times
             (while (< @compute-attempts failures)
               (backfill-dependencies-single-trigger!))))
-
         ;; verify card is still stale (not processed)
         (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
         ;; verify subsequent runs don't process it
         (backfill-dependencies-single-trigger!)
         (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))))))
@@ -307,17 +304,14 @@
                             ;; Return valid deps on subsequent attempts
                             {:table #{(mt/id :orders)}}))]
             (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
             ;; first failure - should be put into retry state
             (while (zero? @compute-attempts)
               (backfill-dependencies-single-trigger!))
             (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
             ;; advance time by less than retry delay - should NOT be processed
             (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 10 :seconds))
               (backfill-dependencies-single-trigger!))
             (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
             ;; advance time by more than retry delay - should be processed
             (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
               (backfill-dependencies-single-trigger!))

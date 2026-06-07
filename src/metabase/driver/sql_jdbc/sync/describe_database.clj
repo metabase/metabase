@@ -106,7 +106,6 @@
       (log/infof "%s: SELECT privileges confirmed" (pr-table table-schema table-name))
       true
       (catch Throwable e
-
         (let [;; Let's try to ensure the connection is not just open but also valid.
               ;; Snowflake closes the connection but doesn't set it as  closed in the object,
               ;; so we must explicitly check if it's valid so that subsequent calls to [[sql-jdbc.execute/try-ensure-open-conn!]]
@@ -114,11 +113,9 @@
               is-open (sql-jdbc.execute/is-conn-open? conn :check-valid? true)
 
               allow? (driver/query-canceled? driver e)]
-
           (if allow?
             (log/infof "%s: Assuming SELECT privileges: caught timeout exception" (pr-table table-schema table-name))
             (log/debugf e "%s: Assuming no SELECT privileges: caught exception" (pr-table table-schema table-name)))
-
           ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
           ;; affecting anything higher
           (try (when-not (.getAutoCommit conn)

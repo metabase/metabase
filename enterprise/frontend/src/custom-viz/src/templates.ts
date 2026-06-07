@@ -1,7 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { version } from "../package.json";
 
 import gitignoreTemplate from "./templates/.gitignore?raw";
@@ -62,17 +58,6 @@ export function generateManifest(name: string): string {
 
 export function generateIconSvg(): string {
   return iconSvgTemplate;
-}
-
-// Binary templates can't use ?raw imports, so we read them from disk.
-// The build step copies src/templates/ to dist/templates/.
-const TEMPLATES_DIR = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "templates",
-);
-
-export function readBinaryTemplate(filename: string): Buffer {
-  return readFileSync(join(TEMPLATES_DIR, filename));
 }
 
 export function generateGitignore(): string {

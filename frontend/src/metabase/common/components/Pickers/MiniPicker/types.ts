@@ -34,7 +34,7 @@ export type MiniPickerPickableCollectionItem = MiniPickerCollectionItem & {
 export type MiniPickerSchemaItem = {
   model: "schema";
   id: SchemaName;
-  dbId: DatabaseId;
+  database_id: DatabaseId;
   name: SchemaName;
 };
 
@@ -87,11 +87,15 @@ export type MiniPickerFolderItem =
   | MiniPickerSchemaItem
   | MiniPickerCollectionFolderItem;
 
-// this omits intermediate/folder types that cannot ultimately be picked
+// this omits intermediate/folder types that cannot ultimately be picked.
+// `MiniPickerSchemaItem` is included so callers that pass `models: ["schema"]`
+// can terminate selection on a schema (schemas otherwise default to folder
+// behaviour and only update the path).
 export type MiniPickerPickableItem =
   | MiniPickerPickableCollectionItem
   | MiniPickerTableItem
-  | MiniPickerMeasureItem;
+  | MiniPickerMeasureItem
+  | MiniPickerSchemaItem;
 
 // can't get schemas in search results
 export type SearchableMiniPickerItem =
