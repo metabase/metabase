@@ -1,0 +1,146 @@
+# Redshift driver tests. See driver-postgres.yml for the template rationale.
+name: Driver Tests - Redshift
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+  checks: write
+  pull-requests: read
+
+jobs:
+  decide:
+    uses: ./.github/workflows/_driver-decide.yml
+    with:
+      driver: redshift
+      workflow-name: ${{ github.workflow }}
+    secrets: inherit
+
+  test:
+    needs: decide
+    if: >-
+      !cancelled() &&
+      needs.decide.result == 'success' &&
+      needs.decide.outputs.conductor-status != 'skip' &&
+      (needs.decide.outputs.should-run == 'true' || needs.decide.outputs.quarantine-conflict == 'true')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - name: Redshift Upload Tests
+            skip: ${{ github.event_name == 'pull_request' }} # FIXME: temporary to alleviate pressure on redshift instances
+            test-args: >-
+              :only-tags [:mb/upload-tests]
+              :fail-fast? true
+          - name: Redshift (Excluding Upload Tests) Part 1
+            skip: false
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 0
+          - name: Redshift (Excluding Upload Tests) Part 2
+            skip: false
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 1
+          - name: Redshift Transforms Python Tests
+            skip: false
+            test-args: >-
+              :only-tags [:mb/transforms-python-test]
+              :fail-fast? true
+            needs-python-runner: true
+    env:
+      CI: 'true'
+      DRIVERS: redshift
+      MB_REDSHIFT_TEST_USER: metabase_ci
+      MB_REDSHIFT_TEST_DB: testdb
+      MB_REDSHIFT_TEST_DB_ROUTING: dev
+      MB_REDSHIFT_TEST_HOSTS: ${{ secrets.MB_REDSHIFT_TEST_HOSTS }}
+      MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
+    name: ${{ matrix.job.name }}
+    steps:
+      - name: Fail on quarantine conflict
+        if: ${{ needs.decide.outputs.quarantine-conflict == 'true' }}
+        run: |
+          echo "::error::Redshift driver is quarantined but you changed files in modules/drivers/redshift/"
+          echo ""
+          echo "Your changes will NOT be tested because the driver is currently quarantined."
+          echo "To run Redshift tests, add the label: break-quarantine-redshift"
+          echo ""
+          echo "If you merge without testing, you risk breaking the Redshift driver!"
+          exit 1
+      - uses: actions/checkout@v6
+      - name: Setup python-runner
+        if: ${{ matrix.job.needs-python-runner == true }}
+        uses: ./.github/actions/setup-python-runner
+        with:
+          metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      - name: Test ${{ matrix.job.name }}
+        id: test-driver
+        if: ${{ !matrix.job.skip }}
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-redshift-ee'
+          test-args: >-
+            ${{ matrix.job.test-args }}
+          logs-artifact-suffix: ${{ matrix.job.name }}
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: ${{ !matrix.job.skip && !cancelled() }}
+        continue-on-error: ${{ needs.decide.outputs.conductor-status == 'info' }}
+        with:
+          input-path: ./target/junit/
+          output-name: be-tests-redshift-ee
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+      - name: Report result to conductor
+        if: ${{ always() && !matrix.job.skip }}
+        uses: ./.github/actions/conductor-report
+        with:
+          secret: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          status: ${{ needs.decide.outputs.conductor-status }}
+          outcome: ${{ steps.test-driver.outputs.test-outcome || job.status }}
+      - name: Cleanup python-runner
+        if: ${{ always() && matrix.job.needs-python-runner == true }}
+        uses: ./.github/actions/cleanup-python-runner
+        with:
+          upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+          logs-artifact-suffix: ${{ matrix.job.name }}
+
+  result:
+    name: result
+    needs: [decide, test]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Gate on driver test result
+        env:
+          DECIDE_RESULT: ${{ needs.decide.result }}
+          TEST_RESULTS: ${{ needs.test.result }}
+          CONDUCTOR_STATUS: ${{ needs.decide.outputs.conductor-status }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/conductor/gate-result.sh"

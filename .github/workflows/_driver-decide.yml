@@ -1,0 +1,63 @@
+# Shared "should this driver run, and how?" gate, called by every driver-*.yml.
+#
+# Reusable (workflow_call only — never triggers on its own). Combines the two
+# decisions every driver workflow needs:
+#   - mage selective-run + quarantine (should-run / quarantine-conflict)
+#   - ci-conductor status (skip / info / required)
+#
+# Driver workflows call this as their `decide` job and gate their test job on
+# its outputs. See .github/scripts/conductor/README.md.
+name: _driver-decide
+
+on:
+  workflow_call:
+    inputs:
+      driver:
+        description: The mage driver key (postgres, mongo-ssl, druid-jdbc, ...).
+        required: true
+        type: string
+      workflow-name:
+        description: >-
+          Conductor key for the calling workflow. Callers pass
+          ${{ github.workflow }} so it resolves to the driver workflow's name.
+        required: true
+        type: string
+    outputs:
+      should-run:
+        description: "true if mage selected this driver for this change."
+        value: ${{ jobs.decide.outputs.should-run }}
+      quarantine-conflict:
+        description: "true if the driver is quarantined but its files changed without a break-quarantine label."
+        value: ${{ jobs.decide.outputs.quarantine-conflict }}
+      conductor-status:
+        description: "skip | info | required, from ci-conductor."
+        value: ${{ jobs.decide.outputs.conductor-status }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  decide:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    outputs:
+      should-run: ${{ steps.decision.outputs.should-run }}
+      quarantine-conflict: ${{ steps.decision.outputs.quarantine-conflict }}
+      conductor-status: ${{ steps.conductor.outputs.status }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Fetch base branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
+        run: git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+      - name: Decide whether ${{ inputs.driver }} runs
+        id: decision
+        uses: ./.github/actions/driver-decision
+        with:
+          driver: ${{ inputs.driver }}
+      - name: Check conductor status
+        id: conductor
+        uses: ./.github/actions/conductor-check
+        with:
+          secret: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          workflow-name: ${{ inputs.workflow-name }}

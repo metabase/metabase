@@ -1,0 +1,87 @@
+name: Driver run decision
+description: >-
+  Decide whether a single driver's tests should run on this event, reusing the
+  same `mage -driver-decisions` logic the monolithic drivers.yml used. Outputs
+  `should-run` and `quarantine-conflict` for the given driver.
+
+inputs:
+  driver:
+    description: >-
+      The mage driver key, e.g. postgres, mysql-mariadb, druid-jdbc, mongo,
+      mongo-ssl, mongo-sharded-cluster, bigquery, ...
+    required: true
+  base-ref:
+    description: Git ref to diff against (PR base, or the pushed branch).
+    required: false
+    default: ${{ github.event.pull_request.base.ref || github.ref_name }}
+  is-master-or-release:
+    description: Whether this is a push to master or a release branch (runs all drivers).
+    required: false
+    default: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}
+  pr-labels:
+    description: Comma-separated PR labels (enables ci:run-<driver> etc.).
+    required: false
+    default: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+
+outputs:
+  should-run:
+    description: "true if this driver's tests should run."
+    value: ${{ steps.decide.outputs.should-run }}
+  quarantine-conflict:
+    description: "true if the driver is quarantined but its files changed without a break-quarantine label."
+    value: ${{ steps.decide.outputs.quarantine-conflict }}
+
+runs:
+  using: composite
+  steps:
+    # Reproduce the global "no backend changes" skip that run-tests.yml used to
+    # pass into drivers.yml, using the same shared filter definitions.
+    - name: Detect backend changes
+      id: changes
+      uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      with:
+        token: ${{ github.token }}
+        filters: .github/file-paths.yaml
+
+    - name: Decide via mage
+      id: decide
+      shell: bash
+      env:
+        DRIVER: ${{ inputs.driver }}
+        BASE_REF: ${{ inputs.base-ref }}
+        IS_MASTER_OR_RELEASE: ${{ inputs.is-master-or-release }}
+        PR_LABELS: ${{ inputs.pr-labels }}
+        BACKEND_ALL: ${{ steps.changes.outputs.backend_all }}
+      run: |
+        # No backend-relevant changes => global skip, just like the old
+        # run-tests.yml `skip: backend_all != 'true'`.
+        if [[ "$BACKEND_ALL" == "true" ]]; then
+          SKIP=false
+        else
+          SKIP=true
+        fi
+
+        MAGE_ARGS=(
+          --git-ref="${BASE_REF}"
+          --is-master-or-release="${IS_MASTER_OR_RELEASE}"
+          --pr-labels="${PR_LABELS}"
+          --skip="${SKIP}"
+        )
+
+        echo "Running: ./bin/mage -driver-decisions ${MAGE_ARGS[*]}"
+        echo ""
+        # First call: full human-readable decision table for debugging.
+        ./bin/mage -driver-decisions "${MAGE_ARGS[@]}"
+        echo ""
+
+        # Second call: machine-readable key=value lines for all drivers; we keep
+        # just this driver's two lines.
+        DECISIONS="$(./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only)"
+
+        SHOULD_RUN="$(printf '%s\n' "$DECISIONS" | grep -E "^${DRIVER}-should-run=" | head -1 | cut -d= -f2)"
+        QCONFLICT="$(printf '%s\n' "$DECISIONS" | grep -E "^${DRIVER}-quarantine-conflict=" | head -1 | cut -d= -f2)"
+
+        echo "should-run=${SHOULD_RUN:-false}" >> "$GITHUB_OUTPUT"
+        echo "quarantine-conflict=${QCONFLICT:-false}" >> "$GITHUB_OUTPUT"
+        echo ""
+        echo "Decision for '${DRIVER}': should-run=${SHOULD_RUN:-false} quarantine-conflict=${QCONFLICT:-false}"

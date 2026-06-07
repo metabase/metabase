@@ -1,0 +1,105 @@
+# Druid (JDBC) driver tests. See driver-postgres.yml for the template rationale.
+name: Driver Tests - Druid JDBC
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+  checks: write
+  pull-requests: read
+
+jobs:
+  decide:
+    uses: ./.github/workflows/_driver-decide.yml
+    with:
+      driver: druid-jdbc
+      workflow-name: ${{ github.workflow }}
+    secrets: inherit
+
+  test:
+    needs: decide
+    if: >-
+      !cancelled() &&
+      needs.decide.result == 'success' &&
+      needs.decide.outputs.conductor-status != 'skip' &&
+      (needs.decide.outputs.should-run == 'true' || needs.decide.outputs.quarantine-conflict == 'true')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    name: Druid (JDBC)
+    env:
+      CI: 'true'
+      DRIVERS: druid-jdbc
+    services:
+      druid:
+        image: metabase/druid:29.0.1-json-no-ingestion
+        ports:
+          - "8888:8888"
+        env:
+          CLUSTER_SIZE: nano-quickstart
+    steps:
+      - name: Fail on quarantine conflict
+        if: ${{ needs.decide.outputs.quarantine-conflict == 'true' }}
+        run: |
+          echo "::error::Druid JDBC driver is quarantined but you changed files in modules/drivers/druid-jdbc/"
+          echo ""
+          echo "Your changes will NOT be tested because the driver is currently quarantined."
+          echo "To run Druid JDBC tests, add the label: break-quarantine-druid-jdbc"
+          echo ""
+          echo "If you merge without testing, you risk breaking the Druid JDBC driver!"
+          exit 1
+      - uses: actions/checkout@v6
+      - name: Test Druid JDBC driver
+        id: test-driver
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-druid-jdbc-ee'
+          test-args: >-
+            :only-tags [:mb/driver-tests]
+            :exclude-tags [:mb/transforms-python-test]
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        continue-on-error: ${{ needs.decide.outputs.conductor-status == 'info' }}
+        with:
+          input-path: ./target/junit/
+          output-name: be-tests-druid-jdbc-ee
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+      - name: Report result to conductor
+        if: always()
+        uses: ./.github/actions/conductor-report
+        with:
+          secret: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          status: ${{ needs.decide.outputs.conductor-status }}
+          outcome: ${{ steps.test-driver.outputs.test-outcome || job.status }}
+
+  result:
+    name: result
+    needs: [decide, test]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Gate on driver test result
+        env:
+          DECIDE_RESULT: ${{ needs.decide.result }}
+          TEST_RESULTS: ${{ needs.test.result }}
+          CONDUCTOR_STATUS: ${{ needs.decide.outputs.conductor-status }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/conductor/gate-result.sh"

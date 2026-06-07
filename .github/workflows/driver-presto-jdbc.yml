@@ -1,0 +1,138 @@
+# Presto (JDBC) driver tests. See driver-postgres.yml for the template rationale.
+name: Driver Tests - Presto JDBC
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+  checks: write
+  pull-requests: read
+
+jobs:
+  decide:
+    uses: ./.github/workflows/_driver-decide.yml
+    with:
+      driver: presto-jdbc
+      workflow-name: ${{ github.workflow }}
+    secrets: inherit
+
+  test:
+    needs: decide
+    if: >-
+      !cancelled() &&
+      needs.decide.result == 'success' &&
+      needs.decide.outputs.conductor-status != 'skip' &&
+      (needs.decide.outputs.should-run == 'true' || needs.decide.outputs.quarantine-conflict == 'true')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    name: Presto
+    env:
+      CI: 'true'
+      DRIVERS: presto-jdbc
+      MB_PRESTO_JDBC_TEST_CATALOG: test_data
+      MB_PRESTO_JDBC_TEST_HOST: localhost
+      MB_PRESTO_JDBC_TEST_PORT: 8443
+      MB_PRESTO_JDBC_TEST_SSL: true
+      MB_PRESTO_JDBC_TEST_USER: metabase
+      MB_PRESTO_JDBC_TEST_PASSWORD: metabase
+      MB_ENABLE_PRESTO_JDBC_DRIVER: true
+      MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS: 'SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit'
+    services:
+      presto:
+        image: metabase/presto-mb-ci:latest # version 0.254
+        ports:
+          - "8443:8443"
+        env:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
+    steps:
+      - name: Fail on quarantine conflict
+        if: ${{ needs.decide.outputs.quarantine-conflict == 'true' }}
+        run: |
+          echo "::error::Presto JDBC driver is quarantined but you changed files in modules/drivers/presto-jdbc/"
+          echo ""
+          echo "Your changes will NOT be tested because the driver is currently quarantined."
+          echo "To run Presto JDBC tests, add the label: break-quarantine-presto-jdbc"
+          echo ""
+          echo "If you merge without testing, you risk breaking the Presto JDBC driver!"
+          exit 1
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/await-port
+        with:
+          port: ${{ env.MB_PRESTO_JDBC_TEST_PORT }}
+        timeout-minutes: 5
+      - name: Create temp cacerts file based on bundled JDK one
+        run: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+      - name: Capture Presto server self signed CA
+        run: |
+          while [[ ! -s /tmp/presto-ssl-ca.pem ]]; do
+            echo "Waiting to capture SSL CA" \
+              && openssl s_client -connect localhost:8443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/presto-ssl-ca.pem \
+              && sleep 1;
+          done
+      - name: Convert Presto CA from PEM to DER
+        run: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
+      - name: Add write permission on cacerts file
+        run: chmod u+w /tmp/cacerts-with-presto-ssl.jks
+      - name: Import Presto CA into temp cacerts file
+        run: >-
+          keytool -noprompt -import
+          -alias presto
+          -keystore /tmp/cacerts-with-presto-ssl.jks
+          -storepass changeit
+          -file /tmp/presto-ssl-ca.der
+          -trustcacerts
+      - name: Test Presto JDBC driver
+        id: test-driver
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-presto-jdbc-ee'
+          test-args: >-
+            :only-tags [:mb/driver-tests]
+            :exclude-tags [:mb/transforms-python-test]
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        continue-on-error: ${{ needs.decide.outputs.conductor-status == 'info' }}
+        with:
+          input-path: ./target/junit/
+          output-name: be-tests-presto-jdbc-ee
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+      - name: Report result to conductor
+        if: always()
+        uses: ./.github/actions/conductor-report
+        with:
+          secret: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          status: ${{ needs.decide.outputs.conductor-status }}
+          outcome: ${{ steps.test-driver.outputs.test-outcome || job.status }}
+
+  result:
+    name: result
+    needs: [decide, test]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Gate on driver test result
+        env:
+          DECIDE_RESULT: ${{ needs.decide.result }}
+          TEST_RESULTS: ${{ needs.test.result }}
+          CONDUCTOR_STATUS: ${{ needs.decide.outputs.conductor-status }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/conductor/gate-result.sh"

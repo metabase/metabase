@@ -1,0 +1,142 @@
+# Oracle driver tests. See driver-postgres.yml for the template rationale.
+name: Driver Tests - Oracle
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+  checks: write
+  pull-requests: read
+
+jobs:
+  decide:
+    uses: ./.github/workflows/_driver-decide.yml
+    with:
+      driver: oracle
+      workflow-name: ${{ github.workflow }}
+    secrets: inherit
+
+  test:
+    needs: decide
+    if: >-
+      !cancelled() &&
+      needs.decide.result == 'success' &&
+      needs.decide.outputs.conductor-status != 'skip' &&
+      (needs.decide.outputs.should-run == 'true' || needs.decide.outputs.quarantine-conflict == 'true')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: Oracle 18.4
+            junit-name: be-tests-oracle-18-4-ee
+            image: gvenzl/oracle-xe:18.4.0-slim
+            port: 1521
+            env:
+              user: system
+              password: 'password'
+              enable-ssl-tests: false
+          - name: Oracle 21.3
+            junit-name: be-tests-oracle-21-3-ee
+            image: metabase/qa-databases:oracle-xe-21.3
+            port: 2484
+            env:
+              user: ''
+              password: ''
+              enable-ssl-tests: true
+    env:
+      CI: 'true'
+      DRIVERS: oracle
+      MB_ORACLE_TEST_HOST: localhost
+      MB_ORACLE_TEST_USER: '${{ matrix.version.env.user }}'
+      MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
+      # Only the non-SSL 18.4 tests specify password as an env var; the SSL 21.3 tests get it from the keystore I guess
+      MB_ORACLE_TEST_PASSWORD: '${{ matrix.version.env.password }}'
+      # These are ignored for the 18.4 tests which do not test SSL
+      MB_ORACLE_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_TEST_SSL_USE_TRUSTSTORE: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PATH: './test_resources/ssl/oracle/truststore.p12'
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_OPTIONS: local
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE: 'PassworD_#1234'
+      MB_ORACLE_TEST_SSL_USE_KEYSTORE: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_TEST_SSL_KEYSTORE_PATH: './test_resources/ssl/oracle/keystore.p12'
+      MB_ORACLE_TEST_SSL_KEYSTORE_OPTIONS: local
+      MB_ORACLE_TEST_SSL_KEYSTORE_PASSWORD_VALUE: 'PassworD_#1234'
+    services:
+      oracle:
+        image: ${{ matrix.version.image }}
+        env:
+          ORACLE_PASSWORD: password
+        ports:
+          - "1521:${{ matrix.version.port }}"
+    name: ${{ matrix.version.name }}
+    steps:
+      - name: Fail on quarantine conflict
+        if: ${{ needs.decide.outputs.quarantine-conflict == 'true' }}
+        run: |
+          echo "::error::Oracle driver is quarantined but you changed files in modules/drivers/oracle/"
+          echo ""
+          echo "Your changes will NOT be tested because the driver is currently quarantined."
+          echo "To run Oracle tests, add the label: break-quarantine-oracle"
+          echo ""
+          echo "If you merge without testing, you risk breaking the Oracle driver!"
+          exit 1
+      - uses: actions/checkout@v6
+      - name: Test ${{ matrix.version.name }}
+        id: test-driver
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: ${{ matrix.version.junit-name }}
+          logs-artifact-suffix: ${{ matrix.version.name }}
+          test-args: >-
+            :only-tags [:mb/driver-tests]
+            :exclude-tags [:mb/transforms-python-test]
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        continue-on-error: ${{ needs.decide.outputs.conductor-status == 'info' }}
+        with:
+          input-path: ./target/junit/
+          output-name: be-tests-oracle
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+      - name: Report result to conductor
+        if: always()
+        uses: ./.github/actions/conductor-report
+        with:
+          secret: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          status: ${{ needs.decide.outputs.conductor-status }}
+          outcome: ${{ steps.test-driver.outputs.test-outcome || job.status }}
+
+  result:
+    name: result
+    needs: [decide, test]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Gate on driver test result
+        env:
+          DECIDE_RESULT: ${{ needs.decide.result }}
+          TEST_RESULTS: ${{ needs.test.result }}
+          CONDUCTOR_STATUS: ${{ needs.decide.outputs.conductor-status }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/conductor/gate-result.sh"

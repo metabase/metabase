@@ -115,12 +115,11 @@ jobs:
     with:
       skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
 
-  driver-tests:
-    needs: create-test-plan
-    uses: ./.github/workflows/drivers.yml
-    secrets: inherit
-    with:
-      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
+  # Driver tests now live in standalone per-driver workflows
+  # (.github/workflows/driver-*.yml) that trigger themselves on
+  # push / pull_request / merge_group. Each one decides whether to run (mage)
+  # and asks ci-conductor for its skip/info/required status. See
+  # .github/scripts/conductor/README.md.
 
   frontend-tests:
     needs: [create-test-plan]

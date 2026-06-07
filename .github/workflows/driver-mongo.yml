@@ -1,0 +1,137 @@
+# MongoDB driver tests. See driver-postgres.yml for the template rationale.
+name: Driver Tests - Mongo
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+  checks: write
+  pull-requests: read
+
+jobs:
+  decide:
+    uses: ./.github/workflows/_driver-decide.yml
+    with:
+      driver: mongo
+      workflow-name: ${{ github.workflow }}
+    secrets: inherit
+
+  test:
+    needs: decide
+    if: >-
+      !cancelled() &&
+      needs.decide.result == 'success' &&
+      needs.decide.outputs.conductor-status != 'skip' &&
+      (needs.decide.outputs.should-run == 'true' || needs.decide.outputs.quarantine-conflict == 'true')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: MongoDB 6.0
+            junit-name: be-tests-mongo-6-0-ee
+            image: metabase/qa-databases:mongo-sample-6
+          - name: MongoDB Latest
+            junit-name: be-tests-mongo-latest-ee
+            image: mongo:latest
+        job:
+          - name: Driver Tests
+            test-args: >-
+              :exclude-tags '[:mongo-sharded-cluster-tests :mb/transforms-python-test]'
+              :only-tags [:mb/driver-tests]
+          - name: Transforms Python Tests
+            test-args: >-
+              :only-tags [:mb/transforms-python-test]
+            needs-python-runner: true
+    env:
+      CI: 'true'
+      DRIVERS: mongo
+      MB_MONGO_TEST_USER: metabase
+      MB_MONGO_TEST_PASSWORD: metasample123
+    services:
+      mongodb:
+        image: ${{ matrix.version.image }}
+        ports:
+          - "27017:27017"
+        env:
+          MONGO_INITDB_ROOT_USERNAME: metabase
+          MONGO_INITDB_ROOT_PASSWORD: metasample123
+    name: ${{ matrix.version.name }} ${{ matrix.job.name }}
+    steps:
+      - name: Fail on quarantine conflict
+        if: ${{ needs.decide.outputs.quarantine-conflict == 'true' }}
+        run: |
+          echo "::error::MongoDB driver is quarantined but you changed files in modules/drivers/mongo/"
+          echo ""
+          echo "Your changes will NOT be tested because the driver is currently quarantined."
+          echo "To run MongoDB tests, add the label: break-quarantine-mongo"
+          echo ""
+          echo "If you merge without testing, you risk breaking the MongoDB driver!"
+          exit 1
+      - uses: actions/checkout@v6
+      - name: Setup python-runner
+        if: ${{ matrix.job.needs-python-runner == true }}
+        uses: ./.github/actions/setup-python-runner
+        with:
+          metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      - name: Test ${{ matrix.version.name }}
+        id: test-driver
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: ${{ matrix.version.junit-name }}
+          test-args: ${{ matrix.job.test-args }}
+          logs-artifact-suffix: ${{ matrix.job.name }}
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        continue-on-error: ${{ needs.decide.outputs.conductor-status == 'info' }}
+        with:
+          input-path: ./target/junit/
+          output-name: be-tests-mongo
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+      - name: Report result to conductor
+        if: always()
+        uses: ./.github/actions/conductor-report
+        with:
+          secret: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          status: ${{ needs.decide.outputs.conductor-status }}
+          outcome: ${{ steps.test-driver.outputs.test-outcome || job.status }}
+      - name: Cleanup python-runner
+        if: ${{ always() && matrix.job.needs-python-runner == true }}
+        uses: ./.github/actions/cleanup-python-runner
+        with:
+          upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+          logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+
+  result:
+    name: result
+    needs: [decide, test]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Gate on driver test result
+        env:
+          DECIDE_RESULT: ${{ needs.decide.result }}
+          TEST_RESULTS: ${{ needs.test.result }}
+          CONDUCTOR_STATUS: ${{ needs.decide.outputs.conductor-status }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/conductor/gate-result.sh"

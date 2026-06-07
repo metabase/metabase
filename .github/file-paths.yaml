@@ -99,7 +99,14 @@ backend_ci: &backend_ci
   - *shared_ci
   - ".github/actions/test-driver/**"
   - ".github/workflows/backend.yml"
-  - ".github/workflows/drivers.yml"
+  # Per-driver workflows (split out of the old monolithic drivers.yml) plus the
+  # shared decide workflow, actions, and conductor scripts they rely on.
+  - ".github/workflows/driver-*.yml"
+  - ".github/workflows/_driver-decide.yml"
+  - ".github/actions/driver-decision/**"
+  - ".github/actions/conductor-check/**"
+  - ".github/actions/conductor-report/**"
+  - ".github/scripts/conductor/**"
 
 backend_presto_kerberos:
   - "**/presto_jdbc/**"

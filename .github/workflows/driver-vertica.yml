@@ -1,0 +1,147 @@
+# Vertica driver tests. See driver-postgres.yml for the template rationale.
+#
+# NOTE: Vertica was disabled in the old required-checks aggregator pending a
+# docker image update; keep its `result` check out of branch protection (or set
+# the workflow to "info" in conductor) until it's re-enabled.
+name: Driver Tests - Vertica
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+  checks: write
+  pull-requests: read
+
+jobs:
+  decide:
+    uses: ./.github/workflows/_driver-decide.yml
+    with:
+      driver: vertica
+      workflow-name: ${{ github.workflow }}
+    secrets: inherit
+
+  login-to-ecr:
+    needs: decide
+    if: >-
+      !cancelled() &&
+      needs.decide.result == 'success' &&
+      needs.decide.outputs.conductor-status != 'skip' &&
+      (needs.decide.outputs.should-run == 'true' || needs.decide.outputs.quarantine-conflict == 'true')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.CI_IAM_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+      - name: Get ECR password
+        id: login-ecr
+        run: |
+          PASSWORD=$(aws ecr get-login-password --region us-east-1)
+
+          REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com"
+
+          echo "docker_username=AWS" >> $GITHUB_OUTPUT
+          echo "docker_password=$PASSWORD" >> $GITHUB_OUTPUT
+          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+    outputs:
+      registry: ${{ steps.login-ecr.outputs.registry }}
+      docker_username: ${{ steps.login-ecr.outputs.docker_username }}
+      docker_password: ${{ steps.login-ecr.outputs.docker_password }}
+
+  test:
+    needs: [decide, login-to-ecr]
+    if: >-
+      !cancelled() &&
+      needs.decide.result == 'success' &&
+      needs.login-to-ecr.result == 'success' &&
+      needs.decide.outputs.conductor-status != 'skip' &&
+      (needs.decide.outputs.should-run == 'true' || needs.decide.outputs.quarantine-conflict == 'true')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    name: Vertica
+    env:
+      CI: 'true'
+      DRIVERS: vertica
+    services:
+      vertica:
+        image: ${{ needs.login-to-ecr.outputs.registry }}/vertica-ce:25.3.0-0
+        ports:
+          - "5433:5433"
+        credentials:
+          username: ${{ needs.login-to-ecr.outputs.docker_username }}
+          password: ${{ needs.login-to-ecr.outputs.docker_password }}
+    steps:
+      - name: Fail on quarantine conflict
+        if: ${{ needs.decide.outputs.quarantine-conflict == 'true' }}
+        run: |
+          echo "::error::Vertica driver is quarantined but you changed files in modules/drivers/vertica/"
+          echo ""
+          echo "Your changes will NOT be tested because the driver is currently quarantined."
+          echo "To run Vertica tests, add the label: break-quarantine-vertica"
+          echo ""
+          echo "If you merge without testing, you risk breaking the Vertica driver!"
+          exit 1
+      - uses: actions/checkout@v6
+      - name: Make plugins directory
+        run: mkdir plugins
+      - name: Test Vertica driver
+        id: test-driver
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-vertica-ee'
+          test-args: >-
+            :only-tags [:mb/driver-tests]
+            :exclude-tags [:mb/transforms-python-test]
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        continue-on-error: ${{ needs.decide.outputs.conductor-status == 'info' }}
+        with:
+          input-path: ./target/junit/
+          output-name: be-tests-vertica-ee
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+      - name: Report result to conductor
+        if: always()
+        uses: ./.github/actions/conductor-report
+        with:
+          secret: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          status: ${{ needs.decide.outputs.conductor-status }}
+          outcome: ${{ steps.test-driver.outputs.test-outcome || job.status }}
+
+  result:
+    name: result
+    needs: [decide, login-to-ecr, test]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Gate on driver test result
+        env:
+          DECIDE_RESULT: ${{ needs.decide.result }}
+          TEST_RESULTS: ${{ needs.login-to-ecr.result }} ${{ needs.test.result }}
+          CONDUCTOR_STATUS: ${{ needs.decide.outputs.conductor-status }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/conductor/gate-result.sh"

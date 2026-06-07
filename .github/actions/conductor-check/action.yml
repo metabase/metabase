@@ -1,0 +1,54 @@
+name: Conductor status check
+description: >-
+  Ask ci-conductor (conductor.metaba.be/api/config) how this driver workflow
+  should run. Outputs `status` = skip | info | required. Never fails: falls back
+  to `default-status` (required) when conductor is unset or unreachable.
+
+inputs:
+  secret:
+    description: >-
+      Shared ci-conductor secret, sent as the x-internal-secret header. Pass
+      ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}. When empty the check no-ops and
+      returns `default-status`.
+    required: false
+    default: ""
+  workflow-name:
+    description: The conductor key for this workflow (defaults to the workflow name).
+    required: false
+    default: ${{ github.workflow }}
+  default-status:
+    description: Status to fall back to when conductor can't be reached.
+    required: false
+    default: required
+  api-url:
+    description: Override the conductor API base URL (defaults to production).
+    required: false
+    default: ""
+  dry-run:
+    description: When 'true', log the request instead of making it.
+    required: false
+    default: "false"
+
+outputs:
+  status:
+    description: The resolved status — skip | info | required.
+    value: ${{ steps.get.outputs.status }}
+
+runs:
+  using: composite
+  steps:
+    - name: Query ci-conductor for status
+      id: get
+      shell: bash
+      env:
+        CI_CONDUCTOR_WEBHOOK_SECRET: ${{ inputs.secret }}
+        CI_CONDUCTOR_WORKFLOW: ${{ inputs.workflow-name }}
+        CI_CONDUCTOR_DEFAULT_STATUS: ${{ inputs.default-status }}
+        CI_CONDUCTOR_API_URL: ${{ inputs.api-url }}
+        CI_CONDUCTOR_DRY_RUN: ${{ inputs.dry-run }}
+        # Tie the decision to the PR head / target branch when available, like
+        # the e2e reporter does (GITHUB_SHA is the merge sha on pull_request).
+        REPO_ID: ${{ github.event.repository.id }}
+        COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+      run: bash "$GITHUB_WORKSPACE/.github/scripts/conductor/get-status.sh"
