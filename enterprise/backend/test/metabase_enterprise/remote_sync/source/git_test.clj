@@ -451,6 +451,27 @@
                (map :message (git/log repaired-source)))
             "Should be able to fetch after origin repair")))))
 
+(deftest get-jgit-reclones-after-local-repo-deleted-test
+  (testing "GHY-3815: if the cached local clone dir is deleted out from under us, the next
+            operation re-clones instead of returning a stale cached Git instance (which fails
+            permanently with 'origin: not found' until an instance restart)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])
+            remote-url (:remote-url source)
+            local-path (#'git/repo-path {:remote-url remote-url})
+            ^Git cached-git (:git source)]
+        (is (.exists local-path) "Precondition: local clone dir exists after the initial clone")
+        (is (= ["branch-1" "master"] (source.p/branches source))
+            "Precondition: branches works before the dir is deleted")
+        (FileUtils/deleteDirectory local-path)
+        (is (not (.exists local-path)) "Local clone dir is gone")
+        (let [fresh-source (->source! "master" remote)]
+          (is (.exists local-path) "Local clone dir was re-created (re-cloned)")
+          (is (not (identical? cached-git (:git fresh-source)))
+              "A fresh Git instance is returned, not the stale cached one")
+          (is (= ["branch-1" "master"] (source.p/branches fresh-source))
+              "branches works again after the dir was deleted, without an instance restart"))))))
+
 (deftest ^:parallel credentials-provider-test
   (testing "GitHub URL uses x-access-token"
     (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
