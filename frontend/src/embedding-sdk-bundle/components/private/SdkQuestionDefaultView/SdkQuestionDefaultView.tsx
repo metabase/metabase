@@ -308,6 +308,7 @@ const DefaultViewSaveModal = ({
     onSave,
     isSaveEnabled,
     targetCollection,
+    initialCollection,
   } = useSdkQuestionContext();
 
   if (!isSaveEnabled || !isOpen || !question) {
@@ -327,6 +328,7 @@ const DefaultViewSaveModal = ({
         close();
       }}
       targetCollection={targetCollection}
+      initialCollectionId={initialCollection}
     />
   );
 };

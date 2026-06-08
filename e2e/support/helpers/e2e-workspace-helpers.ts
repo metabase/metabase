@@ -1,4 +1,6 @@
-import type { WorkspaceId } from "metabase-types/api";
+import yaml from "js-yaml";
+
+import type { AdvancedConfig, WorkspaceId } from "metabase-types/api";
 
 import { modal } from "./e2e-ui-elements-helpers";
 
@@ -12,6 +14,10 @@ export const WorkspaceListPage = {
     WorkspaceListPage.get().findByRole("button", {
       name: first ? "Create a workspace" : "New",
     }),
+  setupInstanceButton: () =>
+    WorkspaceListPage.get().findByRole("button", {
+      name: "Upload a workspace config",
+    }),
   workspaceList: () => WorkspaceListPage.get().findByTestId("workspace-list"),
   workspace: (name: string) =>
     WorkspaceListPage.get().findByRole("region", { name }),
@@ -24,6 +30,25 @@ export const NewWorkspaceModal = {
     NewWorkspaceModal.get().findByRole("button", { name: "Create" }),
   cancelButton: () =>
     NewWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
+};
+
+export const SetupWorkspaceModal = {
+  get: () => modal(),
+  configInput: () => SetupWorkspaceModal.get().get('input[type="file"]'),
+  setupButton: () =>
+    SetupWorkspaceModal.get().findByRole("button", { name: "Set up" }),
+  cancelButton: () =>
+    SetupWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
+  uploadConfig: (config: AdvancedConfig) => {
+    SetupWorkspaceModal.configInput().selectFile(
+      {
+        contents: Cypress.Buffer.from(yaml.dump(config)),
+        fileName: "config.yml",
+        mimeType: "application/yaml",
+      },
+      { force: true },
+    );
+  },
 };
 
 export const WorkspacePage = {
@@ -70,10 +95,17 @@ export const WorkspaceDatabaseSection = {
 
 export const NewWorkspaceDatabaseModal = {
   get: () => modal(),
-  databaseRadio: (name: string) =>
-    NewWorkspaceDatabaseModal.get().findByRole("radio", { name }),
-  schemasInput: () =>
+  databaseSelect: () =>
+    NewWorkspaceDatabaseModal.get().findByRole("textbox", { name: "Database" }),
+  schemasGroup: () =>
+    NewWorkspaceDatabaseModal.get().findByText("Schemas to include"),
+  schemaSelect: () =>
     NewWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
+  schemaOption: (name: string) => cy.findByRole("option", { name }),
+  selectAllSchemasButton: () =>
+    NewWorkspaceDatabaseModal.get().findByRole("button", {
+      name: "Select all",
+    }),
   submitButton: () =>
     NewWorkspaceDatabaseModal.get().findByRole("button", {
       name: "Add database",
@@ -84,8 +116,15 @@ export const NewWorkspaceDatabaseModal = {
 
 export const UpdateWorkspaceDatabaseModal = {
   get: () => modal(),
-  schemasInput: () =>
+  schemasGroup: () =>
+    UpdateWorkspaceDatabaseModal.get().findByText("Schemas to include"),
+  schemaSelect: () =>
     UpdateWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
+  schemaOption: (name: string) => cy.findByRole("option", { name }),
+  selectAllSchemasButton: () =>
+    UpdateWorkspaceDatabaseModal.get().findByRole("button", {
+      name: "Select all",
+    }),
   saveButton: () =>
     UpdateWorkspaceDatabaseModal.get().findByRole("button", {
       name: "Save changes",
@@ -113,15 +152,25 @@ export const WorkspaceSetupSection = {
 export const WorkspaceInstancePage = {
   get: () => cy.findByTestId("workspace-instance-page"),
   visit: () => {
-    cy.visit("/data-studio/workspaces/instance");
+    cy.visit("/data-studio/workspaces");
     WorkspaceInstancePage.get().should("be.visible");
   },
   database: (name: string) =>
     WorkspaceInstancePage.get().findByRole("region", { name }),
-  emptyState: () =>
-    WorkspaceInstancePage.get().findByText(
-      /Tables will be remapped here the first time a transform runs/,
-    ),
   remappingRow: (canonicalName: string) =>
     WorkspaceInstancePage.get().findByText(canonicalName),
+  leaveButton: () =>
+    WorkspaceInstancePage.get().findByRole("button", {
+      name: "Leave workspace",
+    }),
+};
+
+export const ExitWorkspaceModal = {
+  get: () => modal(),
+  confirmButton: () =>
+    ExitWorkspaceModal.get().findByRole("button", {
+      name: "Leave workspace",
+    }),
+  cancelButton: () =>
+    ExitWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
 };

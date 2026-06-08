@@ -41,16 +41,16 @@ The field accepts wildcards (`*`) for subdomains. Changes take effect in about a
 
 ## Connect an MCP client
 
-If your admin has turned on [your Metabase's MCP server](#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/mcp`. For example:
+If your admin has turned on [your Metabase's MCP server](#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/metabase-mcp`. For example:
 
 ```
-https://{your-metabase.example.com}/api/mcp
+https://{your-metabase.example.com}/api/metabase-mcp
 ```
 
 In the terminal, for example, you can run the following command.
 
 ```
-claude mcp add --transport http metabase https://{your-metabase-url}/api/mcp
+claude mcp add --transport http metabase https://{your-metabase-url}/api/metabase-mcp
 ```
 
 Replacing {your-metabase-url} with your Metabase address. Once added, Claude Code will handle the OAuth flow for you:
@@ -70,7 +70,7 @@ A first-time connection will go something like this:
 3. You're redirected to Metabase to log in (if you aren't already) and approve the connection.
 4. The client receives an access token scoped to the permissions you have in Metabase.
 
-Results returned by the MCP server are sent to your MCP client, which may forward them to an AI provider depending on how the client is configured. See [Privacy](./settings.md#privacy).
+Results returned by the MCP server are sent to your MCP client, which may forward them to an AI provider depending on how the client is configured. See [AI privacy](./privacy.md).
 
 ### Site URL must match the URL your client uses
 
@@ -96,16 +96,25 @@ You don't need to have an [AI provider](settings.md#choose-ai-provider) configur
 
 Some clients (like Claude Desktop) will ask you to approve each tool the first time it's used. The MCP server builds on Metabase's [Agent API](./agent-api.md), and exposes the following tools. If you're building a custom integration and need full control, use the [Agent API](./agent-api.md) directly instead.
 
-- **search**: Find tables and metrics using keyword or natural language search.
-- **get_table**: Get details about a table, including its fields, related tables, and metrics.
-- **get_table_field_values**: Get sample values and statistics for a field in a table.
-- **get_metric**: Get details about a metric, including its queryable dimensions.
-- **get_metric_field_values**: Get sample values and statistics for a field in a metric.
-- **construct_query**: Construct a query against a table or metric. Returns an opaque query string that can be executed with `execute_query`.
-- **execute_query**: Execute a previously constructed query and return the results with column metadata, row count, and execution time.
+### Discovery and reading
+
+- **search**: Find tables, metrics, cards, dashboards, and collections using keyword or natural language search.
+- **read_resource**: Read one or more Metabase entities by `metabase://` URI. Covers database / schema / table / collection / card / dashboard / metric / transform navigation in a single tool. Up to 5 URIs per call.
+
+### Query construction and execution
+
+- **construct_query**: Construct a query against a table or metric. Returns an opaque query handle that can be passed to `execute_query`.
 - **query**: Query a table or metric and return results.
-- **create_question**: Create questions.
-- **create_dashboard**: Create dashboards.
+- **execute_query**: Execute a previously constructed query and return the results with column metadata, row count, and execution time.
+- **execute_sql**: Execute a raw SQL query against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting.
+
+### Writing
+
+- **create_question**: Save a query as a named question (card).
+- **update_question**: Update a saved question. Setting `collection_id` moves the card to another collection.
+- **create_dashboard**: Create a new dashboard, optionally populated with saved questions.
+- **update_dashboard**: Update a dashboard's metadata (name, description, collection, archived).
+- **create_collection**: Create a new collection, optionally nested under a parent collection.
 
 ## Use the MCP server with file-based development
 

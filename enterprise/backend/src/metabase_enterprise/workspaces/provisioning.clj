@@ -4,6 +4,7 @@
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.util.log :as log]
    [potemkin.types :as p]
@@ -28,14 +29,23 @@
     "Tear down isolated schema + user. Should be idempotent."))
 
 (def dispatching-provisioner
-  "Default Provisioner that dispatches to the driver multimethods."
+  "Default Provisioner that dispatches to the driver multimethods.
+
+   Each call is wrapped in [[driver.conn/with-admin-connection]] so the underlying
+   driver impls acquire connections via the database's `:admin-details` overlay
+   (when configured). Workspace DDL — `CREATE USER`, `CREATE SCHEMA`, `GRANT` —
+   typically needs higher-privilege credentials than the regular query user, and
+   the admin overlay is how operators provide them."
   (reify Provisioner
     (init! [_ driver database workspace]
-      (driver/init-workspace-isolation! driver database workspace))
+      (driver.conn/with-admin-connection
+        (driver/init-workspace-isolation! driver database workspace)))
     (grant! [_ driver database workspace schemas]
-      (driver/grant-workspace-read-access! driver database workspace schemas))
+      (driver.conn/with-admin-connection
+        (driver/grant-workspace-read-access! driver database workspace schemas)))
     (destroy! [_ driver database workspace]
-      (driver/destroy-workspace-isolation! driver database workspace))))
+      (driver.conn/with-admin-connection
+        (driver/destroy-workspace-isolation! driver database workspace)))))
 
 ;;; ---------------------------------------------- Implementation ----------------------------------------------------
 
@@ -49,6 +59,22 @@
   (keyword "metabase-enterprise.workspaces.provisioning"
            (str "wsd-" workspace-database-id)))
 
+(defn do-with-workspace-database-lock
+  "Run `thunk` while holding the per-row cluster lock for `workspace-database-id`.
+   [[provision-single!]]/[[deprovision-single!]] take this same lock internally, so
+   the acquisition here is reentrant — it lets a caller atomically combine an app-db
+   change with provisioning under a single lock, acquired *before* the row is
+   mutated (the lock-before-mutate order the rest of the system relies on)."
+  [workspace-database-id thunk]
+  (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
+                                   :timeout-seconds provisioning-lock-timeout-seconds}
+    (thunk)))
+
+(defmacro with-workspace-database-lock
+  "Sugar over [[do-with-workspace-database-lock]]."
+  [workspace-database-id & body]
+  `(do-with-workspace-database-lock ~workspace-database-id (fn [] ~@body)))
+
 ;;; ---------------------------------------- Single-database operations -----------------------------------------------
 
 (defn provision-workspace-database!
@@ -57,8 +83,7 @@
   on success, or back to `:unprovisioned` on failure."
   [workspace-database-id provisioner]
   (try
-    (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
-                                     :timeout-seconds provisioning-lock-timeout-seconds}
+    (with-workspace-database-lock workspace-database-id
       (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
         (when-not wsd
           (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
@@ -94,8 +119,7 @@
   or back to `:provisioned` on failure."
   [workspace-database-id provisioner]
   (try
-    (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
-                                     :timeout-seconds provisioning-lock-timeout-seconds}
+    (with-workspace-database-lock workspace-database-id
       (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
         (when-not wsd
           (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
@@ -122,9 +146,9 @@
               ;; by iso namespace alone is correct.
               ;;
               ;; Rebind `*current-connectable*` to nil so the DELETE runs on a
-              ;; fresh autocommit connection outside the `with-cluster-lock` tx.
-              ;; Otherwise, when `destroy!` throws, the surrounding tx rolls back
-              ;; and undoes the DELETE.
+              ;; fresh autocommit connection outside the workspace-database lock's
+              ;; tx. Otherwise, when `destroy!` throws, the surrounding tx rolls
+              ;; back and undoes the DELETE.
               (binding [t2.connection/*current-connectable* nil]
                 (ws.remapping-cleanup/clear-mappings-for-iso! db
                                                               (:database_id wsd)

@@ -214,7 +214,7 @@
   (let [[_:=> [_:cat params] _out] schema
         params                     (schema/filter-schema-by-features params)
         doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                    ;; strip that stuff we're appending in mu/defn
+                                     ;; strip that stuff we're appending in mu/defn
                                      (second (str/split doc #"\n\n  " 2))
                                      doc)]
     {:name         (or tool-name "unknown")
@@ -260,9 +260,10 @@
          {:type "text"
           :text suffix}]))))
 
-(defn- anthropic-errors [res]
-  (let [status    (long (:status res 0))
-        error-msg (get-in res [:body :error :message])]
+(defn- anthropic-error-msg
+  "Canonical, status-specific Anthropic error message."
+  [res]
+  (let [status (long (:status res 0))]
     (case status
       401 (tru "Anthropic API key expired or invalid")
       403 (tru "Anthropic API key has insufficient permissions")
@@ -271,9 +272,7 @@
       429 (tru "Anthropic API has rate limited us")
       500 (tru "Anthropic API is not working but not saying why")
       529 (tru "Anthropic API is overloaded and is asking us to wait")
-      (if error-msg
-        (tru "Anthropic API error (HTTP {0}): {1}" status error-msg)
-        (tru "Anthropic API error (HTTP {0})" status)))))
+      (tru "Anthropic API error (HTTP {0})" status))))
 
 (defn list-models
   "List available Anthropic models.
@@ -295,7 +294,7 @@
            models (reverse (sort-by :created_at (:data body)))]
        {:models (map #(select-keys % [:id :display_name]) models)})
      (catch Exception e
-       (core/rethrow-api-error! "anthropic" anthropic-errors e)))))
+       (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
 
 (mu/defn claude-raw
   "Perform a streaming request to Claude API."
@@ -347,7 +346,7 @@
                                      :url      "/v1/messages"
                                      :request  req})))
         (catch Exception e
-          (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
+          (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"

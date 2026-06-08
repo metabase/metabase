@@ -15,6 +15,7 @@
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -623,17 +624,23 @@
                     result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
-                  (if (:api-error (ex-data e))
-                    (if (:status (ex-data e))
-                      (log/errorf "Agent loop API error: %s status=%s provider=%s body=%s"
-                                  (ex-message e)
-                                  (:status (ex-data e))
-                                  (:provider (ex-data e))
-                                  (pr-str (:body (ex-data e))))
-                      (log/errorf e "Agent loop API error: %s provider=%s"
-                                  (ex-message e)
-                                  (:provider (ex-data e))))
-                    (log/error e "Agent loop error"))
+                  (let [{:keys [api-error status provider body]} (ex-data e)
+                        msg (ex-message e)]
+                    (cond
+                      (and api-error status)
+                      (log/errorf e "Agent loop API error: %s status=%s provider=%s body=%s"
+                                  msg status provider (self.core/body-for-log body))
+
+                      api-error
+                      (log/errorf e "Agent loop API error: %s provider=%s" msg provider)
+
+                      ;; ex-message can be nil/blank for exceptions thrown without a message
+                      ;; (e.g. (NullPointerException.)) — skip the colon when there's nothing to say.
+                      (str/blank? msg)
+                      (log/error e "Agent loop error")
+
+                      :else
+                      (log/errorf e "Agent loop error: %s" msg)))
                   (rf init (error-part e)))
                 (finally
                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))

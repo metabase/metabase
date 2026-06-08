@@ -218,7 +218,6 @@
   (let [[sql & params] (sql.qp/format-honeysql
                         driver
                         honeysql-form)]
-
     (*process-native*
      (fn [cols results]
        (let [col-names (map (comp keyword :name) (:cols cols))]
@@ -484,7 +483,6 @@
   (let [details     (driver.conn/effective-details database)
         project-id  (bigquery.common/get-project-id details)
         dataset-ids (or schema-names (list-datasets details))]
-
     ;; The contract of [[driver/describe-fields]] requires results ordered by:
     ;; `table-schema`, `table-name`, `database-position`
     ;;
@@ -554,9 +552,9 @@
     (transduce
      (comp (take table-rows-sample/max-sample-rows)
            (map (partial extract-fingerprint field-idxs parsers)))
-      ;; Instead of passing on fields, we could recalculate the
-      ;; metadata from the schema, but that probably makes no
-      ;; difference and currently the metadata is ignored anyway.
+     ;; Instead of passing on fields, we could recalculate the
+     ;; metadata from the schema, but that probably makes no
+     ;; difference and currently the metadata is ignored anyway.
      (rff {:cols fields})
      (reducible-bigquery-results page nil (constantly nil)))))
 
@@ -650,13 +648,13 @@
 (defn- build-bigquery-request [^String sql parameters]
   (.build
    (doto (QueryJobConfiguration/newBuilder sql)
-      ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+     ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
      (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
      (bigquery.params/set-parameters! parameters)
-      ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
-      ;; effect for RPC (a.k.a. "fast") calls
-      ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
-      ;; realizing more rows as per the maximum result size
+     ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
+     ;; effect for RPC (a.k.a. "fast") calls
+     ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
+     ;; realizing more rows as per the maximum result size
      (.setMaxResults *page-size*))))
 
 (defn- reducible-bigquery-results
@@ -761,7 +759,6 @@
                                  (throw (ex-info "Null response from query" {}))))
                              (catch Throwable t
                                (deliver result-promise [:error t]))))]
-
     ;; This `go` is responsible for cancelling the *initial* job execution.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
     (when cancel-chan
@@ -769,7 +766,6 @@
         (when-let [cancelled (a/<! cancel-chan)]
           (deliver result-promise [:cancel cancelled])
           (some-> query-future future-cancel))))
-
     ;; Now block the original thread on that promise.
     ;; It will receive either [:ready [& respond-args]], [:error Throwable], or [:cancel truthy].
     (let [[status result] @result-promise]
@@ -849,6 +845,11 @@
                               ;; tests expect the converted values.
                               :set-timezone                     true
                               :split-part                       true
+                              ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
+                              ;; falls back to a native `COUNT(*)` on the CTAS path.
+                              ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL
+                              ;; statements by using a different driver-native API for affected-row counts.
+                              :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
                               ;; Workspace isolation using service account impersonation
@@ -1067,8 +1068,8 @@
                               (.setUseLegacySql false)
                               (.build))
                table-result (.query client job-config (into-array BigQuery$JobOption []))]
-           (or (and table-result (.getTotalRows table-result))
-               0))))
+           {:rows-affected (or (and table-result (.getTotalRows table-result))
+                               0)})))
       (catch Exception e
         (log/error e "Error executing BigQuery DDL")
         (throw e)))))

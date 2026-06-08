@@ -3,9 +3,14 @@ import { t } from "ttag";
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Box, Icon, Text } from "metabase/ui";
-import { browseDatabase, browseSchema, tableRowsQuery } from "metabase/urls";
+import {
+  browseDatabase,
+  browseSchema,
+  tableRowsQuery,
+  table as tableUrl,
+} from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { SearchResult } from "metabase-types/api";
+import { type SearchResult, isConcreteTableId } from "metabase-types/api";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
@@ -51,7 +56,9 @@ export const InfoTextTableLink = ({
     return <LoadingText />;
   }
 
-  const link = tableRowsQuery(result.database_id, result.table_id);
+  const link = isConcreteTableId(result.table_id)
+    ? tableUrl({ id: result.table_id, name: table?.display_name })
+    : tableRowsQuery(result.database_id, result.table_id);
   const label = table?.display_name ?? null;
 
   return (

@@ -367,6 +367,33 @@
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
 
+(defn- match-column-names
+  "Return the existing field name that each CSV `header` column should be written to.
+
+   - Columns are matched to fields by name, independent of the order they appear in the CSV.
+   - When several headers resolve to the same name, they are matched by display name so each value
+     lands in the column it came from.
+   - When columns can't be told apart even by display name, they are matched by the order they appear in."
+  [driver header name->field]
+  (let [positional (mapv name (derive-column-names driver header))
+        normalized (mapv #(normalize-column-name driver %) header)
+        collisions (into #{} (keep (fn [[col-name freq]] (when (> freq 1) col-name))) (frequencies normalized))]
+    (if (empty? collisions)
+      positional
+      ;; Map each colliding field's display name (scoped to its normalized name) back to its positional
+      ;; name, then re-match the colliding columns by display name.
+      (let [display->name (into {}
+                                (for [[norm pos] (map vector normalized positional)
+                                      :when (collisions norm)
+                                      :let  [field (name->field pos)]
+                                      :when field]
+                                  [[norm (:display_name field)] pos]))]
+        (mapv (fn [norm pos display]
+                (if (collisions norm)
+                  (get display->name [norm display] pos)
+                  pos))
+              normalized positional (derive-display-names driver header))))))
+
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
@@ -530,7 +557,7 @@
           table-name              (some->> table-name (ddl.i/format-name driver))
           schema+table-name       (table-identifier {:schema schema :name table-name})
           {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
-        ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
           table                   (sync/create-table! db {:name         table-name
                                                           :schema       (not-empty schema)
                                                           :display_name display-name})
@@ -540,8 +567,8 @@
                                                                         :is_writable    true})
           _sync                   (scan-and-sync-table! db table)
           _set_names              (set-display-names! (:id table) columns)
-        ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
-        ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+          ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+          ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
           _                       (when (auto-pk-column? driver db)
                                     (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
                                       (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]
@@ -633,7 +660,6 @@
                                @api/*current-user*)
             upload-seconds    (/ (u/since-ms timer) 1e3)
             stats             (assoc stats :upload-seconds upload-seconds)]
-
         (events/publish-event! :event/upload-create
                                {:user-id  (:id @api/*current-user*)
                                 :model-id (:id table)
@@ -643,7 +669,6 @@
                                            :table-name  table-name
                                            :model-id    (:id card)
                                            :stats       stats}})
-
         (analytics.core/track-event! :snowplow/csvupload
                                      (assoc stats
                                             :event    :csv-upload-successful
@@ -653,7 +678,6 @@
         (analytics/inc! :metabase-csv-upload/failed)
         (analytics.core/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                                 :event :csv-upload-failed))
-
         (throw e)))))
 
 ;;; +-----------------------------
@@ -792,13 +816,9 @@
                                      auto-pk?
                                      without-auto-pk-columns)
                 name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
-                ;; Gotcha: Long column names, which get sanitized and truncated to the same string, will be match to the
-                ;; database columns based on their order. If their order in the new upload differs from that in previous
-                ;; uploads, they will be matched incorrectly.
-                ;; We accept this edge case (customers can reorder CSV columns to fix) rather than rejecting uploads
-                ;; with ambiguous column names even when the order is consistent (see #44926/#issuecomment-3524373073).
-                ;; Future idea: match on display names for smart re-ordering.
-                column-names       (map name (derive-column-names driver header))
+                ;; Match colliding columns to existing fields by display name so reordering them between
+                ;; uploads doesn't write data to the wrong column. See [[match-column-names]] (GDGT-2233).
+                column-names       (match-column-names driver header name->field)
                 display-names      (for [h header] (normalize-display-name h))
                 create-auto-pk?    (and
                                     auto-pk?
@@ -838,21 +858,16 @@
               (driver/insert-into! driver (:id database) (table-identifier table) column-names parsed-rows)
               (catch Throwable e
                 (throw (ex-info (ex-message e) {:status-code 422}))))
-
             (when create-auto-pk?
               (add-columns! driver database table
                             {auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk}
                             :primary-key [auto-pk-column-keyword]))
-
             (scan-and-sync-table! database table)
             (set-display-names! (:id table) (zipmap column-names display-names))
-
             (when create-auto-pk?
               (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
-
             (invalidate-cached-models! table)
-
             (events/publish-event! (if replace-rows?
                                      :event/upload-replace
                                      :event/upload-append)
@@ -863,9 +878,7 @@
                                                :schema-name (:schema table)
                                                :table-name  (:name table)
                                                :stats       stats}})
-
             (analytics.core/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
-
             {:row-count row-count})))
       (catch Throwable e
         (analytics/inc! :metabase-csv-upload/failed)
@@ -928,23 +941,19 @@
         driver     (driver.u/database->driver database)
         table-name (table-identifier table)]
     (check-can-delete table database)
-
     ;; Attempt to delete the underlying data from the customer database.
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
     ;; visible to administrators, and the operation is easy to retry again later.
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
-
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
     (t2/update! :model/Table :id (:id table) {:active false})
-
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.
     ;; TODO update the [[metabase.sync]] module to support direct per-table clean-up
     ;; Ideally this will also clean up more the metadata which we had created around it, e.g. advanced field values.
     #_(future (sync/retire-table! (assoc table :active false)))
-
     ;; Archive the related cards if the customer opted in.
     ;;
     ;; For now, this only covers instances where the card has this as its "primary table", i.e.
@@ -955,7 +964,6 @@
       (t2/update-returning-pks! :model/Card
                                 {:table_id (:id table) :archived false}
                                 {:archived true}))
-
     :done))
 
 (def update-action-schema

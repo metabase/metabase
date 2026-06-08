@@ -63,7 +63,7 @@ export const MetricSearchDropdown = forwardRef<
 ) {
   const [isBrowsing, setIsBrowsing] = useState(false);
 
-  const libraryMetricsCollection =
+  const { data: libraryMetricsCollection, isLoading: isLoadingLibraryMetrics } =
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
     });
@@ -178,36 +178,38 @@ export const MetricSearchDropdown = forwardRef<
 
   return (
     <>
-      <MiniPicker
-        opened={!isBrowsing}
-        searchQuery={searchQuery}
-        onChange={handleSelectResult}
-        onClose={onClose}
-        models={MINI_PICKER_MODELS}
-        onBrowseAll={() => setIsBrowsing(true)}
-        forceSearch={true}
-        showSearchInput={searchQuery === undefined}
-        searchInputPlaceholder={t`Search metrics and measures…`}
-        searchParams={getSearchParams}
-        onSearchResults={handleSearchResults}
-        shouldHide={shouldHide}
-        menuProps={menuProps}
-        menuDropdownRef={miniPickerRef}
-      >
-        {anchorRect && (
-          <span
-            aria-hidden
-            style={{
-              position: "fixed",
-              left: anchorRect.left,
-              top: anchorRect.top,
-              width: 0,
-              height: 0,
-              pointerEvents: "none",
-            }}
-          />
-        )}
-      </MiniPicker>
+      {!isLoadingLibraryMetrics && (
+        <MiniPicker
+          opened={!isBrowsing}
+          searchQuery={searchQuery}
+          onChange={handleSelectResult}
+          onClose={onClose}
+          models={MINI_PICKER_MODELS}
+          onBrowseAll={() => setIsBrowsing(true)}
+          forceSearch={true}
+          showSearchInput={searchQuery === undefined}
+          searchInputPlaceholder={t`Search metrics and measures…`}
+          searchParams={getSearchParams}
+          onSearchResults={handleSearchResults}
+          shouldHide={shouldHide}
+          menuProps={menuProps}
+          menuDropdownRef={miniPickerRef}
+        >
+          {anchorRect && (
+            <span
+              aria-hidden
+              style={{
+                position: "fixed",
+                left: anchorRect.left,
+                top: anchorRect.top,
+                width: 0,
+                height: 0,
+                pointerEvents: "none",
+              }}
+            />
+          )}
+        </MiniPicker>
+      )}
       {isBrowsing && (
         <EntityPickerModal
           title={t`Pick a metric or measure`}

@@ -15,7 +15,6 @@
                                      :type     "native"
                                      :native   {:query "SELECT 1"}}}}]
       (is (= (mt/id) (:source_database_id transform)))))
-
   (testing "updating a transform correctly sets the source-database-id column"
     (mt/with-temp [:model/Transform transform
                    {:name   "Test Transform"

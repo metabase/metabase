@@ -5,18 +5,22 @@ import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import { Modal } from "metabase/common/components/Modal";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
+import { updateUrl } from "metabase/query_builder/actions/url";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
-import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import {
+  getQuestionWithoutComposing,
+  getVisualizationSettings,
+} from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
@@ -70,6 +74,11 @@ export function QueryModals({
 
   const initialCollectionId = useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
+  const visualizationSettings = useSelector(getVisualizationSettings);
+
+  const handleAlertCreatedOrUpdated = useCallback(() => {
+    dispatch(updateUrl(question, { dirty: false }));
+  }, [dispatch, question]);
 
   const handleSaveAndClose = useCallback(
     async (question: Question) => {
@@ -193,7 +202,6 @@ export function QueryModals({
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion}
-          initialCollectionId={initialCollectionId}
           onSave={handleSaveAndClose}
           onCreate={handleSaveModalCreate}
           onClose={onCloseModal}
@@ -210,7 +218,13 @@ export function QueryModals({
       );
     case MODAL_TYPES.CREATE_ALERT:
       return (
-        <QuestionAlertListModal question={question} onClose={onCloseModal} />
+        <QuestionAlertListModal
+          question={question}
+          visualizationSettings={visualizationSettings}
+          onAlertCreated={handleAlertCreatedOrUpdated}
+          onAlertUpdated={handleAlertCreatedOrUpdated}
+          onClose={onCloseModal}
+        />
       );
     case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
       return (
@@ -222,7 +236,6 @@ export function QueryModals({
           onClose={onCloseModal}
           opened={true}
           multiStep
-          initialCollectionId={initialCollectionId}
         />
       );
     case MODAL_TYPES.MOVE:
@@ -238,7 +251,7 @@ export function QueryModals({
       );
     case MODAL_TYPES.CLONE:
       return (
-        <EntityCopyModal
+        <CopyModal
           entityType="cards"
           entityObject={{
             ...question.card(),
@@ -248,7 +261,7 @@ export function QueryModals({
           }}
           copy={async (formValues) => {
             if (!underlyingQuestion) {
-              return;
+              throw new Error(t`Unable to duplicate this question.`);
             }
 
             const question = underlyingQuestion

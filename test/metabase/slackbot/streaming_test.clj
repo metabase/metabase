@@ -22,19 +22,15 @@
   (testing "Same thread produces same conversation ID"
     (is (= (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")
            (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456"))))
-
   (testing "Different threads produce different IDs"
     (is (not= (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")
               (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "789.012"))))
-
   (testing "Different channels produce different IDs"
     (is (not= (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")
               (#'slackbot.streaming/slack-thread->conversation-id "T1" "C2" "123.456"))))
-
   (testing "Different workspaces produce different IDs"
     (is (not= (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")
               (#'slackbot.streaming/slack-thread->conversation-id "T2" "C1" "123.456"))))
-
   (testing "Result is valid UUID format"
     (is (re-matches #"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
                     (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")))))
@@ -218,7 +214,7 @@
                                         (fn [_conv-id _profile-id _user-message & {:as opts}]
                                           (deliver stored opts)
                                           {:assistant-msg-id 1 :assistant-external-id "ext"})
-                          ;; Force setup to throw *after* start-turn! has run.
+                                        ;; Force setup to throw *after* start-turn! has run.
                                         slackbot.persistence/message-history
                                         (fn [& _] (throw (ex-info "boom" {})))]
               (mt/client :post 200 "metabot/slack/events"

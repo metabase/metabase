@@ -160,7 +160,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         .should("have.attr", "href")
         .and(
           "include",
-          "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js#use-existing-user-session-to-test-embeds",
+          "https://www.metabase.com/docs/latest/embedding/authentication#configure-session-cookies-when-testing-locally",
         );
 
       cy.findByTestId("sdk-error-container").should("be.visible");

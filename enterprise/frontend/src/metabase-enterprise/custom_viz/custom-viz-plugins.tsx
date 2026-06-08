@@ -1,15 +1,12 @@
 import type {
   CreateCustomVisualizationProps,
   CustomVisualization,
-  CustomVisualizationMountHandle,
   CustomVisualizationProps,
   CustomVisualizationSettingDefinition,
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
-  Widgets,
 } from "custom-viz";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -39,6 +36,8 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import type { SandboxMode } from "./sandbox";
+import { usePluginMount } from "./use-plugin-mount";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -105,7 +104,10 @@ function useCustomVizDevReload(
       );
       setLoading(true);
       try {
-        await loadCustomVizPlugin(plugin, `?t=${Date.now()}`, onInfo);
+        await loadCustomVizPlugin(plugin, {
+          cacheBustSuffix: `?t=${Date.now()}`,
+          onInfo,
+        });
       } finally {
         setLoading(false);
       }
@@ -161,7 +163,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       loadingRef.current = identifier;
       setLoading(true);
       try {
-        await loadCustomVizPlugin(pluginToLoad, undefined, onInfo);
+        await loadCustomVizPlugin(pluginToLoad, { onInfo });
       } finally {
         loadingRef.current = null;
         setLoading(false);
@@ -246,6 +248,12 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   return { loading: needsCustomViz && !isReady };
 }
 
+export type LoadCustomVizPluginOptions = {
+  cacheBustSuffix?: string;
+  onInfo?: (message: string) => void;
+  sandboxMode?: SandboxMode;
+};
+
 /**
  * Dynamically load a custom viz plugin bundle, call its factory,
  * decompose the returned definition, and register it as a Metabase
@@ -253,9 +261,9 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
  */
 export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
-  cacheBustSuffix?: string,
-  onInfo?: (message: string) => void,
+  options: LoadCustomVizPluginOptions = {},
 ): Promise<string | null> {
+  const { cacheBustSuffix, onInfo, sandboxMode = "hosted" } = options;
   const existing = loadedPlugins.get(plugin.id);
   const currentHash = plugin.bundle_hash ?? null;
   if (
@@ -291,7 +299,7 @@ export async function loadCustomVizPlugin(
     // up in the static-viz bundle, which is evaluated by GraalVM and has no
     // DOM constructors.
     const { createPluginSandbox } = await import("./sandbox");
-    const sandbox = createPluginSandbox(plugin.id);
+    const sandbox = await createPluginSandbox(plugin.id, sandboxMode);
     const factory = sandbox.evaluate(text);
 
     if (typeof factory !== "function") {
@@ -300,16 +308,11 @@ export async function loadCustomVizPlugin(
       );
     }
 
-    const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
-
     const props: CreateCustomVisualizationProps<Record<string, unknown>> = {
       defineSetting(definition) {
         return definition as unknown as CustomVisualizationSettingDefinition<
           Record<string, unknown>
         >;
-      },
-      getAssetUrl(path: string) {
-        return `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
       },
       locale:
         window.MetabaseUserLocalization?.headers?.language ??
@@ -325,12 +328,14 @@ export async function loadCustomVizPlugin(
       );
     }
 
-    assertValidSettingWidgets(vizDef.settings);
-
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
 
-    const Wrapper = createCustomVizWrapper(vizDef.mount, plugin.id);
+    const Wrapper = createCustomVizWrapper(
+      vizDef.mount,
+      vizDef.VisualizationComponent,
+      plugin.id,
+    );
 
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
@@ -338,6 +343,7 @@ export async function loadCustomVizPlugin(
     ) as Visualization;
     applyDefaultVisualizationProps(Component, vizDef, {
       identifier,
+      pluginId: plugin.id,
       getUiName: () => plugin.display_name,
       iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
       isDev: Boolean(plugin.dev_bundle_url),
@@ -400,47 +406,14 @@ export const useCustomVizPluginsIcon = () => {
 type GenericVizDefinition = CustomVisualization<Record<string, unknown>>;
 type GenericVizMount = GenericVizDefinition["mount"];
 type GenericVizPluginProps = CustomVisualizationProps<Record<string, unknown>>;
-type GenericVizMountHandle =
-  CustomVisualizationMountHandle<GenericVizPluginProps>;
 
 function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
   return isObject(value) && typeof value.mount === "function";
 }
 
-const ALLOWED_WIDGET_NAMES: Array<keyof Widgets> = [
-  "input",
-  "number",
-  "radio",
-  "select",
-  "toggle",
-  "segmentedControl",
-  "field",
-  "fields",
-  "color",
-  "multiselect",
-] as const;
-
-function assertValidSettingWidgets(
-  settings: GenericVizDefinition["settings"] | undefined,
-): void {
-  if (!settings) {
-    return;
-  }
-  for (const [settingId, def] of Object.entries(settings)) {
-    const widget = (def as { widget?: unknown }).widget;
-    if (
-      typeof widget !== "string" ||
-      !ALLOWED_WIDGET_NAMES.some((w) => w === widget)
-    ) {
-      throw new Error(
-        t`Setting "${settingId}" has unsupported widget. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
-      );
-    }
-  }
-}
-
 function createCustomVizWrapper(
   mount: GenericVizMount,
+  VisualizationComponent: GenericVizDefinition["VisualizationComponent"],
   pluginId: CustomVizPluginId,
 ) {
   return function CustomVizWrapper({
@@ -452,8 +425,6 @@ function createCustomVizWrapper(
     onHoverChange,
   }: VisualizationProps) {
     const { resolvedColorScheme } = useColorScheme();
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const handleRef = useRef<GenericVizMountHandle | null>(null);
 
     const pluginProps: GenericVizPluginProps = {
       width,
@@ -469,21 +440,10 @@ function createCustomVizWrapper(
       ) => void,
     };
 
-    useEffect(() => {
-      if (!containerRef.current) {
-        return;
-      }
-      if (!handleRef.current) {
-        handleRef.current = mount(containerRef.current, pluginProps);
-      } else {
-        handleRef.current.update(pluginProps);
-      }
-    });
-
-    useUnmount(() => {
-      handleRef.current?.unmount();
-      handleRef.current = null;
-    });
+    const containerRef = usePluginMount<GenericVizPluginProps>(
+      (container, props) => mount(VisualizationComponent, container, props),
+      pluginProps,
+    );
 
     return (
       <div

@@ -15,7 +15,6 @@
       (is (= [{:card_id card-id
                :dashboards [{:name dash-name :id dash-id}]}]
              (mt/user-http-request :rasta :post 200 "cards/dashboards" {:card_ids [card-id]}))))
-
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {other-dash-id :id
                                      other-dash-name :name} {:collection_id coll-id}

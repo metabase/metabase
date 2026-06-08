@@ -108,14 +108,21 @@
 ;;; ### Public Interface
 
 (defn all-admin-recipients
-  "Return a sequence of email addresses for all Admin users.
+  "Return a sequence of email addresses for all Admin users who have accepted their invitation (i.e. have logged in at
+  least once). Admins who have been invited but not yet accepted are excluded — they shouldn't receive notifications
+  about activity in an instance they haven't joined.
 
-  The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in
-  `mailto` links (e.g., for the new user to email with any questions)."
+  The first recipient will be the site admin (or oldest accepted admin if unset), which is the address that should be
+  used in `mailto` links (e.g., for the new user to email with any questions)."
   []
   (concat (when-let [admin-email (system/admin-email)]
             [admin-email])
-          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, :type "personal" {:order-by [[:id :asc]]})))
+          (t2/select-fn-set :email 'User
+                            :is_superuser true
+                            :is_active    true
+                            :last_login   [:not= nil]
+                            :type         "personal"
+                            {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."

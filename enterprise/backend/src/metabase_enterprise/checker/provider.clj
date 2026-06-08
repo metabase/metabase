@@ -278,12 +278,12 @@
 ;;; ===========================================================================
 
 (deftype SourceMetadataProvider
-  ;; The store knows what entities exist, loads raw YAML data, assigns integer IDs, and caches.
-  ;; The provider adapts the store into the MetadataProvider interface that lib/query expects,
-  ;; converting raw YAML maps to lib metadata format along the way.
-  ;;
-  ;; `current-db` is an atom holding the database name (string) to return from `(database)`.
-  ;; Must be set via `set-database!` before each entity check and unset afterward.
+         ;; The store knows what entities exist, loads raw YAML data, assigns integer IDs, and caches.
+         ;; The provider adapts the store into the MetadataProvider interface that lib/query expects,
+         ;; converting raw YAML maps to lib metadata format along the way.
+         ;;
+         ;; `current-db` is an atom holding the database name (string) to return from `(database)`.
+         ;; Must be set via `set-database!` before each entity check and unset afterward.
          [store current-db]
   ISettableDatabase
   (set-database! [_this db-name]

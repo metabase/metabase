@@ -438,7 +438,7 @@
   (case db-type
     (:h2 :h2-mbql5) (with-database-type-info :%now "timestamp")
     :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
-    :postgres (with-database-type-info :%now "timestamptz")))
+    (:postgres :postgres-mbql5) (with-database-type-info :%now "timestamptz")))
 
 (defn- format-postgres-interval
   "Generate a Postgres 'INTERVAL' literal.
@@ -493,6 +493,10 @@
       (-> (+ hsql-form (pg-interval amount unit))
           (with-type-info (type-info hsql-form))))))
 
+(defmethod add-interval-honeysql-form :postgres-mbql5
+  [db-type hsql-form amount unit]
+  ((get-method add-interval-honeysql-form :postgres) db-type hsql-form amount unit))
+
 (defmethod add-interval-honeysql-form :mysql
   [db-type hsql-form amount unit]
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
@@ -538,3 +542,50 @@
                    :hsql-form hsql-form
                    :amount amount
                    :unit unit})))
+
+(defmulti calculate-interval-honeysql-form
+  "Return a HoneySQL form representing the temporal interval `end-form` minus `start-form`.
+
+  Inverse of [[add-interval-honeysql-form]]. The return value is monotonic in the actual duration but
+  its absolute units differ per DB: Postgres returns an `interval`, MySQL returns microseconds, H2
+  returns milliseconds. Suitable for ORDER BY purposes; do NOT rely on the units when the value is
+  exposed to callers.
+
+    (calculate-interval-honeysql-form :my-driver hsql-end-form hsql-start-form)
+      -> [:- hsql-end-form hsql-start-form]
+
+  This multimethod is intended for use in app DB queries; other drivers should extend
+  metabase.driver.sql.query-processor/datetime-diff instead."
+  {:arglists '([db-type end-form start-form])}
+  (fn [db-type _end-form _start-form]
+    (keyword db-type)))
+
+(defmethod calculate-interval-honeysql-form :postgres
+  [_db-type end-form start-form]
+  ;; Postgres timestamp subtraction returns an interval that orders correctly.
+  [:- end-form start-form])
+
+(defmethod calculate-interval-honeysql-form :postgres-mbql5
+  [db-type end-form start-form]
+  ((get-method calculate-interval-honeysql-form :postgres) db-type end-form start-form))
+
+(defmethod calculate-interval-honeysql-form :mysql
+  [_db-type end-form start-form]
+  [:timestampdiff [:raw "MICROSECOND"] start-form end-form])
+
+(defmethod calculate-interval-honeysql-form :h2
+  [_db-type end-form start-form]
+  [:datediff (literal "MILLISECOND") start-form end-form])
+
+(defmethod calculate-interval-honeysql-form :h2-mbql5
+  [db-type end-form start-form]
+  ((get-method calculate-interval-honeysql-form :h2) db-type end-form start-form))
+
+(defmethod calculate-interval-honeysql-form :default
+  [db-type end-form start-form]
+  (throw (ex-info (clojure.core/format
+                   "metabase.util.honey-sql-2/calculate-interval-honeysql-form not implemented for db-type %s. You might want to be calling metabase.driver.sql.query-processor/datetime-diff instead."
+                   db-type)
+                  {:db-type    db-type
+                   :end-form   end-form
+                   :start-form start-form})))

@@ -16,6 +16,20 @@ process.on("uncaughtException", (err) =>
   console.error("WARNING: UNCAUGHT EXCEPTION", err),
 );
 
+// Mantine 8 uses React 19's callback-ref cleanup signature, which React 18
+// flags with this warning. Harmless until we upgrade to React 19.
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  const first = args[0];
+  if (
+    typeof first === "string" &&
+    first.includes("Unexpected return value from a callback ref")
+  ) {
+    return;
+  }
+  originalConsoleError(...args);
+};
+
 if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
   global.console = {
     log: jest.fn(),

@@ -28,10 +28,24 @@ jobs:
           team_name=${team_label#*.Team/}
           echo $team_name
           echo "team_name=${team_name^^}_SLACK_ISSUES_WEBHOOK_URL" >> "$GITHUB_OUTPUT"
+      - name: Check webhook secret exists
+        id: check_secret
+        env:
+          WEBHOOK_URL: ${{ secrets[steps.team_name.outputs.team_name] }}
+        run: |
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "Secret ${{ steps.team_name.outputs.team_name }} is not set, skipping Slack notification"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Send the issue ${{ github.event.issue.number }} to Slack
+        if: steps.check_secret.outputs.exists == 'true'
         id: slack
-        uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
+        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
         with:
+          webhook: ${{ secrets[steps.team_name.outputs.team_name] }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "blocks": [
@@ -44,6 +58,3 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets[steps.team_name.outputs.team_name] }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

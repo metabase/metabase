@@ -44,6 +44,42 @@
              (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)}
                                         "name"]))))))
 
+(defn- transient-lib-markers
+  "All `:lib`/`:lib.convert` namespaced keys anywhere in `query`, except the structural `:lib/type`."
+  [query]
+  (->> (tree-seq coll? seq query)
+       (filter qualified-keyword?)
+       (filter #(#{"lib" "lib.convert"} (namespace %)))
+       (remove #{:lib/type})
+       set))
+
+(deftest ^:parallel strip-transient-markers-on-export-test
+  (testing (str "Transient runtime markers that get added when a legacy query is normalized to MBQL 5 on read "
+                "(`:lib.convert/converted?` and `:lib/transformation-added-base-type`) must not leak into serdes "
+                "output, so a query exports identically whether it happened to be stored as legacy MBQL or MBQL 5 "
+                "in the app DB (GHY-3728).")
+    (let [legacy-query {:database (meta/id)
+                        :type     :query
+                        :query    {:source-table (meta/id :venues)
+                                   :filter       [:> [:field (meta/id :venues :price) nil] 1]}}
+          ;; how a card is read from the app DB when its `dataset_query` is still stored as legacy MBQL
+          from-legacy  (lib/query meta/metadata-provider legacy-query)
+          ;; how the same card is read after being (re-)saved, i.e. persisted to the app DB as MBQL 5
+          from-mbql5   (lib/prepare-for-serialization from-legacy)]
+      (testing "sanity check: a query freshly converted from legacy carries the transient markers"
+        (is (contains? (transient-lib-markers from-legacy) :lib.convert/converted?))
+        (is (contains? (transient-lib-markers from-legacy) :lib/transformation-added-base-type)))
+      (binding [serdes/*export-database-fk* (constantly "DATABASE")
+                serdes/*export-table-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE"])
+                serdes/*export-field-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])]
+        (testing "the markers are stripped on export"
+          (is (not (contains? (transient-lib-markers (serdes/export-mbql from-legacy)) :lib.convert/converted?)))
+          (is (not (contains? (transient-lib-markers (serdes/export-mbql from-legacy))
+                              :lib/transformation-added-base-type))))
+        (testing "export is identical regardless of whether the query was stored as legacy MBQL or MBQL 5"
+          (is (= (serdes/export-mbql from-mbql5)
+                 (serdes/export-mbql from-legacy))))))))
+
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test-2
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/filter (lib/= (meta/field-metadata :venues :id) 1))
@@ -226,11 +262,10 @@
                (get-in (#'serdes/import-mbql* exported) ["table" :table-id])))))))
 
 (deftest ^:parallel template-tag-table-id-deps-test
-  (testing "template tag :table-id contributes a Table dependency"
-    (is (contains? (#'serdes/mbql-deps-map {:table-id ["DB" "SCHEMA" "TABLE"]})
-                   [{:model "Database" :id "DB"}
-                    {:model "Schema" :id "SCHEMA"}
-                    {:model "Table" :id "TABLE"}]))))
+  (testing "template tag :table-id contributes only its Database dependency — the referenced Table itself is not a
+            dependency (it's synthesized on import if missing)"
+    (is (= #{[{:model "Database" :id "DB"}]}
+           (#'serdes/mbql-deps-map {:table-id ["DB" "SCHEMA" "TABLE"]})))))
 
 (deftest ^:parallel export-parameters-test
   (binding [serdes/*export-fk*       (fn [id model]
