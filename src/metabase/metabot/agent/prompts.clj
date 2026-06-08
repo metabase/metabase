@@ -3,7 +3,6 @@
 
   Handles:
   - System prompt templates from resources/metabot/prompts/system/
-  - Tool-specific prompts from resources/metabot/prompts/tools/
   - Template rendering with context variables
   - Template caching for performance
 
@@ -18,6 +17,15 @@
    [selmer.parser :as selmer]))
 
 (set! *warn-on-reflection* true)
+
+;; Kept local rather than required from metabase.metabot.tools to avoid a prompts->tools cycle;
+;; mirrors the SQL entries in metabase.metabot.tools/query-generation-tool-names.
+(def ^:private sql-generation-tool-names
+  "SQL-writing tools.
+  Their presence in the capability-filtered tool set — not the `:permission/metabot-sql-generation`
+  permission alone — is what lets the model write SQL, since they're gated by the
+  `permission:write_sql_queries` capability."
+  #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
 
 ;;; Template Loading
 
@@ -36,17 +44,6 @@
     (or (load-resource path)
         (do
           (log/warn "System prompt template not found:" path)
-          nil))))
-
-(defn load-tool-prompt-template
-  "Load a tool-specific prompt template from resources/metabot/prompts/tools/.
-
-  Example: (load-tool-prompt-template \"query-datasource/system.selmer\")"
-  [template-path]
-  (let [path (str "metabot/prompts/tools/" template-path)]
-    (or (load-resource path)
-        (do
-          (log/debug "Tool prompt template not found:" path)
           nil))))
 
 (defn load-llm-shape-template
@@ -84,17 +81,6 @@
       ;; Return template as-is on error
       template)))
 
-(defn render-tool-prompt
-  "Render a tool-specific prompt template with context variables.
-
-  Similar to render-system-prompt but for tool-level prompts."
-  [template context]
-  (try
-    (selmer/render template context)
-    (catch Exception e
-      (log/error e "Error rendering tool prompt template")
-      template)))
-
 ;;; Template Caching
 
 (def ^:private template-cache
@@ -126,12 +112,6 @@
   Returns template string or nil."
   [template-name]
   (:template (cached-load-template "system" template-name load-system-prompt-template)))
-
-(defn get-cached-tool-prompt
-  "Get tool prompt template from cache or load it.
-  Returns template string or nil."
-  [template-path]
-  (:template (cached-load-template "tool" template-path load-tool-prompt-template)))
 
 (defn get-cached-llm-shape-template
   "Get the LLM-shape (output-side XML) template from cache or load it."
@@ -189,7 +169,11 @@
                                      (get context :recent-views))
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
-            has-sql?             (= :yes (:permission/metabot-sql-generation perms))
+            ;; The SQL guidance tells the model to load SQL skills and use the SQL tools, so gate it
+            ;; on those tools actually being active — the permission can be `:yes` while the request
+            ;; lacks the `permission:write_sql_queries` capability that registers them.
+            has-sql?             (and (= :yes (:permission/metabot-sql-generation perms))
+                                      (boolean (some sql-generation-tool-names (keys tools))))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
                                   :current_time             current-time

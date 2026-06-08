@@ -32,6 +32,11 @@
         (is (=? {:structured-output {:portable_fk ["test-data (h2)" "PUBLIC" "PRODUCTS" "CATEGORY"]}}
                 (metabot.tools.field-stats/field-values
                  {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5})))))
+    (testing "A field-id not on the table is an agent error, not a field-metadata result."
+      (mt/as-admin
+        (is (=? {:output #"Field -1 not found"}
+                (metabot.tools.field-stats/field-values
+                 {:entity-type "table", :entity-id products-id, :field-id -1, :limit 5})))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
         (are [table-id field-id value-metadata]

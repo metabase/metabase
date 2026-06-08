@@ -277,7 +277,13 @@
   databases.
 
   Returns [] when `engine` is nil or has no matching dialect skill.
-  Dialect context only arises in SQL-editor sessions, so its presence is itself the gate."
+  Dialect context only arises in SQL-editor sessions, so its presence is itself the gate.
+
+  Invariant: the emitted pair references the `load_skill` tool, which `get-tools` registers whenever the
+  skill catalog is non-empty.
+  Any profile that can reach SQL-editor/dialect context also exposes query skills (the cross-cutting
+  `read-resource` skill alone keeps the catalog non-empty), so `load_skill` is always registered when
+  this returns a non-empty preload."
   [engine]
   (or (when-let [skill (dialect-skill engine)]
         (let [skill-id (:id skill)

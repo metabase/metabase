@@ -1,5 +1,6 @@
 (ns metabase.metabot.agent.prompts-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.metabot.agent.prompts :as prompts]))
@@ -21,7 +22,9 @@
       (is (nil? template)))))
 
 (deftest ^:parallel construct-notebook-query-prompt-database-name-examples-test
-  (let [prompt (prompts/load-tool-prompt-template "construct_notebook_query.md")]
+  ;; This .md is the canonical construct_query format reference, served verbatim as an MCP resource
+  ;; (see metabase.mcp.resources) and the source the construct-notebook-query-* skills were split from.
+  (let [prompt (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))]
     (is (some? prompt))
     (testing "examples use the exact sample database name, not the old abbreviated portable FK"
       (is (str/includes? prompt "Sample Database"))
