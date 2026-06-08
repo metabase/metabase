@@ -190,3 +190,65 @@
               (testing "DELETE /:id/database/:db-id — 200 against the perm-holding DB"
                 (mt/user-http-request :rasta :delete 200
                                       (str "ee/workspace-manager/" ws-id "/database/" target-db-id))))))))))
+
+;;; ------------------------------------------- Instance pool CRUD ---------------------------------------------
+
+(deftest instance-pool-crud-test
+  (testing "register, get, list, edit, remove a pool instance"
+    (mt/with-model-cleanup [:model/WorkspaceInstance]
+      (let [{id :id :as created} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
+                                                       {:url "https://child-1.example.com"
+                                                        :api_key "mb_key_1"
+                                                        :name "child-1"})]
+        (testing "POST returns a free instance with derived status and no api_key"
+          (is (=? {:id pos-int? :url "https://child-1.example.com" :name "child-1"
+                   :status "free" :workspace_id nil}
+                  created))
+          (is (not (contains? created :api_key))))
+        (testing "GET /:id"
+          (is (=? {:id id :status "free"}
+                  (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/instance/" id)))))
+        (testing "GET list"
+          (is (=? [{:id id :url "https://child-1.example.com"}]
+                  (mt/user-http-request :crowberto :get 200 "ee/workspace-manager/instance"))))
+        (testing "PUT edits url/name"
+          (is (=? {:id id :url "https://child-1b.example.com" :name "renamed"}
+                  (mt/user-http-request :crowberto :put 200 (str "ee/workspace-manager/instance/" id)
+                                        {:url "https://child-1b.example.com" :name "renamed"}))))
+        (testing "DELETE removes"
+          (is (=? {:id id :deleted true}
+                  (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/instance/" id))))
+          (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/instance/" id)))))))
+
+(deftest instance-pool-rejects-workspace-id-in-body-test
+  (testing "the FE cannot bind an instance by setting workspace_id via POST or PUT"
+    (mt/with-model-cleanup [:model/WorkspaceInstance]
+      (testing "POST with workspace_id — 400"
+        (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/instance"
+                              {:url "https://x.example.com" :api_key "k" :workspace_id 1}))
+      (let [{id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
+                                           {:url "https://y.example.com" :api_key "k"})]
+        (testing "PUT with workspace_id — 400"
+          (mt/user-http-request :crowberto :put 400 (str "ee/workspace-manager/instance/" id)
+                                {:workspace_id 1}))))))
+
+(deftest instance-pool-delete-busy-409-test
+  (testing "DELETE refuses a provisioned instance"
+    (mt/with-model-cleanup [:model/WorkspaceInstance]
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "Bound"}
+                     :model/WorkspaceInstance {id :id} {:url "https://busy.example.com"
+                                                        :api_key "k"
+                                                        :workspace_id ws-id}]
+        (is (=? {:status "provisioned" :workspace_id ws-id}
+                (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/instance/" id))))
+        (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/instance/" id))))))
+
+(deftest instance-pool-superuser-gated-test
+  (testing "all instance-pool endpoints require a superuser"
+    (mt/with-temp [:model/WorkspaceInstance {id :id} {:url "https://gate.example.com" :api_key "k"}]
+      (mt/user-http-request :rasta :get 403 "ee/workspace-manager/instance")
+      (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/instance/" id))
+      (mt/user-http-request :rasta :post 403 "ee/workspace-manager/instance"
+                            {:url "https://nope.example.com" :api_key "k"})
+      (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/instance/" id) {:name "nope"})
+      (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/instance/" id)))))

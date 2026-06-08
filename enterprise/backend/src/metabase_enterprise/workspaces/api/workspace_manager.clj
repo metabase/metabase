@@ -75,6 +75,34 @@
    ;; The list endpoint omits it — clients should treat a missing array as `[]`.
    [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
 
+;;; ------------------------------------------ Instance-pool schemas -------------------------------------------
+
+;; `workspace_id` is rejected explicitly (see `reject-workspace-id!`) rather than via a
+;; `:closed true` map, so the FE can't bind an instance to a workspace by editing the row.
+;; Binding happens only via the `:deployment` (provision) endpoint.
+(def ^:private CreateInstanceParams
+  [:map
+   [:url     ms/NonBlankString]
+   [:api_key ms/NonBlankString]
+   [:name    {:optional true} [:maybe :string]]])
+
+(def ^:private UpdateInstanceParams
+  [:map
+   [:url     {:optional true} ms/NonBlankString]
+   [:api_key {:optional true} ms/NonBlankString]
+   [:name    {:optional true} [:maybe :string]]])
+
+(def ^:private InstanceResponse
+  [:map {:closed true}
+   [:id           ms/PositiveInt]
+   [:url          ms/NonBlankString]
+   [:name         [:maybe :string]]
+   ;; `status` is derived from `workspace_id`, never stored.
+   [:status       [:enum :free :provisioned]]
+   [:workspace_id [:maybe ms/PositiveInt]]
+   [:created_at   DateTimeWithTimeZone]
+   [:updated_at   DateTimeWithTimeZone]])
+
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
 (defn- present-workspace-database [wsd]
@@ -89,6 +117,23 @@
           (select-keys [:id :name :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
+
+(defn- present-instance
+  "Shape a `workspace_instance` row for the API: derive `status` and drop the encrypted
+   `api_key` so it never leaves the server."
+  [{:keys [workspace_id] :as instance}]
+  (-> instance
+      (select-keys [:id :url :name :workspace_id :created_at :updated_at])
+      (dissoc :api_key)
+      (assoc :status (if workspace_id :provisioned :free))))
+
+(defn- reject-workspace-id!
+  "An instance is bound to a workspace only by the `:deployment` endpoint. Refuse (400)
+   any attempt to set `workspace_id` directly through CRUD."
+  [params]
+  (when (contains? params :workspace_id)
+    (throw (ex-info "workspace_id cannot be set via this endpoint; use the provision endpoint."
+                    {:status-code 400}))))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -217,3 +262,57 @@
                                       :is-superuser? api/*is-superuser?*}})]
     (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
       (serialization/export-metadata! os opts))))
+
+;;; ------------------------------------------- Instance pool CRUD ---------------------------------------------
+;;;
+;;; The pool registry of pre-booted dev (child) instances. Superuser-gated.
+;;; `workspace_id` is set only by the `:deployment` endpoints, never here.
+
+(api.macros/defendpoint :get "/instance" :- [:sequential InstanceResponse]
+  "List all registered dev instances in the pool."
+  []
+  (api/check-superuser)
+  (mapv present-instance (t2/select :model/WorkspaceInstance {:order-by [[:id :asc]]})))
+
+(api.macros/defendpoint :get "/instance/:id" :- InstanceResponse
+  "Get a single pool instance by id."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (present-instance (api/check-404 (t2/select-one :model/WorkspaceInstance :id id))))
+
+(def ^:private instance-writable-keys [:url :api_key :name])
+
+(api.macros/defendpoint :post "/instance" :- InstanceResponse
+  "Register a new dev instance in the pool. Starts free (unbound)."
+  [_route-params _query-params params :- CreateInstanceParams]
+  (api/check-superuser)
+  (reject-workspace-id! params)
+  (let [row (select-keys params instance-writable-keys)]
+    (present-instance
+     (t2/select-one :model/WorkspaceInstance
+                    :id (t2/insert-returning-pk! :model/WorkspaceInstance row)))))
+
+(api.macros/defendpoint :put "/instance/:id" :- InstanceResponse
+  "Update a pool instance's `url`, `api_key`, or `name`. Cannot change `workspace_id`."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   params :- UpdateInstanceParams]
+  (api/check-superuser)
+  (reject-workspace-id! params)
+  (api/check-404 (t2/select-one :model/WorkspaceInstance :id id))
+  (let [row (select-keys params instance-writable-keys)]
+    (when (seq row)
+      (t2/update! :model/WorkspaceInstance :id id row)))
+  (present-instance (t2/select-one :model/WorkspaceInstance :id id)))
+
+(api.macros/defendpoint :delete "/instance/:id"
+  :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
+  "Remove a pool instance. 409 if it is currently provisioned — deprovision first."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [{:keys [workspace_id]} (api/check-404 (t2/select-one :model/WorkspaceInstance :id id))]
+    (when workspace_id
+      (throw (ex-info "Cannot delete a provisioned instance; deprovision it first."
+                      {:status-code 409 :workspace_id workspace_id})))
+    (t2/delete! :model/WorkspaceInstance :id id)
+    {:id id :deleted true}))
