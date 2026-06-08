@@ -1,10 +1,12 @@
 (ns metabase.transforms.jobs
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
    [flatland.ordered.set :as ordered-set]
+   [java-time.api :as t]
    [metabase.channel.urls :as urls]
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
@@ -13,6 +15,7 @@
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
@@ -172,8 +175,16 @@
 
   Updates the transform-job-run specified by run-id after every completion.
   Returns a map with :status and a collection of :failures if failed."
-  [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
+  [run-id transform-ids-to-run {:keys [run-method start-promise user-id skip-fresh-deps?]
+                                :or   {skip-fresh-deps? true}}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
+        requested    (set transform-ids-to-run)
+        closure      (into #{} (map :id) plan)
+        ;; Only deps pulled into the plan (not directly requested) are freshness-gated. Seeding them
+        ;; as :succeeded lets their dependents dispatch while they themselves are never submitted.
+        skip         (if skip-fresh-deps?
+                       (freshness/fresh-dep-ids (t/offset-date-time) (set/difference closure requested))
+                       #{})
         n            (max 1 (transforms.settings/transform-run-job-sql-concurrency))
         sql-executor (Executors/newFixedThreadPool n (named-thread-factory "transforms-sql-worker-%d"))
         py-executor  (Executors/newSingleThreadExecutor (named-thread-factory "transforms-python-worker-%d"))
@@ -181,7 +192,7 @@
                       :py  {:executor py-executor  :capacity 1}}
         lane-for     (fn [t] (if (transforms-base.u/python-transform? t) :py :sql))
         completions  (ArrayBlockingQueue. (max 2 (inc n)))
-        state        (volatile! {:succeeded         #{}
+        state        (volatile! {:succeeded         skip
                                  :failed            #{}
                                  :failures          []
                                  :in-flight         {:sql #{} :py #{}}
@@ -239,6 +250,8 @@
                               :else st)))
                         st
                         plan))]
+    (when (seq skip)
+      (log/infof "Skipping %d fresh pulled-in dependency transform(s): %s" (count skip) (pr-str skip)))
     (when start-promise (deliver start-promise :started))
     (try
       (vreset! state (dispatch! @state))
