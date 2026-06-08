@@ -78,10 +78,6 @@ describe("scenarios > home > homepage", () => {
         triggered_from: "suggestion_sidebar",
       });
 
-      // Remember the current URL so we can wait for the *final* navigation to actually
-      // settle before saving (see the save step below).
-      cy.url().as("urlBeforeFinalXray");
-
       cy.findByRole("complementary").within(() => {
         cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
         cy.findByRole("heading", { name: "Related" })
@@ -97,19 +93,17 @@ describe("scenarios > home > homepage", () => {
         triggered_from: "suggestion_sidebar",
       });
 
-      // `cy.wait("@getXrayDashboard")` only confirms the automagic *metadata* request; the
-      // SPA route change + dashboard remount for the final ("Related → Orders") x-ray lag it.
-      // Clicking "Save this" before that remount settles discards the save dispatch — no
-      // POST /api/dashboard/save is ever sent. Wait for the URL to actually land on the new
-      // x-ray dashboard first; the disabled-until-loaded "Save this" button then handles the
-      // data-load gap.
-      cy.get("@urlBeforeFinalXray").then((urlBeforeFinalXray) => {
-        cy.url().should("not.eq", urlBeforeFinalXray);
-      });
-
-      cy.intercept("POST", "/api/dashboard/save").as("saveDashboard");
       cy.findByTestId("automatic-dashboard-header").button("Save this").click();
-      cy.wait("@saveDashboard");
+
+      // Assert the save succeeded via the resulting UI — the header switches to a "Saved"
+      // button + "See it" link — rather than waiting on the POST /api/dashboard/save
+      // request. The request-alias wait was timing-sensitive and flaked with "No request
+      // ever occurred"; the saved-state UI is the real user-observable outcome and Cypress
+      // retries it until the save completes.
+      cy.findByTestId("automatic-dashboard-header").within(() => {
+        cy.findByText("See it").should("be.visible");
+        cy.findByText("Saved").should("be.visible");
+      });
 
       H.expectUnstructuredSnowplowEvent({
         event: "x-ray_saved",
