@@ -10,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.test-util :as transforms.tu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest compile-transform-contract-test
@@ -188,6 +189,22 @@
                   "rows-affected must be a bare int, not a nested map")
               (is (= 3 (:rows-affected append-result))
                   "the INSERT...SELECT path reports the flat, true insert count"))))))))
+
+(deftest ^:parallel run-transform-result-schema-test
+  ;; Pins the contract that every `run-transform!` implementation's return schema
+  ;; (`::driver/run-transform-result`) enforces: a map carrying an integer `:rows-affected`. The
+  ;; SQL `[:sql :table]` / `[:sql :table-incremental]` methods declare this via `mu/defmethod`, and
+  ;; the Python path (`run-python-transform-impl!`) reuses the same open schema. No DB needed.
+  (testing "valid: a bare integer :rows-affected"
+    (is (true? (mr/validate ::driver/run-transform-result {:rows-affected 0})))
+    (is (true? (mr/validate ::driver/run-transform-result {:rows-affected 42}))))
+  (testing "valid: open map tolerates extra keys (e.g. the Python path's :status/:body)"
+    (is (true? (mr/validate ::driver/run-transform-result {:rows-affected 3, :status 200, :body {}}))))
+  (testing "invalid: missing, nil, or non-integer :rows-affected"
+    (is (false? (mr/validate ::driver/run-transform-result {})))
+    (is (false? (mr/validate ::driver/run-transform-result {:rows-affected nil})))
+    (is (false? (mr/validate ::driver/run-transform-result {:rows-affected "5"})))
+    (is (false? (mr/validate ::driver/run-transform-result {:rows-affected 1.5})))))
 
 (defn- venues-source-query
   "Lib query projecting [name, price] from venues — the source shape both characterization tests
