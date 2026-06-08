@@ -6,7 +6,10 @@ import _ from "underscore";
 import { Box } from "metabase/ui";
 import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import { TREEMAP_CHART_STYLE } from "metabase/visualizations/echarts/graph/treemap/constants";
+import {
+  TREEMAP_CHART_STYLE,
+  groupHeader,
+} from "metabase/visualizations/echarts/graph/treemap/constants/style";
 import { getTreemapBreadcrumbModel } from "metabase/visualizations/echarts/graph/treemap/model/breadcrumb";
 import { getTreemapColors } from "metabase/visualizations/echarts/graph/treemap/model/colors";
 import {
@@ -24,9 +27,6 @@ import {
 } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import {
   DRILLED_BOTTOM_INSET,
-  GROUP_HEADER_FONT_SIZE,
-  GROUP_HEADER_FONT_WEIGHT,
-  GROUP_HEADER_PADDING_X,
   getTreemapChartOption,
 } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
@@ -210,11 +210,11 @@ export const TreemapChart = ({
       getLabel: (id) => tree?.[Number(id)]?.displayName,
       measureTextWidth: (text) =>
         renderingContext.measureText(text, {
-          size: GROUP_HEADER_FONT_SIZE,
+          size: groupHeader.fontSize,
           family: renderingContext.fontFamily,
-          weight: GROUP_HEADER_FONT_WEIGHT,
+          weight: groupHeader.fontWeight,
         }),
-      padding: GROUP_HEADER_PADDING_X,
+      padding: groupHeader.paddingX,
     });
     setParentLabelLayout((prev) =>
       _.isEqual(prev, nextParentLayout) ? prev : nextParentLayout,

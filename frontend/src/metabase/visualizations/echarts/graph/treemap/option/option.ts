@@ -3,7 +3,7 @@ import type { TreemapSeriesOption } from "echarts/charts";
 
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import { TREEMAP_CHART_STYLE } from "../constants";
+import { TREEMAP_CHART_STYLE, groupHeader } from "../constants/style";
 import { getTreemapColors } from "../model/colors";
 import type { TreemapLabelLayout } from "../model/labels";
 import { getTreemapNodeId } from "../model/tooltip";
@@ -31,15 +31,6 @@ const LEAF_LABEL_MIN_AREA_SHARE = 0.03;
 // 24px: the pill is ~32px tall and sits 8px off the container bottom
 // (TreemapBreadcrumb.module.css), so 24 + 32 + 8 = 64.
 export const DRILLED_BOTTOM_INSET = 64;
-
-// Font + padding of the group header chip (the parent labels). Exported so the
-// component's measurement pass can measure the header text at the exact style
-// ECharts renders it, to decide per-group whether the text fits the chip width.
-export const GROUP_HEADER_FONT_SIZE = 12;
-export const GROUP_HEADER_FONT_WEIGHT = 700;
-export const GROUP_HEADER_HEIGHT = 32;
-// Horizontal inset on each side of the header text inside the chip.
-export const GROUP_HEADER_PADDING_X = 12;
 
 export interface TreemapSeriesNode {
   id: string;
@@ -120,14 +111,14 @@ export function getTreemapChartOption({
   // them.
   const groupUpperLabel: NonNullable<TreemapChartSeriesOption["upperLabel"]> = {
     show: showParentLabels && !isDrilled,
-    height: GROUP_HEADER_HEIGHT,
+    height: groupHeader.height,
     color: renderingContext.getColor("text-primary"),
-    fontSize: GROUP_HEADER_FONT_SIZE,
-    fontWeight: GROUP_HEADER_FONT_WEIGHT,
+    fontSize: groupHeader.fontSize,
+    fontWeight: groupHeader.fontWeight,
     // Chip shape; the per-node `backgroundColor` (the group hue with opacity)
     // is set in `toSeriesData`. A per-node `color: "transparent"` there hides the
     // text of any chip too narrow to fit it, while keeping this band.
-    padding: [0, GROUP_HEADER_PADDING_X],
+    padding: [0, groupHeader.paddingX],
   };
 
   const levels: TreemapSeriesOption["levels"] = [
