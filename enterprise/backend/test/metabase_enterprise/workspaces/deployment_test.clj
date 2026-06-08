@@ -44,7 +44,7 @@
                                               {:url "https://child.example.com" :api_key "k"})
             calls    (atom [])]
         (with-captured-child-calls calls
-          (let [result (deployment/provision! ws-id inst-id)]
+          (let [result (deployment/provision! ws-id inst-id nil)]
             (testing "instance is now bound to the workspace"
               (is (= ws-id (:workspace_id result)))
               (is (= ws-id (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))
@@ -61,6 +61,40 @@
                 ;; advanced-config endpoint requires — when :content is a File.
                 (is (instance? java.io.File (:content part)))))))))))
 
+(deftest provision-with-remote-sync-test
+  (testing "provision! with remote-sync config also creates the collection, sets settings, and triggers import"
+    (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
+      (let [{:keys [ws-id]} (provisioned-workspace!)
+            inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
+                                             {:url "https://child.example.com" :api_key "k"})
+            calls   (atom [])]
+        ;; Stub returns bodies the orchestrator reads: a collection id, then an import task id.
+        (with-redefs [http/request (fn [req]
+                                     (swap! calls conj req)
+                                     {:status 200
+                                      :body   (cond
+                                                (= "/api/collection" (re-find #"/api/collection$" (:url req)))
+                                                {:id 99}
+                                                (re-find #"/remote-sync/import" (:url req))
+                                                {:task_id "task-1"}
+                                                :else {})})]
+          (deployment/provision! ws-id inst-id {:url "https://repo.example/x.git" :token "tok" :branch "main"}))
+        (let [paths (map #(-> % :url (->> (re-find #"/api/.*"))) @calls)]
+          (testing "four child calls in order: bind, collection, settings, import"
+            (is (= 4 (count @calls)))
+            (is (= [:post :post :put :post] (map :method @calls)))
+            (is (= ["/api/ee/advanced-config/"
+                    "/api/collection"
+                    "/api/ee/remote-sync/settings"
+                    "/api/ee/remote-sync/import"]
+                   paths)))
+          (testing "the settings call pins the created collection and points at the repo"
+            (let [settings-req (nth @calls 2)
+                  fp           (:form-params settings-req)]
+              (is (= "https://repo.example/x.git" (:remote-sync-url fp)))
+              (is (= "read-write" (:remote-sync-type fp)))
+              (is (= {99 true} (:collections fp))))))))))
+
 (deftest provision-rejects-busy-instance-test
   (testing "provision! 409s when the target instance is already provisioned"
     (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
@@ -72,7 +106,7 @@
               calls   (atom [])]
           (with-captured-child-calls calls
             (is (thrown-with-msg? Exception #"already provisioned"
-                                  (deployment/provision! ws-id inst-id))))
+                                  (deployment/provision! ws-id inst-id nil))))
           (testing "no child call was made"
             (is (zero? (count @calls)))))))))
 
@@ -83,7 +117,7 @@
             inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
                                              {:url "https://child.example.com" :api_key "k"})]
         (with-redefs [http/request (fn [_] (throw (ex-info "boom" {})))]
-          (is (thrown? Exception (deployment/provision! ws-id inst-id))))
+          (is (thrown? Exception (deployment/provision! ws-id inst-id nil))))
         (testing "instance remains free"
           (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))))))
 

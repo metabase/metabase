@@ -322,16 +322,33 @@
 ;;;
 ;;; Bind a workspace to a free pool instance (and back). `:id` here is the *workspace* id.
 
+(def ^:private RemoteSyncParams
+  [:map {:closed true}
+   [:url    ms/NonBlankString]
+   [:token  ms/NonBlankString]
+   [:branch {:optional true} ms/NonBlankString]])
+
 (api.macros/defendpoint :post "/:id/deployment" :- InstanceResponse
-  "Provision workspace `:id` onto a free pool instance. Body `{workspace_instance_id}`.
-   Takes the instance from the pool, builds the workspace config.yml, binds it on the
-   child over HTTP, and marks the instance provisioned. 409 if the instance is busy or
-   the workspace has un-provisioned databases."
+  "Provision workspace `:id` onto a free pool instance. Body
+   `{workspace_instance_id, remote_sync?}`. Takes the instance from the pool, builds the
+   workspace config.yml, binds it on the child over HTTP, and marks the instance
+   provisioned. 409 if the instance is busy or the workspace has un-provisioned databases.
+
+   When `remote_sync` `{url, token, branch?}` is supplied, also configures remote-sync on
+   the child and triggers the initial content import."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [workspace_instance_id]} :- [:map [:workspace_instance_id ms/PositiveInt]]]
+   {:keys [workspace_instance_id remote_sync]}
+   :- [:map
+       [:workspace_instance_id ms/PositiveInt]
+       [:remote_sync {:optional true} RemoteSyncParams]]]
   (api/check-superuser)
-  (present-instance (deployment/provision! id workspace_instance_id)))
+  (present-instance
+   (deployment/provision! id workspace_instance_id
+                          (when remote_sync
+                            {:url    (:url remote_sync)
+                             :token  (:token remote_sync)
+                             :branch (:branch remote_sync)}))))
 
 (api.macros/defendpoint :delete "/:id/deployment" :- InstanceResponse
   "Deprovision workspace `:id`: unbind it from its pool instance and return that instance

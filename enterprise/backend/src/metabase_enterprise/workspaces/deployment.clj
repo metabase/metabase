@@ -63,17 +63,55 @@
       (finally
         (.delete tmp)))))
 
+(def ^:private synced-collection-name
+  "Name of the collection on the child that the agent builds into and that remote-sync
+   serializes. Matches the `setup-child.ts` spike."
+  "Robot DE")
+
+(defn- configure-remote-sync!
+  "On the child: create the synced collection, point remote-sync at the content repo
+   (read-write), pin that collection, and trigger the initial import so the collection
+   is populated from the repo. `remote-sync` is `{:url ..., :token ..., :branch ...}`.
+
+   This is GHY-3828's provision step: `setup-child.ts` sets the settings but never kicks
+   the import, so a freshly-provisioned child started empty. Returns the import task id
+   (or nil when the import reports no changes)."
+  [instance {:keys [url token branch]}]
+  (let [branch        (or branch "main")
+        {coll-id :id} (:body (child-request! instance :post "/api/collection"
+                                             {:form-params  {:name synced-collection-name}
+                                              :content-type :json}))]
+    (child-request! instance :put "/api/ee/remote-sync/settings"
+                    {:form-params  {:remote-sync-url    url
+                                    :remote-sync-token  token
+                                    :remote-sync-type   "read-write"
+                                    :remote-sync-branch branch
+                                    :collections        {coll-id true}}
+                     :content-type :json})
+    (let [{{task-id :task_id} :body}
+          (child-request! instance :post "/api/ee/remote-sync/import"
+                          {:form-params  {:branch branch}
+                           :content-type :json})]
+      (log/infof "Triggered remote-sync import on instance %d (collection %s, task %s)"
+                 (:id instance) coll-id task-id)
+      task-id)))
+
 (defn provision!
   "Bind workspace `workspace-id` to the free pool instance `instance-id`.
 
    1. Guard: the instance is free (`workspace_id` null) — else 409.
    2. Build the workspace `config.yml` (409 if the workspace has un-provisioned databases).
    3. POST it to the child (creates DB connections + binds the workspace, writably).
-   4. Mark the instance busy (`workspace_id = workspace-id`).
+   4. If `remote-sync` config is supplied, configure remote-sync on the child + trigger
+      the initial import (GHY-3828).
+   5. Mark the instance busy (`workspace_id = workspace-id`).
 
-   Atomic-ish: if the child bind fails the instance stays free (we set `workspace_id`
-   only after a successful bind), so a failed provision never strands a busy instance."
-  [workspace-id instance-id]
+   Atomic-ish: if a child step fails the instance stays free (we set `workspace_id`
+   only after the child steps succeed), so a failed provision never strands a busy instance.
+
+   `remote-sync` is optional `{:url ..., :token ..., :branch ...}`; when omitted the
+   workspace is bound but no content is synced."
+  [workspace-id instance-id remote-sync]
   (let [instance (t2/select-one :model/WorkspaceInstance :id instance-id)]
     (when-not instance
       (throw (ex-info "Pool instance not found" {:status-code 404 :instance_id instance-id})))
@@ -84,6 +122,8 @@
                      (throw (ex-info "Workspace not found" {:status-code 404 :workspace_id workspace-id})))
           yaml   (ws.config/config->yaml config)]
       (bind-workspace-on-child! instance yaml)
+      (when remote-sync
+        (configure-remote-sync! instance remote-sync))
       (t2/update! :model/WorkspaceInstance :id instance-id {:workspace_id workspace-id})
       (log/infof "Provisioned workspace %d onto instance %d" workspace-id instance-id)
       (t2/select-one :model/WorkspaceInstance :id instance-id))))
