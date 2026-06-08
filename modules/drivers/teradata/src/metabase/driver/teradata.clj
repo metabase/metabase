@@ -471,7 +471,7 @@
    "idleConnectionTestPeriod"     300   ; Test idle connections every 5 minutes
    "maxConnectionAge"             (* 6 60 60) ; 6 hours
    "dataSourceName"               (format "db-%d-%s-%s" (u/the-id database) (name driver) (let [details (:details database)]
-                                                                                            (or (first (str/split (:dbnames details) #","))
+                                                                                            (or (some-> (:dbnames details) (str/split #",") first)
                                                                                                 (:user details))))})
 
 ;; Teradata does not support boolean expressions (BETWEEN, AND, >=, etc.) in SELECT —
