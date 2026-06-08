@@ -207,6 +207,23 @@
    400
    "typed-schemas/v1/json?questions=true"))
 
+(deftest collections-query-params-are-mutually-exclusive-test
+  (mt/user-http-request-full-response
+   :crowberto
+   :get
+   400
+   "typed-schemas/v1/json?collections=1,2&database=1")
+  (mt/user-http-request-full-response
+   :crowberto
+   :get
+   400
+   "typed-schemas/v1/json?collections=1,2&questions=true")
+  (mt/user-http-request-full-response
+   :crowberto
+   :get
+   400
+   "typed-schemas/v1/json?library=1&collections=2"))
+
 (deftest library-collection-scope-accepts-subcollection-id-test
   (mt/with-temp [:model/Collection root  {:name "Library"
                                           :type "library"
@@ -222,6 +239,36 @@
               :data-collection-ids   #{(:id child)}
               :metric-collection-ids #{}}
              (select-keys (#'typed-schemas.api/library-collection-scope (str (:id child)))
+                          [:collection-ids :data-collection-ids :metric-collection-ids]))))))
+
+(deftest library-collections-scope-accepts-comma-separated-subcollection-ids-test
+  (mt/with-temp [:model/Collection root          {:name "Library"
+                                                  :type "library"
+                                                  :location "/"}
+                 :model/Collection data          {:name "Data"
+                                                  :type "library-data"
+                                                  :location (collection/children-location root)}
+                 :model/Collection metrics       {:name "Metrics"
+                                                  :type "library-metrics"
+                                                  :location (collection/children-location root)}
+                 :model/Collection data-child    {:name "Boba Data"
+                                                  :type "library-data"
+                                                  :location (collection/children-location data)}
+                 :model/Collection data-grandkid {:name "Boba Data Nested"
+                                                  :type "library-data"
+                                                  :location (collection/children-location data-child)}
+                 :model/Collection metric-child  {:name "Boba Metrics"
+                                                  :type "library-metrics"
+                                                  :location (collection/children-location metrics)}]
+    (mt/with-test-user :crowberto
+      (is (= {:collection-ids        #{(:id data-child) (:id data-grandkid) (:id metric-child)}
+              :data-collection-ids   #{(:id data-child) (:id data-grandkid)}
+              :metric-collection-ids #{(:id metric-child)}}
+             (select-keys (#'typed-schemas.api/library-collections-scope
+                           (#'typed-schemas.api/query-collection-values
+                            {:collections (format "%d, %d"
+                                                  (:id data-child)
+                                                  (:id metric-child))}))
                           [:collection-ids :data-collection-ids :metric-collection-ids]))))))
 
 (deftest library-schema-includes-metric-mapped-tables-test
@@ -250,6 +297,42 @@
                   (constantly [{:kind "table", :key "publishedTable", :id 10}
                                {:kind "table", :key "mappedTable", :id 42}])]
       (let [schema (#'typed-schemas.api/typed-schema {:library "123"})]
+        (is (= #{10 42} @selected-table-ids))
+        (is (= {} (:questions schema)))
+        (is (= #{100} (->> (:models schema) vals (map :id) set)))
+        (is (= #{10 42} (->> (:tables schema) vals (map :id) set)))
+        (is (= #{1} (->> (:metrics schema) vals (map :id) set)))))))
+
+(deftest collections-schema-includes-selected-data-and-metric-collections-test
+  (let [selected-table-ids (atom nil)]
+    (with-redefs [typed-schemas.api/library-collections-scope
+                  (fn [collection-values]
+                    (is (= ["10" "20"] collection-values))
+                    {:metric-collection-ids #{20}
+                     :data-collection-ids   #{10}})
+                  typed-schemas.api/model-schemas
+                  (constantly [{:kind "model", :key "allModelsAreAlwaysIncluded", :id 100}])
+                  typed-schemas.api/metric-schemas
+                  (fn [_database-ids collection-ids]
+                    (is (= #{20} collection-ids))
+                    [{:kind           "metric"
+                      :key            "revenue"
+                      :id             1
+                      :name           "Revenue"
+                      :columns        [{:name "Revenue", :displayName "Revenue", :jsType "number"}]
+                      :mappedTableIds [42]}])
+                  typed-schemas.api/select-library-tables
+                  (fn [library-scope]
+                    (is (= #{10} (:data-collection-ids library-scope)))
+                    [{:id 10}])
+                  typed-schemas.api/select-tables
+                  (fn [_database-ids table-ids]
+                    (reset! selected-table-ids table-ids)
+                    [{:id 10} {:id 42}])
+                  typed-schemas.api/table-schemas
+                  (constantly [{:kind "table", :key "publishedTable", :id 10}
+                               {:kind "table", :key "mappedTable", :id 42}])]
+      (let [schema (#'typed-schemas.api/typed-schema {:collections "10, 20"})]
         (is (= #{10 42} @selected-table-ids))
         (is (= {} (:questions schema)))
         (is (= #{100} (->> (:models schema) vals (map :id) set)))

@@ -150,6 +150,21 @@
           str/trim
           not-empty))
 
+(defn- query-collection-values
+  [query-params]
+  (when-let [collections-value (some-> (query-param query-params :collections)
+                                       str/trim
+                                       not-empty)]
+    (->> (str/split collections-value #",")
+         (map str/trim)
+         (remove str/blank?)
+         seq)))
+
+(defn- parse-collection-id
+  [collection-value]
+  (or (parse-id collection-value)
+      (api/check-400 false (format "Invalid collection id: %s" collection-value))))
+
 (defn- library-collection-for-value
   [library-value]
   (when library-value
@@ -161,24 +176,44 @@
            (filter mi/can-read?)
            first))))
 
+(defn- library-collection-for-id
+  [collection-id]
+  (->> (t2/select :model/Collection :id collection-id)
+       (filter #(contains? collection/library-collection-types (:type %)))
+       (filter mi/can-read?)
+       first))
+
+(defn- library-collection-scope*
+  [library-collections]
+  (let [ids          (->> library-collections
+                          (mapcat #(cons % (collection/descendants-flat %)))
+                          (map :id)
+                          set)
+        rows         (t2/select [:model/Collection :id :type] :id [:in ids])
+        ids-for-type (fn [collection-type]
+                       (->> rows
+                            (filter #(= (:type %) collection-type))
+                            (map :id)
+                            set))]
+    {:library-collections  library-collections
+     :collection-ids        ids
+     :data-collection-ids   (ids-for-type collection/library-data-collection-type)
+     :metric-collection-ids (ids-for-type collection/library-metrics-collection-type)}))
+
 (defn- library-collection-scope
   [library-value]
   (when library-value
     (let [library (or (library-collection-for-value library-value)
-                      (api/check-404 false))
-          ids     (->> (cons library (collection/descendants-flat library))
-                       (map :id)
-                       set)
-          rows    (t2/select [:model/Collection :id :type] :id [:in ids])
-          ids-for-type (fn [collection-type]
-                         (->> rows
-                              (filter #(= (:type %) collection-type))
-                              (map :id)
-                              set))]
-      {:library              library
-       :collection-ids        ids
-       :data-collection-ids   (ids-for-type collection/library-data-collection-type)
-       :metric-collection-ids (ids-for-type collection/library-metrics-collection-type)})))
+                      (api/check-404 false))]
+      (library-collection-scope* [library]))))
+
+(defn- library-collections-scope
+  [collection-values]
+  (when (seq collection-values)
+    (let [collections (for [collection-value collection-values]
+                        (or (library-collection-for-id (parse-collection-id collection-value))
+                            (api/check-404 false)))]
+      (library-collection-scope* collections))))
 
 (defn- select-cards
   ([card-type database-ids]
@@ -597,22 +632,27 @@
 
 (defn- validate-query-params!
   [query-params]
-  (let [library-value  (query-library-value query-params)
-        database-value (query-database-value query-params)
-        questions-only (truthy-query-param? (query-param query-params :questions))]
+  (let [library-value     (query-library-value query-params)
+        collection-values (query-collection-values query-params)
+        library-scoped?   (or library-value collection-values)
+        database-value    (query-database-value query-params)
+        questions-only    (truthy-query-param? (query-param query-params :questions))]
     (api/check-400
-     (not (and library-value database-value))
-     "The library and database query parameters are mutually exclusive.")
+     (not (and library-value collection-values))
+     "The library and collections query parameters are mutually exclusive.")
     (api/check-400
-     (not (and library-value questions-only))
-     "The library and questions query parameters are mutually exclusive.")
+     (not (and library-scoped? database-value))
+     "The library/collections and database query parameters are mutually exclusive.")
+    (api/check-400
+     (not (and library-scoped? questions-only))
+     "The library/collections and questions query parameters are mutually exclusive.")
     (api/check-400
      (not (and questions-only (nil? database-value)))
      "The questions query parameter requires a database query parameter.")))
 
-(defn- typed-schema-for-library
-  [library-value models]
-  (let [{:keys [metric-collection-ids] :as library-scope} (library-collection-scope library-value)
+(defn- typed-schema-for-library-scope
+  [library-scope models]
+  (let [{:keys [metric-collection-ids]} library-scope
         metrics               (metric-schemas nil metric-collection-ids)
         mapped-table-ids      (->> metrics (mapcat :mappedTableIds) set)
         library-table-ids     (->> (select-library-tables library-scope) (map :id) set)
@@ -623,13 +663,17 @@
 (defn- typed-schema
   [query-params]
   (validate-query-params! query-params)
-  (let [library-value  (query-library-value query-params)
-        database-ids   (database-ids-for-value (query-database-value query-params))
-        models         (model-schemas nil)
-        questions-only (truthy-query-param? (query-param query-params :questions))]
+  (let [library-value     (query-library-value query-params)
+        collection-values (query-collection-values query-params)
+        database-ids      (database-ids-for-value (query-database-value query-params))
+        models            (model-schemas nil)
+        questions-only    (truthy-query-param? (query-param query-params :questions))]
     (cond
       library-value
-      (typed-schema-for-library library-value models)
+      (typed-schema-for-library-scope (library-collection-scope library-value) models)
+
+      collection-values
+      (typed-schema-for-library-scope (library-collections-scope collection-values) models)
 
       questions-only
       (base-schema (question-schemas database-ids) models [] [])
