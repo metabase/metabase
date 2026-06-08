@@ -458,7 +458,7 @@
     (mt/with-temp-dir [remote-dir nil]
       (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])
             remote-url (:remote-url source)
-            local-path (#'git/repo-path {:remote-url remote-url})
+            ^File local-path (#'git/repo-path {:remote-url remote-url})
             ^Git cached-git (:git source)]
         (is (.exists local-path) "Precondition: local clone dir exists after the initial clone")
         (is (= ["branch-1" "master"] (source.p/branches source))
