@@ -20,6 +20,7 @@
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -321,6 +322,46 @@
    [:created_at    {:optional true} [:maybe :any]]
    [:updated_at    {:optional true} [:maybe :any]]])
 
+(mr/def ::ExplorationSummary
+  "Lightweight row for the `GET /mine` list. No threads/queries/documents — just the metadata
+  needed to render a list entry, plus `current_user_last_touched_at`, the timestamp the list is
+  sorted by (the caller's own most-recent touch of this exploration, composed across the
+  exploration's revisions, its attached documents' revisions, and its creation)."
+  [:map
+   [:id                           ms/PositiveInt]
+   [:name                         ms/NonBlankString]
+   [:description                  {:optional true} [:maybe :string]]
+   [:creator_id                   ms/PositiveInt]
+   ;; The `:creator` batched-hydrate selects a User subset, or `{}` when the creator can't be
+   ;; resolved — hence every key is optional.
+   [:creator                      {:optional true}
+    [:maybe [:map
+             [:id         {:optional true} ms/PositiveInt]
+             [:email      {:optional true} ms/NonBlankString]
+             [:first_name {:optional true} [:maybe :string]]
+             [:last_name  {:optional true} [:maybe :string]]]]]
+   [:collection_id                {:optional true} [:maybe ms/PositiveInt]]
+   ;; `nil` for root-collection explorations; otherwise the hydrated collection (open map — only
+   ;; the fields the FE needs are asserted).
+   [:collection                   {:optional true}
+    [:maybe [:map
+             [:id   ms/PositiveInt]
+             [:name ms/NonBlankString]]]]
+   [:archived                     {:optional true} :boolean]
+   [:created_at                   ms/TemporalInstant]
+   [:updated_at                   ms/TemporalInstant]
+   [:current_user_last_touched_at ms/TemporalInstant]])
+
+(mr/def ::MineResponse
+  "Paginated envelope for `GET /mine`, mirroring the collection-items index shape. `:total` is the
+  count after the membership, permission, and archived filters; `:limit`/`:offset` echo the
+  `offset-paging` middleware (both nil when the request is unpaged)."
+  [:map
+   [:total  ms/IntGreaterThanOrEqualToZero]
+   [:limit  [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:offset [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:data   [:sequential ::ExplorationSummary]]])
+
 (def ^:private CreateExploration
   [:map
    [:name          expl.model/ExplorationName]
@@ -432,6 +473,74 @@
   [_route-params
    {:keys [q]} :- [:maybe [:map [:q {:optional true} [:maybe ms/NonBlankString]]]]]
   (explorations/exploration-data {:q q}))
+
+(defn- my-explorations-honeysql
+  "HoneySQL for the explorations `user-id` created or edited, ordered by that user's most-recent
+  touch (descending). \"Touch\" is the union of three streams, all attributed to the user:
+
+    1. the user's `Exploration` revisions (metadata / structure edits),
+    2. the user's `Document` revisions for documents attached to the exploration's threads
+       (scratchpad / AI-summary edits, mapped back via `exploration_thread`),
+    3. `exploration.created_at` for explorations the user created — creation is a touch, and
+       `created_at` stays reliable even after the creation revision ages out of the
+       `revision/max-revisions` cap.
+
+  Membership is the inner join to the per-exploration MAX-timestamp aggregate (`agg`), so an
+  exploration appears iff the user produced at least one touch. The MAX is the sort key (no
+  `GREATEST`, whose NULL semantics differ across app DBs). `current_user_last_touched_at` is
+  therefore non-null for every row. `archived = false` and the read-permission visibility filter
+  on `collection_id` (which drops explorations moved into collections the user can no longer see)
+  keep the `COUNT(*) OVER ()` total honest. `limit`/`offset` are appended only when paged.
+
+  `my-touches` is embedded as a derived table inside `agg` rather than as a sibling CTE: a second
+  `:with` binding that selects from the first (`agg` reading `my_touches`) silently returns no
+  rows under our HoneySQL/H2 stack."
+  [user-id limit offset]
+  (let [my-touches {:union-all
+                    [{:select [[:model_id :eid] [:timestamp :ts]]
+                      :from   [:revision]
+                      :where  [:and [:= :model "Exploration"] [:= :user_id user-id]]}
+                     {:select [[:t.exploration_id :eid] [:dr.timestamp :ts]]
+                      :from   [[:revision :dr]]
+                      :join   [[:document :d]           [:= :d.id :dr.model_id]
+                               [:exploration_thread :t] [:= :t.id :d.exploration_thread_id]]
+                      :where  [:and [:= :dr.model "Document"] [:= :dr.user_id user-id]]}
+                     {:select [[:id :eid] [:created_at :ts]]
+                      :from   [:exploration]
+                      :where  [:= :creator_id user-id]}]}
+        agg        {:select   [:eid [[:max :ts] :max_ts]]
+                    :from     [[my-touches :my_touches]]
+                    :group-by [:eid]}]
+    (cond-> {:select   [:exploration.*
+                        [:agg.max_ts :current_user_last_touched_at]
+                        [[:over [[:count :*] {} :total_count]]]]
+             :from     [:exploration]
+             :join     [[agg :agg] [:= :agg.eid :exploration.id]]
+             :where    [:and
+                        [:= :exploration.archived false]
+                        (collection/visible-collection-filter-clause :exploration.collection_id)]
+             :order-by [[:current_user_last_touched_at :desc] [:exploration.id :desc]]}
+      limit  (assoc :limit limit)
+      offset (assoc :offset offset))))
+
+;; Declared before `/:id` so the literal route wins — `"mine"` would otherwise fail the
+;; `:id` PositiveInt coercion rather than fall through here.
+(api.macros/defendpoint :get "/mine" :- ::MineResponse
+  "Explorations the current user created or edited, most-recently-touched first, paginated.
+
+  \"Touched\" composes the user's own edits to the exploration, to its attached documents
+  (scratchpad / AI-summary), and its creation — see [[my-explorations-honeysql]]. Explorations
+  that were moved into a collection the user can no longer read are excluded, as are archived
+  ones. Returns the collection-items envelope: `{:total :limit :offset :data}`."
+  []
+  (let [limit  (request/limit)
+        offset (request/offset)
+        rows   (-> (t2/select :model/Exploration (my-explorations-honeysql api/*current-user-id* limit offset))
+                   (t2/hydrate :creator :collection))]
+    {:total  (or (-> rows first :total_count) 0)
+     :limit  limit
+     :offset offset
+     :data   (mapv #(dissoc % :total_count) rows)}))
 
 (api.macros/defendpoint :get "/:id" :- ::HydratedExploration
   "Fetch an exploration with its thread, selections, and generated queries."
