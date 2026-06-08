@@ -8,7 +8,7 @@ import {
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { ArchiveCollectionModalContainer } from "./ArchiveCollectionModal";
+import { ArchiveCollectionModal } from "./ArchiveCollectionModal";
 
 const TEST_COLLECTION = createMockCollection({ id: 1, name: "Sales" });
 
@@ -24,7 +24,7 @@ const setup = ({
     params: { slug },
   };
 
-  renderWithProviders(<ArchiveCollectionModalContainer {...props} />);
+  renderWithProviders(<ArchiveCollectionModal {...props} />);
 
   return { onClose };
 };

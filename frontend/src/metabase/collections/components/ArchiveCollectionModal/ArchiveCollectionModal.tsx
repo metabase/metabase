@@ -41,7 +41,7 @@ function ArchiveCollectionModalInner({
   );
 }
 
-export function ArchiveCollectionModalContainer({
+export function ArchiveCollectionModal({
   params,
   onClose,
 }: ArchiveCollectionModalRouteProps) {
@@ -56,5 +56,3 @@ export function ArchiveCollectionModalContainer({
     <ArchiveCollectionModalInner collection={collection} onClose={onClose} />
   );
 }
-
-export const ArchiveCollectionModal = ArchiveCollectionModalContainer;

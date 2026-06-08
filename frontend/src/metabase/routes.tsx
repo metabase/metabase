@@ -1,4 +1,4 @@
-import type { AnyAction, Store, ThunkDispatch } from "@reduxjs/toolkit";
+import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 
 import App from "metabase/App";
@@ -84,8 +84,8 @@ import {
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 
-type AppStore = Store<State, AnyAction> & {
-  dispatch: ThunkDispatch<State, void, AnyAction>;
+type AppStore = Store<State> & {
+  dispatch: ThunkDispatch<State, void, UnknownAction>;
 };
 
 export const getRoutes = (store: AppStore) => {
@@ -106,7 +106,7 @@ export const getRoutes = (store: AppStore) => {
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
         }}
-        disableCommandPalette
+        props={{ disableCommandPalette: true }}
       />
 
       {/* For compatibility: use the standard setup for embedding */}
