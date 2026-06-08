@@ -30,6 +30,9 @@ const hoverStyle = (props: RawMaybeLinkProps) => css`
   ${props.activeColor ? `color: ${maybeColor(props.activeColor)};` : ""}
 `;
 
+/**
+ * @deprecated styled components are deprecated
+ */
 export const MaybeLink = styled(RawMaybeLink)`
   display: flex;
   align-items: center;
