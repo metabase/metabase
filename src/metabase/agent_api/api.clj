@@ -715,8 +715,8 @@
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 
 (defn- frontend-url
-  "Prefix `channel.urls` relative path `path` with the configured site URL, or return it relative when
-  site-url is unset (the absolute formatters would render a literal \"null\" prefix)."
+  "Prefix `channel.urls` relative path `path` with the configured site URL, returning it relative when
+  site-url is unset so the agent never emits an absolute URL with an empty host."
   [path]
   (let [base (channel.urls/site-url)]
     (if (str/blank? base)
