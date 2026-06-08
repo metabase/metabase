@@ -185,9 +185,9 @@
         closure      (into #{} (map :id) plan)
         ;; Only deps pulled into the plan (not directly requested) are freshness-gated. Seeding them
         ;; as :succeeded lets their dependents dispatch while they themselves are never submitted.
-        skip         (if skip-fresh-deps?
-                       (freshness/fresh-dep-ids (app-db-now) (set/difference closure requested))
-                       #{})
+        skip         (or (when skip-fresh-deps?
+                           (freshness/fresh-dep-ids (app-db-now) (set/difference closure requested)))
+                         #{})
         n            (max 1 (transforms.settings/transform-run-job-sql-concurrency))
         sql-executor (Executors/newFixedThreadPool n (named-thread-factory "transforms-sql-worker-%d"))
         py-executor  (Executors/newSingleThreadExecutor (named-thread-factory "transforms-python-worker-%d"))
