@@ -23,6 +23,14 @@
     (binding [scope/*current-user-capabilities* #{}]
       (is (skills/skill-loadable? {:id :y :title "y" :description "y" :body "y"})))))
 
+(deftest ^:parallel skill-loadable?-manifest-gate-test
+  (testing "when a request manifest has been tracked, load_skill is limited to ids from that manifest"
+    (let [allowed-skill (skills/get-skill :construct-notebook-query-core)
+          hidden-skill  (skills/get-skill :read-resource)]
+      (binding [scope/*current-loadable-skill-ids* (atom #{:construct-notebook-query-core})]
+        (is (skills/skill-loadable? allowed-skill))
+        (is (not (skills/skill-loadable? hidden-skill)))))))
+
 (deftest ^:parallel registry-populated-test
   (testing "markdown skills and dialect skills are registered at load"
     (let [ids (set (map :id (skills/all-skills)))]
@@ -83,7 +91,12 @@
       ;; core has priority 60, the rest 50, operators 40 -> core first, operators last
       (is (= "construct-notebook-query-core" (:id (first (:catalog manifest))))))
     (testing "no always-on skills in this migration"
-      (is (empty? (:always-on manifest))))))
+      (is (empty? (:always-on manifest)))))
+  (testing "building the manifest records the request's loadable skill ids"
+    (binding [scope/*current-loadable-skill-ids* (atom #{})]
+      (skills/build-skill-manifest {:name :internal} ["construct_notebook_query"] [])
+      (is (contains? @scope/*current-loadable-skill-ids* :construct-notebook-query-core))
+      (is (not (contains? @scope/*current-loadable-skill-ids* :read-resource))))))
 
 (deftest ^:parallel dialect-preload-parts-test
   (testing "resolves a synthetic load_skill pair when the dialect is known"

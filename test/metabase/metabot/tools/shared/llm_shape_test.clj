@@ -128,7 +128,10 @@
     (let [table (llm-shape/format-metric-dimensions-table
                  [{:name "weird|name" :field_id 1 :type "string"
                    :portable_fk ["Analytics" "public" "t" "weird|name"]}])]
-      (is (str/includes? table "weird\\|name")))))
+      (is (str/includes? table "weird\\|name"))
+      (testing "but the copyable reference remains valid JSON"
+        (is (str/includes? table "\"weird\\u007cname\""))
+        (is (not (str/includes? table "\"weird\\|name\"")))))))
 
 (deftest ^:parallel field-metadata->xml-reference-test
   (testing "a drilled-into field detail surfaces the source table + portable FK when provided"

@@ -195,12 +195,20 @@
 
 (defn skill-loadable?
   "Whether `skill` may be loaded on demand by the current request.
-  Applies the **same** capability + scope gate as the catalog (`skill-visible?`), reading the
-  request-scoped capabilities from [[metabase.metabot.scope/*current-user-capabilities*]] so the
-  `load_skill` tool and the manifest never diverge (a capability-gated skill hidden from the catalog
-  must not be loadable by id)."
+  Applies the **same** capability + scope gate as the catalog (`skill-visible?`) and, when a request
+  manifest has been built, requires the id to be present in that manifest. This prevents a request
+  with `load_skill` from loading hidden skills for inactive tools/profiles by guessing ids."
   [skill]
-  (skill-visible? skill (capabilities/capability-set scope/*current-user-capabilities*)))
+  (and (skill-visible? skill (capabilities/capability-set scope/*current-user-capabilities*))
+       (or (nil? scope/*current-loadable-skill-ids*)
+           (contains? @scope/*current-loadable-skill-ids* (:id skill)))))
+
+(defn- record-loadable-skill-ids!
+  "Remember the exact visible skill ids from the current request's manifest, when request
+  scope tracking is enabled."
+  [visible]
+  (when-let [allowed-ids scope/*current-loadable-skill-ids*]
+    (reset! allowed-ids (set (map :id visible)))))
 
 (defn skills-for-profile
   "Return the distinct, non-dialect skills relevant to `profile` given its `active-tool-names` (strings).
@@ -230,6 +238,7 @@
         visible (->> (skills-for-profile profile active-tool-names)
                      (filter #(skill-visible? % cap-set))
                      (sort-by (juxt (comp - :priority) (comp str :id))))]
+    (record-loadable-skill-ids! visible)
     {:always-on (filter :always-on visible)
      :catalog   (->> visible
                      (remove :always-on)

@@ -102,6 +102,13 @@
   (when s
     (str/replace s "|" "\\|")))
 
+(defn- json-cell-safe
+  "Keep a JSON string valid inside a markdown table cell. Markdown `\\|` escaping is not
+  valid JSON, so encode pipe characters as JSON unicode escapes instead."
+  [s]
+  (when s
+    (str/replace s "|" "\\u007c")))
+
 (defn- database-type-or-unknown
   "Return database type or 'unknown' if nil."
   [database-type]
@@ -289,14 +296,13 @@
    {:name "Field Name" :field_id "Field ID" :type "Type"
     :source "Source table" :reference "Reference (copy into a field clause)"}
    {:value-fn (fn [k v]
-                (escape-pipes
-                 (cond
-                   (nil? v)         ""
-                   (keyword? v)     (clojure.core/name v)
-                   ;; `reference` is a JSON array the LLM copies verbatim — escape only the XML
-                   ;; structural characters, never the surrounding quotes.
-                   (= k :reference) (escape-xml-content v)
-                   :else            (escape-xml (str v)))))}))
+                (cond
+                  (nil? v)         ""
+                  (keyword? v)     (escape-pipes (clojure.core/name v))
+                  ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
+                  ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
+                  (= k :reference) (json-cell-safe (escape-xml-content v))
+                  :else            (escape-pipes (escape-xml (str v)))))}))
 
 (defn metric->xml
   "Format metric for LLM consumption.

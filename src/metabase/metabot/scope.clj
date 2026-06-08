@@ -153,6 +153,12 @@
   match the manifest, which is built from the same capabilities. Defaults to `#{}`."
   #{})
 
+(def ^:dynamic *current-loadable-skill-ids*
+  "Request-scoped atom containing the set of skill ids that appeared in the current
+  profile's skill manifest. When bound, `load_skill` rejects ids outside this set
+  even if the skill otherwise satisfies capability/scope gates."
+  nil)
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Permission → Scope mapping
 ;;; ──────────────────────────────────────────────────────────────────
