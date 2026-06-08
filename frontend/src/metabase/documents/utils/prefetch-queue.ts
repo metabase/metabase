@@ -30,18 +30,7 @@ export interface PrefetchQueue {
   register(reg: Registration): () => void;
   reportLoading(id: string, loading: boolean): void;
   notifyViewportChange(): void;
-  /**
-   * Mark a card as "force visible" — the viewport hook will report
-   * isInViewport=true regardless of IntersectionObserver state. Used
-   * to pre-mount a card synchronously before a programmatic scroll
-   * (e.g. anchor navigation) so the viz is ready before the user can
-   * see the new scroll position. The force flag auto-clears once IO
-   * confirms the card is intersecting.
-   */
-  forceVisible(id: string): void;
-  notifyIntersectionState(id: string, isIntersecting: boolean): void;
   hasTicket(id: string): boolean;
-  isForceVisible(id: string): boolean;
   subscribe(cb: Listener): () => void;
   destroy(): void;
 }
@@ -77,7 +66,6 @@ export class PrefetchQueueStore implements PrefetchQueue {
   private registrations = new Map<string, Registration>();
   private inflightLoads = new Set<string>();
   private prefetchedIds = new Set<string>();
-  private forceVisibleIds = new Set<string>();
   private isEnabled = true;
   private listeners = new Set<Listener>();
   private idleHandle: number | null = null;
@@ -102,7 +90,6 @@ export class PrefetchQueueStore implements PrefetchQueue {
       this.registrations.delete(reg.id);
       this.prefetchedIds.delete(reg.id);
       this.inflightLoads.delete(reg.id);
-      this.forceVisibleIds.delete(reg.id);
       this.scheduleTick();
     };
   }
@@ -125,28 +112,6 @@ export class PrefetchQueueStore implements PrefetchQueue {
 
   hasTicket(id: string): boolean {
     return this.prefetchedIds.has(id);
-  }
-
-  forceVisible(id: string): void {
-    if (this.forceVisibleIds.has(id)) {
-      return;
-    }
-    this.forceVisibleIds.add(id);
-    this.notify();
-  }
-
-  isForceVisible(id: string): boolean {
-    return this.forceVisibleIds.has(id);
-  }
-
-  notifyIntersectionState(id: string, isIntersecting: boolean): void {
-    if (isIntersecting) {
-      // IO has caught up; the force override is no longer needed.
-      // No notify(): the caller's own intersection-driven render is
-      // already in flight.
-      this.forceVisibleIds.delete(id);
-    }
-    this.scheduleTick();
   }
 
   subscribe(cb: Listener): () => void {

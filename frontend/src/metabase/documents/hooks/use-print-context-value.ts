@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { PrintContextValue } from "metabase/documents/contexts/PrintContext";
+import { delay } from "metabase/utils/promise";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_POLL_INTERVAL_MS = 100;
@@ -13,10 +14,6 @@ type UsePrintContextValueOptions = {
 
 function waitForNextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function usePrintContextValue({
@@ -54,7 +51,7 @@ export function usePrintContextValue({
       if (isReady()) {
         break;
       }
-      await sleep(pollIntervalMs);
+      await delay(pollIntervalMs);
     }
   }, [isReady, timeoutMs, pollIntervalMs]);
 

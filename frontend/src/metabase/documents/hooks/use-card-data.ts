@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 
 import { skipToken, useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
 import {
@@ -166,32 +166,20 @@ export function useCardData({
   const isLoading = isLoadingCard || isLoadingDataset;
 
   const dispatch = useDispatch();
-  const prevIsLoading = useRef(false);
+  // Track this card in `loadingCardIds` while its query is in flight. The
+  // cleanup fires whenever `id`/`skip`/`isLoading` change or the component
+  // unmounts, so a card that is skipped or unmounted mid-load (e.g. scrolled
+  // out of the buffer before its query resolved) doesn't leak a stale entry.
+  // The slice reducers are idempotent, so redundant dispatches are harmless.
   useEffect(() => {
-    if (skip) {
-      // If the card was mid-load when it got skipped (e.g. scrolled out of
-      // the buffer before its query resolved), flush the finished signal so
-      // it doesn't leak a stale entry in `loadingCardIds`.
-      if (prevIsLoading.current) {
-        dispatch(documentCardLoadingFinished(id));
-        prevIsLoading.current = false;
-      }
+    if (skip || !isLoading) {
       return;
     }
-    if (isLoading && !prevIsLoading.current) {
-      dispatch(documentCardLoadingStarted(id));
-    } else if (!isLoading && prevIsLoading.current) {
-      dispatch(documentCardLoadingFinished(id));
-    }
-    prevIsLoading.current = isLoading;
-  }, [isLoading, skip, id, dispatch]);
-
-  // Remove from loading list on unmount to avoid stale entries
-  useEffect(() => {
+    dispatch(documentCardLoadingStarted(id));
     return () => {
       dispatch(documentCardLoadingFinished(id));
     };
-  }, [id, dispatch]);
+  }, [isLoading, skip, id, dispatch]);
 
   const hasDataForVisualization = cardToUse && dataset?.data;
   const series = hasDataForVisualization

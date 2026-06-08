@@ -10,10 +10,7 @@ function stubQueue(overrides: Partial<PrefetchQueue> = {}): PrefetchQueue {
     register: () => () => {},
     reportLoading: () => {},
     notifyViewportChange: () => {},
-    forceVisible: () => {},
-    notifyIntersectionState: () => {},
     hasTicket: () => false,
-    isForceVisible: () => false,
     subscribe: () => () => {},
     destroy: () => {},
     ...overrides,
@@ -151,23 +148,6 @@ describe("useNodeInViewport", () => {
 
       const { result } = renderHook(() => useNodeInViewport("node-1"));
 
-      expect(result.current.shouldLoadData).toBe(true);
-    });
-  });
-
-  describe("forceVisible override", () => {
-    it("treats card as in viewport when queue reports it force-visible", () => {
-      mockUseIntersection.mockReturnValue({
-        ref: jest.fn(),
-        entry: { isIntersecting: false },
-      });
-      mockUsePrefetchQueue.mockReturnValue(
-        stubQueue({ isForceVisible: () => true }),
-      );
-
-      const { result } = renderHook(() => useNodeInViewport("node-1"));
-
-      expect(result.current.isInViewport).toBe(true);
       expect(result.current.shouldLoadData).toBe(true);
     });
   });

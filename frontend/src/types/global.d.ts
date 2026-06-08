@@ -49,17 +49,6 @@ interface Window {
   };
 }
 
-// Network Information API — not part of the standard DOM lib.
-interface NetworkInformation {
-  saveData?: boolean;
-  addEventListener?: (type: "change", cb: () => void) => void;
-  removeEventListener?: (type: "change", cb: () => void) => void;
-}
-
-interface Navigator {
-  connection?: NetworkInformation;
-}
-
 // This allows importing static SVGs from TypeScript files
 declare module "*.svg" {
   const content: any;

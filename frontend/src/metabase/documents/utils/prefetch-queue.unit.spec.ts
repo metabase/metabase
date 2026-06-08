@@ -203,57 +203,6 @@ describe("PrefetchQueueStore", () => {
     expect(scheduler.pendingCount).toBe(1);
   });
 
-  describe("forceVisible", () => {
-    it("marks a card as force-visible and notifies subscribers", () => {
-      const scheduler = makeFakeScheduler();
-      const queue = new PrefetchQueueStore(scheduler);
-      const listener = jest.fn();
-      queue.subscribe(listener);
-
-      queue.forceVisible("anchor-target");
-
-      expect(queue.isForceVisible("anchor-target")).toBe(true);
-      expect(listener).toHaveBeenCalled();
-    });
-
-    it("auto-clears the force flag once intersection is reported", () => {
-      const scheduler = makeFakeScheduler();
-      const queue = new PrefetchQueueStore(scheduler);
-      queue.forceVisible("anchor-target");
-      expect(queue.isForceVisible("anchor-target")).toBe(true);
-
-      queue.notifyIntersectionState("anchor-target", true);
-
-      expect(queue.isForceVisible("anchor-target")).toBe(false);
-    });
-
-    it("does not clear the force flag while still off-screen", () => {
-      const scheduler = makeFakeScheduler();
-      const queue = new PrefetchQueueStore(scheduler);
-      queue.forceVisible("anchor-target");
-
-      queue.notifyIntersectionState("anchor-target", false);
-
-      expect(queue.isForceVisible("anchor-target")).toBe(true);
-    });
-
-    it("clears the force flag on unregister", () => {
-      const scheduler = makeFakeScheduler();
-      const queue = new PrefetchQueueStore(scheduler);
-      const unregister = queue.register({
-        id: "anchor-target",
-        getElement: () => makeElement(2000),
-        isInViewport: () => false,
-      });
-      queue.forceVisible("anchor-target");
-      expect(queue.isForceVisible("anchor-target")).toBe(true);
-
-      unregister();
-
-      expect(queue.isForceVisible("anchor-target")).toBe(false);
-    });
-  });
-
   it("re-schedules a new tick after the previous one runs", () => {
     const scheduler = makeFakeScheduler();
     const queue = new PrefetchQueueStore(scheduler);

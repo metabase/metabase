@@ -75,14 +75,8 @@ export function useNodeInViewport(id?: string) {
     () => (id != null && prefetchQueue ? prefetchQueue.hasTicket(id) : false),
     () => false,
   );
-  const isForceVisible = useSyncExternalStore(
-    subscribe,
-    () =>
-      id != null && prefetchQueue ? prefetchQueue.isForceVisible(id) : false,
-    () => false,
-  );
 
-  const isInViewport = isPrinting || ioIntersecting || isForceVisible;
+  const isInViewport = isPrinting || ioIntersecting;
 
   const isInViewportRef = useRef(isInViewport);
   isInViewportRef.current = isInViewport;
@@ -98,13 +92,11 @@ export function useNodeInViewport(id?: string) {
     });
   }, [prefetchQueue, id]);
 
+  // Re-run the idle prefetch pass whenever any node's intersection state
+  // changes, so the coordinator can re-rank candidates by distance.
   useEffect(() => {
-    if (id != null && prefetchQueue) {
-      prefetchQueue.notifyIntersectionState(id, ioIntersecting);
-    } else {
-      prefetchQueue?.notifyViewportChange();
-    }
-  }, [prefetchQueue, id, ioIntersecting, isPrinting]);
+    prefetchQueue?.notifyViewportChange();
+  }, [prefetchQueue, ioIntersecting]);
 
   const shouldLoadData = isInViewport || hasPrefetchTicket;
 
