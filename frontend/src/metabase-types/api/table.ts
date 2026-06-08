@@ -76,7 +76,7 @@ export type Table = {
   estimated_row_count?: number | null;
   transform_id: TransformId | null; // readonly
   view_count: number;
-  transform?: Transform;
+  transform?: Transform | null;
 
   collection_id: CollectionId | null;
   is_published: boolean;

@@ -400,9 +400,9 @@
 (deftest ^:synchronized csv-upload-and-sync-test
   (testing "ClickHouse CSV uploads work correctly when cloud mode is enabled"
     (mt/test-driver :clickhouse
-      (with-redefs [clickhouse-version/dbms-version (constantly {:cloud true
-                                                                 :version "24.8.1"
-                                                                 :semantic-version {:major 24 :minor 8}})]
+      (mt/with-dynamic-fn-redefs [clickhouse-version/dbms-version (constantly {:cloud true
+                                                                               :version "24.8.1"
+                                                                               :semantic-version {:major 24 :minor 8}})]
         (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
                             (assoc :enable-multiple-db false))
               conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]

@@ -385,6 +385,13 @@
        :status          [[(translate-status-clause) sort-direction]]
        :run-method      [[(translate-run-method-clause) sort-direction]]
        :transform-tags  [[(first-tag-name-subquery) sort-direction nulls-sort]]
+       ;; In-progress runs (end_time = nil) sink to the bottom in BOTH
+       ;; directions — null means "no measurable duration yet," not
+       ;; "longest duration."
+       :duration        [[[:is :end_time nil] :asc]
+                         [(h2x/calculate-interval-honeysql-form
+                           (mdb/db-type) :end_time :start_time)
+                          sort-direction]]
        [[:start_time sort-direction]
         [:end_time   sort-direction nulls-sort]])
      [:transform_run.id sort-direction])))

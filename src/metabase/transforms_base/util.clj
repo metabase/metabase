@@ -64,6 +64,32 @@
     (let [query (-> transform :source :query)]
       (lib/native-only-query? query))))
 
+(defn table-template-tag-name
+  "Return the name (key) of the table template tag in `query` that refers to `table-id`, or nil.
+
+  This is the table variable the incremental range filter is injected into (see
+  `inject-filters-into-table-tag`). When `table-id` is nil, any table template tag qualifies."
+  [query table-id]
+  (some (fn [[k v]]
+          (when (and (#{:table "table"} (:type v))
+                     (or (nil? table-id) (= table-id (:table-id v))))
+            k))
+        (lib/template-tags query)))
+
+(defn incremental-table-tag-name
+  "Return the name of the table template tag the incremental range filter targets in `transform`, or
+  nil when the source query has no suitable table variable.
+
+  The range filter is injected into the table variable referring to the checkpoint field's table
+  (see `inject-filters-into-table-tag`); when no checkpoint field has been selected yet, any table
+  variable qualifies. A nil result for a table-incremental native transform is a broken state — there
+  is no table variable to filter on. This can happen when the SQL is edited to drop the table tag
+  after the transform was made incremental."
+  [{:keys [source]}]
+  (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
+        table-id (when field-id (t2/select-one-fn :table_id :model/Field field-id))]
+    (table-template-tag-name (:query source) table-id)))
+
 (defn python-transform?
   "Check if this is a Python transform."
   [transform]
@@ -262,16 +288,11 @@
   [query source-range-params]
   (let [{:keys [checkpoint-filter-field-id lo hi column]} source-range-params
         table-id  (:table-id column)
-        tags      (lib/template-tags query)
-        tag-name  (some (fn [[k v]]
-                          (when (and (#{:table "table"} (:type v))
-                                     (= table-id (:table-id v)))
-                            k))
-                        tags)
+        tag-name  (table-template-tag-name query table-id)
         _         (when-not tag-name
                     (throw (ex-info "No table variable found for checkpoint field's table"
                                     {:checkpoint-table-id table-id
-                                     :template-tags       tags})))
+                                     :template-tags       (lib/template-tags query)})))
         filters   (cond-> []
                     lo (conj {:field-id checkpoint-filter-field-id :op :> :value (:value lo)})
                     hi (conj {:field-id checkpoint-filter-field-id :op :<= :value (:value hi)}))]
@@ -287,7 +308,8 @@
    :checkpoint-filter-field-id (the field ID of the checkpoint column)
    Range predicate terms (maps :type, :value), can be nil (in which case the filter clause should be omitted):
    :lo                         values in the source table must be > this :value.
-   :hi                         values in the source table must be <= this :value."
+   :hi                         values in the source table must be <= this :value.
+   :rows-available             count of source rows in (lo, hi] from the same scan; nil if unavailable."
   [{:keys [source target] :as transform}]
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
@@ -318,19 +340,24 @@
             base-type         (:base-type column)
             lo                (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
 
-            max-value
+            ;; Combine max + count in one scan: avoids a second round-trip and pins both
+            ;; numbers to the same point-in-time view of the source.
+            [max-value rows-available]
             (let [table-id          (:table-id column)
                   table-metadata    (lib.metadata/table metadata-provider table-id)
                   base-query        (lib/query metadata-provider table-metadata)
                   filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
-                  query             (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
-                  query-result      (qp/process-query query)]
-              (ffirst (get-in query-result [:data :rows])))]
-        {:column                     column
-         :checkpoint-filter-field-id checkpoint-filter-field-id
-         :lo                         (when lo {:value lo})
-         :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
-                                           lo {:value lo})}))))
+                  query             (-> (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
+                                        (lib/aggregate (lib/count)))
+                  query-result      (qp/process-query query)
+                  [mv cv]           (first (get-in query-result [:data :rows]))]
+              [mv (some-> cv long)])]
+        (cond-> {:column                     column
+                 :checkpoint-filter-field-id checkpoint-filter-field-id
+                 :lo                         (when lo {:value lo})
+                 :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
+                                                   lo {:value lo})}
+          (some? rows-available) (assoc :rows-available rows-available))))))
 
 (defn preprocess-incremental-query
   "Add checkpoint filtering to a query for incremental execution.
