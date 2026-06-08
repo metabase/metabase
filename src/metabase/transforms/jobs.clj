@@ -86,11 +86,20 @@
             {:order (map transforms-by-id complete)
              :deps  dependencies}))))))
 
-(defn- block-until-not-already-running [transform-id]
-  (when-let [active-run (transform-run/running-run-for-transform-id transform-id)]
-    (log/warn "Transform" (pr-str transform-id) "already running, waiting for run" (:id active-run))
-    (while (transform-run/running-run-for-transform-id transform-id)
-      (Thread/sleep 2000))))
+(defn- wait-for-transform-slot!
+  "Poll until no active run exists for `transform-id`, bounded by `timer`/`timeout-ms`.
+  Returns true if the slot cleared, false if we timed out waiting.
+
+  `timeout-ms` is the transform run timeout: a pre-existing live run can't legitimately run longer
+  than that before it is itself timed out, so once we have waited that long the slot is guaranteed to
+  have cleared (the holder finished or was timed out). We only hit this bound if something is wedged,
+  in which case we fail this transform rather than pinning the job worker forever."
+  [transform-id timer timeout-ms]
+  (loop []
+    (cond
+      (not (transform-run/running-run-for-transform-id transform-id)) true
+      (>= (u/since-ms timer) timeout-ms)                              false
+      :else (do (Thread/sleep 2000) (recur)))))
 
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
   (cond
@@ -103,26 +112,31 @@
     :else
     (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
                                                         :transform/name (:name transform)}
-      (block-until-not-already-running transform-id)
-      (let [try-exec
-            (fn []
-              (try
-                (log/info "Executing job transform" (pr-str transform-id))
-                (transforms.execute/execute! transform {:run-method run-method
-                                                        :user-id user-id})
-                (catch Exception e
-                  (if (= :already-running (:error (ex-data e)))
-                    :already-running
-                    (throw e)))))]
+      ;; A single deadline spans the whole wait-and-retry sequence so repeated start races can't
+      ;; extend the wait past the bound. On timeout we throw; `submit-transform!`'s catch turns that
+      ;; into a `::failed` completion, so the coordinator unblocks and the job can finish rather than
+      ;; heartbeating forever behind a wedged worker.
+      (let [timer      (u/start-timer)
+            timeout-ms (u/minutes->ms (transforms.settings/transform-timeout))]
+        (when (transform-run/running-run-for-transform-id transform-id)
+          (log/warn "Transform" (pr-str transform-id) "already running, waiting for slot"))
         (loop []
-          (when (= :already-running (try-exec))
-            (when (transform-run/running-run-for-transform-id transform-id)
-              (log/warn "Transform" (pr-str transform-id) "already running, waiting")
-              (loop []
-                (Thread/sleep 2000)
-                (when (transform-run/running-run-for-transform-id transform-id)
-                  (recur))))
-            (recur))))
+          (if-not (wait-for-transform-slot! transform-id timer timeout-ms)
+            (throw (ex-info (format "Transform %s skipped: another active run held the slot for over %d minute(s)"
+                                    (pr-str transform-id) (transforms.settings/transform-timeout))
+                            {:transform-id transform-id :error :already-running-timeout}))
+            (let [result (try
+                           (log/info "Executing job transform" (pr-str transform-id))
+                           (transforms.execute/execute! transform {:run-method run-method
+                                                                   :user-id user-id})
+                           :ok
+                           (catch Exception e
+                             ;; Raced with another starter that won the is_active slot; wait again.
+                             (if (= :already-running (:error (ex-data e)))
+                               :already-running
+                               (throw e))))]
+              (when (= :already-running result)
+                (recur))))))
       (transforms.job-run/add-run-activity! run-id))))
 
 (defn- named-thread-factory ^ThreadFactory [pattern]
