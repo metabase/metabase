@@ -427,6 +427,17 @@
       (is (=? {:row_count page-size :continuation_token string?} page1))
       (is (=? {:row_count (- total-rows page-size) :continuation_token nil?} page2)))))
 
+(deftest combined-query-rejects-native-handle-test
+  (testing "`/v2/query` rejects a base64 native query with 400 — `agent:query` must not run raw SQL,
+            same scope split `/v1/execute` enforces"
+    (let [native-query {:database (mt/id)
+                        :type     "native"
+                        :native   {:query "select 1"}}
+          base64-query (u/encode-base64 (json/encode native-query))
+          resp         (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                             {:query base64-query})]
+      (is (re-find #"Native queries are not supported" (str resp))))))
+
 (defn- make-continuation-token [pagination]
   (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
        :pagination pagination}

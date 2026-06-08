@@ -386,6 +386,20 @@
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
+(defn- reject-native-query!
+  "Throw a 400 if `query-map` is a native query.
+
+  `/v2/query` and `/v1/execute` are gated by the MBQL-execution scopes (`agent:query` /
+  `agent:query:execute`), not `agent:sql:execute`. The opaque base64 payloads they accept (a
+  query_handle, a continuation token) could carry `:type :native`; allowing that would let a token
+  without the SQL-execution scope run raw SQL, defeating the scope split. Force native execution
+  onto `/v1/execute-sql`, which is correctly scoped. The decoded payload may carry the type as a
+  string or keyword, so normalize before comparing."
+  [query-map]
+  (when (= :native (some-> query-map :type keyword))
+    (throw (ex-info "Native queries are not supported here; use execute_sql instead."
+                    {:status-code 400}))))
+
 (defn- check-token-query-permissions!
   "Re-validate query permissions on the continuation-token path.
 
@@ -414,11 +428,13 @@
   (cond
     (:continuation_token body)
     (let [{:keys [query pagination]} (decode-continuation-token (:continuation_token body))]
+      (reject-native-query! query)
       (check-token-query-permissions! query)
       {:query query :total-limit (:limit pagination) :page (:page pagination)})
 
     (string? (:query body))
     (let [query (-> body :query u/decode-base64 json/decode+kw)]
+      (reject-native-query! query)
       {:query query :total-limit (clamp-total-limit (serialized-query-limit query)) :page 1})
 
     :else
@@ -524,15 +540,7 @@
   (let [query (-> encoded-query
                   u/decode-base64
                   json/decode+kw)]
-    ;; `/v1/execute` is gated by the `agent:query:execute` scope and is intended for MBQL.
-    ;; The opaque base64 payload could carry `:type :native`, but `execute_sql` is gated by
-    ;; a distinct `agent:sql:execute` scope - allowing native here would let a token with
-    ;; only the broader scope run raw SQL, defeating the scope distinction. Force callers
-    ;; to use `/v1/execute-sql` (correctly scoped) for native execution. Compare via the
-    ;; normalized type since the decoded payload may carry the type as a string or keyword.
-    (when (= :native (some-> query :type keyword))
-      (throw (ex-info "Native queries are not supported on /v1/execute; use execute_sql instead."
-                      {:status-code 400})))
+    (reject-native-query! query)
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query (prepare-combined-query query) rff))))
 
