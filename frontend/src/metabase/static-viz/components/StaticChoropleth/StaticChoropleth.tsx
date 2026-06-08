@@ -1,7 +1,11 @@
-import { geoAlbersUsa, geoMercator, geoPath, scaleThreshold } from "d3";
+import { geoAlbersUsa, geoMercator, geoPath } from "d3";
 import type { Feature } from "geojson";
-import ss from "simple-statistics";
 
+import {
+  HEAT_MAP_ZERO_COLOR,
+  buildColorScale,
+  getLegendTitles,
+} from "metabase/visualizations/lib/choropleth";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -15,12 +19,9 @@ import {
 import type { GeoJSONData, RawSeries } from "metabase-types/api";
 
 import {
-  HEAT_MAP_COLORS,
-  HEAT_MAP_ZERO_COLOR,
   MAP_WIDTH,
   getFeatureKey,
   getFeatures,
-  getLegendTitles,
   getRegionValues,
   toRgb,
 } from "./utils";
@@ -76,20 +77,17 @@ export const StaticChoropleth = ({
 
   const domain = Array.from(new Set(Object.values(valuesMap)));
   const hasData = domain.length > 0;
-
-  const heatMapColors = (settings["map.colors"] ?? HEAT_MAP_COLORS)
-    .slice(-domain.length)
-    .map(toRgb);
   const zeroColor = toRgb(HEAT_MAP_ZERO_COLOR);
 
-  // ckmeans requires at least one value and clusters <= values; the slice above guarantees the latter.
-  const groups: number[][] = hasData
-    ? ss.ckmeans(domain, heatMapColors.length)
-    : [];
-  const groupBoundaries = groups.slice(1).map((cluster) => cluster[0]);
-  const colorScale = scaleThreshold<number, string>()
-    .domain(groupBoundaries)
-    .range(heatMapColors);
+  // buildColorScale runs ckmeans, which needs a non-empty domain — guard the no-data case so every
+  // feature falls to zeroColor.
+  const { colorScale, groups, heatMapColors } = hasData
+    ? buildColorScale(domain, settings["map.colors"], toRgb)
+    : {
+        colorScale: (_value: number) => zeroColor,
+        groups: [] as number[][],
+        heatMapColors: [] as string[],
+      };
 
   const getColor = (feature: Feature): string => {
     const value = getFeatureValue(feature);
