@@ -17,6 +17,7 @@
     :legacy_query
     :made_public_by_id
     :metabase_version
+    :public_link_password
     :public_uuid
     :updated_at
     :view_count})

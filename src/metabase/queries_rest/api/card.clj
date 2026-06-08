@@ -1006,8 +1006,9 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
   (t2/update! :model/Card card-id
-              {:public_uuid       nil
-               :made_public_by_id nil})
+              {:public_uuid          nil
+               :made_public_by_id    nil
+               :public_link_password nil})
   (events/publish-event! :event/card-public-link-deleted
                          {:object-id card-id
                           :user-id api/*current-user-id*})

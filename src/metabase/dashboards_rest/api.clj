@@ -1181,8 +1181,9 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/update! :model/Dashboard dashboard-id
-              {:public_uuid       nil
-               :made_public_by_id nil})
+              {:public_uuid          nil
+               :made_public_by_id    nil
+               :public_link_password nil})
   (events/publish-event! :event/dashboard-public-link-deleted
                          {:object-id dashboard-id
                           :user-id api/*current-user-id*})

@@ -725,7 +725,8 @@
                                        :archived true
                                        :database_id (mt/id)
                                        :table_id (mt/id :categories)}]
-      (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
+      ;; public_link_password is stripped from API responses by Card's to-json
+      (is (=? {:metrics [(-> metric (assoc :type "metric" :display "table") (dissoc :public_link_password))]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
 
 (deftest ^:parallel table-segment-query-metadata-test
