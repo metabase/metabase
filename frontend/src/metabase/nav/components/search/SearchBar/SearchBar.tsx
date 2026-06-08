@@ -16,7 +16,6 @@ import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
-import { zoomInRow } from "metabase/query_builder/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { SearchAwareLocation } from "metabase/search/types";
 import {
@@ -50,11 +49,22 @@ type RouterProps = {
 type OwnProps = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
+  /**
+   * Override how a search result is handled. When omitted, results navigate
+   * via `modelToUrl`. The main-app caller injects a callback that zooms in on
+   * indexed-entity results that match the current QB page.
+   */
+  onSearchItemSelect?: (result: SearchResult) => void;
 };
 
 type Props = RouterProps & OwnProps;
 
-function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
+function SearchBarView({
+  location,
+  onSearchActive,
+  onSearchInactive,
+  onSearchItemSelect: onSearchItemSelectProp,
+}: Props) {
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );
@@ -96,15 +106,13 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
 
   const onSearchItemSelect = useCallback(
     (result: SearchResult) => {
-      // if we're already looking at the right model, don't navigate, just update the zoomed in row
-      const isSameModel = result?.model_id === location?.state?.cardId;
-      if (isSameModel && result.model === "indexed-entity") {
-        dispatch(zoomInRow({ objectId: result.id }));
+      if (onSearchItemSelectProp) {
+        onSearchItemSelectProp(result);
       } else {
         onChangeLocation(modelToUrl(result));
       }
     },
-    [dispatch, onChangeLocation, location?.state?.cardId],
+    [onSearchItemSelectProp, onChangeLocation],
   );
 
   useOnClickOutside(container, setInactive);

@@ -29,11 +29,13 @@ For example, say you enable HTTPS redirect for a Metabase instance at the site U
 
 > Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
 
-## Custom homepage
+## Homepage
 
-Admins can pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
+Set the page people see when they first log in to your Metabase. Choose between:
 
-To revert to the default Metabase homepage, simply toggle off Custom homepage.
+- **Default Metabase home**: The standard Metabase homepage.
+- **Dashboard**: Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
+- **Custom URL**: Send people to a specific URL (a collection, question, dashboard, or other page). Make sure people have access to the URL. This option is only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 ## Email address for help requests
 
@@ -84,3 +86,19 @@ docs.example.com
 Metabase would only allow iframes from `data.example.com` and `docs.example.com`. Metabase would block iframes from all other domains, including iframes from `example.com` and its other subdomains.
 
 See [iframes in dashboards](../dashboards/introduction.md#iframe-cards).
+
+## Restrict image domains
+
+When on, Metabase restricts the browser's Content Security Policy so images can only load from this Metabase instance or the domains listed in [Allowed domains for images](#allowed-domains-for-images).
+
+By default, images from any domain are allowed.
+
+You must turn on this setting to enable [Custom visualizations](../questions/visualizations/custom.md). While custom visualizations are enabled, you can't turn it back off.
+
+## Allowed domains for images
+
+When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, and any domains listed on this page.
+
+Leave this input empty to only allow images hosted by your Metabase instance.
+
+Add multiple domains separated by a comma. Domains follow the same matching rules as [Allowed domains for iframes in dashboards](#allowed-domains-for-iframes-in-dashboards): listing a domain like `example.com` also allows its subdomains, while listing a subdomain like `images.example.com` allows only that subdomain.

@@ -1308,7 +1308,7 @@
         (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
                java.lang.Exception
-               #"^Uploads are not supported on \w+ databases\."
+               #"^Uploads are not supported on [\w-]+ databases\."
                (do-with-uploaded-example-csv!
                 {:schema-name "public", :table-prefix "uploaded_magic_"}
                 identity)))))
@@ -2557,6 +2557,27 @@
                          (rows-for-table table))))
                 (finally
                   (io/delete-file file))))))))))
+
+(deftest update-csv-normalized-name-collision-reorder-test
+  (testing "Reordered columns that normalize to the same name are matched by display name, not position (GDGT-2233)\n"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+        (doseq [action (actions-to-test driver/*driver*)]
+          (testing (action-testing-str action)
+            ;; "Café" and "Cafe" both normalize to "cafe", so the table has columns
+            ;; cafe (display "Café") and cafe_2 (display "Cafe").
+            (with-upload-table!
+              [table (create-from-csv-and-sync-with-defaults!
+                      :file (csv-file-with ["Café,Cafe" "100,200"]))]
+              (let [file (csv-file-with ["Cafe,Café" "500,600"] (mt/random-name))]
+                (try
+                  (update-csv! action {:file file, :table-id (:id table)})
+                  ;; Even though the appended CSV swaps the column order, the "Café" value (600)
+                  ;; must land in the cafe column and the "Cafe" value (500) in cafe_2.
+                  (is (= (set (updated-contents action [[100 200]] [[600 500]]))
+                         (set (rows-for-table table))))
+                  (finally
+                    (io/delete-file file)))))))))))
 
 (driver/register! ::short-column-test-driver)
 (defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)

@@ -17,10 +17,10 @@
          :remote-sync-type    :read-only
          :remote-sync-branch  "test-branch"
          :remote-sync-token   nil}]
-    (with-redefs [settings/check-git-settings! (fn [{:keys [remote-sync-token]}]
-                                                 ;; git should always be checked with a nil or full token
-                                                 (is (or (nil? remote-sync-token) (#{full-token other-token} remote-sync-token)))
-                                                 true)]
+    (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [{:keys [remote-sync-token]}]
+                                                               ;; git should always be checked with a nil or full token
+                                                               (is (or (nil? remote-sync-token) (#{full-token other-token} remote-sync-token)))
+                                                               true)]
       (mt/with-temporary-setting-values [:remote-sync-token nil
                                          :remote-sync-url nil
                                          :remote-sync-type nil
@@ -48,9 +48,9 @@
 (deftest check-and-update-remote-settings-partial-updates
   (testing "Partial updates for non-git settings do not trigger git validation"
     (let [git-check-called? (atom false)]
-      (with-redefs [settings/check-git-settings! (fn [_]
-                                                   (reset! git-check-called? true)
-                                                   true)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_]
+                                                                 (reset! git-check-called? true)
+                                                                 true)]
         (mt/with-temporary-setting-values [:remote-sync-transforms false
                                            :remote-sync-auto-import false]
           (testing "Updating only remote-sync-transforms does not check git settings"
@@ -72,9 +72,9 @@
             (is (false? (settings/remote-sync-auto-import))))))))
   (testing "Partial updates with git-related settings do trigger git validation"
     (let [git-check-called? (atom false)]
-      (with-redefs [settings/check-git-settings! (fn [_]
-                                                   (reset! git-check-called? true)
-                                                   true)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_]
+                                                                 (reset! git-check-called? true)
+                                                                 true)]
         (mt/with-temporary-setting-values [:remote-sync-url "file://my/url.git"
                                            :remote-sync-type :read-only
                                            :remote-sync-branch "main"]
@@ -105,8 +105,8 @@
                                                          :remote-sync-branch "main"
                                                          :remote-sync-type  :read-only}))))
   (testing "Non-GitHub HTTPS URLs are accepted"
-    (with-redefs [git/git-source (fn [& _] nil)
-                  git/branches   (fn [_] ["main"])]
+    (mt/with-dynamic-fn-redefs [git/git-source (fn [& _] nil)
+                                git/branches   (fn [_] ["main"])]
       (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://gitlab.com/foo/bar.git"
                                                :remote-sync-token nil
                                                :remote-sync-branch "main"

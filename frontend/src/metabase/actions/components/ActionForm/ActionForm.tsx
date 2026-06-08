@@ -7,10 +7,10 @@ import {
   getSubmitButtonColor,
   getSubmitButtonLabel,
 } from "metabase/actions/utils";
-import { Button } from "metabase/common/components/Button";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
+import { Button, Flex } from "metabase/ui";
 import type {
   ActionFormInitialValues,
   ParameterId,
@@ -19,8 +19,6 @@ import type {
 } from "metabase-types/api";
 
 import { ActionFormFieldWidget } from "../ActionFormFieldWidget";
-
-import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {
   action: WritebackAction;
@@ -86,12 +84,12 @@ function ActionForm({
           <ActionFormFieldWidget key={field.name} formField={field} />
         ))}
 
-        <ActionFormButtonContainer>
+        <Flex justify="flex-end" gap="sm">
           {onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
           <FormSubmitButton {...submitButtonProps} />
-        </ActionFormButtonContainer>
+        </Flex>
 
         <FormErrorMessage />
       </Form>

@@ -712,6 +712,26 @@
   []
   (or (premium-features.settings/is-hosted?) (has-feature? :audit-app)))
 
+(defn query-transforms-enabled?
+  "Whether query (native/MBQL) transforms are available on this instance. Available on any non-hosted
+  instance (OSS intentionally gets query transforms without a license), or on hosted instances with the
+  `:transforms-basic` feature."
+  []
+  (or (not (premium-features.settings/is-hosted?))
+      (has-feature? :transforms-basic)))
+
+(defn python-transforms-enabled?
+  "Whether Python transforms are available on this instance. EE only; requires both `:transforms-basic`
+  and `:transforms-python`."
+  []
+  (and (has-feature? :transforms-basic)
+       (has-feature? :transforms-python)))
+
+(defn any-transforms-enabled?
+  "Whether any kind of transform is available on this instance."
+  []
+  (or (query-transforms-enabled?) (python-transforms-enabled?)))
+
 (defenterprise decode-airgap-token
   "In OSS, this returns an empty map."
   metabase-enterprise.premium-features.airgap

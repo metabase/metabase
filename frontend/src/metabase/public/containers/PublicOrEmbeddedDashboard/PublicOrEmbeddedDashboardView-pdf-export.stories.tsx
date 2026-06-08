@@ -176,10 +176,7 @@ const defaultArgs: Partial<MockDashboardContextProps> = {
   withFooter: true,
 };
 
-const triggerPdfExport = async (
-  canvasElement: HTMLElement,
-  asyncCallback: () => void,
-) => {
+const triggerPdfExport = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
   // Wait for the embed frame to render
@@ -196,7 +193,6 @@ const triggerPdfExport = async (
 
   // Wait for the image to be rendered (this is set by openImageBlobOnStorybook)
   await canvas.findByTestId("image-downloaded", {}, { timeout: 30000 });
-  asyncCallback();
 };
 
 export const GridMapPdfExport = {
@@ -205,7 +201,11 @@ export const GridMapPdfExport = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    await triggerPdfExport(canvasElement, asyncCallback);
+    try {
+      await triggerPdfExport(canvasElement);
+    } finally {
+      asyncCallback();
+    }
   },
   parameters: {
     loki: { skip: true },

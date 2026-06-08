@@ -2,12 +2,12 @@ import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
 
 import type { TagType } from "metabase/api/tags";
+import type { UseQuery } from "metabase/api/types/rtk";
 import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers/EntityPicker/types";
 import type { MiniPickerCollectionFolderItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type {
   Collection,
@@ -117,6 +117,7 @@ type LibraryPlugin = {
   isLibrarySubCollectionType: (
     type?: string | null,
   ) => type is LibrarySubCollectionType;
+  isLibraryDataCollectionType: (type?: string | null) => type is "library-data";
 };
 
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
@@ -150,6 +151,9 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   isLibrarySubCollectionType: (
     _type?: string | null,
   ): _type is LibrarySubCollectionType => false,
+  isLibraryDataCollectionType: (
+    _type?: string | null,
+  ): _type is "library-data" => false,
 });
 
 export const PLUGIN_LIBRARY = getDefaultPluginLibrary();

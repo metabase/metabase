@@ -269,7 +269,6 @@
     (metabase.util.match/match-many)
     (metabase.util.match/replace-in)
     (metabase.util.match/replace)
-    (metabase.driver-api.core/match)
     (metabase.driver-api.core/match-one)
     (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
@@ -801,14 +800,7 @@
    :name    general-qp-and-driver-test-namespaces}
 
   {:pattern "(?:^mage.*)"
-   :name    mage-namespaces}
-  ;;
-  ;; Namespaces where `with-redefs` is still the idiom because they haven't been audited for conversion
-  ;; to `with-dynamic-fn-redefs` yet (enterprise tests, driver tests). The linter's nudge is too noisy
-  ;; here — audit can happen in follow-up PRs.
-  ;;
-  {:pattern "^(?:metabase-enterprise\\..+-test(?:\\..+)?|metabase\\.driver\\..+-test(?:\\..+)?)$"
-   :name    prefer-with-dynamic-fn-redefs-unaudited}]
+   :name    mage-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -830,10 +822,6 @@
   metabase.lib.aggregation-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
   metabase.util.time-test
-  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
-
-  ;; Enterprise tests and driver tests haven't been audited yet — silence the linter so CI can ship.
-  prefer-with-dynamic-fn-redefs-unaudited
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
 
   source-namespaces
@@ -930,10 +918,7 @@
 
     :deprecated-namespace
     {:exclude
-     [metabase.driver.common.parameters.dates
-      metabase.driver.common.parameters.operators
-      metabase.driver.common.parameters.values
-      metabase.legacy-mbql.normalize
+     [metabase.legacy-mbql.normalize
       metabase.legacy-mbql.schema
       metabase.legacy-mbql.schema.helpers
       metabase.legacy-mbql.schema.macros
