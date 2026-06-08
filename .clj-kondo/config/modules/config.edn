@@ -3551,8 +3551,7 @@
            util
            workspaces
            enterprise/serialization}
-   :model-exports #{:model/Workspace
-                    :model/WorkspaceInstance}
+   :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/User}}}
 

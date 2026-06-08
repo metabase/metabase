@@ -17,6 +17,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- child-url
   "Join the instance's base url with an api path."
   [base path]
@@ -54,7 +56,7 @@
   ;; clj-http only encodes a multipart entry as a file part (with a filename) when its
   ;; `:content` is a File — a String content is sent as a plain form field, which the
   ;; endpoint's `:tempfile` schema then rejects. So write the YAML to a temp file.
-  (let [tmp (java.io.File/createTempFile "workspace-config" ".yml")]
+  (let [^java.io.File tmp (java.io.File/createTempFile "workspace-config" ".yml")]
     (try
       (spit tmp config-yaml)
       (child-request! instance :post "/api/ee/advanced-config/"
