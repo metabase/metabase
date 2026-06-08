@@ -250,6 +250,33 @@ function useMetricBreakoutTypeFixtures() {
 
 void useMetricBreakoutTypeFixtures;
 
+function useMetricFilterOperatorTypeFixtures() {
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    filters: [
+      {
+        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
+        operator: "contains",
+        value: "paid",
+      },
+    ],
+  });
+
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    // @ts-expect-error string metric dimensions do not support numeric comparison operators
+    filters: [
+      {
+        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
+        operator: ">",
+        value: "paid",
+      },
+    ],
+  });
+}
+
+void useMetricFilterOperatorTypeFixtures;
+
 const _invalidMetricSegmentQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   // @ts-expect-error segments must belong to the metric's mapped tables

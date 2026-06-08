@@ -108,6 +108,18 @@ type SegmentForMetric<TMetric> = SegmentReference<MappedTableId<TMetric>>;
 
 type MeasureForMetric<TMetric> = MeasureReference<MappedTableId<TMetric>>;
 
+type MetricDimensionFilterForMetric<TMetric> = [
+  MetricDimensionValues<TMetric>,
+] extends [never]
+  ? MetabaseMetricDimensionFilter
+  : MetabaseDimensionFilterForDimension<MetricDimensionValues<TMetric>>;
+
+type TableDimensionFilterForMetric<TMetric, TSchema> = [
+  MappedTable<TMetric, TSchema>,
+] extends [never]
+  ? never
+  : MetabaseDimensionFilter<MappedTable<TMetric, TSchema>>;
+
 type TableBreakoutForMetric<TMetric, TSchema> = [
   MappedTable<TMetric, TSchema>,
 ] extends [never]
@@ -295,8 +307,8 @@ type MetricQuery<TMetric, TSchema> = {
   filters?: TMetric extends MetricReference
     ? readonly (
         | SegmentForMetric<TMetric>
-        | MetabaseMetricDimensionFilter
-        | MetabaseDimensionFilter<MappedTable<TMetric, TSchema>>
+        | MetricDimensionFilterForMetric<TMetric>
+        | TableDimensionFilterForMetric<TMetric, TSchema>
       )[]
     : readonly unknown[];
   measures?: TMetric extends MetricReference
