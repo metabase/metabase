@@ -113,23 +113,9 @@ import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-/**
- * Two output shapes from one project:
- *
- *   yarn dev   → serves index.html with HMR; loads src/dev.tsx, which sets up
- *                   globalThis endowments from the real SDK and renders <App/>.
- *
- *   yarn build → emits a single IIFE bundle at dist/index.js using lib mode.
- *                   The bundle assigns its factory default export to
- *                   globalThis.__customVizPlugin__ — the exact contract the
- *                   Metabase host expects when it evaluates uploaded bundles.
- *
- * `react` is externalized so the bundle uses the host's React (the one
- * Metabase endows on globalThis.React). That sharing is what makes hooks
- * work across the sandbox/host boundary. `jsxRuntime: "classic"` compiles
- * JSX to `React.createElement(...)` so we only need to externalize one
- * package (react), not also react/jsx-runtime.
- */
+// See "Two modes, same source" above. `react` is externalized so the
+// bundle uses the host's `globalThis.React`; `jsxRuntime: "classic"`
+// keeps the externalization to a single package.
 export default defineConfig({
   plugins: [react({ jsxRuntime: "classic" })],
   build: {
@@ -221,42 +207,31 @@ import type {
 } from "@metabase/embedding-sdk-react";
 import type * as ReactNS from "react";
 
+// The SDK endowments below need `var` (not `const`) to attach to the
+// `globalThis` shape; suppress the standard lint complaints once for the
+// whole block instead of per-line.
+/* eslint-disable vars-on-top, no-var */
 declare global {
-  // React is endowed by the host (via Vite's `external: ["react"]` mapping)
-  // and the JSX classic runtime emits `React.createElement(...)`, so the
-  // `React` global must exist at runtime. Type it here so plain `<div/>`
-  // and `globalThis.React.useState` both check.
+  // Host's React. Plain JSX (`<div/>`) and `globalThis.React.useState`
+  // both go through this.
   const React: typeof ReactNS;
 
-  // SDK components endowed by the host (in prod) and by src/dev-globals.tsx
-  // (in dev). Treat them as bound at module load — read them off
-  // `globalThis` from any source file.
-  // eslint-disable-next-line vars-on-top, no-var
   var MetabaseProvider: (props: {
     theme?: MetabaseTheme;
     children?: ReactNS.ReactNode;
   }) => ReactNS.ReactElement;
-  // eslint-disable-next-line vars-on-top, no-var
   var InteractiveQuestion: typeof InteractiveQuestion;
-  // eslint-disable-next-line vars-on-top, no-var
   var StaticQuestion: typeof StaticQuestion;
-  // eslint-disable-next-line vars-on-top, no-var
   var CreateQuestion: typeof CreateQuestion;
-  // eslint-disable-next-line vars-on-top, no-var
   var MetabotQuestion: typeof MetabotQuestion;
-  // eslint-disable-next-line vars-on-top, no-var
   var EditableDashboard: typeof EditableDashboard;
-  // eslint-disable-next-line vars-on-top, no-var
   var InteractiveDashboard: typeof InteractiveDashboard;
-  // eslint-disable-next-line vars-on-top, no-var
   var StaticDashboard: typeof StaticDashboard;
-  // eslint-disable-next-line vars-on-top, no-var
   var CreateDashboardModal: typeof CreateDashboardModal;
-  // eslint-disable-next-line vars-on-top, no-var
   var CollectionBrowser: typeof CollectionBrowser;
-  // eslint-disable-next-line vars-on-top, no-var
   var useQuestionQuery: typeof useQuestionQuery;
 }
+/* eslint-enable vars-on-top, no-var */
 
 export {};
 ```
@@ -304,16 +279,9 @@ import {
 } from "@metabase/embedding-sdk-react";
 import * as React from "react";
 
-/**
- * In production, the Metabase host endows React + SDK components on
- * globalThis before evaluating the bundle. In dev, this module mirrors
- * that setup using the real SDK package, so the same App.tsx source
- * works in both modes without dev/prod branches.
- *
- * MetabaseProvider is wrapped so the bundle's call
- *   <MetabaseProvider theme={...}>…</MetabaseProvider>
- * stays auth-agnostic — the authConfig is injected here from .env.local.
- */
+// Dev-only mirror of the host's endowments. `MetabaseProvider` is wrapped
+// so the bundle's <MetabaseProvider theme={…}>…</MetabaseProvider> call
+// stays auth-agnostic; the authConfig is injected from .env.local here.
 const authConfig: MetabaseAuthConfig = {
   metabaseInstanceUrl: import.meta.env.VITE_MB_URL,
   apiKey: import.meta.env.VITE_MB_API_KEY,
@@ -449,32 +417,13 @@ dist
 # data-app
 
 A Metabase data-app authored as a Vite + React + TypeScript (TSX) project.
+See the project's SKILL.md for full guidance; the short version is `yarn`
+then `yarn dev` (preview at http://localhost:5174 — first set
+`VITE_MB_URL` + `VITE_MB_API_KEY` in `.env.local`), and `yarn build` to
+produce `dist/index.js` for upload via Admin → Data apps → Add.
 
-## Dev (HMR preview against a real Metabase)
-
-```bash
-yarn
-cp .env.local.example .env.local
-# fill VITE_MB_URL + VITE_MB_API_KEY (Admin → Authentication → API keys)
-yarn dev
-```
-
-Open http://localhost:5174.
-
-## Build (single bundle for upload)
-
-```bash
-yarn build
-# → dist/index.js
-```
-
-Upload `dist/index.js` via Metabase Admin → Data apps → Add.
-
-## CORS
-
-The SDK on `:5174` hits Metabase on a different origin. In
-Admin → Embedding → Embedded analytics SDK → CORS, add
-`http://localhost:5174`.
+If the dev preview hits CORS, add `http://localhost:5174` under
+Admin → Embedding → Embedded analytics SDK → CORS.
 ```
 
 ## Step 2 — Install + run
@@ -482,9 +431,8 @@ Admin → Embedding → Embedded analytics SDK → CORS, add
 ```bash
 yarn
 cp .env.local.example .env.local
-# fill in VITE_MB_URL + VITE_MB_API_KEY
-yarn dev      # preview at http://localhost:5174
-# …iterate on src/App.tsx and friends; HMR reloads on save…
+# fill in VITE_MB_URL + VITE_MB_API_KEY (Admin → Authentication → API keys)
+yarn dev      # preview at http://localhost:5174 with HMR
 yarn build    # produces dist/index.js
 ```
 
@@ -545,36 +493,15 @@ import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react"
 
 The only file that does a *runtime* import from the SDK package is `src/dev-globals.tsx`, and only for the dev preview — `dev-globals.tsx` is never reached from `src/index.tsx`, so it's tree-shaken out of the production build.
 
-### 4. `React` is in scope automatically
+### 4. `React` is in scope automatically; pull hooks off it
 
-Vite's JSX classic runtime compiles `<div/>` to `React.createElement("div")`. The bundle externalizes `react` and maps it to `globalThis.React` (the host's React). You don't need to `import React from "react"` in every file — `src/globals.d.ts` declares `React` as a global so TS is happy without the import.
-
-**Do not** use `import { useState } from "react"` for hooks — pull them off the global React:
+`src/globals.d.ts` declares `React` as a global. Don't `import React from "react"` in source files, and don't `import { useState } from "react"` — destructure hooks off the global so Rollup's import graph stays clean:
 
 ```ts
 const { useState, useEffect, useMemo } = React;
 ```
 
-Importing hooks from `"react"` works at runtime (`react` is externalized → resolves to host React), but it pulls those hook names into the bundle's import graph and can confuse Rollup's tree-shaking. The destructure-from-global form is the convention.
-
-### 5. Production entry exports the factory
-
-`src/index.tsx` is the production entry. It must `export default` a factory function returning `{ component }`:
-
-```tsx
-import App from "./App";
-
-type Factory = (hostApi: Record<string, unknown>) => {
-  component: React.ComponentType;
-};
-
-const factory: Factory = (_hostApi) => ({ component: App });
-export default factory;
-```
-
-Vite lib mode + `name: "__customVizPlugin__"` makes the bundle assign this factory to `globalThis.__customVizPlugin__`, which is the contract the Metabase host reads.
-
-## Theme rules (unchanged from the older convention)
+## Theme rules
 
 `MetabaseProvider`'s `theme` is the only way SDK component appearance changes. It is NOT a stylesheet for the bundle's own chrome.
 
@@ -710,29 +637,17 @@ To replace: delete the data app, upload again. Per-app replace endpoint isn't wi
 
 ## Common pitfalls
 
-| Symptom | Cause | Fix |
-|---|---|---|
-| Preview shows "Failed to fetch the user, the session might be invalid." | Wrong/missing API key, or CORS blocked. | Verify `curl -H "X-API-Key: $KEY" $URL/api/user/current`. Add `http://localhost:5174` to Metabase's SDK CORS origins. |
-| Chart renders but with invisible labels. | `text-primary` not set against a light `background`. | Set `text-primary: "#1f2937"` (or similar) in the theme. |
-| Chart overflows its container. | No `height`/`width` props on SDK component. | Pass `height="100%"` `width="100%"` and constrain the parent. |
-| "Invalid hook call" at runtime. | Imported hook from `react` and `react` wasn't externalized. | Check `vite.config.ts` has `external: ["react"]` + `globals: { react: "React" }`. Or grab hooks off `globalThis.React`. |
-| Bundle is huge (multi-MB). | Runtime-imported `@metabase/embedding-sdk-react` in `src/App.tsx` or another non-dev file. | Switch to `globalThis.X` lookups (with `import type` for types only); SDK runtime imports belong only in `src/dev-globals.tsx`. |
-| `dist/index.js` doesn't assign anything to `__customVizPlugin__`. | Lib mode `name` not set in vite.config. | Verify `lib.name: "__customVizPlugin__"` in `vite.config.ts`. |
-| Preview tab is blank, console says `MetabaseProvider is undefined`. | `src/App.tsx` runs before `src/dev-globals.tsx` evaluates. | Make sure `src/dev.tsx` does `import "./dev-globals"` BEFORE `import App from "./App"`. |
-| `globalThis.MetabaseProvider` (or similar) shows as `any` / red-underlined in the editor. | `src/globals.d.ts` missing or not in `tsconfig.json#include`. | Confirm `src/globals.d.ts` exists with the `declare global` block and that `tsconfig.json` includes `"src"`. |
+| Symptom | Fix |
+|---|---|
+| "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `curl -H "X-API-Key: $KEY" $URL/api/user/current`, add `http://localhost:5174` to SDK CORS origins. |
+| Invisible chart labels. | Set `text-primary` in the theme (see *Theme rules*). |
+| Chart overflows its container. | Pass `height` / `width` to the SDK component (see *SDK component sizing*). |
+| "Invalid hook call" at runtime. | `react` not externalized — check `vite.config.ts`. |
+| Bundle is multi-MB. | Runtime-importing `@metabase/embedding-sdk-react` from non-dev source (see *Source conventions §3*). |
+| `dist/index.js` doesn't assign to `__customVizPlugin__`. | `lib.name: "__customVizPlugin__"` missing in `vite.config.ts`. |
+| Dev preview blank, console says `MetabaseProvider is undefined`. | `src/dev.tsx` must `import "./dev-globals"` BEFORE `import App from "./App"`. |
+| `globalThis.MetabaseProvider` shows as `any` in the editor. | `src/globals.d.ts` missing or not in `tsconfig.json#include`. |
 
-## Where to go next
+## Confirm scope before generating code
 
-Once the project files are in place (whether freshly scaffolded or detected
-as existing):
-
-1. **Confirm what the data app should do.** If the user hasn't already
-   described the screen / charts / flow, ask before generating code.
-2. **Write the app.** Edit `src/App.tsx` and split additional pieces into
-   `src/components/*.tsx` (or `src/*.ts` for helpers) — Vite bundles all of
-   `src/` reachable from `src/index.tsx` into a single `dist/index.js`, so
-   file count is free.
-3. **Iterate in the preview** at `http://localhost:5174` (`yarn dev`). HMR
-   reloads on save.
-4. **Ship.** Run `yarn build` to produce `dist/index.js`, then upload that
-   file via Admin → Data apps.
+Once the project files are in place (whether freshly scaffolded or detected as existing), confirm what the data app should *do* before writing components. If the user hasn't already described the screen / charts / flow, ask first — code generated against an assumed brief is the most common rework cause.
