@@ -99,6 +99,14 @@
   0.55)
 (def ^:private header-pad-pt 6.0)
 
+(def ^:private gutter
+  "Points of empty space between adjacent cards. Realized as a half-gutter inset on each card's
+  grid rectangle, so two neighbours are separated by a full gutter while the outermost cards sit
+  half a gutter inside the page margin (and the first row sits half a gutter below the header).
+  Heading/text cells skip the *bottom* half of the inset (see `render-page!`) so a one-row section
+  header -- whose cell is barely taller than its text -- still has room to render."
+  9.0)
+
 (def ^:private dpi
   "Pixels per inch used to size rasterized charts. Higher = crisper but larger PDFs. A grid
   cell's pixel dimensions are derived from its printed point size and this DPI."
@@ -1234,10 +1242,16 @@
         (draw-header! cs ph page)
         (doseq [cell (:cards page)]
           (let [rr     (- (:row cell) (:base page))
-                x      (+ margin (* (:col cell) unit))
-                top-y  (- card-area-top (* rr unit))
-                cell-w (* (:size_x cell) unit)
-                cell-h (min (* (:size_y cell) unit) (- top-y margin))]
+                half   (/ gutter 2.0)
+                ;; inset each card's grid rectangle by half a gutter so neighbours are separated
+                ;; by a full gutter; heading/text cells keep their bottom half (so a one-row
+                ;; section header still fits its text -- it gets a half gutter below instead).
+                text?  (contains? #{:heading :text} (:kind cell))
+                x      (+ margin (* (:col cell) unit) half)
+                top-y  (- card-area-top (* rr unit) half)
+                cell-w (- (* (:size_x cell) unit) gutter)
+                cell-h (min (- (* (:size_y cell) unit) (if text? half gutter))
+                            (- top-y margin))]
             (try
               (case (:kind cell)
                 :card    (render-card-cell! doc cs timezone (:part cell) x top-y cell-w cell-h)
@@ -1323,4 +1337,4 @@
 (comment
   (let [main-dash 1
         i18n-dash 18]
-    (render-dashboard-to-pdf-file 18 1 {} "/tmp/dash13.pdf")))
+    (render-dashboard-to-pdf-file 1 1 {} "/tmp/dash35.pdf")))
