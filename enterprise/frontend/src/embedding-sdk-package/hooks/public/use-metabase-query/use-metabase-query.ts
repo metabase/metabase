@@ -240,27 +240,50 @@ type MetabaseDimensionFilterForOperator<
   values?: readonly unknown[];
 };
 
-type BreakoutBucketForDimension<TDimension> = TDimension extends {
-  jsType?: infer TJavaScriptType;
-}
-  ? NonNullable<TJavaScriptType> extends "Date"
-    ? TemporalUnit
+type BreakoutBinning = {
+  strategy: "default" | "bin-width" | "num-bins";
+  "bin-width"?: number;
+  "num-bins"?: number;
+};
+
+type DateBucketDimension<TDimension> = TDimension extends unknown
+  ? TDimension extends { jsType?: infer TJavaScriptType }
+    ? "Date" extends NonNullable<TJavaScriptType>
+      ? TDimension
+      : never
+    : TDimension
+  : never;
+
+type NonDateBucketDimension<TDimension> = TDimension extends unknown
+  ? TDimension extends { jsType?: infer TJavaScriptType }
+    ? "Date" extends NonNullable<TJavaScriptType>
+      ? never
+      : TDimension
     : never
+  : never;
+
+type BreakoutBucketArgument<TDimension> = [
+  DateBucketDimension<TDimension>,
+] extends [never]
+  ? never
   : TemporalUnit;
 
-type MetabaseBreakoutForDimension<TDimension> = TDimension extends unknown
-  ?
-      | TDimension
-      | {
-          dimension: TDimension;
-          bucket?: BreakoutBucketForDimension<TDimension>;
-          binning?: {
-            strategy: "default" | "bin-width" | "num-bins";
-            "bin-width"?: number;
-            "num-bins"?: number;
-          };
-        }
-  : never;
+type MetabaseBreakoutForDimension<TDimension> =
+  | TDimension
+  | ([DateBucketDimension<TDimension>] extends [never]
+      ? never
+      : {
+          dimension: DateBucketDimension<TDimension>;
+          bucket?: TemporalUnit;
+          binning?: BreakoutBinning;
+        })
+  | ([NonDateBucketDimension<TDimension>] extends [never]
+      ? never
+      : {
+          dimension: NonDateBucketDimension<TDimension>;
+          bucket?: never;
+          binning?: BreakoutBinning;
+        });
 
 export type MetabaseBreakout<TEntity = unknown> = [
   DimensionValues<TEntity>,
@@ -465,6 +488,25 @@ export function filter(
   }
 
   return { dimension, operator, value };
+}
+
+export function breakout<TDimension>(dimension: TDimension): TDimension;
+export function breakout<TDimension>(
+  dimension: TDimension,
+  bucket: BreakoutBucketArgument<TDimension>,
+): {
+  dimension: TDimension;
+  bucket: BreakoutBucketArgument<TDimension>;
+};
+export function breakout<TDimension>(
+  dimension: TDimension,
+  bucket?: BreakoutBucketArgument<TDimension>,
+) {
+  if (bucket) {
+    return { dimension, bucket };
+  }
+
+  return dimension;
 }
 
 const useMetabaseQueryImpl = <

@@ -31,7 +31,11 @@ export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
 export { useQuestionQuery } from "./hooks/public/use-question-query";
 export { useMetricQuery } from "./hooks/public/use-metric-query";
-export { filter, useMetabaseQuery } from "./hooks/public/use-metabase-query";
+export {
+  breakout,
+  filter,
+  useMetabaseQuery,
+} from "./hooks/public/use-metabase-query";
 export { useAction } from "./hooks/public/use-action";
 export type {
   ActionExecuteError,
