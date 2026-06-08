@@ -258,6 +258,25 @@
     (testing "an inline id that only has an unset parameter -> nil"
       (is (nil? (#'pdf/resolve-inline-params {:inline_parameters ["c"]} params))))))
 
+(deftest visual-order-test
+  (testing "left-to-right text is returned unchanged (no bidi processing)"
+    (is (= "Hello, world 123" (#'pdf/visual-order "Hello, world 123")))
+    (is (= "" (#'pdf/visual-order "")))
+    (is (= "日本語" (#'pdf/visual-order "日本語"))))
+  (testing "Hebrew (non-joining) is reordered logical->visual, i.e. reversed, so a left-to-right
+            renderer draws it right-to-left; the letters themselves are unchanged"
+    (let [shalom "שלום"]              ; שלום
+      (is (= (apply str (reverse shalom)) (#'pdf/visual-order shalom)))))
+  (testing "Arabic is shaped to positional presentation forms (Presentation-Forms-B / -A) and
+            reordered to visual order"
+    (let [marhaba "مرحبا"        ; مرحبا, base (non-presentation) letters
+          out     (#'pdf/visual-order marhaba)]
+      ;; every output char is a joined presentation form, none is a bare base letter
+      (is (every? (fn [c] (or (<= 0xFB50 (int c) 0xFDFF) (<= 0xFE70 (int c) 0xFEFF)))
+                  out))
+      (is (not-any? (fn [c] (<= 0x0600 (int c) 0x06FF)) out))
+      (is (not (re-find #"\?" out))))))
+
 (deftest effective-display-test
   (testing "a non-visualizer card uses its own display"
     (is (= :bar (#'pdf/effective-display {:display "bar"} {})))
