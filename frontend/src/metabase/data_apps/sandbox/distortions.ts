@@ -1,10 +1,10 @@
-import { makeSandboxDistortionCallback } from "metabase-enterprise/plugin-sandbox-utils";
+import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
 import type { DataAppId } from "metabase-types/api";
 
 /**
  * Data-app Near Membrane distortion callback.
  *
- * Reuses the shared callback from `plugin-sandbox-utils` — same blocking of
+ * Reuses the shared callback from `utils/scripts-sandbox` — same blocking of
  * fetch/XHR/etc., same DOM-mutation sanitization, same dangerous-tag /
  * inline-handler / `javascript:`-URL filters as custom-viz.
  *
