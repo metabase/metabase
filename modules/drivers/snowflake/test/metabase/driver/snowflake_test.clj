@@ -390,11 +390,12 @@
                [["metabase_users"
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
-    (let [details (:details (mt/db))]
+    (let [{{db-name :db, :as details} :details} (mt/db)]
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
-                              (:db details) (:db details) (:db details))])
+                              db-name db-name db-name)])
+      (sync/sync-database! (t2/select-one :model/Database (mt/id)) {:scan :schema})
       (thunk))))
 
 (defmacro with-dynamic-table!
@@ -406,7 +407,6 @@
   (testing "Should be able to sync dynamic tables"
     (mt/test-driver :snowflake
       (with-dynamic-table!
-        (sync/sync-database! (t2/select-one :model/Database (mt/id)))
         (testing "both base tables and dynamic tables should be synced"
           (is (= #{"metabase_fan" "metabase_users"}
                  (t2/select-fn-set :name :model/Table :db_id (mt/id))))
@@ -425,8 +425,10 @@
          (mt/db)
          nil
          (fn [conn]
-           (let [dynamic-table (t2/select-one :model/Table :name "metabase_fan" :db_id (mt/id))
-                 normal-table  (t2/select-one :model/Table :name "metabase_users" :db_id (mt/id))
+           (let [dynamic-table (or (t2/select-one :model/Table :name "metabase_fan" :db_id (mt/id))
+                                   (throw (ex-info "Failed to find dynamic table" {:database-id (mt/id)})))
+                 normal-table  (or (t2/select-one :model/Table :name "metabase_users" :db_id (mt/id))
+                                   (throw (ex-info "Failed to find normal table" {:database-id (mt/id)})))
                  db-name       (-> (mt/db) :details :db)]
              (testing "dynamic-table?"
                (testing "returns true for dynamic table"
@@ -442,7 +444,11 @@
                  (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn nil dynamic-table)))))
              (testing "driver/describe-fks returns empty set for dynamic table"
                (is (= #{}
-                      (driver/describe-fks :snowflake (mt/db) dynamic-table)))))))))))
+                      (into #{}
+                            (driver/describe-fks :snowflake
+                                                 (lib.metadata/database (mt/metadata-provider))
+                                                 {:schema-names [(:schema dynamic-table)]
+                                                  :table-names  [(:name dynamic-table)]}))))))))))))
 
 (deftest ^:sequential describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake

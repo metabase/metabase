@@ -78,8 +78,8 @@
                               :workspace                              false}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
-(defn- quote-schema [s] (sql.u/quote-name :snowflake :schema s))
-(defn- quote-field  [s] (sql.u/quote-name :snowflake :field s))
+(mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))
+(mu/defn- quote-field  ^String [s :- :string] (sql.u/quote-name :snowflake :field s))
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ messages]
@@ -781,12 +781,15 @@
   [_ entity-name]
   (escape-name-for-metadata entity-name))
 
-(defn- dynamic-table?
+(mu/defn- dynamic-table?
   "Check if the table is a dynamic table.
 
   You can't rely on :table_type from INFORMATION_SCHEMA.TABLES or :type from getTables because in
   both cases it returns `Table` for dynamic tables."
-  [^Connection conn ^String db-name ^String schema-name ^String table-name]
+  [^Connection conn    :- (lib.schema.common/instance-of-class Connection)
+   ^String db-name     :- :string
+   ^String schema-name :- :string
+   ^String table-name  :- :string]
   (try
     ;; there is another way of checking this by using SHOW TABLES command and check `is_dynamic` column.
     ;; But this column is not documented on https://docs.snowflake.com/en/sql-reference/sql/show-tables (2024/05/07),
