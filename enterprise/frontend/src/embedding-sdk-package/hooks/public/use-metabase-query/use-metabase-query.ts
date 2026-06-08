@@ -32,7 +32,6 @@ import type {
   QuestionSchema,
   SchemaColumn,
   SchemaValue,
-  SegmentSchema,
   TableSchema,
 } from "../data-schema";
 import { mapQueryData, mapRowsToObjects } from "../data-schema";
@@ -43,12 +42,6 @@ type UnionToIntersection<TUnion> = (
   TUnion extends unknown ? (value: TUnion) => void : never
 ) extends (value: infer TIntersection) => void
   ? TIntersection
-  : never;
-
-type SegmentValues<TEntity> = TEntity extends {
-  segments?: infer TSegments;
-}
-  ? Values<NonNullable<TSegments>>
   : never;
 
 type FieldValues<TEntity> = TEntity extends {
@@ -82,6 +75,12 @@ type MetricReference<TMappedTableId extends number = number> = {
   dimensions?: Record<string, MetricDimensionSchema>;
 };
 
+type SegmentReference<TTableId extends number = number> = {
+  kind: "segment";
+  id: number;
+  tableId: TTableId;
+};
+
 type MeasureReference<TTableId extends number = number> = {
   kind: "measure";
   id: number;
@@ -104,7 +103,7 @@ type MappedTable<TMetric, TSchema> = Extract<
   { readonly id: MappedTableId<TMetric> }
 >;
 
-type SegmentForMetric<TMetric> = SegmentSchema<MappedTableId<TMetric>>;
+type SegmentForMetric<TMetric> = SegmentReference<MappedTableId<TMetric>>;
 
 type MeasureForMetric<TMetric> = MeasureReference<MappedTableId<TMetric>>;
 
@@ -185,7 +184,10 @@ type TableQuery<TTable> = {
   metricId?: never;
   metric?: never;
   filters?: TTable extends TableSchema
-    ? readonly (SegmentValues<TTable> | MetabaseDimensionFilter<TTable>)[]
+    ? readonly (
+        | SegmentReference<TableId<TTable>>
+        | MetabaseDimensionFilter<TTable>
+      )[]
     : readonly unknown[];
   measures?: TTable extends TableSchema
     ? readonly MeasureReference<TableId<TTable>>[]
@@ -853,7 +855,7 @@ function toMetricBreakout(breakout: MetabaseBreakout): MetabaseMetricBreakout {
   );
 }
 
-function isSegmentSchema(value: unknown): value is SegmentSchema {
+function isSegmentSchema(value: unknown): value is SegmentReference {
   return (
     typeof value === "object" &&
     value != null &&
