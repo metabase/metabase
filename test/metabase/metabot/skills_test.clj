@@ -91,7 +91,9 @@
       ;; core has priority 60, the rest 50, operators 40 -> core first, operators last
       (is (= "construct-notebook-query-core" (:id (first (:catalog manifest))))))
     (testing "no always-on skills in this migration"
-      (is (empty? (:always-on manifest)))))
+      (is (empty? (:always-on manifest))))))
+
+(deftest ^:parallel build-skill-manifest-records-loadable-skill-ids-test
   (testing "building the manifest records the request's loadable skill ids"
     (binding [scope/*current-loadable-skill-ids* (atom #{})]
       (skills/build-skill-manifest {:name :internal} ["construct_notebook_query"] [])
