@@ -7,7 +7,7 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 
 import type { MetabaseQueryOptions } from "./use-metabase-query";
-import { useMetabaseQuery } from "./use-metabase-query";
+import { filter, useMetabaseQuery } from "./use-metabase-query";
 
 const TEST_SCHEMA = {
   tables: {
@@ -108,6 +108,16 @@ type OrderCountMetric = TestSchema["metrics"]["orderCount"];
 const _validTableCustomFilterQuery = {
   tableId: TEST_SCHEMA.tables.orders.id,
   filters: [
+    filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
+    filter(TEST_SCHEMA.tables.orders.fields.amount, ">", 10),
+    filter(TEST_SCHEMA.tables.orders.fields.amount, "between", [10, 20]),
+    filter(TEST_SCHEMA.tables.orders.fields.status, "not-empty"),
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _validTableCustomFilterObjectQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  filters: [
     {
       dimension: TEST_SCHEMA.tables.orders.fields.status,
       operator: "=",
@@ -117,6 +127,15 @@ const _validTableCustomFilterQuery = {
       dimension: TEST_SCHEMA.tables.orders.fields.amount,
       operator: ">",
       value: 10,
+    },
+    {
+      dimension: TEST_SCHEMA.tables.orders.fields.amount,
+      operator: "between",
+      values: [10, 20],
+    },
+    {
+      dimension: TEST_SCHEMA.tables.orders.fields.status,
+      operator: "not-empty",
     },
   ],
 } satisfies MetabaseQueryOptions<OrdersTable>;
@@ -157,18 +176,10 @@ const _invalidTableBreakoutNonDateBucketQuery = {
 const _invalidTableCustomFilterOperatorQuery = {
   tableId: TEST_SCHEMA.tables.orders.id,
   filters: [
-    {
-      dimension: TEST_SCHEMA.tables.orders.fields.amount,
-      // @ts-expect-error number dimensions do not support string operators
-      operator: "contains",
-      value: "10",
-    },
-    {
-      dimension: TEST_SCHEMA.tables.orders.fields.status,
-      // @ts-expect-error string dimensions do not support numeric comparison operators
-      operator: ">",
-      value: "paid",
-    },
+    // @ts-expect-error number dimensions do not support string operators
+    filter(TEST_SCHEMA.tables.orders.fields.amount, "contains", "10"),
+    // @ts-expect-error string dimensions do not support numeric comparison operators
+    filter(TEST_SCHEMA.tables.orders.fields.status, ">", "paid"),
   ],
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
@@ -254,6 +265,17 @@ function useMetricFilterOperatorTypeFixtures() {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
     filters: [
+      filter(
+        TEST_SCHEMA.metrics.orderCount.dimensions.status,
+        "contains",
+        "paid",
+      ),
+    ],
+  });
+
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    filters: [
       {
         dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
         operator: "contains",
@@ -264,13 +286,9 @@ function useMetricFilterOperatorTypeFixtures() {
 
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
-    // @ts-expect-error string metric dimensions do not support numeric comparison operators
     filters: [
-      {
-        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
-        operator: ">",
-        value: "paid",
-      },
+      // @ts-expect-error string metric dimensions do not support numeric comparison operators
+      filter(TEST_SCHEMA.metrics.orderCount.dimensions.status, ">", "paid"),
     ],
   });
 }
