@@ -24,6 +24,38 @@ type LensNavigatorProps = {
   onCloseTab: (tabKey: string) => void;
 };
 
+type IndicatorProps = {
+  tab: LensTab;
+  activeTabKey: string | undefined;
+};
+
+const Indicator = ({ tab, activeTabKey }: IndicatorProps) => {
+  if (!tab.isStatic || tab.isFullyLoaded) {
+    return null;
+  }
+  // Only the active tab is mounted and actually loading, so an unvisited
+  // inactive tab would otherwise show a spinner forever.
+  if (tab.key === activeTabKey) {
+    return <Loader size="xs" data-testid="lens-tab-loader" />;
+  }
+  if (!tab.complexity || tab.complexity.level === "fast") {
+    return null;
+  }
+  return (
+    <Tooltip
+      label={match(tab.complexity.level)
+        .with("slow", () => t`This analysis may take longer to load`)
+        .with(
+          "very-slow",
+          () => t`This analysis may take significantly longer to load`,
+        )
+        .exhaustive()}
+    >
+      <Icon name="clock" size={12} c="text-tertiary" />
+    </Tooltip>
+  );
+};
+
 export const LensNavigator = ({
   tabs,
   activeTabKey,
@@ -31,33 +63,6 @@ export const LensNavigator = ({
   onCloseTab,
   children,
 }: PropsWithChildren<LensNavigatorProps>) => {
-  const renderIndicator = (tab: LensTab) => {
-    if (!tab.isStatic || tab.isFullyLoaded) {
-      return;
-    }
-    // Only the active tab is mounted and actually loading, so an unvisited
-    // inactive tab would otherwise show a spinner forever.
-    if (tab.key === activeTabKey) {
-      return <Loader size="xs" data-testid="lens-tab-loader" />;
-    }
-    if (!tab.complexity || tab.complexity.level === "fast") {
-      return null;
-    }
-    return (
-      <Tooltip
-        label={match(tab.complexity.level)
-          .with("slow", () => t`This analysis may take longer to load`)
-          .with(
-            "very-slow",
-            () => t`This analysis may take significantly longer to load`,
-          )
-          .exhaustive()}
-      >
-        <Icon name="clock" size={12} c="text-tertiary" />
-      </Tooltip>
-    );
-  };
-
   return (
     <Stack
       gap="0"
@@ -84,7 +89,7 @@ export const LensNavigator = ({
                 >
                   {tab.title ?? t`Loading...`}
                 </Text>
-                {renderIndicator(tab)}
+                <Indicator tab={tab} activeTabKey={activeTabKey} />
                 {!tab.isStatic && (
                   <Box
                     component="span"
