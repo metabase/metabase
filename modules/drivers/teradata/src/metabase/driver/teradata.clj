@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -29,10 +30,11 @@
 
 (driver/register! :teradata, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:metadata/key-constraints  false
-                              :test/jvm-timezone-setting false
-                              :database-routing          false
-                              :connection-impersonation  false}]
+(doseq [[feature supported?] {:metadata/key-constraints         false
+                              :test/jvm-timezone-setting        false
+                              :database-routing                 false
+                              :connection-impersonation         false
+                              :regex/lookaheads-and-lookbehinds false}]
   (defmethod driver/database-supports? [:teradata feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :teradata
@@ -349,13 +351,18 @@
   (let [parent-method (get-method sql.qp/preprocess :sql)]
     (sql.qp/fix-order-bys-in-subqueries (parent-method driver mbql5-query))))
 
+(defn- format-qualify [_clause qualify-sql] [qualify-sql])
+
+;; Register the ::qualify clause to appear after :order-by in the SQL output.
+(sql/register-clause! ::qualify #'format-qualify :order-by)
+
 (defmethod sql.qp/apply-top-level-clause [:teradata :page] [_ _ honeysql-form {{:keys [items page]} :page}]
-  (assoc honeysql-form :offset (:raw (format "QUALIFY ROW_NUMBER() OVER (%s) BETWEEN %d AND %d"
-                                             (first (format (select-keys honeysql-form [:order-by])
-                                                            :allow-dashed-names? true
-                                                            :quoting :ansi))
-                                             (inc (* items (dec page)))
-                                             (* items page)))))
+  (let [order-by-sql (first (sql/format (select-keys honeysql-form [:order-by])
+                                        {:quoted true}))]
+    (assoc honeysql-form ::qualify (format "QUALIFY ROW_NUMBER() OVER (%s) BETWEEN %d AND %d"
+                                           order-by-sql
+                                           (inc (* items (dec page)))
+                                           (* items page)))))
 
 (def ^:private excluded-schemas
   #{"SystemFe" "SYSLIB" "LockLogShredder" "Sys_Calendar" "SYSBAR" "SYSUIF"

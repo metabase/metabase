@@ -50,7 +50,7 @@
   nil #_(format "DROP TABLE \"%s\".\"%s\";" database-name table-name))
 
 (defmethod sql.tx/create-db-sql :teradata [_ {:keys [database-name]}]
-  (format "CREATE user \"%s\" AS password=\"%s\" perm=33554432 spool=134217728;" database-name database-name))
+  (format "CREATE user \"%s\" AS password=\"%s\" perm=8388608 spool=134217728;" database-name database-name))
 
 (defmethod sql.tx/drop-db-if-exists-sql :teradata [_ {:keys [database-name]}]
   ;; Need the AbortSessions to avoid a "Can not drop user when logged in" error
