@@ -3,6 +3,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common]
    [metabase.api.util.handlers :as handlers]
+   [metabase.notification.api.admin]
    [metabase.notification.api.notification]
    [metabase.notification.api.unsubscribe]
    [potemkin :as p]))
@@ -19,5 +20,6 @@
   "`/api/notification` routes."
   (handlers/routes
    (handlers/route-map-handler
-    {"/unsubscribe" 'metabase.notification.api.unsubscribe})
+    {"/unsubscribe" 'metabase.notification.api.unsubscribe
+     "/admin"       (routes.common/+auth (api.macros/ns-handler 'metabase.notification.api.admin))})
    (routes.common/+auth (api.macros/ns-handler 'metabase.notification.api.notification))))
