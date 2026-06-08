@@ -17,6 +17,7 @@ import type {
   Filter,
   MetricId,
   StructuredDatasetQuery,
+  TemporalUnit,
 } from "metabase-types/api";
 import type {
   InstanceFilter,
@@ -107,9 +108,17 @@ type SegmentForMetric<TMetric> = SegmentReference<MappedTableId<TMetric>>;
 
 type MeasureForMetric<TMetric> = MeasureReference<MappedTableId<TMetric>>;
 
+type TableBreakoutForMetric<TMetric, TSchema> = [
+  MappedTable<TMetric, TSchema>,
+] extends [never]
+  ? never
+  : MetabaseBreakout<MappedTable<TMetric, TSchema>>;
+
 type BreakoutForMetric<TMetric, TSchema> =
-  | MetabaseMetricBreakout
-  | MetabaseBreakout<MappedTable<TMetric, TSchema>>;
+  | ([MetricDimensionValues<TMetric>] extends [never]
+      ? MetabaseMetricBreakout
+      : MetabaseMetricBreakout<MetricDimensionValues<TMetric>>)
+  | TableBreakoutForMetric<TMetric, TSchema>;
 
 type FilterOperator =
   | "="
@@ -129,43 +138,121 @@ type FilterOperator =
   | "not-null"
   | "time-interval";
 
-export type MetabaseBreakout<TEntity = unknown> =
-  | DimensionInput<TEntity>
-  | {
+type StringFilterOperator =
+  | "="
+  | "!="
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-with"
+  | "is-empty"
+  | "not-empty"
+  | "is-null"
+  | "not-null";
+
+type NumberFilterOperator =
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "between"
+  | "is-null"
+  | "not-null";
+
+type BooleanFilterOperator = "=" | "is-null" | "not-null";
+
+type DateFilterOperator =
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "between"
+  | "time-interval"
+  | "is-null"
+  | "not-null";
+
+type FilterOperatorForDimension<TDimension> = TDimension extends {
+  jsType?: infer TJavaScriptType;
+}
+  ? NonNullable<TJavaScriptType> extends "string"
+    ? StringFilterOperator
+    : NonNullable<TJavaScriptType> extends "number"
+      ? NumberFilterOperator
+      : NonNullable<TJavaScriptType> extends "boolean"
+        ? BooleanFilterOperator
+        : NonNullable<TJavaScriptType> extends "Date"
+          ? DateFilterOperator
+          : FilterOperator
+  : FilterOperator;
+
+type MetabaseDimensionFilterForDimension<TDimension> =
+  TDimension extends unknown
+    ? {
+        dimension: TDimension;
+        operator: FilterOperatorForDimension<TDimension>;
+        value?: unknown;
+        values?: readonly unknown[];
+      }
+    : never;
+
+type BreakoutBucketForDimension<TDimension> = TDimension extends {
+  jsType?: infer TJavaScriptType;
+}
+  ? NonNullable<TJavaScriptType> extends "Date"
+    ? TemporalUnit
+    : never
+  : TemporalUnit;
+
+type MetabaseBreakoutForDimension<TDimension> = TDimension extends unknown
+  ?
+      | TDimension
+      | {
+          dimension: TDimension;
+          bucket?: BreakoutBucketForDimension<TDimension>;
+          binning?: {
+            strategy: "default" | "bin-width" | "num-bins";
+            "bin-width"?: number;
+            "num-bins"?: number;
+          };
+        }
+  : never;
+
+export type MetabaseBreakout<TEntity = unknown> = [
+  DimensionValues<TEntity>,
+] extends [never]
+  ?
+      | DimensionInput<TEntity>
+      | {
+          dimension: DimensionInput<TEntity>;
+          bucket?: TemporalUnit;
+          binning?: {
+            strategy: "default" | "bin-width" | "num-bins";
+            "bin-width"?: number;
+            "num-bins"?: number;
+          };
+        }
+  : MetabaseBreakoutForDimension<DimensionValues<TEntity>>;
+
+export type MetabaseDimensionFilter<TEntity = unknown> = [
+  DimensionValues<TEntity>,
+] extends [never]
+  ? {
       dimension: DimensionInput<TEntity>;
-      bucket?: string;
-      binning?: {
-        strategy: "default" | "bin-width" | "num-bins";
-        "bin-width"?: number;
-        "num-bins"?: number;
-      };
-    };
+      operator: FilterOperator;
+      value?: unknown;
+      values?: readonly unknown[];
+    }
+  : MetabaseDimensionFilterForDimension<DimensionValues<TEntity>>;
 
-export type MetabaseDimensionFilter<TEntity = unknown> = {
-  dimension: DimensionInput<TEntity>;
-  operator: FilterOperator;
-  value?: unknown;
-  values?: readonly unknown[];
-};
+export type MetabaseMetricBreakout<TDimension = MetricDimensionSchema> =
+  MetabaseBreakoutForDimension<TDimension>;
 
-export type MetabaseMetricBreakout =
-  | MetricDimensionSchema
-  | {
-      dimension: MetricDimensionSchema;
-      bucket?: string;
-      binning?: {
-        strategy: "default" | "bin-width" | "num-bins";
-        "bin-width"?: number;
-        "num-bins"?: number;
-      };
-    };
-
-export type MetabaseMetricDimensionFilter = Omit<
-  MetabaseDimensionFilter,
-  "dimension"
-> & {
-  dimension: MetricDimensionSchema;
-};
+export type MetabaseMetricDimensionFilter =
+  MetabaseDimensionFilterForDimension<MetricDimensionSchema>;
 
 type QuestionQuery<TQuestion> = {
   questionId: SdkQuestionId;

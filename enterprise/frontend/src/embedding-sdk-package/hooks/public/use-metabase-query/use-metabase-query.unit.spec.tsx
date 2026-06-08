@@ -14,6 +14,29 @@ const TEST_SCHEMA = {
     orders: {
       id: 1,
       databaseId: 1,
+      fields: {
+        createdAt: {
+          id: 103,
+          fieldId: 103,
+          name: "created_at",
+          displayName: "Created At",
+          jsType: "Date",
+        },
+        amount: {
+          id: 102,
+          fieldId: 102,
+          name: "amount",
+          displayName: "Amount",
+          jsType: "number",
+        },
+        status: {
+          id: 101,
+          fieldId: 101,
+          name: "status",
+          displayName: "Status",
+          jsType: "string",
+        },
+      },
       segments: {
         completed: { kind: "segment", id: 11, tableId: 1 },
       },
@@ -29,6 +52,15 @@ const TEST_SCHEMA = {
     products: {
       id: 2,
       databaseId: 1,
+      fields: {
+        price: {
+          id: 201,
+          fieldId: 201,
+          name: "price",
+          displayName: "Price",
+          jsType: "number",
+        },
+      },
       segments: {
         active: { kind: "segment", id: 12, tableId: 2 },
       },
@@ -46,13 +78,111 @@ const TEST_SCHEMA = {
     orderCount: {
       id: 34,
       columns: [{ name: "count", displayName: "Count", jsType: "number" }],
+      dimensions: {
+        createdAt: {
+          id: "metric-created-at",
+          fieldId: 103,
+          tableId: 1,
+          name: "created_at",
+          displayName: "Created At",
+          jsType: "Date",
+        },
+        status: {
+          id: "metric-status",
+          fieldId: 101,
+          tableId: 1,
+          name: "status",
+          displayName: "Status",
+          jsType: "string",
+        },
+      },
       mappedTableIds: [1],
     },
   },
 } as const;
 
 type TestSchema = typeof TEST_SCHEMA;
+type OrdersTable = TestSchema["tables"]["orders"];
 type OrderCountMetric = TestSchema["metrics"]["orderCount"];
+
+const _validTableCustomFilterQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  filters: [
+    {
+      dimension: TEST_SCHEMA.tables.orders.fields.status,
+      operator: "=",
+      value: "paid",
+    },
+    {
+      dimension: TEST_SCHEMA.tables.orders.fields.amount,
+      operator: ">",
+      value: 10,
+    },
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _validTableBreakoutBucketQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  breakouts: [
+    {
+      dimension: TEST_SCHEMA.tables.orders.fields.createdAt,
+      bucket: "month",
+    },
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidTableBreakoutUnknownBucketQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  breakouts: [
+    {
+      // @ts-expect-error temporal buckets must be valid Metabase temporal units
+      dimension: TEST_SCHEMA.tables.orders.fields.createdAt,
+      // @ts-expect-error temporal buckets must be valid Metabase temporal units
+      bucket: "aaaa",
+    },
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidTableBreakoutNonDateBucketQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  breakouts: [
+    // @ts-expect-error non-date dimensions do not support temporal buckets
+    {
+      dimension: TEST_SCHEMA.tables.orders.fields.status,
+      bucket: "month",
+    },
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidTableCustomFilterOperatorQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  filters: [
+    {
+      dimension: TEST_SCHEMA.tables.orders.fields.amount,
+      // @ts-expect-error number dimensions do not support string operators
+      operator: "contains",
+      value: "10",
+    },
+    {
+      dimension: TEST_SCHEMA.tables.orders.fields.status,
+      // @ts-expect-error string dimensions do not support numeric comparison operators
+      operator: ">",
+      value: "paid",
+    },
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidTableCustomFilterQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  filters: [
+    {
+      // @ts-expect-error custom filter dimensions must belong to the table schema
+      dimension: TEST_SCHEMA.tables.products.fields.price,
+      operator: "=",
+      value: 10,
+    },
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _validMetricScopedQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
@@ -64,7 +194,61 @@ const _validMetricObjectQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   filters: [TEST_SCHEMA.tables.orders.segments.completed],
   measures: [TEST_SCHEMA.tables.orders.measures.revenue],
+  breakouts: [
+    {
+      dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
+      bucket: "month",
+    },
+  ],
 } satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
+
+const _invalidMetricBreakoutUnknownBucketQuery = {
+  metric: TEST_SCHEMA.metrics.orderCount,
+  breakouts: [
+    {
+      // @ts-expect-error temporal buckets must be valid Metabase temporal units
+      dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
+      // @ts-expect-error temporal buckets must be valid Metabase temporal units
+      bucket: "aaaa",
+    },
+  ],
+} satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
+
+const _invalidMetricBreakoutNonDateBucketQuery = {
+  metric: TEST_SCHEMA.metrics.orderCount,
+  breakouts: [
+    // @ts-expect-error non-date dimensions do not support temporal buckets
+    {
+      dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
+      bucket: "month",
+    },
+  ],
+} satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
+
+function useMetricBreakoutTypeFixtures() {
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    breakouts: [
+      {
+        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
+        bucket: "month",
+      },
+    ],
+  });
+
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    breakouts: [
+      // @ts-expect-error non-date metric dimensions do not support temporal buckets
+      {
+        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
+        bucket: "month",
+      },
+    ],
+  });
+}
+
+void useMetricBreakoutTypeFixtures;
 
 const _invalidMetricSegmentQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
