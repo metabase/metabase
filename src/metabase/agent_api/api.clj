@@ -399,18 +399,25 @@
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
+(defn- native-marker?
+  "True if `node` is a map carrying a native-SQL marker: a `:native` query body (the universal signal
+   across legacy and MBQL 5 native forms), a legacy `:type :native`, or an MBQL 5 `:mbql.stage/native`
+   `:lib/type`. Membership tests cover the keyword and json-decoded string forms and never coerce, so
+   junk values don't throw. A legitimate serialized MBQL query carries none of these."
+  [node]
+  (and (map? node)
+       (or (contains? node :native)
+           (contains? #{:native "native"} (:type node))
+           (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type node)))))
+
 (defn- native-query?
-  "True if `query-map` (a decoded, client-reachable query) contains native SQL anywhere — the legacy
-   top-level `:type :native`, or an MBQL 5 `:mbql.stage/native` stage at any depth (top-level stages,
-   join stages, nested joins).
-   A whole-tree scan rather than a top-level check: these endpoints are MBQL-only by scope, so a
-   native stage anywhere means the payload is smuggling raw SQL. Membership tests cover the keyword
-   and json-decoded string forms and never coerce, so junk values don't throw."
+  "True if `query-map` (a decoded, client-reachable query) contains native SQL anywhere in its tree —
+   legacy top-level `:type :native`, a legacy nested `:source-query`'s `:native`, or an MBQL 5
+   `:mbql.stage/native` stage, including inside joins or nested joins.
+   A whole-tree scan, because these endpoints are MBQL-only by scope: a native marker at any depth
+   means the payload is smuggling raw SQL, regardless of how it's nested."
   [query-map]
-  (or (contains? #{:native "native"} (:type query-map))
-      (boolean (some #(and (map? %)
-                           (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type %)))
-                     (tree-seq coll? seq query-map)))))
+  (boolean (some native-marker? (tree-seq coll? seq query-map))))
 
 (defn- reject-native-query!
   "Throw a 400 if `query-map` is a native query.

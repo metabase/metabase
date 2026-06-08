@@ -304,15 +304,17 @@
               execute-resp))))
   (testing "Rejects native queries with 400; force callers onto /v1/execute-sql"
     ;; The scope `agent:query:execute` gates /v1/execute; `agent:sql:execute` gates
-    ;; /v1/execute-sql. If /v1/execute accepted a base64 payload carrying :type :native,
-    ;; a token with only the broader scope could run raw SQL, defeating the scope split.
-    (let [native-query {:database (mt/id)
-                        :type     "native"
-                        :native   {:query "select 1"}}
-          base64-query (u/encode-base64 (json/encode native-query))
-          resp         (mt/user-http-request :rasta :post 400 "agent/v1/execute"
-                                             {:query base64-query})]
-      (is (re-find #"Native queries are not supported" (str resp))))))
+    ;; /v1/execute-sql. If /v1/execute accepted a base64 payload carrying native SQL —
+    ;; at the top level or nested in a source-query/join — a token with only the broader
+    ;; scope could run raw SQL, defeating the scope split.
+    (doseq [[label q] [["top-level :type native"
+                        {:database (mt/id) :type "native" :native {:query "select 1"}}]
+                       ["nested legacy source-query"
+                        {:database (mt/id) :type "query" :query {:source-query {:native "select 1"}}}]]]
+      (testing label
+        (is (re-find #"Native queries are not supported"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v1/execute"
+                                                {:query (u/encode-base64 (json/encode q))}))))))))
 
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -440,7 +442,10 @@
                          :stages   [{:lib/type "mbql.stage/mbql"
                                      :joins    [{:lib/type "mbql/join"
                                                  :stages   [{:lib/type "mbql.stage/native"
-                                                             :native   "select 1"}]}]}]}]]]
+                                                             :native   "select 1"}]}]}]}]
+                       ["legacy nested native source-query"
+                        {:database (mt/id) :type "query"
+                         :query    {:source-query {:native "select 1"}}}]]]
       (testing label
         (is (re-find #"Native queries are not supported"
                      (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
