@@ -55,15 +55,14 @@ export function AppView({ params }: AppViewProps) {
     );
   }
 
-  const src = getSubpathSafeUrl(
-    `/embed/data-app/${encodeURIComponent(name)}`,
-  );
+  const src = getSubpathSafeUrl(`/embed/data-app/${encodeURIComponent(name)}`);
 
   return (
     <Box style={{ height: "100%", minHeight: "100vh" }}>
       <iframe
         title={meta.display_name}
         src={src}
+        sandbox="allow-scripts allow-same-origin allow-downloads allow-forms allow-modals allow-popups"
         style={{
           display: "block",
           width: "100%",
