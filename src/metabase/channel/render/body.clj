@@ -7,17 +7,21 @@
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.render.maps :as maps]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
    [metabase.formatter.core :as formatter]
+   [metabase.geojson.api :as geojson.api]
+   [metabase.geojson.settings :as geojson.settings]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
+   [metabase.tiles.settings :as tiles.settings]
    [metabase.timeline.core :as timeline]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -458,27 +462,160 @@
 ;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
 ;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
 ;; Trend charts were added more recently and will not have multi-series.
+(defn region-map-region-key
+  "Resolve the region key for a region map, mirroring the frontend `map.region` default: an explicit
+  `map.region` setting, else a legacy `:state`/`:country` display, else inferred from a State/Country
+  column. Returns the key only when it names a region we know about (built-in or a user-defined custom
+  map); otherwise nil, so non-region maps fall through to the table fallback. Note this does not fetch —
+  it just checks the region is defined; the actual GeoJSON load happens at render time."
+  [display-type card dashcard {:keys [cols]}]
+  (letfn [(any-col-type? [t] (some #(isa? (some-> (:semantic_type %) keyword) t) cols))]
+    ;; Merge (dashcard overrides card) rather than `or`: a dashcard usually has an empty-but-present
+    ;; :visualization_settings that would otherwise shadow the card's map.region.
+    (let [viz-settings (merge (:visualization_settings card) (:visualization_settings dashcard))
+          region-key   (or (get viz-settings "map.region")
+                           (get viz-settings :map.region)
+                           (case display-type :state "us_states" :country "world_countries" nil)
+                           (cond
+                             (any-col-type? :type/State)   "us_states"
+                             (any-col-type? :type/Country) "world_countries"))]
+      (when (and region-key (contains? (geojson.settings/custom-geojson) (keyword region-key)))
+        region-key))))
+
+(defn- javascript-visualization->rendered-part
+  "Turn the `{:type :svg/:html :content ...}` result of [[js.svg/*javascript-visualization*]] into a RenderedPartCard.
+  SVG results are rasterized to a PNG `<img>`; HTML results are embedded as-is."
+  [render-type {rendered-type :type content :content}]
+  (case rendered-type
+    :svg
+    (let [image-bundle (image-bundle/make-image-bundle
+                        render-type
+                        (js.svg/svg-string->bytes content))]
+      {:attachments
+       (when image-bundle
+         (image-bundle/image-bundle->attachment image-bundle))
+
+       :content
+       [:div
+        [:img {:style (style/style {:display :block :width :100%})
+               :src   (:image-src image-bundle)}]]})
+    :html
+    {:content [:div content] :attachments nil}))
+
 (mu/defmethod render :javascript_visualization :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard data]
   (let [cards-with-data  (series-cards-with-data dashcard card data)
         viz-settings     (or (get dashcard :visualization_settings)
-                             (get card :visualization_settings))
-        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings)]
-    (case rendered-type
-      :svg
-      (let [image-bundle (image-bundle/make-image-bundle
-                          render-type
-                          (js.svg/svg-string->bytes content))]
-        {:attachments
-         (when image-bundle
-           (image-bundle/image-bundle->attachment image-bundle))
+                             (get card :visualization_settings))]
+    (javascript-visualization->rendered-part
+     render-type
+     (js.svg/*javascript-visualization* cards-with-data viz-settings))))
 
-         :content
-         [:div
-          [:img {:style (style/style {:display :block :width :100%})
-                 :src   (:image-src image-bundle)}]]})
-      :html
-      {:content [:div content] :attachments nil})))
+(mu/defmethod render :region_map :- ::RenderedPartCard
+  [_chart-type render-type timezone-id card dashcard data]
+  (let [region-key (region-map-region-key (:display card) card dashcard data)
+        geojson    (some-> region-key geojson.api/region-geojson)]
+    (if-not geojson
+      ;; Custom/unresolvable regions can't be rendered statically; degrade to a table of the data.
+      (render :table render-type timezone-id card dashcard data)
+      (let [cards-with-data (series-cards-with-data dashcard card data)
+            base-settings   (merge (get card :visualization_settings)
+                                   (get dashcard :visualization_settings))
+            ;; Embed the resolved GeoJSON, and pin map.region to the resolved key so the bundle picks
+            ;; the right projection even when the region was only an inferred default (never persisted).
+            viz-settings    (-> base-settings
+                                (dissoc :map.region "map.region")
+                                (assoc "map.region" region-key
+                                       "map._geojson" (:data geojson)
+                                       "map._geojson_details" {:region_key  (:region_key geojson)
+                                                               :region_name (:region_name geojson)}))]
+        (javascript-visualization->rendered-part
+         render-type
+         (js.svg/*javascript-visualization* cards-with-data viz-settings))))))
+
+(defn- png->rendered-part
+  "Wrap PNG `byte[]` (from a server-side map render) as a RenderedPartCard `<img>`."
+  [render-type png-bytes]
+  (let [image-bundle (image-bundle/make-image-bundle render-type png-bytes)]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+
+(defn- coordinate-col-index
+  "Resolve a coordinate column's index, mirroring the frontend default: the named column if the setting is
+  present, else the first column with semantic type `sem-type` (`:type/Latitude` / `:type/Longitude`)."
+  [cols col-name sem-type]
+  (or (when col-name (first (get-col-by-name cols col-name)))
+      (first (keep-indexed (fn [i col]
+                             (when (isa? (some-> (:semantic_type col) keyword) sem-type) i))
+                           cols))))
+
+(defn- metric-col-index
+  "Resolve the metric column's index: the named column if set, else the first numeric column that isn't the
+  lat/long column. Returns nil when there's no metric (the cells then render at a uniform colour)."
+  [cols lat-idx lon-idx col-name]
+  (or (when col-name (first (get-col-by-name cols col-name)))
+      (first (keep-indexed (fn [i col]
+                             (when (and (not= i lat-idx) (not= i lon-idx)
+                                        (isa? (some-> (or (:semantic_type col) (:base_type col)) keyword)
+                                              :type/Number))
+                               i))
+                           cols))))
+
+(defn- column-bin-width
+  "The bin width (degrees) for a binned coordinate column, or an inferred fallback from the row values."
+  [col idx rows]
+  (or (get-in col [:binning_info :bin_width])
+      (let [vs (sort (distinct (keep (fn [row] (let [v (nth row idx nil)] (when (number? v) v))) rows)))]
+        (->> (map - (rest vs) vs) (filter pos?) (reduce min ##Inf) (#(when (not= ##Inf %) %))))))
+
+(mu/defmethod render :pin_map :- ::RenderedPartCard
+  [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
+  (let [viz-settings (merge (:visualization_settings card) (:visualization_settings dashcard))
+        setting      (fn [k] (or (get viz-settings k) (get viz-settings (keyword k))))
+        lat-idx      (coordinate-col-index cols (setting "map.latitude_column") :type/Latitude)
+        lon-idx      (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)
+        points       (when (and lat-idx lon-idx)
+                       (for [row   rows
+                             :let  [lat (nth row lat-idx nil)
+                                    lon (nth row lon-idx nil)]
+                             :when (and (number? lat) (number? lon))]
+                         [lat lon]))]
+    (if (empty? points)
+      ;; No usable coordinates (mismatched columns, all nil, etc.) — degrade to a table of the data.
+      (render :table render-type timezone-id card dashcard data)
+      (png->rendered-part
+       render-type
+       (maps/render-pin-map points {:tile-url (tiles.settings/map-tile-server-url)
+                                    :pin-type (setting "map.pin_type")})))))
+
+(mu/defmethod render :grid_map :- ::RenderedPartCard
+  [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
+  (let [viz-settings (merge (:visualization_settings card) (:visualization_settings dashcard))
+        setting      (fn [k] (or (get viz-settings k) (get viz-settings (keyword k))))
+        lat-idx      (coordinate-col-index cols (setting "map.latitude_column") :type/Latitude)
+        lon-idx      (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)
+        metric-idx   (metric-col-index cols lat-idx lon-idx (setting "map.metric_column"))
+        lat-bin      (when lat-idx (column-bin-width (nth cols lat-idx) lat-idx rows))
+        lon-bin      (when lon-idx (column-bin-width (nth cols lon-idx) lon-idx rows))
+        cells        (when (and lat-idx lon-idx lat-bin lon-bin)
+                       (for [row   rows
+                             :let  [lat (nth row lat-idx nil)
+                                    lon (nth row lon-idx nil)]
+                             :when (and (number? lat) (number? lon))]
+                         {:lat lat :lon lon :lat-bin lat-bin :lon-bin lon-bin
+                          :metric (when metric-idx
+                                    (let [m (nth row metric-idx nil)] (when (number? m) m)))}))]
+    (if (empty? cells)
+      (render :table render-type timezone-id card dashcard data)
+      (png->rendered-part
+       render-type
+       (maps/render-grid-map cells {:tile-url (tiles.settings/map-tile-server-url)})))))
 
 ;;; ------------------------------------------------ pivot tables ------------------------------------------------
 
