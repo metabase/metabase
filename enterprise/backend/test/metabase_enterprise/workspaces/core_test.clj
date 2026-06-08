@@ -125,7 +125,24 @@
           (let [ws' (ws/update-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"])]
             (is (= ["PUBLIC" "ANALYTICS"]
                    (:input_schemas (first (:databases ws')))))
-            (is (= :provisioned (:status (first (:databases ws')))))))))))
+            (is (= :provisioned (:status (first (:databases ws'))))))))))
+  (testing "reprovision failure rolls the input-schemas change back"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [ws (ws/create-workspace! {:name "Update Roll Back" :creator_id (mt/user->id :crowberto)})]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
+        (let [failing-provisioner (reify provisioning/Provisioner
+                                    (init!    [_ _ _ _]   (throw (ex-info "failure" {})))
+                                    (grant!   [_ _ _ _ _] nil)
+                                    (destroy! [_ _ _ _]   nil))]
+          (with-redefs [provisioning/dispatching-provisioner failing-provisioner]
+            (is (thrown-with-msg? ExceptionInfo #"boom"
+                                  (ws/update-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"]))))
+          (let [wsd (first (:databases (ws/get-workspace (:id ws))))]
+            (is (= ["PUBLIC"] (:input_schemas wsd))
+                "the new input_schemas must not commit when reprovisioning fails")
+            (is (= :unprovisioned (:status wsd))
+                "the row is left unprovisioned, consistent with the torn-down warehouse")))))))
 
 ;;; ----------------------------------------- Delete Workspace ------------------------------------------------
 
