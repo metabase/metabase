@@ -28,7 +28,10 @@ import {
   createMockAdminNotification,
   createMockCard,
   createMockCardQueryMetadata,
+  createMockNotificationHandlerEmail,
   createMockNotificationHandlerHttp,
+  createMockNotificationHandlerSlack,
+  createMockNotificationRecipientUser,
   createMockUserInfo,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
@@ -61,6 +64,58 @@ const webhookNotification = createMockAdminNotification({
     id: 7,
     card_id: 1,
     card: createMockCard({ id: 1, name: "Webhook Alert" }),
+    send_once: false,
+    send_condition: "has_result",
+  },
+});
+const multiHandlerNotification = createMockAdminNotification({
+  id: 50,
+  creator: ANN,
+  handlers: [
+    createMockNotificationHandlerEmail({
+      id: 21,
+      recipients: [
+        createMockNotificationRecipientUser({
+          id: 1,
+          user_id: 3,
+          user: createMockUserInfo({
+            id: 3,
+            common_name: "Carol Carter",
+            email: "carol@example.com",
+          }),
+        }),
+      ],
+    }),
+    createMockNotificationHandlerEmail({
+      id: 22,
+      recipients: [
+        createMockNotificationRecipientUser({
+          id: 2,
+          user_id: 4,
+          user: createMockUserInfo({
+            id: 4,
+            common_name: "Dave Diaz",
+            email: "dave@example.com",
+          }),
+        }),
+      ],
+    }),
+    createMockNotificationHandlerSlack({
+      id: 23,
+      recipients: [
+        {
+          type: "notification-recipient/raw-value",
+          id: 3,
+          details: { value: "#alerts" },
+        },
+      ],
+    }),
+    createMockNotificationHandlerHttp({ id: 24 }),
+  ],
+  payload: {
+    id: 8,
+    card_id: 1,
+    card: createMockCard({ id: 1, name: "Multi Channel Alert" }),
     send_once: false,
     send_condition: "has_result",
   },
@@ -189,6 +244,26 @@ describe("NotificationsAdminPage", () => {
 
       expect(await screen.findByText("1 webhook")).toBeInTheDocument();
       expect(screen.queryByText("No channels")).not.toBeInTheDocument();
+    });
+
+    it("merges multiple handlers across and within channels", async () => {
+      setup({ notifications: [multiHandlerNotification] });
+      await waitForLoaderToBeRemoved();
+
+      const row = await screen.findByTestId("notification-row-50");
+      expect(within(row).getByText("Multi Channel Alert")).toBeInTheDocument();
+      expect(within(row).getByText("2")).toBeInTheDocument();
+
+      await userEvent.click(row);
+
+      expect(
+        await screen.findByText(
+          "2 email recipients, 1 Slack channel, 1 webhook",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Carol Carter")).toBeInTheDocument();
+      expect(screen.getByText("Dave Diaz")).toBeInTheDocument();
+      expect(screen.getByText("#alerts")).toBeInTheDocument();
     });
 
     it("shows an empty state when there are no notifications", async () => {
