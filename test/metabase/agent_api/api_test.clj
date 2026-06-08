@@ -429,14 +429,16 @@
 
 (deftest combined-query-rejects-native-handle-test
   (testing "`/v2/query` rejects a base64 native query with 400 — `agent:query` must not run raw SQL,
-            same scope split `/v1/execute` enforces"
-    (let [native-query {:database (mt/id)
-                        :type     "native"
-                        :native   {:query "select 1"}}
-          base64-query (u/encode-base64 (json/encode native-query))
-          resp         (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                             {:query base64-query})]
-      (is (re-find #"Native queries are not supported" (str resp))))))
+            same scope split `/v1/execute` enforces — in both the legacy and MBQL 5 native forms"
+    (doseq [[label q] [["legacy top-level :type"
+                        {:database (mt/id) :type "native" :native {:query "select 1"}}]
+                       ["MBQL 5 native stage"
+                        {:lib/type "mbql/query"
+                         :stages   [{:lib/type "mbql.stage/native" :native "select 1"}]}]]]
+      (testing label
+        (is (re-find #"Native queries are not supported"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                                {:query (u/encode-base64 (json/encode q))}))))))))
 
 (deftest combined-query-rejects-malformed-payload-test
   (testing "`/v2/query` returns 400 (not 500) when a base64 `:query` isn't a valid JSON object"
@@ -454,11 +456,16 @@
         (is (re-find #"expected a serialized MBQL query"
                      (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
                                                 {:query (u/encode-base64 (json/encode q))})))))))
-  (testing "`/v2/query` returns 400 (not 500) for a non-integer last-stage :limit"
-    (is (re-find #":limit must be an integer"
-                 (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                            {:query (u/encode-base64
-                                                     (json/encode {:stages [{:limit "lots"}]}))})))))
+  (testing "`/v2/query` returns 400 (not 500) for an invalid present last-stage :limit"
+    (doseq [[label limit] [["string"   "lots"]
+                           ["zero"     0]
+                           ["negative" -5]
+                           ["boolean"  false]]]
+      (testing label
+        (is (re-find #":limit must be a positive integer"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                                {:query (u/encode-base64
+                                                         (json/encode {:stages [{:limit limit}]}))})))))))
   (testing "`/v2/query` returns 400 for a malformed continuation_token"
     (is (re-find #"Invalid request"
                  (str (mt/user-http-request :rasta :post 400 "agent/v2/query"

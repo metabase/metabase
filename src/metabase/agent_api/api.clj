@@ -399,18 +399,27 @@
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
+(defn- native-query?
+  "True if `query-map` (a decoded, client-reachable query) expresses native SQL — either the legacy
+   top-level `:type :native` or an MBQL 5 `:mbql.stage/native` stage.
+   Membership tests cover both the keyword and json-decoded string forms and never coerce, so junk in
+   a malformed `:type` / `:lib/type` doesn't throw before the shape is validated."
+  [query-map]
+  (or (contains? #{:native "native"} (:type query-map))
+      (boolean (some #(and (map? %) (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type %)))
+                     (when (sequential? (:stages query-map)) (:stages query-map))))))
+
 (defn- reject-native-query!
   "Throw a 400 if `query-map` is a native query.
 
   `/v2/query` and `/v1/execute` are gated by the MBQL-execution scopes (`agent:query` /
   `agent:query:execute`), not `agent:sql:execute`. The opaque base64 payloads they accept (a
-  query_handle, a continuation token) could carry `:type :native`; allowing that would let a token
-  without the SQL-execution scope run raw SQL, defeating the scope split. Force native execution
-  onto `/v1/execute-sql`, which is correctly scoped. Compare `:type` by set membership (json decode
-  yields a string, internal callers a keyword) so a non-string/keyword value from a malformed
-  payload doesn't itself throw before the shape is validated."
+  query_handle, a continuation token) could carry a native query — legacy top-level `:type :native`
+  or an MBQL 5 native stage; allowing either would let a token without the SQL-execution scope run
+  raw SQL, defeating the scope split and bypassing the execute-sql kill switch. Force native
+  execution onto `/v1/execute-sql`, which is correctly scoped."
   [query-map]
-  (when (contains? #{:native "native"} (:type query-map))
+  (when (native-query? query-map)
     (throw (ex-info "Native queries are not supported here; use execute_sql instead."
                     {:status-code 400 :query-map query-map}))))
 
@@ -425,10 +434,12 @@
     (when-not (and (sequential? stages) (seq stages) (every? map? stages))
       (throw (ex-info "Invalid query: expected a serialized MBQL query with a non-empty :stages of maps."
                       {:status-code 400 :query-map query-map})))
-    (when-let [limit (:limit (last stages))]
-      (when-not (int? limit)
-        (throw (ex-info "Invalid query: last-stage :limit must be an integer."
-                        {:status-code 400 :query-map query-map}))))))
+    ;; `contains?` (not `when-let`) so an explicit `false`/`nil` limit is caught, not skipped.
+    (when (contains? (last stages) :limit)
+      (let [limit (:limit (last stages))]
+        (when-not (and (int? limit) (pos? limit))
+          (throw (ex-info "Invalid query: last-stage :limit must be a positive integer."
+                          {:status-code 400 :query-map query-map})))))))
 
 (defn- check-token-query-permissions!
   "Re-validate query permissions on the continuation-token path.
