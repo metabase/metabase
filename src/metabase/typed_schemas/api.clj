@@ -118,16 +118,38 @@
       (str "entity" id)
       k)))
 
+(defn- pascal-case
+  [s]
+  (when-not (str/blank? s)
+    (str (str/upper-case (subs s 0 1))
+         (subs s 1))))
+
 (defn- keyed-map
   [entities]
-  (reduce (fn [m entity]
-            (let [base-key (:key entity)
-                  key      (if (contains? m base-key)
-                             (str base-key (:id entity))
-                             base-key)]
-              (assoc m key (assoc entity :key key))))
-          (sorted-map)
-          entities))
+  (let [entities          (vec entities)
+        base-key->count   (frequencies (map :key entities))
+        duplicate-key?    (fn [base-key]
+                            (> (get base-key->count base-key 0) 1))
+        candidate-key     (fn [entity]
+                            (let [base-key (:key entity)]
+                              (if-not (duplicate-key? base-key)
+                                base-key
+                                (str base-key (or (:keyDisambiguator entity)
+                                                  (:tableId entity)
+                                                  (:id entity))))))
+        candidate->count  (frequencies (map candidate-key entities))
+        disambiguated-key (fn [entity]
+                            (let [candidate (candidate-key entity)]
+                              (if (= 1 (get candidate->count candidate))
+                                candidate
+                                (str candidate (:id entity)))))]
+    (reduce (fn [m entity]
+              (let [key (disambiguated-key entity)]
+                (assoc m key (-> entity
+                                 (dissoc :keyDisambiguator)
+                                 (assoc :key key)))))
+            (sorted-map)
+            entities)))
 
 (defn- query-param
   [query-params k]
@@ -492,19 +514,23 @@
     (t2/select-one-fn :table_id :model/Field :id field-id)))
 
 (defn- dimension-schema
-  [{:keys [field_id] :as dimension} metric-id]
-  (let [dimension-id (or (:id dimension) field_id)
-        field-id     (or field_id (some-> dimension :sources first :field-id))
-        table-id     (or (:table_id dimension) (:table-id dimension) (field-table-id field-id))
-        column       (if (:sources dimension)
-                       (persisted-dimension->column dimension)
-                       dimension)]
-    (assoc-some
-     (assoc (column-schema column)
-            :key (generated-key (:name column) dimension-id)
-            :id (str dimension-id))
-     :tableId (when (integer? table-id) table-id)
-     :metricId metric-id)))
+  ([dimension metric-id]
+   (dimension-schema dimension metric-id {}))
+  ([{:keys [field_id] :as dimension} metric-id table-key-by-id]
+   (let [dimension-id (or (:id dimension) field_id)
+         field-id     (or field_id (some-> dimension :sources first :field-id))
+         table-id     (or (:table_id dimension) (:table-id dimension) (field-table-id field-id))
+         column       (if (:sources dimension)
+                        (persisted-dimension->column dimension)
+                        dimension)]
+     (assoc-some
+      (assoc (column-schema column)
+             :key (generated-key (:name column) dimension-id)
+             :id (str dimension-id))
+      :tableId (when (integer? table-id) table-id)
+      :metricId metric-id
+      :keyDisambiguator (when (integer? table-id)
+                          (get table-key-by-id table-id))))))
 
 (defn- field-schema
   [{:keys [id field_id] :as field}]
@@ -523,6 +549,14 @@
   (metrics/sync-dimensions! :metadata/metric id)
   (-> (t2/select-one [:model/Card :dimensions] :id id)
       :dimensions))
+
+(defn- table-key-disambiguators
+  [table-ids]
+  (when (seq table-ids)
+    (->> (t2/select [:model/Table :id :name :display_name] :id [:in table-ids])
+         (map (fn [{:keys [id name display_name]}]
+                [id (pascal-case (generated-key (or display_name name) id))]))
+         (into {}))))
 
 (defn- source-table-schema
   [[database-name schema-name table-name]]
@@ -558,7 +592,16 @@
                           (fallback-metric-column details))
         dimensions    (or (seq (metric-dimensions details))
                           (:queryable-dimensions details))
-        dimension-schemas (mapv #(dimension-schema % id) dimensions)
+        table-ids     (->> dimensions
+                           (keep (fn [{:keys [field_id] :as dimension}]
+                                   (let [field-id (or field_id (some-> dimension :sources first :field-id))]
+                                     (or (:table_id dimension)
+                                         (:table-id dimension)
+                                         (field-table-id field-id)))))
+                           (filter integer?)
+                           distinct)
+        table-key-by-id (table-key-disambiguators table-ids)
+        dimension-schemas (mapv #(dimension-schema % id table-key-by-id) dimensions)
         mapped-table-ids  (->> dimension-schemas
                                (keep :tableId)
                                distinct
