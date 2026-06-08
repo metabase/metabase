@@ -7,7 +7,7 @@ import type { ColumnSettings } from "metabase/visualizations/types";
 // Shared choropleth (region map) helpers, kept Leaflet-free (unlike the runtime ChoroplethMap) so the
 // static-viz bundle — which runs in GraalJS where Leaflet can't load — can use them too.
 
-// eslint-disable-next-line metabase/no-color-literals
+/* eslint-disable metabase/no-color-literals */
 export const HEAT_MAP_COLORS = [
   "#C4E4FF",
   "#81C5FF",
@@ -15,8 +15,8 @@ export const HEAT_MAP_COLORS = [
   "#1E96FF",
   "#0061B5",
 ];
-// eslint-disable-next-line metabase/no-color-literals
 export const HEAT_MAP_ZERO_COLOR = "#CCC";
+/* eslint-enable metabase/no-color-literals */
 
 // if the average formatted length is greater than this, we switch to compact formatting
 const AVERAGE_LENGTH_CUTOFF = 5;
