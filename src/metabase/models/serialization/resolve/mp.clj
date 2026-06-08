@@ -115,6 +115,24 @@
             :agent-error? true
             :path         path}))
 
+(defn- deleted-table-ex-info
+  "Build an agent-facing `:unknown-table` error for a portable FK whose only app-DB match is
+  inactive — the table was deleted or replaced. For a re-uploaded CSV the physical table is dropped
+  and recreated under a new timestamped name, so the old portable FK lingers in the conversation and
+  no longer points at anything live. Nudge the LLM to re-list the database's current tables rather
+  than re-using the stale name. Keeps `:error :unknown-table` so callers branching on the code treat
+  it identically to a never-existed miss; only the message differs.
+
+  Naming the requested `(schema, table-name)` is not an info leak: the caller supplied them, and an
+  inactive match confirms only a now-gone table, never a currently-visible one."
+  [[_path-db-name path-schema path-table-name :as path]]
+  (ex-info (tru "Table {0} (schema {1}) was deleted or replaced and no longer exists. If it was re-uploaded it now has a different name; call `entity_details` with entity-type `database` to list the current tables, then retry with an exact portable FK."
+                (pr-str path-table-name) (pr-str path-schema))
+           {:status-code  400
+            :error        :unknown-table
+            :agent-error? true
+            :path         path}))
+
 (defn- table-candidates
   "Resolve `(schema, table-name)` against `metadata-provider`. Tries
   [[matching-tables-via-app-db]] first for app-DB-backed providers and falls back to
@@ -126,7 +144,11 @@
   provider's cache disagree about whether a table exists (e.g. provider holds a cached row
   for a table that was just deleted, or vice versa). In that last case the provider's view
   becomes authoritative, since the alternative is a confusing `:unknown-table` raised for a
-  table the caller can plainly see via `entity_details`."
+  table the caller can plainly see via `entity_details`.
+
+  Returns raw matches including inactive (`:active false`) rows; [[find-table]] does the
+  active/inactive partition so it can tell a deleted/re-uploaded table apart from a never-existed
+  one."
   [metadata-provider db-id schema table-name]
   (or (when (and db-id (app-db-backed-provider? metadata-provider))
         (seq (matching-tables-via-app-db db-id schema table-name)))
@@ -138,7 +160,15 @@
   On miss, the thrown ex-info carries actionable, tiered hints (see
   [[unknown-table-ex-info]]) so the LLM can self-correct on the next turn instead of
   re-hallucinating the same bad path. All error branches are marked
-  `:agent-error? true` so the outer tool wrapper relays the message verbatim."
+  `:agent-error? true` so the outer tool wrapper relays the message verbatim.
+
+  Inactive (`:active false`) matches are excluded (BOT-739): a deleted or re-uploaded CSV table has
+  its physical warehouse table dropped while its app-DB row lingers as `:active false` (sync doesn't
+  retire inactive uploaded tables), and the metadata provider intentionally skips its active filter
+  for by-name lookups (see `metadata-spec->honey-sql`). Resolving a stale portable FK to that dead
+  row would compile to SQL hitting a table that no longer exists. When the *only* matches are
+  inactive we surface a deleted/replaced-specific hint so the LLM re-lists instead of re-using the
+  stale name. `(not (false? :active))` keeps mock providers (which omit `:active`) resolving."
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
   (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)]
     (when-not (= path-db-name current-db)
@@ -150,9 +180,13 @@
                        :agent-error? true
                        :path         path
                        :expected-db  current-db})))
-    (let [candidates (table-candidates metadata-provider current-db-id path-schema path-table-name)]
+    (let [matches    (table-candidates metadata-provider current-db-id path-schema path-table-name)
+          candidates (filterv #(not (false? (:active %))) matches)]
       (case (count candidates)
-        0 (throw (unknown-table-ex-info metadata-provider path))
+        0 (throw (if (seq matches)
+                   ;; matched only inactive row(s) → table was deleted or replaced
+                   (deleted-table-ex-info path)
+                   (unknown-table-ex-info metadata-provider path)))
         1 (first candidates)
         ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
         ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller

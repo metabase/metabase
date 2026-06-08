@@ -141,6 +141,34 @@
         (is (= (:id raw-orders)   (resolve/import-table-fk r [(:name db) "RAW"   "ORDERS"])))
         (is (= (:id clean-orders) (resolve/import-table-fk r [(:name db) "CLEAN" "ORDERS"])))))))
 
+(deftest import-table-fk-inactive-table-test
+  (testing "a portable FK to an inactive table (deleted / re-uploaded CSV) must NOT resolve"
+    ;; One mechanism behind the BOT-739 symptom (not confirmed to be the customer's exact trigger):
+    ;; an uploaded CSV table is dropped from the warehouse and its app-DB row marked `:active false`
+    ;; by `upload/delete-upload!`, but the row lingers (sync doesn't retire inactive uploaded
+    ;; tables). A follow-up Metabot turn carrying the stale portable FK would previously resolve to
+    ;; that dead row and compile to SQL hitting a non-existent warehouse table ("Table
+    ;; 'metabot2_…' not found"). The resolver must instead surface a clean :unknown-table
+    ;; agent-error so the LLM re-lists the current tables. Resolving inactive rows is a real bug
+    ;; regardless of whether it's what BOT-739 hit.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    _gone {:name   "metabot2_38513168ae9131" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active false}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)]
+        (try
+          (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_38513168ae9131"])
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d   (ex-data e)
+                  msg (.getMessage e)]
+              (is (= :unknown-table (:error d)))
+              (is (= 400 (:status-code d)))
+              (is (true? (:agent-error? d)))
+              (testing "message tells the LLM the table was deleted/replaced and to re-list"
+                (is (re-find #"deleted or replaced" msg))
+                (is (re-find #"entity_details" msg))))))))))
+
 (deftest ^:parallel import-table-fk-error-test
   (testing "unknown table name → :unknown-table, agent-error?, 400, no info leak"
     (let [r (resolve.mp/import-resolver mp-simple)]
