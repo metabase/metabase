@@ -32,8 +32,6 @@ export const QuestionAlertListModal = ({
   onAlertUpdated,
 }: {
   question: Question;
-  /** See CreateOrEditQuestionAlertModal - only hosts with computed settings
-   * (e.g. the query builder) need to pass this. */
   visualizationSettings?: VisualizationSettings;
   onClose: () => void;
   onAlertCreated?: () => void;

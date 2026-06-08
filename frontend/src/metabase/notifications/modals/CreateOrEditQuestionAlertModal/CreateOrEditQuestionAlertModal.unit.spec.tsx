@@ -610,9 +610,9 @@ function setup({
   const storeConfig = { storeInitialState };
 
   const metadata = getMetadata(storeInitialState);
-  // Hosts pass an already-composed question (e.g. the query builder's
-  // getQuestion selector composes metrics/models into runnable ad-hoc
-  // questions), so the spec does the same.
+  // The modal takes `question` as a prop. In production it comes from the `getQuestion` selector
+  // which composes metrics and models into runnable ad-hoc questions.
+  // Matching that behavior here.
   const savedQuestion = checkNotNull(metadata.question(mockCard.id));
   const question =
     cardType === "metric" || cardType === "model"

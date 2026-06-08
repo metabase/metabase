@@ -76,9 +76,6 @@ export function QueryModals({
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
   const visualizationSettings = useSelector(getVisualizationSettings);
 
-  // After an alert is created or updated, sync the query builder URL with the
-  // (now saved) question. The alert modals are shared components and can't
-  // dispatch query builder actions themselves.
   const handleAlertCreatedOrUpdated = useCallback(() => {
     dispatch(updateUrl(question, { dirty: false }));
   }, [dispatch, question]);
