@@ -5,6 +5,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { CustomVizDevPage } from "./components/CustomVizDevPage";
 import { CustomVizPage } from "./components/CustomVizPage";
+import { CustomVizSettingWidget } from "./components/CustomVizSettingWidget";
 import { ManageCustomVizPage } from "./components/ManageCustomVizPage";
 import {
   getCustomVizPluginFromSettings,
@@ -13,6 +14,7 @@ import {
   useCustomVizPlugins,
   useCustomVizPluginsIcon,
 } from "./custom-viz-plugins";
+import { isWidgetMount } from "./widget-mount";
 
 export function initializePlugin() {
   if (hasPremiumFeature("custom-viz")) {
@@ -27,6 +29,8 @@ export function initializePlugin() {
       getPluginAssetUrl,
       useCustomVizPluginsIcon,
       isCustomVizDisplay,
+      isWidgetMount,
+      CustomVizSettingWidget,
     });
   }
 }

@@ -49,7 +49,15 @@ export const NotificationsTabs = ({
       value: "failing",
       icon: "warning_round",
       label: t`Failing`,
-      patch: { tab: "failing", last_send_status: null },
+      // The Failing tab filters on last_check, and abandoned / query-failed runs have no last_send
+      // (the default sort), so they'd sort to the bottom. Default this tab to last_check so the
+      // alerts it exists to surface land at the top.
+      patch: {
+        tab: "failing",
+        last_send_status: null,
+        sort_column: "last_check",
+        sort_direction: "desc",
+      },
     });
   }
 

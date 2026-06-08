@@ -458,6 +458,44 @@
           (is (= :no (data-perms/full-schema-permission-for-user
                       user-id-1 :perms/create-queries database-id-1 "schema_1"))))))))
 
+(deftest schema-permission-for-user-test
+  (testing "schema-permission-for-user returns the most permissive table-level value within the schema"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id}     {}
+                   :model/User                       {user-id :id}      {}
+                   :model/PermissionsGroupMembership {}                  {:user_id  user-id
+                                                                          :group_id group-id}
+                   :model/Database                   {database-id :id}  {}
+                   :model/Table                      {table-id-1 :id}   {:db_id database-id :schema "schema_1"}
+                   :model/Table                      {table-id-2 :id}   {:db_id database-id :schema "schema_1"}]
+      (mt/with-no-data-perms-for-all-users!
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (testing "one table at :query-builder + one at :no => :query-builder (least restrictive wins)"
+          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+          (is (= :query-builder
+                 (data-perms/schema-permission-for-user
+                  user-id :perms/create-queries database-id "schema_1")))))))
+  (testing "databases whose tables have Table.schema = NULL (regression for #46542)"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id}     {}
+                   :model/User                       {user-id :id}      {}
+                   :model/PermissionsGroupMembership {}                  {:user_id  user-id
+                                                                          :group_id group-id}
+                   :model/Database                   {database-id :id}  {}
+                   :model/Table                      {table-id-1 :id}   {:db_id database-id :schema nil}
+                   :model/Table                      {table-id-2 :id}   {:db_id database-id :schema nil}]
+      (mt/with-no-data-perms-for-all-users!
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+        (testing "called with nil schema-name"
+          (is (= :query-builder
+                 (data-perms/schema-permission-for-user
+                  user-id :perms/create-queries database-id nil))))
+        (testing "called with empty-string schema-name (nil and \"\" are equivalent)"
+          (is (= :query-builder
+                 (data-perms/schema-permission-for-user
+                  user-id :perms/create-queries database-id ""))))))))
+
 (deftest most-permissive-database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/User                       {user-id-1 :id}     {}

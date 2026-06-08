@@ -175,5 +175,5 @@ export function useMCPServerURL() {
     return null;
   }
 
-  return `${siteUrl}/api/mcp`;
+  return `${siteUrl}/api/metabase-mcp`;
 }

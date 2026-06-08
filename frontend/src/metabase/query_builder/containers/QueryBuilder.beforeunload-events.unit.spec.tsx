@@ -5,6 +5,7 @@ import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import registerVisualizations from "metabase/visualizations/register";
 
 import {
@@ -46,6 +47,7 @@ describe("QueryBuilder - beforeunload events", () => {
       const { mockEventListener } = await setup({
         card: null,
         initialRoute: "/model/new",
+        newModelOptionsComponent: NewModelOptions,
       });
 
       await startNewNotebookModel();

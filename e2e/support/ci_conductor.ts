@@ -1,3 +1,5 @@
+import { readFileSync, statSync } from "node:fs";
+
 import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
 
 // `Cypress` and `CypressCommandLine` are global namespaces provided by the
@@ -57,6 +59,19 @@ type ConductorTest = {
    * value. Conductor schema isn't final — fields it doesn't store are ignored.
    */
   message?: string | null;
+  /**
+   * The test's first failure screenshot as a base64 PNG data URI. ci-conductor
+   * uploads it to S3 and stores the public URL. Attached at send time by
+   * `reportFailedTestsToConductor`; absent when there's no screenshot or it
+   * can't be read. See DEV-2000.
+   */
+  failure_screenshot?: string;
+  /**
+   * Transient (never sent on the wire): absolute path to the resolved first
+   * failure screenshot, set by `extractFailedTests`. It's read and encoded into
+   * `failure_screenshot` just before the POST, then dropped. See DEV-2000.
+   */
+  screenshotPath?: string;
 };
 
 /**
@@ -93,6 +108,89 @@ function toNumber(value: string | undefined): number | null {
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Normalize a string to just [a-z0-9] for sanitization-proof matching. */
+function normalizeForMatch(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Basename of a path, tolerant of both POSIX and Windows separators. */
+function baseName(p: string): string {
+  return p.split(/[\\/]/).pop() ?? "";
+}
+
+/**
+ * Match a failed test to its first-failure screenshot from after:spec's
+ * `results.screenshots` — a flat, spec-level list with no link back to the test.
+ * Cypress derives each screenshot filename from the test's full title (joined
+ * with " -- ", sanitized) followed by " (failed)" (plus "(attempt N)" for
+ * retries). We normalize the title and each basename down to [a-z0-9] — which
+ * cancels every sanitization rule (">", " -- ", "/", ":", ...) on both sides, so
+ * we never reconstruct the filename — and anchor on the title immediately
+ * followed by "failed":
+ *
+ *   normalize(basename) === normalize(title.join("")) + "failed" + [attempt…] + ext
+ *
+ * Anchoring on "failed" (a) excludes manual cy.screenshot() shots, which have no
+ * "(failed)" suffix, and (b) is collision-proof: a title that's a prefix of
+ * another's won't match, because "failed" must follow the key exactly. The first
+ * shot and its retries both anchor-match, so we take the shortest basename — the
+ * one without an "(attempt N)" suffix, i.e. the first attempt.
+ *
+ * Pure and defensive: returns undefined on any missing/odd input, never throws.
+ * See DEV-2000.
+ */
+export function resolveScreenshotPath(
+  titlePath: string[] | undefined,
+  screenshots: Array<{ path?: string }> | undefined,
+): string | undefined {
+  try {
+    const key = normalizeForMatch((titlePath ?? []).join(""));
+    if (!key || !Array.isArray(screenshots)) {
+      return undefined;
+    }
+
+    const anchor = `${key}failed`;
+    return (
+      screenshots
+        .map((shot) => (typeof shot?.path === "string" ? shot.path : ""))
+        .filter((path) => path !== "")
+        .filter((path) => normalizeForMatch(baseName(path)).startsWith(anchor))
+        // Shortest basename = the first attempt (no "(attempt N)" suffix).
+        .sort((a, b) => baseName(a).length - baseName(b).length)[0]
+    );
+  } catch (error) {
+    console.error("[ci-conductor] failed to resolve screenshot path", error);
+    return undefined;
+  }
+}
+
+// ci-conductor rejects screenshots over 10 MB decoded; base64 inflates ~33%, so
+// we cap the raw file well under that (see its lib/screenshots MAX_SCREENSHOT_BYTES).
+const MAX_SCREENSHOT_RAW_BYTES = 7 * 1024 * 1024;
+
+/**
+ * Read a screenshot file and return it as a base64 PNG data URI, or undefined if
+ * the file is missing, empty, too large, or unreadable. Best-effort and never
+ * throws — a screenshot problem must not break reporting. See DEV-2000.
+ */
+function encodeScreenshot(filePath: string): string | undefined {
+  try {
+    const stat = statSync(filePath);
+    if (
+      !stat.isFile() ||
+      stat.size === 0 ||
+      stat.size > MAX_SCREENSHOT_RAW_BYTES
+    ) {
+      return undefined;
+    }
+    const b64 = readFileSync(filePath).toString("base64");
+    return b64 ? `data:image/png;base64,${b64}` : undefined;
+  } catch (error) {
+    console.error("[ci-conductor] failed to read screenshot", filePath, error);
+    return undefined;
+  }
 }
 
 /**
@@ -139,6 +237,14 @@ export function extractFailedTests(
       const name = titlePath[titlePath.length - 1] ?? "(unknown test)";
       const suite = titlePath.slice(0, -1).join(" > ");
       const attempts = test.attempts ?? [];
+      // Resolve (but don't yet read) the test's first failure screenshot from
+      // this spec's `results.screenshots`. The file is encoded into
+      // `failure_screenshot` at send time so the matching logic here stays pure.
+      // Returns undefined on any miss — best-effort.
+      const screenshotPath = resolveScreenshotPath(
+        titlePath,
+        results?.screenshots,
+      );
       return {
         name,
         path: suite || undefined,
@@ -147,6 +253,7 @@ export function extractFailedTests(
         attempts,
         status: classifyStatus(attempts),
         message: test.displayError ?? null,
+        ...(screenshotPath ? { screenshotPath } : {}),
       };
     });
 
@@ -181,6 +288,17 @@ export async function reportFailedTestsToConductor(
   // Everything below is wrapped so the reporter can never throw into the test
   // run, regardless of payload contents or network behavior.
   try {
+    // Best-effort: read each resolved screenshot and inline it as base64 for
+    // ci-conductor to upload. encodeScreenshot never throws — a test simply goes
+    // without a screenshot if it can't be read. The transient `screenshotPath`
+    // is dropped here so it never reaches the wire.
+    const outgoing = tests.map(({ screenshotPath, ...rest }) => {
+      const failure_screenshot = screenshotPath
+        ? encodeScreenshot(screenshotPath)
+        : undefined;
+      return failure_screenshot ? { ...rest, failure_screenshot } : rest;
+    });
+
     const body = {
       repo_id: toNumber(REPO_ID),
       run_id: toNumber(GITHUB_RUN_ID),
@@ -195,13 +313,25 @@ export async function reportFailedTestsToConductor(
       // CYPRESS_RETRIES isn't set in CI by default; e2e/support/config.js
       // surfaces the resolved Cypress config value into this env at startup.
       retries: toNumber(process.env.CYPRESS_RETRIES),
-      tests,
+      tests: outgoing,
     };
 
     if (isDryRun) {
+      // Don't dump base64 blobs into the log — replace each with a size marker.
+      const screenshotCount = outgoing.filter(
+        (t) => t.failure_screenshot,
+      ).length;
+      const redactedTests = outgoing.map((t) =>
+        t.failure_screenshot
+          ? {
+              ...t,
+              failure_screenshot: `<base64 ${t.failure_screenshot.length} chars>`,
+            }
+          : t,
+      );
       console.log(
-        `[ci-conductor] (dry run) would POST ${tests.length} failure(s):`,
-        JSON.stringify(body),
+        `[ci-conductor] (dry run) would POST ${outgoing.length} failure(s), ${screenshotCount} with screenshot(s):`,
+        JSON.stringify({ ...body, tests: redactedTests }),
       );
       return;
     }

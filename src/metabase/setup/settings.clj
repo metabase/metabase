@@ -6,14 +6,14 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
 
-;;; TODO -- we actually do set this so it probably shouldn't be `:setter :none`. `:setter :none` is meant for settings
-;;; whose values are programmatically generated -- Cam
 (defsetting setup-token
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
-  launch of Metabase, by the first instance; once used, it is cleared out, never to be used again."
-  :visibility :public
-  :setter     :none
-  :audit      :never)
+  launch of Metabase, by the first instance; once used, it is cleared out, never to be used again.
+  Setter is none so users cannot overwrite or re-set the setup-token from the generated value"
+  :visibility         :public
+  :setter             :none
+  :audit              :never
+  :can-read-from-env? false)
 
 (let [app-db-id->user-exists? (atom {})]
   (defn- -has-user-setup []

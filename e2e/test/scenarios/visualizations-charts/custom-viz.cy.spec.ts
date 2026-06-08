@@ -2564,4 +2564,42 @@ describe("sandbox", () => {
       ),
     );
   });
+
+  it("sandboxes React component setting widgets", () => {
+    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
+
+    H.createQuestion(
+      {
+        name: "Custom Viz Component Widget Security Test",
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "table",
+      },
+      { wrapId: true, idAlias: "questionId" },
+    );
+
+    H.visitQuestion("@questionId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("custom-viz-plugins-toggle").click();
+    cy.findByTestId(
+      `${H.CUSTOM_VIZ_IDENTIFIER_4_SECURITY_COMPONENT}-button`,
+    ).click();
+    cy.findByTestId("viz-type-button").click();
+
+    cy.log("open viz settings to mount the custom component widget");
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.log("the sandbox blocks the component's forbidden <input> element");
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /render failed: \[plugin \d+\] blocked createElement: input/,
+    );
+  });
 });

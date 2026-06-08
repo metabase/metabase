@@ -394,7 +394,7 @@ const TableSourceRow = ({
       location={location}
       messageId={messageId}
       source={{ source_id: id, source_type: "table" }}
-      to={Urls.tableRowsQuery(table.db_id, id)}
+      to={Urls.table({ id, name: table.display_name })}
     />
   );
 };
@@ -629,7 +629,7 @@ const NativeSourcesRow = ({
             location={location}
             messageId={messageId}
             source={{ source_id: table.id, source_type: "table" }}
-            to={Urls.tableRowsQuery(databaseId, table.id)}
+            to={Urls.table({ id: table.id, name: label })}
           />
         );
       })}

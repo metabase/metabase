@@ -1,15 +1,12 @@
 import type {
   CreateCustomVisualizationProps,
   CustomVisualization,
-  CustomVisualizationMountHandle,
   CustomVisualizationProps,
   CustomVisualizationSettingDefinition,
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
-  Widgets,
 } from "custom-viz";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -41,6 +38,7 @@ import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
+import { usePluginMount } from "./use-plugin-mount";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -425,12 +423,14 @@ export async function loadCustomVizPlugin(
       );
     }
 
-    assertValidSettingWidgets(vizDef.settings);
-
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
 
-    const Wrapper = createCustomVizWrapper(vizDef.mount, plugin.id);
+    const Wrapper = createCustomVizWrapper(
+      vizDef.mount,
+      vizDef.VisualizationComponent,
+      plugin.id,
+    );
 
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
@@ -438,6 +438,7 @@ export async function loadCustomVizPlugin(
     ) as Visualization;
     applyDefaultVisualizationProps(Component, vizDef, {
       identifier,
+      pluginId: plugin.id,
       getUiName: () => plugin.display_name,
       iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
       isDev: Boolean(plugin.dev_bundle_url),
@@ -507,47 +508,14 @@ export const useCustomVizPluginsIcon = () => {
 type GenericVizDefinition = CustomVisualization<Record<string, unknown>>;
 type GenericVizMount = GenericVizDefinition["mount"];
 type GenericVizPluginProps = CustomVisualizationProps<Record<string, unknown>>;
-type GenericVizMountHandle =
-  CustomVisualizationMountHandle<GenericVizPluginProps>;
 
 function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
   return isObject(value) && typeof value.mount === "function";
 }
 
-const ALLOWED_WIDGET_NAMES: Array<keyof Widgets> = [
-  "input",
-  "number",
-  "radio",
-  "select",
-  "toggle",
-  "segmentedControl",
-  "field",
-  "fields",
-  "color",
-  "multiselect",
-] as const;
-
-function assertValidSettingWidgets(
-  settings: GenericVizDefinition["settings"] | undefined,
-): void {
-  if (!settings) {
-    return;
-  }
-  for (const [settingId, def] of Object.entries(settings)) {
-    const widget = (def as { widget?: unknown }).widget;
-    if (
-      typeof widget !== "string" ||
-      !ALLOWED_WIDGET_NAMES.some((w) => w === widget)
-    ) {
-      throw new Error(
-        t`Setting "${settingId}" has unsupported widget. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
-      );
-    }
-  }
-}
-
 function createCustomVizWrapper(
   mount: GenericVizMount,
+  VisualizationComponent: GenericVizDefinition["VisualizationComponent"],
   pluginId: CustomVizPluginId,
 ) {
   return function CustomVizWrapper({
@@ -557,11 +525,8 @@ function createCustomVizWrapper(
     settings,
     onVisualizationClick,
     onHoverChange,
-    onRenderError,
   }: VisualizationProps) {
     const { resolvedColorScheme } = useColorScheme();
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const handleRef = useRef<GenericVizMountHandle | null>(null);
 
     const pluginProps: GenericVizPluginProps = {
       width,
@@ -577,37 +542,10 @@ function createCustomVizWrapper(
       ) => void,
     };
 
-    useEffect(() => {
-      if (!containerRef.current) {
-        return;
-      }
-      try {
-        if (!handleRef.current) {
-          handleRef.current = mount(containerRef.current, pluginProps);
-        } else {
-          handleRef.current.update(pluginProps);
-        }
-      } catch (error) {
-        const renderError =
-          error instanceof Error ? error : new Error(String(error));
-        try {
-          handleRef.current?.unmount();
-        } catch {
-          // The original render/update error is more useful to report.
-        }
-        containerRef.current.innerHTML = "";
-        handleRef.current = null;
-        onRenderError(renderError);
-      }
-    });
-
-    useUnmount(() => {
-      try {
-        handleRef.current?.unmount();
-      } finally {
-        handleRef.current = null;
-      }
-    });
+    const containerRef = usePluginMount<GenericVizPluginProps>(
+      (container, props) => mount(VisualizationComponent, container, props),
+      pluginProps,
+    );
 
     return (
       <div
