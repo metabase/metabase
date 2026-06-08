@@ -32,8 +32,41 @@
 (def ^:private typescript-response-headers
   (assoc javascript-response-headers "Content-Type" "text/typescript; charset=utf-8"))
 
-(def ^:private js-identifier-key-pattern
-  #"\"([A-Za-z_$][A-Za-z0-9_$]*)\"\s*:")
+(def ^:private js-identifier-pattern
+  #"[A-Za-z_$][A-Za-z0-9_$]*")
+
+(def ^:private schema-render-policy
+  {:question         {:runtime [:kind :id :name :display :columns :parameters]
+                      :comment [:key :entityId :description :verified]}
+   :table            {:runtime [:kind :id :name :databaseId :fields :segments :measures]
+                      :comment [:key :entityId :description :databaseName :schemaName :tableName]}
+   :field            {:runtime [:name :jsType :fieldId :tableId :defaultTemporalBucket]
+                      :comment [:key :id :displayName :description :baseType :effectiveType :semanticType :unit]}
+   :segment          {:runtime [:kind :id :tableId :name]
+                      :comment [:key :entityId :description]}
+   :measure          {:runtime [:kind :id :tableId :name :columns]
+                      :comment [:key :entityId :description]}
+   :metric           {:runtime [:kind :id :name :mappedTableIds :columns :dimensions]
+                      :comment [:key :entityId :description :verified :sourceTable]}
+   :metric-dimension {:runtime [:id :metricId :tableId :name :jsType :defaultTemporalBucket]
+                      :comment [:key :displayName :description :baseType :effectiveType :semanticType :unit]}
+   :column           {:runtime [:name :jsType]
+                      :comment [:displayName :description :baseType :effectiveType :semanticType :unit]}})
+
+(def ^:private comment-labels
+  {:baseType     "Base type"
+   :databaseName "Database"
+   :description  "Description"
+   :displayName  "Display name"
+   :effectiveType "Effective type"
+   :entityId     "Entity ID"
+   :key          "Generated key"
+   :schemaName   "Schema"
+   :semanticType "Semantic type"
+   :sourceTable  "Source table"
+   :tableName    "Table"
+   :unit         "Unit"
+   :verified     "Verified"})
 
 (defn- js-type
   [{:keys [type base_type effective_type] :as _column}]
@@ -459,7 +492,7 @@
     (t2/select-one-fn :table_id :model/Field :id field-id)))
 
 (defn- dimension-schema
-  [{:keys [field_id] :as dimension}]
+  [{:keys [field_id] :as dimension} metric-id]
   (let [dimension-id (or (:id dimension) field_id)
         field-id     (or field_id (some-> dimension :sources first :field-id))
         table-id     (or (:table_id dimension) (:table-id dimension) (field-table-id field-id))
@@ -471,16 +504,18 @@
             :key (generated-key (:name column) dimension-id)
             :id (str dimension-id))
      :tableId (when (integer? table-id) table-id)
-     :fieldId (when (integer? field-id) field-id))))
+     :metricId metric-id)))
 
 (defn- field-schema
   [{:keys [id field_id] :as field}]
-  (let [field-id (or id field_id)]
+  (let [field-id (or id field_id)
+        table-id (or (:table_id field) (:table-id field) (field-table-id field-id))]
     (assoc-some
      (assoc (column-schema field)
             :key (generated-key (:name field) field-id)
             :id field-id)
      :fieldId (when (integer? field-id) field-id)
+     :tableId (when (integer? table-id) table-id)
      :defaultTemporalBucket (:unit field))))
 
 (defn- metric-dimensions
@@ -523,7 +558,7 @@
                           (fallback-metric-column details))
         dimensions    (or (seq (metric-dimensions details))
                           (:queryable-dimensions details))
-        dimension-schemas (mapv dimension-schema dimensions)
+        dimension-schemas (mapv #(dimension-schema % id) dimensions)
         mapped-table-ids  (->> dimension-schemas
                                (keep :tableId)
                                distinct
@@ -730,21 +765,137 @@
             tables    (table-schemas (select-tables database-ids))]
         (base-schema questions models tables metrics)))))
 
-(defn- unquote-js-property-names
-  [s]
-  (str/replace s js-identifier-key-pattern "$1:"))
+(defn- map-key-value
+  [m k]
+  (some (fn [[entry-key entry-value]]
+          (when (= entry-key k)
+            entry-value))
+        m))
 
-(defn- encode-pretty
+(defn- node-kind
+  [path value]
+  (when (map? value)
+    (let [kind (map-key-value value :kind)]
+      (cond
+        (= kind "question") :question
+        (= kind "table") :table
+        (= kind "segment") :segment
+        (= kind "measure") :measure
+        (= kind "metric") :metric
+        (= (last (butlast path)) :fields) :field
+        (= (last (butlast path)) :dimensions) :metric-dimension
+        (= (last (butlast path)) :columns) :column
+        :else nil))))
+
+(defn- policy-runtime-keys
+  [kind value]
+  (let [runtime-keys (get-in schema-render-policy [kind :runtime])]
+    (if runtime-keys
+      (->> runtime-keys
+           (filter #(contains? value %)))
+      (keys value))))
+
+(defn- policy-comment-keys
+  [kind value]
+  (->> (get-in schema-render-policy [kind :comment])
+       (filter #(contains? value %))))
+
+(defn- javascript-key
+  [k]
+  (let [s (name k)]
+    (if (re-matches js-identifier-pattern s)
+      s
+      (json/encode s))))
+
+(defn- primitive-value?
+  [value]
+  (or (nil? value)
+      (string? value)
+      (number? value)
+      (true? value)
+      (false? value)))
+
+(defn- comment-value
+  [value]
+  (cond
+    (nil? value) nil
+    (map? value) (->> [(:databaseName value) (:schemaName value) (:tableName value)]
+                      (keep identity)
+                      (str/join "."))
+    :else (str value)))
+
+(defn- comment-lines
+  [indent kind value]
+  (let [spaces (apply str (repeat indent " "))]
+    (for [k (policy-comment-keys kind value)
+          :let [v (comment-value (get value k))]
+          :when (not (str/blank? v))]
+      (str spaces "// " (get comment-labels k (name k)) ": " (str/replace v #"\R+" " ")))))
+
+(declare render-javascript-value)
+
+(defn- render-javascript-entry
+  [indent path k value]
+  (let [kind     (node-kind (conj path k) value)
+        comments (comment-lines indent kind value)
+        spaces   (apply str (repeat indent " "))]
+    (str (when (seq comments)
+           (str (str/join "\n" comments) "\n"))
+         spaces
+         (javascript-key k)
+         ": "
+         (render-javascript-value value indent (conj path k)))))
+
+(defn- render-javascript-map
+  [value indent path]
+  (let [kind    (node-kind path value)
+        entries (->> (policy-runtime-keys kind value)
+                     (map (fn [k] (render-javascript-entry (+ indent 2) path k (get value k)))))]
+    (if (seq entries)
+      (str "{\n" (str/join ",\n" entries) "\n" (apply str (repeat indent " ")) "}")
+      "{ }")))
+
+(defn- render-javascript-vector
+  [value indent path]
+  (cond
+    (empty? value)
+    "[ ]"
+
+    (every? primitive-value? value)
+    (str "[ " (str/join ", " (map json/encode value)) " ]")
+
+    :else
+    (let [entries (map-indexed
+                   (fn [i item]
+                     (let [kind     (node-kind (conj path i) item)
+                           comments (comment-lines (+ indent 2) kind item)
+                           spaces   (apply str (repeat (+ indent 2) " "))]
+                       (str (when (seq comments)
+                              (str (str/join "\n" comments) "\n"))
+                            spaces
+                            (render-javascript-value item (+ indent 2) (conj path i)))))
+                   value)]
+      (str "[\n" (str/join ",\n" entries) "\n" (apply str (repeat indent " ")) "]"))))
+
+(defn- render-javascript-value
+  [value indent path]
+  (cond
+    (map? value)    (render-javascript-map value indent path)
+    (vector? value) (render-javascript-vector value indent path)
+    (seq? value)    (render-javascript-vector (vec value) indent path)
+    :else           (json/encode value)))
+
+(defn- render-javascript-schema
   [schema]
-  (json/encode schema {:pretty true}))
+  (render-javascript-value schema 0 []))
 
 (defn- render-javascript
   [schema]
-  (str "export default " (unquote-js-property-names (encode-pretty schema)) ";\n"))
+  (str "export default " (render-javascript-schema schema) ";\n"))
 
 (defn- render-typescript
   [schema]
-  (str "export default " (unquote-js-property-names (encode-pretty schema)) " as const;\n"))
+  (str "export default " (render-javascript-schema schema) " as const;\n"))
 
 (api.macros/defendpoint :get "/v1/javascript" :- :any
   "Generate a JavaScript semantic schema module."

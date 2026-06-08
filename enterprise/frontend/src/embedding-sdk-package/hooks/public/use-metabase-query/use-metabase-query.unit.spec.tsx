@@ -18,6 +18,7 @@ const TEST_SCHEMA = {
         createdAt: {
           id: 103,
           fieldId: 103,
+          tableId: 1,
           name: "created_at",
           displayName: "Created At",
           jsType: "Date",
@@ -25,6 +26,7 @@ const TEST_SCHEMA = {
         amount: {
           id: 102,
           fieldId: 102,
+          tableId: 1,
           name: "amount",
           displayName: "Amount",
           jsType: "number",
@@ -32,6 +34,7 @@ const TEST_SCHEMA = {
         status: {
           id: 101,
           fieldId: 101,
+          tableId: 1,
           name: "status",
           displayName: "Status",
           jsType: "string",
@@ -56,6 +59,7 @@ const TEST_SCHEMA = {
         price: {
           id: 201,
           fieldId: 201,
+          tableId: 2,
           name: "price",
           displayName: "Price",
           jsType: "number",
@@ -81,7 +85,7 @@ const TEST_SCHEMA = {
       dimensions: {
         createdAt: {
           id: "metric-created-at",
-          fieldId: 103,
+          metricId: 34,
           tableId: 1,
           name: "created_at",
           displayName: "Created At",
@@ -89,7 +93,7 @@ const TEST_SCHEMA = {
         },
         status: {
           id: "metric-status",
-          fieldId: 101,
+          metricId: 34,
           tableId: 1,
           name: "status",
           displayName: "Status",
@@ -97,7 +101,22 @@ const TEST_SCHEMA = {
         },
         amount: {
           id: "metric-amount",
-          fieldId: 102,
+          metricId: 34,
+          tableId: 1,
+          name: "amount",
+          displayName: "Amount",
+          jsType: "number",
+        },
+      },
+      mappedTableIds: [1],
+    },
+    orderValue: {
+      id: 35,
+      columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
+      dimensions: {
+        amount: {
+          id: "metric-order-value-amount",
+          metricId: 35,
           tableId: 1,
           name: "amount",
           displayName: "Amount",
@@ -270,6 +289,7 @@ function useMetricBreakoutTypeFixtures() {
         dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
         bucket: "month",
       },
+      breakout(TEST_SCHEMA.tables.orders.fields.status),
     ],
   });
 
@@ -285,6 +305,22 @@ function useMetricBreakoutTypeFixtures() {
         dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
         bucket: "month",
       },
+    ],
+  });
+
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    breakouts: [
+      // @ts-expect-error metric breakouts must use dimensions from the queried metric
+      breakout(TEST_SCHEMA.metrics.orderValue.dimensions.amount),
+    ],
+  });
+
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    breakouts: [
+      // @ts-expect-error metric table field breakouts must come from mapped tables
+      breakout(TEST_SCHEMA.tables.products.fields.price),
     ],
   });
 }
