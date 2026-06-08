@@ -22,14 +22,13 @@ import {
   replaceEntryValue,
 } from "metabase-enterprise/sandboxes/utils";
 import type {
-  DimensionRef,
   GroupTableAccessPolicy,
   ParameterTarget,
   Table,
   UserAttributeKey,
 } from "metabase-types/api";
 
-type ValueType = string | DimensionRef | null;
+type ValueType = string | ParameterTarget | null;
 
 export interface MappingEditorProps {
   value: DataAttributeMap<ValueType>;
@@ -194,7 +193,7 @@ const ColumnPicker = ({
   shouldUseSavedQuestion,
 }: {
   value: ValueType;
-  onChange: (value: DimensionRef) => void;
+  onChange: (value: ParameterTarget) => void;
   policyTable?: Table;
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft;
   shouldUseSavedQuestion: boolean;
@@ -210,11 +209,8 @@ const ColumnPicker = ({
     return (
       <Box miw={200}>
         <QuestionParameterTargetWidget
-          // DimensionRef (from the policy API) and ParameterTarget are
-          // structurally compatible tuple shapes here; the API type predates
-          // ParameterTarget (see the FIXME in permissions.ts).
-          target={target as ParameterTarget | null}
-          onChange={onChange as (target: ParameterTarget) => void}
+          target={target}
+          onChange={onChange}
           questionObject={
             filterByTableColumn && policyTable
               ? getRawDataQuestionForTable(policyTable)
