@@ -19,6 +19,7 @@ export type Workspace = {
   id: WorkspaceId;
   name: string;
   databases: WorkspaceDatabase[];
+  workspace_instance?: WorkspaceInstance | null;
   created_at: string;
   creator_id: UserId;
 
@@ -71,4 +72,9 @@ export type UpdateWorkspaceInstanceRequest = {
   name?: string;
   url?: string;
   api_key?: string;
+};
+
+export type WorkspaceDeploymentRequest = {
+  id: WorkspaceId;
+  instance_id: WorkspaceInstanceId;
 };

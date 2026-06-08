@@ -1,16 +1,22 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupListWorkspaceInstancesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { Workspace, WorkspaceInstance } from "metabase-types/api";
 import {
   createMockWorkspace,
-  createMockWorkspaceDatabase,
+  createMockWorkspaceInstance,
 } from "metabase-types/api/mocks";
 
 import { SetupSection } from "./SetupSection";
 
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
-function setup({ workspace = createMockWorkspace() } = {}) {
+function setup({
+  workspace = createMockWorkspace(),
+  instances = [] as WorkspaceInstance[],
+}: { workspace?: Workspace; instances?: WorkspaceInstance[] } = {}) {
+  setupListWorkspaceInstancesEndpoint(instances);
   renderWithProviders(<SetupSection workspace={workspace} />);
 }
 
@@ -19,48 +25,54 @@ describe("SetupSection", () => {
     trackSimpleEvent.mockClear();
   });
 
-  it("renders an enabled download link when the workspace has databases", () => {
-    const workspace = createMockWorkspace({
-      databases: [createMockWorkspaceDatabase()],
-    });
+  it("offers an inline config.yml download link that tracks an event", async () => {
+    const workspace = createMockWorkspace();
     setup({ workspace });
 
-    const button = screen.getByRole("link", { name: /Download config\.yml/ });
-    expect(button).toBeEnabled();
-    expect(button).toHaveAttribute(
+    const link = await screen.findByRole("link", { name: "config.yml" });
+    expect(link).toHaveAttribute(
       "href",
       `/api/ee/workspace-manager/${workspace.id}/config`,
     );
-  });
 
-  it("tracks an analytics event when the config is downloaded", async () => {
-    const workspace = createMockWorkspace({
-      databases: [createMockWorkspaceDatabase()],
-    });
-    setup({ workspace });
-
-    await userEvent.click(
-      screen.getByRole("link", { name: /Download config\.yml/ }),
-    );
-
+    await userEvent.click(link);
     expect(trackSimpleEvent).toHaveBeenCalledWith({
       event: "workspaces_config_downloaded",
       target_id: workspace.id,
     });
   });
 
-  it("disables the download button and shows a tooltip when the workspace has no databases", async () => {
-    setup({ workspace: createMockWorkspace({ databases: [] }) });
+  it("disables 'Set up an instance' with a tooltip when no instance is free", async () => {
+    setup({ instances: [createMockWorkspaceInstance({ workspace_id: 5 })] });
 
-    const button = screen.getByRole("button", { name: /Download config\.yml/ });
+    const button = await screen.findByRole("button", {
+      name: "Set up an instance",
+    });
     expect(button).toBeDisabled();
-    expect(
-      screen.queryByRole("link", { name: /Download config\.yml/ }),
-    ).not.toBeInTheDocument();
 
     await userEvent.hover(button);
     expect(
-      await screen.findByText("You need to add at least one database."),
+      await screen.findByText("Register a development instance first."),
+    ).toBeInTheDocument();
+  });
+
+  it("enables 'Set up an instance' when a free instance exists", async () => {
+    setup({ instances: [createMockWorkspaceInstance({ workspace_id: null })] });
+
+    expect(
+      await screen.findByRole("button", { name: "Set up an instance" }),
+    ).toBeEnabled();
+  });
+
+  it("shows 'Reset the instance' when the workspace already has an instance", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        workspace_instance: createMockWorkspaceInstance({ id: 7 }),
+      }),
+    });
+
+    expect(
+      await screen.findByRole("button", { name: "Reset the instance" }),
     ).toBeInTheDocument();
   });
 });
