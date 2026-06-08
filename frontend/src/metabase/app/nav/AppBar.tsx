@@ -1,6 +1,7 @@
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import {
   getCommentSidebarOpen,
@@ -87,8 +88,11 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
   const originalQuestion = useSelector(getOriginalQuestion);
 
   const { pathname } = props.location;
-  const dashboard =
-    pathname && isQuestionPath(pathname) ? question?.dashboard() : undefined;
+  const dashboardId =
+    pathname && isQuestionPath(pathname) ? question?.dashboardId() : undefined;
+  const { data: dashboard } = useGetDashboardQuery(
+    dashboardId != null ? { id: dashboardId } : skipToken,
+  );
 
   const locationState = props.location.state as { cardId?: number } | undefined;
 
