@@ -55,7 +55,7 @@ type TestSchema = typeof TEST_SCHEMA;
 type OrderCountMetric = TestSchema["metrics"]["orderCount"];
 
 const _validMetricScopedQuery = {
-  metricId: TEST_SCHEMA.metrics.orderCount.id,
+  metric: TEST_SCHEMA.metrics.orderCount,
   filters: [TEST_SCHEMA.tables.orders.segments.completed],
   measures: [TEST_SCHEMA.tables.orders.measures.revenue],
 } satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
@@ -67,13 +67,13 @@ const _validMetricObjectQuery = {
 } satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
 
 const _invalidMetricSegmentQuery = {
-  metricId: TEST_SCHEMA.metrics.orderCount.id,
+  metric: TEST_SCHEMA.metrics.orderCount,
   // @ts-expect-error segments must belong to the metric's mapped tables
   filters: [TEST_SCHEMA.tables.products.segments.active],
 } satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
 
 const _invalidMetricMeasureQuery = {
-  metricId: TEST_SCHEMA.metrics.orderCount.id,
+  metric: TEST_SCHEMA.metrics.orderCount,
   // @ts-expect-error measures must belong to the metric's mapped tables
   measures: [TEST_SCHEMA.tables.products.measures.price],
 } satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
@@ -92,6 +92,27 @@ describe("useMetabaseQuery", () => {
 
     expect(queryMetric).not.toHaveBeenCalled();
   });
+
+  it("queries metrics with measures via the metric dataset endpoint", async () => {
+    const queryMetricApi = jest.fn().mockResolvedValue({
+      rowCount: null,
+      runningTime: null,
+      columns: [],
+      rows: [],
+    });
+    const queryMetric = jest.fn(() => queryMetricApi);
+
+    setup({ queryMetric, component: <MetricMeasuresComponent /> });
+
+    await waitFor(() => {
+      expect(queryMetricApi).toHaveBeenCalledWith({
+        definition: {
+          expression: ["metric", { "lib/uuid": "metric" }, 34],
+          measures: [21],
+        },
+      });
+    });
+  });
 });
 
 const TestComponent = () => {
@@ -109,10 +130,25 @@ const TestComponent = () => {
   );
 };
 
-function setup({ queryMetric }: { queryMetric: jest.Mock }) {
+const MetricMeasuresComponent = () => {
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    measures: [TEST_SCHEMA.tables.orders.measures.revenue],
+  });
+
+  return null;
+};
+
+function setup({
+  queryMetric,
+  component = <TestComponent />,
+}: {
+  queryMetric: jest.Mock;
+  component?: JSX.Element;
+}) {
   const { state } = setupSdkState();
 
-  renderWithSDKProviders(<TestComponent />, {
+  renderWithSDKProviders(component, {
     metabaseEmbeddingSdkBundleExports: {
       getLoginStatus,
       queryMetric,

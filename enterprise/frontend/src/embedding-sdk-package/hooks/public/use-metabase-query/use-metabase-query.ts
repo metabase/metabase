@@ -381,19 +381,6 @@ const useMetabaseQueryImpl = <
       }
 
       if (isMetricQuery(currentQuery)) {
-        if (hasMeasures(currentQuery)) {
-          if (!queryDataset) {
-            return;
-          }
-
-          const result = await queryDataset(reduxStore)({
-            datasetQuery: buildMetricDatasetQuery(currentQuery),
-          });
-
-          setData(mapDatasetQueryData(result));
-          return;
-        }
-
         if (!queryMetric) {
           return;
         }
@@ -484,12 +471,6 @@ function isMetricQuery(
   return getMetricId(query) != null;
 }
 
-function hasMeasures(
-  query: MetricQuery<unknown, unknown>,
-): query is MetricQuery<unknown, unknown> & { measures: readonly unknown[] } {
-  return Array.isArray(query.measures) && query.measures.length > 0;
-}
-
 function buildTableFilter(filter: unknown) {
   if (isSegmentSchema(filter)) {
     return ["segment", filter.id];
@@ -508,73 +489,6 @@ function buildMeasureClause(measure: unknown): Aggregation | null {
   }
 
   return ["measure", {}, measure.id] as Aggregation;
-}
-
-function buildMetricDatasetQuery(
-  query: MetricQuery<unknown, unknown> & { measures: readonly unknown[] },
-): Omit<StructuredDatasetQuery, "database"> {
-  const measures = query.measures.filter(isMeasureSchema);
-  const sourceTableId = getMeasureSourceTableId(query, measures);
-  const metricId = Number(getMetricId(query)) as MetricId;
-
-  validateMetricTableScopedInputs(query);
-
-  const mbql: StructuredDatasetQuery["query"] = {
-    "source-table": sourceTableId,
-    aggregation: [
-      ["metric", metricId] as Aggregation,
-      ...measures.map(buildMeasureClause).filter(isNotNull),
-    ],
-  };
-
-  const filters = query.filters?.map(buildTableFilter).filter(Boolean);
-  const breakouts = query.breakouts?.map(buildTableBreakout).filter(Boolean);
-
-  if (filters?.length === 1) {
-    mbql.filter = filters[0] as Filter;
-  } else if (filters && filters.length > 1) {
-    mbql.filter = ["and", ...(filters as Filter[])];
-  }
-
-  if (breakouts?.length) {
-    mbql.breakout = breakouts;
-  }
-
-  return {
-    type: "query",
-    query: mbql,
-    parameters: [],
-  };
-}
-
-function getMeasureSourceTableId(
-  query: MetricQuery<unknown, unknown>,
-  measures: MeasureReference[],
-) {
-  const [firstMeasure] = measures;
-
-  if (!firstMeasure) {
-    throw new Error(
-      "Metric queries with measures require at least one generated measure object.",
-    );
-  }
-
-  const tableId = firstMeasure.tableId;
-  const hasMismatchedMeasure = measures.some((measure) => {
-    return measure.tableId !== tableId;
-  });
-
-  if (hasMismatchedMeasure) {
-    throw new Error("Metric query measures must belong to the same table.");
-  }
-
-  validateGeneratedTableId({
-    tableId,
-    allowedTableIds: getMetricMappedTableIds(query),
-    context: "Metric query measures",
-  });
-
-  return tableId;
 }
 
 function buildTableBreakout(
@@ -629,6 +543,12 @@ function buildMetricDefinition(query: MetricQuery<unknown, unknown>) {
         }),
       } satisfies TypedProjection,
     ];
+  }
+
+  const measures = query.measures?.filter(isMeasureSchema);
+
+  if (measures?.length) {
+    definition.measures = measures.map((measure) => measure.id);
   }
 
   return definition;
