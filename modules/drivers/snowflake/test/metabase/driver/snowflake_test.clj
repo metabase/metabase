@@ -691,15 +691,19 @@
   (mt/test-driver :snowflake
     (testing "make sure describe-fks uses the NAME FROM DETAILS too"
       (let [table (t2/select-one [:model/Table :schema :name] :id (mt/id :venues))]
-        (is (= #{{:fk-column-name   "category_id"
-                  :dest-table       {:name "categories", :schema "PUBLIC"}
-                  :dest-column-name "id"}}
-               (driver/describe-fks
-                :snowflake
-                (-> (lib.metadata/database (mt/metadata-provider))
-                    (assoc :name "ABC"))
-                {:schema-names [(:schema table)]
-                 :table-names  [(:name table)]})))))))
+        (is (= [{:fk-table-schema "PUBLIC"
+                 :fk-table-name   "venues"
+                 :fk-column-name  "category_id"
+                 :pk-table-schema "PUBLIC"
+                 :pk-table-name   "categories"
+                 :pk-column-name  "id"}]
+               (into []
+                     (driver/describe-fks
+                      :snowflake
+                      (-> (lib.metadata/database (mt/metadata-provider))
+                          (assoc :name "ABC"))
+                      {:schema-names [(:schema table)]
+                       :table-names  [(:name table)]}))))))))
 
 (deftest can-change-from-password-test
   (mt/test-driver
