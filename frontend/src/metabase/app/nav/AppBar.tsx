@@ -88,8 +88,8 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
   const originalQuestion = useSelector(getOriginalQuestion);
 
   const { pathname } = props.location;
-  const dashboardId =
-    pathname && isQuestionPath(pathname) ? question?.dashboardId() : undefined;
+  const isOnQuestionPage = pathname && isQuestionPath(pathname);
+  const dashboardId = isOnQuestionPage ? question?.dashboard()?.id : undefined;
   const { data: dashboard } = useGetDashboardQuery(
     dashboardId != null ? { id: dashboardId } : skipToken,
   );
@@ -109,7 +109,11 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
     <AppBarView
       {...props}
       collectionId={collectionId}
-      collectionBreadcrumbs={<CollectionBreadcrumbs dashboard={dashboard} />}
+      collectionBreadcrumbs={
+        <CollectionBreadcrumbs
+          dashboard={dashboardId != null ? dashboard : undefined}
+        />
+      }
       questionLineage={
         <QuestionLineage
           question={question}
