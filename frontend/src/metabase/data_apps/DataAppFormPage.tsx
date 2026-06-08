@@ -17,7 +17,7 @@ import {
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { useCreateDataAppMutation } from "metabase-enterprise/api";
+import { useCreateDataAppMutation } from "metabase/api";
 
 import {
   JsBundleDropzone,
