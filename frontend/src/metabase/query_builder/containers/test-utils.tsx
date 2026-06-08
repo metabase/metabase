@@ -1,7 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, ComponentType } from "react";
 import { IndexRoute, Route } from "react-router";
 
 import {
@@ -36,8 +36,6 @@ import {
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
-import type { RequestState, State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
@@ -220,6 +218,12 @@ const TestQueryBuilder = (
 
 const TestHome = () => <NewItemMenu trigger={<button>New</button>} />;
 
+// The real /model/new page (NewModelOptions) lives in the `models` feature.
+// Feature modules can't import each other, so tests that need it inject it via
+// `newModelOptionsComponent` (spec files are exempt from boundary rules); other
+// tests never hit this route and get this stub.
+const TestNewModelOptions = () => <div />;
+
 const TestRedirect = () => <div />;
 
 const isSavedCard = (card: Card | UnsavedCard | null): card is Card => {
@@ -230,6 +234,9 @@ interface SetupOpts {
   card: Card | UnsavedCard | null;
   dataset?: Dataset;
   initialRoute?: string;
+  // Loosely typed to match react-router's `component` prop: the real
+  // NewModelOptions receives router-injected props (location) the stub omits.
+  newModelOptionsComponent?: ComponentType<any>;
 }
 
 export const setup = async ({
@@ -242,6 +249,7 @@ export const setup = async ({
         ? `/${card.id}`
         : `#${serializeCardForUrl(card)}`
   }`,
+  newModelOptionsComponent = TestNewModelOptions,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
@@ -280,16 +288,12 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const {
-    store: { getState },
-    container,
-    history,
-  } = renderWithProviders(
+  const { container, history } = renderWithProviders(
     <div>
       <Route>
         <Route path="/" component={TestHome} />
         <Route path="/model">
-          <Route path="new" component={NewModelOptions} />
+          <Route path="new" component={newModelOptionsComponent} />
           <Route path="query" component={TestQueryBuilder} />
           <Route path="columns" component={TestQueryBuilder} />
           <Route path="metadata" component={TestQueryBuilder} />
@@ -324,34 +328,13 @@ export const setup = async ({
     },
   );
 
-  await waitForLoadingRequests(getState);
   await waitForLoaderToBeRemoved();
-  await waitForLoadingRequests(getState);
 
   return {
     container,
     history: checkNotNull(history),
     mockEventListener,
   };
-};
-
-const waitForLoadingRequests = async (getState: () => State) => {
-  await waitFor(
-    () => {
-      const requests = getRequests(getState());
-      const areRequestsLoading = requests.some((request) => request.loading);
-      expect(areRequestsLoading).toBe(false);
-    },
-    { timeout: 5000 },
-  );
-};
-
-const getRequests = (state: State): RequestState[] => {
-  return Object.values(state.requests).flatMap((group) =>
-    Object.values(group).flatMap((entity) =>
-      Object.values(entity).flatMap((request) => Object.values(request)),
-    ),
-  );
 };
 
 export const startNewNotebookModel = async () => {

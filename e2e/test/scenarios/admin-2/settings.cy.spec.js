@@ -988,7 +988,12 @@ describe("scenarios > admin > settings > map settings", () => {
   it("should show an informative error when adding a calid URL that contains GeoJSON that does not use lat/lng coordinates", () => {
     //intercept call to api/geojson and return projected.geojson. Call to load file actually happens in the BE
     cy.fixture("../../e2e/support/assets/projected.geojson").then((data) => {
-      cy.intercept("GET", "/api/geojson*", data);
+      // The real endpoint responds with JSON; the fixture loads as a string, so
+      // set the content type explicitly or the client returns it unparsed.
+      cy.intercept("GET", "/api/geojson*", {
+        headers: { "content-type": "application/json" },
+        body: data,
+      });
     });
 
     cy.visit("/admin/settings/maps");

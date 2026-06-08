@@ -144,7 +144,7 @@ describe("InfoText", () => {
       const tableLink = screen.getByText(MOCK_TABLE.display_name);
       expect(tableLink).toHaveAttribute(
         "href",
-        `/question#?db=${MOCK_DATABASE.id}&table=${MOCK_TABLE.id}`,
+        `/table/${MOCK_TABLE.id}-table-name`,
       );
 
       expect(screen.getByTestId("revision-history-text")).toHaveTextContent(

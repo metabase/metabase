@@ -211,6 +211,11 @@
   [driver [_ value]]
   (h2x/maybe-cast "STRING" (sql.qp/->honeysql driver value)))
 
+;; BigQuery's string type is `STRING`. Mirrors the `:text` handler above.
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[h2x/with-database-type-info]] stuff we've added. [[h2x/with-database-type-info]] was inspired by this BigQuery code
 ;; but uses a new record type rather than attaching metadata to everything
@@ -780,8 +785,8 @@
   ;; numbers, and underscores, start with a letter or underscore, and be at most 128 characters long.
   (let [s (-> (str/trim s)
               u/remove-diacritical-marks
-              (str/replace #"[^\w\d_]" "_")
-              (str/replace #"(^\d)" "_$1"))]
+              (str/replace #"[^\p{L}\p{N}\p{M}\p{Pc}]" "_")
+              (str/replace #"(^[^\p{L}_])" "_$1"))]
     ((get-method driver/escape-alias :sql) driver s)))
 
 ;; See:

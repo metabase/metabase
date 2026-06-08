@@ -13,7 +13,8 @@
 
 (use-fixtures :each
   (fn [thunk]
-    (mt/with-temporary-setting-values [custom-viz-enabled true]
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       custom-viz-enabled true]
       (thunk))))
 
 ;;; ------------------------------------------------ validate-bundle! ------------------------------------------------
@@ -142,22 +143,26 @@
 ;;; ------------------------------------------------ Asset Whitelist ------------------------------------------------
 
 (deftest resolve-asset-whitelist-test
-  (testing "SECURITY: resolve-asset enforces manifest whitelist"
+  (testing "SECURITY: resolve-asset only serves the manifest icon"
     (mt/with-premium-features #{:custom-viz}
-      (let [manifest {:name   "test-viz"
-                      :icon   "icon.svg"
-                      :assets ["icon.svg" "thumb.png"]}]
+      (let [manifest {:name "test-viz"
+                      :icon "icon.svg"}]
         (mt/with-temp [:model/CustomVizPlugin plugin {:identifier   "test-viz"
                                                       :display_name "test-viz"
                                                       :status       :active
                                                       :bundle_hash  "abc123"
                                                       :manifest     manifest}]
-          (testing "returns nil for assets not in manifest whitelist"
-            (is (nil? (cache/resolve-asset plugin "not-listed.png"))))
-          (testing "returns nil for path traversal attempts"
-            (is (nil? (cache/resolve-asset plugin "../../../etc/passwd"))))
-          (testing "returns nil for absolute path attempts"
-            (is (nil? (cache/resolve-asset plugin "/etc/passwd")))))))))
+          (with-redefs [cache/get-asset (fn [_ asset-name] (.getBytes (str "bytes:" asset-name) "UTF-8"))]
+            (testing "serves the manifest icon"
+              (is (= "bytes:icon.svg"
+                     (some-> (cache/resolve-asset plugin "icon.svg") (String. "UTF-8")))))
+            (testing "returns nil for any asset other than the icon"
+              (is (nil? (cache/resolve-asset plugin "thumb.png")))
+              (is (nil? (cache/resolve-asset plugin "not-listed.png"))))
+            (testing "returns nil for path traversal attempts"
+              (is (nil? (cache/resolve-asset plugin "../../../etc/passwd"))))
+            (testing "returns nil for absolute path attempts"
+              (is (nil? (cache/resolve-asset plugin "/etc/passwd"))))))))))
 
 ;;; ------------------------------------------------ insert-bundle!/save-bundle! state consistency ------------------------------------------------
 
@@ -212,7 +217,7 @@
 (deftest resolve-bundle-dev-url-takes-precedence-test
   (testing "resolve-bundle prefers dev URL over the uploaded bundle when both are present"
     (mt/with-premium-features #{:custom-viz}
-      (with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
+      (mt/with-dynamic-fn-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
         (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "precedence"
                                                         :display_name   "precedence"
                                                         :status         :active
@@ -220,8 +225,8 @@
                                                         :dev_bundle_url "http://localhost:5174"}]
           (let [dev-called? (atom false)
                 fs-called?  (atom false)]
-            (with-redefs [cache/fetch-dev-bundle (fn [_] (reset! dev-called? true) {:content "dev-js" :hash "d1"})
-                          cache/get-bundle      (fn [_] (reset! fs-called? true) {:content "fs-js" :hash "g1"})]
+            (mt/with-dynamic-fn-redefs [cache/fetch-dev-bundle (fn [_] (reset! dev-called? true) {:content "dev-js" :hash "d1"})
+                                        cache/get-bundle      (fn [_] (reset! fs-called? true) {:content "fs-js" :hash "g1"})]
               (let [result (cache/resolve-bundle {:id id})]
                 (is (true? @dev-called?) "dev bundle fetch should be called")
                 (is (false? @fs-called?) "filesystem bundle should not be called when dev URL is set")

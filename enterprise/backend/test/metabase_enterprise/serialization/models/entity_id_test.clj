@@ -69,6 +69,7 @@
     :model/MetabotMessage
     :model/MetabotPermissions
     :model/MetabotSourceFeedback
+    :model/MetabotUsedTable
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview

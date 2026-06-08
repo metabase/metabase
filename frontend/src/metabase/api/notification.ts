@@ -1,4 +1,8 @@
 import type {
+  AdminNotificationDetail,
+  AdminNotificationListParams,
+  AdminNotificationListResponse,
+  BulkNotificationPayload,
   CreateNotificationRequest,
   ListNotificationsRequest,
   Notification,
@@ -8,9 +12,12 @@ import type {
 
 import { Api } from "./api";
 import {
+  adminNotificationListTag,
   idTag,
   invalidateTags,
   listTag,
+  provideAdminNotificationListTags,
+  provideAdminNotificationTags,
   provideNotificationListTags,
   provideNotificationTags,
 } from "./tags";
@@ -46,8 +53,11 @@ export const notificationApi = Api.injectEndpoints({
         url: "/api/notification",
         body,
       }),
-      invalidatesTags: (notification, error) =>
-        invalidateTags(error, [listTag("notification")]),
+      invalidatesTags: (_notification, error) =>
+        invalidateTags(error, [
+          listTag("notification"),
+          adminNotificationListTag(),
+        ]),
     }),
     updateNotification: builder.mutation<
       Notification,
@@ -61,6 +71,7 @@ export const notificationApi = Api.injectEndpoints({
       invalidatesTags: (notification, error) =>
         invalidateTags(error, [
           listTag("notification"),
+          adminNotificationListTag(),
           ...(notification ? [idTag("notification", notification.id)] : []),
         ]),
     }),
@@ -87,6 +98,48 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
+    adminListNotifications: builder.query<
+      AdminNotificationListResponse,
+      AdminNotificationListParams | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/notification/admin",
+        params: params ?? undefined,
+      }),
+      providesTags: (result) =>
+        result
+          ? provideAdminNotificationListTags(result.data)
+          : [adminNotificationListTag()],
+    }),
+    bulkNotificationAction: builder.mutation<
+      { updated: number },
+      BulkNotificationPayload
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/admin/bulk",
+        body,
+      }),
+      invalidatesTags: (_result, error, { notification_ids }) =>
+        invalidateTags(
+          error,
+          provideAdminNotificationListTags(
+            notification_ids.map((id) => ({ id })),
+          ),
+        ),
+    }),
+    adminNotificationDetail: builder.query<
+      AdminNotificationDetail,
+      NotificationId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/notification/admin/${id}`,
+      }),
+      providesTags: (result) =>
+        result ? provideAdminNotificationTags(result) : [],
+    }),
   }),
 });
 
@@ -101,4 +154,7 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
+  useAdminListNotificationsQuery,
+  useBulkNotificationActionMutation,
+  useAdminNotificationDetailQuery,
 } = notificationApi;

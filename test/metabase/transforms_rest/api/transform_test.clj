@@ -1673,6 +1673,136 @@
                     (is (string? response))
                     (is (re-find #"unsupported type" response))))))))))))
 
+(deftest update-tag-ids-with-stale-checkpoint-field-test
+  (testing "Updating only tag_ids succeeds even when the checkpoint field has since been deleted (GDGT-2410)"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (with-transform-cleanup! [table-name "stale_checkpoint_test"]
+              ;; Insert directly to simulate a legacy broken transform whose checkpoint field was
+              ;; later deleted (e.g. its source table was re-synced), as happened with production
+              ;; transform 2344. A non-existent field id is equivalent to a deleted field: the
+              ;; validator's (select-one :model/Field id) returns nil either way. Such transforms
+              ;; predate the table-tag/checkpoint validation and can no longer be created via the API.
+              (mt/with-temp [:model/TransformTag {tag-id :id} {:name "stale-checkpoint-tag"}
+                             :model/Transform {transform-id :id}
+                             {:name   "Stale Checkpoint Transform"
+                              :source {:type  "query"
+                                       :query (lib/native-query (mt/metadata-provider)
+                                                                "SELECT id, name, category FROM transforms_products")
+                                       :source-incremental-strategy {:type "checkpoint"
+                                                                     :checkpoint-filter-field-id Integer/MAX_VALUE}}
+                              :target {:type "table-incremental"
+                                       :schema schema
+                                       :name table-name
+                                       :target-incremental-strategy {:type "append"}}}]
+                (transform.model/update-transform-tags! transform-id [tag-id])
+                (testing "removing the tag (tag_ids-only update) should not re-validate the stale checkpoint field"
+                  (let [updated (mt/user-http-request :crowberto :put 200
+                                                      (format "transform/%d" transform-id)
+                                                      {:tag_ids []})]
+                    (is (= [] (:tag_ids updated)))))))))))))
+
+(defn- native-query-with-table-tag
+  "Build a native query map with a `source_table` table template tag referring to `table-id`."
+  [sql table-id]
+  {:database (mt/id)
+   :type     :native
+   :native   {:query         sql
+              :template-tags {"source_table" {:id           "source_table"
+                                              :name         "source_table"
+                                              :display-name "Source Table"
+                                              :type         "table"
+                                              :table-id     table-id
+                                              :required     true}}}})
+
+(deftest incremental-table-tag-validated-on-create-test
+  (mt/with-premium-features #{}
+    (testing "POST /api/transform rejects a table-incremental native query with no table template tag (GDGT-2524)"
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema      (get-test-schema)
+                id-field-id (mt/id :transforms_products :id)]
+            (testing "with a checkpoint field selected"
+              (let [response (mt/user-http-request :crowberto :post 400 "transform"
+                                                   {:name   "No Table Tag"
+                                                    :source {:type  "query"
+                                                             :query (lib/native-query (mt/metadata-provider)
+                                                                                      "SELECT id, name FROM transforms_products")
+                                                             :source-incremental-strategy {:type "checkpoint"
+                                                                                           :checkpoint-filter-field-id id-field-id}}
+                                                    :target {:type "table-incremental"
+                                                             :schema schema
+                                                             :name "no_table_tag"
+                                                             :target-incremental-strategy {:type "append"}}})]
+                (is (string? response))
+                (is (re-find #"requires a table variable" response))))
+            (testing "even without a checkpoint field selected"
+              (let [response (mt/user-http-request :crowberto :post 400 "transform"
+                                                   {:name   "No Table Tag No Checkpoint"
+                                                    :source {:type  "query"
+                                                             :query (lib/native-query (mt/metadata-provider)
+                                                                                      "SELECT id, name FROM transforms_products")}
+                                                    :target {:type "table-incremental"
+                                                             :schema schema
+                                                             :name "no_table_tag_no_checkpoint"
+                                                             :target-incremental-strategy {:type "append"}}})]
+                (is (string? response))
+                (is (re-find #"requires a table variable" response))))))))))
+
+(deftest incremental-table-tag-validated-on-update-test
+  (mt/with-premium-features #{}
+    (testing "PUT /api/transform rejects removing the table tag from an incremental transform (GDGT-2524)"
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema      (get-test-schema)
+                id-field-id (mt/id :transforms_products :id)]
+            (testing "removing the table tag from the source query of an existing incremental transform"
+              (with-transform-cleanup! [table-name "remove_table_tag_test"]
+                (mt/with-temp [:model/Transform {transform-id :id}
+                               {:name   "Has Table Tag"
+                                :source {:type  "query"
+                                         :query (native-query-with-table-tag
+                                                 "SELECT id, name FROM {{source_table}}"
+                                                 (mt/id :transforms_products))
+                                         :source-incremental-strategy {:type "checkpoint"
+                                                                       :checkpoint-filter-field-id id-field-id}}
+                                :target {:type "table-incremental"
+                                         :schema schema
+                                         :name table-name
+                                         :target-incremental-strategy {:type "append"}}}]
+                  (let [response (mt/user-http-request :crowberto :put 400
+                                                       (format "transform/%d" transform-id)
+                                                       {:source {:type  "query"
+                                                                 :query (lib/native-query (mt/metadata-provider)
+                                                                                          "SELECT id, name FROM transforms_products")
+                                                                 :source-incremental-strategy {:type "checkpoint"
+                                                                                               :checkpoint-filter-field-id id-field-id}}})]
+                    (is (string? response))
+                    (is (re-find #"requires a table variable" response))))))
+            (testing "switching a non-incremental transform to incremental without a table tag"
+              (with-transform-cleanup! [table-name "switch_no_tag_test"]
+                (mt/with-temp [:model/Transform {transform-id :id}
+                               {:name   "Plain Transform"
+                                :source {:type  "query"
+                                         :query (lib/native-query (mt/metadata-provider)
+                                                                  "SELECT id, name FROM transforms_products")}
+                                :target {:type "table" :schema schema :name table-name}}]
+                  (let [response (mt/user-http-request :crowberto :put 400
+                                                       (format "transform/%d" transform-id)
+                                                       {:source {:type  "query"
+                                                                 :query (lib/native-query (mt/metadata-provider)
+                                                                                          "SELECT id, name FROM transforms_products")
+                                                                 :source-incremental-strategy {:type "checkpoint"
+                                                                                               :checkpoint-filter-field-id id-field-id}}
+                                                        :target {:type "table-incremental"
+                                                                 :schema schema
+                                                                 :name table-name
+                                                                 :target-incremental-strategy {:type "append"}}})]
+                    (is (string? response))
+                    (is (re-find #"requires a table variable" response))))))))))))
+
 (deftest search-filters-transform-source-types-test
   (mt/with-premium-features #{}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -1745,3 +1875,47 @@
             (search.tu/with-new-search-and-legacy-search
               (is (= #{native-id mbql-id}
                      (search-transform-ids search-term))))))))))
+
+(deftest get-runs-sort-by-duration-test
+  (testing "GET /api/transform/run supports sort-column=duration"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Transform     {tid :id}        {}
+                     ;; 1s short run
+                     :model/TransformRun  {short-id :id}   {:transform_id tid
+                                                            :status :succeeded
+                                                            :start_time #t "2026-01-01T00:00:00Z"
+                                                            :end_time   #t "2026-01-01T00:00:01Z"
+                                                            :run_method "cron"}
+                     ;; 10s longer run
+                     :model/TransformRun  {long-id :id}    {:transform_id tid
+                                                            :status :succeeded
+                                                            :start_time #t "2026-01-01T00:00:00Z"
+                                                            :end_time   #t "2026-01-01T00:00:10Z"
+                                                            :run_method "cron"}
+                     ;; in-progress run (no end_time, no measurable duration)
+                     :model/TransformRun  {running-id :id} {:transform_id tid
+                                                            :status :started
+                                                            :start_time #t "2026-01-01T00:00:00Z"
+                                                            :end_time   nil
+                                                            :is_active true
+                                                            :run_method "cron"}]
+        (let [run-id?      #{short-id long-id running-id}
+              seed-runs    (fn [data] (filter (comp run-id? :id) data))]
+          (testing "desc — longest completed runs first; in-progress (null duration) sinks to the bottom"
+            (let [resp (mt/user-http-request :crowberto :get 200 "transform/run"
+                                             :transform-ids [tid]
+                                             :sort-column "duration"
+                                             :sort-direction "desc")
+                  ids  (map :id (seed-runs (:data resp)))]
+              (is (= [long-id short-id running-id] ids))))
+          (testing "asc — shortest completed runs first; in-progress run still last"
+            (let [resp (mt/user-http-request :crowberto :get 200 "transform/run"
+                                             :transform-ids [tid]
+                                             :sort-column "duration"
+                                             :sort-direction "asc")
+                  ids  (map :id (seed-runs (:data resp)))]
+              (is (= [short-id long-id running-id] ids))))
+          (testing "unknown sort-column is rejected with a 400"
+            (mt/user-http-request :crowberto :get 400 "transform/run"
+                                  :sort-column "bogus"
+                                  :sort-direction "asc")))))))

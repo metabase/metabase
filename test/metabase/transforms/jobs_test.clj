@@ -340,6 +340,7 @@
     (mt/with-model-cleanup [:model/Notification
                             :model/TransformJobRun]
       (mt/with-fake-inbox
+        (mt/fetch-user :crowberto)
         (notification.seed/seed-notification!)
         (mt/with-temp [:model/TransformJob job {:name "stalled-cron-job"
                                                 :schedule "0 0 * * * ? *"}]
@@ -361,11 +362,43 @@
             (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
             (is (mt/received-email-body? :crowberto #"Timed out by metabase"))))))))
 
+(deftest timeout-old-runs-notifies-every-admin-test
+  (testing "a job failure notifies all admins (via the admin group) as a single consolidated BCC message"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-model-cleanup [:model/Notification]
+        (mt/with-temp [:model/User _admin1    {:is_superuser true  :email "owl@metabase.test"}
+                       :model/User _admin2    {:is_superuser true  :email "robin@metabase.test"}
+                       :model/User _non-admin {:is_superuser false :email "sparrow@metabase.test"}]
+          (mt/with-fake-inbox
+            (notification.seed/seed-notification!)
+            (mt/with-temp [:model/TransformJob    job  {:name     "stalled-cron-job"
+                                                        :schedule "0 0 * * * ? *"}
+                           :model/TransformJobRun _run {:job_id     (:id job)
+                                                        :run_method :cron
+                                                        :status     :started
+                                                        :is_active  true
+                                                        ;; backdate past the 4h timeout so the watchdog fires
+                                                        :updated_at #t "2000-01-01T00:00:00Z"}]
+              (#'jobs/timeout-and-notify-old-runs!)
+              (testing "every admin receives the failure email"
+                (is (contains? @mt/inbox "owl@metabase.test"))
+                (is (contains? @mt/inbox "robin@metabase.test")))
+              (testing "non-admins do not"
+                (is (not (contains? @mt/inbox "sparrow@metabase.test"))))
+              (testing "admins are addressed in a single BCC, not a per-admin loop"
+                ;; A per-admin loop would record an email under each admin whose :bcc lists only that
+                ;; admin. Consolidation records the same email object under every admin, with :bcc
+                ;; covering the whole admin group.
+                (let [admin-bcc (-> @mt/inbox (get "owl@metabase.test") first :bcc)]
+                  (is (contains? (set admin-bcc) "owl@metabase.test"))
+                  (is (contains? (set admin-bcc) "robin@metabase.test")))))))))))
+
 (deftest timeout-old-runs-does-not-notify-for-manual-runs-test
   (mt/with-premium-features #{:transforms-basic}
     (mt/with-model-cleanup [:model/Notification
                             :model/TransformJobRun]
       (mt/with-fake-inbox
+        (mt/fetch-user :crowberto)
         (notification.seed/seed-notification!)
         (mt/with-temp [:model/TransformJob job {:name "stalled-manual-job"
                                                 :schedule "0 0 * * * ? *"}]
@@ -594,14 +627,19 @@
                           on-enter        (fn [] (await-barrier barrier-enter))
                           on-exit         (fn [] (await-barrier barrier-exit) (.set tl-tripped true))
                           original-insert transforms.u/try-start-unless-already-running]
-                      (mt/with-dynamic-fn-redefs [transforms.u/try-start-unless-already-running
-                                                  (fn [transform-id run-method user-id]
-                                                    (on-enter)
-                                                    (let [[ret ex] (try
-                                                                     [(original-insert transform-id run-method user-id)]
-                                                                     (catch Throwable t [nil t]))]
-                                                      (on-exit)
-                                                      (if ex (throw ex) ret)))]
+                      ;; with-redefs, not with-dynamic-fn-redefs: run-transforms! dispatches each transform on an
+                      ;; ExecutorService worker (transforms-sql-worker), which doesn't convey dynamic bindings, so a
+                      ;; proxy-based redef is invisible there and the barrier choreography silently no-ops. A global
+                      ;; root swap is seen by every thread.
+                      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                      (with-redefs [transforms.u/try-start-unless-already-running
+                                    (fn [transform-id run-method user-id]
+                                      (on-enter)
+                                      (let [[ret ex] (try
+                                                       [(original-insert transform-id run-method user-id)]
+                                                       (catch Throwable t [nil t]))]
+                                        (on-exit)
+                                        (if ex (throw ex) ret)))]
                         (let [run1 (transforms.job-run/start-run! (:id job) :manual)
                               run2 (transforms.job-run/start-run! (:id job) :manual)
                               fut1 (future

@@ -5,11 +5,11 @@ import type {
   DeleteMappingModalValueType,
   GroupIds,
 } from "metabase/admin/types";
-import { Button } from "metabase/common/components/Button";
 import { Modal } from "metabase/common/components/Modal";
 import { ModalFooter } from "metabase/common/components/ModalContent";
 import { Radio } from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
+import { Button } from "metabase/ui";
 
 import {
   ModalHeader,
@@ -98,7 +98,7 @@ const DeleteGroupMappingModal = ({
         </ModalRadioRoot>
         <ModalFooter fullPageModal={false} formModal={true}>
           <Button onClick={onHide}>{t`Cancel`}</Button>
-          <Button danger onClick={handleConfirm}>
+          <Button variant="filled" color="error" onClick={handleConfirm}>
             {submitButtonLabels[value as DeleteMappingModalValueType]}
           </Button>
         </ModalFooter>

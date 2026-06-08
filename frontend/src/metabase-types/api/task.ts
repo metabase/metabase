@@ -101,12 +101,16 @@ export interface RunEntity {
   entity_name?: string;
 }
 
+export type TaskRunStartedAtParam =
+  | TaskRunDateFilterOption
+  | `${TaskRunDateFilterOption}~`;
+
 export type ListTaskRunsRequest = {
   "run-type"?: TaskRunType;
   "entity-type"?: TaskRunEntityType;
   "entity-id"?: number;
   status?: TaskRunStatus;
-  "started-at"?: TaskRunDateFilterOption;
+  "started-at"?: TaskRunStartedAtParam;
 } & PaginationRequest;
 
 export type ListTaskRunsResponse = {
@@ -115,5 +119,5 @@ export type ListTaskRunsResponse = {
 
 export type ListTaskRunEntitiesRequest = {
   "run-type": TaskRunType;
-  "started-at": TaskRunDateFilterOption;
+  "started-at": TaskRunStartedAtParam;
 };

@@ -25,6 +25,31 @@
           (is (=? {:to ["ngoc@metabase.com"]}
                   @sent-message)))))))
 
+(deftest email-channel-respects-recipient-cap-test
+  (testing "channel/send! :channel/email splits oversized recipient lists into batches of at most `email-max-recipients-per-message`"
+    (let [sent (atom [])]
+      (mt/with-dynamic-fn-redefs [email/send-email! (fn [_ details]
+                                                      (swap! sent conj (or (:bcc details) (:to details)))
+                                                      details)]
+        (mt/with-temporary-setting-values [email-from-address               "metamailman@metabase.com"
+                                           email-smtp-host                  "fake_smtp_host"
+                                           email-smtp-port                  587
+                                           email-max-recipients-per-message 10]
+          (let [recipients (mapv #(format "user-%03d@metabase.test" %) (range 25))]
+            (channel/send! {:type :channel/email}
+                           {:subject        "Job failed"
+                            :recipients     recipients
+                            :message-type   :html
+                            :message        "<p>uh oh</p>"
+                            :recipient-type :bcc})
+            (testing "one SMTP call per batch — 25 recipients capped at 10 → 3 batches"
+              (is (= 3 (count @sent))))
+            (testing "no batch exceeds the cap"
+              (is (every? #(<= (count %) 10) @sent)))
+            (testing "every recipient appears exactly once, in order"
+              (is (= recipients (vec (mapcat identity @sent))))
+              (is (apply distinct? (mapcat identity @sent))))))))))
+
 (deftest assoc-attachment-booleans-test
   (testing "assoc-attachment-booleans function"
     (testing "handles visualizer dashcards by matching on both card_id and dashboard_card_id"

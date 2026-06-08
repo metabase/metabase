@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.api
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
@@ -8,11 +9,13 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -78,10 +81,11 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
-    {:has_changes (:has-changes? result)
-     :remote_version (:remote-version result)
-     :local_version (:local-version result)
-     :cached (:cached? result)}))
+    (cond-> {:has_changes (:has-changes? result)
+             :remote_version (:remote-version result)
+             :local_version (:local-version result)
+             :cached (:cached? result)}
+      (:branch-missing? result) (assoc :branch_missing true))))
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
   "Return all models with changes that have not been pushed to the remote sync source in any
@@ -127,16 +131,60 @@
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
   []
+  (api/check-superuser)
   (when-let [task (remote-sync.task/most-recent-task)]
     (t2/hydrate task :status)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
   []
+  (api/check-superuser)
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
     (t2/hydrate (remote-sync.task/most-recent-task) :status)))
+
+(api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
+  "Test whether the Remote Sync credentials can reach the git repository.
+
+  When called with an empty body, validates the currently saved URL and token. When the body provides
+  `remote-sync-url` or `remote-sync-token`, those override the saved values — useful for verifying a
+  new Personal Access Token before saving. An obfuscated token (matching the existing token's masked
+  representation) is treated as \"unchanged\" and the stored token value is used for the test.
+
+  Only validates connection and authentication; branch existence is not checked here.
+
+  Returns `{:status :success}` on success. On failure, returns a 400 with a user-friendly error
+  message describing the connection problem.
+
+  Requires superuser permissions."
+  [_route-params
+   _query-params
+   {:keys [remote-sync-url remote-sync-token] :as body}
+   :- [:map
+       [:remote-sync-url {:optional true} [:maybe :string]]
+       [:remote-sync-token {:optional true} [:maybe :string]]]]
+  (api/check-superuser)
+  (let [current-token   (settings/remote-sync-token)
+        obfuscated?     (and remote-sync-token
+                             (= remote-sync-token (setting/obfuscate-value current-token)))
+        effective-token (if (or obfuscated? (not (contains? body :remote-sync-token)))
+                          current-token
+                          remote-sync-token)
+        effective-url   (or remote-sync-url (settings/remote-sync-url))]
+    (api/check-400 (not (str/blank? effective-url)) "Remote sync is not configured.")
+    (try
+      ;; Runs the URL protocol check; branch/type omitted so the branch-existence path is skipped.
+      (settings/check-git-settings! {:remote-sync-url   effective-url
+                                     :remote-sync-token effective-token})
+      ;; Force a fresh lsRemote so a rotated token is detected on every click, even when the
+      ;; cached JGit instance would otherwise short-circuit.
+      (-> (source.git/git-source effective-url "HEAD" effective-token nil)
+          source.git/branches)
+      {:status :success}
+      (catch Exception e
+        (throw (ex-info (impl/source-error-message e)
+                        {:status-code 400} e))))))
 
 (api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
   "Update Remote Sync related settings. You must be a superuser to do this."

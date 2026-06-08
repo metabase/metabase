@@ -340,7 +340,7 @@ describe("FilterPicker", () => {
         expect(screen.getByTestId("date-filter-picker")).toBeInTheDocument();
       });
 
-      it("should open the expression editor when column type isn't supported", () => {
+      it("should open the expression editor when column type isn't supported", async () => {
         const query = Lib.filter(
           createQuery(),
           -1,
@@ -350,6 +350,13 @@ describe("FilterPicker", () => {
 
         setup({ query, filter });
         expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
+        // the expression editor formats its source asynchronously; wait for it
+        // to settle so the resulting state updates stay inside act()
+        await waitFor(() =>
+          expect(
+            screen.getByTestId("custom-expression-query-editor"),
+          ).toHaveProperty("readOnly", false),
+        );
       });
     });
 
@@ -442,9 +449,11 @@ describe("FilterPicker", () => {
 
     it("should open the expression editor for unsupported expressions", async () => {
       setup(createQueryWithNullStringFilter());
-      expect(
-        screen.getByTestId("custom-expression-query-editor"),
-      ).toBeInTheDocument();
+      const editor = screen.getByTestId("custom-expression-query-editor");
+      expect(editor).toBeInTheDocument();
+      // the expression editor formats its source asynchronously; wait for it
+      // to settle so the resulting state updates stay inside act()
+      await waitFor(() => expect(editor).toHaveProperty("readOnly", false));
     });
 
     it("should update a filter with a numeric custom expression", async () => {

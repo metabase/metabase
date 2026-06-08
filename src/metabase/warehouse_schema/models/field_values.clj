@@ -35,7 +35,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -46,6 +45,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^Long entry-max-length
   "The maximum character length for a stored FieldValues entry."
   100)
@@ -54,24 +55,21 @@
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (long (* analyze/auto-list-cardinality-threshold entry-max-length)))
 
-(def ^:dynamic ^Integer *absolute-max-distinct-values-limit*
-  "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
-  less values (at the time of this writing) get marked as `auto-list` Fields, meaning we save all their distinct
-  values in a FieldValues object, which powers a list widget in the FE when using the Field for filtering in the QB.
-  Admins can however manually mark any Field as `list`, which is effectively ordering Metabase to keep FieldValues for
-  the Field regardless of its cardinality.
+(def ^:dynamic ^Integer *distinct-limit*
+  "Per-column row cap for warehouse-side distinct-value fetches. Used by the UNION ALL per-arm
+  `LIMIT`, by the per-field MBQL `lib/limit` in `distinct-values`, and by `persist-field-values!`
+  to detect whether the warehouse hit that cap.
 
-  Of course, if a User does something crazy, like mark a million-arity Field as List, we don't want Metabase to
-  explode trying to make their dreams a reality; we need some sort of hard limit to prevent catastrophes. So this
-  limit is effectively a safety to prevent Users from nuking their own instance for Fields that really shouldn't be
-  List Fields at all. For these very-high-cardinality Fields, we're effectively capping the number of
-  FieldValues that get could saved.
+  Fields with fewer distinct values than this get marked as `auto-list`, meaning we save all
+  their distinct values in a FieldValues object that powers the list widget in the FE. Admins
+  can also manually mark any Field as `list`, which keeps FieldValues regardless of cardinality.
 
-  This number should be a balance of:
+  If a user does something crazy like marking a million-arity Field as List, this limit
+  prevents Metabase from exploding trying to fetch all values. The trade-off:
 
-  * Not being too low, which would definitely result in GitHub issues along the lines of 'My 500-distinct-value Field
-    that I marked as List is not showing all values in the List Widget'
-  * Not being too high, which would result in Metabase running out of memory dealing with too many values"
+  * Too low → GitHub issues like 'My 500-distinct-value Field that I marked as List is not
+    showing all values in the List Widget'
+  * Too high → Metabase runs out of memory materialising the result set"
   (int 1000))
 
 (def ^java.time.Period advanced-field-values-max-age
@@ -353,61 +351,55 @@
 ;;; |                                                    CRUD fns                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- limit-max-char-len-rff :- ::qp.schema/rff
-  "Returns a rff that will stop when the total character length of the values exceeds `max-char-len`."
-  [rff max-char-len]
-  (fn [metadata]
-    (let [rf         (rff metadata)
-          total-char (volatile! 0)]
-      (fn
-        ([]
-         (rf))
-        ([result]
-         (rf result))
-        ([result row]
-         (assert (= 1 (count row)))
-         (vswap! total-char + (count (str (first row))))
-         (if (> @total-char max-char-len)
-           (reduced (assoc result ::reached-char-len-limit true))
-           (rf result row)))))))
+(defn limit-values
+  "Dedup, sort, and apply the `*total-max-length*` character cap to a sequence of scalar `values`.
+  Returns `{:values sorted-vec, :has_more_values bool}` where `:has_more_values` reflects only
+  the char-length cap (i.e. there are more distinct values beyond what fit in the byte budget).
+
+  NULL values are kept as a valid distinct value — they're meaningful in parameter widgets
+  (\"no value set\") and match the per-field MBQL path's storage behavior.
+
+  Used by the bulk / UNION distinct-fetching paths to finalize per-field value sets in memory."
+  [values]
+  (loop [str-length 0
+         acc        (sorted-set)
+         values     values]
+    (cond
+      (empty? values)
+      {:values (vec acc) :has_more_values false}
+
+      (contains? acc (first values))
+      (recur str-length acc (rest values))
+
+      :else
+      (let [new-str-length (+ str-length (count (str (first values))))]
+        (if (> new-str-length *total-max-length*)
+          {:values (vec acc) :has_more_values true}
+          (recur new-str-length (conj acc (first values)) (rest values)))))))
 
 ;;; TODO -- move into [[metabase.warehouse-schema.metadata-from-qp]] ??
 (mu/defn distinct-values
-  "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values
-  are past the threshold, this returns a subset of possible values values where the total length of all items is less
-  than [[*total-max-length*]]. It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned
-  values list is a subset of all possible values.
+  "Fetch raw distinct values for `field` from the warehouse, row-capped at
+  `*distinct-limit*`. Returns `{:values rows-as-1-tuples}`.
 
-  ;; (distinct-values (Field 1))
-  ;; ->  {:values          [[1], [2], [3]]
-          :has_more_values false}
-
-  (This function provides the values that normally get saved as a Field's FieldValues. You most likely should not be
-  using this directly in code outside of this namespace, unless it's for a very specific reason, such as certain cases
-  where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
+  Callers that persist these values via `persist-field-values!` get the char-length cap +
+  `:has_more_values` computation for free. Callers that need to surface values directly
+  (e.g. parameter widgets) should apply `take-by-length` + their own `:has_more_values`
+  derivation, as `parameters/field-values` does."
   [field :- [:or
              (ms/InstanceOf :model/Field)
              ::lib.schema.metadata/column]]
   (try
-    (let [field           (cond-> field
-                            (t2/model field) (lib-be/instance->metadata :metadata/column))
-          result          ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
-                           (:table-id field)
-                           (fn [query]
-                             (-> query
-                                 (lib/breakout field)
-                                 (lib/limit *absolute-max-distinct-values-limit*)))
-                           (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
-          distinct-values (-> result :data :rows)]
-      {:values          distinct-values
-       ;; has_more_values=true means the list of values we return is a subset of all possible values.
-       :has_more_values (or (true? (::reached-char-len-limit result))
-                            ;; `distinct-values` is from a query
-                            ;; with limit = [[*absolute-max-distinct-values-limit*]].
-                            ;; So, if the returned `distinct-values` has length equal to that exact limit,
-                            ;; we assume the returned values is just a subset of what we have in DB.
-                            (= (count distinct-values)
-                               *absolute-max-distinct-values-limit*))})
+    (let [field  (cond-> field
+                   (t2/model field) (lib-be/instance->metadata :metadata/column))
+          result ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
+                  (:table-id field)
+                  (fn [query]
+                    (-> query
+                        (lib/breakout field)
+                        (lib/limit *distinct-limit*)))
+                  qp.reducible/default-rff)]
+      {:values (-> result :data :rows)})
     (catch Throwable e
       (log/error e "Error fetching field values")
       nil)))
@@ -445,6 +437,12 @@
   [field-id]
   (get-latest-field-values field-id :full nil))
 
+(def ^:private ^:dynamic *fv-select-batch-size*
+  "Chunk size when fetching FieldValues by `field_id [:in …]`. Keeps a single SQL `IN (…)` clause
+  under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100). Wide tables can
+  have thousands of list-eligible fields, so we partition before issuing the select."
+  500)
+
 (defn batched-get-latest-full-field-values
   "Batched version of [[get-latest-full-field-values]] .
   Takes a list of field-ids and returns a map of field-id -> full FieldValues.
@@ -452,56 +450,78 @@
   [field-ids]
   (delete-duplicates-and-return-latest!
    (when (seq field-ids)
-     (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))))
+     (mapcat (fn [batch]
+               (t2/select :model/FieldValues :field_id [:in batch] :type :full :hash_key nil))
+             (partition-all *fv-select-batch-size* field-ids)))))
+
+(defn persist-field-values!
+  "Persist raw distinct values for a single field. Caller passes raw values fetched from the
+  warehouse; this function applies the in-memory cap via `limit-values`, detects whether the
+  warehouse-side row LIMIT fired (by counting raw values against `*distinct-limit*`), and
+  combines both signals into `:has_more_values`. Compares the result against `existing-fv` and
+  creates / updates / skips / deletes as appropriate. Returns one of `::fv-skipped`,
+  `::fv-updated`, `::fv-created`, or `::fv-deleted`.
+
+  - `existing-fv`: the current FieldValues row for this field, or `nil` if none exists.
+  - `raw-values`: raw distinct values from the warehouse (no pre-capping required).
+
+  Note that this only persists *Full* FieldValues. Advanced FieldValues for the same field are
+  deleted as a side effect of `clear-field-values-for-field!` when the capped value set is empty."
+  [field existing-fv raw-values]
+  (let [field-name      (or (:name field) (:id field))
+        row-cap-hit?    (>= (count raw-values) *distinct-limit*)
+        {values        :values
+         char-cap-hit? :has_more_values} (limit-values raw-values)
+        has-more-values (boolean (or row-cap-hit? char-cap-hit?))]
+    (cond
+      (empty? values)
+      (do
+        (clear-field-values-for-field! field)
+        ::fv-deleted)
+
+      ;; if FieldValues object doesn't exist create one
+      (nil? existing-fv)
+      (do
+        (log/debugf "Storing FieldValues for Field %s..." field-name)
+        (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
+                                  (constantly {:has_more_values       has-more-values
+                                               :values                values
+                                               :human_readable_values nil}))
+        ::fv-created)
+
+      ;; if existing FieldValues won't change, skip it
+      (and (= (:values existing-fv) values)
+           (= (:has_more_values existing-fv) has-more-values))
+      (do
+        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
+        ::fv-skipped)
+
+      ;; otherwise the FieldValues object already exists; update values in it
+      :else
+      (do
+        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+        (t2/update! :model/FieldValues (u/the-id existing-fv)
+                    (m/remove-vals nil?
+                                   {:has_more_values       has-more-values
+                                    :values                values
+                                    :human_readable_values (fixup-human-readable-values existing-fv values)}))
+        ::fv-updated))))
 
 (defn create-or-update-full-field-values!
-  "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
-   it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
-   created/updated/deleted as a result of this call.
+  "Create or update the full FieldValues object for `field`. If the FieldValues object already
+  exists, then update values for it; otherwise create a new FieldValues object with the newly
+  fetched values. Returns whether the field values were created / updated / deleted as a result
+  of this call.
 
-  Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
-  [field & {:keys [field-values human-readable-values]}]
+  Note that if the full FieldValues are create / updated / deleted, it'll delete all the
+  Advanced FieldValues of the same `field`."
+  [field & {:keys [field-values]}]
   (if (field-should-have-field-values? field)
-    (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
-          {unwrapped-values :values
-           :keys [has_more_values]} (distinct-values field)
-          ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
-          values                    (seq (map first unwrapped-values))
-          field-name                (or (:name field) (:id field))]
-      (cond
-        (and values
-             (= (:values field-values) values)
-             (= (:has_more_values field-values) has_more_values))
-        (do
-          (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
-          ::fv-skipped)
-
-        ;; if the FieldValues object already exists then update values in it
-        (and field-values values)
-        (do
-          (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-          (t2/update! :model/FieldValues (u/the-id field-values)
-                      (m/remove-vals nil?
-                                     {:has_more_values       has_more_values
-                                      :values                values
-                                      :human_readable_values (fixup-human-readable-values field-values values)}))
-          ::fv-updated)
-
-        ;; if FieldValues object doesn't exist create one
-        values
-        (do
-          (log/debugf "Storing FieldValues for Field %s..." field-name)
-          (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                    (constantly {:has_more_values       has_more_values
-                                                 :values                values
-                                                 :human_readable_values human-readable-values}))
-          ::fv-created)
-
-        ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
-        :else
-        (do
-          (clear-field-values-for-field! field)
-          ::fv-deleted)))
+    (let [existing-fv (or field-values (get-latest-full-field-values (u/the-id field)))
+          {rows :values} (distinct-values field)
+          ;; rows are 1-tuples — unwrap for storage.
+          raw-values  (seq (map first rows))]
+      (persist-field-values! field existing-fv raw-values))
     (do
       (clear-field-values-for-field! field)
       ::fv-deleted)))
@@ -509,13 +529,12 @@
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
   created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
-  {:arglists '([field] [field human-readable-values])}
-  [{field-id :id field-values :values :as field} & [human-readable-values]]
+  [{field-id :id field-values :values :as field}]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
     (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
       (if (or (not existing) (inactive? existing))
-        (case (create-or-update-full-field-values! field :human-readable-values human-readable-values)
+        (case (create-or-update-full-field-values! field)
           ::fv-deleted
           nil
 
@@ -529,40 +548,6 @@
         (do
           (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  On Demand                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- table-ids->table-id->is-on-demand?
-  "Given a collection of `table-ids` return a map of Table ID to whether or not its Database is subject to 'On Demand'
-  FieldValues updating. This means the FieldValues for any Fields belonging to the Database should be updated only
-  when they are used in new Dashboard or Card parameters."
-  [table-ids]
-  (let [table-ids            (set table-ids)
-        table-id->db-id      (when (seq table-ids)
-                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
-        db-id->is-on-demand? (when (seq table-id->db-id)
-                               (t2/select-pk->fn :is_on_demand 'Database
-                                                 :id [:in (set (vals table-id->db-id))]))]
-    (into {} (for [table-id table-ids]
-               [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
-
-(defn update-field-values-for-on-demand-dbs!
-  "Update the FieldValues for any Fields with `field-ids` if the Field should have FieldValues and it belongs to a
-  Database that is set to do 'On-Demand' syncing."
-  [field-ids]
-  (let [fields (when (seq field-ids)
-                 (filter field-should-have-field-values?
-                         (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
-                                     :semantic_type :visibility_type :table_id :has_field_values]
-                                    :id [:in field-ids])))
-        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
-    (doseq [{table-id :table_id, :as field} fields]
-      (when (table-id->is-on-demand? table-id)
-        (log/debugf "Field %s '%s' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                    (u/the-id field) (:name field))
-        (create-or-update-full-field-values! field)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Serialization                                                     |

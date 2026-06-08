@@ -14,6 +14,10 @@ export const WorkspaceListPage = {
     WorkspaceListPage.get().findByRole("button", {
       name: first ? "Create a workspace" : "New",
     }),
+  setupInstanceButton: () =>
+    WorkspaceListPage.get().findByRole("button", {
+      name: "Upload a workspace config",
+    }),
   workspaceList: () => WorkspaceListPage.get().findByTestId("workspace-list"),
   workspace: (name: string) =>
     WorkspaceListPage.get().findByRole("region", { name }),
@@ -153,17 +157,9 @@ export const WorkspaceInstancePage = {
   },
   database: (name: string) =>
     WorkspaceInstancePage.get().findByRole("region", { name }),
-  emptyState: () =>
-    WorkspaceInstancePage.get().findByText(
-      /Tables will be remapped here the first time a transform runs/,
-    ),
   remappingRow: (canonicalName: string) =>
     WorkspaceInstancePage.get().findByText(canonicalName),
-  setupButton: () =>
-    WorkspaceInstancePage.get().findByRole("button", {
-      name: "Set up a workspace",
-    }),
-  exitButton: () =>
+  leaveButton: () =>
     WorkspaceInstancePage.get().findByRole("button", {
       name: "Leave workspace",
     }),

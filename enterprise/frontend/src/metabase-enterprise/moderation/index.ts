@@ -9,7 +9,7 @@ import {
   ModerationReviewTextForQuestion,
 } from "./components/ModerationReviewBanner";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
-import QuestionModerationSection from "./components/QuestionModerationSection";
+import { QuestionModerationSection } from "./components/QuestionModerationSection";
 import { useCardMenuItems, useDashboardMenuItems } from "./hooks/useMenuItems";
 import {
   getModerationTimelineEvents,
