@@ -33,30 +33,6 @@ function getCursorForRow<TItem extends Item, TSection extends Section<TItem>>(
   };
 }
 
-/**
- * Builds a React `key` for a rendered row from the section's identity rather
- * than its flat position in the list. The picker's `sections` re-render while
- * their databases are still hydrating into metadata — list entries shift and
- * remount as each `/api/database` response settles — and a position-based key
- * would remount every row after the change, detaching whatever the user was
- * about to click (e.g. "Writable Postgres12" in metabase#52411, more likely
- * under CI network throttling). Keying on `section.key`/`section.name` keeps
- * each row's React instance stable across those updates. Sections with no
- * stable identity fall back to the index, preserving the previous behavior.
- */
-export function getRowKey<TItem extends Item, TSection extends Section<TItem>>(
-  row: Row<TItem, TSection>,
-): string {
-  const { section, sectionIndex } = row;
-  const sectionKey =
-    section.key ??
-    (typeof section.name === "string" && section.name.length > 0
-      ? `name:${section.name}`
-      : `index:${sectionIndex}`);
-  const rowKey = row.type === "item" ? `item:${row.itemIndex}` : row.type;
-  return `${sectionKey}::${rowKey}`;
-}
-
 export function getNextCursor<
   TItem extends Item,
   TSection extends Section<TItem>,
