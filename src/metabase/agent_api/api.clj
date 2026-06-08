@@ -406,22 +406,29 @@
   `agent:query:execute`), not `agent:sql:execute`. The opaque base64 payloads they accept (a
   query_handle, a continuation token) could carry `:type :native`; allowing that would let a token
   without the SQL-execution scope run raw SQL, defeating the scope split. Force native execution
-  onto `/v1/execute-sql`, which is correctly scoped. The decoded payload may carry the type as a
-  string or keyword, so normalize before comparing."
+  onto `/v1/execute-sql`, which is correctly scoped. Compare `:type` by set membership (json decode
+  yields a string, internal callers a keyword) so a non-string/keyword value from a malformed
+  payload doesn't itself throw before the shape is validated."
   [query-map]
-  (when (= :native (some-> query-map :type keyword))
+  (when (contains? #{:native "native"} (:type query-map))
     (throw (ex-info "Native queries are not supported here; use execute_sql instead."
-                    {:status-code 400}))))
+                    {:status-code 400 :query-map query-map}))))
 
 (defn- validate-serialized-query!
   "Sanity-check a decoded MBQL query map from a client-reachable base64 payload (query_handle or token).
-   Require a non-empty sequential `:stages`; otherwise `serialized-query-limit` and `apply-page-to-query`
-   would throw on the malformed shape and surface a 500 instead of a clean 400.
+   Require `:stages` to be a non-empty sequence of maps, and the last-stage `:limit` (if present) an
+   integer; otherwise `serialized-query-limit`, `clamp-total-limit`, and `apply-page-to-query` would
+   throw on the malformed shape and surface a 500 instead of a clean 400.
    Deep MBQL validation still happens in the QP at execution."
   [query-map]
-  (when-not (and (sequential? (:stages query-map)) (seq (:stages query-map)))
-    (throw (ex-info "Invalid query: expected a serialized MBQL query with a non-empty :stages."
-                    {:status-code 400}))))
+  (let [stages (:stages query-map)]
+    (when-not (and (sequential? stages) (seq stages) (every? map? stages))
+      (throw (ex-info "Invalid query: expected a serialized MBQL query with a non-empty :stages of maps."
+                      {:status-code 400 :query-map query-map})))
+    (when-let [limit (:limit (last stages))]
+      (when-not (int? limit)
+        (throw (ex-info "Invalid query: last-stage :limit must be an integer."
+                        {:status-code 400 :query-map query-map}))))))
 
 (defn- check-token-query-permissions!
   "Re-validate query permissions on the continuation-token path.
