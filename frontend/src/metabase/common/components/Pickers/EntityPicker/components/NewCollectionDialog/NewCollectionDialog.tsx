@@ -109,8 +109,7 @@ export const NewCollectionDialog = () => {
   return (
     <>
       <Button onClick={open} disabled={!canCreateHere}>
-        {lastCollection?.namespace === "transforms" ||
-        lastCollection?.namespace === "snippets"
+        {lastCollection?.namespace === "transforms"
           ? t`New folder`
           : t`New collection`}
       </Button>

@@ -92,14 +92,14 @@ describe("CollectionRowMenu", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("uses snippet folder labels for snippet collections", async () => {
+  it("uses snippet collection labels for snippet collections", async () => {
     setup({ collection: { namespace: "snippets" } });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Snippet folder options" }),
+      screen.getByRole("button", { name: "Snippet collection options" }),
     );
 
-    expect(getMenuItem(/Edit folder details/)).toBeInTheDocument();
+    expect(getMenuItem(/Edit collection details/)).toBeInTheDocument();
   });
 
   it("does not render permissions option for transform collections", async () => {

@@ -121,7 +121,7 @@ const LABELS = {
     unarchived: () => t`unarchived`,
   },
   "snippet-collection": {
-    subject: () => t`folder`,
+    subject: () => t`collection`,
     archived: () => t`archived`,
     unarchived: () => t`unarchived`,
   },
