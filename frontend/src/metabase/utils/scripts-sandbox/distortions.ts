@@ -30,7 +30,7 @@ import {
 
 /**
  * Build the common subset of a Near Membrane `distortionCallback` shared by
- * every Metabase plugin sandbox.
+ * every Metabase sandbox.
  *
  * This callback enforces:
  *   - blocked network-egress APIs (fetch, XHR, WebSocket, …) — see
@@ -44,13 +44,13 @@ import {
  *   - blocked `addEventListener` on `document`/`window` for typing /
  *     clipboard / storage event types.
  *
- * It does NOT handle DOM-node scoping (decoy nodes outside a plugin's
- * subtree, scope-aware `document.activeElement`). Scoping is plugin-specific
- * — custom-viz needs it for per-card isolation; data-app does not — so each
- * module composes that on top of this callback if it wants it.
+ * It does NOT handle DOM-node scoping (decoy nodes outside a script's
+ * subtree, scope-aware `document.activeElement`). Scoping is consumer-
+ * specific — custom-viz needs it for per-card isolation; data-app does not
+ * — so each module composes that on top of this callback if it wants it.
  *
  * `errorPrefix` is the bracketed label that appears in thrown messages,
- * e.g. `plugin 5` produces `[plugin 5] blocked createElement: script`.
+ * e.g. `data-app 5` produces `[data-app 5] blocked createElement: script`.
  */
 export function makeSandboxDistortionCallback(errorPrefix: string) {
   return function distortionCallback(value: object): object {
