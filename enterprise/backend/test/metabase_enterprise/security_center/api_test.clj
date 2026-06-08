@@ -72,7 +72,7 @@
 (deftest trial-subscription-gate-test
   (testing "Security Center is not available on trial subscriptions"
     (mt/with-premium-features #{:admin-security-center}
-      (with-redefs [token-check/is-trial? (constantly true)]
+      (mt/with-dynamic-fn-redefs [token-check/is-trial? (constantly true)]
         (testing "GET /api/ee/security-center returns 402 for trial"
           (is (=? {:message  "Security Center is not available on this instance."
                    :status   "error-premium-feature-not-available"}
@@ -183,13 +183,13 @@
       (testing "non-superuser gets 403"
         (mt/user-http-request :rasta :post 403 "ee/security-center/test-notification"))
       (testing "superuser can send test notification with no body — falls back to saved settings"
-        (with-redefs [notification/send-test-notification! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [notification/send-test-notification! (constantly nil)]
           (is (= {:success true}
                  (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification")))))
       (testing "returns 400 when no channels are configured"
-        (with-redefs [notification/send-test-notification!
-                      (fn [_] (throw (ex-info "No notification channels are configured."
-                                              {:status-code 400})))]
+        (mt/with-dynamic-fn-redefs [notification/send-test-notification!
+                                    (fn [_] (throw (ex-info "No notification channels are configured."
+                                                            {:status-code 400})))]
           (mt/user-http-request :crowberto :post 400 "ee/security-center/test-notification"))))))
 
 (deftest test-notification-uses-body-test

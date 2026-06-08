@@ -17,8 +17,8 @@ export const DetailsSection = ({
   slackChannelCount,
   httpHandler,
 }: DetailsSectionProps) => {
-  const cardId = notification.payload.card_id;
-  const cardName = notification.payload.card?.name;
+  const cardId = notification.payload?.card_id;
+  const cardName = notification.payload?.card?.name;
   const channelSummary = formatChannelSummary({
     emailRecipientCount,
     slackChannelCount,

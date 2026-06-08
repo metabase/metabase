@@ -2,7 +2,7 @@
   "Iframe-callback endpoints for the embedded MCP UI. The MCP iframe POSTs here to
    stash query payloads server-side so the agent never has to carry them in the
    model context — it just receives a handle UUID it can pass to the corresponding
-   MCP tool. Mounted as a sibling of `/api/mcp` so the JSON-RPC handler doesn't
+   MCP tool. Mounted as a sibling of `/api/metabase-mcp` so the JSON-RPC handler doesn't
    have to special-case non-protocol routes."
   (:require
    [clojure.string :as str]

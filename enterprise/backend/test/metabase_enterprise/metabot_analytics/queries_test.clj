@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
-   [metabase.metabot.tools :as metabot.tools]))
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -11,7 +12,7 @@
 ;; the API integration test.
 
 (defn- with-stubbed-tables! [tables thunk]
-  (with-redefs [analytics.queries/referenced-table-names (fn [_db _sql] tables)]
+  (mt/with-dynamic-fn-redefs [analytics.queries/referenced-table-names (fn [_db _sql] tables)]
     (thunk)))
 
 ;;; ------------------------- happy paths -------------------------

@@ -8,9 +8,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.indexes :as sync.indexes]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest sync-single-indexed-columns-test
@@ -30,19 +28,12 @@
                [{:field-name "first" :indexed? false :base-type :type/Integer}
                 {:field-name "second" :indexed? false :base-type :type/Integer}]
                [[1 2]]]]]
-      (mt/with-temp-test-data
-        ds
-        (try
-          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                         (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"]))
-          (sync/sync-database! (mt/db))
-          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
-          (is (not= true (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))
-          (finally
-            ;; clean the db so this test is repeatable
-            (t2/delete! :model/Database (mt/id))
-            (u/ignore-exceptions
-              (tx/destroy-db! driver/*driver* ds))))))))
+      (mt/with-temp-test-data ds
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"]))
+        (sync/sync-database! (mt/db))
+        (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
+        (is (not= true (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))))))
 
 (driver/register! ::not-support-index-test :abstract? true)
 
