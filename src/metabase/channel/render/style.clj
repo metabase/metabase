@@ -125,6 +125,43 @@
      :font-weight 700
      :color       (or color color-text-dark)})))
 
+(defn object-detail-table-style
+  "Style for the outer table wrapping an object-detail key/value view in a Pulse."
+  []
+  {:max-width       "100%"
+   :width           "100%"
+   :border          (str "1px solid " color-border)
+   :border-radius   "6px"
+   :border-collapse "separate"
+   :border-spacing  0})
+
+(defn object-detail-label-style
+  "Style for the label (left) cell of an object-detail key/value row in a Pulse."
+  []
+  (merge
+   (font-style)
+   {:font-size      :12.5px
+    :font-weight    700
+    :color          color-gray-3
+    :text-align     :left
+    :vertical-align :top
+    :white-space    :normal
+    :padding        "0.75em 1em"
+    :width          "40%"}))
+
+(defn object-detail-value-style
+  "Style for the value (right) cell of an object-detail key/value row in a Pulse."
+  []
+  (merge
+   (font-style)
+   {:font-size      :14px
+    :font-weight    700
+    :color          color-text-dark
+    :vertical-align :top
+    :white-space    :normal
+    :word-break     :break-word
+    :padding        "0.75em 1em"}))
+
 (defn- register-font! [filename]
   (with-open [is (io/input-stream (io/resource filename))]
     (.registerFont (GraphicsEnvironment/getLocalGraphicsEnvironment)

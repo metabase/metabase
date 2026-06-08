@@ -282,32 +282,12 @@
         cell-border                 (fn [idx] (if (= idx last-idx)
                                                 {:border-bottom 0}
                                                 {:border-bottom (str "1px solid " style/color-border)}))
-        label-style                 (merge (style/font-style)
-                                           {:font-size      :12.5px
-                                            :font-weight    700
-                                            :color          style/color-gray-3
-                                            :text-align     :left
-                                            :vertical-align :top
-                                            :white-space    :normal
-                                            :padding        "0.75em 1em"
-                                            :width          "40%"})
-        value-style                 (merge (style/font-style)
-                                           {:font-size      :14px
-                                            :font-weight    700
-                                            :color          style/color-text-dark
-                                            :vertical-align :top
-                                            :white-space    :normal
-                                            :word-break     :break-word
-                                            :padding        "0.75em 1em"})]
+        label-style                 (style/object-detail-label-style)
+        value-style                 (style/object-detail-value-style)]
     {:attachments nil
      :content
      [:div {:style (style/style (style/section-style))}
-      [:table {:style       (style/style {:max-width     "100%"
-                                          :width         "100%"
-                                          :border        (str "1px solid " style/color-border)
-                                          :border-radius "6px"
-                                          :border-collapse "separate"
-                                          :border-spacing  0})
+      [:table {:style       (style/style (style/object-detail-table-style))
                :cellpadding "0"
                :cellspacing "0"}
        [:tbody

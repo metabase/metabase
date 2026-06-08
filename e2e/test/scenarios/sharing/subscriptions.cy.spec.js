@@ -78,6 +78,35 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.setupSMTP();
     });
 
+    it("renders an object detail as a label/value table in a subscription email", () => {
+      const questionDetails = {
+        name: "Object detail static-viz smoke",
+        native: {
+          query: "SELECT 'Hammer' AS product, 19 AS price, NULL AS discount",
+        },
+        display: "object",
+      };
+
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ dashboardId }) => {
+          H.visitDashboard(dashboardId);
+        },
+      );
+
+      H.openAndAddEmailsToSubscriptions([
+        `${admin.first_name} ${admin.last_name}`,
+      ]);
+
+      H.sendEmailAndAssert(({ html }) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        expect(html).to.include("Hammer");
+        // "Empty" (the null column) is unique to the :object renderer — a table fallback leaves it blank.
+        expect(html).to.include("Empty");
+      });
+    });
+
     describe("with no existing subscriptions", () => {
       it("should not enable subscriptions without the recipient (metabase#17657)", () => {
         openDashboardSubscriptions();
