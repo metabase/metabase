@@ -16,6 +16,11 @@ import {
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
 import { useQuestionQuery } from "embedding-sdk-package/hooks/public/use-question-query";
 import { DataAppProvider } from "metabase/data_apps/components/DataAppProvider";
+import {
+  DataAppLink,
+  DataAppRouter,
+  useDataAppLocation,
+} from "metabase/data_apps/router";
 
 import { makeDistortionCallback } from "./sandbox/distortions";
 
@@ -85,6 +90,11 @@ export function createDataAppSandbox(
         CreateDashboardModal,
         // Collection
         CollectionBrowser,
+        // Routing — host-owned (see `metabase/data_apps/router/DataAppRouter`
+        // for why the bundle can't use `react-router-dom` directly)
+        DataAppRouter,
+        DataAppLink,
+        useDataAppLocation,
         get __dataAppFactory__() {
           return captured;
         },
