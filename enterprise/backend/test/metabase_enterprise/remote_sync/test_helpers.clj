@@ -266,6 +266,42 @@ width: fixed
         branches-atom (atom #{["main" "main-ref"] ["develop" "develop-ref"]})]
     (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom branches-atom managed-dirs)))
 
+(defn versioned-source
+  "A fake Source for exercising the `async-import!`/`async-export!` base-snapshot resolution end-to-end.
+
+  Unlike [[create-mock-source]] (which always reports \"mock-version\"), this lets a test control
+  versions: `:current` is the version `snapshot` reports, and `:trees` maps version -> {path content}.
+  `snapshot-at` returns a snapshot for a version present in `trees`, or nil for an unknown version (to
+  model a base orphaned by a force-push/rebase). `write-files!` records the written set under a fresh
+  version, advances `:current`, and returns the new version so an export can fast-forward onto it."
+  [& {:keys [current trees branch managed-dirs]
+      :or   {current "v-remote" branch "main" managed-dirs ingest/legal-top-level-paths}}]
+  (let [managed     (set managed-dirs)
+        state       (atom {:current current :trees (or trees {}) :counter 0})
+        mk-snapshot (fn mk-snapshot [version]
+                      (reify source.p/SourceSnapshot
+                        (list-files [_] (vec (keys (get-in @state [:trees version] {}))))
+                        (read-file [_ path] (get-in @state [:trees version path]))
+                        (write-files! [_ _message files]
+                          (let [n           (:counter (swap! state update :counter inc))
+                                new-version (str "written-" n)
+                                kept        (into {}
+                                                  (remove (fn [[p _]] (contains? managed (top-level-dir p))))
+                                                  (get-in @state [:trees version] {}))
+                                tree        (into kept
+                                                  (comp (remove #(str/blank? (:path %)))
+                                                        (map (juxt :path :content)))
+                                                  files)]
+                            (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
+                            new-version))
+                        (version [_] version)))]
+    (reify source.p/Source
+      (branches [_] [branch])
+      (create-branch [_ _ _] nil)
+      (default-branch [_] branch)
+      (snapshot [_] (mk-snapshot (:current @state)))
+      (snapshot-at [_ v] (when (contains? (:trees @state) v) (mk-snapshot v))))))
+
 (defn clean-object
   "Test fixture that resets the RemoteSyncObject table before running tests to prevent existing
   entries from affecting dirty state checks."

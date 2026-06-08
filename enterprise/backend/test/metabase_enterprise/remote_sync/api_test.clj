@@ -349,6 +349,121 @@
               (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 1))
                   "the un-pushed local change is left untouched (still dirty)"))))))))
 
+;;; --------------------------- async-import!/async-export! base-snapshot resolution ---------------------------
+;;; These drive the async-*! wrappers end-to-end through a version-controllable fake Source, so the real
+;;; base-snapshot resolution + 3-way merge run (no hand-built :base-snapshot, no stubbed compute-merge).
+;;; load-snapshot! (the slow app-DB reconcile) is stubbed and captured to assert which branch ran.
+
+(defn- card-yaml-fixture []
+  {"collections/c1eidaaaaaaaaaaaaaaaa_coll/cards/card1eidaaaaaaaaaaaaa_q.yaml"
+   (test-helpers/generate-card-yaml "card1eidaaaaaaaaaaaaa" "Q1" "c1eidaaaaaaaaaaaaaaaa")})
+
+(deftest async-import-not-diverged-noop-test
+  (testing "import merge=true with the remote NOT advanced (last-version == current): no-op success, local stays dirty, no reconcile load"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                       remote-sync-token  "test-token"
+                                       remote-sync-branch "main"]
+      (let [loaded (atom [])
+            src    (test-helpers/versioned-source :current "v1" :trees {"v1" {}})]
+        (with-redefs [source/source-from-settings  (constantly src)
+                      remote-sync.task/last-version (constantly "v1")
+                      impl/load-snapshot!           (fn [snap & _] (swap! loaded conj (source.p/version snap)) nil)]
+          (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id 9001 :model_name "Local Card"
+                                               :model_collection_id 1 :status "update"
+                                               :status_changed_at (java.time.OffsetDateTime/now)})
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+                task (wait-for-task-completion task_id)]
+            (is (remote-sync.task/successful? task))
+            (is (empty? @loaded) "no reconcile load happens when there is nothing to fold in")
+            (is (= "update" (t2/select-one-fn :status :model/RemoteSyncObject :model_id 9001))
+                "the un-pushed local change is left dirty")))))))
+
+(deftest async-import-diverged-resolves-base-test
+  (testing "import merge=true when diverged resolves the base from last-version and folds in a remote-only entity"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                       remote-sync-token  "test-token"
+                                       remote-sync-branch "main"]
+      (let [loaded (atom [])
+            src    (test-helpers/versioned-source :current "v2" :trees {"v1" {} "v2" (card-yaml-fixture)})]
+        (with-redefs [source/source-from-settings  (constantly src)
+                      remote-sync.task/last-version (constantly "v1") ; != current -> diverged, base resolvable
+                      ;; simulate load-snapshot!'s contract (run the in-txn finalize: restore-dirty +
+                      ;; set-version) without the slow app-DB reconcile
+                      impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
+                                                      (swap! loaded conj :loaded)
+                                                      (when finalize! (finalize!))
+                                                      nil)]
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+                task (wait-for-task-completion task_id)]
+            (is (remote-sync.task/successful? task))
+            (is (= "v2" (:version task)) "version advances to the remote tip")
+            (is (seq @loaded) "the real 3-way merge ran and its result was reconciled into the app DB")))))))
+
+(deftest async-import-base-unreachable-test
+  (testing "import merge=true when the base commit is unreachable (orphaned) -> conflict, no reconcile load"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                       remote-sync-token  "test-token"
+                                       remote-sync-branch "main"]
+      (let [loaded (atom [])
+            src    (test-helpers/versioned-source :current "v2" :trees {"v2" (card-yaml-fixture)})] ; "gone" absent
+        (with-redefs [source/source-from-settings  (constantly src)
+                      remote-sync.task/last-version (constantly "gone")
+                      impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+                task (wait-for-task-completion task_id)]
+            (is (remote-sync.task/conflict? task))
+            (is (empty? @loaded) "no load on an unresolvable-base conflict")))))))
+
+(deftest async-import-no-prior-sync-test
+  (testing "import merge=true with no prior sync (last-version nil) -> conflict (no base to merge against)"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                       remote-sync-token  "test-token"
+                                       remote-sync-branch "main"]
+      (let [src (test-helpers/versioned-source :current "v2" :trees {"v2" (card-yaml-fixture)})]
+        (with-redefs [source/source-from-settings  (constantly src)
+                      remote-sync.task/last-version (constantly nil)
+                      impl/load-snapshot!           (fn [_snap & _] nil)]
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+                task (wait-for-task-completion task_id)]
+            (is (remote-sync.task/conflict? task))))))))
+
+(deftest async-export-diverged-resolves-base-test
+  (testing "export merge=true when diverged resolves the base, runs the real merge, writes, and reconciles"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
+        (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                           remote-sync-token  "test-token"
+                                           remote-sync-branch "main"]
+          (let [loaded (atom [])
+                src    (test-helpers/versioned-source :current "v2" :trees {"v1" {} "v2" {}})]
+            (with-redefs [source/source-from-settings  (constantly src)
+                          remote-sync.task/last-version (constantly "v1") ; diverged, base resolvable
+                          impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
+                                                          (swap! loaded conj :loaded)
+                                                          (when finalize! (finalize!))
+                                                          nil)]
+              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main" :merge true})
+                    task (wait-for-task-completion task_id)]
+                (is (remote-sync.task/successful? task))
+                (is (seq @loaded) "the merged result is reconciled back into the app DB (the pull half)")))))))))
+
+(deftest async-export-base-unreachable-test
+  (testing "export merge=true when the base commit is unreachable -> conflict, nothing written"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
+        (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                           remote-sync-token  "test-token"
+                                           remote-sync-branch "main"]
+          (let [loaded (atom [])
+                src    (test-helpers/versioned-source :current "v2" :trees {"v2" {}})] ; "gone" absent
+            (with-redefs [source/source-from-settings  (constantly src)
+                          remote-sync.task/last-version (constantly "gone")
+                          impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
+              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main" :merge true})
+                    task (wait-for-task-completion task_id)]
+                (is (remote-sync.task/conflict? task))
+                (is (empty? @loaded) "no reconcile on an unresolvable-base conflict")))))))))
+
 ;;; ------------------------------------------------- Export Endpoint -------------------------------------------------
 
 (deftest export-errors-in-read-only-mode-test
