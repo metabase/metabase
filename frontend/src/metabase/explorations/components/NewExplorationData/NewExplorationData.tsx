@@ -27,6 +27,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
+  CollectionId,
   CreateExplorationRequest,
   MetricDimension,
   Timeline,
@@ -90,14 +91,15 @@ export function buildCreateExplorationRequest(
   prompt: string,
   blocks: ExplorationBlock[],
   timelines: Timeline[],
+  collectionId: CollectionId | null,
 ): CreateExplorationRequest {
   const trimmedPrompt = prompt.trim();
 
   return {
     name,
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
-    // Timelines are thread-scoped — sent once, not per group.
     timeline_ids: timelines.map((tl) => tl.id),
+    collection_id: collectionId,
     groups: blocks.map(blockToGroup),
   };
 }
@@ -107,6 +109,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     blocks,
     timelines,
     name,
+    collection,
     removeBlock,
     toggleDimensionSelected,
     toggleMetricSelected,
@@ -153,6 +156,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       prompt,
       blocks,
       timelines,
+      collection.id ?? null,
     );
     try {
       const exploration = await createExploration(request).unwrap();
@@ -173,6 +177,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     blocks,
     timelines,
     name,
+    collection.id,
     sendToast,
   ]);
 

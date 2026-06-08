@@ -221,7 +221,7 @@ describe("NewExplorationData (Research plan)", () => {
         [dimCreatedAt, dimPlan],
         new Set([dimCreatedAt.id]),
       );
-      const request = buildCreateExplorationRequest("n", "", [block], []);
+      const request = buildCreateExplorationRequest("n", "", [block], [], null);
 
       expect(request.groups[0].dimensions.map((d) => d.dimension_id)).toEqual([
         dimCreatedAt.id,
@@ -235,7 +235,7 @@ describe("NewExplorationData (Research plan)", () => {
         [dimPlan],
         new Set([churnMetric.id]),
       );
-      const request = buildCreateExplorationRequest("n", "", [block], []);
+      const request = buildCreateExplorationRequest("n", "", [block], [], null);
 
       expect(request.groups[0].metrics.map((m) => m.card_id)).toEqual([
         churnMetric.id,
@@ -251,6 +251,7 @@ describe("NewExplorationData (Research plan)", () => {
           mockDimensionBlock(dimPlan, [churnMetric]),
         ],
         [releasesTimeline, launchTimeline],
+        null,
       );
 
       expect(request.timeline_ids).toEqual([7, 9]);
@@ -269,6 +270,7 @@ describe("NewExplorationData (Research plan)", () => {
         "",
         [mockMetricBlock(revenueMetric, [dimCreatedAt])],
         [],
+        null,
       );
 
       expect(request.timeline_ids).toEqual([]);
@@ -276,10 +278,10 @@ describe("NewExplorationData (Research plan)", () => {
 
     it("trims the prompt and falls back to null when blank", () => {
       expect(
-        buildCreateExplorationRequest("n", "  hello  ", [], []).prompt,
+        buildCreateExplorationRequest("n", "  hello  ", [], [], null).prompt,
       ).toBe("hello");
       expect(
-        buildCreateExplorationRequest("n", "   ", [], []).prompt,
+        buildCreateExplorationRequest("n", "   ", [], [], null).prompt,
       ).toBeNull();
     });
   });

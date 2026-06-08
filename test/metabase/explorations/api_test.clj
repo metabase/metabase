@@ -3,7 +3,9 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [java-time.api :as t]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.documents.core :as documents]
    [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.api :as explorations.api]
    [metabase.explorations.groups :as explorations.groups]
@@ -853,7 +855,9 @@
   (testing "Only a user with write access can restart an exploration"
     (mt/with-temp [:model/User owner {:email "rs-owner@example.com"}
                    :model/User other {:email "rs-other@example.com"}]
-      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration" {:name "private"})]
+      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration"
+                                            {:name "private"
+                                             :collection_id (:id (collection/user->personal-collection (:id owner)))})]
         (mt/user-http-request other :post 403 (format "exploration/%d/restart" eid))
         (let [resp (mt/user-http-request owner :post 200 (format "exploration/%d/restart" eid))]
           (is (= 1 (count (:threads resp))) "still a single thread after restart"))))))
@@ -862,7 +866,9 @@
   (testing "Only the creator (or a superuser) can GET an exploration"
     (mt/with-temp [:model/User owner {:email "p-owner@example.com"}
                    :model/User other {:email "p-other@example.com"}]
-      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration" {:name "private"})]
+      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration"
+                                            {:name "private"
+                                             :collection_id (:id (collection/user->personal-collection (:id owner)))})]
         (mt/user-http-request other :get 403 (format "exploration/%d" eid))
         (let [resp (mt/user-http-request owner :get 200 (format "exploration/%d" eid))]
           (is (= eid (:id resp))))))))
@@ -1141,7 +1147,9 @@
   (testing "GET /:id/queries enforces the same read-check as the parent exploration"
     (mt/with-temp [:model/User owner {:email "lq-owner@example.com"}
                    :model/User other {:email "lq-other@example.com"}]
-      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration" {:name "lq-private"})]
+      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration"
+                                            {:name "lq-private"
+                                             :collection_id (:id (collection/user->personal-collection (:id owner)))})]
         (mt/user-http-request other :get 403 (format "exploration/%d/queries" eid))))))
 
 (defn- store-fake-result!
@@ -1205,6 +1213,7 @@
                    :model/Card metric (valid-metric-card (:id owner))]
       (let [resp (create-exploration! owner
                                       {:name "qr-private"
+                                       :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                        :dimensions [{:dimension_id "d1"}]})
@@ -1381,6 +1390,7 @@
                    :model/Card metric (valid-metric-card (:id owner))]
       (let [resp (create-exploration! owner
                                       {:name "mark-private"
+                                       :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                        :dimensions [{:dimension_id "d1"}]})
@@ -1487,7 +1497,9 @@
   (testing "Other users can't list or add documents on someone else's exploration thread"
     (mt/with-temp [:model/User owner {:email "doc-owner@example.com"}
                    :model/User other {:email "doc-other@example.com"}]
-      (let [exp (mt/user-http-request owner :post 200 "exploration" {:name "private"})
+      (let [exp (mt/user-http-request owner :post 200 "exploration"
+                                      {:name "private"
+                                       :collection_id (:id (collection/user->personal-collection (:id owner)))})
             tid (-> exp :threads first :id)
             url (str "exploration/thread/" tid "/documents")]
         (mt/user-http-request other :get 403 url)
@@ -1894,6 +1906,27 @@
         (is (= "new" (:name resp)))
         (is (= "yo"  (:description resp)))))))
 
+(deftest exploration-create-in-collection-test
+  (testing "POST / places the exploration in the requested collection when the caller can write it"
+    (mt/with-temp [:model/Collection c {}]
+      (mt/with-non-admin-groups-no-collection-perms (:id c)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c)
+        (let [resp (mt/user-http-request :rasta :post 200 "exploration"
+                                         {:name "in-coll" :collection_id (:id c)})]
+          (is (= (:id c) (:collection_id resp))))))))
+
+(deftest exploration-create-defaults-to-root-test
+  (testing "POST / with no :collection_id leaves the exploration in the root collection"
+    (let [resp (mt/user-http-request :rasta :post 200 "exploration" {:name "rootish"})]
+      (is (nil? (:collection_id resp))))))
+
+(deftest exploration-create-requires-write-on-collection-test
+  (testing "POST / refuses when the caller lacks write on the destination collection"
+    (mt/with-temp [:model/Collection c {}]
+      (mt/with-non-admin-groups-no-collection-perms (:id c)
+        (mt/user-http-request :rasta :post 403 "exploration"
+                              {:name "denied" :collection_id (:id c)})))))
+
 (deftest exploration-put-move-to-collection-test
   (testing "PUT /:id can move an exploration into a collection the caller can write"
     (mt/with-temp [:model/Collection c {}
@@ -2163,3 +2196,110 @@
         ;; :rasta (member of All Users only) gets 403; admin :crowberto bypasses collection perms.
         (mt/user-http-request :rasta :post 403 (str "exploration/thread/" (:id thread) "/cancel"))
         (mt/user-http-request :crowberto :post 200 (str "exploration/thread/" (:id thread) "/cancel"))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       GET /api/exploration/mine                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- touch-revision!
+  "Insert a bare `revision` row attributing a touch of `model`/`id` to `user-id` at `ts`. The
+  `/mine` query keys off `user_id` + `timestamp` only, so the snapshot can be empty."
+  [model id user-id ts]
+  (t2/insert! :model/Revision
+              {:model model :model_id id :user_id user-id :object {}
+               :timestamp ts :is_creation false :is_reversion false :most_recent false}))
+
+(defn- mine-names
+  "Names in the order `GET /mine` returns them for `user`."
+  [user & opts]
+  (mapv :name (:data (apply mt/user-http-request user :get 200 "exploration/mine" opts))))
+
+(defn- m-index-by
+  "Index a `GET /mine` response's `:data` rows by `:name`."
+  [resp]
+  (into {} (map (juxt :name identity)) (:data resp)))
+
+(deftest mine-membership-and-permissions-test
+  (testing "GET /mine returns explorations the caller created or edited, excluding moved-away and archived"
+    (mt/with-temp [:model/User       me  {:email "mine-member@example.com"}
+                   :model/User       other {:email "mine-other@example.com"}
+                   :model/Collection readable {:name "readable"}
+                   :model/Collection hidden   {:name "hidden"}]
+      ;; Temp collections auto-grant All Users read-write; revoke it on `hidden` so the caller
+      ;; (a fresh user, member of All Users only) genuinely cannot see it.
+      (perms/revoke-collection-permissions! (perms-group/all-users) (:id hidden))
+      (mt/with-temp [:model/Exploration _created  {:name "created-by-me" :creator_id (:id me) :collection_id (:id readable)}
+                     :model/Exploration edited    {:name "edited-by-me"  :creator_id (:id other) :collection_id (:id readable)}
+                     :model/Exploration _untouched {:name "untouched"    :creator_id (:id other) :collection_id (:id readable)}
+                     :model/Exploration _moved    {:name "moved-away"    :creator_id (:id me) :collection_id (:id hidden)}
+                     :model/Exploration _archived {:name "archived"      :creator_id (:id me) :collection_id (:id readable) :archived true}]
+        ;; `me` edited an exploration `other` created.
+        (touch-revision! "Exploration" (:id edited) (:id me) (t/offset-date-time))
+        (let [resp (mt/user-http-request me :get 200 "exploration/mine")
+              by-name (m-index-by resp)]
+          (testing "created-by-me is present"
+            (is (contains? by-name "created-by-me")))
+          (testing "edited-by-me is present even though someone else created it"
+            (is (contains? by-name "edited-by-me"))
+            (testing "and the hydrated creator is the other user, not the caller"
+              (is (= (:email other) (-> by-name (get "edited-by-me") :creator :email)))))
+          (testing "an exploration the caller never touched is absent"
+            (is (not (contains? by-name "untouched"))))
+          (testing "an exploration moved into a collection the caller can't read is absent"
+            (is (not (contains? by-name "moved-away"))))
+          (testing "an archived exploration is absent"
+            (is (not (contains? by-name "archived"))))
+          (testing "total reflects the visible, post-filter count"
+            (is (= 2 (:total resp))))
+          (testing "rows don't leak the internal total_count column"
+            (is (not (contains? (get by-name "created-by-me") :total_count)))))))))
+
+(deftest mine-ordering-composes-document-edits-test
+  (testing "GET /mine sorts by the caller's most-recent touch, counting scratchpad/document edits"
+    (mt/with-temp [:model/User       me {:email "mine-order@example.com"}
+                   :model/Collection coll {:name "order-coll"}
+                   ;; created-only: only touch is creation (no revisions)
+                   :model/Exploration _created-only {:name "created-only" :creator_id (:id me) :collection_id (:id coll)}
+                   ;; meta-edited: a later Exploration revision
+                   :model/Exploration meta-edited {:name "meta-edited" :creator_id (:id me) :collection_id (:id coll)}
+                   ;; doc-edited: a still-later Document (scratchpad) revision, even though its own
+                   ;; Exploration row was never edited after creation
+                   :model/Exploration doc-edited {:name "doc-edited" :creator_id (:id me) :collection_id (:id coll)}
+                   :model/ExplorationThread thread {:exploration_id (:id doc-edited) :position 0}
+                   :model/Document doc {:name "sp" :document {:type "doc" :content []}
+                                        :content_type documents/prose-mirror-content-type
+                                        :creator_id (:id me) :collection_id (:id coll)
+                                        :exploration_thread_id (:id thread)}]
+      (let [now (t/offset-date-time)]
+        (touch-revision! "Exploration" (:id meta-edited) (:id me) (t/plus now (t/days 1)))
+        (touch-revision! "Document"     (:id doc)         (:id me) (t/plus now (t/days 2))))
+      (testing "doc edit (newest touch) sorts above the metadata edit, which sorts above created-only"
+        (is (= ["doc-edited" "meta-edited" "created-only"]
+               (mine-names me)))))))
+
+(deftest mine-pagination-test
+  (testing "GET /mine pages with a stable order and a post-filter total"
+    (mt/with-temp [:model/User       me {:email "mine-page@example.com"}
+                   :model/Collection coll {:name "page-coll"}
+                   :model/Exploration _e1 {:name "e1" :creator_id (:id me) :collection_id (:id coll)}
+                   :model/Exploration _e2 {:name "e2" :creator_id (:id me) :collection_id (:id coll)}
+                   :model/Exploration _e3 {:name "e3" :creator_id (:id me) :collection_id (:id coll)}]
+      (let [page1 (mt/user-http-request me :get 200 "exploration/mine" :limit 2 :offset 0)
+            page2 (mt/user-http-request me :get 200 "exploration/mine" :limit 2 :offset 2)]
+        (testing "total is the same across pages and reflects all three"
+          (is (= 3 (:total page1)))
+          (is (= 3 (:total page2))))
+        (testing "the envelope echoes limit/offset"
+          (is (= 2 (:limit page1)))
+          (is (= 0 (:offset page1)))
+          (is (= 2 (:offset page2))))
+        (testing "the two pages partition the result set with no overlap"
+          (is (= 2 (count (:data page1))))
+          (is (= 1 (count (:data page2))))
+          (is (= #{"e1" "e2" "e3"}
+                 (into #{} (map :name) (concat (:data page1) (:data page2)))))))
+      (testing "an unpaged request returns everything with nil limit/offset"
+        (let [resp (mt/user-http-request me :get 200 "exploration/mine")]
+          (is (nil? (:limit resp)))
+          (is (nil? (:offset resp)))
+          (is (= 3 (count (:data resp)))))))))

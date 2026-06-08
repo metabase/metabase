@@ -48,7 +48,7 @@ export interface CreateExplorationRequest {
   name: string;
   description?: string | null;
   prompt?: string | null;
-  // Timelines are thread-scoped, not per-group.
+  collection_id?: CollectionId | null;
   timeline_ids?: TimelineId[];
   groups: {
     type: "metric" | "dimension";

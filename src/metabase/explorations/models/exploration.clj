@@ -1,8 +1,6 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.search.spec :as search.spec]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -30,17 +28,6 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
-
-(t2/define-before-insert :model/Exploration
-  [exploration]
-  ;; Default collection_id to the creator's Personal Collection so a brand-new
-  ;; exploration is private to its creator. Callers may pass a `:collection_id`
-  ;; explicitly (including `nil` for the root collection) to override.
-  (cond-> exploration
-    (not (contains? exploration :collection_id))
-    (assoc :collection_id (some-> (or (:creator_id exploration) api/*current-user-id*)
-                                  collection/user->personal-collection
-                                  :id))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]
