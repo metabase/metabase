@@ -398,6 +398,35 @@
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
                                   {:query (orders-query :limit 1000)})))))
 
+(deftest combined-query-accepts-resolved-handle-test
+  (testing "`/v2/query` executes a base64 `:query` string (a resolved query_handle) directly,
+            skipping the representations pipeline"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query
+                                                        :order-by [["asc" {} (orders-field-ref "ID")]]
+                                                        :limit    5)})]
+      (is (=? {:status             "completed"
+               :row_count          5
+               :continuation_token nil?
+               :data               {:cols sequential?
+                                    :rows (fn [rows] (= 5 (count rows)))}}
+              (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                    {:query (:query construct-resp)})))))
+  (testing "Pagination works on the resolved-handle path: the per-query :limit drives the
+            continuation_token across pages"
+    (let [page-size      200
+          total-rows     250
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query
+                                                        :order-by [["asc" {} (orders-field-ref "ID")]]
+                                                        :limit    total-rows)})
+          page1          (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                               {:query (:query construct-resp)})
+          page2          (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                               {:continuation_token (:continuation_token page1)})]
+      (is (=? {:row_count page-size :continuation_token string?} page1))
+      (is (=? {:row_count (- total-rows page-size) :continuation_token nil?} page2)))))
+
 (defn- make-continuation-token [pagination]
   (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
        :pagination pagination}

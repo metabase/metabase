@@ -300,14 +300,24 @@
                [400 "Invalid continuation token: page must be a positive integer"])
     decoded))
 
+(defn- clamp-total-limit
+  "Default a missing :limit and cap it at the combined endpoint's hard maximum.
+   This is the app-level total-row budget enforced across paginated responses; each page's QP-level
+   cap comes from `:page.items`, which `remaining-page-rows` clamps to respect this total."
+  [limit]
+  (min (or limit default-query-row-limit) max-total-row-limit))
+
 (defn- total-row-limit
-  "The user's requested :limit, defaulted when absent and capped at the combined
-   endpoint's hard maximum. This is the app-level total-row budget enforced across
-   paginated responses; each page's QP-level cap comes from `:page.items`, which
-   `remaining-page-rows` clamps to respect this total."
+  "The user's requested :limit read from a resolved lib query, defaulted and capped."
   [live-query]
-  (min (or (lib/current-limit live-query) default-query-row-limit)
-       max-total-row-limit))
+  (clamp-total-limit (lib/current-limit live-query)))
+
+(defn- serialized-query-limit
+  "Read the last-stage :limit from a serialized MBQL 5 query map — the `lib/current-limit`
+   equivalent for the plain-map form carried by a query_handle (already resolved, so we read it
+   off the map rather than rehydrating a live query)."
+  [query-map]
+  (get-in query-map [:stages (dec (count (:stages query-map))) :limit]))
 
 (defn- rows-before-page
   "Total rows consumed by the pages preceding `page`. Single source of truth for
@@ -356,15 +366,24 @@
                        :max-results-bare-rows page-size}))
 
 (mr/def ::query-request
-  "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <external-query>}`,
-  same shape as /v2/construct-query) or a `:continuation_token` from a prior response.
+  "Request body for /v2/query, one of three shapes:
+    - `{:continuation_token <string>}` from a prior response (pagination);
+    - `{:query <base64-string>}` — a query_handle resolved by the MCP layer to its stored base64
+      MBQL; already resolved, so it's executed directly (like /v1/execute) rather than re-run
+      through the representations pipeline;
+    - `{:query <external-query-object>}` — a fresh portable MBQL 5 payload, same shape as
+      /v2/construct-query.
 
-  Both branches are closed maps: extra top-level keys (e.g. the legacy
-  `source_entity` / `referenced_entities` envelope, or sending `:query` and
-  `:continuation_token` simultaneously) are rejected with a 400."
+  The string-vs-object `:query` distinction is what the `:dispatch` keys on. Each branch is a
+  closed map: extra top-level keys (e.g. the legacy `source_entity` / `referenced_entities`
+  envelope, or sending `:query` and `:continuation_token` simultaneously) are rejected with a 400."
   [:multi {:dispatch (fn [m]
-                       (if (:continuation_token m) :continuation :fresh))}
+                       (cond
+                         (:continuation_token m) :continuation
+                         (string? (:query m))    :handle
+                         :else                   :fresh))}
    [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
+   [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
 (defn- check-token-query-permissions!
@@ -381,16 +400,28 @@
       (api/query-check :model/Table table-id))))
 
 (defn- initial-page-state
-  "Normalize the two /v2/query entry points into a single {:query :total-limit :page}
-   shape. A fresh request body is evaluated through the representations pipeline and the
-   total-row budget is derived from the resolved query's `:limit`; a continuation token
-   carries that state from a prior response (and re-validates query permissions, since the
-   token is client-supplied and per-user permissions can change between pages)."
+  "Normalize the three /v2/query entry points into a single {:query :total-limit :page} shape.
+
+   - A continuation token carries the query + pagination state from a prior response (and
+     re-validates query permissions, since the token is client-supplied and per-user permissions
+     can change between pages).
+   - A base64 `:query` string is a query_handle the MCP layer already resolved to its stored MBQL;
+     it's decoded and executed directly (like /v1/execute), skipping the representations pipeline.
+     Permissions are enforced by the QP at execution time, as on /v1/execute.
+   - A fresh request body is evaluated through the representations pipeline and the total-row budget
+     is derived from the resolved query's `:limit`."
   [body]
-  (if-let [token (:continuation_token body)]
-    (let [{:keys [query pagination]} (decode-continuation-token token)]
+  (cond
+    (:continuation_token body)
+    (let [{:keys [query pagination]} (decode-continuation-token (:continuation_token body))]
       (check-token-query-permissions! query)
       {:query query :total-limit (:limit pagination) :page (:page pagination)})
+
+    (string? (:query body))
+    (let [query (-> body :query u/decode-base64 json/decode+kw)]
+      {:query query :total-limit (clamp-total-limit (serialized-query-limit query)) :page 1})
+
+    :else
     (let [live-query (evaluate-external-query-to-live-query body)]
       {:query       (lib/prepare-for-serialization live-query)
        :total-limit (total-row-limit live-query)
@@ -410,10 +441,11 @@
            :description (str "Execute a Metabase query and return results with column "
                              "metadata. If more rows are available, the response includes a "
                              "continuation_token — pass it back to get the next page.\n\n"
-                             "The body is either `{\"query\": <object>}` (same shape as "
-                             "construct_query; see the `construct_notebook_query` tool for "
-                             "the format reference) or `{\"continuation_token\": \"...\"}` "
-                             "from a previous response.")
+                             "Provide one of: a `query_handle` returned by construct_query "
+                             "(preferred when you have one); a `{\"query\": <object>}` body "
+                             "(same shape as construct_query; see the `construct_notebook_query` "
+                             "tool for the format reference); or a `{\"continuation_token\": "
+                             "\"...\"}` from a previous response.")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params
