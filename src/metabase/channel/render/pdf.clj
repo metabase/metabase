@@ -199,6 +199,24 @@
           (recur (+ i (Character/charCount cp))))))
     (.toString sb)))
 
+(defn- contains-rtl?
+  "True if `s` contains any character the bidi algorithm treats as right-to-left (Arabic, Hebrew,
+  ...). Lets the LTR-only common case skip all shaping/reordering work."
+  [^String s]
+  (let [chars (.toCharArray s)]
+    (Bidi/requiresBidi chars 0 (alength chars))))
+
+(def ^:private arabic-tashkeel
+  "Arabic combining marks: harakat/tanwin (fatha, kasra, damma, sukun, shadda, ...), the
+  superscript alef, and Quranic annotation signs. These are zero-width marks that the font expects
+  to anchor above/below their consonant via GPOS mark-to-base positioning -- which PDFBox's
+  `showText` doesn't perform. Worse, ICU's shaper rewrites them into spacing presentation forms
+  (U+FE70-block, with real advance widths) that then render *beside* the letter in empty space. We
+  drop them before shaping, yielding clean unvocalised Arabic -- the normal written form -- rather
+  than mispositioned marks. (Correctly stacking vowel marks would require a GPOS-aware shaper such
+  as HarfBuzz.)"
+  #"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]")
+
 (defn- visual-order
   "If `s` contains right-to-left text (Arabic or Hebrew), return it shaped and reordered for a
   left-to-right renderer; otherwise return it unchanged.
@@ -206,6 +224,8 @@
   PDFBox's `showText` lays glyphs out left-to-right in the order given and does no OpenType
   shaping, so RTL text drawn naively comes out reversed and (for Arabic) as disconnected isolated
   letters. We approximate proper rendering with ICU, no native HarfBuzz needed:
+   - Arabic vowel marks (tashkeel) are stripped (see [[arabic-tashkeel]]) -- positioning them
+     needs GPOS, which we can't do; unvocalised Arabic is the normal written form anyway.
    - `ArabicShaping` rewrites Arabic letters to their positional presentation forms (initial/
      medial/final/isolated, plus the lam-alef ligature) -- the Noto Sans Arabic cmap covers that
      Presentation-Forms-B block, so the joined shapes render.
@@ -215,13 +235,13 @@
   full bidi: a pure Arabic/Hebrew line reads correctly, and mixed LTR/RTL is close enough for the
   short strings dashboards use (titles, headings, labels, filter values)."
   ^String [^String s]
-  (let [chars (.toCharArray s)]
-    (if-not (Bidi/requiresBidi chars 0 (alength chars))
-      s
-      (let [shaped (try (.shape (ArabicShaping. (int ArabicShaping/LETTERS_SHAPE)) s)
-                        (catch Exception _ s))]
-        (.writeReordered (Bidi. ^String shaped (int Bidi/LEVEL_DEFAULT_LTR))
-                         (int (bit-or Bidi/DO_MIRRORING Bidi/KEEP_BASE_COMBINING)))))))
+  (if-not (contains-rtl? s)
+    s
+    (let [s      (str/replace s arabic-tashkeel "")
+          shaped (try (.shape (ArabicShaping. (int ArabicShaping/LETTERS_SHAPE)) s)
+                      (catch Exception _ s))]
+      (.writeReordered (Bidi. ^String shaped (int Bidi/LEVEL_DEFAULT_LTR))
+                       (int (bit-or Bidi/DO_MIRRORING Bidi/KEEP_BASE_COMBINING))))))
 
 (defn- font-runs
   "Split `s` into maximal `[phys ^String chunk]` runs, choosing for each codepoint the face's
@@ -268,12 +288,15 @@
 ;; --------------------------------------------------------------------------------------------
 
 (defn- text-width
-  "Width in points of `s` drawn with `face` at `font-pt`, summed across per-glyph font runs."
+  "Width in points of `s` drawn with `face` at `font-pt`, summed across per-glyph font runs.
+  Measures the *shaped* form (`visual-order`), exactly as `draw-line!` draws it, so RTL widths
+  reflect the narrower joined presentation forms (and dropped tashkeel) rather than the wider
+  isolated letters -- otherwise per-word advances overshoot and leave gaps between Arabic words."
   [face font-pt ^String s]
   (transduce (map (fn [[phys ^String chunk]]
                     (* font-pt (/ (.getStringWidth ^PDFont (:font phys) chunk) 1000.0))))
              + 0.0
-             (font-runs face (normalize-ws s))))
+             (font-runs face (visual-order (normalize-ws s)))))
 
 (defn- cjk-char?
   "Codepoints from scripts that don't use spaces between words (CJK ideographs, kana, hangul, and
@@ -798,9 +821,40 @@
                               :y1 (+ (double baseline) (* 0.85 pt))
                               :href href})))
 
+(defn- reorder-bidi-items
+  "Reorder a wrapped markdown line's word items from logical to visual order, so a right-to-left
+  paragraph reads right-to-left at the word level. Each item's own glyphs are shaped/reversed
+  separately by `draw-line!` (via `visual-order`); this handles the *order of the words*.
+
+  We resolve bidi levels with ICU over the line's logical text (one representative offset per
+  item), apply rule L2 via `Bidi/reorderVisual`, then recompute each item's `:space-before?` for
+  its new neighbour so inter-word spacing follows the visual order. Lines with no RTL text (the
+  common case) are returned untouched."
+  [items]
+  (let [item-text (fn [it] (str (or (:text it) (:base it) "")))]
+    (if (or (<= (count items) 1)
+            (not (some #(contains-rtl? (item-text %)) items)))
+      items
+      (let [sb     (StringBuilder.)
+            starts (mapv (fn [it]
+                           (when (and (pos? (.length sb)) (:space-before? it)) (.append sb \space))
+                           (let [start (.length sb)] (.append sb (item-text it)) start))
+                         items)
+            bidi   (Bidi. (.toString sb) (int Bidi/LEVEL_DEFAULT_LTR))
+            levels (byte-array (map (fn [start] (.getLevelAt bidi (int start))) starts))
+            order  (Bidi/reorderVisual levels)]
+        (vec (map-indexed
+              (fn [vp lp]
+                ;; visually adjacent items are logically adjacent; the gap between two words is
+                ;; recorded on the one with the higher logical index, so reuse that flag.
+                (let [sep? (and (pos? vp)
+                                (boolean (:space-before? (nth items (max (aget order (dec vp)) (int lp))))))]
+                  (assoc (nth items lp) :space-before? sep?)))
+              order))))))
+
 (defn- draw-md-line!
   [^PDPageContentStream cs x baseline items]
-  (loop [items items, cx (double x)]
+  (loop [items (reorder-bidi-items items), cx (double x)]
     (when (seq items)
       (let [it  (first items)
             cx2 (+ cx (if (:space-before? it) (:sp it) 0.0))]
