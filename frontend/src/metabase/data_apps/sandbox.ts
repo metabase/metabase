@@ -1,7 +1,6 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 import * as React from "react";
 
-import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 import { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
@@ -16,10 +15,8 @@ import {
 } from "embedding-sdk-bundle/components/public/dashboard";
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
 import { useQuestionQuery } from "embedding-sdk-package/hooks/public/use-question-query";
-import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { DataAppProvider } from "metabase/data_apps/components/DataAppProvider";
 
-import { getHostBackedSdkStore } from "./host-sdk-init";
 import { makeDistortionCallback } from "./sandbox/distortions";
 
 /**
@@ -52,35 +49,8 @@ function isLiveTarget(target: object): boolean {
   return target instanceof CSSStyleDeclaration;
 }
 
-interface MetabaseProviderProps {
-  theme?: MetabaseEmbeddingTheme;
-  children?: React.ReactNode;
-}
-
-/**
- * In-host equivalent of the SDK's `MetabaseProvider` / `ComponentProvider`:
- * provides the SDK Redux store (pre-initialized, no auth handshake) and the
- * SDK theme provider in one go. Plugins wrap their tree with this once.
- */
-function MetabaseProvider(props: MetabaseProviderProps) {
-  const sdkStore = getHostBackedSdkStore();
-  // Children come from the third arg of createElement, but SdkThemeProvider's
-  // TS props mark children as required — cast props to satisfy the type
-  // without duplicating the value.
-  type ThemeProps = React.ComponentProps<typeof SdkThemeProvider>;
-  return React.createElement(
-    MetabaseReduxProvider,
-    { store: sdkStore },
-    React.createElement(
-      SdkThemeProvider,
-      { theme: props.theme } as ThemeProps,
-      props.children,
-    ),
-  );
-}
-
 export function createDataAppSandbox(
-  appId: number = 0,
+  label: string = "",
   targetWindow: Window = window,
 ) {
   let captured: unknown;
@@ -92,7 +62,7 @@ export function createDataAppSandbox(
   const env = createVirtualEnvironment(
     targetWindow as Window & typeof globalThis,
     {
-      distortionCallback: makeDistortionCallback(appId),
+      distortionCallback: makeDistortionCallback(label),
       liveTargetCallback: isLiveTarget,
       endowments: Object.getOwnPropertyDescriptors({
         React,
@@ -100,7 +70,7 @@ export function createDataAppSandbox(
         useQuestionQuery,
         useMetabaseQuery,
         // Provider
-        MetabaseProvider,
+        MetabaseProvider: DataAppProvider,
         // Question components
         InteractiveQuestion,
         StaticQuestion,

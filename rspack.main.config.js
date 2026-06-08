@@ -115,6 +115,8 @@ const config = {
     "app-embed-mcp": "./app-embed-mcp.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
+    "app-data-app": "./app-data-app.tsx",
+    "data-app-vendors": "./data_apps/iframe-vendors.ts",
   },
 
   // we override it for dev mode below
@@ -233,7 +235,13 @@ const config = {
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
-          chunks: "initial",
+          // The data-app iframe is self-contained — keep its node_modules
+          // (incl. React, Emotion, Mantine CSS) inside its own chunks so
+          // `data-app.html` doesn't need to load the main app's vendor
+          // bundle. Otherwise the iframe would have to link `vendor.[hash]`
+          // and inherit whatever else lives in that shared chunk.
+          chunks: (chunk) =>
+            chunk.name !== "data-app-vendors" && chunk.name !== "app-data-app",
           name: "vendor",
           priority: -10,
         },
@@ -295,6 +303,12 @@ const config = {
       chunksSortMode: "manual",
       chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    new HtmlWebpackPlugin({
+      filename: "../../data-app.html",
+      chunksSortMode: "manual",
+      chunks: ["data-app-vendors", "app-data-app"],
+      template: __dirname + "/resources/frontend_client/data_app_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed-mcp.html",

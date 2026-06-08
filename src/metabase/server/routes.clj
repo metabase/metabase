@@ -41,6 +41,7 @@
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
   (GET "/sdk/v1" [] index/embed-sdk)
+  (GET ["/data-app/:name", :name #"[^/]+"] [] index/data-app)
   (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
