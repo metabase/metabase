@@ -98,19 +98,3 @@ export function resolveColorFromCssVariable(
   }
   return colorValue;
 }
-
-const PALETTE_KEYS = new Set<string>(ALL_COLOR_NAMES);
-
-/**
- * Mantine's `Box` forwards the `color` prop to the SVG as a presentation
- * attribute, so it only honors valid CSS color strings — bare palette keys
- * like `"saturated-yellow"` are silently ignored. Resolve known palette keys
- * to their `--mb-color-*` CSS variables; pass other strings through.
- */
-export function resolveIconColor(iconColor: ColorName | "inherit" | undefined) {
-  return iconColor != null &&
-    PALETTE_KEYS.has(iconColor) &&
-    iconColor !== "inherit"
-    ? color(iconColor)
-    : iconColor;
-}
