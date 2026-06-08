@@ -1,6 +1,6 @@
 ---
 name: metabase-semantic-schema-data-apps
-description: Use when building or editing React dashboards, operations dashboards, or data apps from a Metabase semantic layer or generated schema file such as metabase.data.ts or *.metabase.data.ts.
+description: Use when building React dashboards or data apps from a Metabase semantic layer, including generated schema files like metabase.data.ts or *.metabase.data.ts.
 ---
 
 # Metabase Semantic Schema Data Apps
@@ -16,6 +16,7 @@ Keep the semantic layer and presentation layer separate.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Measures must come from `schema.tables.*.measures.*`; metrics must come from `schema.metrics.*`.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, customer segments, or chart series.
+- Visualization data must be derived from `useMetabaseQuery` results. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
 - Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess column names from business intuition or old mock data.
 - Before claiming the work is done or preparing a final handoff, run a TypeScript type-only check and report the command/result. If the check fails, fix the type errors before any final summary.
 
@@ -250,6 +251,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Assuming `filter(...)` fully validates value types.
 - Letting a `null` bucket become the latest time-series point.
 - Hardcoding business values, labels, timestamps, or rankings.
+- Creating chart-ready arrays by hand instead of deriving them from queried `data.rows`.
 - Rendering fields that are not present in the schema or returned query result.
 - Rendering `No data` while the SDK is still authenticating or loading.
 - Creating nested `MetabaseProvider` instances instead of sharing one provider at the app boundary.
