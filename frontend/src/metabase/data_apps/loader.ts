@@ -23,7 +23,7 @@ export async function loadDataAppBundle(
   id: DataAppId,
 ): Promise<LoadedDataApp> {
   const url = getSubpathSafeUrl(
-    `/api/ee/data-app/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
+    `/api/data-app/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
   );
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
