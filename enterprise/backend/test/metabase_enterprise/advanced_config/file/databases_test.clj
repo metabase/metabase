@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
    [metabase.app-db.core :as mdb]
    [metabase.driver.settings :as driver.settings]
    [metabase.sample-data.core :as sample-data]
@@ -10,6 +9,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -195,37 +195,36 @@
                                   :is_sample true}]}})))))
 
 (deftest sync-test
-  (testing "`init-from-config-file!` returns syncs database in a separate thread by default"
-    ;; unset setting to test default behavior
-    (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
-      (try
-        (let [sync-future (@#'advanced-config.file.databases/init-from-config-file! {:name    test-db-name
-                                                                                     :engine  "h2"
-                                                                                     :details (:details (mt/db))})]
-          (is (future? sync-future))
-          (deref sync-future 5000 :timeout)
-          (is (= 1 (t2/count :model/Database :name test-db-name))))
-        (finally
-          (t2/delete! :model/Database :name test-db-name))))))
-
-(defn- test-cruft-tables! [crufted-table-setting freq message]
-  (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
+  (testing "the config-file upsert syncs the database in a separate thread when :sync? is true"
     (try
-      (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
-                         {:name    test-db-name
-                          :engine  "h2"
-                          :details (:details (mt/db))
-                          :settings {:auto-cruft-tables crufted-table-setting}})]
+      (let [sync-future (warehouses/upsert-database-from-config! {:name    test-db-name
+                                                                  :engine  "h2"
+                                                                  :details (:details (mt/db))}
+                                                                 {:sync? true})]
         (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
         (deref sync-future 5000 :timeout)
-        (is (= 1 (t2/count :model/Database :name test-db-name)))
-        (let [db (t2/select-one :model/Database :name test-db-name)
-              vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
-          (is (= freq (frequencies vis-types))
-              message)))
+        (is (= 1 (t2/count :model/Database :name test-db-name))))
       (finally
         (t2/delete! :model/Database :name test-db-name)))))
+
+(defn- test-cruft-tables! [crufted-table-setting freq message]
+  (try
+    (let [sync-future (warehouses/upsert-database-from-config!
+                       {:name    test-db-name
+                        :engine  "h2"
+                        :details (:details (mt/db))
+                        :settings {:auto-cruft-tables crufted-table-setting}}
+                       {:sync? true})]
+      (is (future? sync-future))
+      ;; wait for the sync to finish or crash out after 5 seconds
+      (deref sync-future 5000 :timeout)
+      (is (= 1 (t2/count :model/Database :name test-db-name)))
+      (let [db (t2/select-one :model/Database :name test-db-name)
+            vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+        (is (= freq (frequencies vis-types))
+            message)))
+    (finally
+      (t2/delete! :model/Database :name test-db-name))))
 
 (deftest sync-cruft-tables-test
   (testing "tables marked crufty should be marked as such in the database"
@@ -234,49 +233,49 @@
     (test-cruft-tables! ["."]        {:cruft 8}       "All tables marked crufty")))
 
 (deftest cruft-hidden-tables-test
-  (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
-    (try
-      (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
-                         {:name    test-db-name
-                          :engine  "h2"
-                          :details (:details (mt/db))})]
-        (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
-        (is (= 1 (t2/count :model/Database :name test-db-name)))
-        (let [db (t2/select-one :model/Database :name test-db-name)
-              _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type :hidden})
-              vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
-          ;; Now, all the tables are hidden, so do another sync with empty auto-cruft-tables setting
-          ;; and make sure they are still hidden:
-          (is (= {:hidden 8} (frequencies vis-types)))
-          (sync-metadata/sync-db-metadata! db)
-          (testing "Hidden tables stay hidden"
-            (let [vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
-              (is (= {:hidden 8} (frequencies vis-types)))))))
-      (finally
-        (t2/delete! :model/Database :name test-db-name)))))
+  (try
+    (let [sync-future (warehouses/upsert-database-from-config!
+                       {:name    test-db-name
+                        :engine  "h2"
+                        :details (:details (mt/db))}
+                       {:sync? true})]
+      (is (future? sync-future))
+      ;; wait for the sync to finish or crash out after 5 seconds
+      (deref sync-future 5000 :timeout)
+      (is (= 1 (t2/count :model/Database :name test-db-name)))
+      (let [db (t2/select-one :model/Database :name test-db-name)
+            _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type :hidden})
+            vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+        ;; Now, all the tables are hidden, so do another sync with empty auto-cruft-tables setting
+        ;; and make sure they are still hidden:
+        (is (= {:hidden 8} (frequencies vis-types)))
+        (sync-metadata/sync-db-metadata! db)
+        (testing "Hidden tables stay hidden"
+          (let [vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+            (is (= {:hidden 8} (frequencies vis-types)))))))
+    (finally
+      (t2/delete! :model/Database :name test-db-name))))
 
 (defn- test-cruft-columns! [crufted-field-setting freq message]
-  (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
-    (try
-      (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
-                         {:name    test-db-name
-                          :engine  "h2"
-                          :details (:details (mt/db))
-                          :settings {:auto-cruft-columns crufted-field-setting}})]
-        (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
-        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
-        (is (= 1 (t2/count :model/Database :name test-db-name)))
-        (let [db (t2/select-one :model/Database :name test-db-name)
-              tables (t2/select :model/Table :db_id (u/the-id db))
-              fields (t2/select :model/Field :table_id [:in (map :id tables)])]
-          (is (= freq (frequencies (map :visibility_type fields)))
-              message)))
-      (finally
-        (t2/delete! :model/Database :name test-db-name)))))
+  (try
+    (let [sync-future (warehouses/upsert-database-from-config!
+                       {:name    test-db-name
+                        :engine  "h2"
+                        :details (:details (mt/db))
+                        :settings {:auto-cruft-columns crufted-field-setting}}
+                       {:sync? true})]
+      (is (future? sync-future))
+      ;; wait for the sync to finish or crash out after 5 seconds
+      (deref sync-future 5000 :timeout)
+      (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
+      (is (= 1 (t2/count :model/Database :name test-db-name)))
+      (let [db (t2/select-one :model/Database :name test-db-name)
+            tables (t2/select :model/Table :db_id (u/the-id db))
+            fields (t2/select :model/Field :table_id [:in (map :id tables)])]
+        (is (= freq (frequencies (map :visibility_type fields)))
+            message)))
+    (finally
+      (t2/delete! :model/Database :name test-db-name))))
 
 (deftest sync-cruft-columns-test
   (testing "columns (aka fields) marked crufty should be marked as such in the database"
@@ -284,23 +283,35 @@
     (test-cruft-columns! ["id"] {:normal 38, :details-only 14}  "All id fields marked crufty")))
 
 (deftest disable-sync-test
-  (testing "We should be able to disable sync for new Databases by specifying a Setting in the config file"
-    ;; make sure we're actually testing something if it was already set to false locally.
-    (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+  (testing "Passing :sync? false to the config-file upsert skips sync for the new Database"
+    (try
+      (let [sync-future (warehouses/upsert-database-from-config! {:name    test-db-name
+                                                                  :engine  "h2"
+                                                                  :details (:details (mt/db))}
+                                                                 {:sync? false})]
+        (is (nil? sync-future))
+        (let [db (t2/select-one :model/Database :name test-db-name)]
+          (is (partial= {:engine :h2}
+                        db))
+          (is (= 1 (t2/count :model/Database :name test-db-name)))
+          (testing "Database should NOT have been synced"
+            (is (zero? (t2/count :model/Table :db_id (u/the-id db)))))))
+      (finally
+        (t2/delete! :model/Database :name test-db-name)))))
+
+(deftest initialize-respects-sync-setting-test
+  (testing "initialize! gates sync on `config-from-file-sync-databases`: false -> the new DB is created but not synced"
+    (mt/with-temporary-setting-values [config-from-file-sync-databases false]
       (try
         (is (= :ok (advanced-config.file/initialize!
                     {:version 1
-                     :config {:settings {:config-from-file-sync-databases false}}})))
-        (let [sync-future (@#'advanced-config.file.databases/init-from-config-file! {:name    test-db-name
-                                                                                     :engine  "h2"
-                                                                                     :details (:details (mt/db))})]
-          (is (nil? sync-future))
-          (let [db (t2/select-one :model/Database :name test-db-name)]
-            (is (partial= {:engine :h2}
-                          db))
-            (is (= 1 (t2/count :model/Database :name test-db-name)))
-            (testing "Database should NOT have been synced"
-              (is (zero? (t2/count :model/Table :db_id (u/the-id db)))))))
+                     :config  {:databases [{:name    test-db-name
+                                            :engine  "h2"
+                                            :details (:details (mt/db))}]}})))
+        (let [db (t2/select-one :model/Database :name test-db-name)]
+          (is (some? db))
+          (testing "Database should NOT have been synced"
+            (is (zero? (t2/count :model/Table :db_id (u/the-id db))))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
 

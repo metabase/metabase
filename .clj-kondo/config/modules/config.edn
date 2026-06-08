@@ -2587,6 +2587,7 @@
            models
            permissions
            premium-features
+           sample-data
            search
            secrets
            settings
@@ -2703,16 +2704,14 @@
    :uses #{api
            api-keys
            app-db
-           driver
            lib
            permissions
            premium-features
-           sample-data
            settings
            setup
-           sync
            users
            util
+           warehouses
            enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
