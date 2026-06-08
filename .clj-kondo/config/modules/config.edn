@@ -1578,11 +1578,13 @@
 
   public-sharing
   {:team "UX West"
-   :api  #{metabase.public-sharing.core
+   :api  #{metabase.public-sharing.api
+           metabase.public-sharing.core
            metabase.public-sharing.init
            metabase.public-sharing.unlock
            metabase.public-sharing.validation}
    :uses #{api
+           premium-features
            settings
            util}
    :model-imports #{:model/Card :model/Dashboard}}
@@ -3194,6 +3196,15 @@
    :api  #{}
    :uses #{premium-features
            util}}
+
+  enterprise/public-link-passwords
+  {:team "Embedding"
+   :api  #{metabase-enterprise.public-link-passwords.init}
+   :uses #{api
+           events
+           premium-features
+           util}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   enterprise/remote-sync
   {:team "UX West"

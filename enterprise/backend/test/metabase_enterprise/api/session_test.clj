@@ -121,6 +121,7 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
+            :public_link_passwords          false
             :schema-viewer                  false
             :workspaces                     false
             :writable_connection            true}
