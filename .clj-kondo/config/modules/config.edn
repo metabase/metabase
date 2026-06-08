@@ -1667,6 +1667,7 @@
            dashboards
            documents
            events
+           graph
            lib
            lib-be
            metrics
