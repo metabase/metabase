@@ -1202,7 +1202,7 @@
   (let [card-id   (:id card-before-update)
         old-db-id (-> card-before-update :dataset_query :database)
         new-db-id (-> card-updates :dataset_query :database)]
-    (when (not= old-db-id new-db-id)
+    (when (and old-db-id new-db-id (not= old-db-id new-db-id))
       (let [cards-to-update (dependent-cards-to-update card-id old-db-id)]
         (doseq [{dep-id :id, dep-query :dataset_query} cards-to-update]
           (t2/update! :model/Card dep-id {:dataset_query (assoc dep-query :database new-db-id)}))))))
