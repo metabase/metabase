@@ -8,7 +8,7 @@ import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
+import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
 import { resetRowZoom, zoomInRow } from "metabase/query_builder/actions";
 import {
@@ -146,7 +146,8 @@ class VisualizationResultInner extends Component {
             }
           />
           {showCreateAlertModal && (
-            <CreateOrEditQuestionAlertModalWithQuestion
+            <CreateOrEditQuestionAlertModal
+              question={question}
               onClose={this.onCloseCreateAlertModal}
               onAlertCreated={this.onCloseCreateAlertModal}
             />

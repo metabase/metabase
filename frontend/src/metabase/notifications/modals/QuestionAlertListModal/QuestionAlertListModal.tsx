@@ -11,7 +11,7 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
 import type Question from "metabase-lib/v1/Question";
-import type { Notification } from "metabase-types/api";
+import type { Notification, VisualizationSettings } from "metabase-types/api";
 
 import { CreateOrEditQuestionAlertModal } from "../CreateOrEditQuestionAlertModal";
 
@@ -26,10 +26,16 @@ type AlertModalMode =
 
 export const QuestionAlertListModal = ({
   question,
+  visualizationSettings,
   onClose,
+  onAlertCreated,
+  onAlertUpdated,
 }: {
   question: Question;
+  visualizationSettings?: VisualizationSettings;
   onClose: () => void;
+  onAlertCreated?: () => void;
+  onAlertUpdated?: () => void;
 }) => {
   const [editingItem, setEditingItem] = useState<Notification | null>(null);
 
@@ -148,14 +154,21 @@ export const QuestionAlertListModal = ({
       {(activeModal === "create-modal" || activeModal === "update-modal") && (
         <CreateOrEditQuestionAlertModal
           question={question}
+          visualizationSettings={visualizationSettings}
           editingNotification={
             activeModal === "update-modal" && editingItem
               ? editingItem
               : undefined
           }
           onClose={handleInternalModalClose}
-          onAlertCreated={handleInternalModalClose}
-          onAlertUpdated={handleInternalModalClose}
+          onAlertCreated={() => {
+            onAlertCreated?.();
+            handleInternalModalClose();
+          }}
+          onAlertUpdated={() => {
+            onAlertUpdated?.();
+            handleInternalModalClose();
+          }}
         />
       )}
 

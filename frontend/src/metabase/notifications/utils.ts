@@ -258,7 +258,7 @@ function hasProperGoalForAlert({
   visualizationSettings,
 }: {
   question: Question | undefined;
-  visualizationSettings: VisualizationSettings;
+  visualizationSettings?: VisualizationSettings;
 }): boolean {
   if (!question) {
     return false;
@@ -281,7 +281,7 @@ export function getAlertTriggerOptions({
   visualizationSettings,
 }: {
   question: Question | undefined;
-  visualizationSettings: VisualizationSettings;
+  visualizationSettings?: VisualizationSettings;
 }): NotificationCardSendCondition[] {
   const hasValidGoal = hasProperGoalForAlert({
     question,
