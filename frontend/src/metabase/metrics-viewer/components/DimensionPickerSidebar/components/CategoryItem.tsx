@@ -48,9 +48,11 @@ export function CategoryItem({
     sourceDataById,
     sourceColors,
   });
-  const hasRedundantSingleOption = isRedundantSingleOption(categorySelectRows);
   const canConfigure =
-    categorySelectRows.length > 0 && !hasRedundantSingleOption;
+    categorySelectRows.length > 0 &&
+    categorySelectRows.some(
+      (row) => row.options.length > 1 || row.isExpressionToken,
+    );
 
   return (
     <Box>
@@ -85,18 +87,6 @@ export function CategoryItem({
         </Stack>
       )}
     </Box>
-  );
-}
-
-function isRedundantSingleOption(
-  categorySelectRows: ReturnType<typeof getCategorySelectRows>,
-) {
-  if (categorySelectRows.length === 0) {
-    return false;
-  }
-
-  return categorySelectRows.every(
-    (row) => row.options.length === 1 && !row.isExpressionToken,
   );
 }
 

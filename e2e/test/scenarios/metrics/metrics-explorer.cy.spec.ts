@@ -1438,7 +1438,7 @@ describe("scenarios > metrics > explorer", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "metrics_viewer_dimension_selected",
       });
-      H.MetricsViewer.assertAllVizTypes("Map");
+      H.MetricsViewer.assertAllVizTypes("Map", 2);
 
       selectDimensionBreakout("Category");
       cy.wait("@dataset");

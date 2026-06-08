@@ -28,6 +28,7 @@ export function MetricDimensionSelect({
           size={14}
         />
       }
+      placeholder={t`Select a dimension`}
       size="sm"
       onChange={(value) => {
         if (value) {
