@@ -1,20 +1,20 @@
-(ns metabase-enterprise.data-app-demo.api
-  "Data-app PoC endpoints, mounted at `/api/ee/data-app`.
+(ns metabase.data-apps.api
+  "Data-app endpoints, mounted at `/api/data-app`.
 
    Each uploaded data-app is a single `index.js` file (no manifest, no
    assets, no archive) stored as a row in the `data_app` table. Users
    navigate to `/data-app/:slug` in the frontend, which fetches
-   `/api/ee/data-app/:slug/bundle` and evaluates the bytes inside a Near
+   `/api/data-app/:slug/bundle` and evaluates the bytes inside a Near
    Membrane sandbox.
 
-   Note: we can't use `/app/...` for the frontend or `/api/ee/app/...` for
+   Note: we can't use `/app/...` for the frontend or `/api/app/...` for
    the API because Metabase's server reserves `/app/*` for serving static
    assets (see `metabase.server.routes/static-files-handler`)."
   (:require
-   [metabase-enterprise.data-app-demo.models.data-app :as data-app]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.data-apps.models.data-app :as data-app]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -193,5 +193,5 @@
       (raise e))))
 
 (def routes
-  "`/api/ee/data-app` routes."
+  "`/api/data-app` routes."
   (api.macros/ns-handler *ns* +auth))

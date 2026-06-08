@@ -4,15 +4,15 @@ import type {
   UpdateDataAppRequest,
 } from "metabase-types/api";
 
-import { EnterpriseApi } from "./api";
+import { Api } from "./api";
 import { idTag, invalidateTags, listTag } from "./tags";
 
-export const dataAppApi = EnterpriseApi.injectEndpoints({
+export const dataAppApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listDataApps: builder.query<DataApp[], void>({
       query: () => ({
         method: "GET",
-        url: "/api/ee/data-app",
+        url: "/api/data-app",
       }),
       providesTags: (apps = []) => [
         listTag("data-app"),
@@ -22,7 +22,7 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
     getDataApp: builder.query<DataApp, string>({
       query: (name) => ({
         method: "GET",
-        url: `/api/ee/data-app/${encodeURIComponent(name)}`,
+        url: `/api/data-app/${encodeURIComponent(name)}`,
       }),
       providesTags: (_, __, name) => [idTag("data-app", name)],
     }),
@@ -34,7 +34,7 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
         formData.append("file", file);
         return {
           method: "POST",
-          url: "/api/ee/data-app",
+          url: "/api/data-app",
           body: { formData },
           formData: true,
           fetch: true,
@@ -54,7 +54,7 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
         }
         return {
           method: "PUT",
-          url: `/api/ee/data-app/${encodeURIComponent(name)}`,
+          url: `/api/data-app/${encodeURIComponent(name)}`,
           body: { formData },
           formData: true,
           fetch: true,
@@ -66,7 +66,7 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
     deleteDataApp: builder.mutation<void, string>({
       query: (name) => ({
         method: "DELETE",
-        url: `/api/ee/data-app/${encodeURIComponent(name)}`,
+        url: `/api/data-app/${encodeURIComponent(name)}`,
       }),
       invalidatesTags: (_, error, name) =>
         invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),

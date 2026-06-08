@@ -17,7 +17,7 @@ import {
 import {
   useDeleteDataAppMutation,
   useListDataAppsQuery,
-} from "metabase-enterprise/api";
+} from "metabase/api";
 
 import { DataAppListItem } from "./DataAppListItem";
 import S from "./ManageDataAppsPage.module.css";

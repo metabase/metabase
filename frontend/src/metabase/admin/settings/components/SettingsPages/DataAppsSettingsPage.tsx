@@ -1,9 +1,10 @@
-import { PLUGIN_DATA_APP_DEMO } from "metabase/plugins";
+import { DataAppFormPage } from "metabase/data_apps/DataAppFormPage";
+import { ManageDataAppsPage } from "metabase/data_apps/ManageDataAppsPage";
 
 export function DataAppsManagePage() {
-  return <PLUGIN_DATA_APP_DEMO.ManageDataAppsPage />;
+  return <ManageDataAppsPage />;
 }
 
 export function DataAppsFormPage() {
-  return <PLUGIN_DATA_APP_DEMO.DataAppFormPage />;
+  return <DataAppFormPage />;
 }

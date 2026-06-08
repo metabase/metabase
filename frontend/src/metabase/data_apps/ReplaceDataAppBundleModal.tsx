@@ -10,7 +10,7 @@ import {
 } from "metabase/forms";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { useUpdateDataAppMutation } from "metabase-enterprise/api";
+import { useUpdateDataAppMutation } from "metabase/api";
 import type { DataApp } from "metabase-types/api";
 
 import {

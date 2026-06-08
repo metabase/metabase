@@ -27,20 +27,20 @@ const TEST_SCHEMA = {
   id: TEST_METRIC_ID,
   name: "Order Count",
   columns: [{ name: "count", displayName: "Count", jsType: "number" }],
-  dimensions: [
-    {
+  dimensions: {
+    price: {
       id: "dimension-price",
       name: "price",
       displayName: "Price",
       jsType: "number",
     },
-    {
+    createdAt: {
       id: "dimension-created-at",
       name: "createdAt",
       displayName: "Created At",
       jsType: "Date",
     },
-  ],
+  },
 } as const;
 
 type Equals<TLeft, TRight> =
