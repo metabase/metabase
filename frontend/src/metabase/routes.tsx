@@ -42,9 +42,9 @@ import { getMetricRoutes } from "metabase/metrics/routes";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
+import { AppView as DataAppView } from "metabase/data_apps/AppView";
 import {
   PLUGIN_COLLECTIONS,
-  PLUGIN_DATA_APP_DEMO,
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -125,11 +125,11 @@ export const getRoutes = (store: AppStore) => {
         <Route component={IsAuthenticated}>
           {getMetabotRoutes()}
 
-          {/* PoC data-app host — admin-only; backend bundle endpoint is
+          {/* Data-app host — admin-only; backend bundle endpoint is
               superuser-only. Path can't be `/app/:name` because the server
-               reserves `/app/*` for static asset serving. */}
+              reserves `/app/*` for static asset serving. */}
           <Route path="data-app/:name" component={IsAdmin}>
-            <Route index component={PLUGIN_DATA_APP_DEMO.AppView} />
+            <Route index component={DataAppView} />
           </Route>
 
           {/* The global all hands routes, things in here are for all the folks */}

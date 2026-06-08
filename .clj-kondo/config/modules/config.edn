@@ -783,6 +783,16 @@
                     :model/Table
                     :model/User}}
 
+  data-apps
+  {:team "Gadget"
+   :api  #{metabase.data-apps.api
+           metabase.data-apps.init
+           metabase.data-apps.models.data-app}
+   :uses #{api
+           models
+           util}
+   :model-exports #{:model/DataApp}}
+
   data-studio
   {:team "Gadget"
    :api  #{metabase.data-studio.api}
@@ -3070,16 +3080,6 @@
   {:team "Graphy"
    :api  #{}
    :uses #{premium-features}}
-
-  enterprise/data-app-demo
-  {:team "Gadget"
-   :api  #{metabase-enterprise.data-app-demo.api
-           metabase-enterprise.data-app-demo.init
-           metabase-enterprise.data-app-demo.models.data-app}
-   :uses #{api
-           models
-           util}
-   :model-exports #{:model/DataApp}}
 
   enterprise/data-complexity-score
   {:team "Metabot"

@@ -104,8 +104,8 @@ if (window.CookieStore) {
 }
 
 // Referrer — URL of the page that linked here, which can leak internal
-// admin URLs or embed-link query params. Unlike `location.href`, the plugin
-// has no other way to read this.
+// admin URLs or embed-link query params. Unlike `location.href`, the
+// sandboxed script has no other way to read this.
 block(getter(Document.prototype, "referrer"), "Document.get referrer");
 
 // Host URL — `document.URL` / `documentURI` / `baseURI` resolve through the
@@ -137,8 +137,8 @@ block(window.close, "window.close");
 block(method(Window.prototype, "open"), "window.open");
 block(method(Window.prototype, "close"), "window.close");
 
-// UI dialogs — block modal/blocking dialogs initiated by the plugin so it
-// can't freeze the host UI or phish via the browser chrome.
+// UI dialogs — block modal/blocking dialogs initiated by the sandboxed
+// script so it can't freeze the host UI or phish via the browser chrome.
 block(window.alert, "window.alert");
 block(window.confirm, "window.confirm");
 block(window.prompt, "window.prompt");
@@ -208,9 +208,9 @@ block(window.PerformanceObserver, "PerformanceObserver");
 // Coordinate-based caret APIs return a raw host Text/Element Node at the
 // given (x, y) position, which bypasses the Element-level DOM decoy in
 // distortions-dom-read.ts (those decoys gate on Element entry points;
-// caret-from-point hands the plugin a Node directly). The plugin could
-// systematically probe host coordinates to read text content. No legit
-// viz needs caret-from-point queries.
+// caret-from-point hands the sandboxed script a Node directly). The script
+// could systematically probe host coordinates to read text content. No
+// legit viz needs caret-from-point queries.
 block(
   method(Document.prototype, "caretRangeFromPoint"),
   "Document.caretRangeFromPoint",
@@ -274,13 +274,13 @@ block(
  * Location — `window.location` itself is `[LegacyUnforgeable]`,
  * the Location attributes (`href`, `pathname`) are
  * also `[LegacyUnforgeable]` so they live on every Location instance rather
- * than on `Location.prototype`, AND `near-membrane-dom` runs the plugin in a
- * sandbox iframe with its own `Location` instance — so neither
+ * than on `Location.prototype`, AND `near-membrane-dom` runs the sandboxed
+ * script in a sandbox iframe with its own `Location` instance — so neither
  * `Location.prototype` distortions nor host instance descriptors match the
- * references the plugin sees. We rely on the iframe sandbox to keep Location
- * operations contained: the plugin can read/navigate its own iframe's
- * Location, but the host page stays put. The
- * `plugin location operations do not navigate the host` e2e test verifies
+ * references the script sees. We rely on the iframe sandbox to keep
+ * Location operations contained: the script can read/navigate its own
+ * iframe's Location, but the host page stays put. The
+ * `sandboxed location operations do not navigate the host` e2e test verifies
  * that boundary.
  *
  * `OffscreenCanvas`. The main "escape hatch" is `transferControlToOffscreen()`
