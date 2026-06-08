@@ -994,7 +994,7 @@
   as keywords whenever possible. This provides for both unified error messages and categories which let us point
   users to the erroneous input fields.
   Error messages can also be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
-  `metabase.util.i18n/tru`.
+  [[metabase.util.i18n/tru]].
   Passed a collection of all non-nil exception messages that were thrown during connection attempt."
   {:added "0.32.0" :arglists '([this messages])}
   dispatch-on-initialized-driver
