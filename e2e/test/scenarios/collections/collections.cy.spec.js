@@ -709,18 +709,18 @@ describe("scenarios > collection defaults", () => {
           selectItemUsingCheckbox("Orders");
           // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("1 item selected").should("be.visible");
-          cy.icon("dash").should("exist");
-          cy.icon("check").should("exist");
+          assertSelectAllIsIndeterminate(true);
+          getRowCheckbox("Orders").should("be.checked");
 
           // Select all
           cy.findByLabelText("Select all items").click();
-          cy.icon("dash").should("not.exist");
+          assertSelectAllIsIndeterminate(false);
           cy.findByTestId("toast-card").findByText(/\d+ items selected/);
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
 
-          cy.icon("check").should("not.exist");
+          cy.findAllByRole("checkbox").should("not.be.checked");
           // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/).should("not.exist");
         });
@@ -1287,10 +1287,20 @@ function openEllipsisMenuFor(item) {
     .click({ force: true });
 }
 
-function selectItemUsingCheckbox(item, icon = "table") {
-  cy.findByText(item)
-    .closest("tr")
-    .within(() => cy.findByRole("checkbox").closest("button").click());
+function getRowCheckbox(item) {
+  return cy.findByText(item).closest("tr").findByRole("checkbox");
+}
+
+function selectItemUsingCheckbox(item) {
+  getRowCheckbox(item).closest("button").click();
+}
+
+function assertSelectAllIsIndeterminate(isIndeterminate) {
+  cy.findByLabelText("Select all items").should(
+    "have.prop",
+    "indeterminate",
+    isIndeterminate,
+  );
 }
 
 function visitRootCollection() {
