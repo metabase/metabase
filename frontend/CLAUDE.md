@@ -1,25 +1,27 @@
 # Working with frontend code
 
-## Structure
+## Where frontend code lives
 
-```
-frontend/src/
-├── metabase/              # Main application — components, pages, and features
-├── metabase-lib/          # Query building & data modeling (MLv2 JS bindings)
-├── metabase-types/        # TypeScript type definitions (API responses, analytics)
-├── metabase-shared/       # Thin shared helpers reused across bundles
-├── embedding-sdk-bundle/  # Embedding SDK public API and component exports
-├── embedding-sdk-shared/  # Shared utilities/types for the embedding SDK
-└── types/                 # Global / ambient type declarations
+This is a high-level guide. Use available search tools to discover the current structure. Update the guide if new high-level modules have been added/discovered.
 
-enterprise/frontend/src/
-├── metabase-enterprise/   # Enterprise feature modules (loaded via the plugin system)
-├── embedding/             # Embedded analytics customization and extensions
-├── embedding-sdk-ee/      # Enterprise-only embedding SDK features
-└── embedding-sdk-package/ # Embedding SDK npm package build tooling and exports
-
-frontend/test/             # Jest unit tests
-```
+- Main app UI: `frontend/src/metabase`
+- Query builder, notebook, and visualization flow: `frontend/src/metabase/query_builder`
+- Dashboard runtime and editing: `frontend/src/metabase/dashboard`
+- Admin screens: `frontend/src/metabase/admin`
+- Shared app components: `frontend/src/metabase/common/components`
+- API clients: `frontend/src/metabase/api`
+- Query building and data modeling: `frontend/src/metabase-lib`
+- Shared TypeScript types: `frontend/src/metabase-types`
+- Thin helpers reused across bundles: `frontend/src/metabase-shared`
+- Global and ambient type declarations: `frontend/src/types`
+- Embedding SDK OSS code: `frontend/src/embedding-sdk-bundle` and `frontend/src/embedding-sdk-shared`
+- Enterprise-only features: `enterprise/frontend/src/metabase-enterprise`
+- Enterprise embedding code: `enterprise/frontend/src/embedding`, `enterprise/frontend/src/embedding-sdk-ee`, and `enterprise/frontend/src/embedding-sdk-package`
+- Custom visualization enterprise code: `enterprise/frontend/src/custom-viz`
+- Jest unit tests: colocated next to the files they test
+- Jest test support and mocks: `frontend/test`
+- Cypress E2E scenarios: `e2e/test/scenarios`
+- Cypress component test scenarios: `e2e/test-component/scenarios`
 
 ## Technology Stack
 
@@ -56,4 +58,4 @@ Enterprise functionality MUST use the plugin system. It is very important to not
 
 ### Scripts
 
-@../.claude/skills/_shared/typescript-commands.md
+@../.claude/skills/\_shared/typescript-commands.md

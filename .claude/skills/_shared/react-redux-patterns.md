@@ -20,7 +20,8 @@
 
 ## Redux state modeling
 
-- **Use Redux sparingly.** Reach for Redux only when distant parts of the app need durable shared state.
+- **Avoid using Redux**. Most problems can be solved with local component state or RTK Query.
+- **Use Redux only when needed.** Reach for Redux only when distant parts of the app need durable shared state.
 - **Model async status explicitly.** Use a discriminated union or explicit `status`/`isLoading`/`error`; don't infer loaded or failed state from truthy/falsy `data`.
 - **Store canonical state only.** Derive filtered lists, labels, permissions, booleans, and display variants in selectors.
 - **Read through selectors.** Name selectors after what they return (`getCurrentTask`, `getHasPendingMutation`), not how they compute it.
@@ -29,7 +30,7 @@
 
 ## React hooks and components
 
-- **Function components are the default.** Convert remaining class components when you touch them.
+- **Function components are the default.** Prefer functional components. Ask user if class components need to be refactored when introducing changes to them.
 - **Hooks orchestrate behavior.** Custom hooks should return a small typed result object: data, loading/error state, and callbacks when relevant.
 - **`useMemo` computes render values.** Side effects belong in `useEffect`; event-driven writes belong in event handlers or mutation callbacks.
 - **Hooks can be used to encapsulate complex logic.** For example, a hook can manage a form's state and validation, or a hook can manage a table's pagination and sorting.
@@ -37,11 +38,12 @@
 - **Use `useCallback` for stable identity needs, but deliberately.** Wrap callbacks passed to memoized children, dependency arrays, context values, or hooks that require stable identity — not every local handler.
 - **Memoize object/array props only when identity matters.** Prefer simpler plain values otherwise.
 - **Keep effects narrow and idempotent.** Include all dependencies, guard inside the effect, and clean up timers/subscriptions. Complex logic should be split to multiple effects or custom hooks, also consider extracting functional pieces.
+- **Stories for presentational components**. Create Storybook stories for presentational components to test different states and props. Stories live next to the component.
 
 ## Performance
 
 - **Optimize only where identity or scale matters.** Prefer clear code first, then add `memo`, `useMemo`, `useCallback`, selectors, virtualization, or split components when render cost, prop identity, or list size justifies it.
-- **Keep context values stable and slow-moving.** Values updated often should be avoided in context consumed by many components, or stored by reference with a stable context value and explicit subscriptions/selectors.
+- **Keep context values stable and avoid frequent updates.** Values updated often should be avoided in context consumed by many components, or stored by reference with a stable context value and explicit subscriptions/selectors.
 - **Keep leaf components dumb.** Smaller presentational components should usually receive props from a parent container instead of consuming context or Redux directly.
 - **Read global state high in the tree.** Let container components select context/Redux/API state, derive the view model, and pass narrow props top-down.
 - **Avoid unstable props in hot paths.** Don't pass fresh object/array/function literals to memoized children; memoize them or move them outside render when identity matters.
