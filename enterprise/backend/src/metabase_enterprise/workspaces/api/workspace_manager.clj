@@ -9,6 +9,7 @@
    [metabase-enterprise.serialization.schema :as serialization.schema]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.deployment :as deployment]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -316,3 +317,25 @@
                       {:status-code 409 :workspace_id workspace_id})))
     (t2/delete! :model/WorkspaceInstance :id id)
     {:id id :deleted true}))
+
+;;; --------------------------------------- Deployment (provision / deprovision) ------------------------------
+;;;
+;;; Bind a workspace to a free pool instance (and back). `:id` here is the *workspace* id.
+
+(api.macros/defendpoint :post "/:id/deployment" :- InstanceResponse
+  "Provision workspace `:id` onto a free pool instance. Body `{workspace_instance_id}`.
+   Takes the instance from the pool, builds the workspace config.yml, binds it on the
+   child over HTTP, and marks the instance provisioned. 409 if the instance is busy or
+   the workspace has un-provisioned databases."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [workspace_instance_id]} :- [:map [:workspace_instance_id ms/PositiveInt]]]
+  (api/check-superuser)
+  (present-instance (deployment/provision! id workspace_instance_id)))
+
+(api.macros/defendpoint :delete "/:id/deployment" :- InstanceResponse
+  "Deprovision workspace `:id`: unbind it from its pool instance and return that instance
+   to the pool (free). The instance is not destroyed."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (present-instance (deployment/deprovision! id)))

@@ -4,12 +4,14 @@
    verify routing, request/response shape, and that the model-level permission predicates
    are wired into the endpoints (one 403 spot-check is enough)."
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -252,3 +254,37 @@
                             {:url "https://nope.example.com" :api_key "k"})
       (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/instance/" id) {:name "nope"})
       (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/instance/" id)))))
+
+;;; --------------------------------------- Deployment (provision / deprovision) ------------------------------
+
+(deftest deployment-provision-deprovision-smoke-test
+  (testing "POST then DELETE /:id/deployment provisions a free instance and returns it to the pool"
+    (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
+      (with-redefs [http/request (fn [_] {:status 200 :body ""})]
+        (let [db-id   (t2/insert-returning-pk! :model/Database {:name (str (gensym "dep")) :engine :h2 :details {}})
+              ws-id   (t2/insert-returning-pk! :model/Workspace {:name "dep-ws" :creator_id (mt/user->id :crowberto)})
+              _       (t2/insert! :model/WorkspaceDatabase {:workspace_id ws-id :database_id db-id
+                                                            :database_details {:user "u"} :output_namespace "o"
+                                                            :input_schemas ["public"] :status :provisioned})
+              {iid :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
+                                              {:url "https://dep.example.com" :api_key "k"})]
+          (testing "provision binds the instance"
+            (is (=? {:id iid :status "provisioned" :workspace_id ws-id}
+                    (mt/user-http-request :crowberto :post 200
+                                          (str "ee/workspace-manager/" ws-id "/deployment")
+                                          {:workspace_instance_id iid}))))
+          (testing "re-provision the now-busy instance to another workspace — 409"
+            (mt/user-http-request :crowberto :post 409
+                                  (str "ee/workspace-manager/" ws-id "/deployment")
+                                  {:workspace_instance_id iid}))
+          (testing "deprovision frees the instance"
+            (is (=? {:id iid :status "free" :workspace_id nil}
+                    (mt/user-http-request :crowberto :delete 200
+                                          (str "ee/workspace-manager/" ws-id "/deployment"))))))))))
+
+(deftest deployment-superuser-gated-test
+  (testing "deployment endpoints require a superuser"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "g"}]
+      (mt/user-http-request :rasta :post 403 (str "ee/workspace-manager/" ws-id "/deployment")
+                            {:workspace_instance_id 1})
+      (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id "/deployment")))))
