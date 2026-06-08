@@ -16,11 +16,13 @@
   number of cells consumed is derived from the header font sizes (see `header-block-pt` /
   `rows-for-pt`).
 
-  Chart/query cards are rasterized whole (title + description + chart/table) via the same
-  static-viz pipeline the subscription emails use, then fit (preserving aspect, top-left) into
-  their grid rectangle. Text and heading cards are drawn as native PDF text within their cell.
+  Chart/query card bodies are rendered via the same static-viz pipeline the subscription emails
+  use -- rectangular charts to exactly fill their grid rectangle, other types fit preserving
+  aspect -- with the card title drawn natively above. Text and heading cards are drawn as native
+  PDF text within their cell. (Card descriptions are omitted: they vary from the frontend
+  dashboard and add little in a static export.)
 
-  Native text (titles, text cards, descriptions) is drawn with embedded Noto Sans fonts (via
+  Native text (titles, text/heading cards, parameters) is drawn with embedded Noto Sans fonts (via
   `PDType0Font`), with per-glyph font fallback (see `font-runs`), so it renders Unicode: Latin,
   Cyrillic, Greek, and CJK (Japanese/Korean/Chinese, via Noto Sans CJK). Mixed-script text picks
   the right font per character; CJK has no italic, so italic CJK falls back to upright. Shaping
@@ -88,7 +90,6 @@
 (def ^:private heading-card-pt 13.0)
 (def ^:private text-card-pt 10.5)
 (def ^:private chart-title-pt 11.0)
-(def ^:private chart-desc-pt 9.0)
 (def ^:private param-pt 9.5)
 (def ^:private param-chip-gap 16.0)
 (def ^:private line-height-factor 1.3)
@@ -320,24 +321,6 @@
 
             :else
             (recur (rest us) (str cur piece) (+ cur-w w) lines)))))))
-
-(defn- wrap-clamped
-  "Wrap text to at most `max-lines` lines. If it would need more, truncate the last kept line
-  and append an ellipsis (trimming characters until `line...` fits `max-w`)."
-  [face font-pt text max-w max-lines]
-  (let [lines (wrap-text face font-pt text max-w)]
-    (cond
-      (<= max-lines 0)          []
-      (<= (count lines) max-lines) lines
-      :else
-      (let [kept     (vec (take max-lines lines))
-            ellipsis "..."
-            fitted   (loop [s (peek kept)]
-                       (cond
-                         (str/blank? s)                                      ellipsis
-                         (<= (text-width face font-pt (str s ellipsis)) max-w) (str s ellipsis)
-                         :else                                               (recur (subs s 0 (dec (count s))))))]
-        (conj (pop kept) fitted)))))
 
 (defn- draw-line!
   "Draw a single line of text with `face` at a baseline, switching physical font per glyph run so
@@ -1031,9 +1014,6 @@
 (defn- card-title [card dashcard]
   (or (get-in dashcard [:visualization_settings :card.title]) (:name card)))
 
-(defn- card-description [card dashcard]
-  (or (get-in dashcard [:visualization_settings :card.description]) (:description card)))
-
 (defn- effective-display
   "The display type the card actually renders as. A visualizer dashcard overrides the underlying
   card's `:display` (e.g. a smartscalar card shown as a `bar`), so prefer the visualizer display
@@ -1077,27 +1057,21 @@
 (declare inline-param-lines inline-params-height draw-param-lines!)
 
 (defn- render-card-cell!
-  "Render a chart/query card into its cell rectangle. The title and description are always drawn
-  natively at the PDF level (crisp text), and the space they consume is reserved before the body
-  is rendered. Rectangular (ECharts/visx) charts are then rendered to exactly fill the remaining
-  body area (matching the frontend); other types render their body title-less and fit preserving
-  aspect into the body area."
+  "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level
+  (crisp text) and the space it consumes is reserved before the body is rendered. (Card
+  descriptions are intentionally omitted -- they vary from the frontend dashboard and add little
+  in a static export.) Rectangular (ECharts/visx) charts are then rendered to exactly fill the
+  remaining body area (matching the frontend); other types render their body title-less and fit
+  preserving aspect into the body area."
   [^PDDocument doc ^PDPageContentStream cs timezone {:keys [card dashcard inline-params] :as part} x top-y cell-w cell-h]
   (let [data       (get-in part [:result :data])
         title      (card-title card dashcard)
-        desc       (card-description card dashcard)
         th         (text-block-height (bold-font) chart-title-pt cell-w (* 0.5 cell-h) title)
-        desc-lh    (* chart-desc-pt line-height-factor)
-        ;; Descriptions clip to at most two lines (with an ellipsis), further bounded by cell size.
-        desc-max   (min 2 (long (Math/floor (/ (* 0.35 cell-h) desc-lh))))
-        desc-lines (when-not (str/blank? (str desc))
-                     (wrap-clamped (regular-font) chart-desc-pt desc cell-w desc-max))
-        dh         (* (count desc-lines) desc-lh)
-        ;; Inline parameters (filters attached to this card) render between the header and the
+        ;; Inline parameters (filters attached to this card) render between the title and the
         ;; chart body, like the email subscription does.
         ip-lines   (inline-param-lines inline-params cell-w)
         iph        (inline-params-height ip-lines)
-        header     (+ th dh iph (if (or (pos? th) (pos? dh) (pos? iph)) 4.0 0.0))
+        header     (+ th iph (if (or (pos? th) (pos? iph)) 4.0 0.0))
         body-top   (- (double top-y) header)
         body-h     (- cell-h header)
         display    (effective-display card dashcard)
@@ -1105,12 +1079,10 @@
         ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
         fill?      (or (contains? rectangular-displays display)
                        (and (= :pie display) (>= cell-w body-h)))]
-    ;; Native title + (clipped) description for every card type.
+    ;; Native title for every card type.
     (draw-text-block! cs (bold-font) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
-    (when (seq desc-lines)
-      (draw-lines! cs (regular-font) chart-desc-pt desc-color x (- (double top-y) th) desc-lines))
     (when (seq ip-lines)
-      (draw-param-lines! cs ip-lines (- (double top-y) th dh) x))
+      (draw-param-lines! cs ip-lines (- (double top-y) th) x))
     (when (> body-h 12.0)
       (if-let [png (when fill?
                      (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
