@@ -150,6 +150,10 @@ type FilterOperator =
   | "not-null"
   | "time-interval";
 
+type UnaryFilterOperator = "is-empty" | "not-empty" | "is-null" | "not-null";
+
+type BetweenFilterOperator = "between";
+
 type StringFilterOperator =
   | "="
   | "!="
@@ -201,6 +205,21 @@ type FilterOperatorForDimension<TDimension> = TDimension extends {
           : FilterOperator
   : FilterOperator;
 
+type UnaryFilterOperatorForDimension<TDimension> = Extract<
+  FilterOperatorForDimension<TDimension>,
+  UnaryFilterOperator
+>;
+
+type BetweenFilterOperatorForDimension<TDimension> = Extract<
+  FilterOperatorForDimension<TDimension>,
+  BetweenFilterOperator
+>;
+
+type ValueFilterOperatorForDimension<TDimension> = Exclude<
+  FilterOperatorForDimension<TDimension>,
+  UnaryFilterOperator | BetweenFilterOperator
+>;
+
 type MetabaseDimensionFilterForDimension<TDimension> =
   TDimension extends unknown
     ? {
@@ -210,6 +229,16 @@ type MetabaseDimensionFilterForDimension<TDimension> =
         values?: readonly unknown[];
       }
     : never;
+
+type MetabaseDimensionFilterForOperator<
+  TDimension,
+  TOperator extends FilterOperatorForDimension<TDimension>,
+> = {
+  dimension: TDimension;
+  operator: TOperator;
+  value?: unknown;
+  values?: readonly unknown[];
+};
 
 type BreakoutBucketForDimension<TDimension> = TDimension extends {
   jsType?: infer TJavaScriptType;
@@ -398,6 +427,45 @@ type UseMetabaseQuery = <
 >(
   query: TQuery & MetabaseQueryOptions<QueryEntity<TEntity, TQuery>, TSchema>,
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery>;
+
+export function filter<
+  TDimension,
+  TOperator extends ValueFilterOperatorForDimension<TDimension>,
+>(
+  dimension: TDimension,
+  operator: TOperator,
+  value: unknown,
+): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+export function filter<
+  TDimension,
+  TOperator extends BetweenFilterOperatorForDimension<TDimension>,
+>(
+  dimension: TDimension,
+  operator: TOperator,
+  values: readonly [unknown, unknown],
+): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+export function filter<
+  TDimension,
+  TOperator extends UnaryFilterOperatorForDimension<TDimension>,
+>(
+  dimension: TDimension,
+  operator: TOperator,
+): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+export function filter(
+  dimension: unknown,
+  operator: FilterOperator,
+  value?: unknown,
+): MetabaseDimensionFilterForOperator<unknown, FilterOperator> {
+  if (operator === "between") {
+    return { dimension, operator, values: value as readonly unknown[] };
+  }
+
+  if (isUnaryOperator(operator)) {
+    return { dimension, operator };
+  }
+
+  return { dimension, operator, value };
+}
 
 const useMetabaseQueryImpl = <
   TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
