@@ -40,13 +40,12 @@
    Returns the set of run IDs that were marked as orphaned."
   []
   (let [orphaned (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs" {}
-                   (rt/reap-rows! {:model        :model/TaskRun
-                                   :active       [:status :started]
-                                   :stale-column :updated_at
-                                   :age          orphan-threshold-hours
-                                   :unit         :hour
-                                   :terminal     {:status :abandoned :ended_at (mi/now)}
-                                   :also-stale   [:< :started_at (rt/cutoff max-run-duration-hours :hour)]}))]
+                   (rt/reap-rows! {:model    :model/TaskRun
+                                   :active   [:status :started]
+                                   :terminal {:status :abandoned :ended_at (mi/now)}
+                                   :stale    [:or
+                                              [:< :updated_at (rt/cutoff orphan-threshold-hours :hour)]
+                                              [:< :started_at (rt/cutoff max-run-duration-hours :hour)]]}))]
     (into #{} (map :id) orphaned)))
 
 (defn mark-orphaned-tasks!

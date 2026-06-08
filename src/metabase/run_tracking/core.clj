@@ -44,36 +44,36 @@
     (apply t2/update! model :id [:in ids] (concat active [{heartbeat-column :%now}]))))
 
 (defn reap-rows!
-  "Atomically move the `:active` rows of `:model` whose `:stale-column` predates `(now - :age :unit)` (or
-  match `:also-stale`) into `:terminal`, returning the pre-update rows. `SELECT … FOR UPDATE` + `UPDATE` in
-  one transaction, so the returned rows are exactly those transitioned."
-  [{:keys [model active stale-column terminal age unit also-stale]}]
-  (let [cutoff-form (cutoff age unit)
-        stale       (if also-stale
-                      [:or [:< stale-column cutoff-form] also-stale]
-                      [:< stale-column cutoff-form])]
-    (t2/with-transaction [_conn]
-      (when-let [rows (not-empty (apply t2/select model (concat active [{:where stale :for :update}])))]
-        (apply t2/update! model :id [:in (mapv :id rows)] (concat active [terminal]))
-        rows))))
+  "Atomically move the `:active` rows of `:model` matching the `:stale` honeysql predicate into
+  `:terminal`, returning the pre-update rows. `SELECT … FOR UPDATE` + `UPDATE` in one transaction,
+  so the returned rows are exactly those transitioned."
+  [{:keys [model active stale terminal]}]
+  (t2/with-transaction [_conn]
+    (when-let [rows (not-empty (apply t2/select model (concat active [{:where stale :for :update}])))]
+      (apply t2/update! model :id [:in (mapv :id rows)] (concat active [terminal]))
+      rows)))
 
 (defn reap-orphaned!
-  "Like [[reap-rows!]], but also emits timeout analytics (`:total-metric`/`:latency-metric`/`:metric-tags`)
-  and runs optional `:on-reaped` (per reaped row) and `:after` (once) hooks. Returns the reaped rows."
-  [{:keys [stale-column age unit total-metric latency-metric metric-tags on-reaped after]
-    :as opts}]
-  (let [timeout-dur (unit->duration age unit)
-        detected-at (Instant/now)
-        reaped      (reap-rows! (select-keys opts [:model :active :stale-column :terminal :age :unit :also-stale]))]
+  "Like [[reap-rows!]] — reap the `:active` rows of `:model` matching the `:stale` predicate into
+  `:terminal` — but also emit timeout analytics and run optional hooks. Returns the reaped rows.
+
+  `:metrics` (optional) holds the analytics inputs:
+  - `:total-metric` (+ `:tags`) — counter incremented by the number of rows reaped.
+  - `:latency-metric` (+ `:latency-column`, `:timeout-duration`) — per row, observes how long past
+    `(row's :latency-column + :timeout-duration)` the reap was detected (see [[detection-latency-ms]])."
+  [{:keys [model active terminal stale]
+    {:keys [total-metric latency-metric tags latency-column timeout-duration]} :metrics}]
+  (let [detected-at (Instant/now)
+        reaped      (reap-rows! {:model model :active active :terminal terminal :stale stale})]
     (when (seq reaped)
       (when total-metric
-        (analytics/inc! total-metric metric-tags (count reaped)))
-      (doseq [row reaped]
-        (when (and latency-metric (get row stale-column))
-          (analytics/observe! latency-metric metric-tags
-                              (detection-latency-ms (get row stale-column) timeout-dur detected-at)))
-        (when on-reaped (on-reaped row))))
-    (when after (after))
+        (analytics/inc! total-metric tags (count reaped)))
+      (when latency-metric
+        (doseq [row  reaped
+                :let [ts (get row latency-column)]
+                :when ts]
+          (analytics/observe! latency-metric tags
+                              (detection-latency-ms ts timeout-duration detected-at)))))
     reaped))
 
 (defn- daemon-scheduler

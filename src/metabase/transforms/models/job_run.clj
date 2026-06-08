@@ -85,15 +85,15 @@
   presumed dead). Returns the rows that were timed out so callers can notify."
   [stale-minutes]
   (rt/reap-orphaned!
-   {:model          :model/TransformJobRun
-    :active         [:is_active true]
-    :stale-column   :updated_at
-    :age            stale-minutes
-    :unit           :minute
-    :terminal       {:status :timeout :end_time :%now :is_active nil :message "Timed out: no heartbeat"}
-    :total-metric   :metabase-transforms/timeouts-total
-    :latency-metric :metabase-transforms/timeout-detection-latency-ms
-    :metric-tags    {:type "job"}}))
+   {:model    :model/TransformJobRun
+    :active   [:is_active true]
+    :stale    [:< :updated_at (rt/cutoff stale-minutes :minute)]
+    :terminal {:status :timeout :end_time :%now :is_active nil :message "Timed out: no heartbeat"}
+    :metrics  {:total-metric     :metabase-transforms/timeouts-total
+               :latency-metric   :metabase-transforms/timeout-detection-latency-ms
+               :tags             {:type "job"}
+               :latency-column   :updated_at
+               :timeout-duration (rt/unit->duration stale-minutes :minute)}}))
 
 (defn running-run-for-job-id
   "Return a single active job run or nil."

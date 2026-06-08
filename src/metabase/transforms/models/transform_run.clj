@@ -160,24 +160,25 @@
   "Reap active transform runs by `stale-column` into a timeout carrying `message`, publishing a timeout
   event per run. See [[metabase.run-tracking.core/reap-orphaned!]]."
   [stale-column age unit message]
-  (let [end-time (OffsetDateTime/now ZoneOffset/UTC)]
-    (rt/reap-orphaned!
-     {:model          :model/TransformRun
-      :active         [:is_active true]
-      :stale-column   stale-column
-      :age            age
-      :unit           unit
-      :terminal       {:status :timeout :end_time :%now :is_active nil :message message}
-      :total-metric   :metabase-transforms/timeouts-total
-      :latency-metric :metabase-transforms/timeout-detection-latency-ms
-      :metric-tags    {:type "transform"}
-      :on-reaped      (fn [run]
-                        (publish-timeout-event! (assoc run
-                                                       :status    :timeout
-                                                       :is_active nil
-                                                       :end_time  end-time
-                                                       :message   message)))
-      :after          cancel/delete-old-canceling-runs!})))
+  (let [end-time (OffsetDateTime/now ZoneOffset/UTC)
+        reaped   (rt/reap-orphaned!
+                  {:model    :model/TransformRun
+                   :active   [:is_active true]
+                   :stale    [:< stale-column (rt/cutoff age unit)]
+                   :terminal {:status :timeout :end_time :%now :is_active nil :message message}
+                   :metrics  {:total-metric     :metabase-transforms/timeouts-total
+                              :latency-metric   :metabase-transforms/timeout-detection-latency-ms
+                              :tags             {:type "transform"}
+                              :latency-column   stale-column
+                              :timeout-duration (rt/unit->duration age unit)}})]
+    (doseq [run reaped]
+      (publish-timeout-event! (assoc run
+                                     :status    :timeout
+                                     :is_active nil
+                                     :end_time  end-time
+                                     :message   message)))
+    (cancel/delete-old-canceling-runs!)
+    reaped))
 
 (defn timeout-old-runs!
   "Time out all active runs whose `start_time` is older than the specified age. Returns the rows that were

@@ -149,15 +149,10 @@
   [{:keys [in-flight]}]
   (some seq (vals in-flight)))
 
-(defn- transform-target-key
-  "A coarse identity for a transform's output table, used to keep two transforms that write the
-  same target table from being dispatched concurrently."
-  [transform]
-  (when-let [{:keys [database schema name]} (:target transform)]
-    [database schema name]))
-
 (defn- submit-transform! ^Future
-  [^ExecutorService executor ^BlockingQueue completions run-id run-method user-id transform]
+  [^ExecutorService executor
+   ^BlockingQueue completions
+   run-id run-method user-id transform]
   (let [task (bound-fn []
                (let [tid (:id transform)]
                  (try
@@ -170,6 +165,14 @@
                                         ::message   (or (ex-message t) (str t))
                                         ::throwable t})))))]
     (.submit executor ^Runnable task)))
+
+(defn- transform-target-key
+  "A coarse identity for a transform's output table, used to keep two transforms that write the
+  same target table from being dispatched concurrently. Returns nil when the transform has no
+  resolved target (in which case it isn't subject to the co-writer guard)."
+  [transform]
+  (when-let [{:keys [database schema name]} (:target transform)]
+    [database schema name]))
 
 (defn- dispatch-ready!
   "Submit every transform whose deps have all succeeded and whose lane has a free slot, recording the

@@ -119,33 +119,30 @@
   - `:ex-message-fn` change how caught exceptions are presented to the user in run logs, by default the same as clojure.core/ex-message"
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
-  (let [cancel-chan    (a/promise-chan)
-        timeout-handle (volatile! nil)]
-    ;; Register first so the run is heartbeated and cancelable for its whole is_active lifetime.
-    (canceling/chan-start-run! run-id cancel-chan)
-    (try
-      (when (and (not (str/blank? output-schema))
-                 (not (driver/schema-exists? driver db-id output-schema)))
-        (driver/create-schema-if-needed! driver conn-spec output-schema))
-      (let [source-range-params  (transforms-base.u/get-source-range-params transform)
-            transform-timeout    (transforms.settings/transform-timeout)
-            transform-timeout-ms (u/minutes->ms transform-timeout)
-            full-incremental?    (transforms-base.u/full-incremental-run? transform)
-            ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
-            ;; rows-affected count can be trusted. On drivers that declare
-            ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus
-            ;; count, so we skip emitting efficiency metrics for those runs entirely. The INSERT path's
-            ;; count is accurate even on those drivers.
-            reliable-row-count?  (or (driver.u/supports? driver :transforms/accurate-rows-affected
-                                                         {:lib/type :metadata/database :id db-id})
-                                     (not full-incremental?))]
+  (let [cancel-chan       (a/promise-chan)
+        transform-timeout (transforms.settings/transform-timeout)
+        source-range-params  (transforms-base.u/get-source-range-params transform)
+        transform-timeout-ms (u/minutes->ms transform-timeout)
+        full-incremental?    (transforms-base.u/full-incremental-run? transform)
+        ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
+        ;; rows-affected count can be trusted. On drivers that declare
+        ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus
+        ;; count, so we skip emitting efficiency metrics for those runs entirely. The INSERT path's
+        ;; count is accurate even on those drivers.
+        reliable-row-count?  (or (driver.u/supports? driver :transforms/accurate-rows-affected
+                                                     {:lib/type :metadata/database :id db-id})
+                                 (not full-incremental?))]
+    (canceling/with-cancelation [run-id cancel-chan transform-timeout]
+      (try
+        (when (and (not (str/blank? output-schema))
+                   (not (driver/schema-exists? driver db-id output-schema)))
+          (driver/create-schema-if-needed! driver conn-spec output-schema))
         (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
         (when-let [{:keys [rows-available] :as srp} source-range-params]
           (tracing/add-span-attrs! :tasks
                                    (cond-> (transforms-base.u/checkpoint-span-attrs srp)
                                      (and reliable-row-count? rows-available)
                                      (assoc :transform/rows-available rows-available))))
-        (vreset! timeout-handle (canceling/chan-start-timeout-vthread! run-id transform-timeout))
         (let [ret (driver.conn/with-transform-connection
                     ;; Route through the `:transform` JDBC pool, whose `unreturnedConnectionTimeout` will be set
                     ;; from the `*query-timeout-ms*` binding below at pool-creation time. This keeps the default
@@ -171,16 +168,12 @@
                    full-incremental?)))
               (catch Throwable t
                 (log/warnf t "Failed to emit incremental-rows metric for transform %s" (:id transform)))))
-          ret))
-      (catch Throwable t
-        (if (:timeout (ex-data t))
-          (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
-          (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
-        (throw t))
-      (finally
-        ;; Stop the timeout vthread so it doesn't park until the deadline after the run finished.
-        (canceling/cancel-timeout! @timeout-handle)
-        (canceling/chan-end-run! run-id)))))
+          ret)
+        (catch Throwable t
+          (if (:timeout (ex-data t))
+            (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
+            (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
+          (throw t))))))
 
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."

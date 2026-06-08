@@ -73,23 +73,33 @@
   (reconcile-local-runs!))
 
 (defn chan-start-timeout-vthread!
-  "Start a vthread that times the run out after `timeout-minutes`. Returns a handle the caller cancels
-  via [[cancel-timeout!]] when the run finishes early, so it doesn't park for the full timeout."
+  "Start a vthread that times the run out after `timeout-minutes`."
   [run-id timeout-minutes]
   (u.jvm/in-virtual-thread*
    (try
      (Thread/sleep (long (* timeout-minutes 60 1000)))
      (chan-signal-cancel! run-id)
      (transform-run/timeout-run! run-id)
-     (catch InterruptedException _
-       ;; the run finished before the deadline and cancelled us; nothing to time out
-       nil))))
+     (catch InterruptedException _ nil))))
 
 (defn cancel-timeout!
   "Cancel the timeout vthread started by [[chan-start-timeout-vthread!]] (a no-op if already done)."
   [timeout-handle]
   (when timeout-handle
     (.cancel ^Future timeout-handle true)))
+
+(defmacro with-cancelation
+  "Run `body` with cancellation wired up for `run-id`, tearing it down on exit (normal or throw)
+  Returns the value of `body`."
+  [[run-id cancel-chan timeout-minutes] & body]
+  `(let [run-id# ~run-id]
+     (chan-start-run! run-id# ~cancel-chan)
+     (let [timeout-handle# (chan-start-timeout-vthread! run-id# ~timeout-minutes)]
+       (try
+         ~@body
+         (finally
+           (cancel-timeout! timeout-handle#)
+           (chan-end-run! run-id#))))))
 
 (defn- request-latency-ms
   "Milliseconds elapsed since `request-time`, or nil when `request-time` is nil.

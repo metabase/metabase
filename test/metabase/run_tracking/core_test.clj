@@ -53,7 +53,7 @@
                                                       :run_method :manual :start_time (minutes-ago 10)
                                                       :last_heartbeat (minutes-ago 1)}]
         (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
-                                     :stale-column :last_heartbeat :age 5 :unit :minute
+                                     :stale [:< :last_heartbeat (rt/cutoff 5 :minute)]
                                      :terminal {:status :timeout :is_active nil :end_time :%now
                                                 :message "reaped"}})]
           (is (= [stale] (mapv :id reaped)))
@@ -63,19 +63,19 @@
           (is (= :started (t2/select-one-fn :status :model/TransformRun :id fresh))))
         (testing "second sweep is empty — the row is no longer active"
           (is (empty? (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
-                                      :stale-column :last_heartbeat :age 5 :unit :minute
+                                      :stale [:< :last_heartbeat (rt/cutoff 5 :minute)]
                                       :terminal {:status :timeout :is_active nil :end_time :%now}}))))))))
 
-(deftest reap-rows!-also-stale-test
-  (testing ":also-stale predicate is OR'd with the heartbeat cutoff (fresh heartbeat, old start_time)"
+(deftest reap-rows!-or-stale-test
+  (testing "an :or stale predicate reaps on either branch (fresh heartbeat, old start_time)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {tid :id}       {}
                      :model/TransformRun {old-start :id} {:transform_id tid :status :started :is_active true
                                                           :run_method :manual :start_time (minutes-ago 120)
                                                           :last_heartbeat (minutes-ago 1)}]
         (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
-                                     :stale-column :last_heartbeat :age 5 :unit :minute
-                                     :also-stale [:< :start_time (rt/cutoff 60 :minute)]
+                                     :stale [:or [:< :last_heartbeat (rt/cutoff 5 :minute)]
+                                             [:< :start_time (rt/cutoff 60 :minute)]]
                                      :terminal {:status :timeout :is_active nil :end_time :%now}})]
           (is (= [old-start] (mapv :id reaped)))
           (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id old-start))))))))
@@ -89,7 +89,7 @@
                                                :status :started :started_at (minutes-ago 1)
                                                :updated_at (minutes-ago 1) :process_uuid "test"}]
       (let [reaped (rt/reap-rows! {:model :model/TaskRun :active [:status :started]
-                                   :stale-column :updated_at :age 60 :unit :minute
+                                   :stale [:< :updated_at (rt/cutoff 60 :minute)]
                                    :terminal {:status :abandoned}})]
         (is (= [stale] (mapv :id reaped)))
         (is (= :abandoned (t2/select-one-fn :status :model/TaskRun :id stale)))
