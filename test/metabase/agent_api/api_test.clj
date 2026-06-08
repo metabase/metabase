@@ -445,6 +445,13 @@
       (testing label
         (is (re-find #"Invalid request"
                      (str (mt/user-http-request :rasta :post 400 "agent/v2/query" {:query q})))))))
+  (testing "`/v2/query` returns 400 (not 500) for a JSON object that isn't a serialized MBQL query"
+    (doseq [[label q] [["non-sequential :stages" {:stages 1}]
+                       ["missing :stages"        {:lib/type "mbql/query"}]]]
+      (testing label
+        (is (re-find #"expected a serialized MBQL query"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                                {:query (u/encode-base64 (json/encode q))})))))))
   (testing "`/v2/query` returns 400 for a malformed continuation_token"
     (is (re-find #"Invalid request"
                  (str (mt/user-http-request :rasta :post 400 "agent/v2/query"

@@ -286,9 +286,9 @@
       u/encode-base64))
 
 (defn- decode-base64-json-map
-  "Decode a base64-encoded JSON object to a Clojure map, returning a 400 (not a 500) on malformed
-   input. The query_handle and continuation-token payloads are client-reachable, so garbage in must
-   surface as a clean 400 rather than throwing a decode exception that bubbles up as a 500."
+  "Decode a base64-encoded JSON object to a Clojure map, returning a 400 (not a 500) on malformed input.
+   The query_handle and continuation-token payloads are client-reachable, so garbage in must surface as
+   a clean 400 rather than a decode exception that bubbles up as a 500."
   [encoded]
   (let [decoded (try
                   (-> encoded u/decode-base64 json/decode+kw)
@@ -413,6 +413,16 @@
     (throw (ex-info "Native queries are not supported here; use execute_sql instead."
                     {:status-code 400}))))
 
+(defn- validate-serialized-query!
+  "Sanity-check a decoded MBQL query map from a client-reachable base64 payload (query_handle or token).
+   Require a non-empty sequential `:stages`; otherwise `serialized-query-limit` and `apply-page-to-query`
+   would throw on the malformed shape and surface a 500 instead of a clean 400.
+   Deep MBQL validation still happens in the QP at execution."
+  [query-map]
+  (when-not (and (sequential? (:stages query-map)) (seq (:stages query-map)))
+    (throw (ex-info "Invalid query: expected a serialized MBQL query with a non-empty :stages."
+                    {:status-code 400}))))
+
 (defn- check-token-query-permissions!
   "Re-validate query permissions on the continuation-token path.
 
@@ -442,12 +452,14 @@
     (:continuation_token body)
     (let [{:keys [query pagination]} (decode-continuation-token (:continuation_token body))]
       (reject-native-query! query)
+      (validate-serialized-query! query)
       (check-token-query-permissions! query)
       {:query query :total-limit (:limit pagination) :page (:page pagination)})
 
     (string? (:query body))
     (let [query (decode-base64-json-map (:query body))]
       (reject-native-query! query)
+      (validate-serialized-query! query)
       {:query query :total-limit (clamp-total-limit (serialized-query-limit query)) :page 1})
 
     :else
