@@ -60,7 +60,7 @@ Permission configuration for transform depends on your plan.
 
 Before you can start writing transforms, you'll need to enable transforms in your Metabase instance.
 
-If you are on a Metabase Cloud plan, only people logged in with an email of a [Metabase Store admins](../../cloud/accounts-and-billing.md#add-people-to-manage-your-metabase-store-account) (not just Metabase _instance_ admins) can enable basic transforms, because transforms incur a cost per run on Metabase Cloud.
+If you're on a Metabase Cloud plan, only people logged in with an email of a [Metabase Store admin](../../cloud/accounts-and-billing.md#add-managers) (not just Metabase _instance_ admins) can enable basic transforms, because transforms incur a cost per run on Metabase Cloud.
 
 To enable transforms:
 

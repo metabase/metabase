@@ -1,11 +1,8 @@
-import { useMemo } from "react";
-
 import { MetricCardVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
 import { useCardQueryData } from "metabase/data-studio/common/hooks/use-card-query-data";
-import { useMetricDefinition } from "metabase/metrics/common/hooks";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { Box, Flex, Stack } from "metabase/ui";
-import * as LibMetric from "metabase-lib/metric";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Card } from "metabase-types/api";
 
 import type { MetricUrls } from "../../../types";
@@ -21,18 +18,12 @@ interface MetricAboutProps {
 }
 
 export function MetricAbout({ card, urls }: MetricAboutProps) {
-  const { definition } = useMetricDefinition(card.id ?? null);
   const { data, isLoading } = useCardQueryData(card);
 
-  const hasTimeDimension = useMemo(
-    () =>
-      definition
-        ? LibMetric.defaultBreakoutDimensions(definition).some(
-            LibMetric.isDateOrDateTime,
-          )
-        : false,
-    [definition],
-  );
+  // Time series → show value + change over time. Keyed off result columns, not the
+  // Lib metric definition, so metrics defined on models (name-based breakout refs) work too.
+  const cols = card.result_metadata;
+  const isTimeSeries = isDate(cols?.[0]) && isNumeric(cols?.[1]);
 
   return (
     <Flex className={S.root} flex={1} gap="md">
@@ -42,7 +33,7 @@ export function MetricAbout({ card, urls }: MetricAboutProps) {
             <ExploreMetricButton cardId={card.id} />
           </Box>
         )}
-        {hasTimeDimension ? (
+        {isTimeSeries ? (
           <AboutVisualization card={card} />
         ) : (
           <MetricCardVisualization

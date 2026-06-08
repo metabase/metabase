@@ -12,6 +12,7 @@ import {
   getEntityPickerSyntheticLibraryItem,
   getLibraryCollectionEmptyStateMessages,
   isLibraryCollectionType,
+  isLibraryDataCollectionType,
   isLibrarySubCollectionType,
   useGetLibraryChildCollectionByType,
   useGetLibraryCollection,
@@ -39,5 +40,6 @@ export function initializePlugin() {
       getLibraryCollectionEmptyStateMessages;
     PLUGIN_LIBRARY.isLibraryCollectionType = isLibraryCollectionType;
     PLUGIN_LIBRARY.isLibrarySubCollectionType = isLibrarySubCollectionType;
+    PLUGIN_LIBRARY.isLibraryDataCollectionType = isLibraryDataCollectionType;
   }
 }

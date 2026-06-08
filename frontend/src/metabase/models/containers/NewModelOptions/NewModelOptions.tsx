@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";
-import NewModelOption from "metabase/models/components/NewModelOption";
+import { NewModelOption } from "metabase/models/components/NewModelOption";
 import { useSelector } from "metabase/redux";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import {

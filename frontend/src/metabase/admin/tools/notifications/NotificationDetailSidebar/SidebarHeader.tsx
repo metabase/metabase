@@ -37,7 +37,7 @@ export const SidebarHeader = ({
   onDelete,
   onEdit,
 }: SidebarHeaderProps) => {
-  const cardName = notification?.payload.card?.name ?? t`Untitled question`;
+  const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
   const dispatch = useDispatch();
 
   const handleCopyLink = async () => {
