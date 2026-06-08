@@ -313,6 +313,14 @@ Good presentation transforms:
 
 If no curated schema entry supports the intended UI, leave an empty/error state or ask for the semantic layer to be curated. Do not invent mock data or create new Metabase questions from the app-building step.
 
+## Data Truthfulness
+
+Only render values returned by Metabase or deterministic presentation transforms of those returned values.
+
+Do not invent KPI values, trend percentages, ratings, statuses, customer segments, freshness timestamps, top entities, benchmark labels, placeholder insights, or chart series. If a value is not returned by a Metabase query, leave it out, show a neutral loading/error/empty state, or change the query to fetch the needed value from the curated schema.
+
+Before rendering a field, verify that the field exists in the generated schema object and that the query returns it. Do not guess column names from business intuition or from old mock data. If the UI needs `gross_revenue`, use `schema.tables.productPerformance.fields.grossRevenue` or a query result column named `gross_revenue`; do not render guessed fields like `total_revenue` unless the schema/query actually contains them.
+
 ## Common Mistakes
 
 - Searching the Metabase instance or creating saved questions while building the UI. The semantic layer must already be curated.
@@ -329,5 +337,7 @@ If no curated schema entry supports the intended UI, leave an empty/error state 
 - Plotting different-unit series on one shared scale when the intended comparison needs separate axes or normalized series.
 - Showing raw floating point values in user-facing UI. Format numbers according to their domain.
 - Keeping mock data or placeholder analytics when a curated schema entry can power the view.
+- Hardcoding business metrics, trends, labels, statuses, timestamps, or rankings instead of querying them from Metabase.
+- Rendering fields that are not present in the generated schema or returned query result.
 - Rendering `No data` while the SDK is still authenticating or loading.
 - Creating a nested `MetabaseProvider` per component instead of sharing one provider at the app boundary.
