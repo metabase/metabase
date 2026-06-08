@@ -29,12 +29,6 @@ export interface DiscussionProps {
   comments: Comment[];
   targetId: EntityId;
   targetType: CommentEntityType;
-  /**
-   * Called when the discussion is hovered, with the hovered thread's
-   * child target id (or `undefined` when the pointer leaves). Lets the
-   * embedding feature (e.g. documents) react to hover without this shared
-   * component depending on the feature's state.
-   */
   onHoverChange?: (childTargetId: string | undefined) => void;
 }
 
