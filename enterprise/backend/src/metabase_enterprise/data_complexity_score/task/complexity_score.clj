@@ -209,10 +209,17 @@
     (run-scoring! fingerprint)))
 
 (defn- run-claim!
-  "Dispatch a claimed run: `:republish` re-emits the cached snapshot, anything else recomputes."
+  "Dispatch a claimed run by `:mode`:
+  - `:republish` re-emits the cached snapshot
+  - `:skip` is a no-op
+  - anything else recomputes
+
+  A `:skip` claim never reaches here — [[claim-scoring-run!]] returns nil in that mode — but the
+  explicit branch keeps the dispatch total so a future caller can't silently recompute on it."
   [{:keys [mode fingerprint]}]
   (case mode
     :republish (republish-cached-score! fingerprint)
+    :skip      nil
     (run-scoring! fingerprint)))
 
 (task/defjob ^{DisallowConcurrentExecution true
