@@ -438,6 +438,18 @@
                                              {:query base64-query})]
       (is (re-find #"Native queries are not supported" (str resp))))))
 
+(deftest combined-query-rejects-malformed-payload-test
+  (testing "`/v2/query` returns 400 (not 500) when a base64 `:query` isn't a valid JSON object"
+    (doseq [[label q] [["not valid base64/JSON"        "@@@not-base64@@@"]
+                       ["valid base64 of a non-object" (u/encode-base64 (json/encode 5))]]]
+      (testing label
+        (is (re-find #"Invalid request"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query" {:query q})))))))
+  (testing "`/v2/query` returns 400 for a malformed continuation_token"
+    (is (re-find #"Invalid request"
+                 (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                            {:continuation_token "@@@not-base64@@@"}))))))
+
 (defn- make-continuation-token [pagination]
   (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
        :pagination pagination}

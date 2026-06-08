@@ -285,6 +285,19 @@
       json/encode
       u/encode-base64))
 
+(defn- decode-base64-json-map
+  "Decode a base64-encoded JSON object to a Clojure map, returning a 400 (not a 500) on malformed
+   input. The query_handle and continuation-token payloads are client-reachable, so garbage in must
+   surface as a clean 400 rather than throwing a decode exception that bubbles up as a 500."
+  [encoded]
+  (let [decoded (try
+                  (-> encoded u/decode-base64 json/decode+kw)
+                  (catch Exception _ ::invalid))]
+    (if (map? decoded)
+      decoded
+      (throw (ex-info "Invalid request: expected a base64-encoded JSON object."
+                      {:status-code 400})))))
+
 (defn- decode-continuation-token
   "Decode a base64-encoded continuation token into {:query ... :pagination ...}.
    The token is client-supplied, so sanity-check the pagination ints to turn
@@ -292,7 +305,7 @@
    the embedded query happens in [[check-token-query-permissions!]] — a token
    doesn't grant access the bearer wouldn't otherwise have."
   [token]
-  (let [decoded (-> token u/decode-base64 json/decode+kw)
+  (let [decoded (decode-base64-json-map token)
         {:keys [limit page]} (:pagination decoded)]
     (api/check (and (int? limit) (pos? limit))
                [400 "Invalid continuation token: limit must be a positive integer"])
@@ -433,7 +446,7 @@
       {:query query :total-limit (:limit pagination) :page (:page pagination)})
 
     (string? (:query body))
-    (let [query (-> body :query u/decode-base64 json/decode+kw)]
+    (let [query (decode-base64-json-map (:query body))]
       (reject-native-query! query)
       {:query query :total-limit (clamp-total-limit (serialized-query-limit query)) :page 1})
 
