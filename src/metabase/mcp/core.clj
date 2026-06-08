@@ -10,6 +10,11 @@
   []
   (mcp.settings/mcp-apps-cors-origins))
 
+(defn mcp-enabled?
+  "Whether the MCP server is enabled (composes [[metabase.llm.settings/ai-features-enabled?]])."
+  []
+  (mcp.settings/mcp-enabled?))
+
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."
   []
