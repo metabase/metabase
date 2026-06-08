@@ -68,7 +68,14 @@ const RegenerateKeyModal = ({
               >{t`Group`}</Text>
               <Text>{apiKey.group.name}</Text>
             </Stack>
-            <Paper bg="background-secondary" radius="md" px="md" py="sm">
+            {/* TODO: swap for the planned metabase/ui Alert variant once it lands. */}
+            <Paper
+              bg="background-secondary"
+              radius="md"
+              px="md"
+              py="sm"
+              shadow="none"
+            >
               <Text c="text-secondary">{t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`}</Text>
             </Paper>
             <FormErrorMessage />

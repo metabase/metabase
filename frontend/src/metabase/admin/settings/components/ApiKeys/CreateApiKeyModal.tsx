@@ -64,7 +64,14 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
                 classNames={{ description: S.groupDescription }}
                 required
               />
-              <Paper bg="background-secondary" radius="md" px="md" py="sm">
+              {/* TODO: swap for the planned metabase/ui Alert variant once it lands. */}
+              <Paper
+                bg="background-secondary"
+                radius="md"
+                px="md"
+                py="sm"
+                shadow="none"
+              >
                 <Text c="text-secondary">{t`We don't version the Metabase API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.`}</Text>
               </Paper>
               <FormErrorMessage />
