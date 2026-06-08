@@ -745,6 +745,7 @@
   never block the caller forever. Callers can override either timeout by
   passing `:connection-timeout` / `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
+  (llm/assert-llm-host-allowed! url)
   (http/request (-> {:connection-timeout default-connection-timeout-ms
                      :socket-timeout     default-socket-timeout-ms}
                     (merge req)

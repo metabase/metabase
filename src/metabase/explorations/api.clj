@@ -610,15 +610,24 @@
       ;; held by an in-flight QP worker so this API call doesn't block on QP duration; that row
       ;; will commit as `done` (or `error`) naturally. H2 has only one worker (see worker-count
       ;; in the runner) so SKIP LOCKED is unnecessary and unsupported.
-      (t2/query
-       {:update (t2/table-name :model/ExplorationQuery)
-        :set    {:status "canceled"}
-        :where  [:in :id (cond-> {:select [:id]
-                                  :from   [:exploration_query]
-                                  :where  [:and
-                                           [:= :exploration_thread_id thread-id]
-                                           [:= :status "pending"]]}
-                           (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked]))]})))
+      ;;
+      ;; Done as a select-then-update rather than `WHERE id IN (subquery on the same table)`:
+      ;; MySQL/MariaDB reject updating a table referenced by a subquery in the same statement
+      ;; (error 1093). The selected rows stay locked until the surrounding transaction commits,
+      ;; so the SKIP LOCKED semantics are preserved.
+      (let [pending-ids (map :id
+                             (t2/query
+                              (cond-> {:select [:id]
+                                       :from   [:exploration_query]
+                                       :where  [:and
+                                                [:= :exploration_thread_id thread-id]
+                                                [:= :status "pending"]]}
+                                (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked]))))]
+        (when (seq pending-ids)
+          (t2/query
+           {:update (t2/table-name :model/ExplorationQuery)
+            :set    {:status "canceled"}
+            :where  [:in :id pending-ids]})))))
   (t2/select-one [:model/ExplorationThread :id :canceled_at :completed_at] :id thread-id))
 
 (api.macros/defendpoint :get "/thread/:thread-id/documents" :- [:sequential ::ExplorationDocument]

@@ -53,12 +53,14 @@
 (mu/defn- broken-cards-response :- ::broken-cards-response
   [{:keys [card transform]}]
   (let [broken-card-ids (keys card)
+        ;; Order by :id so the response is deterministic regardless of the DB's `WHERE id IN (...)`
+        ;; row order (which is unspecified without an explicit ORDER BY).
         broken-cards (when (seq broken-card-ids)
-                       (-> (t2/select :model/Card :id [:in broken-card-ids])
+                       (-> (t2/select :model/Card :id [:in broken-card-ids] {:order-by [[:id :asc]]})
                            (t2/hydrate [:collection :effective_ancestors] :dashboard :document)))
         broken-transform-ids (keys transform)
         broken-transforms (when (seq broken-transform-ids)
-                            (t2/select :model/Transform :id [:in broken-transform-ids]))]
+                            (t2/select :model/Transform :id [:in broken-transform-ids] {:order-by [[:id :asc]]}))]
     {:success (and (empty? broken-card-ids)
                    (empty? broken-transform-ids))
      :bad_cards (into [] (comp (filter mi/can-read?)
