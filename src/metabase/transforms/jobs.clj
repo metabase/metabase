@@ -266,20 +266,24 @@
    (:in-flight st)))
 
 (defn- run-coordinator-loop!
-  "Dispatch ready transforms, then each round heartbeat the job run (so liveness reflects real
-  coordination), cancel overdue workers, drain a completion, and refill freed slots — until nothing
-  is in flight. Returns the final state."
+  "Dispatch ready transforms, then each round cancel overdue workers, drain a completion, refill freed
+  slots, and heartbeat the job run about every `job-heartbeat-interval-ms` — until nothing is in
+  flight. Returns the final state."
   [init-state {:keys [^BlockingQueue completions run-id timeout-ms] :as ctx}]
-  (loop [st (dispatch-ready! init-state ctx)]
+  (transforms.job-run/heartbeat-runs! [run-id])
+  (loop [st (dispatch-ready! init-state ctx)
+         hb (u/start-timer)]
     (if-not (busy? st)
       st
-      (do
-        (transforms.job-run/heartbeat-runs! [run-id])
+      (let [beat? (>= (u/since-ms hb) job-heartbeat-interval-ms)]
+        (when beat?
+          (transforms.job-run/heartbeat-runs! [run-id]))
         (let [st (cancel-overdue-workers! st timeout-ms)
               st (if-let [completion (.poll completions job-heartbeat-interval-ms TimeUnit/MILLISECONDS)]
                    (apply-completion st completion)
                    st)]
-          (recur (dispatch-ready! st ctx)))))))
+          (recur (dispatch-ready! st ctx)
+                 (if beat? (u/start-timer) hb)))))))
 
 (defn run-transforms!
   "Run `transform-ids-to-run` and their dependencies, honoring the DAG.
