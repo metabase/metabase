@@ -182,11 +182,21 @@ filters: [
 
 ## TypeScript Debugging
 
-When TypeScript errors are complex, run the app typecheck/build and fix one query at a time:
+After changing queries or generated-schema usage, run the app's TypeScript check. Visual testing does not catch schema type errors.
+
+Prefer the app's existing script when present:
+
+```bash
+npm run typecheck
+```
+
+If no typecheck script exists, run:
 
 ```bash
 ./node_modules/.bin/tsc --noEmit
 ```
+
+Fix one query error at a time.
 
 Common patterns:
 

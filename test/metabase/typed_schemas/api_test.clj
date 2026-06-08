@@ -81,6 +81,40 @@
                             :display_name "Created At"
                             :base_type    "type/DateTime"}]}))))
 
+(deftest keyed-map-disambiguates-duplicate-keys-with-readable-suffix-test
+  (is (= {"channelOrderItems" {:key     "channelOrderItems"
+                               :id      "40f15584-bca0-4557-910d-e5e789757f23"
+                               :tableId 261}
+          "channelOrders"     {:key     "channelOrders"
+                               :id      "ca9bef16-d484-4add-8245-ddbc78287e8f"
+                               :tableId 167}}
+         (#'typed-schemas.api/keyed-map
+          [{:key     "channel"
+            :id      "ca9bef16-d484-4add-8245-ddbc78287e8f"
+            :tableId 167
+            :keyDisambiguator "Orders"}
+           {:key     "channel"
+            :id      "40f15584-bca0-4557-910d-e5e789757f23"
+            :tableId 261
+            :keyDisambiguator "OrderItems"}]))))
+
+(deftest keyed-map-falls-back-to-id-when-readable-suffix-does-not-disambiguate-test
+  (is (= {"channelOrders1" {:key     "channelOrders1"
+                            :id      1
+                            :tableId 167}
+          "channelOrders2" {:key     "channelOrders2"
+                            :id      2
+                            :tableId 168}}
+         (#'typed-schemas.api/keyed-map
+          [{:key     "channel"
+            :id      1
+            :tableId 167
+            :keyDisambiguator "Orders"}
+           {:key     "channel"
+            :id      2
+            :tableId 168
+            :keyDisambiguator "Orders"}]))))
+
 (deftest metric-schema-keys-dimensions-test
   (with-redefs [typed-schemas.api/metric-result-column (constantly nil)
                 typed-schemas.api/metric-dimensions
