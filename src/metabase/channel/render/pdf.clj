@@ -24,9 +24,11 @@
 
   Native text (titles, text/heading cards, parameters) is drawn with embedded Noto Sans fonts (via
   `PDType0Font`), with per-glyph font fallback (see `font-runs`), so it renders Unicode: Latin,
-  Cyrillic, Greek, and CJK (Japanese/Korean/Chinese, via Noto Sans CJK). Mixed-script text picks
-  the right font per character; CJK has no italic, so italic CJK falls back to upright. Shaping
-  scripts (Arabic, Indic, Thai) are not yet supported and their characters render as `?`.
+  Cyrillic, Greek, CJK (Japanese/Korean/Chinese, via Noto Sans CJK), and Arabic/Hebrew (via Noto
+  Sans Arabic/Hebrew). Mixed-script text picks the right font per character; CJK has no italic, so
+  italic CJK falls back to upright. Right-to-left text is shaped and reordered per line via ICU
+  (see [[visual-order]]) -- a pragmatic, not-full-paragraph-bidi approximation. Other complex
+  scripts needing shaping (Indic, Thai) are not yet supported and render as `?`.
 
   Note on size: all faces are TrueType (glyf), which PDFBox subsets at save -- so PDFs only carry
   the glyphs actually used and stay small even when CJK text is present.
@@ -51,6 +53,7 @@
    [toucan2.core :as t2])
   (:import
    (com.google.common.net InetAddresses)
+   (com.ibm.icu.text ArabicShaping Bidi)
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock
                              HardLineBreak Heading Image IndentedCodeBlock Link MailLink OrderedList
                              Paragraph SoftLineBreak StrongEmphasis Text ThematicBreak)
@@ -132,12 +135,17 @@
   "Physical font keyword -> classpath resource. All TrueType (glyf), so PDFBox can subset them and
   the output PDF only carries the glyphs actually used. Noto Sans covers Latin/Cyrillic/Greek; the
   per-region Noto Sans JP/KR/SC faces (static instances of the variable Google Fonts) cover
-  Japanese/Korean/Simplified-Chinese."
+  Japanese/Korean/Simplified-Chinese; Noto Sans Arabic/Hebrew cover those scripts (see
+  [[visual-order]] for the right-to-left shaping/reordering applied before drawing them)."
   {:noto-regular     "fonts/pdf/NotoSans-Regular.ttf"
    :noto-bold        "fonts/pdf/NotoSans-Bold.ttf"
    :noto-italic      "fonts/pdf/NotoSans-Italic.ttf"
    :noto-bold-italic "fonts/pdf/NotoSans-BoldItalic.ttf"
    :noto-mono        "fonts/pdf/NotoSansMono-Regular.ttf"
+   :arabic-regular   "fonts/pdf/NotoSansArabic-Regular.ttf"
+   :arabic-bold      "fonts/pdf/NotoSansArabic-Bold.ttf"
+   :hebrew-regular   "fonts/pdf/NotoSansHebrew-Regular.ttf"
+   :hebrew-bold      "fonts/pdf/NotoSansHebrew-Bold.ttf"
    :jp-regular       "fonts/pdf/NotoSansJP-Regular.ttf"
    :jp-bold          "fonts/pdf/NotoSansJP-Bold.ttf"
    :kr-regular       "fonts/pdf/NotoSansKR-Regular.ttf"
@@ -168,11 +176,11 @@
   [^PDDocument doc]
   (let [phys  (into {} (map (fn [[k path]] [k (load-phys doc path)])) physical-font-resources)
         face* (fn [primary & fallbacks] {:primary (phys primary) :fallbacks (mapv phys fallbacks)})]
-    {:regular     (face* :noto-regular     :jp-regular :kr-regular :sc-regular)
-     :bold        (face* :noto-bold        :jp-bold    :kr-bold    :sc-bold)
-     :italic      (face* :noto-italic      :jp-regular :kr-regular :sc-regular)
-     :bold-italic (face* :noto-bold-italic :jp-bold    :kr-bold    :sc-bold)
-     :mono        (face* :noto-mono        :jp-regular :kr-regular :sc-regular)}))
+    {:regular     (face* :noto-regular     :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)
+     :bold        (face* :noto-bold        :hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold)
+     :italic      (face* :noto-italic      :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)
+     :bold-italic (face* :noto-bold-italic :hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold)
+     :mono        (face* :noto-mono        :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)}))
 
 (defn- face [k] (get *fonts* k))
 (defn- bold-font [] (face :bold))
@@ -190,6 +198,30 @@
           (.appendCodePoint sb (if (< cp 32) (int \space) cp))
           (recur (+ i (Character/charCount cp))))))
     (.toString sb)))
+
+(defn- visual-order
+  "If `s` contains right-to-left text (Arabic or Hebrew), return it shaped and reordered for a
+  left-to-right renderer; otherwise return it unchanged.
+
+  PDFBox's `showText` lays glyphs out left-to-right in the order given and does no OpenType
+  shaping, so RTL text drawn naively comes out reversed and (for Arabic) as disconnected isolated
+  letters. We approximate proper rendering with ICU, no native HarfBuzz needed:
+   - `ArabicShaping` rewrites Arabic letters to their positional presentation forms (initial/
+     medial/final/isolated, plus the lam-alef ligature) -- the Noto Sans Arabic cmap covers that
+     Presentation-Forms-B block, so the joined shapes render.
+   - `Bidi` reorders the (shaped) logical string into visual order and mirrors brackets.
+
+  This runs per drawn line, not per paragraph, so it is a deliberate approximation rather than
+  full bidi: a pure Arabic/Hebrew line reads correctly, and mixed LTR/RTL is close enough for the
+  short strings dashboards use (titles, headings, labels, filter values)."
+  ^String [^String s]
+  (let [chars (.toCharArray s)]
+    (if-not (Bidi/requiresBidi chars 0 (alength chars))
+      s
+      (let [shaped (try (.shape (ArabicShaping. (int ArabicShaping/LETTERS_SHAPE)) s)
+                        (catch Exception _ s))]
+        (.writeReordered (Bidi. ^String shaped (int Bidi/LEVEL_DEFAULT_LTR))
+                         (int (bit-or Bidi/DO_MIRRORING Bidi/KEEP_BASE_COMBINING)))))))
 
 (defn- font-runs
   "Split `s` into maximal `[phys ^String chunk]` runs, choosing for each codepoint the face's
@@ -336,7 +368,7 @@
   [^PDPageContentStream cs face font-pt x baseline-y ^String text]
   (.beginText cs)
   (.newLineAtOffset cs (float x) (float baseline-y))
-  (doseq [[phys ^String chunk] (font-runs face (normalize-ws text))]
+  (doseq [[phys ^String chunk] (font-runs face (visual-order (normalize-ws text)))]
     (.setFont cs ^PDFont (:font phys) (float font-pt))
     (.showText cs chunk))
   (.endText cs))
