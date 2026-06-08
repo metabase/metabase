@@ -42,6 +42,17 @@
     (is (not (contains? search.config/static-context-weights :default)))
     (is (every? (set search.config/normalized-contexts) (keys search.config/static-context-weights)))))
 
+(deftest normalize-override-keys-test
+  (let [normalize #'search.config/normalize-override-keys]
+    (testing "an override persisted under a context that has since collapsed is re-keyed to its normalized context"
+      (is (= {:global {:exact 1}} (normalize {:command-palette {:exact 1}}))))
+    (testing "when a raw alias and its normalized context both have overrides, the normalized one wins"
+      (is (= {:global {:exact 2}} (normalize {:command-palette {:exact 1} :global {:exact 2}})))
+      (is (= {:global {:text 5 :exact 9}} (normalize {:type-filter {:text 5} :global {:exact 9}}))))
+    (testing "the :default base and un-remapped contexts pass through untouched"
+      (is (= {:default {:text 7} :entity-picker {:exact 3}}
+             (normalize {:default {:text 7} :entity-picker {:exact 3}}))))))
+
 (deftest weights-by-context-test
   (testing "the broad-search surfaces share one weight profile that boosts prefix matches"
     (is (= 5 (search.config/weight {:context :global} :prefix)))

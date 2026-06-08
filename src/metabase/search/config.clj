@@ -222,6 +222,23 @@
   (let [fetch (fn [ctx] (when ctx (-> filter-defaults-by-context (get ctx) (get filter-key))))]
     (or (fetch context) (fetch :default))))
 
+(declare normalized-context)
+
+(defn- normalize-override-keys
+  "Re-key persisted weight overrides ([[search.settings/experimental-search-weight-overrides]]) by
+  [[normalized-context]], so an override saved under a context that has since been collapsed (e.g.
+  `:command-palette` -> `:global`) is still applied. When a raw alias and its normalized context both carry
+  overrides, the normalized one wins -- it's what the weights API writes today."
+  [overrides]
+  (reduce-kv (fn [acc context weight-overrides]
+               (let [normalized (normalized-context context)]
+                 (update acc normalized
+                         (if (= context normalized)
+                           #(merge % weight-overrides)
+                           #(merge weight-overrides %)))))
+             {}
+             overrides))
+
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
@@ -229,7 +246,7 @@
    (weights {}))
   ([{request-overrides :weights, :keys [context]}]
    (let [context          (or context :default)
-         system-overrides (search.settings/experimental-search-weight-overrides)]
+         system-overrides (normalize-override-keys (search.settings/experimental-search-weight-overrides))]
      (if (= :all context)
        (merge-with merge (assoc static-context-weights :default static-default-weights) system-overrides)
        (merge static-default-weights
