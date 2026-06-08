@@ -14,8 +14,10 @@ Keep the semantic layer and presentation layer separate.
 - Use `useMetabaseQuery`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
+- Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Measures must come from `schema.tables.*.measures.*`; metrics must come from `schema.metrics.*`.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, customer segments, or chart series.
 - Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess column names from business intuition or old mock data.
+- Before claiming the work is done or preparing a final handoff, run a TypeScript type-only check and report the command/result. If the check fails, fix the type errors before any final summary.
 
 ## Generate Schema
 
@@ -101,6 +103,7 @@ const { data } = useMetabaseQuery<OrdersTable>({
 ```
 
 Table fields, segments, and measures must come from the queried table.
+When table queries use `fields`, `segments`, `measures`, or `breakouts`, pass the table schema generic (`useMetabaseQuery<OrdersTable>`) so TypeScript can validate the query.
 
 ### Metrics
 
@@ -110,7 +113,9 @@ const revenueMetric = schema.metrics.revenue;
 const { data } = useMetabaseQuery({
   metric: revenueMetric,
   filters: [filter(revenueMetric.dimensions.state, "=", "CA")],
-  breakouts: [breakout(revenueMetric.dimensions.createdAt, { bucket: "month" })],
+  breakouts: [
+    breakout(revenueMetric.dimensions.createdAt, { bucket: "month" }),
+  ],
 });
 ```
 
@@ -180,21 +185,27 @@ filters: [
 - Multi-series charts with different units or magnitudes need separate axes or normalization.
 - Format user-facing values: currency to at most 2 decimals, counts as whole numbers, dates as readable labels.
 
-## TypeScript Debugging
+## Important: TypeScript Checks
 
-After changing queries or generated-schema usage, run the app's TypeScript check. Visual testing does not catch schema type errors.
+After changing queries, generated-schema usage, or React components that consume Metabase data, run the app's TypeScript check before finalizing. This is mandatory. Visual testing does not catch schema type errors.
 
-Prefer the app's existing script when present:
+Use the fastest type-only check available:
+
+1. Prefer the app's existing typecheck script when present:
 
 ```bash
 npm run typecheck
 ```
 
-If no typecheck script exists, run:
+2. If no typecheck script exists, run TypeScript directly:
 
 ```bash
 ./node_modules/.bin/tsc --noEmit
 ```
+
+Do not use a full build as the default query/type validation step. Builds are slower and often include bundling, asset generation, and unrelated production checks.
+
+Do not skip this check because the app rendered, because browser automation passed, or because the change looks small.
 
 Fix one query error at a time.
 
@@ -232,6 +243,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Importing older hooks instead of `useMetabaseQuery`.
 - Using `metricId` for new metric queries instead of `metric: schema.metrics.someMetric`.
 - Copying raw numeric IDs into constants instead of using generated `.id` values.
+- Inventing ad hoc measure objects such as `{ name: "count" }` or `{ name: "sum", field: fieldId }`.
 - Passing raw strings for metric dimensions or table fields.
 - Adding lookup helpers instead of using keyed generated schema objects.
 - Mixing fields, dimensions, segments, or measures from unrelated tables/metrics.
