@@ -1,4 +1,4 @@
-import { makeSandboxDistortionCallback } from "metabase-enterprise/plugin-sandbox-utils";
+import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import {
@@ -14,7 +14,7 @@ import {
  * Composes:
  *   1. Custom-viz-only DOM scoping (`getSafeSandboxDomNode`,
  *      `activeElementDistortion`) keyed on `data-plugin-sandbox=<pluginId>`.
- *   2. The shared sandbox callback from `plugin-sandbox-utils`, which blocks
+ *   2. The shared sandbox callback from `utils/scripts-sandbox`, which blocks
  *      network egress, sanitizes DOM mutations, and blocks dangerous element
  *      creates and event listeners.
  */
