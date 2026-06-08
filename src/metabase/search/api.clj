@@ -209,7 +209,9 @@
     has-temporal-dim                    :has_temporal_dim}
    :- [:map
        [:q                                   {:optional true} [:maybe :string]]
-       [:context                             {:optional true, :default :api} search.config/Context]
+       ;; no `:optional true`: default-value-transformer skips defaults for absent optional keys, so it's
+       ;; what makes `:default :api` actually apply when the param is omitted
+       [:context                             {:default :api} search.config/Context]
        [:archived                            {:default false} [:maybe :boolean]]
        [:collection                          {:optional true} [:maybe ms/PositiveInt]]
        [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
