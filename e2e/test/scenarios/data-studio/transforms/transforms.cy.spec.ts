@@ -3800,7 +3800,7 @@ describe("scenarios > admin > transforms", () => {
     cy.log("create a new transform");
     visitTransformListPage();
     cy.findByRole("heading", {
-      name: "To use transforms, you need a writable database connection",
+      name: "No compatible database connection",
     }).should("exist");
     cy.findByRole("link", { name: "View your database connections" }).should(
       "exist",
