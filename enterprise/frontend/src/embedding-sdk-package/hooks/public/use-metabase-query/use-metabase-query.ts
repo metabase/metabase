@@ -29,7 +29,6 @@ import type {
   InferSchema,
   MeasureSchema,
   MetricDimensionSchema,
-  MetricSchema,
   QueryData,
   QuestionSchema,
   SchemaColumn,
@@ -83,6 +82,13 @@ type DimensionInput<TEntity> = [DimensionValues<TEntity>] extends [never]
   ? string | FieldSchema | MetricDimensionSchema
   : DimensionValues<TEntity>;
 
+type MetricReference<TMappedTableId extends number = number> = {
+  id: ID;
+  mappedTableIds: readonly TMappedTableId[];
+  columns?: readonly SchemaColumn[];
+  dimensions?: Record<string, MetricDimensionSchema>;
+};
+
 type MappedTableId<TMetric> = TMetric extends {
   mappedTableIds?: readonly number[];
 }
@@ -94,29 +100,13 @@ type MappedTable<TMetric, TSchema> = Extract<
   { readonly id: MappedTableId<TMetric> }
 >;
 
-type SegmentForMetric<TMetric, TSchema> = SegmentValues<
-  MappedTable<TMetric, TSchema>
->;
+type SegmentForMetric<TMetric> = SegmentSchema<MappedTableId<TMetric>>;
 
-type MeasureForMetric<TMetric, TSchema> = [
-  MappedTable<TMetric, TSchema>,
-] extends [never]
-  ? MeasureSchema
-  : MeasureValues<MappedTable<TMetric, TSchema>>;
+type MeasureForMetric<TMetric> = MeasureSchema<MappedTableId<TMetric>>;
 
 type BreakoutForMetric<TMetric, TSchema> =
   | MetabaseMetricBreakout
   | MetabaseBreakout<MappedTable<TMetric, TSchema>>;
-
-type MetricSource<TMetric> =
-  | {
-      metricId: ID;
-      metric?: never;
-    }
-  | {
-      metric: TMetric extends MetricSchema ? TMetric : MetricSchema;
-      metricId?: never;
-    };
 
 type FilterOperator =
   | "="
@@ -178,6 +168,7 @@ type QuestionQuery<TQuestion> = {
   questionId: SdkQuestionId;
   tableId?: never;
   metricId?: never;
+  metric?: never;
   parameters?: TQuestion extends QuestionSchema
     ? SqlParameterValues
     : SqlParameterValues;
@@ -188,6 +179,7 @@ type TableQuery<TTable> = {
   tableId: ID;
   questionId?: never;
   metricId?: never;
+  metric?: never;
   filters?: TTable extends TableSchema
     ? readonly (SegmentValues<TTable> | MetabaseDimensionFilter<TTable>)[]
     : readonly unknown[];
@@ -200,20 +192,24 @@ type TableQuery<TTable> = {
   enabled?: boolean;
 };
 
-type MetricQuery<TMetric, TSchema> = MetricSource<TMetric> & {
+type MetricQuery<TMetric, TSchema> = {
+  metric: TMetric extends MetricReference
+    ? MetricReference<MappedTableId<TMetric>>
+    : MetricReference;
   questionId?: never;
   tableId?: never;
-  filters?: TMetric extends MetricSchema
+  metricId?: never;
+  filters?: TMetric extends MetricReference
     ? readonly (
-        | SegmentForMetric<TMetric, TSchema>
+        | SegmentForMetric<TMetric>
         | MetabaseMetricDimensionFilter
         | MetabaseDimensionFilter<MappedTable<TMetric, TSchema>>
       )[]
     : readonly unknown[];
-  measures?: TMetric extends MetricSchema
-    ? readonly MeasureForMetric<TMetric, TSchema>[]
+  measures?: TMetric extends MetricReference
+    ? readonly MeasureForMetric<TMetric>[]
     : readonly unknown[];
-  breakouts?: TMetric extends MetricSchema
+  breakouts?: TMetric extends MetricReference
     ? readonly BreakoutForMetric<TMetric, TSchema>[]
     : readonly MetabaseBreakout[];
   enabled?: boolean;
@@ -274,6 +270,14 @@ type InferQuerySchema<TEntity, TQuery> = InferSchema<
   RowsFromColumns<QueryBreakoutColumns<TQuery> | QueryMeasureColumns<TQuery>>;
 
 /** @notExported InferQuerySchema */
+type InferQueryEntity<TQuery> = TQuery extends { metric: infer TMetric }
+  ? TMetric
+  : undefined;
+
+type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
+  ? InferQueryEntity<TQuery>
+  : TEntity;
+
 export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
   data: QueryData<InferQuerySchema<TEntity, TQuery>> | null;
   isLoading: boolean;
@@ -281,8 +285,17 @@ export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
   refetch: () => Promise<void>;
 };
 
-export const useMetabaseQuery = <
-  TEntity extends QuestionSchema | TableSchema | MetricSchema | undefined =
+type UseMetabaseQuery = <
+  TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
+    undefined,
+  TSchema = unknown,
+  const TQuery = unknown,
+>(
+  query: TQuery & MetabaseQueryOptions<QueryEntity<TEntity, TQuery>, TSchema>,
+) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery>;
+
+const useMetabaseQueryImpl = <
+  TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
     undefined,
   TSchema = unknown,
   TQuery extends MetabaseQueryOptions<TEntity, TSchema> = MetabaseQueryOptions<
@@ -405,6 +418,8 @@ export const useMetabaseQuery = <
     refetch,
   };
 };
+
+export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 
 function buildTableDatasetQuery(
   query: TableQuery<unknown>,
@@ -727,7 +742,7 @@ function getMetricId(query: unknown): ID | null {
     return query.metricId as ID;
   }
 
-  if ("metric" in query && isMetricSchema(query.metric)) {
+  if ("metric" in query && isMetricReference(query.metric)) {
     return query.metric.id;
   }
 
@@ -737,9 +752,7 @@ function getMetricId(query: unknown): ID | null {
 function getMetricMappedTableIds(
   query: MetricQuery<unknown, unknown>,
 ): readonly number[] | null {
-  return isMetricSchema(query.metric) && query.metric.mappedTableIds
-    ? query.metric.mappedTableIds
-    : null;
+  return isMetricReference(query.metric) ? query.metric.mappedTableIds : null;
 }
 
 function validateMetricTableScopedInputs(query: MetricQuery<unknown, unknown>) {
@@ -854,12 +867,13 @@ function isMeasureSchema(value: unknown): value is MeasureSchema {
   );
 }
 
-function isMetricSchema(value: unknown): value is MetricSchema {
+function isMetricReference(value: unknown): value is MetricReference {
   return (
     typeof value === "object" &&
     value != null &&
     "id" in value &&
-    "columns" in value
+    "mappedTableIds" in value &&
+    Array.isArray(value.mappedTableIds)
   );
 }
 
