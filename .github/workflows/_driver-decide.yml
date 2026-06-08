@@ -18,8 +18,8 @@ on:
         type: string
       workflow-name:
         description: >-
-          Conductor key for the calling workflow. Callers pass
-          ${{ github.workflow }} so it resolves to the driver workflow's name.
+          Conductor key for the calling workflow. Callers pass the github.workflow
+          context so it resolves to the driver workflow's own name.
         required: true
         type: string
     outputs:

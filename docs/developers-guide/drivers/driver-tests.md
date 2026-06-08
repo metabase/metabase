@@ -15,7 +15,7 @@ To test your driver, you'll need to:
 
 - Move your plugin into the [`modules/drivers`](https://github.com/metabase/metabase/tree/master/modules/drivers) directory in the Metabase repository.
 - Add _test extensions_ to your driver.
-- Edit [`.github/workflows/drivers.yml`](https://github.com/metabase/metabase/blob/master/.github/workflows/drivers.yml) to tell GitHub Actions how to set up a Docker image for your database and run tests against it.
+- Add a new `.github/workflows/driver-<name>.yml` workflow (one file per driver) telling GitHub Actions how to set up a Docker image for your database and run tests against it.
 
 ## Add test extensions to your driver
 
@@ -196,43 +196,110 @@ This is actually a common problem, and luckily we have figured out how to work a
 
 ## Setting up CI
 
-Once you have all the tests passing, you'll need to set up GitHub Actions to run those tests against your driver. You'll need to add a new job to [`.github/workflows/drivers.yml`](https://github.com/metabase/metabase/blob/master/.github/workflows/drivers.yml) to run tests against your database.
+Once you have all the tests passing, you'll need to set up GitHub Actions to run those tests against your driver.
 
-Here is an example configuration for PostgreSQL.
+Each driver has its **own** workflow file, `.github/workflows/driver-<name>.yml`. They're standalone workflows that trigger themselves on `push` / `pull_request` / `merge_group`, and they all share the same three-job shape:
+
+- **`decide`** — calls the reusable [`_driver-decide.yml`](https://github.com/metabase/metabase/blob/master/.github/workflows/_driver-decide.yml) workflow, which runs `mage -driver-decisions` (to decide whether your driver is affected by the change) and asks [ci-conductor](https://github.com/metabase/metabase/blob/master/.github/scripts/conductor/README.md) for the workflow's status (`skip` / `info` / `required`).
+- **`test`** — your bespoke job: the database `services`, `env`, and any matrix. It runs only when `decide` selects the driver and conductor didn't say `skip`. Use the shared `./.github/actions/test-driver`, `./.github/actions/upload-test-results`, and `./.github/actions/conductor-report` actions.
+- **`result`** — an always-run gate (`./.github/actions/driver-gate`) that is your driver's required status check.
+
+You also need to register the driver key in [`mage/src/mage/modules.clj`](https://github.com/metabase/metabase/blob/master/mage/src/mage/modules.clj) — add it to `all-drivers` and map its `modules/drivers/<dir>` directory in `driver-directory->drivers` (and to `cloud-drivers` if it needs secrets/cloud infra) so the `decide` job knows about it.
+
+The simplest existing file to copy is [`driver-sqlite.yml`](https://github.com/metabase/metabase/blob/master/.github/workflows/driver-sqlite.yml); [`driver-postgres.yml`](https://github.com/metabase/metabase/blob/master/.github/workflows/driver-postgres.yml) shows the full template with a matrix, services, and a Python-runner job. Here's the gist for a new Postgres-like driver:
 
 ```yaml
-be-tests-postgres-latest-ee:
-  needs: files-changed
-  if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-  runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-  timeout-minutes: 40
-  env:
-    CI: "true"
-    DRIVERS: postgres
-    MB_DB_TYPE: postgres
-    MB_DB_PORT: 5432
-    MB_DB_HOST: localhost
-    MB_DB_DBNAME: circle_test
-    MB_DB_USER: circle_test
-    MB_POSTGRESQL_TEST_USER: circle_test
-    MB_POSTGRES_SSL_TEST_SSL: true
-    MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
-    MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: "test-resources/certificates/us-east-2-bundle.pem"
-  services:
-    postgres:
-      image: circleci/postgres:latest
-      ports:
-        - "5432:5432"
-      env:
-        POSTGRES_USER: circle_test
-        POSTGRES_DB: circle_test
-        POSTGRES_HOST_AUTH_METHOD: trust
-  steps:
-    - uses: actions/checkout@v6
-    - name: Test Postgres driver (latest)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: "be-tests-postgres-latest-ee"
+name: Driver Tests - Postgres
+
+on:
+  push:
+    branches: ["master", "release-**"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  checks: write
+  pull-requests: read
+
+jobs:
+  decide:
+    uses: ./.github/workflows/_driver-decide.yml
+    with:
+      driver: postgres
+      workflow-name: ${{ github.workflow }}
+    secrets: inherit
+
+  test:
+    needs: decide
+    if: >-
+      !cancelled() && needs.decide.result == 'success' &&
+      needs.decide.outputs.conductor-status != 'skip' &&
+      (needs.decide.outputs.should-run == 'true' || needs.decide.outputs.quarantine-conflict == 'true')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    env:
+      CI: "true"
+      DRIVERS: postgres
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 5432
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
+    services:
+      postgres:
+        image: postgres:latest
+        ports: ["5432:5432"]
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test Postgres driver
+        id: test-driver
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: "be-tests-postgres-ee"
+          test-args: ":only-tags [:mb/driver-tests] :exclude-tags [:mb/transforms-python-test]"
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        # In conductor "info" mode, never let the result fail the job.
+        continue-on-error: ${{ needs.decide.outputs.conductor-status == 'info' }}
+        with:
+          input-path: ./target/junit/
+          output-name: be-tests-postgres
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+      - name: Report result to conductor
+        if: always()
+        uses: ./.github/actions/conductor-report
+        with:
+          secret: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          status: ${{ needs.decide.outputs.conductor-status }}
+          outcome: ${{ steps.test-driver.outputs.test-outcome || job.status }}
+
+  result:
+    name: result
+    needs: [decide, test]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/driver-gate
+        with:
+          decide-result: ${{ needs.decide.result }}
+          test-results: ${{ needs.test.result }}
+          conductor-status: ${{ needs.decide.outputs.conductor-status }}
 ```
 
-For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions).
+Finally, ask a maintainer to add your driver's required check — **`Driver Tests - <Name> / result`** — to the repo's branch-protection rules so it gates merges. See [`.github/scripts/conductor/README.md`](https://github.com/metabase/metabase/blob/master/.github/scripts/conductor/README.md) for the conductor status semantics, and [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions) for general reference.

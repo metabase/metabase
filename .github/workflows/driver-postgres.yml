@@ -167,16 +167,15 @@ jobs:
   # check is always reported (success when the driver was skipped), which is
   # what branch protection needs from a conditional workflow.
   result:
-    name: result
+    name: Postgres result
     needs: [decide, test]
     if: always() && !cancelled()
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - name: Gate on driver test result
-        env:
-          DECIDE_RESULT: ${{ needs.decide.result }}
-          TEST_RESULTS: ${{ needs.test.result }}
-          CONDUCTOR_STATUS: ${{ needs.decide.outputs.conductor-status }}
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/conductor/gate-result.sh"
+      - uses: ./.github/actions/driver-gate
+        with:
+          decide-result: ${{ needs.decide.result }}
+          test-results: ${{ needs.test.result }}
+          conductor-status: ${{ needs.decide.outputs.conductor-status }}

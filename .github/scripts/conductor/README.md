@@ -9,6 +9,11 @@ This mirrors the existing e2e ci-conductor integration in
 [`e2e/support/ci_conductor.ts`](../../../e2e/support/ci_conductor.ts): same
 `x-internal-secret` auth header, same "never break CI" philosophy.
 
+The three scripts here are TypeScript run with [bun](https://bun.sh)
+(`bun get-status.ts`, etc.) — the composite actions that call them
+(`conductor-check`, `conductor-report`, `driver-gate`) install bun first, so
+callers don't need to.
+
 > ⚠️ The conductor `/api/config` endpoint is still in development. The
 > request/response shapes below are a **best guess** and are isolated to the two
 > scripts here plus the `conductor-check` / `conductor-report` composite actions,
@@ -35,7 +40,7 @@ GET /config?workflow=<name>&repo_id=<id>&ref=<branch>&sha=<sha>
 -> 200 { "status": "skip" | "info" | "required" }
 ```
 
-`get-status.sh` writes `status=<value>` to `$GITHUB_OUTPUT`. On a missing
+`get-status.ts` writes `status=<value>` to `$GITHUB_OUTPUT`. On a missing
 secret, network error, non-2xx response, or unrecognized status it falls back to
 `CI_CONDUCTOR_DEFAULT_STATUS` (default `required`) so CI behaves exactly as it
 does today until conductor is wired up.
@@ -57,7 +62,7 @@ POST /config
 }
 ```
 
-`report-result.sh` is best-effort: it no-ops without a secret and never exits
+`report-result.ts` is best-effort: it no-ops without a secret and never exits
 non-zero, so a reporting hiccup can't fail a driver job.
 
 ## Configuration (env)
