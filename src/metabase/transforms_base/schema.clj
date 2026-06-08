@@ -55,7 +55,9 @@
    [:column ::lib.schema.metadata/column]
    [:checkpoint-filter-field-id ::lib.schema.id/field]
    [:lo {:optional true} [:maybe ::checkpoint-bound]]
-   [:hi {:optional true} [:maybe ::checkpoint-bound]]])
+   [:hi {:optional true} [:maybe ::checkpoint-bound]]
+   ;; Count of source rows in (lo, hi] from the same scan that derived the watermark; nil if unavailable.
+   [:rows-available {:optional true} [:maybe :int]]])
 
 ;;; ------------------------------------------------- Options -------------------------------------------------
 

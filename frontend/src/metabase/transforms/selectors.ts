@@ -14,18 +14,6 @@ export const canAccessTransforms = (state: State): boolean => {
   return user?.permissions?.can_access_transforms ?? false;
 };
 
-export const getTransformsFeatureAvailable = createSelector(
-  (state: State) => getPlan(getSetting(state, "token-features")),
-  (state: State) => getTokenFeature(state, "transforms-basic"),
-  (plan, feature) => {
-    if (plan === "oss") {
-      return true;
-    }
-
-    return feature;
-  },
-);
-
 export const getShouldShowTransformsUpsell = createSelector(
   getIsHosted,
   (state: State) => getTokenFeature(state, "transforms-basic"),

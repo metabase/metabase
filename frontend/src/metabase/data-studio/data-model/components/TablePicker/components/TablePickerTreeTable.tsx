@@ -11,11 +11,16 @@ import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
+import {
+  DATA_LAYER_ICONS,
+  getDataLayerLabel,
+} from "metabase/metadata/utils/data-layer";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
   Center,
   EntityNameCell,
+  Group,
   Icon,
   TreeTable,
   useTreeTableInstance,
@@ -236,6 +241,26 @@ export function TablePickerTreeTable({
           return ownerName ? (
             <Box data-testid="table-owner">{ownerName}</Box>
           ) : null;
+        },
+      },
+      {
+        id: "data-layer",
+        header: t`Visibility layer`,
+        width: 150,
+        cell: ({ row }) => {
+          if (row.original.type !== "table" || !row.original.table) {
+            return null;
+          }
+          const dataLayer = row.original.table.data_layer;
+          if (dataLayer == null) {
+            return null;
+          }
+          return (
+            <Group gap="sm" wrap="nowrap" data-testid="table-data-layer">
+              <Icon name={DATA_LAYER_ICONS[dataLayer]} c="text-secondary" />
+              <Box>{getDataLayerLabel(dataLayer)}</Box>
+            </Group>
+          );
         },
       },
       {

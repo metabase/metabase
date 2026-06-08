@@ -37,6 +37,10 @@ export function createLibraryWithItems() {
       cy.request("PUT", `/api/card/${card.id}`, {
         collection_id: metricsCollection?.id,
       });
+      // Expose ids so specs can navigate/verify directly instead of clicking
+      // through the lazily-rendered library tree, which is a flake source.
+      cy.wrap(card.id).as("trustedMetricId");
+      cy.wrap(metricsCollection?.id).as("metricsCollectionId");
     });
   });
 }

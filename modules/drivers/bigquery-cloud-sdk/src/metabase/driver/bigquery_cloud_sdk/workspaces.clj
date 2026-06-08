@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -34,6 +35,8 @@
    (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
+
+(defn- quote-schema [s] (sql.u/quote-name :bigquery-cloud-sdk :schema s))
 
 (defn create-dataset!
   "Create `dataset-name` in `project-id` via `client`. Idempotent — no-op when
@@ -823,7 +826,7 @@
                                                    [(:schema test-table)])
               (catch Exception e
                 (throw (ex-info (tru "Failed to grant read access to dataset {0}: {1}"
-                                     (:schema test-table) (ex-message e))
+                                     (quote-schema (:schema test-table)) (ex-message e))
                                 {:step :grant :table test-table} e)))))
           (try
             (driver/destroy-workspace-isolation! driver database workspace-with-details)

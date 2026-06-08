@@ -25,6 +25,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
@@ -57,6 +58,11 @@
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
                               :test/jvm-timezone-setting        false
+                              ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
+                              ;; falls back to a native `COUNT(*)` on the CTAS path.
+                              ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL
+                              ;; statements by using a different driver-native API for affected-row counts.
+                              :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
                               :transforms/index-ddl             false
@@ -556,7 +562,7 @@
         (keep (fn [param]
                 (if (contains? param :name)
                   [(:name param) (:value param)]
-                  (when-let [field-id (driver-api/match-one param
+                  (when-let [field-id (match/match-one param
                                         [:field (field-id :guard integer?) _]
                                         (when (perf/some #{:dimension} &parents)
                                           field-id))]
@@ -755,6 +761,9 @@
                          AND privilege_type = 'CREATE'"
                      schema-name]))))
 
+(defn- quote-schema [s] (sql.u/quote-name :redshift :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :redshift :field s))
+
 (defn- assert-no-public-create-grant!
   [conn schema-name]
   (when (public-create-grant? conn schema-name)
@@ -814,19 +823,21 @@
 
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
-                     :password (driver.u/random-workspace-password)}]
+  (let [schema-name    (driver.u/workspace-isolation-namespace-name workspace)
+        read-user      {:user     (driver.u/workspace-isolation-user-name workspace)
+                        :password (driver.u/random-workspace-password)}
+        quoted-schema  (quote-schema schema-name)
+        quoted-user    (quote-field (:user read-user))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (let [user-sql (if (user-exists? t-conn (:user read-user))
-                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
-                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user)))]
+                       (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user (:password read-user))
+                       (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user (:password read-user)))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
+          (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
                        user-sql
-                       (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
-                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\""
-                               schema-name (:user read-user))]]
+                       (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" quoted-schema quoted-user)
+                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s"
+                               quoted-schema quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try
             (.executeBatch ^Statement stmt)
@@ -838,7 +849,7 @@
 (defmethod driver/grant-workspace-read-access! :redshift
   [_driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
-        qu             (sql.u/quote-name :postgres :field username)
+        quoted-user    (quote-field username)
         source-schemas (set schemas)
         spec           (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; Pre-flight check (read-only) can run in its own transaction. Only the
@@ -851,14 +862,16 @@
     ;; Grants run as auto-commit per statement so privileges are immediately
     ;; observable to a subsequent describe-database from a different connection.
     (doseq [s   source-schemas
-            :let [sq (sql.u/quote-name :postgres :schema s)]
-            sql [(format "GRANT USAGE ON SCHEMA %s TO %s" sq qu)
-                 (format "REVOKE CREATE ON SCHEMA %s FROM %s" sq qu)
-                 (format "REVOKE INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA %s FROM %s" sq qu)
+            :let [quoted-schema (quote-schema s)]
+            sql [(format "GRANT USAGE ON SCHEMA %s TO %s" quoted-schema quoted-user)
+                 (format "REVOKE CREATE ON SCHEMA %s FROM %s" quoted-schema quoted-user)
+                 (format "REVOKE INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA %s FROM %s"
+                         quoted-schema quoted-user)
                  ;; Schema-wide SELECT — workspace-scoped users receive whole-schema access.
                  ;; Per-table granularity intentionally discarded (API contract is namespace-grained).
-                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" sq qu)
-                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" sq qu)]]
+                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" quoted-schema quoted-user)
+                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s"
+                         quoted-schema quoted-user)]]
       (jdbc/execute! spec [sql]))))
 
 (defn- schema-exists?
@@ -877,8 +890,10 @@
 
 (defmethod driver/destroy-workspace-isolation! :redshift
   [_driver database workspace]
-  (let [schema-name (:schema workspace)
-        username    (-> workspace :database_details :user)]
+  (let [schema-name   (:schema workspace)
+        username      (-> workspace :database_details :user)
+        quoted-user   (quote-field username)
+        quoted-schema (quote-schema schema-name)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (let [user-exists    (user-exists? t-conn username)
             schema-exists  (schema-exists? t-conn schema-name)
@@ -887,13 +902,14 @@
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           ;; Only revoke if user exists
           (when user-exists
-            (doseq [schema granted-schemas]
+            (doseq [schema granted-schemas
+                    :let [quoted-granted-schema (quote-schema schema)]]
               (.addBatch ^Statement stmt
-                         ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\""
-                                         schema username))
+                         ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s"
+                                         quoted-granted-schema quoted-user))
               (.addBatch ^Statement stmt
-                         ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
-                                         schema username))
+                         ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s"
+                                         quoted-granted-schema quoted-user))
               ;; `grant-workspace-read-access!` issues `ALTER DEFAULT PRIVILEGES IN SCHEMA <s>
               ;; GRANT SELECT ON TABLES TO <iso-user>` on every input schema. Those default-priv
               ;; entries are owned by the granting role (metabase_ci) but reference the iso-user;
@@ -901,18 +917,18 @@
               ;; because some objects depend on it / privileges for default privileges on new
               ;; relations belonging to user <grantor> in schema <input-schema>".
               (.addBatch ^Statement stmt
-                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
-                                         schema username)))
+                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
+                                         quoted-granted-schema quoted-user)))
             ;; Only revoke default privileges if both user and schema exist
             (when schema-exists
               (.addBatch ^Statement stmt
-                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
-                                         schema-name username))))
+                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
+                                         quoted-schema quoted-user))))
           ;; These are safe with IF EXISTS
           (.addBatch ^Statement stmt
-                     ^String (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name))
+                     ^String (format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema))
           (.addBatch ^Statement stmt
-                     ^String (format "DROP USER IF EXISTS \"%s\"" username))
+                     ^String (format "DROP USER IF EXISTS %s" quoted-user))
           (.executeBatch ^Statement stmt))))))
 
 (defmethod driver/llm-sql-dialect-resource :redshift [_]

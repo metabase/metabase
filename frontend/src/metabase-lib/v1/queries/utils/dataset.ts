@@ -2,7 +2,7 @@ import type { DatasetData, TableColumnOrderSetting } from "metabase-types/api";
 
 import type { DatasetColumnReference } from "./column-key";
 
-export const datasetContainsNoResults = (data: DatasetData) =>
+export const datasetContainsNoResults = (data: Pick<DatasetData, "rows">) =>
   data.rows == null || data.rows.length === 0;
 
 export function findColumnIndexesForColumnSettings(

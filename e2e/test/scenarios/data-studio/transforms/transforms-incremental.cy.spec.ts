@@ -67,7 +67,7 @@ describe("scenarios > admin > transforms incremental", () => {
         cy.findByLabelText("Name").type(" transform");
         cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
         cy.findByRole("switch", {
-          name: /Only process new and changed data/i,
+          name: /Only process new data/i,
         }).click({ force: true });
 
         cy.button("Save").click();
@@ -190,7 +190,7 @@ def transform(animals):
           cy.findByLabelText("Name").clear().type("Python transform");
           cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
           cy.findByRole("switch", {
-            name: /Only process new and changed data/i,
+            name: /Only process new data/i,
           }).click({ force: true });
           cy.button("Save").click();
           cy.wait("@createTransform").then(({ response }) => {
@@ -309,7 +309,7 @@ def transform(animals):
         cy.findByLabelText("Name").clear().type("SQL transform");
         cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
         cy.findByRole("switch", {
-          name: /Only process new and changed data/i,
+          name: /Only process new data/i,
         }).click({ force: true });
         cy.button("Save").click();
         cy.wait("@createTransform");

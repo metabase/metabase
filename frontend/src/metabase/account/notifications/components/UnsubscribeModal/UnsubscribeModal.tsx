@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
+import { Button } from "metabase/ui";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 import type { NotificationType } from "../../types";
@@ -53,7 +53,12 @@ function UnsubscribeModal({
         <Button key="cancel" onClick={onClose}>
           {t`I changed my mind`}
         </Button>,
-        <Button key="submit" warning onClick={handleUnsubscribeClick}>
+        <Button
+          key="submit"
+          variant="filled"
+          color="error"
+          onClick={handleUnsubscribeClick}
+        >
           {t`Unsubscribe`}
         </Button>,
       ]}

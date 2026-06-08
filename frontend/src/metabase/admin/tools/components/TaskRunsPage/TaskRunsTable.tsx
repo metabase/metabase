@@ -9,6 +9,7 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { Box, Ellipsified, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { TaskRun } from "metabase-types/api";
 
 import { formatTaskRunType, renderTaskRunCounters } from "../../utils";
@@ -111,7 +112,7 @@ export const TaskRunsTable = ({
                       />
                     </Ellipsified>
                   ) : (
-                    "—"
+                    EMPTY_CELL_PLACEHOLDER
                   )}
                 </td>
                 <td>

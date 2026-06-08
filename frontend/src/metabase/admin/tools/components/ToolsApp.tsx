@@ -30,7 +30,7 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
           />
           <ToolsNavItem
             label={t`Tasks`}
-            path={Urls.adminToolsTasksBase()}
+            path={Urls.adminToolsTasks()}
             icon="clipboard"
             location={location}
           />
@@ -56,6 +56,12 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
             label={t`Model cache log`}
             path={Urls.adminToolsModelCaching()}
             icon="database"
+            location={location}
+          />
+          <ToolsNavItem
+            label={t`Alerts management`}
+            path={Urls.adminToolsNotifications()}
+            icon="bell"
             location={location}
           />
         </AdminNavWrapper>
