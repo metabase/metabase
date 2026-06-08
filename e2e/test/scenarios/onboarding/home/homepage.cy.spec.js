@@ -78,6 +78,10 @@ describe("scenarios > home > homepage", () => {
         triggered_from: "suggestion_sidebar",
       });
 
+      // Remember the current URL so we can wait for the *final* navigation to actually
+      // settle before saving (see the save step below).
+      cy.url().as("urlBeforeFinalXray");
+
       cy.findByRole("complementary").within(() => {
         cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
         cy.findByRole("heading", { name: "Related" })
@@ -93,12 +97,19 @@ describe("scenarios > home > homepage", () => {
         triggered_from: "suggestion_sidebar",
       });
 
+      // `cy.wait("@getXrayDashboard")` only confirms the automagic *metadata* request; the
+      // SPA route change + dashboard remount for the final ("Related → Orders") x-ray lag it.
+      // Clicking "Save this" before that remount settles discards the save dispatch — no
+      // POST /api/dashboard/save is ever sent. Wait for the URL to actually land on the new
+      // x-ray dashboard first; the disabled-until-loaded "Save this" button then handles the
+      // data-load gap.
+      cy.get("@urlBeforeFinalXray").then((urlBeforeFinalXray) => {
+        cy.url().should("not.eq", urlBeforeFinalXray);
+      });
+
       cy.intercept("POST", "/api/dashboard/save").as("saveDashboard");
       cy.findByTestId("automatic-dashboard-header").button("Save this").click();
-      // Diagnostic: CI is slower than local, so give the save request more time to
-      // appear before failing. If it still times out at 30s, the request genuinely
-      // never fires (a save-path/navigation race), not just slowness.
-      cy.wait("@saveDashboard", { requestTimeout: 30000 });
+      cy.wait("@saveDashboard");
 
       H.expectUnstructuredSnowplowEvent({
         event: "x-ray_saved",
