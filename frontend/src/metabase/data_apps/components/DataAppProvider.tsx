@@ -1,3 +1,4 @@
+import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPortalContainer";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { getHostBackedSdkStore } from "metabase/data_apps/host-sdk-init";
@@ -10,15 +11,21 @@ import { MetabaseReduxProvider } from "metabase/redux";
 
 /**
  * In-host equivalent of the SDK's `MetabaseProvider` / `ComponentProvider`:
- * provides the SDK Redux store (pre-initialized, no auth handshake) and the
- * SDK theme provider in one go.
+ * provides the SDK Redux store (pre-initialized, no auth handshake), the
+ * SDK theme provider, and the portal container the SDK's Mantine
+ * components (drill popups, dropdowns, modals) target via
+ * `#metabase-sdk-portal-root`. Without `PortalContainer` rendered, those
+ * overlays mount to `document.body` or silently fail.
  */
 export const DataAppProvider = ({ theme, children }: MetabaseProviderProps) => {
   const sdkStore = getHostBackedSdkStore();
 
   return (
     <MetabaseReduxProvider store={sdkStore}>
-      <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
+      <SdkThemeProvider theme={theme}>
+        {children}
+        <PortalContainer />
+      </SdkThemeProvider>
     </MetabaseReduxProvider>
   );
 };
