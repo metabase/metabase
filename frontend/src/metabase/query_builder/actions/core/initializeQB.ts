@@ -1,7 +1,7 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
-import { cardApi, snippetApi } from "metabase/api";
+import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
@@ -286,6 +286,20 @@ async function handleQBInit(
   dispatch(resetQB());
   dispatch(cancelQuery());
 
+  // Preload the full database list up front so the data selector already has it
+  // when it mounts
+  const databasesPromise = runRtkEndpoint(
+    { "can-query": true },
+    dispatch,
+    databaseApi.endpoints.listDatabases,
+    { forceRefetch: false },
+  ).catch((error) => {
+    console.error(
+      "Failed to load database list during QB initialization",
+      error,
+    );
+  });
+
   const queryParams = location.query;
   const isTableRoute = location.pathname?.startsWith("/table");
   const slugEntityId = Urls.extractEntityId(params.slug);
@@ -446,6 +460,13 @@ async function handleQBInit(
 
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
+
+  // make sure db list is loaded
+  await databasesPromise;
+
+  if (isStale()) {
+    return;
+  }
 
   dispatch({
     type: INITIALIZE_QB,

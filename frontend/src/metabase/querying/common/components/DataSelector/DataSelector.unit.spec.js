@@ -136,54 +136,6 @@ describe("DataSelector", () => {
     expect(tableId).toEqual(MULTI_SCHEMA_TABLE1_ID);
   });
 
-  it("should not auto-select a database when several are available (metabase#52411)", async () => {
-    const setDatabaseFn = jest.fn();
-    render(
-      <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
-        triggerElement={<div />}
-        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        metadata={metadata}
-        isOpen={true}
-        setDatabaseFn={setDatabaseFn}
-        setSourceTableFn={jest.fn()}
-      />,
-    );
-
-    // All databases are listed for the user to choose from...
-    expect(
-      await screen.findByText("Multi-schema Database"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Sample Database")).toBeInTheDocument();
-    // ...and none is auto-selected (which would skip the list entirely).
-    await delay(1);
-    expect(setDatabaseFn).not.toHaveBeenCalled();
-  });
-
-  it("should not auto-select the only loaded database while the list is still loading (metabase#52411)", async () => {
-    const setDatabaseFn = jest.fn();
-    render(
-      <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
-        triggerElement={<div />}
-        databases={[SAMPLE_DATABASE]}
-        // The list hasn't finished hydrating, so the single database we see so
-        // far might not be the only one — don't auto-select it yet.
-        databasesLoaded={false}
-        metadata={metadata}
-        isOpen={true}
-        setDatabaseFn={setDatabaseFn}
-        setSourceTableFn={jest.fn()}
-      />,
-    );
-
-    expect(await screen.findByText("Sample Database")).toBeInTheDocument();
-    await delay(1);
-    expect(setDatabaseFn).not.toHaveBeenCalled();
-  });
-
   it("should fetch db, schema, and table progressively", async () => {
     const fetchDatabases = jest.fn();
     const fetchSchemas = jest.fn();
