@@ -18,7 +18,7 @@
                (second (re-find #"id: (\w+)" content)))
              (:merged result))))
 
-(deftest clean-merge-disjoint-changes-test
+(deftest ^:parallel clean-merge-disjoint-changes-test
   (testing "local edits A and adds C; remote adds D; B untouched -> all merged, no conflict"
     (let [base   [(card "A" "a") (card "B" "b")]
           ours   [(card "A" "a" "x: 1\n") (card "B" "b") (card "C" "c")]
@@ -29,7 +29,7 @@
       (testing "only D is counted as a folded-in remote add"
         (is (= {:added 1 :updated 0 :removed 0} (:summary result)))))))
 
-(deftest conflict-same-entity-edited-both-sides-test
+(deftest ^:parallel conflict-same-entity-edited-both-sides-test
   (testing "A edited differently on both sides -> conflict, nothing merged for A"
     (let [result (remote-sync.merge/three-way-merge
                   [(card "A" "a")]
@@ -38,7 +38,7 @@
       (is (= 1 (count (:conflicts result))))
       (is (empty? (:merged result))))))
 
-(deftest local-edit-vs-remote-rename-is-conflict-test
+(deftest ^:parallel local-edit-vs-remote-rename-is-conflict-test
   (testing "local edits A's content while remote renames A -> conflict (both changed the same entity)"
     (let [result (remote-sync.merge/three-way-merge
                   [(card "A" "a")]
@@ -46,7 +46,7 @@
                   [(card "A" "a2")])]
       (is (= 1 (count (:conflicts result)))))))
 
-(deftest rename-to-different-names-no-duplicate-test
+(deftest ^:parallel rename-to-different-names-no-duplicate-test
   (testing "both sides rename A to different names -> conflict, and crucially NO duplicate entity files"
     (let [result (remote-sync.merge/three-way-merge
                   [(card "A" "a")]
@@ -56,7 +56,7 @@
       (is (empty? (:merged result))
           "a path-keyed merge would wrongly keep both bar.yaml and baz.yaml (same entity_id)"))))
 
-(deftest remote-only-rename-takes-theirs-test
+(deftest ^:parallel remote-only-rename-takes-theirs-test
   (testing "only remote renames A; local untouched -> take remote's path+content, no conflict"
     (let [result (remote-sync.merge/three-way-merge
                   [(card "A" "a")]
@@ -66,7 +66,7 @@
       (is (= ["collections/renamed.yaml"] (map :path (:merged result))))
       (is (= {:added 0 :updated 1 :removed 0} (:summary result))))))
 
-(deftest remote-delete-takes-effect-test
+(deftest ^:parallel remote-delete-takes-effect-test
   (testing "remote deletes A; local untouched -> A removed from merged, counted as remote removal"
     (let [result (remote-sync.merge/three-way-merge
                   [(card "A" "a") (card "B" "b")]
@@ -76,7 +76,7 @@
       (is (= ["B"] (ids result)))
       (is (= {:added 0 :updated 0 :removed 1} (:summary result))))))
 
-(deftest local-delete-vs-remote-edit-is-conflict-test
+(deftest ^:parallel local-delete-vs-remote-edit-is-conflict-test
   (testing "local deletes A while remote edits A -> modify/delete conflict"
     (let [result (remote-sync.merge/three-way-merge
                   [(card "A" "a")]
@@ -84,7 +84,7 @@
                   [(card "A" "a" "x: 1\n")])]
       (is (= 1 (count (:conflicts result)))))))
 
-(deftest both-delete-is-clean-test
+(deftest ^:parallel both-delete-is-clean-test
   (testing "both sides delete A -> clean, A gone, not counted as a remote change"
     (let [result (remote-sync.merge/three-way-merge
                   [(card "A" "a")]
@@ -94,7 +94,7 @@
       (is (empty? (:merged result)))
       (is (= {:added 0 :updated 0 :removed 0} (:summary result))))))
 
-(deftest duplicate-entity-id-on-one-side-throws-test
+(deftest ^:parallel duplicate-entity-id-on-one-side-throws-test
   (testing "two specs on the same side sharing an entity_id is corruption -> throw, not silently drop one"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"Duplicate serdes identity"
@@ -108,7 +108,7 @@
                 [(card "A" "bar")]
                 [(card "A" "baz")])))))
 
-(deftest conflict-label-test
+(deftest ^:parallel conflict-label-test
   (testing "conflict-label uses the entity's name and path"
     (is (= "bar (collections/bar.yaml)"
            (remote-sync.merge/conflict-label
@@ -120,4 +120,10 @@
            (remote-sync.merge/conflict-label
             {:key   [["Card" "A"]]
              :ours  {:path "collections/a.yaml" :content "not-an-entity"}
-             :theirs {:path "collections/a.yaml" :content "also-not"}})))))
+             :theirs {:path "collections/a.yaml" :content "also-not"}}))))
+  (testing "a path-fallback key uses the filename, not garbage from destructuring the path string"
+    (is (= "collections/x.yaml"
+           (remote-sync.merge/conflict-label
+            {:key    [::remote-sync.merge/by-path "collections/x.yaml"]
+             :ours   {:path "collections/x.yaml" :content "not-an-entity"}
+             :theirs {:path "collections/x.yaml" :content "also-not"}})))))

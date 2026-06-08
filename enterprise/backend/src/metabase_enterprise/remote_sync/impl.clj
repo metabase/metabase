@@ -500,8 +500,12 @@
                 ;; No divergence, or the caller forced an overwrite — write the local state as-is.
                 (or force? (not diverged?))
                 (let [written-version (source/store! models snapshot task-id message)]
-                  (remote-sync.task/set-version! task-id written-version)
-                  (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                  ;; store! already pushed; advance the version and mark everything synced atomically so a
+                  ;; crash can't leave the version ahead of still-dirty object statuses (matches the merge
+                  ;; path's finalize). The network push stays outside the transaction.
+                  (t2/with-transaction [_conn]
+                    (remote-sync.task/set-version! task-id written-version)
+                    (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp}))
                   {:status :success
                    :version written-version})
 

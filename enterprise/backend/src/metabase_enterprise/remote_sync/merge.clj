@@ -34,7 +34,10 @@
              seq
              (mapv (fn [seg] [(str (:model seg)) (str (:id seg))])))
     (catch Exception e
-      (log/debug e "Could not derive serdes identity from content; falling back to path key")
+      ;; A serialized entity that won't parse is abnormal (malformed/partially-written file) and demotes
+      ;; this side to a path key while the other side stays identity-keyed — which reads as a phantom
+      ;; add+remove rather than an update. Warn so it's visible rather than silently mis-merged.
+      (log/warn e "Could not parse serialized content during merge; treating it as a non-serdes (path-keyed) file")
       nil)))
 
 (defn- file-key
@@ -68,7 +71,14 @@
 
 (defn- same?
   "Two sides are the same when both are absent, or both present with equal path and content. Path equality
-  matters so that a rename with otherwise identical content still counts as a change."
+  matters so that a rename with otherwise identical content still counts as a change.
+
+  Known conservative edge: the storage path embeds the names of containing collections, so renaming a
+  shared parent collection on one side changes the path of every descendant. Those descendants therefore
+  read as changed (path differs) even if their content is identical; if the other side also edited one of
+  them, that surfaces as a conflict rather than auto-merging the rename with the edit. This is safe (never
+  silently wrong) but more conservative than git would be. Revisit by comparing content separately from
+  path if it proves noisy in practice."
   [a b]
   (= a b))
 
@@ -77,12 +87,16 @@
   \"Card A (collections/foo/bar.yaml)\". Prefers the entity's name (parsed from the serialized content),
   falling back to its serdes model + id when there's no name."
   [{:keys [key ours theirs]}]
-  (let [content (or (:content ours) (:content theirs))
-        entity  (try (yaml/parse-string content) (catch Exception _ nil))
-        [model id] (last key)
-        path    (or (:path ours) (:path theirs))]
-    (cond-> (or (:name entity) (str model " " id))
-      path (str " (" path ")"))))
+  (let [content    (or (:content ours) (:content theirs))
+        entity     (try (yaml/parse-string content) (catch Exception _ nil))
+        path       (or (:path ours) (:path theirs))
+        ;; identity keys are [[model id] ...]; the path-fallback key is [::by-path path] for a non-serdes
+        ;; file — don't destructure the path string into a "model"/"id" (which yields garbage like "s o").
+        descriptor (if (= ::by-path (first key))
+                     (or path "unknown file")
+                     (let [[model id] (last key)] (str model " " id)))]
+    (cond-> (or (:name entity) descriptor)
+      (and path (not= descriptor path)) (str " (" path ")"))))
 
 (defn three-way-merge
   "Three-way merge of serialized content keyed on serdes identity.

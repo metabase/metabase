@@ -1,8 +1,10 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import { createListenerMiddleware } from "@reduxjs/toolkit";
+import { t } from "ttag";
 
 import { Api } from "metabase/api";
 import type { State } from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import { tag } from "metabase-enterprise/api/tags";
@@ -120,9 +122,18 @@ remoteSyncListenerMiddleware.startListening({
 
       if (task.status === "conflict") {
         dispatch(modalDismissed());
-        // The first-import / setup flow surfaces conflicts as a task status; export conflicts are
-        // normally handled synchronously via the export preflight, so only the import path maps here.
-        if (task.sync_task_type !== "export") {
+        if (task.sync_task_type === "export") {
+          // Export conflicts are normally pre-empted synchronously by the export preflight, but a plain
+          // push can still land here if the remote advanced between preflight and execution (or if the
+          // preflight itself errored and we fell through). Surface it instead of silently doing nothing.
+          dispatch(
+            addUndo({
+              icon: "warning",
+              message: t`The remote branch changed before your push finished. Pull the latest changes, then push again.`,
+            }),
+          );
+        } else {
+          // The first-import / setup flow surfaces conflicts as a task status.
           dispatch(syncConflictVariantUpdated("setup"));
         }
         return;
