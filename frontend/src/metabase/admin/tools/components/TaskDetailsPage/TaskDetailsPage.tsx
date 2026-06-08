@@ -21,6 +21,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { openSaveDialog } from "metabase/utils/dom";
 import type { Database } from "metabase-types/api";
 
@@ -97,13 +98,25 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
         <Flex gap="md">
           <Text fw="bold" w={120}>{t`DB Name`}</Text>
           <Text>
-            {isLoadingDatabases ? <Loader size="xs" /> : db ? dbName : "—"}
+            {isLoadingDatabases ? (
+              <Loader size="xs" />
+            ) : db ? (
+              dbName
+            ) : (
+              EMPTY_CELL_PLACEHOLDER
+            )}
           </Text>
         </Flex>
         <Flex gap="md">
           <Text fw="bold" w={120}>{t`DB Engine`}</Text>
           <Text>
-            {isLoadingDatabases ? <Loader size="xs" /> : db ? dbEngine : "—"}
+            {isLoadingDatabases ? (
+              <Loader size="xs" />
+            ) : db ? (
+              dbEngine
+            ) : (
+              EMPTY_CELL_PLACEHOLDER
+            )}
           </Text>
         </Flex>
         <Flex gap="md" align="baseline">
@@ -128,7 +141,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
               />
             </Tooltip>
           ) : (
-            "—"
+            EMPTY_CELL_PLACEHOLDER
           )}
           {task.ended_at && <CopyButton value={task.ended_at} />}
         </Flex>

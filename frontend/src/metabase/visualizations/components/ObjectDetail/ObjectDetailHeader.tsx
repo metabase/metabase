@@ -1,9 +1,8 @@
 import cx from "classnames";
 
-import { Button } from "metabase/common/components/Button";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Text } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Text } from "metabase/ui";
 
 import S from "./ObjectDetailHeader.module.css";
 import type { ObjectId } from "./types";
@@ -55,22 +54,22 @@ export function ObjectDetailHeader({
         <Flex align="center" gap="0.5rem" p="1rem">
           {canZoom && (
             <>
-              <Button
+              <ActionIcon
+                variant="viewHeader"
                 data-testid="view-previous-object-detail"
-                onlyIcon
-                borderless
                 disabled={!canZoomPreviousRow}
                 onClick={viewPreviousObjectDetail}
-                icon="chevronup"
-              />
-              <Button
+              >
+                <Icon name="chevronup" />
+              </ActionIcon>
+              <ActionIcon
+                variant="viewHeader"
                 data-testid="view-next-object-detail"
-                onlyIcon
-                borderless
                 disabled={!canZoomNextRow}
                 onClick={viewNextObjectDetail}
-                icon="chevrondown"
-              />
+              >
+                <Icon name="chevrondown" />
+              </ActionIcon>
             </>
           )}
 
@@ -85,13 +84,13 @@ export function ObjectDetailHeader({
           )}
 
           <Flex ml="md" pl="md" className={S.closeButton}>
-            <Button
+            <ActionIcon
+              variant="viewHeader"
               data-testid="object-detail-close-button"
-              onlyIcon
-              borderless
               onClick={closeObjectDetail}
-              icon="close"
-            />
+            >
+              <Icon name="close" />
+            </ActionIcon>
           </Flex>
         </Flex>
       )}
