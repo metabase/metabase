@@ -148,6 +148,12 @@ function FormFieldEditor({
               actions={
                 <Checkbox
                   size="sm"
+                  styles={{
+                    label: {
+                      fontSize: "12px",
+                      color: "var(--mb-color-text-secondary)",
+                    },
+                  }}
                   onChange={() => {
                     onChange({
                       ...fieldSettings,
