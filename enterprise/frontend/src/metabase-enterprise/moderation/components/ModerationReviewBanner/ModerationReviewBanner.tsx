@@ -1,7 +1,9 @@
+import cx from "classnames";
+
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { FixedSizeIcon, Flex, Icon, Text as UIText } from "metabase/ui";
+import { FixedSizeIcon, Flex, Icon, Stack, Text } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import {
@@ -12,13 +14,8 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard, ModerationReview } from "metabase-types/api";
 
-import Styles from "./ModerationReview.module.css";
-import {
-  Container,
-  Text,
-  TextContainer,
-  Time,
-} from "./ModerationReviewBanner.styled";
+import S from "./ModerationReview.module.css";
+
 const ICON_BUTTON_SIZE = 16;
 
 interface ModerationReviewBannerProps {
@@ -47,18 +44,29 @@ export const ModerationReviewBanner = ({
     getIconForReview(moderationReview);
 
   return (
-    <Container
+    <Flex
+      className={cx(S.container, className)}
       style={{ backgroundColor: alpha(iconColor, 0.2) }}
-      className={className}
+      p="md"
+      justify="space-between"
+      align="flex-start"
+      gap="sm"
     >
       <Icon name={iconName} c={iconColor} size={ICON_BUTTON_SIZE} />
-      <TextContainer>
-        <Text>{bannerText}</Text>
-        <Time dateTime={moderationReview.created_at}>
+      <Stack gap="xs" flex={1}>
+        <Text component="span" fz="md" fw="bold" lh="sm">
+          {bannerText}
+        </Text>
+        <Text
+          component="time"
+          c="text-secondary"
+          fz="sm"
+          dateTime={moderationReview.created_at}
+        >
           {relativeCreationTime}
-        </Time>
-      </TextContainer>
-    </Container>
+        </Text>
+      </Stack>
+    </Flex>
   );
 };
 
@@ -124,11 +132,11 @@ const ModerationReviewText = ({
         name={iconName}
         c={iconColor}
         size={ICON_BUTTON_SIZE}
-        className={Styles.IconMargin}
+        className={S.iconMargin}
       />
-      <UIText>
+      <Text>
         {bannerText} {relativeCreationTime}
-      </UIText>
+      </Text>
     </Flex>
   );
 };
