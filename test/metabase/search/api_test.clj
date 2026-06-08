@@ -1831,6 +1831,16 @@
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
         (is (= 5.0 (search.config/scorer-param search-ctx :model :dataset)))))))
 
+(deftest ^:synchronized weights-normalize-context-test
+  (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
+    (testing "the /weights endpoints normalize context, so introspection and overrides match search"
+      (testing "surfaces that share a normalized context report the same weights"
+        (is (= (mt/user-http-request :crowberto :get 200 (weights-url :global {}))
+               (mt/user-http-request :crowberto :get 200 (weights-url :command-palette {})))))
+      (testing "an override set via one normalized surface is read back via another"
+        (mt/user-http-request :crowberto :put 200 (weights-url :command-palette {:recency 9}))
+        (is (= 9.0 (:recency (mt/user-http-request :crowberto :get 200 (weights-url :search-app {})))))))))
+
 (deftest ^:synchronized dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"
     (let [search-name (random-uuid)

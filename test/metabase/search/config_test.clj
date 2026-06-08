@@ -7,22 +7,19 @@
 ;; All that matters is that this is not legacy search.
 (def ^:private search-engine :search.engine/appdb)
 
+;; `filter-default` and `weights` take an already-normalized context (normalization happens once at the top
+;; of the search call tree); these tests pass the normalized values directly.
+
 (deftest filter-default-test
   (testing "Default values"
     (is (= false (search.config/filter-default search-engine nil :archived)))
     (is (= "all" (search.config/filter-default search-engine nil :filter-items-in-personal-collection))))
-  (testing "No overrides"
-    (is (= false (search.config/filter-default search-engine :command-palette :archived))))
-  (testing "Overrides"
+  (testing "the :global profile excludes others' personal collections"
     (is (= "exclude-others"
-           (search.config/filter-default search-engine :command-palette :filter-items-in-personal-collection)))
+           (search.config/filter-default search-engine :global :filter-items-in-personal-collection))))
+  (testing "Legacy search uses the same per-context defaults (#UXW-3238)"
     (is (= "exclude-others"
-           (search.config/filter-default search-engine :search-app :filter-items-in-personal-collection))))
-  (testing "Legacy search should respect context overrides (#UXW-3238)"
-    (is (= "exclude-others"
-           (search.config/filter-default :search.engine/in-place :command-palette :filter-items-in-personal-collection)))
-    (is (= "exclude-others"
-           (search.config/filter-default :search.engine/in-place :search-app :filter-items-in-personal-collection)))))
+           (search.config/filter-default :search.engine/in-place :global :filter-items-in-personal-collection)))))
 
 (deftest context-schema-test
   (testing "the HTTP `context` enum allows the UI surfaces, :api, and :metabot (accepted for debugging)"
@@ -31,3 +28,27 @@
     (is (mr/validate search.config/Context :metabot)))
   (testing "values outside the enum are rejected"
     (is (not (mr/validate search.config/Context :bogus)))))
+
+(deftest normalized-context-test
+  (testing "the broad-search surfaces normalize to a single :global context"
+    (is (= [:global :global :global]
+           (map search.config/normalized-context [:search-app :command-palette :type-filter]))))
+  (testing "the nav search bar is intentionally not normalized (keeps default filters/weights for now)"
+    (is (= :search-bar (search.config/normalized-context :search-bar))))
+  (testing "every other context normalizes to itself"
+    (is (= [:entity-picker :data-picker :metabot :api]
+           (map search.config/normalized-context [:entity-picker :data-picker :metabot :api]))))
+  (testing "static-context-weights are keyed only by normalized contexts, never the :default base"
+    (is (not (contains? search.config/static-context-weights :default)))
+    (is (every? (set search.config/normalized-contexts) (keys search.config/static-context-weights)))))
+
+(deftest weights-by-context-test
+  (testing "the broad-search surfaces share one weight profile that boosts prefix matches"
+    (is (= 5 (search.config/weight {:context :global} :prefix)))
+    (is (= 0 (search.config/weight {:context :default} :prefix)))))
+
+(deftest known-rankers-test
+  (testing "overridable rankers span every profile, not just :default"
+    ;; :library lives in :default; :data-layer only in :metabot
+    (is (contains? search.config/known-rankers :library))
+    (is (contains? search.config/known-rankers :data-layer))))
