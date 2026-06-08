@@ -17,6 +17,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help
 
 Metabase will print out the help text for available commands.
 
+
 ## `api-documentation`
 
 Generate an HTML file and a JSON file for Scalar docs for the Metabase API.
@@ -119,3 +120,4 @@ Open an SQL shell for the Metabase H2 DB:
 ```sh
 java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db
 ```
+

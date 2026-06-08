@@ -331,6 +331,10 @@
                        {:description "Number of successful search requests."})
    (prometheus/counter :metabase-search/response-error
                        {:description "Number of errors when responding to search requests."})
+   (prometheus/histogram :metabase-search/response-results
+                         {:description "Distribution of the total number of results matched by a search request."
+                          ;; `:total` is capped at *db-max-results* (1000).
+                          :buckets [0 1 2 5 10 25 50 100 250 500 1000]})
    (prometheus/gauge :metabase-search/engine-default
                      {:description "Whether a given engine is being used as the default. User can override via cookie."
                       :labels [:engine]})

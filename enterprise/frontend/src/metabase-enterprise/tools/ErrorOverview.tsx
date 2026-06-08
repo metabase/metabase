@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   SettingsPageWrapper,
@@ -16,52 +15,71 @@ import * as Queries from "../audit_app/lib/cards/queries";
 
 import { ErrorMode } from "./mode";
 
-const getSortOrder = (isAscending) => (isAscending ? "asc" : "desc");
+type Sorting = {
+  column: string;
+  isAscending: boolean;
+};
+
+type AuditFilters = {
+  errorFilter: string;
+  dbFilter: string;
+  collectionFilter: string;
+};
+
+type AllSelectEvent = {
+  rows: unknown[][];
+};
+
+type RowSelectEvent = {
+  row: unknown[];
+};
+
+type AuditResult = { row_count: number }[];
+
+const getSortOrder = (isAscending: boolean) => (isAscending ? "asc" : "desc");
 
 const CARD_ID_COL = 0;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function ErrorOverview(props) {
+export default function ErrorOverview(props: Record<string, unknown>) {
   const [runCardQuery] = useLazyGetCardQueryQuery();
-  const reloadRef = useRef(null);
+  const reloadRef = useRef<(() => void) | null>(null);
   // TODO: use isReloading to display a loading overlay
-  // eslint-disable-next-line no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isReloading, setIsReloading] = useState(false);
   const [hasResults, setHasResults] = useState(false);
-  const [sorting, setSorting] = useState({
+  const [sorting, setSorting] = useState<Sorting>({
     column: "last_run_at",
     isAscending: false,
   });
 
-  const [rowChecked, setRowChecked] = useState({});
+  const [rowChecked, setRowChecked] = useState<Record<string, boolean>>({});
 
-  const handleAllSelectClick = (e) => {
+  const handleAllSelectClick = (e: AllSelectEvent) => {
     const newRowChecked = { ...rowChecked };
     const noRowChecked = Object.values(rowChecked).every((v) => !v);
-    for (const rowIndex of Array(e.rows.length).keys()) {
-      const cardIndex = e.rows[rowIndex][CARD_ID_COL];
-      if (noRowChecked) {
-        newRowChecked[cardIndex] = true;
-      } else {
-        newRowChecked[cardIndex] = false;
-      }
+    for (const row of e.rows) {
+      const cardIndex = String(row[CARD_ID_COL]);
+      newRowChecked[cardIndex] = noRowChecked;
     }
     setRowChecked(newRowChecked);
   };
 
-  const handleRowSelectClick = (e) => {
+  const handleRowSelectClick = (e: RowSelectEvent) => {
     const newRowChecked = { ...rowChecked };
-    const cardIndex = e.row[CARD_ID_COL];
-    newRowChecked[cardIndex] = !(rowChecked[cardIndex] || false);
+    const cardIndex = String(e.row[CARD_ID_COL]);
+    newRowChecked[cardIndex] = !rowChecked[cardIndex];
     setRowChecked(newRowChecked);
   };
 
   const handleReloadSelected = async () => {
-    const checkedCardIds = Object.keys(_.pick(rowChecked, _.identity));
+    const checkedCardIds = Object.keys(rowChecked).filter(
+      (id) => rowChecked[id],
+    );
 
     await Promise.all(
       checkedCardIds.map((member) =>
-        fetchDataOrError(runCardQuery({ cardId: member }).unwrap()),
+        fetchDataOrError(runCardQuery({ cardId: Number(member) }).unwrap()),
       ),
     );
     setRowChecked({});
@@ -69,9 +87,9 @@ export default function ErrorOverview(props) {
     reloadRef.current?.();
   };
 
-  const handleSortingChange = (sorting) => setSorting(sorting);
+  const handleSortingChange = (sorting: Sorting) => setSorting(sorting);
 
-  const handleLoad = (result) => {
+  const handleLoad = (result: AuditResult) => {
     setHasResults(result[0].row_count !== 0);
     setIsReloading(false);
   };
@@ -97,7 +115,7 @@ export default function ErrorOverview(props) {
           ]}
           hasResults={hasResults}
         >
-          {({ errorFilter, dbFilter, collectionFilter }) => (
+          {({ errorFilter, dbFilter, collectionFilter }: AuditFilters) => (
             <AuditTable
               {...props}
               reloadRef={reloadRef}

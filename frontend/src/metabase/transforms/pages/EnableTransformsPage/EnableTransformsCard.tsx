@@ -2,7 +2,7 @@ import { jt, t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
-import { getPlan } from "metabase/common/utils/plan";
+import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
@@ -37,10 +37,9 @@ export function EnableTransformsCard({
   const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
-  const permissionsDescription =
-    plan === "pro-self-hosted"
-      ? t`Only Analysts and Admins can create and run transforms`
-      : t`Only Admins can create and run transforms`;
+  const permissionsDescription = isProPlan(plan)
+    ? t`Only Analysts and Admins can create and run transforms`
+    : t`Only Admins can create and run transforms`;
 
   return (
     <Card withBorder maw="60rem" p={0} w="100%" style={{ overflow: "auto" }}>
@@ -77,16 +76,15 @@ export function EnableTransformsCard({
                       color="warning"
                       variant="light"
                       icon={<Icon name="warning" size={16} />}
-                      title={t`No writable database connection`}
+                      title={t`No compatible database connection`}
                     >
-                      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Only admins can see this */}
-                      {jt`Transforms create tables in your database, so Metabase needs write access. ${(
+                      {jt`None of your connected databases can be used with transforms. ${(
                         <Link
                           key="link"
                           to="/admin/databases"
                           style={{ textDecoration: "underline" }}
-                        >{t`Reconnect or add a connection`}</Link>
-                      )} with a user that has the right privileges.`}
+                        >{t`Connect a compatible database`}</Link>
+                      )} to get started.`}
                     </Alert>
                   )}
                 </Stack>

@@ -1,17 +1,23 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 
 import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Icon } from "metabase/ui";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 const ICON_SIZE = 16;
 
-function CollectionRow({ item: collection, setSnippetCollectionId }) {
+interface CollectionRowProps {
+  item: Collection;
+  setSnippetCollectionId?: (id: CollectionId) => void;
+}
+
+export function CollectionRow({
+  item: collection,
+  setSnippetCollectionId,
+}: CollectionRowProps) {
   const onSelectCollection = () => {
-    if (setSnippetCollectionId) {
-      setSnippetCollectionId(collection.id);
-    }
+    setSnippetCollectionId?.(collection.id);
   };
 
   return (
@@ -41,6 +47,3 @@ function CollectionRow({ item: collection, setSnippetCollectionId }) {
     </div>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CollectionRow;
