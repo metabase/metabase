@@ -10,55 +10,43 @@ import { fetchDataAppBundleCode, instantiateDataAppBundle } from "./loader";
 /**
  * Reads the requested data-app name from the iframe URL.
  *
- * The BE serves this iframe at `/embed/data-app/:name`. Anything that comes
- * after that segment (e.g. the future sub-route `/embed/data-app/foo/q1`)
- * is ignored for now — the bundle's own router will own internal navigation
- * when we add it.
+ * The BE serves this iframe at `/embed/data-app/:name(/sub/route)`. Anything
+ * after the `:name` segment is owned by the bundle's own router and mirrored
+ * back to the parent by `attachIframeUrlMirror` in `AppView`.
  */
 function readNameFromUrl(): string | null {
   const segments = window.location.pathname.split("/").filter(Boolean);
   const i = segments.indexOf("data-app");
-
   if (i < 0 || i === segments.length - 1) {
     return null;
   }
-
   return decodeURIComponent(segments[i + 1] ?? "");
 }
 
-export const DataAppIframeApp = () => {
+interface BundleHostProps {
+  name: string;
+  cache: ReturnType<typeof createCache>;
+}
+
+/**
+ * Fetches + sandboxes the bundle, then renders the resulting component
+ * under the iframe-side Emotion cache.
+ */
+function BundleHost({ name, cache }: BundleHostProps) {
   const [AppComponent, setAppComponent] = useState<ComponentType<
     Record<string, unknown>
   > | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const emotionCache = useMemo(
-    () =>
-      createCache({
-        key: "data-app",
-        nonce: getCspNonce() ?? undefined,
-      }),
-    [],
-  );
-
   useEffect(() => {
     let cancelled = false;
-    const name = readNameFromUrl();
-
-    if (!name) {
-      setError("Missing data-app name in URL");
-      return;
-    }
 
     const load = async () => {
       const code = await fetchDataAppBundleCode(name);
-
       if (cancelled) {
         return;
       }
-
       const { component } = instantiateDataAppBundle(code, name, window);
-
       setAppComponent(() => component);
     };
 
@@ -71,7 +59,7 @@ export const DataAppIframeApp = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [name]);
 
   if (error) {
     return <div style={{ padding: 16, color: "#b00" }}>Error: {error}</div>;
@@ -80,8 +68,32 @@ export const DataAppIframeApp = () => {
     return <div style={{ padding: 16 }}>Loading…</div>;
   }
   return (
-    <CacheProvider value={emotionCache}>
+    <CacheProvider value={cache}>
       <AppComponent />
     </CacheProvider>
   );
+}
+
+/**
+ * Iframe-top React app. Reads the data-app name from the URL, mounts the
+ * bundle, and gets out of the way. Any sub-routes the bundle navigates to
+ * (via `history.pushState`, `react-router`, etc.) are mirrored back to the
+ * parent URL by `attachIframeUrlMirror` — the bundle doesn't need to know.
+ */
+export const DataAppIframeApp = () => {
+  const name = useMemo(() => readNameFromUrl(), []);
+  const emotionCache = useMemo(
+    () => createCache({ key: "data-app", nonce: getCspNonce() ?? undefined }),
+    [],
+  );
+
+  if (!name) {
+    return (
+      <div style={{ padding: 16, color: "#b00" }}>
+        Missing data-app name in URL
+      </div>
+    );
+  }
+
+  return <BundleHost name={name} cache={emotionCache} />;
 };

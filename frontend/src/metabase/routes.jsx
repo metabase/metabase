@@ -148,6 +148,11 @@ export const getRoutes = (store) => {
               reserves `/app/*` for static asset serving. */}
           <Route path="data-app/:name" component={IsAdmin}>
             <IndexRoute component={DataAppView} />
+            {/* Sub-paths under /data-app/:name are owned by the iframe's
+                router. Same component — `DataAppView` just keeps the
+                iframe mounted; the URL change is mirrored back from
+                inside the iframe via `history.replaceState`. */}
+            <Route path="*" component={DataAppView} />
           </Route>
 
           {/* The global all hands routes, things in here are for all the folks */}
