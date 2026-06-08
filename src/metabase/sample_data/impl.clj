@@ -3,7 +3,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.plugins.core :as plugins]
+   [metabase.sample-data.example-content :as example-content]
    [metabase.sync.core :as sync]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
@@ -108,13 +110,59 @@
     (catch Throwable e
       (log/error e "Failed to load sample database"))))
 
+(defn- sample-database-dashboard-ids
+  "IDs of Dashboards holding at least one card backed by `database-id`. Captured before the sample
+  database is deleted so the dashboards it empties out can be pruned afterward."
+  [database-id]
+  (t2/select-fn-set :dashboard_id :model/DashboardCard
+                    :card_id [:in {:select [:id]
+                                   :from   [(t2/table-name :model/Card)]
+                                   :where  [:= :database_id database-id]}]))
+
+(defn- delete-emptied-dashboards!
+  "Delete whichever of `dashboard-ids` no longer have any dashcards. A sample dashboard whose cards
+  were all removed with the sample database is deleted; a dashboard that still has cards (e.g. mixes
+  in cards from another database) is left alone."
+  [dashboard-ids]
+  (when (seq dashboard-ids)
+    (let [non-empty (t2/select-fn-set :dashboard_id :model/DashboardCard :dashboard_id [:in dashboard-ids])
+          empty-ids (remove (or non-empty #{}) dashboard-ids)]
+      (when (seq empty-ids)
+        (t2/delete! :model/Dashboard :id [:in empty-ids])))))
+
+(defn- replace-sample-database!
+  "The bundled sample database's engine changed (e.g. H2 -> SQLite on upgrade). The old sample
+  Database's tables, fields, and connection details are incompatible with the new engine, so rather
+  than remapping content we drop the old sample Database wholesale and extract + sync the new one.
+  Deleting the Database cascades to its Cards and those cards' dashcards; Dashboards left empty as a
+  result are deleted too.
+
+  The cleanup runs unconditionally (an incompatible sample database should never linger), but the new
+  Sample Database and its Example collection are only recreated when sample content is enabled - and
+  the Example collection is skipped under test endpoints, matching fresh-install seeding."
+  [old-sample-db]
+  (log/infof "Bundled sample database engine changed from %s to %s; replacing the sample database"
+             (:engine old-sample-db) (sample-database-engine))
+  (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
+    (t2/delete! :model/Database (:id old-sample-db))
+    (delete-emptied-dashboards! dashboard-ids))
+  (when (config/load-sample-content?)
+    (extract-and-sync-sample-database!)
+    (when-not (config/config-bool :mb-enable-test-endpoints)
+      (when-let [new-db-id (t2/select-one-pk :model/Database :is_sample true)]
+        (example-content/recreate-example-content! new-db-id)))))
+
 (defn update-sample-database-if-needed!
-  "Update the path to the sample database DB if it exists in case the JAR has moved."
+  "Reconcile the existing sample database with the bundled one. When the bundled engine changed
+  (H2 <-> SQLite) the old sample database is replaced (see [[replace-sample-database!]]); otherwise
+  we just refresh its connection details in case the JAR has moved."
   ([]
    (update-sample-database-if-needed! (t2/select-one :model/Database :is_sample true)))
 
   ([sample-db]
    (when sample-db
-     (let [intended (try-to-extract-sample-database!)]
-       (when (not= (:details sample-db) intended)
-         (t2/update! :model/Database (:id sample-db) {:details intended}))))))
+     (if (not= (:engine sample-db) (sample-database-engine))
+       (replace-sample-database! sample-db)
+       (let [intended (try-to-extract-sample-database!)]
+         (when (not= (:details sample-db) intended)
+           (t2/update! :model/Database (:id sample-db) {:details intended})))))))

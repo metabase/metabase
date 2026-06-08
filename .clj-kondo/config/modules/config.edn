@@ -1877,7 +1877,9 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{plugins
+   :uses #{config
+           models
+           plugins
            settings
            sync
            util}

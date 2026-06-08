@@ -112,6 +112,47 @@
                      #"(?i)readonly"
                      (jdbc/execute! conn-spec sql)))))))))))
 
+(deftest update-sample-database-same-engine-test
+  (testing "When the bundled engine is unchanged, the sample DB is kept and only its details refreshed"
+    (mt/with-temp [:model/Database db (assoc (sample-database-db)
+                                             :is_sample true
+                                             :details {:db "/stale/path/sample-database.sqlite"})]
+      (let [extract-called? (atom false)]
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database! (fn [] (reset! extract-called? true))]
+          (#'sample-data/update-sample-database-if-needed! db))
+        (testing "the existing sample DB row is not replaced"
+          (is (false? @extract-called?))
+          (is (t2/exists? :model/Database :id (:id db))))
+        (testing "its details were refreshed to the intended path"
+          (is (re-matches extracted-db-path-regex
+                          (get-in (t2/select-one :model/Database :id (:id db)) [:details :db]))))))))
+
+(deftest replace-sample-database-on-engine-change-test
+  (testing "When the bundled engine changed (H2 -> SQLite), the old sample DB and its dependent content are removed"
+    (mt/with-temp
+      [:model/Database  old-sample  {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}
+       :model/Database  other-db    {:engine :h2, :details {:db "mem:other"}}
+       :model/Card      sample-card {:database_id (:id old-sample)}
+       :model/Card      other-card  {:database_id (:id other-db)}
+       :model/Dashboard sample-dash {}
+       :model/Dashboard mixed-dash  {}
+       :model/DashboardCard _ {:dashboard_id (:id sample-dash), :card_id (:id sample-card)}
+       :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id sample-card)}
+       :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id other-card)}]
+      (let [extract-called? (atom false)]
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database! (fn [] (reset! extract-called? true))]
+          (#'sample-data/update-sample-database-if-needed! old-sample))
+        (testing "the old sample DB is deleted, cascading to its cards"
+          (is (not (t2/exists? :model/Database :id (:id old-sample))))
+          (is (not (t2/exists? :model/Card :id (:id sample-card)))))
+        (testing "a dashboard emptied by the deletion is deleted"
+          (is (not (t2/exists? :model/Dashboard :id (:id sample-dash)))))
+        (testing "a dashboard that still has other cards is kept"
+          (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
+          (is (t2/exists? :model/Card :id (:id other-card))))
+        (testing "the new bundled sample DB is extracted and synced"
+          (is (true? @extract-called?)))))))
+
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
     (mt/with-temp-empty-app-db [_conn :h2]

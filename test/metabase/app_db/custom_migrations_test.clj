@@ -2938,3 +2938,26 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest migrate-away-from-sqlite-sample-database-on-downgrade-test
+  (testing "Downgrade removes the SQLite sample database and the content it leaves empty, keeping everything else"
+    (mt/with-temp
+      [:model/Database  sample      {:engine :sqlite, :is_sample true, :details {:db "mem:sample"}}
+       :model/Database  other       {:engine :h2,     :details {:db "mem:other"}}
+       :model/Card      sample-card {:database_id (:id sample)}
+       :model/Card      other-card  {:database_id (:id other)}
+       :model/Dashboard sample-dash {}
+       :model/Dashboard mixed-dash  {}
+       :model/DashboardCard _ {:dashboard_id (:id sample-dash), :card_id (:id sample-card)}
+       :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id sample-card)}
+       :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id other-card)}]
+      (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
+      (testing "the SQLite sample database is deleted, cascading to its cards"
+        (is (not (t2/exists? :model/Database :id (:id sample))))
+        (is (not (t2/exists? :model/Card :id (:id sample-card)))))
+      (testing "a dashboard left empty by the deletion is deleted"
+        (is (not (t2/exists? :model/Dashboard :id (:id sample-dash)))))
+      (testing "a dashboard that still has other cards, and unrelated content, is kept"
+        (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
+        (is (t2/exists? :model/Card :id (:id other-card)))
+        (is (t2/exists? :model/Database :id (:id other)))))))
