@@ -30,7 +30,8 @@
 
 (doseq [[feature supported?] {:metadata/key-constraints  false
                               :test/jvm-timezone-setting false
-                              :database-routing          false}]
+                              :database-routing          false
+                              :connection-impersonation  false}]
   (defmethod driver/database-supports? [:teradata feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :teradata
