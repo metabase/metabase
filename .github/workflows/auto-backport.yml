@@ -32,40 +32,25 @@ jobs:
           pull-request-number: ${{ github.event.pull_request.number }}
           base-ref: ${{ github.event.pull_request.base.ref }}
 
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
       - name: Compute supported backport targets
         id: targets
         uses: actions/github-script@v9
         env:
-          STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
-          STATIC_REGION: ${{ vars.AWS_REGION }}
+          AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           script: | # js
-            // Backport targets are the supported major lines from version-info.json.
-            // A line is in support — and therefore a backport target — if and only if its EoL is
-            // today or later. `major_version_support` is edition-agnostic (keyed by bare
-            // major), so the OSS file is sufficient. `lts` is display-only and ignored here.
-            const url = `http://${process.env.STATIC_BUCKET}.s3.${process.env.STATIC_REGION}.amazonaws.com/version-info.json`;
-            const resp = await fetch(url);
-            if (!resp.ok) {
-              throw new Error(`Failed to fetch ${url}: ${resp.status} ${resp.statusText}`);
-            }
+            // Backport targets are the supported major lines from version-info.json:
+            // a line is in support — and a backport target — if and only if its EoL is
+            // today or later. `getSupportedMajors` encapsulates that rule (and ignores
+            // the display-only `lts` flag); it is shared with the auto-minor scheduler.
+            const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const { major_version_support: lines } = await resp.json();
-            if (!Array.isArray(lines) || lines.length === 0) {
-              throw new Error('version-info.json has no `major_version_support` — cannot determine backport targets');
-            }
-
-            const today = new Date().toISOString().slice(0, 10); // UTC YYYY-MM-DD
-            const targets = [...new Set(
-              lines.filter(line => line.eol >= today).map(line => line.major),
-            )].sort((a, b) => b - a);
-
-            console.log('today', today);
+            const targets = await getSupportedMajors();
             console.log('supported backport targets', targets);
-
-            if (targets.length === 0) {
-              throw new Error('No in-support release lines found — every EoL date is in the past?');
-            }
 
             return targets;
 
