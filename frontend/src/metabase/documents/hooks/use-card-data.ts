@@ -19,8 +19,6 @@ interface UseCardDataProps {
   id: number;
 }
 
-export type { UseCardDataResult };
-
 function buildAdhocQueryParams(card: Card) {
   return {
     ...card.dataset_query,
