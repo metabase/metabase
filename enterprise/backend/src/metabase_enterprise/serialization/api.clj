@@ -72,30 +72,59 @@
 
 ;;; Logic
 
+(def ^:private serialization-logger-prefixes
+  "log4j2 logger-name prefixes whose logs are forked into the `export.log`/`import.log` files inside the archive.
+  These are not loaded namespaces; each prefix captures every logger nested under it (e.g.
+  `metabase-enterprise.serialization` captures `metabase-enterprise.serialization.v2.extract`)."
+  ['metabase-enterprise.serialization
+   'metabase.models.serialization])
+
+(defn- log-export-error!
+  "Log a serialization export error, honoring `full-stacktrace` (full trace vs stripped one-liner)."
+  [e full-stacktrace]
+  (if full-stacktrace
+    (log/error e "Error during serialization export")
+    (log/error (u/strip-error e "Error during serialization export"))))
+
+(defn- extract-entities!
+  "Run eager extraction (target resolution, escape analysis) before streaming starts. It must run
+  before the streaming response opens so a failure can still set a non-200 status. Eager logs (e.g.
+  escape-analysis warnings) are captured into `log-output` so they land in export.log alongside the
+  storage logs captured later. `full-stacktrace` is honored for genuine server failures the way the
+  streaming path and the CLI export do; client input errors carry a `:status-code` and pass through to
+  the API layer unlogged, so they surface as a clean 4xx rather than a logged server error."
+  [opts ^ByteArrayOutputStream log-output full-stacktrace]
+  (try
+    (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
+                                       {:additive *additive-logging*})]
+      (extract/extract opts))
+    (catch Exception e
+      (when-not (:status-code (ex-data e))
+        (log-export-error! e full-stacktrace))
+      (throw e))))
+
 (defn- serialize-to-stream!
-  "Serialize directly to an OutputStream as streaming tar.gz. Returns result map."
-  [^java.io.OutputStream output ^String dirname entities {:keys [full-stacktrace]}]
-  (let [log-output (ByteArrayOutputStream.)
-        writer     (v2.storage.tar/tar-writer output dirname)
-        error      (atom nil)
-        report     (with-open [_logger (logger/for-ns log-output ['metabase-enterprise.serialization
-                                                                  'metabase.models.serialization]
-                                                      {:additive *additive-logging*})]
-                     (try
-                       (let [report (serdes/with-cache
-                                      (v2.storage/store! entities writer))]
-                         (v2.protocols/store-log! writer (.toByteArray log-output))
-                         (v2.protocols/finish! writer)
-                         report)
-                       (catch Exception e
-                         (reset! error e)
-                         (if full-stacktrace
-                           (log/error e "Error during serialization export")
-                           (log/error (u/strip-error e "Error during serialization export")))
-                         (try
-                           (v2.protocols/store-log! writer (.toByteArray log-output))
-                           (v2.protocols/finish! writer)
-                           (catch Exception _)))))]
+  "Serialize directly to an OutputStream as streaming tar.gz. Returns result map.
+
+  Storage logs are appended to `log-output`, whose full contents are then written to `export.log` inside the
+  archive."
+  [^java.io.OutputStream output ^String dirname entities ^ByteArrayOutputStream log-output {:keys [full-stacktrace]}]
+  (let [writer (v2.storage.tar/tar-writer output dirname)
+        error  (atom nil)
+        report (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
+                                                  {:additive *additive-logging*})]
+                 (try
+                   (serdes/with-cache
+                     (v2.storage/store! entities writer))
+                   (catch Exception e
+                     (reset! error e)
+                     (log-export-error! e full-stacktrace)
+                     nil)))]
+    ;; Read the buffer and write the log after the appender has closed (and thus flushed) so nothing is lost.
+    (try
+      (v2.protocols/store-log! writer (.toByteArray log-output))
+      (v2.protocols/finish! writer)
+      (catch Exception _))
     {:report        report
      :success       (nil? @error)
      :error-message (when @error
@@ -121,8 +150,7 @@
         log-file (io/file dst "import.log")
         err      (atom nil)
         reindex? (if (nil? reindex?) true reindex?)
-        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
-                                                              'metabase.models.serialization]
+        report   (with-open [_logger (logger/for-ns log-file serialization-logger-prefixes
                                                     {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
@@ -232,14 +260,16 @@
                            (format "%s-%s"
                                    (u/slugify (appearance/site-name))
                                    (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
-        ;; extract/extract runs eager setup (target resolution, escape analysis) which can throw
-        ;; for invalid inputs (e.g. bad collection ID). This must happen before streaming starts.
-        entities (extract/extract opts)]
+        ;; Eager setup (target resolution, escape analysis) must run before the streaming response opens
+        ;; so a failure can still set a non-200 status. extract-entities! captures its logs into log-output
+        ;; (so escape-analysis warnings land in export.log) and honors full_stacktrace for genuine failures.
+        log-output (ByteArrayOutputStream.)
+        entities   (extract-entities! opts log-output full-stacktrace?)]
     (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
       (sr/set-header! "Content-Disposition"
                       (format "attachment; filename=\"%s.tar.gz\"" export-dirname))
       (let [start  (System/nanoTime)
-            result (serialize-to-stream! output export-dirname entities opts)]
+            result (serialize-to-stream! output export-dirname entities log-output opts)]
         (track-export-event! collection opts start result)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

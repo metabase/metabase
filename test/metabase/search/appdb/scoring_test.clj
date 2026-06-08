@@ -127,6 +127,20 @@
       ;; TODO text ranking (probably in-memory
       nil)))
 
+(deftest ^:parallel exact-normalization-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "Sales,  Revenue"}
+     {:model "card" :id 2 :name "Sales Revenue Report"}]
+    (case (mdb/db-type)
+      :postgres
+      (testing "Exact matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales,  Revenue"]
+                ["card" 2 "Sales Revenue Report"]]
+               (search-results :exact "sales revenue"))))
+      :h2
+      ;; TODO text ranking (probably in-memory)
+      nil)))
+
 (deftest ^:parallel prefix-test
   (with-index-contents
     [{:model "card" :id 1 :name "this is a prefix of something longer"}
@@ -135,6 +149,15 @@
       (is (= [["card" 1 "this is a prefix of something longer"]
               ["card" 2 "a prefix this is not, unfortunately"]]
              (search-results :prefix "this is a prefix"))))))
+
+(deftest ^:parallel prefix-normalization-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "Sales, Revenue Quarterly"}
+     {:model "card" :id 2 :name "Revenue and Sales"}]
+    (testing "Prefix matching ignores commas and collapses whitespace runs"
+      (is (= [["card" 1 "Sales, Revenue Quarterly"]
+              ["card" 2 "Revenue and Sales"]]
+             (search-results :prefix "sales revenue"))))))
 
 (deftest ^:parallel model-test
   (with-index-contents

@@ -195,6 +195,12 @@ export const isLibrarySubCollectionType = (
   return type === "library-data" || type === "library-metrics";
 };
 
+export const isLibraryDataCollectionType = (
+  type?: string | null,
+): type is "library-data" => {
+  return type === "library-data";
+};
+
 export const isLibraryCollectionType = (
   type?: string | null,
 ): type is LibrarySubCollectionType => {

@@ -1,7 +1,6 @@
 import { c, t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import { Group, Text } from "metabase/ui";
+import { ActionIcon, Group, Icon, Text } from "metabase/ui";
 
 const isLastPage = (pageIndex: number, pageSize: number, total: number) =>
   pageIndex === Math.ceil(total / pageSize) - 1;
@@ -61,23 +60,25 @@ export const PaginationControls = ({
           </>
         )}
       </Text>
-      <Button
-        onlyIcon
-        icon="chevronleft"
+      <ActionIcon
+        variant="viewHeader"
         onClick={onPreviousPage ?? undefined}
         disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
         aria-label={t`Previous page`}
-      />
+      >
+        <Icon name="chevronleft" />
+      </ActionIcon>
 
-      <Button
-        onlyIcon
-        icon="chevronright"
+      <ActionIcon
+        variant="viewHeader"
         onClick={onNextPage ?? undefined}
         disabled={isNextDisabled}
         data-testid="next-page-btn"
         aria-label={t`Next page`}
-      />
+      >
+        <Icon name="chevronright" />
+      </ActionIcon>
     </Group>
   );
 };

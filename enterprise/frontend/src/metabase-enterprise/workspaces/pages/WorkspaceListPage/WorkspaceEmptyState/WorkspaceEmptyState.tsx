@@ -1,15 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
-  Anchor,
   Box,
   Button,
   Card,
+  Divider,
   FixedSizeIcon,
   Group,
   Stack,
@@ -33,6 +34,7 @@ export function WorkspaceEmptyState() {
     useDisclosure(false);
   const dispatch = useDispatch();
   const canManageInstance = useSelector(canManageWorkspaceInstance);
+  const applicationName = useSelector(getApplicationName);
 
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
@@ -49,23 +51,6 @@ export function WorkspaceEmptyState() {
     openSetup();
   };
 
-  const createButton = (
-    <Button key="create" variant="filled" onClick={openCreate}>
-      {t`Create a workspace`}
-    </Button>
-  );
-
-  const setupButton = (
-    <Anchor
-      key="setup"
-      role="button"
-      component="button"
-      onClick={handleSetupClick}
-    >
-      {t`upload a workspace config`}
-    </Anchor>
-  );
-
   return (
     <>
       <Card p="xl" maw="40rem" mx="auto" shadow="none" withBorder>
@@ -73,33 +58,45 @@ export function WorkspaceEmptyState() {
           <Title
             order={3}
             mb="sm"
-          >{t`Isolated spaces for agents and developers`}</Title>
+          >{t`Use Workspaces to develop your semantic layer safely`}</Title>
           <Text mb="md">
-            {t`Develop transforms and the semantic layer without touching production tables. Each workspace gets its own schema and database user in the warehouses you pick.`}
+            {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
           </Text>
-          <Stack gap="sm" pb="xl">
-            <Box>{createButton}</Box>
+          <Text mb="lg">
+            {t`If this is your production instance, create and download a workspace config here to use in a development instance.`}
+            {canManageInstance &&
+              ` ${t`If you're using this ${applicationName} instance for development, you can upload a workspace config file to put this instance into that workspace.`}`}
+          </Text>
+          <Group gap="md">
+            <Button variant="filled" onClick={openCreate}>
+              {t`Create a workspace`}
+            </Button>
             {canManageInstance && (
-              <Box>{jt`or ${setupButton} generated from your production instance to put this development instance into a workspace.`}</Box>
+              <Button variant="default" onClick={handleSetupClick}>
+                {t`Upload a workspace config`}
+              </Button>
             )}
-          </Stack>
+          </Group>
           {(showFileBasedDevLink || showRemoteSyncLink) && (
-            <Group pt="md" gap="sm" align="stretch">
-              {showFileBasedDevLink && (
-                <DocsLink
-                  title={t`File-based development`}
-                  description={t`How to use the CLI to develop content locally.`}
-                  link={fileBasedDevDocsUrl}
-                />
-              )}
-              {showRemoteSyncLink && (
-                <DocsLink
-                  title={t`Using remote sync`}
-                  description={t`How to sync and review instance content with git.`}
-                  link={remoteSyncDocsUrl}
-                />
-              )}
-            </Group>
+            <>
+              <Divider my="xl" />
+              <Group gap="sm" align="stretch">
+                {showFileBasedDevLink && (
+                  <DocsLink
+                    title={t`Agent-driven development`}
+                    description={t`How to use the CLI to develop content locally.`}
+                    link={fileBasedDevDocsUrl}
+                  />
+                )}
+                {showRemoteSyncLink && (
+                  <DocsLink
+                    title={t`Using remote sync`}
+                    description={t`How to sync and review ${applicationName} content with git.`}
+                    link={remoteSyncDocsUrl}
+                  />
+                )}
+              </Group>
+            </>
           )}
         </Box>
       </Card>

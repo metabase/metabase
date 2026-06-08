@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Button } from "metabase/common/components/Button";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -47,8 +46,4 @@ export const FormFooter = styled.div`
 export const FormFooterContent = styled.div`
   display: flex;
   align-items: center;
-`;
-
-export const FormSubmitButton = styled(Button)`
-  margin-right: 1rem;
 `;

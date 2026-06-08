@@ -15,7 +15,7 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { updateMetadata } from "metabase/redux/metadata";
+import { fetchTableMetadata, updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
@@ -287,11 +287,34 @@ async function handleQBInit(
   dispatch(cancelQuery());
 
   const queryParams = location.query;
-  const cardId = Urls.extractEntityId(params.slug);
+  const isTableRoute = location.pathname?.startsWith("/table");
+  const slugEntityId = Urls.extractEntityId(params.slug);
+  // On the /table/:slug route the slug identifies a table, not a saved card.
+  const cardId = isTableRoute ? undefined : slugEntityId;
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
-  const { options, serializedCard } = parseHash(location.hash);
-  const hasCard = cardId || serializedCard;
+  let { options, serializedCard } = parseHash(location.hash);
   const currentUser = getUser(getState());
+
+  if (isTableRoute && slugEntityId != null) {
+    await dispatch(fetchTableMetadata(slugEntityId));
+    if (isStale()) {
+      return;
+    }
+    const table = getMetadata(getState()).table(slugEntityId);
+    if (!table) {
+      dispatch(setErrorPage(NOT_FOUND_ERROR));
+      return;
+    }
+    // The /table URL only carries the table id; resolve its db so the QB can
+    // build the table's default ad-hoc question, just like `?db=&table=`.
+    options = {
+      ...options,
+      db: String(table.db_id),
+      table: String(slugEntityId),
+    };
+  }
+
+  const hasCard = cardId || serializedCard;
 
   if (uiControls.queryBuilderMode === "notebook") {
     if (!canUserCreateQueries(getState())) {

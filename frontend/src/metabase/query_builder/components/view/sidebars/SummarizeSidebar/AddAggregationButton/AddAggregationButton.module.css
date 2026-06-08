@@ -1,10 +1,12 @@
 .AddAggregationButtonRoot {
-  padding: 0.625rem;
-  color: var(--mb-color-core-summarize);
-  background-color: var(--mb-color-background-secondary);
-
-  &:hover {
+  &[data-variant="subtle"] {
+    padding: 0.625rem;
     color: var(--mb-color-core-summarize);
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background-secondary);
+
+    &:hover {
+      color: var(--mb-color-core-summarize);
+      background-color: var(--mb-color-background-tertiary);
+    }
   }
 }
