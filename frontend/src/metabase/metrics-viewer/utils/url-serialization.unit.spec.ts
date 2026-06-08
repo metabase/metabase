@@ -45,13 +45,13 @@ describe("url-serialization", () => {
     it("round-trips enabled column labels", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [{ type: "metric", id: 1 }],
+        showColumnLabels: true,
         dimensionBreakouts: [
           {
             id: "dimensionBreakout-1",
             type: "time",
             label: "By Month",
             display: "line",
-            showColumnLabels: true,
             definitions: [{ slotIndex: 0, dimensionId: "created_at" }],
           },
         ],
@@ -390,6 +390,7 @@ describe("url-serialization", () => {
         formulaEntities: [],
         dimensionBreakouts: [],
         selectedDimensionBreakoutId: null,
+        showColumnLabels: false,
       });
     });
 
@@ -398,6 +399,7 @@ describe("url-serialization", () => {
         formulaEntities: [],
         dimensionBreakouts: [],
         selectedDimensionBreakoutId: null,
+        showColumnLabels: false,
       });
     });
 
@@ -407,6 +409,7 @@ describe("url-serialization", () => {
         formulaEntities: [],
         dimensionBreakouts: [],
         selectedDimensionBreakoutId: null,
+        showColumnLabels: false,
       });
     });
 

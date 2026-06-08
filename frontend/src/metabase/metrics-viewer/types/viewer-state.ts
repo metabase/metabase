@@ -154,6 +154,7 @@ export interface MetricsViewerPageState {
   formulaEntities: MetricsViewerFormulaEntity[]; // specific items used in formula, definitions there contains filters
   dimensionBreakouts: MetricsViewerDimensionBreakoutState[]; // visualization settings for a dimension breakout
   selectedDimensionBreakoutId: string | null;
+  showColumnLabels: boolean;
 }
 
 export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
@@ -162,6 +163,7 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
     formulaEntities: [],
     dimensionBreakouts: [],
     selectedDimensionBreakoutId: null,
+    showColumnLabels: false,
   };
 }
 
@@ -217,6 +219,7 @@ export interface UseViewerStateResult {
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   availableDimensions: AvailableDimensionsResult;
   sidebarAvailableDimensions: AvailableDimensionsResult;
+  showColumnLabels: boolean;
   isSidebarOpen: boolean;
   closeSidebar: () => void;
   openSidebar: () => void;
@@ -226,10 +229,12 @@ export interface UseViewerStateResult {
   removeMetric: (id: number, sourceType: "metric" | "measure") => void;
   selectDimensionBreakout: (
     dimensionBreakoutInfo: DimensionBreakoutInfo,
+    options?: { updateExisting?: boolean },
   ) => void;
   updateActiveDimensionBreakout: (
     updates: Partial<MetricsViewerDimensionBreakoutState>,
   ) => void;
+  setShowColumnLabels: (showColumnLabels: boolean) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,

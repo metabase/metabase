@@ -64,6 +64,7 @@ export function useViewerUrl(
             formulaEntities: [entity],
             dimensionBreakouts: [],
             selectedDimensionBreakoutId: null,
+            showColumnLabels: false,
           };
           const encodedHash = encodeState(serializedState);
           if (encodedHash === undefined) {
@@ -87,6 +88,11 @@ export function useViewerUrl(
       if (serializedState.dimensionBreakouts.length > 0) {
         const dimensionBreakouts: MetricsViewerDimensionBreakoutState[] =
           serializedState.dimensionBreakouts.map(deserializeDimensionBreakout);
+        const showColumnLabels =
+          serializedState.showColumnLabels ??
+          dimensionBreakouts.some(
+            (dimensionBreakout) => dimensionBreakout.showColumnLabels === true,
+          );
 
         initialize({
           definitions: {},
@@ -94,6 +100,7 @@ export function useViewerUrl(
           dimensionBreakouts,
           selectedDimensionBreakoutId:
             serializedState.selectedDimensionBreakoutId,
+          showColumnLabels,
         });
       }
 

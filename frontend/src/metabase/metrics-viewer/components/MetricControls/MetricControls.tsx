@@ -54,6 +54,8 @@ export function MetricControls({
     activeDimensionBreakout: dimensionBreakout,
     availableDimensions,
     sourceOrder,
+    showColumnLabels,
+    setShowColumnLabels,
     updateActiveDimensionBreakout: onDimensionBreakoutUpdate,
     openSidebar,
   } = useMetricsViewerContext();
@@ -100,9 +102,9 @@ export function MetricControls({
 
   const handleShowColumnLabelsChange = useCallback(
     (showColumnLabels: boolean) => {
-      onDimensionBreakoutUpdate({ showColumnLabels });
+      setShowColumnLabels(showColumnLabels);
     },
-    [onDimensionBreakoutUpdate],
+    [setShowColumnLabels],
   );
 
   const handleVisualizationSettingsChange = useCallback(
@@ -132,7 +134,6 @@ export function MetricControls({
     display: displayType,
     projectionConfig,
     visualizationSettings,
-    showColumnLabels = false,
   } = dimensionBreakout;
   const dimensionFilter = projectionConfig.dimensionFilter;
 

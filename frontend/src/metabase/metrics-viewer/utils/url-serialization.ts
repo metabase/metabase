@@ -209,6 +209,7 @@ export interface SerializedMetricsViewerPageState {
   formulaEntities: SerializedFormulaEntity[];
   dimensionBreakouts: SerializedDimensionBreakout[];
   selectedDimensionBreakoutId: string | null;
+  showColumnLabels?: boolean;
 }
 
 // ── Expression sub-token helpers ──
@@ -346,9 +347,6 @@ function dimensionBreakoutToSerializedDimensionBreakout(
     type: dimensionBreakout.type,
     label: dimensionBreakout.label,
     display: dimensionBreakout.display,
-    ...(dimensionBreakout.showColumnLabels === true
-      ? { showColumnLabels: true }
-      : {}),
     ...(dimensionBreakout.visualizationSettings &&
     Object.keys(dimensionBreakout.visualizationSettings).length > 0
       ? { visualizationSettings: dimensionBreakout.visualizationSettings }
@@ -514,6 +512,7 @@ export function stateToSerializedState(
       dimensionBreakoutToSerializedDimensionBreakout,
     ),
     selectedDimensionBreakoutId: state.selectedDimensionBreakoutId,
+    ...(state.showColumnLabels ? { showColumnLabels: true } : {}),
   };
 }
 
@@ -586,6 +585,7 @@ const rootSchema = defineCompactSchema<SerializedMetricsViewerPageState>({
     default: [],
   },
   selectedDimensionBreakoutId: { key: "a", default: null },
+  showColumnLabels: { key: "c", optional: true },
 });
 
 // ── Encode / decode ──
@@ -595,6 +595,7 @@ function emptyState(): SerializedMetricsViewerPageState {
     formulaEntities: [],
     dimensionBreakouts: [],
     selectedDimensionBreakoutId: null,
+    showColumnLabels: false,
   };
 }
 

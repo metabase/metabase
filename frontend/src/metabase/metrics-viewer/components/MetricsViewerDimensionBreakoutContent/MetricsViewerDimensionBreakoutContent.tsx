@@ -27,6 +27,7 @@ export function MetricsViewerDimensionBreakoutContent() {
     series: rawSeries,
     cardIdToEntityIndex,
     sourceColors,
+    showColumnLabels,
     updateActiveDimensionBreakout: onDimensionBreakoutUpdate,
   } = useMetricsViewerContext();
 
@@ -136,8 +137,6 @@ export function MetricsViewerDimensionBreakoutContent() {
   );
   const hideDimensionPill =
     dimensionBreakoutConfig.minDimensions === 0 && !hasAnyOptions;
-  const { showColumnLabels = false } = dimensionBreakout;
-
   return (
     <Stack flex="1 0 auto" gap={0}>
       <MetricsViewerVisualization

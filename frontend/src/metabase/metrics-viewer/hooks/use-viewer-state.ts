@@ -688,11 +688,45 @@ export function useViewerState({
   );
 
   const selectDimensionBreakout = useCallback(
-    (dimensionBreakoutInfo: DimensionBreakoutInfo) => {
+    (
+      dimensionBreakoutInfo: DimensionBreakoutInfo,
+      options?: { updateExisting?: boolean },
+    ) => {
       const newDimensionBreakout = createDimensionBreakoutFromInfo(
         dimensionBreakoutInfo,
       );
       if (!newDimensionBreakout) {
+        return;
+      }
+
+      if (options?.updateExisting) {
+        setState((prev) => {
+          const existingDimensionBreakout = prev.dimensionBreakouts.find(
+            (dimensionBreakout) =>
+              dimensionBreakout.id === newDimensionBreakout.id,
+          );
+          const dimensionBreakouts = existingDimensionBreakout
+            ? prev.dimensionBreakouts.map((dimensionBreakout) =>
+                dimensionBreakout.id === newDimensionBreakout.id
+                  ? {
+                      ...dimensionBreakout,
+                      label: newDimensionBreakout.label,
+                      dimensionMapping: newDimensionBreakout.dimensionMapping,
+                    }
+                  : dimensionBreakout,
+              )
+            : assignDimensionsForUnmappedSlots(
+                [...prev.dimensionBreakouts, newDimensionBreakout],
+                prev.definitions,
+                prev.formulaEntities,
+              );
+
+          return {
+            ...prev,
+            dimensionBreakouts,
+            selectedDimensionBreakoutId: newDimensionBreakout.id,
+          };
+        });
         return;
       }
 
@@ -712,10 +746,15 @@ export function useViewerState({
     [derivedData.activeDimensionBreakout, updateDimensionBreakout],
   );
 
+  const setShowColumnLabels = useCallback((showColumnLabels: boolean) => {
+    setState((prev) => ({ ...prev, showColumnLabels }));
+  }, []);
+
   return useMemo(
     () => ({
       definitions: state.definitions,
       formulaEntities: state.formulaEntities,
+      showColumnLabels: state.showColumnLabels,
       ...derivedData,
       initialLoadComplete,
       isSidebarOpen,
@@ -727,12 +766,14 @@ export function useViewerState({
       removeMetric,
       selectDimensionBreakout,
       updateActiveDimensionBreakout,
+      setShowColumnLabels,
       setBreakoutDimension,
       setFormulaEntities,
     }),
     [
       state.definitions,
       state.formulaEntities,
+      state.showColumnLabels,
       derivedData,
       initialLoadComplete,
       isSidebarOpen,
@@ -743,6 +784,7 @@ export function useViewerState({
       removeMetric,
       selectDimensionBreakout,
       updateActiveDimensionBreakout,
+      setShowColumnLabels,
       setBreakoutDimension,
       setFormulaEntities,
     ],

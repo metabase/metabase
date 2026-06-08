@@ -209,10 +209,13 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         ...category.dimensionBreakoutInfo.dimensionMapping,
         [slotIndex]: dimensionId,
       };
-      onSelectDimensionBreakout({
-        ...category.dimensionBreakoutInfo,
-        dimensionMapping,
-      });
+      onSelectDimensionBreakout(
+        {
+          ...category.dimensionBreakoutInfo,
+          dimensionMapping,
+        },
+        { updateExisting: true },
+      );
       trackMetricsViewerDimensionSelected();
     },
     [

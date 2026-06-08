@@ -114,11 +114,12 @@ describe("useDimensionPickerSidebarCategories", () => {
     ]);
     expect(result.current.find((category) => category.name === "Time")).toEqual(
       expect.objectContaining({
-        dimensionBreakoutInfo: {
+        dimensionBreakoutInfo: expect.objectContaining({
+          id: "time",
           type: "time",
           label: "Time",
           dimensionMapping: { 0: "dim-created-at" },
-        },
+        }),
         targetItems: [
           expect.objectContaining({
             name: "Created At",
@@ -261,6 +262,7 @@ describe("useDimensionPickerSidebarCategories", () => {
     expect(result.current.find((category) => category.name === "Time")).toEqual(
       expect.objectContaining({
         dimensionBreakoutInfo: expect.objectContaining({
+          id: "time",
           dimensionMapping: { 0: "dim-created-at" },
         }),
       }),
@@ -317,6 +319,7 @@ describe("useDimensionPickerSidebarCategories", () => {
           expect.objectContaining({ name: "User Country" }),
         ],
         dimensionBreakoutInfo: expect.objectContaining({
+          id: "geo",
           type: "geo",
           label: "Country",
           dimensionMapping: {

@@ -3,9 +3,11 @@ import { t } from "ttag";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDimensionBreakoutType } from "metabase/metrics-viewer/types";
 import {
+  type DimensionBreakoutTypeDefinition,
   type DimensionPickerItem,
   type DimensionPickerSidebarCategory,
   getComparableDimensionKey,
+  getDimensionBreakoutConfig,
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 
@@ -55,18 +57,34 @@ function buildSidebarCategory(
   items: DimensionPickerItem[],
 ): DimensionPickerSidebarCategory {
   const first = items[0];
+  const dimensionBreakoutInfo = {
+    ...first.dimensionBreakoutInfo,
+    label: name,
+    dimensionMapping: mergeDimensionMappings(items),
+  };
+  const config = getDimensionBreakoutConfig(dimensionBreakoutInfo.type);
+  const shouldUseFixedAggregateId = isTypeKeyedAggregateCategory(key, config);
 
   return {
     ...first,
     key,
     name,
     targetItems: items,
-    dimensionBreakoutInfo: {
-      ...first.dimensionBreakoutInfo,
-      label: name,
-      dimensionMapping: mergeDimensionMappings(items),
-    },
+    dimensionBreakoutInfo: shouldUseFixedAggregateId
+      ? { ...dimensionBreakoutInfo, id: config.fixedId }
+      : dimensionBreakoutInfo,
   };
+}
+
+/** Type-keyed aggregate categories reselect their fixed breakout across related fields. */
+function isTypeKeyedAggregateCategory(
+  key: string,
+  config: DimensionBreakoutTypeDefinition,
+): config is Extract<
+  DimensionBreakoutTypeDefinition,
+  { matchMode: "aggregate" }
+> {
+  return config.matchMode === "aggregate" && key.startsWith("type:");
 }
 
 function shouldShowInDefaultSidebar(item: DimensionPickerItem) {

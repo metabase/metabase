@@ -96,7 +96,7 @@ function isRedundantSingleOption(
   }
 
   return categorySelectRows.every(
-    (row) => row.options.length === 1 && row.value === row.options[0].value,
+    (row) => row.options.length === 1 && !row.isExpressionToken,
   );
 }
 
@@ -113,17 +113,10 @@ function getCategorySelectRows({
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   sourceColors: SourceColorMap;
 }) {
-  const categoryDimensionBreakout = isCategorySelected(
+  const categoryDimensionBreakout = getCategoryDimensionBreakout({
     category,
     activeDimensionBreakout,
-  )
-    ? activeDimensionBreakout
-    : {
-        ...activeDimensionBreakout,
-        type: category.dimensionBreakoutInfo.type,
-        label: category.dimensionBreakoutInfo.label,
-        dimensionMapping: category.dimensionBreakoutInfo.dimensionMapping,
-      };
+  });
 
   return buildDimensionPickerSidebarCategorySelectRows({
     category,
@@ -132,4 +125,23 @@ function getCategorySelectRows({
     sourceDataById,
     sourceColors,
   });
+}
+
+function getCategoryDimensionBreakout({
+  category,
+  activeDimensionBreakout,
+}: {
+  category: DimensionPickerSidebarCategory;
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
+}) {
+  if (isCategorySelected(category, activeDimensionBreakout)) {
+    return activeDimensionBreakout;
+  }
+
+  return {
+    ...activeDimensionBreakout,
+    type: category.dimensionBreakoutInfo.type,
+    label: category.dimensionBreakoutInfo.label,
+    dimensionMapping: {},
+  };
 }

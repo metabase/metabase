@@ -1003,7 +1003,7 @@ describe("DimensionPickerSidebar", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Created At" })).toHaveAttribute(
       "aria-pressed",
-      "true",
+      "false",
     );
     expect(
       screen.getByRole("button", { name: "Order Date" }),
@@ -1196,6 +1196,114 @@ describe("DimensionPickerSidebar", () => {
     );
   });
 
+  it("does not mark category column options as selected when no breakout is active", async () => {
+    setup({ dimensionBreakout: scalarDimensionBreakout });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Configure Time" }),
+    );
+
+    expect(screen.getByRole("button", { name: "Created At" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "Order Date" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("does not mark category column options as selected when another category is active", async () => {
+    setup({
+      dimensionBreakout: {
+        id: "dim-name",
+        type: "category",
+        label: "Name",
+        display: "bar",
+        dimensionMapping: { 0: "dim-name" },
+        projectionConfig: {},
+      },
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            ...availableDimensions.bySource[SOURCE_ID],
+            {
+              icon: "label",
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Name",
+                dimensionMapping: { 0: "dim-name" },
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Configure Time" }),
+    );
+
+    expect(screen.getByRole("button", { name: "Created At" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "Order Date" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("selects the clicked inactive aggregate column option", async () => {
+    const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
+      setup({
+        dimensionBreakout: {
+          id: "dim-name",
+          type: "category",
+          label: "Name",
+          display: "bar",
+          dimensionMapping: { 0: "dim-name" },
+          projectionConfig: {},
+        },
+        dimensions: {
+          shared: [],
+          bySource: {
+            [SOURCE_ID]: [
+              ...availableDimensions.bySource[SOURCE_ID],
+              {
+                icon: "label",
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Name",
+                  dimensionMapping: { 0: "dim-name" },
+                },
+              },
+            ],
+          },
+        },
+      });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Configure Time" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Order Date" }));
+
+    expect(onSelectDimensionBreakout).toHaveBeenCalledWith(
+      {
+        id: "time",
+        type: "time",
+        label: "Time",
+        dimensionMapping: { 0: "dim-order-date" },
+      },
+      { updateExisting: true },
+    );
+    expect(onUpdateActiveDimensionBreakout).not.toHaveBeenCalled();
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "metrics_viewer_dimension_selected",
+    });
+  });
+
   it("does not show column selects when the category row is clicked", async () => {
     setup();
 
@@ -1229,6 +1337,7 @@ describe("DimensionPickerSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Time" }));
 
     expect(onSelectDimensionBreakout).toHaveBeenCalledWith({
+      id: "time",
       type: "time",
       label: "Time",
       dimensionMapping: { 0: "dim-created-at" },
