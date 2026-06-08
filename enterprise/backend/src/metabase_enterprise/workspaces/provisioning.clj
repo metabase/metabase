@@ -59,6 +59,22 @@
   (keyword "metabase-enterprise.workspaces.provisioning"
            (str "wsd-" workspace-database-id)))
 
+(defn do-with-workspace-database-lock
+  "Run `thunk` while holding the per-row cluster lock for `workspace-database-id`.
+   [[provision-single!]]/[[deprovision-single!]] take this same lock internally, so
+   the acquisition here is reentrant — it lets a caller atomically combine an app-db
+   change with provisioning under a single lock, acquired *before* the row is
+   mutated (the lock-before-mutate order the rest of the system relies on)."
+  [workspace-database-id thunk]
+  (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
+                                   :timeout-seconds provisioning-lock-timeout-seconds}
+    (thunk)))
+
+(defmacro with-workspace-database-lock
+  "Sugar over [[do-with-workspace-database-lock]]."
+  [workspace-database-id & body]
+  `(do-with-workspace-database-lock ~workspace-database-id (fn [] ~@body)))
+
 ;;; ---------------------------------------- Single-database operations -----------------------------------------------
 
 (defn provision-workspace-database!

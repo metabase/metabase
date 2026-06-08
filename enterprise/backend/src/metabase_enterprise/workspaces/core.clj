@@ -237,15 +237,17 @@
    update `input-schemas`, then reprovision (blocking). `input-schemas` is a vector of
    driver-opaque schema name strings. Returns the updated workspace, hydrated."
   [workspace-id database-id input-schemas]
-  (let [ws  (assert-workspace-exists workspace-id)
-        wsd (find-wsd ws database-id)]
+  (let [ws     (assert-workspace-exists workspace-id)
+        wsd    (find-wsd ws database-id)
+        wsd-id (:id wsd)]
     (assert-input-schemas-when-supported! database-id input-schemas)
     (when (= :provisioned (:status wsd))
-      (provisioning/deprovision-single! (:id wsd)))
-    (t2/with-transaction [_conn]
-      (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
-                  {:input_schemas input-schemas})
-      (provisioning/provision-single! (:id wsd)))
+      (provisioning/deprovision-single! wsd-id))
+    (provisioning/with-workspace-database-lock wsd-id
+      (t2/with-transaction [_conn]
+        (t2/update! :model/WorkspaceDatabase {:id wsd-id}
+                    {:input_schemas input-schemas})
+        (provisioning/provision-single! wsd-id)))
     (workspace/get-workspace workspace-id)))
 
 (defn remove-database!
