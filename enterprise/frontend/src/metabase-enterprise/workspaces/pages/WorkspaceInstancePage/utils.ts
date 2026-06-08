@@ -1,8 +1,8 @@
 import type {
+  CurrentWorkspace,
   Database,
   DatabaseId,
   TableRemapping,
-  WorkspaceInstance,
 } from "metabase-types/api";
 
 export type DatabaseInfo = {
@@ -11,7 +11,7 @@ export type DatabaseInfo = {
 };
 
 export function getDatabasesInfo(
-  workspace: WorkspaceInstance,
+  workspace: CurrentWorkspace,
   databases: Database[],
   remappings: TableRemapping[],
 ): DatabaseInfo[] {

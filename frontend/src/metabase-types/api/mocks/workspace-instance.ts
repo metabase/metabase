@@ -1,12 +1,12 @@
 import type {
+  CurrentWorkspace,
+  CurrentWorkspaceDatabase,
   TableRemapping,
-  WorkspaceInstance,
-  WorkspaceInstanceDatabase,
 } from "../workspace-instance";
 
 export function createMockWorkspaceInstanceDatabase(
-  opts?: Partial<WorkspaceInstanceDatabase>,
-): WorkspaceInstanceDatabase {
+  opts?: Partial<CurrentWorkspaceDatabase>,
+): CurrentWorkspaceDatabase {
   return {
     input_schemas: [],
     output: { schema: null, db: null },
@@ -15,8 +15,8 @@ export function createMockWorkspaceInstanceDatabase(
 }
 
 export function createMockWorkspaceInstance(
-  opts?: Partial<WorkspaceInstance>,
-): WorkspaceInstance {
+  opts?: Partial<CurrentWorkspace>,
+): CurrentWorkspace {
   return {
     name: "Test workspace",
     databases: {},

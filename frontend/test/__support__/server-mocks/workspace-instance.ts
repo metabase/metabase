@@ -1,11 +1,11 @@
 import fetchMock from "fetch-mock";
 
-import type { TableRemapping, WorkspaceInstance } from "metabase-types/api";
+import type { CurrentWorkspace, TableRemapping } from "metabase-types/api";
 
 const BASE_URL = "path:/api/ee/workspace-instance";
 
 export function setupGetCurrentWorkspaceEndpoint(
-  workspace: WorkspaceInstance | null,
+  workspace: CurrentWorkspace | null,
 ) {
   fetchMock.get(`${BASE_URL}/current`, { data: workspace });
 }

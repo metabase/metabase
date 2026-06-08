@@ -15,9 +15,9 @@ import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
+  CurrentWorkspace,
   RemoteSyncEntity,
   TokenFeatures,
-  WorkspaceInstance,
 } from "metabase-types/api";
 import {
   createMockDirtyCardEntity,
@@ -134,7 +134,7 @@ interface SetupOpts {
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
   canManageWorkspaces?: boolean;
-  currentWorkspace?: WorkspaceInstance | null;
+  currentWorkspace?: CurrentWorkspace | null;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;

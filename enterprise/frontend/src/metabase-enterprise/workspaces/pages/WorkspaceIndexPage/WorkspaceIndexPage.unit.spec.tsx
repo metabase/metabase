@@ -9,7 +9,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { WorkspaceInstance } from "metabase-types/api";
+import type { CurrentWorkspace } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenFeatures,
@@ -35,7 +35,7 @@ const WORKSPACE = createMockWorkspaceInstance({
 type SetupOpts = {
   isAdmin?: boolean;
   canManageWorkspaces?: boolean;
-  workspace?: WorkspaceInstance | null;
+  workspace?: CurrentWorkspace | null;
 };
 
 function setup({

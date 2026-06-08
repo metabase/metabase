@@ -11,9 +11,9 @@ import {
   useListTableRemappingsQuery,
 } from "metabase-enterprise/api";
 import type {
+  CurrentWorkspace,
   Database,
   TableRemapping,
-  WorkspaceInstance,
 } from "metabase-types/api";
 
 import { HelpMenu } from "../../components/HelpMenu";
@@ -63,7 +63,7 @@ export function WorkspaceInstancePage() {
 }
 
 type WorkspaceInstancePageBodyProps = {
-  workspace: WorkspaceInstance;
+  workspace: CurrentWorkspace;
   remappings: TableRemapping[];
   databases: Database[];
 };
