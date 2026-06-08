@@ -60,11 +60,11 @@ When you add a dropdown menu or search box, you can tell Metabase which values p
 2. Next to the option you chose, click **Edit**.
 3. Metabase will pop up a modal where you can select **Where the values should come from**.
 
-You can choose:
+You can choose between:
 
-- **From connected fields**. If you selected the Field filter variable type, you'll also have the option to use the connected field.
-- **From another model or question**. Pick a model or question (built with either the query builder or SQL), then set the **Column to supply the values** that Metabase should filter on. You can also set a **Column to supply the labels** to display friendly labels in the dropdown while still filtering on the underlying values. For example, if you want the dropdown to list the different plans an account could be on, you could select an "Account" model you created and set the **Column to supply the values** to "Plan". Or, to filter on product IDs while showing product names, set the **Column to supply the values** to "ID" and the **Column to supply the labels** to "Title", so people see product names in the dropdown but the filter passes along the matching ID.
-- **Custom list**. Enter each item on a line. You can enter any string values you like.
+- **From connected fields:** If you selected the Field filter variable type, you'll also have the option to use the connected field.
+- **From another model or question:** Pick a model or question (built with either the query builder or SQL), then set the **Column to supply the values** that Metabase should filter on. You can also set a **Column to supply the labels** to display friendly labels in the dropdown while still filtering on the underlying values. For example, if you want the dropdown to list the different plans an account could be on, you could select an "Account" model you created and set the **Column to supply the values** to "Plan". Or, to filter on product IDs while showing product names, set the **Column to supply the values** to "ID" and the **Column to supply the labels** to "Title", so people see product names in the dropdown but the filter passes along the matching ID.
+- **Custom list:** Enter each item on a line. You can enter any string values you like.
 
 You can also [change a dashboard filter's selectable values](../../dashboards/filters.md#change-a-filters-selectable-values).
 
