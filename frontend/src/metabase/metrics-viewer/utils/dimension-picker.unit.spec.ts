@@ -12,8 +12,7 @@ import {
 } from "./__tests__/test-helpers";
 import {
   type AvailableDimension,
-  buildDimensionPickerSections,
-  buildDimensionPickerSidebarCategories,
+  type DimensionPickerSidebarCategory,
   buildDimensionPickerSidebarCategorySelectRows,
   getAvailableDimensionsForPicker,
   getComparableDimensionMapping,
@@ -283,516 +282,50 @@ describe("getExistingDimensionBreakoutDimensionIds", () => {
   });
 });
 
-describe("buildDimensionPickerSections", () => {
-  it("uses table names without a Shared prefix for grouped shared dimensions", () => {
-    const sections = buildDimensionPickerSections({
-      availableDimensions: {
-        shared: [
-          {
-            icon: "label",
-            group: { id: "customers", type: "main", displayName: "Customers" },
-            dimensionBreakoutInfo: {
-              type: "category",
-              label: "Customer Name",
-              dimensionMapping: {
-                0: "dim-customer-name",
-                1: "dim-customer-name",
-              },
-            },
-          },
-          {
-            icon: "calendar",
-            group: { id: "orders", type: "main", displayName: "Orders" },
-            dimensionBreakoutInfo: {
-              type: "time",
-              label: "Created At",
-              dimensionMapping: {
-                0: "dim-created-at",
-                1: "dim-created-at",
-              },
-            },
-          },
-        ],
-        bySource: {},
-      },
-      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
-      },
-    });
-
-    expect(sections).toEqual([
-      expect.objectContaining({ name: "Customers", isShared: true }),
-      expect.objectContaining({ name: "Orders", isShared: true }),
-    ]);
-  });
-
-  it("orders main dimension groups before related groups", () => {
-    const sections = buildDimensionPickerSections({
-      availableDimensions: {
-        shared: [
-          {
-            icon: "label",
-            group: { id: "users", type: "connection", displayName: "Users" },
-            dimensionBreakoutInfo: {
-              type: "category",
-              label: "User Name",
-              dimensionMapping: { 0: "dim-user-name", 1: "dim-user-name" },
-            },
-          },
-          {
-            icon: "calendar",
-            group: { id: "orders", type: "main", displayName: "Orders" },
-            dimensionBreakoutInfo: {
-              type: "time",
-              label: "Created At",
-              dimensionMapping: { 0: "dim-created-at", 1: "dim-created-at" },
-            },
-          },
-        ],
-        bySource: {},
-      },
-      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
-      },
-    });
-
-    expect(sections.map((section) => section.name)).toEqual([
-      "Orders",
-      "Users",
-    ]);
-  });
-});
-
-describe("buildDimensionPickerSidebarCategories", () => {
-  it("uses a canonical time row instead of raw time fields", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: REVENUE_DIMENSIONS,
-        },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-      },
-    });
-
-    expect(categories.map((category) => category.name)).toEqual([
-      "Time",
-      "Category",
-      "Is Active",
-    ]);
-    expect(categories.find((category) => category.name === "Time")).toEqual(
-      expect.objectContaining({
-        dimensionBreakoutInfo: {
-          type: "time",
-          label: "Time",
-          dimensionMapping: { 0: "dim-created-at" },
-        },
-        targetItems: [
-          expect.objectContaining({
-            name: "Created At",
-            dimensionBreakoutInfo: REVENUE_DIMENSIONS[2].dimensionBreakoutInfo,
-          }),
-        ],
-      }),
-    );
-  });
-
-  it("excludes non-preferred raw category fields from the default view", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: [
-            {
-              icon: "label",
-              isPreferred: false,
-              dimensionBreakoutInfo: {
-                type: "category",
-                label: "Address",
-                dimensionMapping: { 0: "dim-address" },
-              },
-            },
-            {
-              icon: "label",
-              isPreferred: true,
-              dimensionBreakoutInfo: {
-                type: "category",
-                label: "Category",
-                dimensionMapping: { 0: "dim-category" },
-              },
-            },
-          ],
-        },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-      },
-    });
-
-    expect(categories.map((category) => category.name)).toEqual(["Category"]);
-  });
-
-  it("groups time fields across tables when every metric slot has one", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: [
-            {
-              icon: "calendar",
-              group: { id: "orders", type: "main", displayName: "Orders" },
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Created At",
-                dimensionMapping: { 0: "dim-orders-created-at" },
-              },
-            },
-          ],
-          [ORDERS_SOURCE_ID]: [
-            {
-              icon: "calendar",
-              group: { id: "users", type: "main", displayName: "Users" },
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Birth Date",
-                dimensionMapping: { 1: "dim-users-birth-date" },
-              },
-            },
-          ],
-        },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
-      },
-      metricSlots: [
-        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
-        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
-      ],
-    });
-
-    expect(categories).toEqual([
-      expect.objectContaining({
-        name: "Time",
-        dimensionBreakoutInfo: expect.objectContaining({
-          type: "time",
-          label: "Time",
-          dimensionMapping: {
-            0: "dim-orders-created-at",
-            1: "dim-users-birth-date",
-          },
-        }),
-      }),
-    ]);
-  });
-
-  it("prefers default dimensions when building grouped time categories", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: [
-            {
-              icon: "calendar",
-              isPreferred: false,
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Updated At",
-                dimensionMapping: { 0: "dim-updated-at" },
-              },
-            },
-            {
-              icon: "calendar",
-              isPreferred: true,
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Created At",
-                dimensionMapping: { 0: "dim-created-at" },
-              },
-            },
-          ],
-        },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-      },
-      metricSlots: [
-        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
-      ],
-    });
-
-    expect(categories.find((category) => category.name === "Time")).toEqual(
-      expect.objectContaining({
-        dimensionBreakoutInfo: expect.objectContaining({
-          dimensionMapping: { 0: "dim-created-at" },
-        }),
-      }),
-    );
-  });
-
-  it("groups country fields across tables when every metric slot has one", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: [
-            {
-              icon: "location",
-              geoSubtype: "country",
-              group: { id: "products", type: "main", displayName: "Products" },
-              dimensionBreakoutInfo: {
-                type: "geo",
-                label: "Product Country",
-                dimensionMapping: { 0: "dim-product-country" },
-              },
-            },
-          ],
-          [ORDERS_SOURCE_ID]: [
-            {
-              icon: "location",
-              geoSubtype: "country",
-              group: { id: "users", type: "main", displayName: "Users" },
-              dimensionBreakoutInfo: {
-                type: "geo",
-                label: "User Country",
-                dimensionMapping: { 1: "dim-user-country" },
-              },
-            },
-          ],
-        },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
-      },
-      metricSlots: [
-        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
-        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
-      ],
-    });
-
-    expect(categories).toEqual([
-      expect.objectContaining({
-        name: "Country",
-        targetItems: [
-          expect.objectContaining({ name: "Product Country" }),
-          expect.objectContaining({ name: "User Country" }),
-        ],
-        dimensionBreakoutInfo: expect.objectContaining({
-          type: "geo",
-          label: "Country",
-          dimensionMapping: {
-            0: "dim-product-country",
-            1: "dim-user-country",
-          },
-        }),
-      }),
-    ]);
-  });
-
-  it("does not show same-named category fields from different tables as shared", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: [
-            {
-              icon: "label",
-              group: { id: "users", type: "main", displayName: "Users" },
-              isPreferred: true,
-              dimensionBreakoutInfo: {
-                type: "category",
-                label: "Name",
-                dimensionMapping: { 0: "dim-user-name" },
-              },
-            },
-          ],
-          [ORDERS_SOURCE_ID]: [
-            {
-              icon: "label",
-              group: { id: "products", type: "main", displayName: "Products" },
-              isPreferred: true,
-              dimensionBreakoutInfo: {
-                type: "category",
-                label: "Name",
-                dimensionMapping: { 1: "dim-product-name" },
-              },
-            },
-          ],
-        },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
-      },
-      metricSlots: [
-        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
-        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
-      ],
-    });
-
-    expect(categories).toEqual([]);
-  });
-
-  it("shows exact same table and column category fields across all metrics", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: [
-            {
-              icon: "label",
-              group: { id: "users", type: "main", displayName: "Users" },
-              isPreferred: true,
-              dimensionBreakoutInfo: {
-                type: "category",
-                label: "Name",
-                dimensionMapping: { 0: "dim-user-name" },
-              },
-            },
-          ],
-          [ORDERS_SOURCE_ID]: [
-            {
-              icon: "label",
-              group: { id: "users", type: "main", displayName: "Users" },
-              isPreferred: true,
-              dimensionBreakoutInfo: {
-                type: "category",
-                label: "Name",
-                dimensionMapping: { 1: "dim-user-name" },
-              },
-            },
-          ],
-        },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
-      },
-      metricSlots: [
-        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
-        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
-      ],
-    });
-
-    expect(categories).toEqual([
-      expect.objectContaining({
-        name: "Name",
-        dimensionBreakoutInfo: expect.objectContaining({
-          type: "category",
-          label: "Name",
-          dimensionMapping: { 0: "dim-user-name", 1: "dim-user-name" },
-        }),
-      }),
-    ]);
-  });
-
-  it("hides categories that do not match every metric slot", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: [
-            {
-              icon: "calendar",
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Created At",
-                dimensionMapping: { 0: "dim-created-at" },
-              },
-            },
-          ],
-          [ORDERS_SOURCE_ID]: [
-            {
-              icon: "calendar",
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Placed At",
-                dimensionMapping: { 1: "dim-placed-at" },
-              },
-            },
-          ],
-        },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
-      },
-      metricSlots: [
-        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
-        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
-        { slotIndex: 2, entityIndex: 2, sourceId: "metric:4" },
-      ],
-    });
-
-    expect(categories).toEqual([]);
-  });
-});
-
 describe("buildDimensionPickerSidebarCategorySelectRows", () => {
   it("builds one column select row per metric slot", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: [
-            {
-              icon: "calendar",
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Created At",
-                dimensionMapping: { 0: "dim-created-at" },
-              },
-            },
-            {
-              icon: "calendar",
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Order Date",
-                dimensionMapping: { 0: "dim-order-date" },
-              },
-            },
-          ],
-          [ORDERS_SOURCE_ID]: [
-            {
-              icon: "calendar",
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Placed At",
-                dimensionMapping: { 1: "dim-placed-at" },
-              },
-            },
-          ],
+    const timeCategory: DimensionPickerSidebarCategory = {
+      key: "type:time",
+      name: "Time",
+      icon: "calendar",
+      dimensionBreakoutInfo: {
+        type: "time",
+        label: "Time",
+        dimensionMapping: { 0: "dim-created-at", 1: "dim-placed-at" },
+      },
+      targetItems: [
+        {
+          name: "Created At",
+          icon: "calendar",
+          dimensionBreakoutInfo: {
+            type: "time",
+            label: "Created At",
+            dimensionMapping: { 0: "dim-created-at" },
+          },
         },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
-      },
-    });
-    const timeCategory = categories.find(
-      (category) => category.name === "Time",
-    );
-
-    expect(timeCategory).toBeDefined();
+        {
+          name: "Order Date",
+          icon: "calendar",
+          dimensionBreakoutInfo: {
+            type: "time",
+            label: "Order Date",
+            dimensionMapping: { 0: "dim-order-date" },
+          },
+        },
+        {
+          name: "Placed At",
+          icon: "calendar",
+          dimensionBreakoutInfo: {
+            type: "time",
+            label: "Placed At",
+            dimensionMapping: { 1: "dim-placed-at" },
+          },
+        },
+      ],
+    };
 
     const rows = buildDimensionPickerSidebarCategorySelectRows({
-      category: timeCategory!,
+      category: timeCategory,
       activeDimensionBreakout: {
         id: "dim-created-at",
         type: "time",
@@ -840,47 +373,45 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
   });
 
   it("prepends duplicate option labels with the table name", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [],
-        bySource: {
-          [REVENUE_SOURCE_ID]: [
-            {
-              icon: "calendar",
-              group: { id: "orders", type: "main", displayName: "Orders" },
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Created At",
-                dimensionMapping: { 0: "dim-orders-created-at" },
-              },
-            },
-            {
-              icon: "calendar",
-              group: {
-                id: "products",
-                type: "connection",
-                displayName: "Products",
-              },
-              dimensionBreakoutInfo: {
-                type: "time",
-                label: "Created At",
-                dimensionMapping: { 0: "dim-products-created-at" },
-              },
-            },
-          ],
+    const timeCategory: DimensionPickerSidebarCategory = {
+      key: "type:time",
+      name: "Time",
+      icon: "calendar",
+      dimensionBreakoutInfo: {
+        type: "time",
+        label: "Time",
+        dimensionMapping: { 0: "dim-orders-created-at" },
+      },
+      targetItems: [
+        {
+          name: "Created At",
+          icon: "calendar",
+          group: { id: "orders", type: "main", displayName: "Orders" },
+          dimensionBreakoutInfo: {
+            type: "time",
+            label: "Created At",
+            dimensionMapping: { 0: "dim-orders-created-at" },
+          },
         },
-      },
-      sourceOrder: [REVENUE_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-      },
-    });
-    const timeCategory = categories.find(
-      (category) => category.name === "Time",
-    );
+        {
+          name: "Created At",
+          icon: "calendar",
+          group: {
+            id: "products",
+            type: "connection",
+            displayName: "Products",
+          },
+          dimensionBreakoutInfo: {
+            type: "time",
+            label: "Created At",
+            dimensionMapping: { 0: "dim-products-created-at" },
+          },
+        },
+      ],
+    };
 
     const rows = buildDimensionPickerSidebarCategorySelectRows({
-      category: timeCategory!,
+      category: timeCategory,
       activeDimensionBreakout: {
         id: "dim-orders-created-at",
         type: "time",
@@ -905,51 +436,36 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
   });
 
   it("marks expression token rows", () => {
-    const categories = buildDimensionPickerSidebarCategories({
-      availableDimensions: {
-        shared: [
-          {
-            icon: "calendar",
-            dimensionBreakoutInfo: {
-              type: "time",
-              label: "Time",
-              dimensionMapping: {
-                0: "dim-revenue-created-at",
-                1: "dim-orders-created-at",
-              },
+    const timeCategory: DimensionPickerSidebarCategory = {
+      key: "type:time",
+      name: "Time",
+      icon: "calendar",
+      dimensionBreakoutInfo: {
+        type: "time",
+        label: "Time",
+        dimensionMapping: {
+          0: "dim-revenue-created-at",
+          1: "dim-orders-created-at",
+        },
+      },
+      targetItems: [
+        {
+          name: "Time",
+          icon: "calendar",
+          dimensionBreakoutInfo: {
+            type: "time",
+            label: "Time",
+            dimensionMapping: {
+              0: "dim-revenue-created-at",
+              1: "dim-orders-created-at",
             },
           },
-        ],
-        bySource: {},
-      },
-      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
-      sourceDataById: {
-        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
-        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
-      },
-      metricSlots: [
-        {
-          slotIndex: 0,
-          entityIndex: 0,
-          sourceId: REVENUE_SOURCE_ID,
-          tokenPosition: 0,
-        },
-        {
-          slotIndex: 1,
-          entityIndex: 0,
-          sourceId: ORDERS_SOURCE_ID,
-          tokenPosition: 2,
         },
       ],
-    });
-    const timeCategory = categories.find(
-      (category) => category.name === "Time",
-    );
-
-    expect(timeCategory).toBeDefined();
+    };
 
     const rows = buildDimensionPickerSidebarCategorySelectRows({
-      category: timeCategory!,
+      category: timeCategory,
       activeDimensionBreakout: {
         id: "time",
         type: "time",
