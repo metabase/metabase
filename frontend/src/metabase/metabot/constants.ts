@@ -32,7 +32,7 @@ export const METABOT_PROFILES = {
   },
   explorations: {
     get label() {
-      return t`Explorations`;
+      return t`Research`;
     },
   },
   nlq: {
