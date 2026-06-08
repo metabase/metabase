@@ -99,10 +99,18 @@ type MappedTableId<TMetric> = TMetric extends {
   ? NonNullable<TMetric["mappedTableIds"]>[number]
   : number;
 
-type MappedTable<TMetric, TSchema> = Extract<
-  TSchema extends { readonly tables: infer TTables } ? Values<TTables> : never,
-  { readonly id: MappedTableId<TMetric> }
->;
+type MetricEntityId<TMetric> = TMetric extends { id: infer TId extends ID }
+  ? TId
+  : ID;
+
+type MetricDimensionReference<TMetricId extends ID = ID> =
+  MetricDimensionSchema & {
+    metricId: TMetricId;
+  };
+
+type TableFieldReference<TTableId extends number = number> = FieldSchema & {
+  tableId: TTableId;
+};
 
 type SegmentForMetric<TMetric> = SegmentReference<MappedTableId<TMetric>>;
 
@@ -114,23 +122,26 @@ type MetricDimensionFilterForMetric<TMetric> = [
   ? MetabaseMetricDimensionFilter
   : MetabaseDimensionFilterForDimension<MetricDimensionValues<TMetric>>;
 
-type TableDimensionFilterForMetric<TMetric, TSchema> = [
-  MappedTable<TMetric, TSchema>,
-] extends [never]
-  ? never
-  : MetabaseDimensionFilter<MappedTable<TMetric, TSchema>>;
+type TableDimensionFilterForMetric<TMetric> =
+  MetabaseDimensionFilterForDimension<
+    TableFieldReference<MappedTableId<TMetric>>
+  >;
 
-type TableBreakoutForMetric<TMetric, TSchema> = [
-  MappedTable<TMetric, TSchema>,
-] extends [never]
-  ? never
-  : MetabaseBreakout<MappedTable<TMetric, TSchema>>;
+type TableBreakoutForMetric<TMetric> = MetabaseBreakoutObjectForDimension<
+  TableFieldReference<MappedTableId<TMetric>>
+>;
 
-type BreakoutForMetric<TMetric, TSchema> =
-  | ([MetricDimensionValues<TMetric>] extends [never]
-      ? MetabaseMetricBreakout
-      : MetabaseMetricBreakout<MetricDimensionValues<TMetric>>)
-  | TableBreakoutForMetric<TMetric, TSchema>;
+type MetricBreakoutForMetric<TMetric> = [
+  MetricDimensionValues<TMetric>,
+] extends [never]
+  ? MetabaseMetricBreakout
+  : MetabaseBreakoutObjectForDimension<
+      MetricDimensionReference<MetricEntityId<TMetric>>
+    >;
+
+type BreakoutForMetric<TMetric> =
+  | MetricBreakoutForMetric<TMetric>
+  | TableBreakoutForMetric<TMetric>;
 
 type FilterOperator =
   | "="
@@ -275,6 +286,9 @@ type BreakoutOptionsArgument<TDimension> = [
 
 type MetabaseBreakoutForDimension<TDimension> =
   | TDimension
+  | MetabaseBreakoutObjectForDimension<TDimension>;
+
+type MetabaseBreakoutObjectForDimension<TDimension> =
   | ([DateBucketDimension<TDimension>] extends [never]
       ? never
       : {
@@ -353,7 +367,7 @@ type TableQuery<TTable> = {
   enabled?: boolean;
 };
 
-type MetricQuery<TMetric, TSchema> = {
+type MetricQuery<TMetric> = {
   metric: TMetric extends MetricReference
     ? MetricReference<MappedTableId<TMetric>>
     : MetricReference;
@@ -364,14 +378,14 @@ type MetricQuery<TMetric, TSchema> = {
     ? readonly (
         | SegmentForMetric<TMetric>
         | MetricDimensionFilterForMetric<TMetric>
-        | TableDimensionFilterForMetric<TMetric, TSchema>
+        | TableDimensionFilterForMetric<TMetric>
       )[]
     : readonly unknown[];
   measures?: TMetric extends MetricReference
     ? readonly MeasureForMetric<TMetric>[]
     : readonly unknown[];
   breakouts?: TMetric extends MetricReference
-    ? readonly BreakoutForMetric<TMetric, TSchema>[]
+    ? readonly BreakoutForMetric<TMetric>[]
     : readonly MetabaseBreakout[];
   enabled?: boolean;
 };
@@ -381,10 +395,10 @@ type MetricQuery<TMetric, TSchema> = {
  * @notExported TableQuery
  * @notExported MetricQuery
  */
-export type MetabaseQueryOptions<TEntity, TSchema = unknown> =
+export type MetabaseQueryOptions<TEntity, _TSchema = unknown> =
   | QuestionQuery<TEntity>
   | TableQuery<TEntity>
-  | MetricQuery<TEntity, TSchema>;
+  | MetricQuery<TEntity>;
 
 type EmptyRow = Record<never, never>;
 
@@ -494,7 +508,9 @@ export function filter(
   return { dimension, operator, value };
 }
 
-export function breakout<TDimension>(dimension: TDimension): TDimension;
+export function breakout<TDimension>(dimension: TDimension): {
+  dimension: TDimension;
+};
 export function breakout<TDimension>(
   dimension: TDimension,
   options: BreakoutOptionsArgument<TDimension>,
@@ -505,11 +521,7 @@ export function breakout<TDimension>(
   dimension: TDimension,
   options?: BreakoutOptionsArgument<TDimension>,
 ) {
-  if (options) {
-    return { dimension, ...options };
-  }
-
-  return dimension;
+  return { dimension, ...options };
 }
 
 const useMetabaseQueryImpl = <
@@ -679,7 +691,7 @@ function isTableQuery(
 
 function isMetricQuery(
   query: MetabaseQueryOptions<unknown, unknown>,
-): query is MetricQuery<unknown, unknown> {
+): query is MetricQuery<unknown> {
   return getMetricId(query) != null;
 }
 
@@ -711,7 +723,7 @@ function buildTableBreakout(
   return buildFieldReference(dimension, options) as ConcreteFieldReference;
 }
 
-function buildMetricDefinition(query: MetricQuery<unknown, unknown>) {
+function buildMetricDefinition(query: MetricQuery<unknown>) {
   validateMetricTableScopedInputs(query);
 
   const metricId = Number(getMetricId(query)) as MetricId;
@@ -808,7 +820,11 @@ function buildFieldReference(
   field: string | FieldSchema | MetricDimensionSchema,
   options: Record<string, unknown> = {},
 ): FieldReference {
-  if (isFieldSchema(field) && typeof field.fieldId === "number") {
+  if (
+    isFieldSchema(field) &&
+    "fieldId" in field &&
+    typeof field.fieldId === "number"
+  ) {
     return ["field", field.fieldId, options] as FieldReference;
   }
 
@@ -888,12 +904,12 @@ function getMetricId(query: unknown): ID | null {
 }
 
 function getMetricMappedTableIds(
-  query: MetricQuery<unknown, unknown>,
+  query: MetricQuery<unknown>,
 ): readonly number[] | null {
   return isMetricReference(query.metric) ? query.metric.mappedTableIds : null;
 }
 
-function validateMetricTableScopedInputs(query: MetricQuery<unknown, unknown>) {
+function validateMetricTableScopedInputs(query: MetricQuery<unknown>) {
   validateTableScopedInputs({
     allowedTableIds: getMetricMappedTableIds(query),
     filters: query.filters,

@@ -28,14 +28,15 @@
           :key           "category"
           :id            "550e8400-e29b-41d4-a716-446655440001"
           :tableId       12
-          :fieldId       3815}
+          :metricId      247}
          (#'typed-schemas.api/dimension-schema
           {:id             "550e8400-e29b-41d4-a716-446655440001"
            :name           "category"
            :display-name   "Category"
            :effective-type :type/Text
            :table-id       12
-           :sources        [{:type :field, :field-id 3815}]}))))
+           :sources        [{:type :field, :field-id 3815}]}
+          247))))
 
 (deftest field-schema-uses-field-id-test
   (is (= {:name          "created_at"
@@ -44,8 +45,10 @@
           :jsType        "Date"
           :key           "createdAt"
           :id            42
-          :fieldId       42}
+          :fieldId       42
+          :tableId       10}
          (#'typed-schemas.api/field-schema {:id             42
+                                            :table_id       10
                                             :name           "created_at"
                                             :display_name   "Created At"
                                             :base_type      "type/DateTime"}))))
@@ -64,7 +67,8 @@
                                       :jsType        "Date"
                                       :key           "createdAt"
                                       :id            42
-                                      :fieldId       42}}}
+                                      :fieldId       42
+                                      :tableId       10}}}
          (#'typed-schemas.api/table-schema
           {:id            10
            :name          "orders"
@@ -72,6 +76,7 @@
            :database_id   1
            :database_name "Boba"
            :fields        [{:id           42
+                            :table_id     10
                             :name         "created_at"
                             :display_name "Created At"
                             :base_type    "type/DateTime"}]}))))
@@ -98,7 +103,7 @@
                                        :key         "orders"
                                        :id          "550e8400-e29b-41d4-a716-446655440001"
                                        :tableId     10
-                                       :fieldId     42}}}
+                                       :metricId    247}}}
            (#'typed-schemas.api/metric-schema
             {:id   247
              :name "Customer Lifetime Value"}
@@ -158,6 +163,49 @@
     (is (str/starts-with? (:body response) "export default {"))
     (is (str/includes? (:body response) "\n  schemaVersion: 2"))
     (is (str/ends-with? (:body response) "} as const;\n"))))
+
+(deftest typescript-renderer-compacts-runtime-objects-test
+  (let [body (#'typed-schemas.api/render-typescript
+              {:schemaVersion 2
+               :tables        {"orders" {:kind         "table"
+                                         :key          "orders"
+                                         :id           10
+                                         :name         "Orders"
+                                         :databaseId   1
+                                         :databaseName "Boba"
+                                         :fields       {"paymentMethod" {:name         "payment_method"
+                                                                         :displayName  "Payment Method"
+                                                                         :baseType     "type/Text"
+                                                                         :semanticType "type/Category"
+                                                                         :jsType       "string"
+                                                                         :key          "paymentMethod"
+                                                                         :id           3970
+                                                                         :fieldId      3970
+                                                                         :tableId      10}}}}
+               :metrics       {"revenue" {:kind           "metric"
+                                          :key            "revenue"
+                                          :id             5
+                                          :name           "Revenue"
+                                          :description    "Total order revenue"
+                                          :mappedTableIds [10]
+                                          :dimensions     {"createdAt" {:name        "created_at"
+                                                                        :displayName "Created At"
+                                                                        :baseType    "type/DateTime"
+                                                                        :jsType      "Date"
+                                                                        :key         "createdAt"
+                                                                        :id          "dimension-uuid"
+                                                                        :tableId     10
+                                                                        :metricId    5}}}}})]
+    (is (str/includes? body (str "/" "/ Display name: Payment Method")))
+    (is (str/includes? body (str "/" "/ Semantic type: type/Category")))
+    (is (str/includes? body "paymentMethod: {\n          name: \"payment_method\""))
+    (is (str/includes? body "fieldId: 3970"))
+    (is (str/includes? body "tableId: 10"))
+    (is (not (str/includes? body "displayName: \"Payment Method\"")))
+    (is (not (str/includes? body "baseType: \"type/Text\"")))
+    (is (str/includes? body (str "/" "/ Description: Total order revenue")))
+    (is (str/includes? body "createdAt: {\n          id: \"dimension-uuid\""))
+    (is (str/includes? body "metricId: 5"))))
 
 (deftest json-endpoint-test
   (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/json")]

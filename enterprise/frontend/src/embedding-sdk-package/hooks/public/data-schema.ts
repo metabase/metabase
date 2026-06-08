@@ -28,13 +28,14 @@ export type QuestionSchema = {
 
 export type MetricDimensionSchema = SchemaColumn & {
   id: string | number;
+  metricId: string | number;
   tableId?: number;
-  fieldId?: number;
 };
 
 export type FieldSchema = SchemaColumn & {
-  id: string | number;
+  id?: string | number;
   fieldId?: number;
+  tableId?: number;
 };
 
 export type SegmentSchema<TTableId extends number = number> = {
