@@ -149,18 +149,18 @@ Read the `.styled.tsx` file AND every component that imports from it. Understand
 
 For each styled component, apply the Mantine-First Decision Gate above. Then determine the migration target:
 
-| Emotion Pattern                                              | Migration Target                                                                                                                                                           |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `styled.div` with only layout/spacing/color                  | `Box`, `Flex`, `Stack`, or `Group` with style props. **NO CSS module needed.**                                                                                             |
-| `styled.div` with flexbox column                             | `Stack` component with style props                                                                                                                                         |
-| `styled.div` with flexbox row                                | `Flex` or `Group` component with style props                                                                                                                               |
-| `styled.span` / `styled.p` with color/weight/size            | **`Text component="span"` with style props** (`c`, `fw`, `fz`). NO CSS module.                                                                                             |
-| `styled.div` with hover/focus/pseudo-selectors               | **Hybrid**: Mantine component with style props for expressible properties + CSS module class for pseudo-selectors only                                                     |
-| `styled.div` with media queries (simple spacing/sizing)      | **Responsive style props**: `p={{ base: "md", lg: "xl" }}`. NO CSS module.                                                                                                 |
-| `styled.div` with media queries (complex/non-spacing)        | CSS module for the media query parts, style props for the rest                                                                                                             |
-| `styled.div` with animations/keyframes                       | CSS module for animation, style props for layout                                                                                                                           |
+| Emotion Pattern                                              | Migration Target                                                                                                                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `styled.div` with only layout/spacing/color                  | `Box`, `Flex`, `Stack`, or `Group` with style props. **NO CSS module needed.**                                                                                                  |
+| `styled.div` with flexbox column                             | `Stack` component with style props                                                                                                                                              |
+| `styled.div` with flexbox row                                | `Flex` or `Group` component with style props                                                                                                                                    |
+| `styled.span` / `styled.p` with color/weight/size            | **`Text component="span"` with style props** (`c`, `fw`, `fz`). NO CSS module.                                                                                                  |
+| `styled.div` with hover/focus/pseudo-selectors               | **Hybrid**: Mantine component with style props for expressible properties + CSS module class for pseudo-selectors only                                                          |
+| `styled.div` with media queries (simple spacing/sizing)      | **Responsive style props**: `p={{ base: "md", lg: "xl" }}`. NO CSS module.                                                                                                      |
+| `styled.div` with media queries (complex/non-spacing)        | CSS module for the media query parts, style props for the rest                                                                                                                  |
+| `styled.div` with animations/keyframes                       | CSS module for animation, style props for layout                                                                                                                                |
 | `styled(SomeComponent)` with only color/spacing/flex         | **Wrap in Mantine component** with style props: `<Box c="core-brand" flex="0 0 auto"><Icon /></Box>`, or pass style props if the component accepts them                         |
-| `styled(SomeComponent)` with pseudo-selectors/complex styles | CSS module `className` on the component                                                                                                                                    |
+| `styled(SomeComponent)` with pseudo-selectors/complex styles | CSS module `className` on the component                                                                                                                                         |
 | Dynamic props `styled.div<{ isActive: boolean }>`            | Mantine style props for simple toggles (`c={active ? "core-brand" : "text-primary"}`), `cx()` with CSS module classes for complex state combinations involving pseudo-selectors |
 
 ### Step 3: Create CSS Module (if needed)
@@ -570,12 +570,12 @@ export const Spinner = styled.div`
 
 ### Pattern 6: color() Function → CSS Variables
 
-| Emotion (JS)            | CSS Module                                                   | Mantine Style Prop          |
-| ----------------------- | ------------------------------------------------------------ | --------------------------- |
-| `color("core-brand")`        | `var(--mb-color-core-brand)`                                      | `c="core-brand"` or `bg="core-brand"` |
-| `color("text-primary")` | `var(--mb-color-text-primary)`                               | `c="text-primary"`          |
-| `color("border")`       | `var(--mb-color-border)`                                     | N/A (use CSS module)        |
-| `alpha("core-brand", 0.2)`   | `color-mix(in srgb, var(--mb-color-core-brand), transparent 80%)` | N/A (use CSS module)        |
+| Emotion (JS)               | CSS Module                                                        | Mantine Style Prop                    |
+| -------------------------- | ----------------------------------------------------------------- | ------------------------------------- |
+| `color("core-brand")`      | `var(--mb-color-core-brand)`                                      | `c="core-brand"` or `bg="core-brand"` |
+| `color("text-primary")`    | `var(--mb-color-text-primary)`                                    | `c="text-primary"`                    |
+| `color("border")`          | `var(--mb-color-border)`                                          | N/A (use CSS module)                  |
+| `alpha("core-brand", 0.2)` | `color-mix(in srgb, var(--mb-color-core-brand), transparent 80%)` | N/A (use CSS module)                  |
 
 ### Pattern 7: Responsive Spacing/Sizing → Responsive Style Props (NOT CSS Media Queries)
 
@@ -627,12 +627,12 @@ export const Bar = styled.div<{ width: number }>`
 
 If existing code already uses `CS` classes and you're not migrating that specific code, leave them alone. But when migrating Emotion → Mantine, replace with the proper alternative:
 
-| Instead of `CS.*`   | Use                                                     |
-| ------------------- | ------------------------------------------------------- |
-| `CS.overflowHidden` | CSS module: `overflow: hidden`                          |
-| `CS.cursorPointer`  | CSS module: `cursor: pointer`                           |
-| `CS.flex1`          | Style prop: `flex={1}`                                  |
-| `CS.flexNoShrink`   | Style prop: `flex="0 0 auto"`                           |
+| Instead of `CS.*`   | Use                                                          |
+| ------------------- | ------------------------------------------------------------ |
+| `CS.overflowHidden` | CSS module: `overflow: hidden`                               |
+| `CS.cursorPointer`  | CSS module: `cursor: pointer`                                |
+| `CS.flex1`          | Style prop: `flex={1}`                                       |
+| `CS.flexNoShrink`   | Style prop: `flex="0 0 auto"`                                |
 | `CS.textBrandHover` | CSS module: `&:hover { color: var(--mb-color-core-brand); }` |
 
 ### Pattern 10: Shared Emotion Styles Across Files → Shared CSS Module + cx()
