@@ -10,7 +10,7 @@ import {
 } from "metabase/common/components/SchedulePicker";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { Toggle } from "metabase/common/components/Toggle";
+// import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
@@ -20,7 +20,7 @@ import { dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
-import { Icon, Title } from "metabase/ui";
+import { Icon, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
@@ -32,6 +32,7 @@ import {
   type User,
 } from "metabase-types/api";
 
+import S from "./AddEditEmailSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
@@ -182,20 +183,18 @@ export const AddEditEmailSidebar = ({
             parameters={parameters}
           />
         )}
-        <div
-          className={cx(
-            CS.textBold,
-            CS.py3,
-            CS.flex,
-            CS.justifyBetween,
-            CS.alignCenter,
-            CS.borderTop,
-          )}
-        >
-          <Title order={4}>{t`Don't send if there aren't results`}</Title>
-          <Toggle
-            value={pulse.skip_if_empty || false}
+        <div className={cx(CS.py3, CS.borderTop)}>
+          {/* <Title order={5}>{t`Don't send if there aren't results`}</Title> */}
+          <Switch
+            checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
+            label={
+              <Text fw="bold">{t`Don't send if there aren't results`}</Text>
+            }
+            labelPosition="left"
+            classNames={{
+              body: S.NoResultsBody,
+            }}
           />
         </div>
         <EmailAttachmentPicker
