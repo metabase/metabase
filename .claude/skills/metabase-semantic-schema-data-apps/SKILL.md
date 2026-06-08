@@ -61,7 +61,9 @@ const { data } = useMetabaseQuery({
   metric: lifetimeValueMetric,
   filters: [filter(lifetimeValueMetric.dimensions.orders, ">", 0)],
   measures: [lifetimeValueTable.measures.totalLtv],
-  breakouts: [breakout(lifetimeValueMetric.dimensions.lastOrderedAt, "month")],
+  breakouts: [
+    breakout(lifetimeValueMetric.dimensions.lastOrderedAt, { bucket: "month" }),
+  ],
 });
 ```
 
@@ -112,7 +114,7 @@ const { data } = useMetabaseQuery<OrdersTable>({
     filter(ordersTable.fields.total, ">", 100),
   ],
   measures: [ordersTable.measures.revenue],
-  breakouts: [breakout(ordersTable.fields.createdAt, "month")],
+  breakouts: [breakout(ordersTable.fields.createdAt, { bucket: "month" })],
 });
 ```
 
@@ -126,7 +128,9 @@ const revenueMetric = schema.metrics.revenue;
 const { data } = useMetabaseQuery({
   metric: revenueMetric,
   filters: [filter(revenueMetric.dimensions.state, "=", "CA")],
-  breakouts: [breakout(revenueMetric.dimensions.createdAt, "month")],
+  breakouts: [
+    breakout(revenueMetric.dimensions.createdAt, { bucket: "month" }),
+  ],
 });
 ```
 
@@ -143,7 +147,9 @@ const lifetimeValueTable = schema.tables.customerLifetimeValue;
 const { data } = useMetabaseQuery({
   metric: lifetimeValueMetric,
   measures: [lifetimeValueTable.measures.totalLtv],
-  breakouts: [breakout(lifetimeValueMetric.dimensions.lastOrderedAt, "month")],
+  breakouts: [
+    breakout(lifetimeValueMetric.dimensions.lastOrderedAt, { bucket: "month" }),
+  ],
 });
 ```
 
@@ -183,15 +189,21 @@ filters: [
 Use the positional helper for breakouts:
 
 ```ts
-breakout(schema.metrics.revenue.dimensions.createdAt, "month");
+breakout(schema.metrics.revenue.dimensions.createdAt, { bucket: "month" });
+breakout(schema.metrics.revenue.dimensions.amount, {
+  binning: { strategy: "num-bins", "num-bins": 10 },
+});
 breakout(schema.metrics.revenue.dimensions.state);
 ```
 
-Only date dimensions can use `bucket`. Non-date dimensions can be used as breakouts without `bucket`.
+Pass breakout options as the second argument. Only date dimensions can use `bucket`. `binning` is also available for breakout options. Non-date dimensions can be used as breakouts without `bucket`.
 
 ```ts
 breakouts: [
-  breakout(schema.metrics.revenue.dimensions.createdAt, "month"),
+  breakout(schema.metrics.revenue.dimensions.createdAt, { bucket: "month" }),
+  breakout(schema.metrics.revenue.dimensions.amount, {
+    binning: { strategy: "num-bins", "num-bins": 10 },
+  }),
   breakout(schema.metrics.revenue.dimensions.state),
 ];
 ```
@@ -235,7 +247,7 @@ Fix: remove `bucket` for non-date dimensions, or use a date dimension.
 
 ```ts
 breakouts: [breakout(metric.dimensions.segment)];
-breakouts: [breakout(metric.dimensions.createdAt, "month")];
+breakouts: [breakout(metric.dimensions.createdAt, { bucket: "month" })];
 ```
 
 If the error is very long and mentions `dimension.name`, rewrite the breakout with `breakout(...)` first. Invalid bucket usage then points directly at the second argument, for example `"week-of-year"` not assignable to `never`.

@@ -262,11 +262,16 @@ type NonDateBucketDimension<TDimension> = TDimension extends unknown
     : never
   : never;
 
-type BreakoutBucketArgument<TDimension> = [
+type BreakoutOptionsArgument<TDimension> = [
   DateBucketDimension<TDimension>,
 ] extends [never]
-  ? never
-  : TemporalUnit;
+  ? {
+      binning?: BreakoutBinning;
+    }
+  : {
+      bucket?: TemporalUnit;
+      binning?: BreakoutBinning;
+    };
 
 type MetabaseBreakoutForDimension<TDimension> =
   | TDimension
@@ -281,7 +286,6 @@ type MetabaseBreakoutForDimension<TDimension> =
       ? never
       : {
           dimension: NonDateBucketDimension<TDimension>;
-          bucket?: never;
           binning?: BreakoutBinning;
         });
 
@@ -493,17 +497,16 @@ export function filter(
 export function breakout<TDimension>(dimension: TDimension): TDimension;
 export function breakout<TDimension>(
   dimension: TDimension,
-  bucket: BreakoutBucketArgument<TDimension>,
+  options: BreakoutOptionsArgument<TDimension>,
 ): {
   dimension: TDimension;
-  bucket: BreakoutBucketArgument<TDimension>;
-};
+} & BreakoutOptionsArgument<TDimension>;
 export function breakout<TDimension>(
   dimension: TDimension,
-  bucket?: BreakoutBucketArgument<TDimension>,
+  options?: BreakoutOptionsArgument<TDimension>,
 ) {
-  if (bucket) {
-    return { dimension, bucket };
+  if (options) {
+    return { dimension, ...options };
   }
 
   return dimension;
