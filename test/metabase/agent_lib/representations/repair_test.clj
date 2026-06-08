@@ -1869,13 +1869,24 @@
         (is (contains? (nth field-clause 1) "base-type")))
       (testing "idempotent"
         (is (= out (repair/repair mp-fks out))))))
-  (testing "an ambiguous loose match is left for the resolver (no rewrite)"
-    ;; Both `count` and a passthrough `COUNT` cannot both exist, so construct a case where the
-    ;; loose key matches nothing uniquely: a name that matches no real column at all.
+  (testing "a loose key matching no real column is left untouched for the resolver"
     (let [out (repair/repair mp-fks
                              (assoc-in multi-stage-base-query
                                        ["stages" 1 "filters" 0 2 2] "totally-unknown"))]
-      (is (= "totally-unknown" (get-in out ["stages" 1 "filters" 0 2 2]))))))
+      (is (= "totally-unknown" (get-in out ["stages" 1 "filters" 0 2 2])))))
+  (testing "a loose key colliding with two columns is left for the resolver (the hits>1 guard)"
+    ;; `normalize-col-key` folds case and hyphen/space to underscore, so `Count Where` and
+    ;; `count-where` both normalize to `count_where`. Real lib output names don't collide like this,
+    ;; so exercise the guard directly on the private matcher.
+    (is (nil? (#'repair/match-cross-stage-column
+               {"Count Where" {"base-type" "type/Integer"}
+                "count-where" {"base-type" "type/Integer"}}
+               "count_where")))
+    (testing "but a single loose hit still resolves"
+      (is (= ["count_where" {"base-type" "type/Integer"}]
+             (#'repair/match-cross-stage-column
+              {"count_where" {"base-type" "type/Integer"}}
+              "Count-Where"))))))
 
 (deftest ^:parallel cross-stage-field-type-end-to-end-resolve-test
   (testing (str "End-to-end: a multi-stage YAML with a stage-1 cross-stage ref lacking\n"

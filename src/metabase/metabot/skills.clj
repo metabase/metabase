@@ -12,9 +12,10 @@
   about skills.
 
   Most skills are authored as markdown files with YAML frontmatter under `resources/metabot/skills/`.
-  SQL dialect skills are registered programmatically from the `resources/metabot/prompts/dialects/` files;
-  they are hidden from the catalog and surfaced only by `dialect-preload-parts` (or an explicit
-  `load_skill` by id)."
+  SQL dialect skills are registered programmatically from the `resources/metabot/prompts/dialects/` files
+  and surfaced only by `dialect-preload-parts`.
+  `skills-for-profile` removes them from the manifest, so the catalog omits them and an explicit
+  `load_skill` of their id is rejected by the manifest gate in `skill-loadable?`."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -279,8 +280,9 @@
   Returns [] when `engine` is nil or has no matching dialect skill.
   Dialect context only arises in SQL-editor sessions, so its presence is itself the gate.
 
-  Invariant: the emitted pair references the `load_skill` tool, which `get-tools` registers whenever the
-  skill catalog is non-empty.
+  Invariant: the emitted pair references the `load_skill` tool, which
+  [[metabase.metabot.agent.profiles/get-tools-for-profile]] registers whenever the skill catalog is
+  non-empty.
   Any profile that can reach SQL-editor/dialect context also exposes query skills (the cross-cutting
   `read-resource` skill alone keeps the catalog non-empty), so `load_skill` is always registered when
   this returns a non-empty preload."
