@@ -68,8 +68,13 @@
   #{:last_viewed_at})
 
 (t2/deftransforms :model/Dashboard
-  {:parameters       parameters/transform-parameters
-   :embedding_params mi/transform-json})
+  {:parameters            parameters/transform-parameters
+   :embedding_params      mi/transform-json
+   :public_link_password  mi/transform-encrypted-text})
+
+(methodical/defmethod mi/to-json :model/Dashboard
+  [dashboard json-generator]
+  (next-method (dissoc dashboard :public_link_password) json-generator))
 
 (t2/define-before-delete :model/Dashboard
   [dashboard]
@@ -423,7 +428,9 @@
    :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
-               :cache_ttl]
+               :cache_ttl
+               ;; instance-specific, encrypted password for public link gating
+               :public_link_password]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)

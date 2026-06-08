@@ -45,7 +45,8 @@
                                          {:topic :event/table-read :event {:object table-1}}]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
           (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed non-archived dashboard."
-            (is (= (assoc dash-2 :collection nil :view_count 1)
+            ;; public_link_password is stripped from API responses by Dashboard's to-json
+            (is (= (-> dash-2 (assoc :collection nil :view_count 1) (dissoc :public_link_password))
                    (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard")))))
         (mt/with-test-user :rasta
           (testing "If nothing has been viewed, return a 204"
@@ -53,7 +54,8 @@
                                             "activity/most_recently_viewed_dashboard"))))
           (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :rasta)})
           (testing "Only the user's own views are returned."
-            (is (= (assoc dash-1 :collection nil :view_count 2)
+            ;; public_link_password is stripped from API responses by Dashboard's to-json
+            (is (= (-> dash-1 (assoc :collection nil :view_count 2) (dissoc :public_link_password))
                    (mt/user-http-request :rasta :get 200
                                          "activity/most_recently_viewed_dashboard"))))
           (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :rasta)})
@@ -73,12 +75,14 @@
             (testing "view a dashboard in a personal collection"
               (events/publish-event! :event/dashboard-read {:object-id (:id dash-1) :user-id (mt/user->id :crowberto)})
               (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
-                (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true) :view_count 1)
+                ;; public_link_password is stripped from API responses by Dashboard's to-json
+                (is (= (-> dash-1 (assoc :collection (assoc crowberto-personal-coll :is_personal true) :view_count 1) (dissoc :public_link_password))
                        (mt/user-http-request :crowberto :get 200
                                              "activity/most_recently_viewed_dashboard")))))
             (testing "view a dashboard in a public collection"
               (events/publish-event! :event/dashboard-read {:object-id (:id dash-2) :user-id (mt/user->id :crowberto)})
-              (is (= (assoc dash-2 :collection (assoc coll :is_personal false) :view_count 1)
+              ;; public_link_password is stripped from API responses by Dashboard's to-json
+              (is (= (-> dash-2 (assoc :collection (assoc coll :is_personal false) :view_count 1) (dissoc :public_link_password))
                      (mt/user-http-request :crowberto :get 200
                                            "activity/most_recently_viewed_dashboard"))))))))))
 

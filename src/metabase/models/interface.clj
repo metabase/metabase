@@ -327,6 +327,11 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
+(def transform-encrypted-text
+  "Transform for an encrypted plain-text string. Encrypts on write, decrypts on read."
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
+
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
 (mr/def ::viz-settings-ref

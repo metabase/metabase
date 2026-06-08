@@ -120,7 +120,8 @@
    :parameter_mappings     parameters/transform-parameter-mappings
    :type                   mi/transform-keyword
    :dimensions             metrics/transform-dimensions
-   :dimension_mappings     metrics/transform-dimension-mappings})
+   :dimension_mappings     metrics/transform-dimension-mappings
+   :public_link_password   mi/transform-encrypted-text})
 
 (doto :model/Card
   (derive :metabase/model)
@@ -1294,7 +1295,7 @@
   ;; `:dataset_query` key entirely if it is empty, as it is in a lot of tests.
   (let [card (cond-> card
                (map? (:dataset_query card)) (update :dataset_query dissoc :lib/metadata))]
-    (next-method card json-generator)))
+    (next-method (dissoc card :public_link_password) json-generator)))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
@@ -1387,7 +1388,9 @@
           ;; always derivable from dataset_query by populate-query-fields; nil when not derivable
           :query_type
           ;; always re-derived from dataset_query by populate-query-fields on import
-          :table_id :source_card_id]
+          :table_id :source_card_id
+          ;; instance-specific, encrypted password for public link gating
+          :public_link_password]
    :transform
    {:created_at             (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query

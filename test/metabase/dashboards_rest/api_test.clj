@@ -272,17 +272,19 @@
         :user-id      (mt/user->id :crowberto)
         :is-creation? true
         :object       crowberto-dash})
-      (is (=? (merge crowberto-dash
-                     {:creator {:id          (mt/user->id :crowberto)
-                                :email       "crowberto@metabase.com"
-                                :first_name  "Crowberto"
-                                :last_name   "Corv"
-                                :common_name "Crowberto Corv"}}
-                     {:last-edit-info {:id         (mt/user->id :crowberto)
-                                       :first_name "Crowberto"
-                                       :last_name  "Corv"
-                                       :email      "crowberto@metabase.com"
-                                       :timestamp  true}})
+      ;; public_link_password is stripped from API responses by Dashboard's to-json
+      (is (=? (-> (merge crowberto-dash
+                         {:creator {:id          (mt/user->id :crowberto)
+                                    :email       "crowberto@metabase.com"
+                                    :first_name  "Crowberto"
+                                    :last_name   "Corv"
+                                    :common_name "Crowberto Corv"}}
+                         {:last-edit-info {:id         (mt/user->id :crowberto)
+                                           :first_name "Crowberto"
+                                           :last_name  "Corv"
+                                           :email      "crowberto@metabase.com"
+                                           :timestamp  true}})
+                  (dissoc :public_link_password))
               (-> (m/find-first #(= (:id %) crowberto-dash-id)
                                 (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
                   (update-in [:last-edit-info :timestamp] boolean)))))
