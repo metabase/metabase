@@ -206,6 +206,7 @@ const MetabotQueryBuilderInner = () => {
             {!canUseNlq ? (
               <AIProviderConfigurationNotice
                 py="0.5rem"
+                mih="7.5rem"
                 featureName={t`AI explorations`}
                 inline
                 onConfigureAi={openAiProviderConfigurationModal}

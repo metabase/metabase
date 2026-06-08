@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -8,8 +9,13 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { useUserSetting } from "metabase/common/hooks/use-setting/use-setting";
 import { trackExplorationAgentMessageSent } from "metabase/explorations/analytics";
 import { EXPLORATIONS_AGENT_ID } from "metabase/explorations/components/NewExplorationChat/NewExplorationChat";
+import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
+import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import { useMetabotAgent } from "metabase/metabot/hooks";
+import {
+  useMetabotAgent,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
 import {
   ActionIcon,
   Box,
@@ -47,6 +53,14 @@ export function NewExplorationEntry({
   const { data: myExplorationsResponse, isSuccess: hasLoadedMyExplorations } =
     useGetMyExplorationsQuery({ limit: 25 });
   const myExplorations = myExplorationsResponse?.data ?? [];
+  const { canUseNlq } = useUserMetabotPermissions();
+  const [
+    isAiProviderConfigurationModalOpen,
+    {
+      close: closeAiProviderConfigurationModal,
+      open: openAiProviderConfigurationModal,
+    },
+  ] = useDisclosure(false);
 
   const handleSubmit = useCallback(() => {
     trackExplorationAgentMessageSent();
@@ -80,15 +94,25 @@ export function NewExplorationEntry({
           p="0.5rem 1rem 1rem"
           className={S.inputContainer}
         >
-          <MetabotPromptInput
-            value={prompt}
-            onChange={setPrompt}
-            onSubmit={handleSubmit}
-            onStop={() => {}}
-            placeholder={t`Ex. What recent events might be impacting our signups?`}
-            suggestionConfig={{ suggestionModels: ["metric"] }}
-            disabled={false}
-          />
+          {canUseNlq ? (
+            <MetabotPromptInput
+              value={prompt}
+              onChange={setPrompt}
+              onSubmit={handleSubmit}
+              onStop={() => {}}
+              placeholder={t`Ex. What recent events might be impacting our signups?`}
+              suggestionConfig={{ suggestionModels: ["metric"] }}
+              disabled={false}
+            />
+          ) : (
+            <AIProviderConfigurationNotice
+              py="0.5rem"
+              mih="7rem"
+              featureName={t`the AI agent`}
+              inline
+              onConfigureAi={openAiProviderConfigurationModal}
+            />
+          )}
           <Flex justify="space-between" align="center">
             <Button
               c="text-secondary"
@@ -147,6 +171,10 @@ export function NewExplorationEntry({
           }
         />
       )}
+      <AIProviderConfigurationModal
+        opened={isAiProviderConfigurationModalOpen}
+        onClose={closeAiProviderConfigurationModal}
+      />
     </Stack>
   );
 }

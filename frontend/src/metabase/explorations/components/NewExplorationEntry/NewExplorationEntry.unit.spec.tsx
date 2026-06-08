@@ -5,7 +5,10 @@ import {
   createExplorationSummary,
   makeMockSelection,
 } from "metabase/explorations/test-utils";
-import { useMetabotAgent } from "metabase/metabot/hooks";
+import {
+  useMetabotAgent,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { GetMyExplorationsResponse } from "metabase-types/api";
 
@@ -17,7 +20,9 @@ jest.mock("metabase/api", () => ({
 }));
 
 jest.mock("metabase/metabot/hooks", () => ({
+  ...jest.requireActual("metabase/metabot/hooks"),
   useMetabotAgent: jest.fn(),
+  useUserMetabotPermissions: jest.fn(),
 }));
 
 jest.mock("metabase/metabot/components/MetabotPromptInput", () => ({
@@ -46,6 +51,11 @@ function setup({
   myExplorations?: GetMyExplorationsResponse;
   dismissedBanner?: boolean;
 } = {}) {
+  jest.mocked(useUserMetabotPermissions).mockReturnValue({
+    hasNlqAccess: true,
+    canUseNlq: true,
+  } as any);
+
   jest.mocked(useMetabotAgent).mockReturnValue({
     prompt: "",
     setPrompt: jest.fn(),
