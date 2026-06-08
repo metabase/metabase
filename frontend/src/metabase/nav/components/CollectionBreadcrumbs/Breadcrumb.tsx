@@ -1,16 +1,19 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 
 import { Link } from "metabase/common/components/Link";
 import { Ellipsified, Group, Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
-import { resolveIconColor } from "metabase/ui/utils/colors";
+import { color as getColor } from "metabase/ui/utils/colors";
 import type { IconName } from "metabase-types/api";
 
 import S from "./Breadcrumb.module.css";
 
 interface Props {
   children: ReactNode;
-  icon: IconName;
+  className?: string;
+  color?: ColorName;
+  icon?: IconName;
   iconColor?: ColorName;
   iconSize?: number;
   to?: string;
@@ -19,38 +22,61 @@ interface Props {
 
 export const Breadcrumb = ({
   children,
+  className,
+  color,
   icon,
   iconColor,
   iconSize,
   to,
   onClick,
 }: Props) => {
+  const isLink = typeof to === "string" && to.length > 0;
+
   const content = (
     <Group
       align="center"
-      className={S.content}
+      className={cx(S.content, {
+        [S.clickable]: isLink || onClick,
+      })}
       gap="xs"
-      style={{ "--active-color": resolveIconColor(iconColor) }}
+      style={{
+        "--color": color ? getColor(color) : undefined,
+        "--active-color": iconColor ? getColor(iconColor) : undefined,
+      }}
       wrap="nowrap"
     >
-      <Icon c={iconColor} flex="0 0 auto" name={icon} size={iconSize} />
+      {icon && (
+        <Icon
+          c={iconColor}
+          className={S.icon}
+          flex="0 0 auto"
+          name={icon}
+          size={iconSize}
+        />
+      )}
 
-      <Ellipsified fw="bold" lh="normal" showTooltip={false}>
+      <Ellipsified
+        c={undefined}
+        className={S.text}
+        fw="bold"
+        lh="normal"
+        showTooltip={false}
+      >
         {children}
       </Ellipsified>
     </Group>
   );
 
-  if (typeof to === "string") {
+  if (isLink) {
     return (
-      <Link className={S.breadcrumb} to={to} onClick={onClick}>
+      <Link className={cx(S.breadcrumb, className)} to={to} onClick={onClick}>
         {content}
       </Link>
     );
   }
 
   return (
-    <span className={S.breadcrumb} onClick={onClick}>
+    <span className={cx(S.breadcrumb, className)} onClick={onClick}>
       {content}
     </span>
   );

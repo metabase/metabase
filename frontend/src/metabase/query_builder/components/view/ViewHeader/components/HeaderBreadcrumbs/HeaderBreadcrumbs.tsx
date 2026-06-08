@@ -6,7 +6,7 @@ import {
   isValidElement,
 } from "react";
 
-import { Badge } from "metabase/common/components/Badge";
+import { Breadcrumb } from "metabase/nav/components/CollectionBreadcrumbs/Breadcrumb";
 import { Box, Flex } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 
@@ -14,14 +14,8 @@ import type { DataSourcePart } from "../QuestionDataSource/utils";
 
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
 
-const HeaderBadge = (props: ComponentProps<typeof Badge>) => (
-  <Badge
-    classNames={{
-      root: HeaderBreadcrumbsS.HeaderBadge,
-      icon: HeaderBreadcrumbsS.HeaderBadgeIcon,
-    }}
-    {...props}
-  />
+const HeaderBadge = (props: ComponentProps<typeof Breadcrumb>) => (
+  <Breadcrumb className={HeaderBreadcrumbsS.HeaderBadge} {...props} />
 );
 
 function getBadgeInactiveColor({
@@ -72,8 +66,8 @@ export function HeadBreadcrumbs({
             ) : (
               <HeaderBadge
                 to={part.href}
+                color={badgeInactiveColor}
                 icon={part.icon}
-                inactiveColor={badgeInactiveColor}
               >
                 {part.name}
               </HeaderBadge>

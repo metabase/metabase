@@ -153,7 +153,7 @@ function QuestionTableBadges({
     <HeadBreadcrumbs.Badge
       key={table.id}
       to={hasLink ? getTableURL(table) : ""}
-      inactiveColor={badgeInactiveColor}
+      color={badgeInactiveColor}
     >
       <span>
         {table.displayName()}
