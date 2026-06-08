@@ -243,6 +243,88 @@
     {:content     table-body
      :attachments nil}))
 
+(defn- show-in-object-detail?
+  "Like [[table-data/show-in-table?]] but keeps `:details-only` columns (the point of object detail); drops
+  only `:retired`/`:sensitive`."
+  [{:keys [visibility_type]}]
+  (not (contains? #{:retired :sensitive} visibility_type)))
+
+(defn- object-detail-pairs
+  "`[label value]` pairs for the object-detail `row`: FK columns shown by their remapped display value, each
+  value formatted; `value` is nil for missing cells (rendered as a muted \"Empty\")."
+  [timezone-id card cols row viz-settings]
+  (let [remapping-lookup (table-data/create-remapping-lookup cols)
+        formatters       (mapv #(formatter/create-formatter timezone-id % viz-settings) cols)]
+    (for [[idx col]   (map-indexed vector cols)
+          :when       (and (not (:remapped_from col))
+                           (show-in-object-detail? col))
+          :let        [display-idx (if (:remapped_to col)
+                                     (get remapping-lookup (:name col))
+                                     idx)
+                       display-col (nth cols display-idx)
+                       raw         (nth row display-idx nil)]]
+      [(column-name card display-col)
+       (when-not (or (nil? raw) (and (string? raw) (str/blank? raw)))
+         ((nth formatters display-idx) raw))])))
+
+(mu/defmethod render :object :- ::RenderedPartCard
+  [_chart-type
+   _render-type
+   timezone-id :- [:maybe :string]
+   card
+   _dashcard
+   {:keys [rows viz-settings] :as unordered-data}]
+  ;; Single-record key/value view: render the first row only (a static email can't paginate).
+  (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
+        row                         (first ordered-rows)
+        pairs                       (vec (object-detail-pairs timezone-id card ordered-cols row viz-settings))
+        last-idx                    (dec (count pairs))
+        cell-border                 (fn [idx] (if (= idx last-idx)
+                                                {:border-bottom 0}
+                                                {:border-bottom (str "1px solid " style/color-border)}))
+        label-style                 (merge (style/font-style)
+                                           {:font-size      :12.5px
+                                            :font-weight    700
+                                            :color          style/color-gray-3
+                                            :text-align     :left
+                                            :vertical-align :top
+                                            :white-space    :normal
+                                            :padding        "0.75em 1em"
+                                            :width          "40%"})
+        value-style                 (merge (style/font-style)
+                                           {:font-size      :14px
+                                            :font-weight    700
+                                            :color          style/color-text-dark
+                                            :vertical-align :top
+                                            :white-space    :normal
+                                            :word-break     :break-word
+                                            :padding        "0.75em 1em"})]
+    {:attachments nil
+     :content
+     [:div {:style (style/style (style/section-style))}
+      [:table {:style       (style/style {:max-width     "100%"
+                                          :width         "100%"
+                                          :border        (str "1px solid " style/color-border)
+                                          :border-radius "6px"
+                                          :border-collapse "separate"
+                                          :border-spacing  0})
+               :cellpadding "0"
+               :cellspacing "0"}
+       [:tbody
+        (for [[idx [label value]] (m/indexed pairs)]
+          [:tr
+           [:td {:style (style/style label-style (cell-border idx))} (h label)]
+           [:td {:style (style/style value-style (cell-border idx))}
+            (if (nil? value)
+              ;; Match the live viz: missing values show a muted "Empty" placeholder rather than a blank cell.
+              [:span {:style (style/style (merge (style/font-style)
+                                                 {:color style/color-gray-3 :font-weight 400}))}
+               (tru "Empty")]
+              (h value))]])]]
+      (when (> (count rows) 1)
+        [:div {:style (style/style {:color style/color-gray-2 :padding-top :12px :font-size :12px})}
+         (trs "Showing 1 of {0} records." (count rows))])]}))
+
 (def ^:private default-date-styles
   {:year "YYYY"
    :quarter "[Q]Q - YYYY"
