@@ -543,6 +543,7 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed al
 - **Storage** (`localStorage`, `sessionStorage`, `indexedDB`, `document.cookie`) → treat the Data App as stateless across reloads; persist via a Metabase action.
 - **Window / history navigation** (`window.open`, `history.pushState`, `history.replaceState`) → `useDataAppNavigate()` for in-app, `<a target="_blank" rel="noopener">` for external.
 - **`navigator.*` device APIs** (`clipboard`, `geolocation`, etc.) → not available.
+- **Global event listeners on `document` / `window`** for typing or clipboard events (`keydown`, `keyup`, `keypress`, `beforeinput`, `input`, `paste`, `copy`, `cut`, `before*paste/copy/cut`, `compositionstart/update/end`, `storage`) → attach the listener to your own element instead, or use the React event handler (`onKeyDown`, `onPaste`, …) on the specific input/container that needs it. Same listener on a script-owned element still works.
 
 **Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + SDK components + data hooks + `useAction` + DataAppRouter) covers every routine need; anything outside it is intentionally unreachable.
 
