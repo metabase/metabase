@@ -4,7 +4,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v62.2026-06-02T12:00:00
+      id: v63.2026-06-02T12:00:00
       author: sloan
       comment: metabot_trace_span table
       changes:
@@ -107,7 +107,7 @@ databaseChangeLog:
                   remarks: When this span row was recorded
 
   - changeSet:
-      id: v62.2026-06-02T12:00:01
+      id: v63.2026-06-02T12:00:01
       author: sloan
       comment: FK from metabot_trace_span.conversation_id to metabot_conversation
       changes:
@@ -120,7 +120,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.2026-06-02T12:00:02
+      id: v63.2026-06-02T12:00:02
       author: sloan
       comment: FK from metabot_trace_span.message_id to metabot_message
       changes:
@@ -133,7 +133,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.2026-06-02T12:00:03
+      id: v63.2026-06-02T12:00:03
       author: sloan
       comment: Index on metabot_trace_span.conversation_id
       changes:
@@ -145,7 +145,7 @@ databaseChangeLog:
                   name: conversation_id
 
   - changeSet:
-      id: v62.2026-06-02T12:00:04
+      id: v63.2026-06-02T12:00:04
       author: sloan
       comment: Index on metabot_trace_span.message_id
       changes:
@@ -157,7 +157,7 @@ databaseChangeLog:
                   name: message_id
 
   - changeSet:
-      id: v62.2026-06-02T12:00:05
+      id: v63.2026-06-02T12:00:05
       author: sloan
       comment: Index on metabot_trace_span.trace_id
       changes:
