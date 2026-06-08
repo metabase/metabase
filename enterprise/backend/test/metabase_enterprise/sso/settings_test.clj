@@ -301,4 +301,30 @@
       ;; not flip on the SAML/JWT login button. See UXW-3940.
       (sso.test-helpers/with-slack-default-setup!
         (is (true? (sso.settings/slack-connect-enabled)))
-        (is (false? (sso-settings/other-sso-enabled?)))))))
+        (is (false? (sso-settings/other-sso-enabled?)))))
+    (testing "false when only OIDC is enabled (OIDC uses /auth/sso/oidc, not /auth/sso)"
+      (mt/with-premium-features #{:sso-oidc}
+        (tu/with-temporary-setting-values [oidc-providers [{:key           "test-idp"
+                                                            :login-prompt  "Test IdP"
+                                                            :issuer-uri    "https://test.idp.example.com"
+                                                            :client-id     "test-client-id"
+                                                            :client-secret "test-client-secret"
+                                                            :scopes        ["openid" "email" "profile"]
+                                                            :enabled       true}]]
+          (is (false? (sso-settings/other-sso-enabled?))))))))
+
+(deftest enable-password-login-honors-oidc-as-sso-test
+  (testing "enable-password-login is honored when OIDC is the only SSO provider"
+    (mt/with-premium-features #{:sso-oidc :disable-password-login}
+      (tu/with-temporary-setting-values [oidc-providers [{:key           "test-idp"
+                                                          :login-prompt  "Test IdP"
+                                                          :issuer-uri    "https://test.idp.example.com"
+                                                          :client-id     "test-client-id"
+                                                          :client-secret "test-client-secret"
+                                                          :scopes        ["openid" "email" "profile"]
+                                                          :enabled       true}]
+                                         enable-password-login false]
+        (is (true? (sso.settings/sso-enabled?))
+            "sso-enabled? should be true when OIDC is the only provider")
+        (is (false? (session/enable-password-login))
+            "enable-password-login should be honored when OIDC is enabled")))))
