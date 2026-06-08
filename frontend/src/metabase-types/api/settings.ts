@@ -381,6 +381,7 @@ export const tokenFeatures = [
   "admin_security_center",
   "ai_controls",
   "workspaces",
+  "public_link_passwords",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];

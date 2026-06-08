@@ -152,6 +152,7 @@ export const createMockTokenFeatures = (
   admin_security_center: false,
   ai_controls: false,
   workspaces: false,
+  public_link_passwords: false,
   ...opts,
 });
 

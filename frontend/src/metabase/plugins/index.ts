@@ -117,6 +117,10 @@ export {
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
 } from "./oss/permissions";
+export {
+  PLUGIN_PUBLIC_LINK_PASSWORDS,
+  type PublicLinkPasswordSectionProps,
+} from "./oss/public-link-passwords";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export {
   PLUGIN_REPLACEMENT,
@@ -199,6 +203,7 @@ import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
+import { reinitialize as reinitializePublicLinkPasswords } from "./oss/public-link-passwords";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
@@ -243,6 +248,7 @@ export function reinitialize() {
   reinitializeModelPersistence();
   reinitializeModeration();
   reinitializePermissions();
+  reinitializePublicLinkPasswords();
   reinitializeRemoteSync();
   reinitializeReplacement();
   reinitializeResourceDownloads();

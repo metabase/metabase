@@ -57,6 +57,8 @@ export const DashboardPublicLinkPopover = ({
       createPublicLink={handleCreatePublicDashboardLink}
       deletePublicLink={handleDeletePublicDashboardLink}
       url={url}
+      entityType="dashboard"
+      entityId={dashboard.id as number}
       onCopyLink={onCopyLink}
     />
   );

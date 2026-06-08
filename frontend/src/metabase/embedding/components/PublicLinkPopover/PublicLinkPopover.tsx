@@ -2,9 +2,10 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import type { ExportFormat } from "metabase/common/types/export";
+import { PLUGIN_PUBLIC_LINK_PASSWORDS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Popover, Text, Title } from "metabase/ui";
+import { Box, Popover, Text } from "metabase/ui";
 
 import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
 
@@ -15,6 +16,8 @@ export type PublicLinkPopoverProps = {
   createPublicLink: () => Promise<void>;
   deletePublicLink: () => void;
   url: string | null;
+  entityType?: "card" | "dashboard";
+  entityId?: number;
   extensions?: ExportFormat[];
   selectedExtension?: ExportFormat | null;
   setSelectedExtension?: (extension: ExportFormat | null) => void;
@@ -28,12 +31,15 @@ export const PublicLinkPopover = ({
   url,
   isOpen,
   onClose,
+  entityType,
+  entityId,
   extensions = [],
   selectedExtension,
   setSelectedExtension,
   onCopyLink,
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const hasPasswordPlugin = PLUGIN_PUBLIC_LINK_PASSWORDS.isEnabled();
 
   const { loading } = useAsync(async () => {
     if (isOpen && !url) {
@@ -71,7 +77,7 @@ export const PublicLinkPopover = ({
           data-testid="public-link-popover-content"
           mih={getMinDropdownHeight()}
         >
-          <Title c="text-secondary" order={4}>{t`Public link`}</Title>
+          <Text size="md" fw={700} lh="1rem" mb="xs">{t`Public link`}</Text>
           <Text
             color="text-secondary"
             size="sm"
@@ -80,7 +86,9 @@ export const PublicLinkPopover = ({
           <PublicLinkCopyPanel
             loading={loading}
             url={url}
-            onRemoveLink={isAdmin ? onRemoveLink : undefined}
+            onRemoveLink={
+              hasPasswordPlugin ? undefined : isAdmin ? onRemoveLink : undefined
+            }
             extensions={extensions}
             selectedExtension={selectedExtension}
             onChangeExtension={setSelectedExtension}
@@ -88,6 +96,13 @@ export const PublicLinkPopover = ({
             removeTooltipLabel={t`Affects both public link and embed URL for this dashboard`}
             onCopy={onCopyLink}
           />
+          {hasPasswordPlugin && entityType && entityId && url && (
+            <PLUGIN_PUBLIC_LINK_PASSWORDS.PasswordSection
+              entityType={entityType}
+              entityId={entityId}
+              onRemoveLink={isAdmin ? onRemoveLink : undefined}
+            />
+          )}
         </Box>
       </Popover.Dropdown>
     </Popover>

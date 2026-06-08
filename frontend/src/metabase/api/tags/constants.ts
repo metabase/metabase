@@ -73,6 +73,7 @@ export const TAG_TYPES = [
   "metabot-prompt-suggestions",
   "metabot-permissions",
   "security-advisory",
+  "public-link-password",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
