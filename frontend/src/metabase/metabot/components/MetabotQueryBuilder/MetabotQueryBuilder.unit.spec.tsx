@@ -29,16 +29,11 @@ jest.mock("metabase/metabot/hooks", () => ({
 const TestSubject = MetabotQueryBuilder as ComponentType;
 
 type SetupOptions = {
-  showIllustrations?: boolean;
   prompt?: string;
   suggestedPrompts?: { prompt: string }[];
 };
 
-function setup({
-  showIllustrations = true,
-  prompt = "",
-  suggestedPrompts = [],
-}: SetupOptions = {}) {
+function setup({ prompt = "", suggestedPrompts = [] }: SetupOptions = {}) {
   jest.mocked(useUserMetabotPermissions).mockReturnValue({
     hasNlqAccess: true,
     canUseNlq: true,
@@ -61,9 +56,7 @@ function setup({
     currentData: { prompts: suggestedPrompts },
   } as any);
 
-  const settings = mockSettings({
-    "metabot-show-illustrations": showIllustrations,
-  });
+  const settings = mockSettings();
 
   return renderWithProviders(<Route path="/" component={TestSubject} />, {
     withRouter: true,
@@ -74,18 +67,6 @@ function setup({
 describe("MetabotQueryBuilder", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it("renders the Metabot illustration when metabot-show-illustrations is true", () => {
-    setup({ showIllustrations: true });
-    expect(screen.getByRole("img", { name: "Metabot" })).toBeInTheDocument();
-  });
-
-  it("hides the Metabot illustration when metabot-show-illustrations is false", () => {
-    setup({ showIllustrations: false });
-    expect(
-      screen.queryByRole("img", { name: "Metabot" }),
-    ).not.toBeInTheDocument();
   });
 
   it("renders suggested prompts when the API returns them", () => {
