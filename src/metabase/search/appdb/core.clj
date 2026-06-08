@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.index-state :as index-state]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
    [metabase.search.config :as search.config]
@@ -112,60 +113,70 @@
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
-(defn- results
-  [{:keys [search-engine search-string] :as search-ctx}]
-  ;; Check whether there is a query-able index.
+(defn- ensure-active-table!
+  "Throw an informative error if there is no active search index table.
+   As a side effect, attempts a fresh sync and optionally triggers a background init."
+  [{:keys [search-engine]}]
   (when-not (search.index/active-table)
-    (let [index-state  @@#'search.index/*indexes*
-          ;; Sync, in case we're just out of sync with the database.
-          found-active (:active (#'search.index/sync-tracking-atoms!))
-          ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
+    (let [state-before (search.index/state-snapshot)
+          found-active (:active (index-state/force-refresh! search.index/*state-store*))
+          ;; If there is really no index and we are in prod, trigger a background init to recover.
           init-now?    (and (not found-active) config/is-prod?)]
       (when init-now?
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
-          (future
-            (search.engine/init! search-engine {:force-reset? false}))
+          (future (search.engine/init! search-engine {:force-reset? false}))
           (catch Exception e
             (log/error e))))
-      ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
                        :version            (search.spec/index-version-hash)
                        :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
-                       :index-state-before index-state
-                       :index-state-after  @@#'search.index/*indexes*
-                       :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
+                       :index-state-before state-before
+                       :index-state-after  (search.index/state-snapshot)
+                       :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)})))))
 
+(defn- execute-search-query
+  "Build and execute the appdb search query, returning rehydrated results."
+  [{:keys [search-string] :as search-ctx}]
+  (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
+    ;; wait for a bit for the queue to be drained
+    (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
+      (when-not (u/poll {:thunk       pending-updates
+                         :done?       zero?
+                         :timeout-ms  2000
+                         :interval-ms 100})
+        (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
+  (let [weights (search.config/weights search-ctx)
+        scorers (search.scoring/scorers search-ctx)
+        query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
+                     (add-collection-join-and-where-clauses search-ctx)
+                     (add-table-where-clauses search-ctx)
+                     (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                             search-ctx
+                                             :search_index.model
+                                             :search_index.source_type)))
+                     (search.scoring/with-scores search-ctx scorers)
+                     (search.filter/with-filters search-ctx))]
+    (->> (t2/query query)
+         (map (partial rehydrate weights (keys scorers))))))
+
+(defn- results
+  ;; Between the moment one pod drops a retired table and other pods' TTLs expire (up to 5 min),
+  ;; those pods may observe a table-not-found error on their first query. We retry once after a
+  ;; forced refresh to recover transparently.
+  [{:keys [search-string] :as search-ctx}]
+  (ensure-active-table! search-ctx)
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
-      (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-        ;; wait for a bit for the queue to be drained
-        (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
-          (when-not (u/poll {:thunk       pending-updates
-                             :done?       zero?
-                             :timeout-ms  2000
-                             :interval-ms 100})
-            (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
-      (let [weights (search.config/weights search-ctx)
-            scorers (search.scoring/scorers search-ctx)
-            query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
-                         (add-collection-join-and-where-clauses search-ctx)
-                         (add-table-where-clauses search-ctx)
-                         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
-                                                 search-ctx
-                                                 :search_index.model
-                                                 :search_index.source_type)))
-                         (search.scoring/with-scores search-ctx scorers)
-                         (search.filter/with-filters search-ctx))]
-        (->> (t2/query query)
-             (map (partial rehydrate weights (keys scorers)))))
+      (execute-search-query search-ctx)
       (catch Exception e
-        ;; Rule out the error coming from stale index metadata.
-        (#'search.index/sync-tracking-atoms!)
-        (throw e)))))
+        (if (and (search.index/table-not-found-exception? e) (not (::already-retried search-ctx)))
+          (do (index-state/force-refresh! search.index/*state-store*)
+              (execute-search-query (assoc search-ctx ::already-retried true)))
+          (throw e))))))
 
 (defmethod search.engine/results :search.engine/appdb
   [search-ctx]

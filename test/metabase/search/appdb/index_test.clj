@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.index-state :as index-state]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -558,31 +559,27 @@
                              [p ds])))
                    table->descendants))))))
 
-(defn- active-table-after [simulated-delay-ns]
-  (mt/with-dynamic-fn-redefs [search.index/now (constantly (+ simulated-delay-ns (System/nanoTime)))]
-    (search.index/active-table)))
-
 (deftest auto-refresh-test
+  ;; TTL caching duration is tested in index-state-test. This integration test verifies
+  ;; that the appdb index uses the cached state and that force-refresh! reads new DB state.
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "auto-refresh-test"]
       (try
-        (reset! @#'search.index/next-sync-at nil)
         (search.index/reset-index!)
         (let [active-before (search.index/active-table)
               active-after  (search.index/gen-table-name)
               pending-after (search.index/gen-table-name)
-              period        @#'search.index/sync-tracking-period
               version       (search.spec/index-version-hash)]
           (search-index-metadata/create-pending! :appdb version active-after)
           (search.index/create-table! active-after)
           (search-index-metadata/active-pending! :appdb version)
           (search-index-metadata/create-pending! :appdb version pending-after)
           (search.index/create-table! pending-after)
-          (testing "We continue using our cached references for some time"
-            (is (= active-before (active-table-after 100)))
-            (is (= active-before (active-table-after (/ period 2)))))
-          (testing "But eventually we refresh")
-          (is (= active-after (active-table-after period))))
+          (testing "We continue using our cached references without a force-refresh"
+            (is (= active-before (search.index/active-table))))
+          (testing "But we see the new active table after force-refresh!"
+            (index-state/force-refresh! search.index/*state-store*)
+            (is (= active-after (search.index/active-table)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
           (#'search.index/delete-obsolete-tables!))))))
@@ -591,7 +588,6 @@
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "pending-timeout-test"]
       (try
-        (reset! @#'search.index/next-sync-at nil)
         (search.index/reset-index!)
         (let [active-table (search.index/active-table)
               pending-old  (search.index/gen-table-name)
@@ -603,7 +599,8 @@
           (t2/update! :model/SearchIndexMetadata
                       {:index_name (name pending-old)}
                       {:created_at (t/minus (t/offset-date-time) (t/days 2))})
-          (#'search.index/sync-tracking-atoms!)
+          ;; Force a re-read so we pick up the (expired) pending table
+          (index-state/force-refresh! search.index/*state-store*)
           (testing "Active table is returned"
             (is (= active-table (search.index/active-table))))
           (testing "Old pending table is ignored (more than a day old)"
@@ -611,7 +608,8 @@
           ;; Create new pending table (less than a day old)
           (search.index/create-table! pending-new)
           (search-index-metadata/create-pending! :appdb version pending-new)
-          (#'search.index/sync-tracking-atoms!)
+          ;; Force a re-read so we pick up the new pending table
+          (index-state/force-refresh! search.index/*state-store*)
           (testing "New pending table is included (less than a day old)"
             (is (= active-table (search.index/active-table)))
             (is (= pending-new (#'search.index/pending-table)))))
