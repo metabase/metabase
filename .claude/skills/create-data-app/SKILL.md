@@ -20,7 +20,7 @@ Before writing any files, check whether the working directory already looks
 like a data-app project. Telltale signs:
 
 - `src/index.tsx` exists, **or**
-- `vite.config.ts` with a `name: "__customVizPlugin__"` entry, **or**
+- `vite.config.ts` with a `name: "__dataAppFactory__"` entry, **or**
 - `package.json` whose `scripts` include `vite build` and depends on
   `@metabase/embedding-sdk-react`.
 
@@ -125,7 +125,7 @@ export default defineConfig({
       entry: resolve(__dirname, "src/index.tsx"),
       formats: ["iife"],
       fileName: () => "index.js",
-      name: "__customVizPlugin__",
+      name: "__dataAppFactory__",
     },
     rollupOptions: {
       external: ["react"],
@@ -262,9 +262,9 @@ type Factory = (hostApi: Record<string, unknown>) => {
 
 /**
  * Production entry. Vite lib mode emits an IIFE whose return value is
- * assigned to globalThis.__customVizPlugin__ (the `name` field in
+ * assigned to globalThis.__dataAppFactory__ (the `name` field in
  * vite.config.ts). The Metabase host evaluates the bundle text, reads
- * `__customVizPlugin__` back out, calls it with hostApi, and renders the
+ * `__dataAppFactory__` back out, calls it with hostApi, and renders the
  * returned `component` inside its own React tree.
  */
 const factory: Factory = (_hostApi) => ({ component: App });
@@ -660,7 +660,7 @@ To replace: delete the data app, upload again. Per-app replace endpoint isn't wi
 | Chart overflows its container. | Pass `height` / `width` to the SDK component (see *SDK component sizing*). |
 | "Invalid hook call" at runtime. | `react` not externalized — check `vite.config.ts`. |
 | Bundle is multi-MB. | Runtime-importing `@metabase/embedding-sdk-react` from non-dev source (see *Source conventions §3*). |
-| `dist/index.js` doesn't assign to `__customVizPlugin__`. | `lib.name: "__customVizPlugin__"` missing in `vite.config.ts`. |
+| `dist/index.js` doesn't assign to `__dataAppFactory__`. | `lib.name: "__dataAppFactory__"` missing in `vite.config.ts`. |
 | Dev preview blank, console says `MetabaseProvider is undefined`. | `src/dev.tsx` must `import "./dev-globals"` BEFORE `import App from "./App"`. |
 | `globalThis.MetabaseProvider` shows as `any` in the editor. | `src/globals.d.ts` missing or not in `tsconfig.json#include`. |
 

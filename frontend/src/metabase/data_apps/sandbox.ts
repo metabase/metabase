@@ -33,9 +33,10 @@ import { makeDistortionCallback } from "./sandbox/distortions";
  *     info). Each one assumes it's rendered inside a `MetabaseProvider` —
  *     no internal wrapping — matching the published SDK API.
  *
- * Plugin contract: write a factory function to globalThis.__customVizPlugin__.
- * The host calls factory(hostApi) and renders the returned `component` inside
- * its own React tree.
+ * Bundle contract: the bundle's Vite IIFE assigns its factory function to
+ * `globalThis.__dataAppFactory__`. The host captures it via the endowment
+ * below, calls `factory(hostApi)`, and renders the returned `component`
+ * inside its own React tree.
  */
 
 // Future: { runQuery, fetchCard, … }. Empty for the PoC.
@@ -84,10 +85,10 @@ export function createDataAppSandbox(
         CreateDashboardModal,
         // Collection
         CollectionBrowser,
-        get __customVizPlugin__() {
+        get __dataAppFactory__() {
           return captured;
         },
-        set __customVizPlugin__(value: unknown) {
+        set __dataAppFactory__(value: unknown) {
           captured = value;
         },
       }),
@@ -109,7 +110,7 @@ export function createDataAppSandbox(
       }
       if (typeof captured !== "function") {
         throw new Error(
-          "Bundle did not assign a function to __customVizPlugin__",
+          "Bundle did not assign a function to __dataAppFactory__",
         );
       }
       return captured as DataAppFactory;
