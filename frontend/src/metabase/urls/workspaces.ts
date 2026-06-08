@@ -9,3 +9,7 @@ export function workspaces() {
 export function workspace(id: WorkspaceId) {
   return `${WORKSPACES_ROOT_URL}/${id}`;
 }
+
+export function workspaceInstances() {
+  return `${WORKSPACES_ROOT_URL}/instances`;
+}

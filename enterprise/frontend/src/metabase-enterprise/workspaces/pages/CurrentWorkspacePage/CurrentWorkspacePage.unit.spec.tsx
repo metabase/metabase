@@ -8,22 +8,22 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import type { TableRemapping } from "metabase-types/api";
 import {
+  createMockCurrentWorkspace,
+  createMockCurrentWorkspaceDatabase,
   createMockDatabase,
   createMockTableRemapping,
-  createMockWorkspaceInstance,
-  createMockWorkspaceInstanceDatabase,
 } from "metabase-types/api/mocks";
 
-import { WorkspaceInstancePage } from "./WorkspaceInstancePage";
+import { CurrentWorkspacePage } from "./CurrentWorkspacePage";
 
 const POSTGRES = createMockDatabase({ id: 10, name: "Postgres" });
 
 function setup({
   remappings = [] as TableRemapping[],
-  workspace = createMockWorkspaceInstance({
+  workspace = createMockCurrentWorkspace({
     name: "Dev workspace",
     databases: {
-      [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
+      [POSTGRES.id]: createMockCurrentWorkspaceDatabase({
         input_schemas: ["public"],
         output: { schema: "ws_dev" },
       }),
@@ -35,12 +35,12 @@ function setup({
   setupGetCurrentWorkspaceEndpoint(workspace);
   setupListTableRemappingsEndpoint(remappings);
 
-  renderWithProviders(<Route path="*" component={WorkspaceInstancePage} />, {
+  renderWithProviders(<Route path="*" component={CurrentWorkspacePage} />, {
     withRouter: true,
   });
 }
 
-describe("WorkspaceInstancePage", () => {
+describe("CurrentWorkspacePage", () => {
   it("renders the empty state when there are no remappings", async () => {
     setup();
 
@@ -89,10 +89,10 @@ describe("WorkspaceInstancePage", () => {
 
   it("hides the delete section when can_write is false", async () => {
     setup({
-      workspace: createMockWorkspaceInstance({
+      workspace: createMockCurrentWorkspace({
         name: "Dev workspace",
         databases: {
-          [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
+          [POSTGRES.id]: createMockCurrentWorkspaceDatabase({
             input_schemas: ["public"],
             output: { schema: "ws_dev" },
           }),

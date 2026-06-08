@@ -1,1 +1,1 @@
-export * from "./WorkspaceInstancePage";
+export * from "./CurrentWorkspacePage";

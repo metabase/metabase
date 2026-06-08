@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -5,11 +6,10 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { Group, Stack } from "metabase/ui";
+import { Button, FixedSizeIcon, Group, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
-
-import { HelpMenu } from "../../components/HelpMenu";
 
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
@@ -68,7 +68,13 @@ function WorkspaceListPageBody({
           hasWorkspaces && (
             <Group gap="sm">
               <NewWorkspaceButton />
-              <HelpMenu />
+              <Button
+                component={Link}
+                to={Urls.workspaceInstances()}
+                leftSection={<FixedSizeIcon name="gear" aria-hidden />}
+              >
+                {t`Development instances`}
+              </Button>
             </Group>
           )
         }

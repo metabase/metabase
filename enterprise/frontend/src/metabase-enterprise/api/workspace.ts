@@ -1,11 +1,15 @@
 import type {
   CreateWorkspaceDatabaseRequest,
+  CreateWorkspaceInstanceRequest,
   CreateWorkspaceRequest,
   DeleteWorkspaceDatabaseRequest,
   UpdateWorkspaceDatabaseRequest,
+  UpdateWorkspaceInstanceRequest,
   UpdateWorkspaceRequest,
   Workspace,
   WorkspaceId,
+  WorkspaceInstance,
+  WorkspaceInstanceId,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -13,6 +17,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideWorkspaceInstanceListTags,
+  provideWorkspaceInstanceTags,
   provideWorkspaceListTags,
   provideWorkspaceTags,
 } from "./tags";
@@ -95,6 +101,57 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
+    listWorkspaceInstances: builder.query<WorkspaceInstance[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/workspace-manager/instance",
+      }),
+      providesTags: (instances = []) =>
+        provideWorkspaceInstanceListTags(instances),
+    }),
+    createWorkspaceInstance: builder.mutation<
+      WorkspaceInstance,
+      CreateWorkspaceInstanceRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/workspace-manager/instance",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("workspace-instance")]),
+    }),
+    updateWorkspaceInstance: builder.mutation<
+      WorkspaceInstance,
+      UpdateWorkspaceInstanceRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/ee/workspace-manager/instance/${id}`,
+        body,
+      }),
+      invalidatesTags: (instance, error) =>
+        invalidateTags(
+          error,
+          instance
+            ? [
+                listTag("workspace-instance"),
+                ...provideWorkspaceInstanceTags(instance),
+              ]
+            : [listTag("workspace-instance")],
+        ),
+    }),
+    deleteWorkspaceInstance: builder.mutation<void, WorkspaceInstanceId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/ee/workspace-manager/instance/${id}`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          listTag("workspace-instance"),
+          idTag("workspace-instance", id),
+        ]),
+    }),
   }),
 });
 
@@ -108,4 +165,8 @@ export const {
   useCreateWorkspaceDatabaseMutation,
   useUpdateWorkspaceDatabaseMutation,
   useDeleteWorkspaceDatabaseMutation,
+  useListWorkspaceInstancesQuery,
+  useCreateWorkspaceInstanceMutation,
+  useUpdateWorkspaceInstanceMutation,
+  useDeleteWorkspaceInstanceMutation,
 } = workspaceApi;

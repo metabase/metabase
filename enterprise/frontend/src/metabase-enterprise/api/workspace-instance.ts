@@ -19,7 +19,7 @@ export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
         response.data,
       providesTags: [tag("workspace")],
     }),
-    deleteWorkspaceInstance: builder.mutation<void, void>({
+    deleteCurrentWorkspace: builder.mutation<void, void>({
       query: () => ({
         method: "DELETE",
         url: "/api/ee/workspace-instance/current",
@@ -40,6 +40,6 @@ export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetCurrentWorkspaceQuery,
-  useDeleteWorkspaceInstanceMutation,
+  useDeleteCurrentWorkspaceMutation,
   useListTableRemappingsQuery,
 } = workspaceInstanceApi;

@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { Button, Code, Group, Text } from "metabase/ui";
-import { useDeleteWorkspaceInstanceMutation } from "metabase-enterprise/api";
+import { useDeleteCurrentWorkspaceMutation } from "metabase-enterprise/api";
 
 import { trackWorkspaceInstanceLeave } from "../../../analytics";
 
@@ -11,7 +11,7 @@ const CONFIG_FILENAME = "config.yml";
 
 export function DeleteSection() {
   const { modalContent, show } = useConfirmation();
-  const [deleteInstance] = useDeleteWorkspaceInstanceMutation();
+  const [deleteInstance] = useDeleteCurrentWorkspaceMutation();
 
   const handleClick = () => {
     show({

@@ -11,21 +11,21 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { CurrentWorkspace } from "metabase-types/api";
 import {
+  createMockCurrentWorkspace,
+  createMockCurrentWorkspaceDatabase,
   createMockDatabase,
   createMockTokenFeatures,
   createMockUser,
-  createMockWorkspaceInstance,
-  createMockWorkspaceInstanceDatabase,
 } from "metabase-types/api/mocks";
 
 import { WorkspaceIndexPage } from "./WorkspaceIndexPage";
 
 const POSTGRES = createMockDatabase({ id: 10, name: "Postgres" });
 
-const WORKSPACE = createMockWorkspaceInstance({
+const WORKSPACE = createMockCurrentWorkspace({
   name: "Dev workspace",
   databases: {
-    [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
+    [POSTGRES.id]: createMockCurrentWorkspaceDatabase({
       input_schemas: ["public"],
       output: { schema: "ws_dev" },
     }),
@@ -75,7 +75,7 @@ describe("WorkspaceIndexPage", () => {
     setup({ isAdmin: true, workspace: WORKSPACE });
 
     expect(
-      await screen.findByTestId("workspace-instance-page"),
+      await screen.findByTestId("current-workspace-page"),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("workspace-list-page")).not.toBeInTheDocument();
   });
@@ -87,7 +87,7 @@ describe("WorkspaceIndexPage", () => {
       await screen.findByTestId("workspace-list-page"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId("workspace-instance-page"),
+      screen.queryByTestId("current-workspace-page"),
     ).not.toBeInTheDocument();
   });
 
@@ -102,7 +102,7 @@ describe("WorkspaceIndexPage", () => {
       await screen.findByTestId("workspace-list-page"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId("workspace-instance-page"),
+      screen.queryByTestId("current-workspace-page"),
     ).not.toBeInTheDocument();
   });
 });
