@@ -18,6 +18,15 @@ type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
 };
 
+type CompactMetricsViewerUrlState = {
+  t?: Array<{
+    i?: string;
+    t?: string;
+    l?: string;
+  }>;
+  a?: string | null;
+};
+
 const ORDERS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of orders",
   type: "metric",
@@ -254,6 +263,22 @@ const showColumnLabels = () => {
     .click();
   cy.findByRole("switch", { name: "Show column labels" }).click();
 };
+
+const getMetricsViewerUrlState =
+  (): Cypress.Chainable<CompactMetricsViewerUrlState> => {
+    return cy.location("hash").then((hash) => {
+      const encodedHash = hash.replace(/^#/, "");
+      const base64 = encodedHash.replace(/-/g, "+").replace(/_/g, "/");
+      const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+      const bytes = Uint8Array.from(atob(paddedBase64), (char) =>
+        char.charCodeAt(0),
+      );
+
+      return JSON.parse(
+        new TextDecoder().decode(bytes),
+      ) as CompactMetricsViewerUrlState;
+    });
+  };
 
 const addOrdersProductsExpression = () => {
   addMetricMath([
@@ -1552,6 +1577,31 @@ describe("scenarios > metrics > explorer", () => {
         "contain.text",
         "Category",
       );
+
+      cy.reload();
+      cy.wait("@dataset");
+      H.MetricsViewer.getColumnPickerButton().should(
+        "contain.text",
+        "Category",
+      );
+    });
+
+    it("should serialize only the selected dimension breakout in the URL", () => {
+      selectDimensionBreakout("State", { seeAll: true });
+      cy.wait("@dataset");
+
+      selectDimensionBreakout("Category");
+      cy.wait("@dataset");
+
+      getMetricsViewerUrlState().then((state) => {
+        expect(state.t).to.have.length(1);
+        const [breakout] = state.t ?? [];
+        if (!breakout) {
+          throw new Error("Expected one serialized dimension breakout");
+        }
+        expect(breakout).to.include({ t: "category", l: "Category" });
+        expect(state.a).to.equal(breakout.i);
+      });
 
       cy.reload();
       cy.wait("@dataset");

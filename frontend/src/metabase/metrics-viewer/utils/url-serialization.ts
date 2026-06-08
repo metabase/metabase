@@ -367,6 +367,25 @@ function dimensionBreakoutToSerializedDimensionBreakout(
   };
 }
 
+function getSerializableDimensionBreakouts(state: MetricsViewerPageState) {
+  const selectedDimensionBreakout = state.dimensionBreakouts.find(
+    (dimensionBreakout) =>
+      dimensionBreakout.id === state.selectedDimensionBreakoutId,
+  );
+
+  if (!selectedDimensionBreakout) {
+    return {
+      dimensionBreakouts: [],
+      selectedDimensionBreakoutId: null,
+    };
+  }
+
+  return {
+    dimensionBreakouts: [selectedDimensionBreakout],
+    selectedDimensionBreakoutId: selectedDimensionBreakout.id,
+  };
+}
+
 export function deserializeDimensionBreakout(
   serializedDimensionBreakout: SerializedDimensionBreakout,
 ): MetricsViewerDimensionBreakoutState {
@@ -479,6 +498,8 @@ export function stateToSerializedState(
   state: MetricsViewerPageState,
 ): SerializedMetricsViewerPageState {
   const formulaEntities: SerializedFormulaEntity[] = [];
+  const { dimensionBreakouts, selectedDimensionBreakoutId } =
+    getSerializableDimensionBreakouts(state);
 
   for (const entity of state.formulaEntities) {
     if (isMetricEntry(entity)) {
@@ -508,10 +529,10 @@ export function stateToSerializedState(
 
   return {
     formulaEntities,
-    dimensionBreakouts: state.dimensionBreakouts.map(
+    dimensionBreakouts: dimensionBreakouts.map(
       dimensionBreakoutToSerializedDimensionBreakout,
     ),
-    selectedDimensionBreakoutId: state.selectedDimensionBreakoutId,
+    selectedDimensionBreakoutId,
     ...(state.showColumnLabels ? { showColumnLabels: true } : {}),
   };
 }

@@ -1,9 +1,15 @@
+import type {
+  MetricsViewerDimensionBreakoutState,
+  MetricsViewerPageState,
+} from "../types";
+
 import type { DimensionFilterValue } from "./dimension-filters";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
   deserializeFormulaEntities,
   encodeState,
+  stateToSerializedState,
 } from "./url-serialization";
 
 function encodeStateOrThrow(state: SerializedMetricsViewerPageState): string {
@@ -12,6 +18,33 @@ function encodeStateOrThrow(state: SerializedMetricsViewerPageState): string {
     throw new Error("encodeState returned undefined unexpectedly");
   }
   return result;
+}
+
+function createBreakout(
+  overrides: Partial<MetricsViewerDimensionBreakoutState> = {},
+): MetricsViewerDimensionBreakoutState {
+  return {
+    id: "time",
+    type: "time",
+    label: "Time",
+    display: "line",
+    dimensionMapping: { 0: "created_at" },
+    projectionConfig: {},
+    ...overrides,
+  };
+}
+
+function createPageState(
+  overrides: Partial<MetricsViewerPageState> = {},
+): MetricsViewerPageState {
+  return {
+    definitions: {},
+    formulaEntities: [],
+    dimensionBreakouts: [],
+    selectedDimensionBreakoutId: null,
+    showColumnLabels: false,
+    ...overrides,
+  };
 }
 
 describe("url-serialization", () => {
@@ -417,6 +450,114 @@ describe("url-serialization", () => {
       const result = decodeState("");
       expect(result).not.toBeNull();
       expect(result).toBeDefined();
+    });
+  });
+
+  describe("stateToSerializedState", () => {
+    it("serializes only the selected dimension breakout", () => {
+      const selectedBreakout = createBreakout({
+        id: "category",
+        type: "category",
+        label: "Category",
+        display: "bar",
+        dimensionMapping: { 0: "category" },
+      });
+      const state = createPageState({
+        dimensionBreakouts: [
+          createBreakout({ id: "time" }),
+          selectedBreakout,
+          createBreakout({ id: "geo", type: "geo", label: "Country" }),
+        ],
+        selectedDimensionBreakoutId: selectedBreakout.id,
+      });
+
+      expect(stateToSerializedState(state)).toEqual({
+        formulaEntities: [],
+        dimensionBreakouts: [
+          {
+            id: "category",
+            type: "category",
+            label: "Category",
+            display: "bar",
+            definitions: [{ slotIndex: 0, dimensionId: "category" }],
+          },
+        ],
+        selectedDimensionBreakoutId: "category",
+      });
+    });
+
+    it("preserves the selected dimension breakout configuration", () => {
+      const state = createPageState({
+        dimensionBreakouts: [
+          createBreakout({ id: "inactive" }),
+          createBreakout({
+            id: "selected",
+            label: "Orders by month",
+            display: "area",
+            dimensionMapping: { 0: "created_at", 1: null },
+            projectionConfig: {
+              temporalUnit: "month",
+              binningStrategy: "10 bins",
+              dimensionFilter: {
+                type: "string",
+                operator: "=",
+                values: ["Widget"],
+                options: {},
+              },
+            },
+            visualizationSettings: { "graph.show_values": true },
+          }),
+        ],
+        selectedDimensionBreakoutId: "selected",
+      });
+
+      expect(stateToSerializedState(state).dimensionBreakouts).toEqual([
+        {
+          id: "selected",
+          type: "time",
+          label: "Orders by month",
+          display: "area",
+          visualizationSettings: { "graph.show_values": true },
+          definitions: [
+            { slotIndex: 0, dimensionId: "created_at" },
+            { slotIndex: 1 },
+          ],
+          projectionConfig: {
+            temporalUnit: "month",
+            binning: "10 bins",
+            dimensionFilter: {
+              type: "string",
+              operator: "=",
+              values: ["Widget"],
+              options: {},
+            },
+          },
+        },
+      ]);
+    });
+
+    it("serializes no dimension breakouts when none is selected", () => {
+      const state = createPageState({
+        dimensionBreakouts: [createBreakout({ id: "time" })],
+        selectedDimensionBreakoutId: null,
+      });
+
+      expect(stateToSerializedState(state)).toMatchObject({
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
+      });
+    });
+
+    it("clears the selected dimension breakout ID when it does not exist", () => {
+      const state = createPageState({
+        dimensionBreakouts: [createBreakout({ id: "time" })],
+        selectedDimensionBreakoutId: "missing",
+      });
+
+      expect(stateToSerializedState(state)).toMatchObject({
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
+      });
     });
   });
 
