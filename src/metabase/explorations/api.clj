@@ -48,8 +48,6 @@
   (when (and (contains? updates :collection_id)
              (not= old-coll (:collection_id updates)))
     (let [new-coll (:collection_id updates)]
-      (when new-coll
-        (api/check-400 (t2/exists? :model/Collection :id new-coll :archived false)))
       (if new-coll
         (api/write-check :model/Collection new-coll)
         (api/write-check collection/root-collection)))))
