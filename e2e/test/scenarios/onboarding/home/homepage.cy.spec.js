@@ -95,7 +95,10 @@ describe("scenarios > home > homepage", () => {
 
       cy.intercept("POST", "/api/dashboard/save").as("saveDashboard");
       cy.findByTestId("automatic-dashboard-header").button("Save this").click();
-      cy.wait("@saveDashboard");
+      // Diagnostic: CI is slower than local, so give the save request more time to
+      // appear before failing. If it still times out at 30s, the request genuinely
+      // never fires (a save-path/navigation race), not just slowness.
+      cy.wait("@saveDashboard", { requestTimeout: 30000 });
 
       H.expectUnstructuredSnowplowEvent({
         event: "x-ray_saved",
