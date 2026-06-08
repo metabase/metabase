@@ -563,6 +563,8 @@ This is a decision the agent makes per-rendering, not once for the whole app:
 
 The hook returns `{ data, isLoading, error, ... }` from the SDK. Read `data` once it's loaded to get rows/columns/metadata; render with normal React. Hooks must be called from inside a component rendered under `MetabaseProvider`.
 
+**Always render a spinner (or skeleton) while `isLoading` is `true`** — never an empty slot or stale value, which causes layout shift when the data arrives. Same rule for lifted/derived queries (pass `isLoading` down to each consumer) and for action triggers (`useAction`'s `isExecuting` → spinner in the button, plus `disabled={isExecuting}`).
+
 #### Call each question at most once per render tree
 
 **Call `useQuestionQuery(N)` exactly once per unique question id** in the rendered tree. Calling it from multiple components with the same id is almost never what you want:
