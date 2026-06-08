@@ -1,3 +1,6 @@
+import createCache from "@emotion/cache";
+// eslint-disable-next-line no-restricted-imports
+import { CacheProvider } from "@emotion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { t } from "ttag";
@@ -132,10 +135,24 @@ export function AppView({ params }: AppViewProps) {
         meta.id,
         win,
       );
+      // Emotion's default cache injects nonce-less `<style>` tags into the
+      // host document, which our same-origin iframe inherits a strict
+      // `style-src 'self' 'nonce-…'` CSP from. Give it a cache that (a)
+      // targets the iframe's `<head>` and (b) stamps the parent's nonce on
+      // every generated style tag so they survive CSP.
+      const iframeEmotionCache = createCache({
+        key: "data-app",
+        container: doc.head,
+        nonce: getCspNonce() ?? undefined,
+      });
       reactRootRef.current?.unmount();
       const root = createRoot(rootEl);
       reactRootRef.current = root;
-      root.render(<AppComponent />);
+      root.render(
+        <CacheProvider value={iframeEmotionCache}>
+          <AppComponent />
+        </CacheProvider>,
+      );
     };
 
     mount().catch((e: unknown) => {
