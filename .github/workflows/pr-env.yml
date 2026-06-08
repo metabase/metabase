@@ -290,6 +290,12 @@ jobs:
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
+      - name: Inject stats-dump env vars into Deployment YAML
+        if: ${{ !inputs.self_hosting && inputs.stats_dump }}
+        env:
+          MB_ENCRYPTION_SECRET_KEY: ${{ secrets.PR_ENV_STATS_DUMP_ENCRYPTION_KEY }}
+        run: |
+          yq -i 'select(.kind == "Metabase").spec.configuration.envVars += [{"name": "MB_ENCRYPTION_SECRET_KEY", "value": strenv(MB_ENCRYPTION_SECRET_KEY)}]' ./metabase.yml
       - name: Deploy PR Review ENV
         if: ${{ !inputs.self_hosting }}
         run: |
