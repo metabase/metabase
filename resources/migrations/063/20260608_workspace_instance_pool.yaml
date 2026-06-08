@@ -1,0 +1,83 @@
+# Parent-side pool registry of pre-booted dev (child) Metabase instances handed out
+# by the workspace-manager :deployment endpoints. Distinct from the child-side
+# `instance-workspace` setting.
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.2026-06-08T12:00:00
+      author: bryan
+      comment: Create workspace_instance pool table
+      changes:
+        - createTable:
+            tableName: workspace_instance
+            remarks: A pre-booted dev (child) Metabase instance in the provisioning pool
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: url
+                  type: varchar(254)
+                  remarks: The child instance's public https base URL
+                  constraints:
+                    nullable: false
+              - column:
+                  name: api_key
+                  type: ${text.type}
+                  remarks: The child's superuser API key, encrypted at rest
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace currently bound to this instance; null = free in the pool
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Optional human label for the instance
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this instance was registered
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When this instance was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v63.2026-06-08T12:00:01
+      author: bryan
+      comment: Unique constraint on workspace_instance.url
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_instance
+            constraintName: idx_unique_workspace_instance_url
+            columnNames: url
+
+  - changeSet:
+      id: v63.2026-06-08T12:00:02
+      author: bryan
+      comment: FK workspace_instance.workspace_id -> workspace.id (set null on delete so deleting a workspace returns the instance to the pool)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_instance
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_instance_workspace_id
+            onDelete: SET NULL
