@@ -4,6 +4,7 @@ import type {
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryStatus,
+  ExplorationSummary,
   ExplorationThread,
   MetricDimension,
   Timeline,
@@ -300,5 +301,19 @@ export function leafGroup(
     display_type: displayType,
     name,
     query_ids: queryIds,
+  };
+}
+
+export function createExplorationSummary(
+  opts?: Partial<ExplorationSummary>,
+): ExplorationSummary {
+  return {
+    id: 1,
+    name: "Revenue investigation",
+    creator_id: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-02T00:00:00Z",
+    current_user_last_touched_at: "2026-01-02T00:00:00Z",
+    ...opts,
   };
 }

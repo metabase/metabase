@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { useGetMyExplorationsQuery } from "metabase/api";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
@@ -22,7 +23,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
-import type { Exploration } from "metabase-types/api";
+import type { ExplorationSummary } from "metabase-types/api";
 
 import type { ExplorationSelection } from "../../hooks";
 import type { NewExplorationMode } from "../../types";
@@ -34,17 +35,6 @@ interface NewExplorationEntryProps {
   setMode: (mode: NewExplorationMode) => void;
 }
 
-const MOCK_EXPLORATIONS: Pick<Exploration, "id" | "name" | "updated_at">[] =
-  Array.from({ length: 25 }, (_, i) => {
-    const updatedAt = new Date();
-    updatedAt.setDate(updatedAt.getDate() - i * 7);
-    return {
-      id: i + 1,
-      name: `Exploration ${i + 1}`,
-      updated_at: updatedAt.toISOString(),
-    };
-  });
-
 export function NewExplorationEntry({
   selection,
   setMode,
@@ -54,6 +44,9 @@ export function NewExplorationEntry({
     EXPLORATIONS_AGENT_ID,
   );
   const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
+  const { data: myExplorationsResponse, isSuccess: hasLoadedMyExplorations } =
+    useGetMyExplorationsQuery({ limit: 25 });
+  const myExplorations = myExplorationsResponse?.data ?? [];
 
   const handleSubmit = useCallback(() => {
     trackExplorationAgentMessageSent();
@@ -125,8 +118,10 @@ export function NewExplorationEntry({
             </Flex>
           </Flex>
         </Paper>
-        <Banner shouldHide={MOCK_EXPLORATIONS.length > 0} />
-        <ExplorationList explorations={MOCK_EXPLORATIONS} />
+        {hasLoadedMyExplorations && myExplorations.length === 0 && <Banner />}
+        {hasLoadedMyExplorations && myExplorations.length > 0 && (
+          <ExplorationList explorations={myExplorations} />
+        )}
       </Stack>
       {isCollectionPickerOpen && (
         <CollectionPickerModal
@@ -156,12 +151,12 @@ export function NewExplorationEntry({
   );
 }
 
-function Banner({ shouldHide }: { shouldHide: boolean }) {
+function Banner() {
   const [hasDismissedBanner, setHasDismissedBanner] = useUserSetting(
     "dismissed-research-mode-banner",
   );
 
-  if (hasDismissedBanner || shouldHide) {
+  if (hasDismissedBanner) {
     return null;
   }
 
@@ -175,6 +170,7 @@ function Banner({ shouldHide }: { shouldHide: boolean }) {
       py="md"
       bd="1px solid border"
       bdrs="md"
+      data-testid="research-mode-banner"
     >
       <Text>
         {t`Research mode helps automate running and inspecting combinations of metrics, dimensions, and event timelines so you can use your brain for analysis, not busy work.`}
@@ -190,34 +186,39 @@ function Banner({ shouldHide }: { shouldHide: boolean }) {
 }
 
 interface ExplorationListProps {
-  explorations: Pick<Exploration, "id" | "name" | "updated_at">[];
+  explorations: ExplorationSummary[];
 }
 
 function ExplorationList({ explorations }: ExplorationListProps) {
   return (
-    <Stack w="100%" mih={0}>
+    <Stack w="100%" mih={0} data-testid="past-research-projects">
       <Text fz="1.125rem" fw={600} c="text-secondary">
         {t`Past research projects`}
       </Text>
       <Stack gap="sm" mih={0} className={S.explorationsContainer}>
-        {explorations.map(({ id, name, updated_at }) => (
-          <Box
-            component={ForwardRefLink}
-            to={Urls.exploration(id)}
-            key={id}
-            px="md"
-            py="sm"
-            bdrs="md"
-            className={S.explorationLink}
-          >
-            <Text>{name}</Text>
-            <Tooltip position="bottom" label={getFormattedTime(updated_at)}>
-              <Text component="time" c="text-secondary" fz="sm">
-                {`Last activity - ${getRelativeTime(updated_at)}`}
-              </Text>
-            </Tooltip>
-          </Box>
-        ))}
+        {explorations.map(
+          ({ id, name, current_user_last_touched_at: lastTouchedAt }) => (
+            <Box
+              component={ForwardRefLink}
+              to={Urls.exploration(id)}
+              key={id}
+              px="md"
+              py="sm"
+              bdrs="md"
+              className={S.explorationLink}
+            >
+              <Text>{name}</Text>
+              <Tooltip
+                position="bottom"
+                label={getFormattedTime(lastTouchedAt)}
+              >
+                <Text component="time" c="text-secondary" fz="sm">
+                  {`Last activity - ${getRelativeTime(lastTouchedAt)}`}
+                </Text>
+              </Tooltip>
+            </Box>
+          ),
+        )}
       </Stack>
     </Stack>
   );

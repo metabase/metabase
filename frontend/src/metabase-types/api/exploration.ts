@@ -3,6 +3,7 @@ import type { Collection, CollectionId } from "./collection";
 import type { DocumentId } from "./document";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { SegmentId } from "./segment";
 import type { Timeline, TimelineEvent, TimelineId } from "./timeline";
@@ -258,6 +259,26 @@ export interface ExplorationCreator {
   first_name: string | null;
   last_name: string | null;
 }
+
+export interface ExplorationSummary {
+  id: ExplorationId;
+  name: string;
+  description?: string | null;
+  creator_id: UserId;
+  creator?: ExplorationCreator;
+  collection_id?: CollectionId | null;
+  collection?: Pick<Collection, "id" | "name"> | null;
+  archived?: boolean;
+  created_at: string;
+  updated_at: string;
+  current_user_last_touched_at: string;
+}
+
+export type GetMyExplorationsRequest = PaginationRequest;
+
+export type GetMyExplorationsResponse = {
+  data: ExplorationSummary[];
+} & PaginationResponse;
 
 export interface Exploration {
   id: ExplorationId;
