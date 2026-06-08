@@ -413,7 +413,11 @@ describe("TablePicker", () => {
       await clickItem(layerDatabase);
       await waitLoading();
 
-      expect(item(hiddenTable)).toBeInTheDocument();
+      // The auto-expansion re-renders the tree with the tables after
+      // waitLoading resolves, so wait for the first table to appear.
+      await waitFor(() => {
+        expect(item(hiddenTable)).toBeInTheDocument();
+      });
       expect(item(finalTable)).toBeInTheDocument();
 
       const labels = screen
