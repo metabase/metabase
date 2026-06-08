@@ -11,6 +11,10 @@ import {
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Api } from "metabase/api";
+import {
+  AIProviderConfigurationForm,
+  type MetabotApiKeyProvider,
+} from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
 import { defer } from "metabase/utils/promise";
 import type {
@@ -27,8 +31,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { MetabotSetup, MetabotSetupInner } from "./MetabotSetup";
-import type { MetabotApiKeyProvider } from "./utils";
+import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
 
 const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
   metabase: {
@@ -407,11 +410,14 @@ async function setup({
 
   const storeInitialState = { settings, currentUser: user };
   const view = renderAsModal
-    ? renderWithProviders(<MetabotSetupInner isModal onClose={onClose} />, {
-        storeInitialState,
-      })
+    ? renderWithProviders(
+        <AIProviderConfigurationForm isModal onClose={onClose} />,
+        {
+          storeInitialState,
+        },
+      )
     : renderWithProviders(
-        <Route path="/admin/metabot*" component={MetabotSetup} />,
+        <Route path="/admin/metabot*" component={AIProviderSettingsSection} />,
         {
           withRouter: true,
           initialRoute: "/admin/metabot",
@@ -460,7 +466,7 @@ async function confirmDisconnectProvider() {
   );
 }
 
-describe("MetabotSetup", () => {
+describe("AIProviderSettingsSection", () => {
   afterEach(() => {
     reinitialize();
   });
@@ -1298,6 +1304,7 @@ describe("MetabotSetup", () => {
 
   it("disconnects when clicking use a different AI provider from the locked managed-provider state", async () => {
     await setup({
+      isAdmin: true,
       isHosted: true,
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
       tokenStatusFeatures: ["metabase-ai-managed"],
@@ -1364,6 +1371,7 @@ describe("MetabotSetup", () => {
 
   it("resets the form in modal mode without updating settings", async () => {
     await setup({
+      isAdmin: true,
       isHosted: true,
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
       tokenStatusFeatures: ["metabase-ai-managed"],

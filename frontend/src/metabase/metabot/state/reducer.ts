@@ -2,7 +2,7 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
 import _ from "underscore";
 
-import { logout } from "metabase/auth/actions";
+import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
   MetabotCodeEdit,

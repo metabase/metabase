@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
-import { logout } from "metabase/auth/actions";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import { logout } from "metabase/redux/auth";
 import * as domModule from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 

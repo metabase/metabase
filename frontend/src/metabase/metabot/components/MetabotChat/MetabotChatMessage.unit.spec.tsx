@@ -15,7 +15,11 @@ import type {
   MetabotAgentChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockTable,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { AgentMessage, Messages } from "./MetabotChatMessage";
 import type { DataPointMentionTarget } from "./data-point-mentions";
@@ -216,6 +220,11 @@ const setup = (
       message={message}
       dataPointTargets={dataPointTargets}
     />,
+    {
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: true }),
+      },
+    },
   );
 
 describe("AgentMessage", () => {

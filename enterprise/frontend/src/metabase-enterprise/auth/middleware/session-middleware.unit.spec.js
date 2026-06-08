@@ -2,7 +2,7 @@ import FakeTimers from "@sinonjs/fake-timers";
 import Cookie from "js-cookie";
 import { replace } from "react-router-redux";
 
-import { logout, refreshSession } from "metabase/auth/actions";
+import { logout, refreshSession } from "metabase/redux/auth";
 
 import {
   COOKIE_POOLING_TIMEOUT,
@@ -11,7 +11,7 @@ import {
 } from "./session-middleware";
 
 jest.mock("js-cookie", () => jest.fn());
-jest.mock("metabase/auth/actions", () => ({
+jest.mock("metabase/redux/auth", () => ({
   logout: jest.fn(),
   refreshSession: jest.fn(() => Promise.resolve()),
 }));

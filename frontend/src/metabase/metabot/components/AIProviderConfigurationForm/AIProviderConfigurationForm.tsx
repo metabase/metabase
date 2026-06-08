@@ -13,13 +13,8 @@ import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import {
-  AdminSettingInput,
-  SetByEnvVar,
-} from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import {
-  skipToken,
   useGetMetabotSettingsQuery,
   useUpdateMetabotSettingsMutation,
   useUpdateSettingsMutation,
@@ -31,10 +26,10 @@ import {
 } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
-  Badge,
   Button,
   type ComboboxItem,
   Flex,
@@ -63,13 +58,14 @@ type MetabotModelOption = ComboboxItem & {
 
 function getModelDescription(provider: MetabotProvider | undefined) {
   if (provider === "metabase") {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- "Metabase" is the product name for the managed AI provider option, only shown to admins configuring AI.
     return t`Available models are provided by Metabase.`;
   }
 
   return t`Available models are fetched from the selected provider using its configured API key.`;
 }
 
-const MetabotSetupContext = createContext<{
+const AIProviderConfigurationContext = createContext<{
   connectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
   disconnectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
   isMutating: boolean;
@@ -89,7 +85,7 @@ const MetabotSetupContext = createContext<{
   isModal: false,
 });
 
-export function useMetabotSetupContext(
+export function useAIProviderConfigurationContext(
   onConnect: (() => Promise<void>) | null,
   onDisconnect: (() => Promise<void>) | null = null,
 ) {
@@ -101,7 +97,7 @@ export function useMetabotSetupContext(
     resetProvider,
     handleDisconnect,
     isModal,
-  } = useContext(MetabotSetupContext);
+  } = useContext(AIProviderConfigurationContext);
 
   useEffect(() => {
     if (!connectHandlerRef) {
@@ -132,70 +128,7 @@ export function useMetabotSetupContext(
   return { isMutating, resetProvider, handleDisconnect, isModal };
 }
 
-export function MetabotSetup({ id }: { id?: string }) {
-  const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
-  const { value: savedProviderValue } = useAdminSetting("llm-metabot-provider");
-  const config = useMemo(
-    () => parseProviderAndModel(savedProviderValue),
-    [savedProviderValue],
-  );
-  const isConfigured = !!useSetting("llm-metabot-configured?");
-  const connectedProvider = isConfigured ? config?.provider : undefined;
-  const connectedProviderSettingsQuery = useGetMetabotSettingsQuery(
-    connectedProvider && connectedProvider !== "metabase"
-      ? { provider: connectedProvider }
-      : skipToken,
-  );
-  const hasApiKeyError =
-    !!connectedProviderSettingsQuery.currentData?.["api-key-error"];
-
-  return (
-    <SettingsSection
-      id={id}
-      title={
-        <Flex justify="space-between" align="center">
-          <Group gap="xs" wrap="nowrap">
-            {connectedProvider && (
-              <Badge
-                circle
-                size="12"
-                bg={hasApiKeyError ? "error" : "success"}
-                mr="sm"
-              />
-            )}
-            <div>
-              {match({ connectedProvider, hasApiKeyError })
-                .with(
-                  { connectedProvider: P.nonNullable, hasApiKeyError: true },
-                  ({ connectedProvider }) =>
-                    t`Error connecting to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`,
-                )
-                .with(
-                  { connectedProvider: P.nonNullable },
-                  ({ connectedProvider }) =>
-                    t`Connected to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`,
-                )
-                .with(
-                  { connectedProvider: P.nullish },
-                  () => t`Connect to an AI provider`,
-                )
-                .exhaustive()}
-            </div>
-          </Group>
-        </Flex>
-      }
-      description={
-        !connectedProvider
-          ? t`Select your AI provider to use AI explorations, SQL generation and Metabot.`
-          : undefined
-      }
-    >
-      <MetabotSetupInner />
-    </SettingsSection>
-  );
-}
-
-export function MetabotSetupInner({
+export function AIProviderConfigurationForm({
   isModal = false,
   onClose,
 }: {
@@ -354,7 +287,7 @@ export function MetabotSetupInner({
   const [isConnectButtonEnabled, setIsConnectButtonEnabled] = useState(false);
 
   return (
-    <MetabotSetupContext.Provider
+    <AIProviderConfigurationContext.Provider
       value={{
         connectHandlerRef,
         disconnectHandlerRef,
@@ -404,7 +337,7 @@ export function MetabotSetupInner({
             <MetabaseAIProviderSetup onConnect={onClose} />
           ))
           .with(P.nonNullable, (selectedProvider) => (
-            <AIProviderSetup
+            <ProviderCredentialsFields
               selectedProvider={selectedProvider}
               connectedModel={connectedModel}
               isCurrentConfigured={isCurrentConfigured}
@@ -466,11 +399,11 @@ export function MetabotSetupInner({
           onConfirm={handleConfirmDisconnect}
         />
       </Stack>
-    </MetabotSetupContext.Provider>
+    </AIProviderConfigurationContext.Provider>
   );
 }
 
-const AIProviderSetup = ({
+const ProviderCredentialsFields = ({
   selectedProvider,
   connectedModel,
   isCurrentConfigured,
@@ -505,7 +438,7 @@ const AIProviderSetup = ({
   const connectHandler =
     !isCurrentConfigured || hasDirtyApiKey ? onConnect : null;
 
-  const { isMutating } = useMetabotSetupContext(connectHandler);
+  const { isMutating } = useAIProviderConfigurationContext(connectHandler);
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
