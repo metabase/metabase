@@ -7,6 +7,7 @@
    [java-time.clock]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.index-state :as index-state]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
@@ -72,7 +73,7 @@
           ;; Snapshot with a valid search index in place
           (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))
           ;; Clear the tracking atoms so we can verify they get restored
-          (reset! @#'search.index/*indexes* {:active nil, :pending nil})
+          (index-state/set-state! search.index/*state-store* {:active nil :pending nil})
           (is (nil? (search.index/active-table))
               "Precondition: tracking atoms should be cleared before restore")
           ;; Restore should call sync-from-restored-db! and refresh the atoms

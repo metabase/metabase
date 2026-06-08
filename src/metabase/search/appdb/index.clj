@@ -48,7 +48,10 @@
 ;;;
 ;;; A separate index-lock guards the multi-step DDL sequences (create-pending → activate)
 ;;; so that concurrent threads on the same node don't both attempt to build a new index.
-(defonce ^:dynamic *state-store*
+(defonce ^{:dynamic true
+           :doc "Lazily-refreshed view of the search_index_metadata table.
+                 Tests bind this to a MockStateStore so no DB interaction is needed for index state."}
+  *state-store*
   (index-state/db-backed-store
    (fn []
      (reduce-kv (fn [acc status table-name]
