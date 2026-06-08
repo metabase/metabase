@@ -285,6 +285,17 @@
       (is (= (#'pdf/visual-order "مرحبا")
              (#'pdf/visual-order "مَرْحَبًا"))))))               ; vocalised == plain once stripped
 
+(deftest base-rtl?-test
+  (testing "base direction is RTL only when the first strong character is RTL"
+    (is (true?  (boolean (#'pdf/base-rtl? "שלום עולם"))))            ; Hebrew
+    (is (true?  (boolean (#'pdf/base-rtl? "مرحبا بكم"))))            ; Arabic
+    (is (true?  (boolean (#'pdf/base-rtl? "مرحبا Metabase"))))       ; RTL-first, embedded LTR
+    (is (false? (boolean (#'pdf/base-rtl? "Metabase مرحبا"))))       ; LTR-first, embedded RTL
+    (is (true?  (boolean (#'pdf/base-rtl? "123 مرحبا"))))            ; digits are neutral; first STRONG char is Arabic
+    (is (false? (boolean (#'pdf/base-rtl? "Hello world"))))
+    (is (false? (boolean (#'pdf/base-rtl? ""))))
+    (is (false? (boolean (#'pdf/base-rtl? "日本語"))))))            ; CJK is LTR
+
 (deftest reorder-bidi-items-test
   (let [mk    (fn [t sp] {:text t :space-before? sp})
         texts (fn [items] (mapv :text (#'pdf/reorder-bidi-items items)))]

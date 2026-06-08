@@ -206,6 +206,15 @@
   (let [chars (.toCharArray s)]
     (Bidi/requiresBidi chars 0 (alength chars))))
 
+(defn- base-rtl?
+  "True if the bidi base direction of `s` is right-to-left -- i.e. its first strong directional
+  character is RTL (Arabic/Hebrew). This is the per-paragraph direction used to right-align RTL
+  titles, headings, and paragraphs (a block has a single base direction shared by all its lines)."
+  [^String s]
+  (let [s (str s)]
+    (and (contains-rtl? s)
+         (not (.baseIsLeftToRight (Bidi. s (int Bidi/LEVEL_DEFAULT_LTR)))))))
+
 (def ^:private arabic-tashkeel
   "Arabic combining marks: harakat/tanwin (fatha, kasra, damma, sukun, shadda, ...), the
   superscript alef, and Quranic annotation signs. These are zero-width marks that the font expects
@@ -396,28 +405,24 @@
     (.showText cs chunk))
   (.endText cs))
 
-(defn- draw-lines!
-  "Draw a seq of already-wrapped lines top-down from `top-y`, optionally in `color`."
-  [^PDPageContentStream cs face font-pt ^Color color x top-y lines]
-  (when color (.setNonStrokingColor cs color))
-  (loop [ls lines, y (- (double top-y) font-pt)]
-    (when (seq ls)
-      (draw-line! cs face font-pt x y (first ls))
-      (recur (rest ls) (- y (* font-pt line-height-factor)))))
-  (when color (.setNonStrokingColor cs Color/BLACK)))
-
 (defn- draw-text-block!
   "Draw wrapped text top-aligned within `[x, top-y]` bounded by `max-w`/`max-h`, optionally in
-  `color` (reset to black afterward). Returns the vertical points consumed."
+  `color` (reset to black afterward). Right-to-left text (Arabic/Hebrew) is flush-right within
+  `max-w`; everything else is flush-left. Returns the vertical points consumed."
   [^PDPageContentStream cs face font-pt ^Color color x top-y max-w max-h text]
-  (let [lh (* font-pt line-height-factor)]
+  (let [lh   (* font-pt line-height-factor)
+        rtl? (base-rtl? text)]
     (when color (.setNonStrokingColor cs color))
     (let [used (loop [lines (if (str/blank? (str text)) [] (wrap-text face font-pt text max-w))
                       y     (- (double top-y) font-pt)
                       used  0.0]
                  (if (and (seq lines) (<= (+ used lh) max-h))
-                   (do (draw-line! cs face font-pt x y (first lines))
-                       (recur (rest lines) (- y lh) (+ used lh)))
+                   (let [line (first lines)
+                         lx   (if rtl?
+                                (+ (double x) (max 0.0 (- max-w (text-width face font-pt line))))
+                                (double x))]
+                     (draw-line! cs face font-pt lx y line)
+                     (recur (rest lines) (- y lh) (+ used lh)))
                    used))]
       (when color (.setNonStrokingColor cs Color/BLACK))
       used)))
@@ -852,25 +857,37 @@
                   (assoc (nth items lp) :space-before? sep?)))
               order))))))
 
+(defn- md-line-width
+  "Drawn width of a (reordered) markdown line: each item's advance plus the space before it."
+  ^double [items]
+  (reduce (fn [^double w it] (+ w (if (:space-before? it) (double (:sp it)) 0.0) (double (:ww it))))
+          0.0 items))
+
 (defn- draw-md-line!
-  [^PDPageContentStream cs x baseline items]
-  (loop [items (reorder-bidi-items items), cx (double x)]
-    (when (seq items)
-      (let [it  (first items)
-            cx2 (+ cx (if (:space-before? it) (:sp it) 0.0))]
-        (.setNonStrokingColor cs ^Color (:color it))
-        (if (:ruby? it)
-          ;; base centered in the unit at the baseline; reading centered just above it
-          (let [ww     (:ww it)
-                base-x (+ cx2 (/ (- ww (:base-ww it)) 2.0))
-                read-x (+ cx2 (/ (- ww (:reading-ww it)) 2.0))]
-            (draw-line! cs (:font it) (:pt it) base-x baseline (:base it))
-            (draw-line! cs (:font it) (:ruby-pt it) read-x (+ baseline (:pt it) 1.0) (:reading it)))
-          (draw-line! cs (:font it) (:pt it) cx2 baseline (:text it)))
-        (when (:href it)
-          (record-link! cx2 baseline (:ww it) (:pt it) (:href it)))
-        (recur (rest items) (+ cx2 (:ww it))))))
-  (.setNonStrokingColor cs Color/BLACK))
+  "Draw one wrapped markdown line within the box `[x, x+content-w]`. When `rtl?`, the line is laid
+  out flush-right within that box (word order is already visual via `reorder-bidi-items`)."
+  [^PDPageContentStream cs x content-w rtl? baseline items]
+  (let [items (reorder-bidi-items items)
+        x0    (if rtl?
+                (+ (double x) (max 0.0 (- (double content-w) (md-line-width items))))
+                (double x))]
+    (loop [items items, cx x0]
+      (when (seq items)
+        (let [it  (first items)
+              cx2 (+ cx (if (:space-before? it) (:sp it) 0.0))]
+          (.setNonStrokingColor cs ^Color (:color it))
+          (if (:ruby? it)
+            ;; base centered in the unit at the baseline; reading centered just above it
+            (let [ww     (:ww it)
+                  base-x (+ cx2 (/ (- ww (:base-ww it)) 2.0))
+                  read-x (+ cx2 (/ (- ww (:reading-ww it)) 2.0))]
+              (draw-line! cs (:font it) (:pt it) base-x baseline (:base it))
+              (draw-line! cs (:font it) (:ruby-pt it) read-x (+ baseline (:pt it) 1.0) (:reading it)))
+            (draw-line! cs (:font it) (:pt it) cx2 baseline (:text it)))
+          (when (:href it)
+            (record-link! cx2 baseline (:ww it) (:pt it) (:href it)))
+          (recur (rest items) (+ cx2 (:ww it))))))
+    (.setNonStrokingColor cs Color/BLACK)))
 
 (defn- draw-code-block!
   [^PDPageContentStream cs block x top-y cell-w bottom scale]
@@ -937,6 +954,10 @@
           marker-w    (if marker (text-width marker-font base-pt marker) 0.0)
           content-x   (+ indent-x marker-w)
           content-w   (- (+ (double x) cell-w) content-x)
+          block-text  (apply str (map #(or (:text %) (:base %) "") (:runs block)))
+          ;; right-align RTL paragraphs and headings; list items (those with a marker) stay
+          ;; left-aligned for now -- proper RTL lists (marker on the right) are a separate change.
+          rtl?        (and (nil? marker) (base-rtl? block-text))
           lines       (words->lines (runs->words (:runs block)) base-pt heading? content-w)]
       (loop [lines lines, y (double top-y), first? true]
         (if (empty? lines)
@@ -951,7 +972,7 @@
               (do
                 (when (and first? marker)
                   (draw-line! cs marker-font base-pt indent-x baseline marker))
-                (draw-md-line! cs content-x baseline (first lines))
+                (draw-md-line! cs content-x content-w rtl? baseline (first lines))
                 (recur (rest lines) (- y adv) false)))))))))
 
 (defn- draw-markdown-in-cell!
@@ -1271,20 +1292,32 @@
            (draw-param-chip! cs (+ (double base-x) (:x chip)) (- y param-pt) chip))
          (recur (rest lines) (- y (* param-pt line-height-factor))))))))
 
+(defn- line-start-x
+  "Start x for drawing a single line of `text` (measured with `face`/`font-pt`) within the box
+  `[x, x+box-w]`: flush-right when the text's base direction is RTL, flush-left otherwise."
+  [face font-pt x box-w ^String text]
+  (if (base-rtl? text)
+    (+ (double x) (max 0.0 (- (double box-w) (text-width face font-pt text))))
+    (double x)))
+
 (defn- draw-header!
-  [^PDPageContentStream cs page-height {:keys [dashboard-title tab-title param-lines]}]
+  [^PDPageContentStream cs page-height content-w {:keys [dashboard-title tab-title param-lines]}]
   (let [bold (bold-font)
         top  (- (double page-height) margin)
         ;; order: dashboard title, then the dashboard-wide parameter bar, then the tab title
         y1   (if dashboard-title
-               (do (draw-line! cs bold dashboard-title-pt margin (- top dashboard-title-pt) dashboard-title)
+               (do (draw-line! cs bold dashboard-title-pt
+                               (line-start-x bold dashboard-title-pt margin content-w dashboard-title)
+                               (- top dashboard-title-pt) dashboard-title)
                    (- top (header-block-pt dashboard-title-pt)))
                top)
         y2   (if (seq param-lines)
                (draw-param-lines! cs param-lines y1)
                y1)]
     (when tab-title
-      (draw-line! cs bold tab-title-pt margin (- y2 tab-title-pt) tab-title))))
+      (draw-line! cs bold tab-title-pt
+                  (line-start-x bold tab-title-pt margin content-w tab-title)
+                  (- y2 tab-title-pt) tab-title))))
 
 (defn- add-link-annotations!
   "Add a clickable URI link annotation to `pg` for each collected rectangle (invisible border --
@@ -1325,7 +1358,7 @@
         card-area-top (- ph margin (* (:header-rows page) unit))]
     (binding [*link-rects* (atom [])]
       (try
-        (draw-header! cs ph page)
+        (draw-header! cs ph (* grid-cols unit) page)
         (doseq [cell (:cards page)]
           (let [rr     (- (:row cell) (:base page))
                 half   (/ gutter 2.0)
