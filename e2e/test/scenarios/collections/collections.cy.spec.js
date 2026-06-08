@@ -1290,7 +1290,7 @@ function openEllipsisMenuFor(item) {
 function selectItemUsingCheckbox(item, icon = "table") {
   cy.findByText(item)
     .closest("tr")
-    .within(() => cy.findByRole("checkbox").click());
+    .within(() => cy.findByRole("checkbox").closest("button").click());
 }
 
 function visitRootCollection() {
