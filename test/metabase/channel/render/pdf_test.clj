@@ -239,3 +239,35 @@
         (is (= [0.0] (mapv :x (second lines))))))
     (testing "no chips -> no lines"
       (is (= [] (#'pdf/layout-param-chips [] 1000.0))))))
+
+(deftest resolve-inline-params-test
+  (let [params [{:id "a" :name "Max Discount" :value [100]}
+                {:id "b" :name "Category" :value "Gadget"}
+                {:id "c" :name "Unset"} ; no value -> dropped
+                {:id "d" :name "Top level"}]]
+    (testing "only the dashcard's inline parameter ids that carry a value are returned, in param order"
+      (is (= [{:id "a" :name "Max Discount" :value [100]}]
+             (#'pdf/resolve-inline-params {:inline_parameters ["a" "c"]} params))))
+    (testing "multiple inline params preserve their order in the parameter list"
+      (is (= ["b" "a"]
+             (mapv :id (#'pdf/resolve-inline-params {:inline_parameters ["a" "b"]}
+                                                    (reverse params))))))
+    (testing "no inline parameters -> nil (so cells stay free of the key)"
+      (is (nil? (#'pdf/resolve-inline-params {} params)))
+      (is (nil? (#'pdf/resolve-inline-params {:inline_parameters []} params))))
+    (testing "an inline id that only has an unset parameter -> nil"
+      (is (nil? (#'pdf/resolve-inline-params {:inline_parameters ["c"]} params))))))
+
+(deftest effective-display-test
+  (testing "a non-visualizer card uses its own display"
+    (is (= :bar (#'pdf/effective-display {:display "bar"} {})))
+    (is (= :bar (#'pdf/effective-display {:display "bar"} {:visualization_settings {}}))))
+  (testing "a visualizer dashcard overrides the underlying card's display"
+    ;; e.g. a smartscalar card surfaced as a bar chart -> fill its cell like a real bar chart
+    (is (= :bar (#'pdf/effective-display
+                 {:display "smartscalar"}
+                 {:visualization_settings {:visualization {:display "bar"}}}))))
+  (testing "a visualizer dashcard without an explicit display falls back to the card display"
+    (is (= :line (#'pdf/effective-display
+                  {:display "line"}
+                  {:visualization_settings {:visualization {:settings {}}}})))))
