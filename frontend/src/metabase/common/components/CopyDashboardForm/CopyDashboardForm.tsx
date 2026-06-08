@@ -5,7 +5,6 @@ import * as Yup from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import { Button } from "metabase/common/components/Button";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/Pickers";
 import {
@@ -22,7 +21,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Group, Icon, Tooltip } from "metabase/ui";
+import { Button, Group, Icon, Tooltip } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import * as Errors from "metabase/utils/errors";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";

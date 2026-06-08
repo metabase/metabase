@@ -149,7 +149,7 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
     case "pulse":
       return item.name;
     case "question-notification":
-      return item.payload.card?.name || t`Alert`;
+      return item.payload?.card?.name || t`Alert`;
   }
 };
 
@@ -258,7 +258,7 @@ function hasProperGoalForAlert({
   visualizationSettings,
 }: {
   question: Question | undefined;
-  visualizationSettings: VisualizationSettings;
+  visualizationSettings?: VisualizationSettings;
 }): boolean {
   if (!question) {
     return false;
@@ -281,7 +281,7 @@ export function getAlertTriggerOptions({
   visualizationSettings,
 }: {
   question: Question | undefined;
-  visualizationSettings: VisualizationSettings;
+  visualizationSettings?: VisualizationSettings;
 }): NotificationCardSendCondition[] {
   const hasValidGoal = hasProperGoalForAlert({
     question,

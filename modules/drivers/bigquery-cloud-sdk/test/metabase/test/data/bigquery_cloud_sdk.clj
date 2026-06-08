@@ -363,7 +363,7 @@
 ;;;     (#'bq-tx/orphan-isolation-datasets)
 ;;;     ;; => ("mb__isolation_..." ...)
 ;;;     (#'bq-tx/orphan-isolation-service-accounts)
-;;;     ;; => ("mb__isolation_..." ...)
+;;;     ;; => ("mb-ws-..." ...)
 ;;;
 ;;; The whole-orchestration entry point is the existing
 ;;; [[delete-old-datasets-if-needed!]].
@@ -381,7 +381,7 @@
        (map first)))
 
 (defn- orphan-isolation-service-accounts
-  "Return iso SA email addresses (`mb__isolation_*@...`) older than 3 hours.
+  "Return iso SA email addresses (`mb-ws-*@...`) older than 3 hours.
 
    Age comes from the `created-at:<iso-instant>` marker encoded in the SA
    `description` field by
@@ -403,7 +403,7 @@
              (keep (fn [^com.google.iam.admin.v1.ServiceAccount sa]
                      (let [sa-email   (.getEmail sa)
                            created-at (bigquery.ws/ws-sa-description->created-at (.getDescription sa))]
-                       (when (and (str/starts-with? sa-email "mb__isolation_")
+                       (when (and (str/starts-with? sa-email "mb-ws-")
                                   created-at
                                   (.isBefore ^java.time.Instant created-at threshold))
                          sa-email))))

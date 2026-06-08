@@ -94,6 +94,27 @@
                   ["card" 3 "classified"]]
                  (search-results :rrf "order"))))))))
 
+(deftest semantic-distance-test
+  (mt/with-premium-features #{:semantic-search}
+    ;; Bind embeddings around indexing *and* querying: cosine distance scores the stored doc embedding against the
+    ;; query embedding, so the docs must be indexed with these vectors, not the default fallback.
+    ;; Cosine distance ignores magnitude, so these order purely by direction relative to the query: "near" shares the
+    ;; query's direction (distance 0 -> score 1), "mid" diverges a little, "far" the most. All stay under the 0.7
+    ;; cutoff so every doc survives semantic retrieval.
+    (semantic.tu/with-mock-embeddings {"animal"      [1.0 0.0 0.0 0.0]
+                                       "animal near" [1.0 0.0 0.0 0.0]
+                                       "animal mid"  [1.0 0.5 0.0 0.0]
+                                       "animal far"  [1.0 1.0 0.0 0.0]}
+      (with-index-contents!
+        [{:model "card" :id 1 :name "animal near"}
+         {:model "card" :id 2 :name "animal mid"}
+         {:model "card" :id 3 :name "animal far"}]
+        (testing "Closer cosine distance ranks higher"
+          (is (= [["card" 1 "animal near"]
+                  ["card" 2 "animal mid"]
+                  ["card" 3 "animal far"]]
+                 (search-results :semantic-distance "animal"))))))))
+
 (deftest exact-test
   (mt/with-premium-features #{:semantic-search}
     (with-index-contents!
@@ -104,6 +125,16 @@
                 ["card" 2 "stop words"]]
                (search-results :exact "the any most of stop words very")))))))
 
+(deftest exact-normalization-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-index-contents!
+      [{:model "card" :id 1 :name "Sales,  Revenue"}
+       {:model "card" :id 2 :name "Sales Revenue Report"}]
+      (testing "Exact matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales,  Revenue"]
+                ["card" 2 "Sales Revenue Report"]]
+               (search-results :exact "sales revenue")))))))
+
 (deftest prefix-test
   (mt/with-premium-features #{:semantic-search}
     (with-index-contents!
@@ -113,6 +144,16 @@
         (is (= [["card" 1 "this is a prefix of something longer"]
                 ["card" 2 "a prefix this is not, unfortunately"]]
                (search-results :prefix "this is a prefix")))))))
+
+(deftest prefix-normalization-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-index-contents!
+      [{:model "card" :id 1 :name "Sales, Revenue Quarterly"}
+       {:model "card" :id 2 :name "Revenue and Sales"}]
+      (testing "Prefix matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales, Revenue Quarterly"]
+                ["card" 2 "Revenue and Sales"]]
+               (search-results :prefix "sales revenue")))))))
 
 (deftest pinned-test
   (mt/with-premium-features #{:semantic-search}

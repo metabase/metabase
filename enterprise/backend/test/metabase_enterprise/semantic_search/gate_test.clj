@@ -9,7 +9,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.test.util :as mt]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
@@ -324,10 +324,10 @@
             (is (== 4 (mt/metric-value system :metabase-search/semantic-gate-write-documents)))
             (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-modified))))
           (testing ":metabase-search/semantic-gate-timeout-ms is updated on timeout"
-            (with-redefs [semantic.gate/execute-upsert!
-                          (fn [& _] (throw (org.postgresql.util.PSQLException.
-                                            "ERROR: canceling statement due to statement timeout"
-                                            org.postgresql.util.PSQLState/QUERY_CANCELED)))]
+            (mt/with-dynamic-fn-redefs [semantic.gate/execute-upsert!
+                                        (fn [& _] (throw (org.postgresql.util.PSQLException.
+                                                          "ERROR: canceling statement due to statement timeout"
+                                                          org.postgresql.util.PSQLState/QUERY_CANCELED)))]
               (let [ex (try
                          (sut pgvector index-metadata docs)
                          (catch Exception e e))]

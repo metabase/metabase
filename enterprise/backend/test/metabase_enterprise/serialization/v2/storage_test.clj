@@ -190,12 +190,12 @@
                                   (map? v)               (descend v (conj path k))
                                   (and (sequential? v)
                                        (map? (first v))) (run! #(descend % (conj path k)) v))))))]
-          (with-redefs [spit (fn [fname yaml-data]
-                               (testing (format "File %s\n" fname)
-                                 (let [coll (yaml/parse-string yaml-data)]
-                                   (if (str/ends-with? fname "settings.yaml")
-                                     (descend coll [:settings])
-                                     (descend coll)))))]
+          (mt/with-dynamic-fn-redefs [spit (fn [fname yaml-data]
+                                             (testing (format "File %s\n" fname)
+                                               (let [coll (yaml/parse-string yaml-data)]
+                                                 (if (str/ends-with? fname "settings.yaml")
+                                                   (descend coll [:settings])
+                                                   (descend coll)))))]
             (storage/store! export (storage.files/file-writer dump-dir))))))))
 
 (deftest store-error-test
@@ -291,11 +291,11 @@
 
               ;; Export again but with nested entity query results reversed,
               ;; simulating non-deterministic DB row ordering (as seen on Aurora Postgres)
-              original-fn @#'serdes/transform->nested
+              original-fn (mt/original-fn #'serdes/transform->nested)
               yaml-reversed
-              (with-redefs [serdes/transform->nested
-                            (fn [transform opts batch]
-                              (update-vals (original-fn transform opts batch) reverse))]
+              (mt/with-dynamic-fn-redefs [serdes/transform->nested
+                                          (fn [transform opts batch]
+                                            (update-vals (original-fn transform opts batch) reverse))]
                 (clean-and-export!))]
           (testing "Dashcard ordering should be stable regardless of DB return order"
             (is (= yaml-before yaml-reversed)

@@ -90,9 +90,9 @@
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
   Provided so you can swap this out with an \"inbox\" for test purposes.
 
-  If email-rate-limit-per-second is set, this function will throttle the email sending based on the total number of recipients."
+  Throttling is applied once per logical message in [[send-message-or-throw!]], not here, so that a message split
+  into multiple recipient batches is throttled as a unit rather than per batch."
   [smtp-credentials email-details]
-  (check-email-throttle email-details)
   (postal/send-message (add-mail-args smtp-credentials) email-details))
 
 (defn- add-ssl-settings [m ssl-setting]
@@ -167,6 +167,12 @@
                                                     :content message}])}
                          (when-let [reply-to (:reply-to smtp-settings)]
                            {:reply-to reply-to}))]
+      ;; Throttle once for the whole logical message, before splitting it into batches. Batching
+      ;; ([[partition-recipients]]) turns one notification into several SMTP messages; if we threw on a later
+      ;; batch after earlier ones had already been sent, the caller's retry would resend those earlier batches
+      ;; and recipients would get duplicates. Checking here means the throttle can only throw before anything is
+      ;; sent, so a retry is safe.
+      (check-email-throttle {to-type recipients})
       (doseq [batch (partition-recipients recipients (channel.settings/email-max-recipients-per-message))]
         ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
         (send-email! smtp-settings (assoc base-message to-type (seq batch)))))

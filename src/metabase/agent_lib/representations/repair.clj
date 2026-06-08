@@ -716,7 +716,11 @@
   (let [head (u/lower-case-en (nth node 0))
         x    (nth node 2)]
     (case head
-      "true"  x
+      ;; Always emit a vector so we don't expose a bare scalar (`["true" {} x]` -> `x`) that a
+      ;; sole-element parent would turn into an un-optioned clause `[x]`, which a later `repair`
+      ;; pass would then "fix" to `[x {}]` - breaking idempotency. A wrapped clause is returned
+      ;; as-is; a wrapped scalar becomes a clause with an empty options map.
+      "true"  (if (vector? x) x [x {}])
       "false" ["not" {} x])))
 
 (defn- unwrap-boolean-wrappers*
