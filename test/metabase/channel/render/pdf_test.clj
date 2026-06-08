@@ -275,7 +275,35 @@
       (is (every? (fn [c] (or (<= 0xFB50 (int c) 0xFDFF) (<= 0xFE70 (int c) 0xFEFF)))
                   out))
       (is (not-any? (fn [c] (<= 0x0600 (int c) 0x06FF)) out))
-      (is (not (re-find #"\?" out))))))
+      (is (not (re-find #"\?" out)))))
+  (testing "Arabic vowel marks (tashkeel) are dropped, leaving the bare consonant skeleton
+            (no zero-width combining marks, no spacing FE70-block tashkeel that would float)"
+    ;; مُحَمَّدٌ (vocalised 'Muhammad') and مرحبا shape to the same consonants once marks are gone
+    (let [vocalised (#'pdf/visual-order "مُحَمَّدٌ")]
+      (is (= 4 (count vocalised)))                              ; د م ح م, no marks left
+      (is (not-any? (fn [c] (<= 0xFE70 (int c) 0xFE7F)) vocalised))  ; no spacing tashkeel forms
+      (is (= (#'pdf/visual-order "مرحبا")
+             (#'pdf/visual-order "مَرْحَبًا"))))))               ; vocalised == plain once stripped
+
+(deftest reorder-bidi-items-test
+  (let [mk    (fn [t sp] {:text t :space-before? sp})
+        texts (fn [items] (mapv :text (#'pdf/reorder-bidi-items items)))]
+    (testing "a left-to-right line keeps its word order"
+      (is (= ["Hello" "world"] (texts [(mk "Hello" false) (mk "world" true)]))))
+    (testing "a single item (or empty line) is returned unchanged"
+      (is (= ["שלום"] (texts [(mk "שלום" false)])))
+      (is (= [] (texts []))))
+    (testing "a right-to-left line has its words reversed to visual order"
+      ;; logical [aleph beth gimel] reads right-to-left, so visually gimel is leftmost
+      (is (= ["ג" "ב" "א"] (texts [(mk "א" false) (mk "ב" true) (mk "ג" true)]))))
+    (testing "the first visual word loses its leading space; later words keep an inter-word space"
+      (is (= [false true true]
+             (mapv :space-before? (#'pdf/reorder-bidi-items
+                                   [(mk "א" false) (mk "ב" true) (mk "ג" true)])))))
+    (testing "an embedded left-to-right word keeps its internal order within an RTL line"
+      ;; logical: shalom, Metabase, olam -> visual L-to-R: olam, Metabase, shalom
+      (is (= ["עולם" "Metabase" "שלום"]
+             (texts [(mk "שלום" false) (mk "Metabase" true) (mk "עולם" true)]))))))
 
 (deftest effective-display-test
   (testing "a non-visualizer card uses its own display"
