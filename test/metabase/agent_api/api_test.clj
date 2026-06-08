@@ -434,7 +434,13 @@
                         {:database (mt/id) :type "native" :native {:query "select 1"}}]
                        ["MBQL 5 native stage"
                         {:lib/type "mbql/query"
-                         :stages   [{:lib/type "mbql.stage/native" :native "select 1"}]}]]]
+                         :stages   [{:lib/type "mbql.stage/native" :native "select 1"}]}]
+                       ["MBQL 5 native stage nested in a join"
+                        {:lib/type "mbql/query"
+                         :stages   [{:lib/type "mbql.stage/mbql"
+                                     :joins    [{:lib/type "mbql/join"
+                                                 :stages   [{:lib/type "mbql.stage/native"
+                                                             :native   "select 1"}]}]}]}]]]
       (testing label
         (is (re-find #"Native queries are not supported"
                      (str (mt/user-http-request :rasta :post 400 "agent/v2/query"

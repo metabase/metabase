@@ -400,14 +400,17 @@
    [:fresh        ::construct-query-request]])
 
 (defn- native-query?
-  "True if `query-map` (a decoded, client-reachable query) expresses native SQL — either the legacy
-   top-level `:type :native` or an MBQL 5 `:mbql.stage/native` stage.
-   Membership tests cover both the keyword and json-decoded string forms and never coerce, so junk in
-   a malformed `:type` / `:lib/type` doesn't throw before the shape is validated."
+  "True if `query-map` (a decoded, client-reachable query) contains native SQL anywhere — the legacy
+   top-level `:type :native`, or an MBQL 5 `:mbql.stage/native` stage at any depth (top-level stages,
+   join stages, nested joins).
+   A whole-tree scan rather than a top-level check: these endpoints are MBQL-only by scope, so a
+   native stage anywhere means the payload is smuggling raw SQL. Membership tests cover the keyword
+   and json-decoded string forms and never coerce, so junk values don't throw."
   [query-map]
   (or (contains? #{:native "native"} (:type query-map))
-      (boolean (some #(and (map? %) (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type %)))
-                     (when (sequential? (:stages query-map)) (:stages query-map))))))
+      (boolean (some #(and (map? %)
+                           (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type %)))
+                     (tree-seq coll? seq query-map)))))
 
 (defn- reject-native-query!
   "Throw a 400 if `query-map` is a native query.
