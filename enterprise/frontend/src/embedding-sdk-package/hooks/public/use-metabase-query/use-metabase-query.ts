@@ -108,6 +108,16 @@ type BreakoutForMetric<TMetric, TSchema> =
   | MetabaseMetricBreakout
   | MetabaseBreakout<MappedTable<TMetric, TSchema>>;
 
+type MetricSource<TMetric> =
+  | {
+      metricId: ID;
+      metric?: never;
+    }
+  | {
+      metric: TMetric extends MetricSchema ? TMetric : MetricSchema;
+      metricId?: never;
+    };
+
 type FilterOperator =
   | "="
   | "!="
@@ -190,8 +200,7 @@ type TableQuery<TTable> = {
   enabled?: boolean;
 };
 
-type MetricQuery<TMetric, TSchema> = {
-  metricId: ID;
+type MetricQuery<TMetric, TSchema> = MetricSource<TMetric> & {
   questionId?: never;
   tableId?: never;
   filters?: TMetric extends MetricSchema
@@ -400,6 +409,13 @@ export const useMetabaseQuery = <
 function buildTableDatasetQuery(
   query: TableQuery<unknown>,
 ): Omit<StructuredDatasetQuery, "database"> {
+  validateTableScopedInputs({
+    allowedTableIds: [Number(query.tableId)],
+    filters: query.filters,
+    measures: query.measures,
+    context: "Table query",
+  });
+
   const mbql: StructuredDatasetQuery["query"] = {
     "source-table": Number(query.tableId),
   };
@@ -444,7 +460,7 @@ function isTableQuery(
 function isMetricQuery(
   query: MetabaseQueryOptions<unknown, unknown>,
 ): query is MetricQuery<unknown, unknown> {
-  return query.metricId != null;
+  return getMetricId(query) != null;
 }
 
 function hasMeasures(
@@ -477,11 +493,15 @@ function buildMetricDatasetQuery(
   query: MetricQuery<unknown, unknown> & { measures: readonly unknown[] },
 ): Omit<StructuredDatasetQuery, "database"> {
   const measures = query.measures.filter(isMeasureSchema);
-  const sourceTableId = getMeasureSourceTableId(measures);
+  const sourceTableId = getMeasureSourceTableId(query, measures);
+  const metricId = Number(getMetricId(query)) as MetricId;
+
+  validateMetricTableScopedInputs(query);
+
   const mbql: StructuredDatasetQuery["query"] = {
     "source-table": sourceTableId,
     aggregation: [
-      ["metric", Number(query.metricId)] as Aggregation,
+      ["metric", metricId] as Aggregation,
       ...measures.map(buildMeasureClause).filter(isNotNull),
     ],
   };
@@ -506,7 +526,10 @@ function buildMetricDatasetQuery(
   };
 }
 
-function getMeasureSourceTableId(measures: MeasureSchema[]) {
+function getMeasureSourceTableId(
+  query: MetricQuery<unknown, unknown>,
+  measures: MeasureSchema[],
+) {
   const [firstMeasure] = measures;
 
   if (!firstMeasure) {
@@ -524,6 +547,12 @@ function getMeasureSourceTableId(measures: MeasureSchema[]) {
     throw new Error("Metric query measures must belong to the same table.");
   }
 
+  validateGeneratedTableId({
+    tableId,
+    allowedTableIds: getMetricMappedTableIds(query),
+    context: "Metric query measures",
+  });
+
   return tableId;
 }
 
@@ -536,7 +565,9 @@ function buildTableBreakout(
 }
 
 function buildMetricDefinition(query: MetricQuery<unknown, unknown>) {
-  const metricId = Number(query.metricId) as MetricId;
+  validateMetricTableScopedInputs(query);
+
+  const metricId = Number(getMetricId(query)) as MetricId;
   const uuid = "metric";
   const definition: JsMetricDefinition = {
     expression: ["metric", { "lib/uuid": uuid }, metricId],
@@ -687,6 +718,95 @@ function isNotNull<TValue>(value: TValue | null): value is TValue {
   return value !== null;
 }
 
+function getMetricId(query: unknown): ID | null {
+  if (typeof query !== "object" || query == null) {
+    return null;
+  }
+
+  if ("metricId" in query && query.metricId != null) {
+    return query.metricId as ID;
+  }
+
+  if ("metric" in query && isMetricSchema(query.metric)) {
+    return query.metric.id;
+  }
+
+  return null;
+}
+
+function getMetricMappedTableIds(
+  query: MetricQuery<unknown, unknown>,
+): readonly number[] | null {
+  return isMetricSchema(query.metric) && query.metric.mappedTableIds
+    ? query.metric.mappedTableIds
+    : null;
+}
+
+function validateMetricTableScopedInputs(query: MetricQuery<unknown, unknown>) {
+  validateTableScopedInputs({
+    allowedTableIds: getMetricMappedTableIds(query),
+    filters: query.filters,
+    measures: query.measures,
+    context: "Metric query",
+  });
+}
+
+function validateTableScopedInputs({
+  allowedTableIds,
+  filters,
+  measures,
+  context,
+}: {
+  allowedTableIds: readonly number[] | null;
+  filters?: readonly unknown[];
+  measures?: readonly unknown[];
+  context: string;
+}) {
+  if (!allowedTableIds) {
+    return;
+  }
+
+  filters?.forEach((filter) => {
+    if (isSegmentSchema(filter)) {
+      validateGeneratedTableId({
+        tableId: filter.tableId,
+        allowedTableIds,
+        context: `${context} segments`,
+      });
+    }
+  });
+
+  measures?.forEach((measure) => {
+    if (isMeasureSchema(measure)) {
+      validateGeneratedTableId({
+        tableId: measure.tableId,
+        allowedTableIds,
+        context: `${context} measures`,
+      });
+    }
+  });
+}
+
+function validateGeneratedTableId({
+  tableId,
+  allowedTableIds,
+  context,
+}: {
+  tableId: number;
+  allowedTableIds: readonly number[] | null;
+  context: string;
+}) {
+  if (!allowedTableIds || allowedTableIds.includes(tableId)) {
+    return;
+  }
+
+  throw new Error(
+    `${context} must belong to one of the query's mapped tables. Expected table id ${tableId} to be one of ${allowedTableIds.join(
+      ", ",
+    )}.`,
+  );
+}
+
 function isDimensionFilter(value: unknown): value is MetabaseDimensionFilter {
   return typeof value === "object" && value != null && "dimension" in value;
 }
@@ -731,6 +851,15 @@ function isMeasureSchema(value: unknown): value is MeasureSchema {
     value != null &&
     "kind" in value &&
     value.kind === "measure"
+  );
+}
+
+function isMetricSchema(value: unknown): value is MetricSchema {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "id" in value &&
+    "columns" in value
   );
 }
 
