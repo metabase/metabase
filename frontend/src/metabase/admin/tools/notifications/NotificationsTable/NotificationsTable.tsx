@@ -20,6 +20,7 @@ import { getUserLabel } from "metabase/utils/user";
 import type {
   AdminNotification,
   NotificationChannelType,
+  NotificationHandler,
   NotificationId,
 } from "metabase-types/api";
 
@@ -49,6 +50,14 @@ type ChannelSummary = {
   count: number;
 };
 
+const getHandlerTargetCount = (handler: NotificationHandler): number => {
+  if (handler.channel_type === "channel/http") {
+    // Webhook handlers target the configured HTTP channel via channel_id, not recipients.
+    return 1;
+  }
+  return handler.recipients.length;
+};
+
 const summarizeChannels = (
   notification: AdminNotification,
 ): ChannelSummary[] => {
@@ -56,7 +65,7 @@ const summarizeChannels = (
   const map = new Map<NotificationChannelType, number>();
   for (const handler of handlers) {
     const prev = map.get(handler.channel_type) ?? 0;
-    map.set(handler.channel_type, prev + handler.recipients.length);
+    map.set(handler.channel_type, prev + getHandlerTargetCount(handler));
   }
   return Array.from(map.entries()).map(([channel, count]) => ({
     channel,

@@ -34,10 +34,11 @@ export const SidebarBody = ({
     (handler): handler is NotificationHandlerSlack =>
       handler.channel_type === "channel/slack",
   );
-  const httpHandler = handlers.find(
+  // Webhook handlers target the configured HTTP channel via channel_id, not recipients.
+  const webhookCount = handlers.filter(
     (handler): handler is NotificationHandlerHttp =>
       handler.channel_type === "channel/http",
-  );
+  ).length;
   const emailRecipientCount = emailHandler?.recipients.length ?? 0;
   const slackChannelCount = slackHandler?.recipients.length ?? 0;
 
@@ -49,7 +50,7 @@ export const SidebarBody = ({
         notification={notification}
         emailRecipientCount={emailRecipientCount}
         slackChannelCount={slackChannelCount}
-        httpHandler={httpHandler}
+        webhookCount={webhookCount}
       />
       <NotificationRunSummaryLog
         title={t`Check history`}

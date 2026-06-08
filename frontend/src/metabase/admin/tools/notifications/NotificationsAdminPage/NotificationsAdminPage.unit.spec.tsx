@@ -28,6 +28,7 @@ import {
   createMockAdminNotification,
   createMockCard,
   createMockCardQueryMetadata,
+  createMockNotificationHandlerHttp,
   createMockUserInfo,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
@@ -52,6 +53,18 @@ const BOB = createMockUserInfo({
 
 const notification1 = createMockAdminNotification({ id: 1, creator: ANN });
 const notification2 = createMockAdminNotification({ id: 2, creator: BOB });
+const webhookNotification = createMockAdminNotification({
+  id: 99,
+  creator: ANN,
+  handlers: [createMockNotificationHandlerHttp()],
+  payload: {
+    id: 7,
+    card_id: 1,
+    card: createMockCard({ id: 1, name: "Webhook Alert" }),
+    send_once: false,
+    send_condition: "has_result",
+  },
+});
 
 type SetupOpts = {
   notifications?: AdminNotification[];
@@ -161,6 +174,21 @@ describe("NotificationsAdminPage", () => {
       expect(within(row1).getByText("Ann Admin")).toBeInTheDocument();
       expect(within(row1).getByText("#1")).toBeInTheDocument();
       expect(within(row2).getByText("Bob Boss")).toBeInTheDocument();
+    });
+
+    it("counts webhook handlers as configured channels", async () => {
+      setup({ notifications: [webhookNotification] });
+      await waitForLoaderToBeRemoved();
+
+      const row = await screen.findByTestId("notification-row-99");
+      expect(within(row).getByText("Webhook Alert")).toBeInTheDocument();
+      expect(within(row).getByText("1")).toBeInTheDocument();
+      expect(within(row).queryByText("0")).not.toBeInTheDocument();
+
+      await userEvent.click(row);
+
+      expect(await screen.findByText("1 webhook")).toBeInTheDocument();
+      expect(screen.queryByText("No channels")).not.toBeInTheDocument();
     });
 
     it("shows an empty state when there are no notifications", async () => {
