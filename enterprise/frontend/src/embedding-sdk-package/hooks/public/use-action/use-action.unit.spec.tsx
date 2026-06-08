@@ -3,11 +3,11 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
-import type { SdkActionId } from "embedding-sdk-bundle/types/action";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import type { SdkActionId } from "embedding-sdk-bundle/types/action";
 
 import { useAction } from "./use-action";
 

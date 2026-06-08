@@ -1,5 +1,5 @@
+import type { SdkActionId } from "embedding-sdk-bundle/types/action";
 import { POST } from "metabase/api/legacy-client";
-import { SdkActionId } from "embedding-sdk-bundle/types/action";
 
 type ActionParametersPayload = Record<string, unknown>;
 

@@ -11,7 +11,6 @@ import {
 } from "@metabase/embedding-sdk-react";
 import { useEffect, useState } from "react";
 
-import type { SdkActionId } from "embedding-sdk-bundle/types/action";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -28,6 +27,8 @@ import {
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
+
+import type { SdkActionId } from "embedding-sdk-bundle/types/action";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
