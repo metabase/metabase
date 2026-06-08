@@ -36,7 +36,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: health
-                  type: integer
+                  type: int
                   remarks: Health as a percentage out of 100
                   constraints:
                     nullable: false

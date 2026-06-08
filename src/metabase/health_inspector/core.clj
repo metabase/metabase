@@ -14,10 +14,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *delay-ms*
-  "Per-query delay to prevent overloading the system."
-  5)
-
 (defn- validate-query [{:keys [total valid]} {:keys [dataset_query]}]
   (let [timer (u/start-timer)
         query (lib-be/normalize-query (json/decode dataset_query keyword))

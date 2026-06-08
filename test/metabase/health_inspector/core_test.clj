@@ -11,20 +11,18 @@
 (hi/register-check! :test-check test-check)
 
 (deftest report-test
-  (binding [hi/*delay-ms* 0]
-    (let [report (hi/report)]
-      (testing "test check works"
-        (is (= {:health 100 :message "test check"}
-               (:test-check report))))
-      (testing "validate-queries works"
-        (is (= 100 (-> report :validate-queries :health)))))))
+  (let [report (hi/report)]
+    (testing "test check works"
+      (is (= {:health 100 :message "test check"}
+             (:test-check report))))
+    (testing "validate-queries works"
+      (is (= 100 (-> report :validate-queries :health))))))
 
 (deftest report-db-test
-  (binding [hi/*delay-ms* 0]
-    (t2/delete! :health_inspector_runs)
-    (hi/save-report)
-    (hi/save-report)
-    (let [runs (group-by :check_name (hi/list-runs 32))]
-      (is (= [100 100] (map :health (runs "test-check"))))
-      (is (= ["test check" "test check"] (map :message (runs "test-check"))))
-      (is (= [100 100] (map :health (runs "validate-queries")))))))
+  (t2/delete! :health_inspector_runs)
+  (hi/save-report)
+  (hi/save-report)
+  (let [runs (group-by :check_name (hi/list-runs 32))]
+    (is (= [100 100] (map :health (runs "test-check"))))
+    (is (= ["test check" "test check"] (map :message (runs "test-check"))))
+    (is (= [100 100] (map :health (runs "validate-queries"))))))
