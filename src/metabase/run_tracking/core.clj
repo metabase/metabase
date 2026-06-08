@@ -46,10 +46,10 @@
   to the cutoff), `:terminal` (map merged into the UPDATE), `:age`/`:unit` (staleness cutoff), and optional
   `:also-stale` (extra predicate OR'd with the cutoff check)."
   [{:keys [model active stale-column terminal age unit also-stale]}]
-  (let [co    (cutoff age unit)
-        stale (if also-stale
-                [:or [:< stale-column co] also-stale]
-                [:< stale-column co])]
+  (let [cutoff-form (cutoff age unit)
+        stale       (if also-stale
+                      [:or [:< stale-column cutoff-form] also-stale]
+                      [:< stale-column cutoff-form])]
     (t2/with-transaction [_conn]
       (when-let [rows (not-empty (apply t2/select model (concat active [{:where stale :for :update}])))]
         (apply t2/update! model :id [:in (mapv :id rows)] (concat active [terminal]))
