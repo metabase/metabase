@@ -27,7 +27,6 @@ import type {
 import type {
   FieldSchema,
   InferSchema,
-  MeasureSchema,
   MetricDimensionSchema,
   QueryData,
   QuestionSchema,
@@ -50,12 +49,6 @@ type SegmentValues<TEntity> = TEntity extends {
   segments?: infer TSegments;
 }
   ? Values<NonNullable<TSegments>>
-  : never;
-
-type MeasureValues<TEntity> = TEntity extends {
-  measures?: infer TMeasures;
-}
-  ? Values<NonNullable<TMeasures>>
   : never;
 
 type FieldValues<TEntity> = TEntity extends {
@@ -89,6 +82,17 @@ type MetricReference<TMappedTableId extends number = number> = {
   dimensions?: Record<string, MetricDimensionSchema>;
 };
 
+type MeasureReference<TTableId extends number = number> = {
+  kind: "measure";
+  id: number;
+  tableId: TTableId;
+  columns?: readonly SchemaColumn[];
+};
+
+type TableId<TTable> = TTable extends { id: infer TId extends number }
+  ? TId
+  : number;
+
 type MappedTableId<TMetric> = TMetric extends {
   mappedTableIds?: readonly number[];
 }
@@ -102,7 +106,7 @@ type MappedTable<TMetric, TSchema> = Extract<
 
 type SegmentForMetric<TMetric> = SegmentSchema<MappedTableId<TMetric>>;
 
-type MeasureForMetric<TMetric> = MeasureSchema<MappedTableId<TMetric>>;
+type MeasureForMetric<TMetric> = MeasureReference<MappedTableId<TMetric>>;
 
 type BreakoutForMetric<TMetric, TSchema> =
   | MetabaseMetricBreakout
@@ -184,7 +188,7 @@ type TableQuery<TTable> = {
     ? readonly (SegmentValues<TTable> | MetabaseDimensionFilter<TTable>)[]
     : readonly unknown[];
   measures?: TTable extends TableSchema
-    ? readonly MeasureValues<TTable>[]
+    ? readonly MeasureReference<TableId<TTable>>[]
     : readonly unknown[];
   breakouts?: TTable extends TableSchema
     ? readonly MetabaseBreakout<TTable>[]
@@ -543,7 +547,7 @@ function buildMetricDatasetQuery(
 
 function getMeasureSourceTableId(
   query: MetricQuery<unknown, unknown>,
-  measures: MeasureSchema[],
+  measures: MeasureReference[],
 ) {
   const [firstMeasure] = measures;
 
@@ -858,7 +862,7 @@ function isSegmentSchema(value: unknown): value is SegmentSchema {
   );
 }
 
-function isMeasureSchema(value: unknown): value is MeasureSchema {
+function isMeasureSchema(value: unknown): value is MeasureReference {
   return (
     typeof value === "object" &&
     value != null &&
