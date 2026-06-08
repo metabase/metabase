@@ -207,22 +207,22 @@
    400
    "typed-schemas/v1/json?questions=true"))
 
-(deftest collections-query-params-are-mutually-exclusive-test
+(deftest collection-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
-   "typed-schemas/v1/json?collections=1,2&database=1")
+   "typed-schemas/v1/json?library-collections=1,2&database=1")
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
-   "typed-schemas/v1/json?collections=1,2&questions=true")
+   "typed-schemas/v1/json?question-collections=1,2&questions=true")
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
-   "typed-schemas/v1/json?library=1&collections=2"))
+   "typed-schemas/v1/json?library=1&library-collections=2"))
 
 (deftest library-collection-scope-accepts-subcollection-id-test
   (mt/with-temp [:model/Collection root  {:name "Library"
@@ -265,11 +265,28 @@
               :data-collection-ids   #{(:id data-child) (:id data-grandkid)}
               :metric-collection-ids #{(:id metric-child)}}
              (select-keys (#'typed-schemas.api/library-collections-scope
-                           (#'typed-schemas.api/query-collection-values
-                            {:collections (format "%d, %d"
-                                                  (:id data-child)
-                                                  (:id metric-child))}))
+                           (#'typed-schemas.api/query-library-collection-values
+                            {:library-collections (format "%d, %d"
+                                                          (:id data-child)
+                                                          (:id metric-child))}))
                           [:collection-ids :data-collection-ids :metric-collection-ids]))))))
+
+(deftest query-collection-values-accept-camel-case-aliases-test
+  (is (= ["1" "2"]
+         (#'typed-schemas.api/query-library-collection-values {:libraryCollections "1, 2"})))
+  (is (= ["3" "4"]
+         (#'typed-schemas.api/query-question-collection-values {:questionCollections "3, 4"}))))
+
+(deftest question-collection-scope-accepts-comma-separated-collection-ids-test
+  (mt/with-temp [:model/Collection parent {:name "Question Parent"
+                                           :location "/"}
+                 :model/Collection child  {:name "Question Child"
+                                           :location (collection/children-location parent)}]
+    (mt/with-test-user :crowberto
+      (is (= #{(:id parent) (:id child)}
+             (#'typed-schemas.api/collection-scope
+              (#'typed-schemas.api/query-question-collection-values
+               {:question-collections (str (:id parent))})))))))
 
 (deftest library-schema-includes-metric-mapped-tables-test
   (let [selected-table-ids (atom nil)]
@@ -332,9 +349,59 @@
                   typed-schemas.api/table-schemas
                   (constantly [{:kind "table", :key "publishedTable", :id 10}
                                {:kind "table", :key "mappedTable", :id 42}])]
-      (let [schema (#'typed-schemas.api/typed-schema {:collections "10, 20"})]
+      (let [schema (#'typed-schemas.api/typed-schema {:library-collections "10, 20"})]
         (is (= #{10 42} @selected-table-ids))
         (is (= {} (:questions schema)))
         (is (= #{100} (->> (:models schema) vals (map :id) set)))
         (is (= #{10 42} (->> (:tables schema) vals (map :id) set)))
         (is (= #{1} (->> (:metrics schema) vals (map :id) set)))))))
+
+(deftest question-collections-schema-includes-selected-question-collections-test
+  (with-redefs [typed-schemas.api/collection-scope
+                (fn [collection-values]
+                  (is (= ["30" "40"] collection-values))
+                  #{30 40})
+                typed-schemas.api/question-schemas
+                (fn [database-ids collection-ids]
+                  (is (nil? database-ids))
+                  (is (= #{30 40} collection-ids))
+                  [{:kind "question", :key "ordersByMonth", :id 1}])
+                typed-schemas.api/model-schemas
+                (constantly [{:kind "model", :key "allModelsAreAlwaysIncluded", :id 100}])]
+    (let [schema (#'typed-schemas.api/typed-schema {:question-collections "30, 40"})]
+      (is (= #{1} (->> (:questions schema) vals (map :id) set)))
+      (is (= #{100} (->> (:models schema) vals (map :id) set)))
+      (is (= {} (:tables schema)))
+      (is (= {} (:metrics schema))))))
+
+(deftest library-and-question-collections-can-be-combined-test
+  (with-redefs [typed-schemas.api/library-collections-scope
+                (fn [collection-values]
+                  (is (= ["10"] collection-values))
+                  {:metric-collection-ids #{10}
+                   :data-collection-ids   #{10}})
+                typed-schemas.api/collection-scope
+                (fn [collection-values]
+                  (is (= ["30"] collection-values))
+                  #{30})
+                typed-schemas.api/question-schemas
+                (fn [database-ids collection-ids]
+                  (is (nil? database-ids))
+                  (is (= #{30} collection-ids))
+                  [{:kind "question", :key "ordersByMonth", :id 1}])
+                typed-schemas.api/model-schemas
+                (constantly [{:kind "model", :key "allModelsAreAlwaysIncluded", :id 100}])
+                typed-schemas.api/metric-schemas
+                (constantly [{:kind "metric", :key "revenue", :id 2}])
+                typed-schemas.api/select-library-tables
+                (constantly [{:id 3}])
+                typed-schemas.api/select-tables
+                (constantly [{:id 3}])
+                typed-schemas.api/table-schemas
+                (constantly [{:kind "table", :key "orders", :id 3}])]
+    (let [schema (#'typed-schemas.api/typed-schema {:library-collections  "10"
+                                                    :question-collections "30"})]
+      (is (= #{1} (->> (:questions schema) vals (map :id) set)))
+      (is (= #{100} (->> (:models schema) vals (map :id) set)))
+      (is (= #{3} (->> (:tables schema) vals (map :id) set)))
+      (is (= #{2} (->> (:metrics schema) vals (map :id) set))))))
