@@ -113,6 +113,34 @@ describe("PublicApp", () => {
     expect(screen.queryByText("Powered by")).not.toBeInTheDocument();
   });
 
+  it("renders unlock form when password is required", () => {
+    setup({
+      error: {
+        status: 403,
+        data: { error_code: "public-link-password-required" },
+      },
+    });
+    expect(
+      screen.getByText("This link is password protected"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("unlock-password-input")).toBeInTheDocument();
+    expect(screen.getByTestId("unlock-submit-button")).toBeInTheDocument();
+    expect(screen.queryByTestId("test-content")).not.toBeInTheDocument();
+  });
+
+  it("renders generic error for non-password 403", () => {
+    setup({
+      error: {
+        status: 403,
+        data: { error_code: "some-other-error", message: "Forbidden" },
+      },
+    });
+    expect(screen.getByText("Forbidden")).toBeInTheDocument();
+    expect(
+      screen.queryByText("This link is password protected"),
+    ).not.toBeInTheDocument();
+  });
+
   describe("theming", () => {
     it("renders correctly without a theme parameter", () => {
       setup();

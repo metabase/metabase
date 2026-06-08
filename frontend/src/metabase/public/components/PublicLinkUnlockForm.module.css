@@ -1,0 +1,20 @@
+.root {
+  position: relative;
+  min-height: 100vh;
+  background-color: var(--mb-color-background-secondary);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 100vh;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+}
