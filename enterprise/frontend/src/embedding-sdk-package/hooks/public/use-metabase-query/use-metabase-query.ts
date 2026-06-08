@@ -461,11 +461,8 @@ export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
 };
 
 type UseMetabaseQuery = <
-  TEntity extends
-    | QuestionSchema
-    | TableSchema
-    | MetricReference
-    | undefined = undefined,
+  TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
+    undefined,
   TSchema = unknown,
   const TQuery = unknown,
 >(
@@ -528,11 +525,8 @@ export function breakout<TDimension>(
 }
 
 const useMetabaseQueryImpl = <
-  TEntity extends
-    | QuestionSchema
-    | TableSchema
-    | MetricReference
-    | undefined = undefined,
+  TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
+    undefined,
   TSchema = unknown,
   TQuery extends MetabaseQueryOptions<TEntity, TSchema> = MetabaseQueryOptions<
     TEntity,
@@ -826,16 +820,18 @@ function buildFieldReference(
   field: string | FieldSchema | MetricDimensionSchema,
   options: Record<string, unknown> = {},
 ): FieldReference {
-  if (
-    isFieldSchema(field) &&
-    "fieldId" in field &&
-    typeof field.fieldId === "number"
-  ) {
+  if (isTableFieldSchema(field) && typeof field.fieldId === "number") {
     return ["field", field.fieldId, options] as FieldReference;
   }
 
-  if (isFieldSchema(field) && typeof field.id === "number") {
+  if (isTableFieldSchema(field) && typeof field.id === "number") {
     return ["field", field.id, options] as FieldReference;
+  }
+
+  if (typeof field === "object" && field != null) {
+    throw new Error(
+      "Table query fields must use generated table field objects from schema.tables.*.fields.*.",
+    );
   }
 
   return ["field", String(field), options] as FieldReference;
@@ -1061,13 +1057,27 @@ function isMetricReference(value: unknown): value is MetricReference {
 function isFieldSchema(
   value: unknown,
 ): value is FieldSchema | MetricDimensionSchema {
-  return typeof value === "object" && value != null && "id" in value;
+  return isTableFieldSchema(value) || isMetricDimensionSchema(value);
+}
+
+function isTableFieldSchema(value: unknown): value is FieldSchema {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    !("metricId" in value) &&
+    ("fieldId" in value || "id" in value)
+  );
 }
 
 function isMetricDimensionSchema(
   value: unknown,
 ): value is MetricDimensionSchema {
-  return isFieldSchema(value);
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "metricId" in value &&
+    "id" in value
+  );
 }
 
 function mapDatasetQueryData<TRow>(

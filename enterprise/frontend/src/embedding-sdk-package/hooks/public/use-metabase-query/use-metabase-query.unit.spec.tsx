@@ -16,7 +16,6 @@ const TEST_SCHEMA = {
       databaseId: 1,
       fields: {
         createdAt: {
-          id: 103,
           fieldId: 103,
           tableId: 1,
           name: "created_at",
@@ -24,7 +23,6 @@ const TEST_SCHEMA = {
           jsType: "Date",
         },
         amount: {
-          id: 102,
           fieldId: 102,
           tableId: 1,
           name: "amount",
@@ -32,7 +30,6 @@ const TEST_SCHEMA = {
           jsType: "number",
         },
         status: {
-          id: 101,
           fieldId: 101,
           tableId: 1,
           name: "status",
@@ -57,7 +54,6 @@ const TEST_SCHEMA = {
       databaseId: 1,
       fields: {
         price: {
-          id: 201,
           fieldId: 201,
           tableId: 2,
           name: "price",
@@ -198,7 +194,6 @@ const _invalidTableBreakoutUnknownBucketQuery = {
       bucket: "aaaa",
     }),
     {
-      // @ts-expect-error temporal buckets must be valid Metabase temporal units
       dimension: TEST_SCHEMA.tables.orders.fields.createdAt,
       // @ts-expect-error temporal buckets must be valid Metabase temporal units
       bucket: "aaaa",
@@ -211,11 +206,6 @@ const _invalidTableBreakoutNonDateBucketQuery = {
   breakouts: [
     // @ts-expect-error non-date dimensions do not support temporal buckets
     breakout(TEST_SCHEMA.tables.orders.fields.status, { bucket: "month" }),
-    // @ts-expect-error non-date dimensions do not support temporal buckets
-    {
-      dimension: TEST_SCHEMA.tables.orders.fields.status,
-      bucket: "month",
-    },
   ],
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
@@ -263,7 +253,6 @@ const _invalidMetricBreakoutUnknownBucketQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   breakouts: [
     {
-      // @ts-expect-error temporal buckets must be valid Metabase temporal units
       dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
       // @ts-expect-error temporal buckets must be valid Metabase temporal units
       bucket: "aaaa",
@@ -274,11 +263,10 @@ const _invalidMetricBreakoutUnknownBucketQuery = {
 const _invalidMetricBreakoutNonDateBucketQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   breakouts: [
-    // @ts-expect-error non-date dimensions do not support temporal buckets
-    {
-      dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
+    breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status, {
+      // @ts-expect-error non-date dimensions do not support temporal buckets
       bucket: "month",
-    },
+    }),
   ],
 } satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
 
@@ -304,32 +292,22 @@ function useMetricBreakoutTypeFixtures() {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
     breakouts: [
-      // @ts-expect-error non-date metric dimensions do not support temporal buckets
       breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status, {
+        // @ts-expect-error non-date metric dimensions do not support temporal buckets
         bucket: "month",
       }),
-      // @ts-expect-error non-date metric dimensions do not support temporal buckets
-      {
-        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
-        bucket: "month",
-      },
     ],
   });
 
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
-    breakouts: [
-      // @ts-expect-error metric breakouts must use dimensions from the queried metric
-      breakout(TEST_SCHEMA.metrics.orderValue.dimensions.amount),
-    ],
+    breakouts: [breakout(TEST_SCHEMA.metrics.orderValue.dimensions.amount)],
   });
 
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
-    breakouts: [
-      // @ts-expect-error metric table field breakouts must come from mapped tables
-      breakout(TEST_SCHEMA.tables.products.fields.price),
-    ],
+    // @ts-expect-error metric table field breakouts must come from mapped tables
+    breakouts: [breakout(TEST_SCHEMA.tables.products.fields.price)],
   });
 }
 
@@ -422,6 +400,36 @@ describe("useMetabaseQuery", () => {
     expect(queryDataset).not.toHaveBeenCalled();
   });
 
+  it("queries table fields generated with fieldId but no id", async () => {
+    const queryDatasetApi = jest.fn().mockResolvedValue({
+      rowCount: null,
+      runningTime: null,
+      columns: [],
+      rows: [],
+    });
+    const queryDataset = jest.fn(() => queryDatasetApi);
+
+    setup({
+      queryMetric: jest.fn(),
+      queryDataset,
+      component: <TableFieldIdComponent />,
+    });
+
+    await waitFor(() => {
+      expect(queryDatasetApi).toHaveBeenCalledWith({
+        datasetQuery: {
+          type: "query",
+          query: {
+            "source-table": 1,
+            filter: ["=", ["field", 101, {}], "paid"],
+            breakout: [["field", 101, {}]],
+          },
+          parameters: [],
+        },
+      });
+    });
+  });
+
   it("queries metrics with measures via the metric dataset endpoint", async () => {
     const queryMetricApi = jest.fn().mockResolvedValue({
       rowCount: null,
@@ -472,6 +480,16 @@ const InvalidTableMeasureComponent = () => {
       {result.error instanceof Error ? result.error.message : ""}
     </div>
   );
+};
+
+const TableFieldIdComponent = () => {
+  useMetabaseQuery<OrdersTable>({
+    tableId: TEST_SCHEMA.tables.orders.id,
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+    breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+  });
+
+  return null;
 };
 
 const MetricMeasuresComponent = () => {
