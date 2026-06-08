@@ -6,6 +6,7 @@ import { snippetApi } from "metabase/api";
 import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
+import * as metadataActions from "metabase/redux/metadata";
 import * as sharedQB from "metabase/redux/query-builder";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -955,6 +956,17 @@ describe("QB Actions > initializeQB", () => {
       const { result } = await setupTableRoute(ORDERS_ID);
       expect(result.card.id).toBeUndefined();
       expect(result.card.displayIsLocked).toBeFalsy();
+    });
+
+    it("fetches database metadata for schema breadcrumbs (metabase#75393)", async () => {
+      const fetchDatabaseMetadataSpy = jest.spyOn(
+        metadataActions,
+        "fetchDatabaseMetadata",
+      );
+
+      await setupTableRoute(ORDERS_ID);
+
+      expect(fetchDatabaseMetadataSpy).toHaveBeenCalledWith(SAMPLE_DB_ID);
     });
 
     it("shows a not-found error for an unknown table", async () => {
