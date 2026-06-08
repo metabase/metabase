@@ -1,8 +1,8 @@
-import type { ComponentType } from "react";
-
-import { QuestionLoaderHOC } from "metabase/common/components/QuestionLoader";
+import {
+  type QuestionLoaderChildrenProps,
+  QuestionLoaderHOC,
+} from "metabase/common/components/QuestionLoader";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-import type Question from "metabase-lib/v1/Question";
 import type { CardId, ParameterTarget, UnsavedCard } from "metabase-types/api";
 
 import { ParameterTargetWidget } from "../components/ParameterTargetWidget";
@@ -13,10 +13,6 @@ type OwnProps = {
   placeholder?: string;
 };
 
-type InnerProps = OwnProps & {
-  question: Question | null;
-};
-
 // Props the QuestionLoaderHOC forwards to its underlying QuestionLoader.
 type LoaderProps = {
   questionObject?: UnsavedCard | null;
@@ -25,7 +21,10 @@ type LoaderProps = {
   includeSensitiveFields?: boolean;
 };
 
-function QuestionParameterTargetWidget({ question, ...props }: InnerProps) {
+function QuestionParameterTargetWidgetBase({
+  question,
+  ...props
+}: LoaderProps & OwnProps & QuestionLoaderChildrenProps) {
   const mappingOptions = question
     ? getParameterMappingOptions(question, null, question.card(), null, null, {
         includeSensitiveFields: true,
@@ -34,18 +33,15 @@ function QuestionParameterTargetWidget({ question, ...props }: InnerProps) {
 
   return (
     <ParameterTargetWidget
-      {...props}
+      target={props.target}
+      onChange={props.onChange}
+      placeholder={props.placeholder}
       question={question ?? undefined}
       mappingOptions={mappingOptions}
     />
   );
 }
 
-// QuestionLoaderHOC comes from an untyped JS HOC, so we narrow the exported
-// component's props to what callers actually pass.
-const QuestionParameterTargetWidgetContainer = QuestionLoaderHOC(
-  QuestionParameterTargetWidget,
-) as ComponentType<OwnProps & LoaderProps>;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QuestionParameterTargetWidgetContainer;
+export const QuestionParameterTargetWidget = QuestionLoaderHOC(
+  QuestionParameterTargetWidgetBase,
+);

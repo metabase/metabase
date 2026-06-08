@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Icon, Select, Text, Tooltip } from "metabase/ui";
-import QuestionParameterTargetWidget from "metabase-enterprise/sandboxes/containers/QuestionParameterTargetWidget";
+import { QuestionParameterTargetWidget } from "metabase-enterprise/sandboxes/containers/QuestionParameterTargetWidget";
 import type {
   DataAttributeMap,
   GroupTableAccessPolicyDraft,
@@ -194,7 +194,7 @@ const ColumnPicker = ({
   shouldUseSavedQuestion,
 }: {
   value: ValueType;
-  onChange?: (value: string) => void;
+  onChange: (value: DimensionRef) => void;
   policyTable?: Table;
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft;
   shouldUseSavedQuestion: boolean;
@@ -205,14 +205,16 @@ const ColumnPicker = ({
     shouldUseSavedQuestion && policy.card_id != null;
 
   if (filterByTableColumn || filterBySavedQuestion) {
+    // ValueType's string member is the "no value set yet" sentinel.
+    const target = typeof value === "string" ? null : value;
     return (
       <Box miw={200}>
         <QuestionParameterTargetWidget
-          // ColumnPicker shares ValueType (string | DimensionRef | null) with
-          // AttributePicker, but in this branch the value is always a
-          // ParameterTarget (or null) and onChange always emits one.
-          target={value as ParameterTarget | null}
-          onChange={onChange as unknown as (target: ParameterTarget) => void}
+          // DimensionRef (from the policy API) and ParameterTarget are
+          // structurally compatible tuple shapes here; the API type predates
+          // ParameterTarget (see the FIXME in permissions.ts).
+          target={target as ParameterTarget | null}
+          onChange={onChange as (target: ParameterTarget) => void}
           questionObject={
             filterByTableColumn && policyTable
               ? getRawDataQuestionForTable(policyTable)
