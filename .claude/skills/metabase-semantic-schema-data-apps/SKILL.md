@@ -1,6 +1,6 @@
 ---
 name: metabase-semantic-schema-data-apps
-description: Use when building React data apps from curated Metabase typed schema exports with the Embedding SDK query hook.
+description: Use when building or editing React dashboards, operations dashboards, or data apps from a Metabase semantic layer or generated schema file such as metabase.data.ts or *.metabase.data.ts.
 ---
 
 # Metabase Semantic Schema Data Apps
@@ -9,7 +9,7 @@ description: Use when building React data apps from curated Metabase typed schem
 
 Keep the semantic layer and presentation layer separate.
 
-- All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/scoped.metabase.data.ts`.
+- All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create questions, create metrics, create tables, or edit the semantic layer while building the React UI.
 - Use `useMetabaseQuery`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
