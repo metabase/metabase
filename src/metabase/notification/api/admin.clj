@@ -1,6 +1,6 @@
-(ns metabase-enterprise.notification-admin.api
-  "Admin endpoints for notifications (card-type alerts). Gated behind the `:audit-app` feature flag
-  and `check-superuser`. Each row carries `:last_check` (latest scheduler tick — any terminal
+(ns metabase.notification.api.admin
+  "Admin endpoints for notifications (card-type alerts). Gated behind `check-superuser`. Each row
+  carries `:last_check` (latest scheduler tick — any terminal
   outcome) and `:last_send` (latest channel-send delivery attempt — any outcome, including
   failures) computed from windowed subqueries; both expose `{at, error, status}`. The API surface
   uses `creator_*` throughout — matching `notification.creator_id` and the hydrated `:creator` map,
@@ -29,11 +29,12 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
-   [metabase.notification.api :as notification-api]
+   [metabase.notification.api.notification :as notification-api]
    [metabase.notification.models :as models.notification]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -288,7 +289,7 @@
   "Optional WHERE clauses for the list/detail query, returned as data (a seq with inactive filters
   elided) so `base-list-query` can `(reduce sql.helpers/where ...)` them onto the query."
   [{:keys [active creator_id creator_active creatorless card_id recipient_email channel
-           last_send_status query]}]
+           last_send_status last_check_status query]}]
   (keep
    identity
    [(when (some? active)         [:= :notification.active active])
@@ -307,6 +308,13 @@
       (case last_send_status
         :successful [:= :ls.has_failure false]
         :failing    [:= :ls.has_failure true]))
+    ;; `last_check` is the whole-run rollup (success/failed/abandoned), so it's a superset of
+    ;; `last_send`: it catches query failures and heartbeat-abandoned runs that never reached the
+    ;; channel-send step, not just delivery failures. The Failing tab filters on this.
+    (when last_check_status
+      (case last_check_status
+        :successful [:= :lc.status "success"]
+        :failing    [:in :lc.status ["failed" "abandoned"]]))
     (when recipient_email
       (let [ids (notification-ids-with-recipient-email recipient_email)]
         ;; No recipient matched → an always-false predicate so the page comes back empty. We use
@@ -412,7 +420,13 @@
   (when (and status at)
     (let [run-status (coerce-run-status status)]
       {:at     at
-       :error  (when (= run-status :failing) error)
+       ;; Abandoned runs are heartbeat-killed mid-flight, so they usually have no task_history
+       ;; message. Without a synthesized reason the Failing tab would show them as failing with a
+       ;; blank "why", which is the first question an admin asks. Fall back to an explanation.
+       :error  (when (= run-status :failing)
+                 (or error
+                     (when (= status :abandoned)
+                       (tru "The run was abandoned, likely because the instance restarted while it was queued."))))
        :status run-status})))
 
 (defn- coerce-status
@@ -522,7 +536,12 @@
 
   `last_send_status` filter operates on the latest channel-send task_history row for the
   notification's card (`successful` = latest channel-send succeeded; `failing` = latest
-  channel-send failed). The Failing tab uses `?last_send_status=failing`.
+  channel-send failed).
+
+  `last_check_status` filter operates on the latest terminal TaskRun for the card — the whole-run
+  rollup (`successful` = the run succeeded; `failing` = it failed or was abandoned). This is a
+  superset of `last_send_status`: it also catches query failures and heartbeat-abandoned runs that
+  never reached the send step. The Failing tab uses `?last_check_status=failing`.
 
   `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless
   tab). `creatorless=false` selects the inverse.
@@ -530,7 +549,7 @@
   `channel` accepts a single string or a repeated query param for multi-select (OR logic)."
   [_route
    {:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status
-           query sort_column sort_direction]} :-
+           last_check_status query sort_column sort_direction]} :-
    [:map
     [:active            {:optional true} [:maybe ms/BooleanValue]]
     [:creator_id        {:optional true} ms/PositiveInt]
@@ -540,23 +559,25 @@
     [:recipient_email   {:optional true} ms/NonBlankString]
     [:channel           {:optional true} [:maybe [:or ms/NonBlankString [:sequential ms/NonBlankString]]]]
     [:last_send_status  {:optional true} ::run-status]
+    [:last_check_status {:optional true} ::run-status]
     [:query             {:optional true} ms/NonBlankString]
     [:sort_column       {:default :last_send} ::sort-column]
     [:sort_direction    {:default :desc}      ::sort-direction]]]
   (api/check-superuser)
-  (list-notifications {:limit            (or (request/limit) 50)
-                       :offset           (or (request/offset) 0)
-                       :active           active
-                       :creator_id       creator_id
-                       :creator_active   creator_active
-                       :creatorless      creatorless
-                       :card_id          card_id
-                       :recipient_email  recipient_email
-                       :channel          channel
-                       :last_send_status last_send_status
-                       :query            query
-                       :sort_column      sort_column
-                       :sort_direction   sort_direction}))
+  (list-notifications {:limit             (or (request/limit) 50)
+                       :offset            (or (request/offset) 0)
+                       :active            active
+                       :creator_id        creator_id
+                       :creator_active    creator_active
+                       :creatorless       creatorless
+                       :card_id           card_id
+                       :recipient_email   recipient_email
+                       :channel           channel
+                       :last_send_status  last_send_status
+                       :last_check_status last_check_status
+                       :query             query
+                       :sort_column       sort_column
+                       :sort_direction    sort_direction}))
 
 ;; ---------------------------------------------------------------------------
 ;; Detail endpoint helpers

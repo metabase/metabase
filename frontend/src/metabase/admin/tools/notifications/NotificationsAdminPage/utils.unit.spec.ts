@@ -184,12 +184,13 @@ describe("NotificationsAdminPage/utils", () => {
       ).toBeUndefined();
     });
 
-    it("lets the failing tab override last_send_status", () => {
+    it("filters the failing tab on run health (last_check), not delivery (last_send)", () => {
       const params = buildListParams(
-        { ...DEFAULT_STATE, tab: "failing", last_send_status: "successful" },
+        { ...DEFAULT_STATE, tab: "failing" },
         PAGE_SIZE,
       );
-      expect(params.last_send_status).toBe("failing");
+      expect(params.last_check_status).toBe("failing");
+      expect(params.last_send_status).toBeUndefined();
     });
 
     it("pins creatorless on the ownerless tab and suppresses creator_active", () => {

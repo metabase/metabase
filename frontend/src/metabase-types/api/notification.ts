@@ -216,6 +216,7 @@ export type AdminNotificationListParams = {
   recipient_email?: string;
   channel?: NotificationChannelType | NotificationChannelType[];
   last_send_status?: NotificationRunStatus;
+  last_check_status?: NotificationRunStatus;
   query?: string;
   sort_column?: AdminNotificationSortColumn;
   sort_direction?: SortDirection;

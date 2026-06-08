@@ -780,8 +780,8 @@
   ;; numbers, and underscores, start with a letter or underscore, and be at most 128 characters long.
   (let [s (-> (str/trim s)
               u/remove-diacritical-marks
-              (str/replace #"[^\w\d_]" "_")
-              (str/replace #"(^\d)" "_$1"))]
+              (str/replace #"[^\p{L}\p{N}\p{M}\p{Pc}]" "_")
+              (str/replace #"(^[^\p{L}_])" "_$1"))]
     ((get-method driver/escape-alias :sql) driver s)))
 
 ;; See:
