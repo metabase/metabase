@@ -1,7 +1,8 @@
 (ns metabase.search.config-test
   (:require
    [clojure.test :refer :all]
-   [metabase.search.config :as search.config]))
+   [metabase.search.config :as search.config]
+   [metabase.util.malli.registry :as mr]))
 
 ;; All that matters is that this is not legacy search.
 (def ^:private search-engine :search.engine/appdb)
@@ -22,3 +23,9 @@
            (search.config/filter-default :search.engine/in-place :command-palette :filter-items-in-personal-collection)))
     (is (= "exclude-others"
            (search.config/filter-default :search.engine/in-place :search-app :filter-items-in-personal-collection)))))
+
+(deftest context-schema-test
+  (testing "the HTTP `context` enum allows the UI surfaces and :api, but not the in-process-only :metabot"
+    (is (mr/validate search.config/Context :search-app))
+    (is (mr/validate search.config/Context :api))
+    (is (not (mr/validate search.config/Context :metabot)))))

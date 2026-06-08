@@ -260,6 +260,40 @@
   separate `case` (with an `:hnsw` default) and must be updated by hand when adding a strategy."
   [:hnsw :brute-force])
 
+(def ^:private ui-contexts
+  "Search `context` values issued by the frontend, one per UI surface.
+  Selects the ranking weights ([[static-weights]]) and filter defaults ([[filter-defaults-by-context]]).
+  Keep in sync with the frontend `SearchContext` type (frontend/src/metabase-types/api/search.ts).
+  Give every value a comment naming the surface that issues it."
+  [:search-bar          ; the global navbar search typeahead
+   :search-app          ; the full-page search results app
+   :command-palette     ; the ⌘K command palette
+   :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
+   :data-picker         ; picking a data source (table/model/metric) while building a query
+   :type-filter         ; the search type-filter dropdown's available-models lookup
+   :browse              ; the Browse models / Browse metrics pages
+   :embedding-setup     ; embedding/SDK setup and preview resource selection
+   :document            ; entity references embedded in documents
+   :library             ; the data-studio Library page (EE)
+   :dependencies        ; the dependency-graph entry search (EE)
+   :model-migration])   ; the migrate-models admin page (EE)
+
+(def ^:private non-ui-contexts
+  "Search `context` values for non-frontend callers.
+  Excluded from the frontend `SearchContext` type so the frontend cannot use them."
+  [:api       ; programmatic / third-party API access
+   :metabot]) ; built in-process by Metabot and the agent API, never sent over HTTP
+
+(def ^:private contexts
+  "All valid search request `context` values: [[ui-contexts]] plus [[non-ui-contexts]]."
+  (into ui-contexts non-ui-contexts))
+
+(def Context
+  "Malli enum for the search request `context` query parameter: every value in [[contexts]] except
+  `:metabot`, which is constructed in-process and is never sent over HTTP.
+  The `:decode/string keyword` hook coerces the query-string value (e.g. \"search-app\") to a keyword."
+  (into [:enum {:decode/string keyword}] (remove #{:metabot} contexts)))
+
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
   [:map {:closed true}
