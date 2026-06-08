@@ -122,23 +122,47 @@
           (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))))))
 
 (deftest deprovision-frees-instance-test
-  (testing "deprovision! calls the child DELETE and returns the instance to the pool"
+  (testing "deprovision! cleans the synced collection, unbinds the child, and frees the instance"
     (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace]
       (mt/with-temp [:model/Workspace {ws-id :id} {:name "bound"}]
         (let [inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
                                                {:url "https://child.example.com" :api_key "k"
                                                 :workspace_id ws-id})
               calls   (atom [])]
-          (with-captured-child-calls calls
+          ;; GET /api/collection returns one "Robot DE" to delete.
+          (with-redefs [http/request (fn [req]
+                                       (swap! calls conj req)
+                                       {:status 200
+                                        :body (if (re-find #"/api/collection$" (:url req))
+                                                [{:id 7 :name "Robot DE"} {:id 8 :name "Other"}]
+                                                "")})]
             (let [result (deployment/deprovision! ws-id)]
               (testing "instance is free again"
                 (is (nil? (:workspace_id result)))
                 (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))
-              (testing "the child got a DELETE /workspace-instance/current"
-                (is (= 1 (count @calls)))
-                (is (= :delete (:method (first @calls))))
-                (is (= "https://child.example.com/api/ee/workspace-instance/current"
-                       (:url (first @calls))))))))))))
+              (testing "child calls: list collections, archive the Robot DE collection, unbind"
+                (is (= [[:get "https://child.example.com/api/collection"]
+                        [:put "https://child.example.com/api/collection/7"]
+                        [:delete "https://child.example.com/api/ee/workspace-instance/current"]]
+                       (map (juxt :method :url) @calls))))
+              (testing "the archive call sets :archived true"
+                (is (= {:archived true} (:form-params (second @calls))))))))))))
+
+(deftest deprovision-tolerates-cleanup-failure-test
+  (testing "a failure cleaning the synced collection does NOT abort the deprovision"
+    (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace]
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "bound"}]
+        (let [inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
+                                               {:url "https://child.example.com" :api_key "k"
+                                                :workspace_id ws-id})]
+          ;; GET /api/collection throws; the unbind + free must still happen.
+          (with-redefs [http/request (fn [req]
+                                       (if (re-find #"/api/collection$" (:url req))
+                                         (throw (ex-info "boom" {}))
+                                         {:status 200 :body ""}))]
+            (let [result (deployment/deprovision! ws-id)]
+              (is (nil? (:workspace_id result)))
+              (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))))))))
 
 (deftest deprovision-404-when-unbound-test
   (testing "deprovision! 404s when no instance is provisioned for the workspace"

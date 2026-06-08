@@ -128,13 +128,38 @@
       (log/infof "Provisioned workspace %d onto instance %d" workspace-id instance-id)
       (t2/select-one :model/WorkspaceInstance :id instance-id))))
 
+(defn- clean-synced-collection!
+  "GHY-3829 policy (a): archive the agent's synced collection (\"Robot DE\") on the child on
+   deprovision, so the next provision of this instance starts from a known-clean state
+   instead of inheriting the prior workspace's collection + its cards/transforms.
+
+   `DELETE /api/ee/workspace-instance/current` clears workspace mode + table remappings but
+   leaves this collection behind, hence this extra step. We *archive* (`PUT :archived true`)
+   rather than hard-delete: the collection REST API refuses to delete a non-trashed
+   collection, and archiving already removes it from listings — so a re-provisioned instance
+   won't see it. Best-effort: a failure here is logged but does NOT fail the deprovision —
+   returning the instance to the pool matters more than a perfectly-clean appdb."
+  [instance]
+  (try
+    (let [collections (:body (child-request! instance :get "/api/collection" {:as :json}))
+          targets     (filter #(= synced-collection-name (:name %)) collections)]
+      (doseq [{coll-id :id} targets]
+        (child-request! instance :put (str "/api/collection/" coll-id)
+                        {:form-params  {:archived true}
+                         :content-type :json})
+        (log/infof "Archived synced collection %s on instance %d" coll-id (:id instance))))
+    (catch Exception e
+      (log/warnf e "Failed to clean synced collection on instance %d (continuing deprovision)"
+                 (:id instance)))))
+
 (defn deprovision!
   "Unbind the workspace from the instance the workspace `workspace-id` is provisioned on,
    returning that instance to the pool.
 
    1. Find the instance bound to `workspace-id` — 404 if none.
-   2. Child: `DELETE /api/ee/workspace-instance/current` (clears workspace mode + remappings).
-   3. Mark the instance free (`workspace_id = null`).
+   2. Child: delete the synced collection (best-effort cleanup — GHY-3829 policy (a)).
+   3. Child: `DELETE /api/ee/workspace-instance/current` (clears workspace mode + remappings).
+   4. Mark the instance free (`workspace_id = null`).
 
    The instance itself is NOT destroyed — it keeps its admin user + `api_key` and returns
    to the pool for reuse. Booting is the expensive part the pool exists to avoid."
@@ -143,6 +168,7 @@
     (when-not instance
       (throw (ex-info "No pool instance is provisioned for this workspace"
                       {:status-code 404 :workspace_id workspace-id})))
+    (clean-synced-collection! instance)
     (child-request! instance :delete "/api/ee/workspace-instance/current" {:as :string})
     (t2/update! :model/WorkspaceInstance :id (:id instance) {:workspace_id nil})
     (log/infof "Deprovisioned workspace %d from instance %d" workspace-id (:id instance))
