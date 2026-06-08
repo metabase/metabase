@@ -2,6 +2,7 @@ import { type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useSetArchive } from "metabase/archive/hooks";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import * as Urls from "metabase/urls";
@@ -21,7 +22,13 @@ function ArchiveCollectionModalInner({
 }: ArchiveCollectionModalInnerProps) {
   const archive = useSetArchive();
   const handleArchive = async () => {
-    await archive({ id: collection.id, model: "collection" }, true);
+    try {
+      await archive({ id: collection.id, model: "collection" }, true);
+    } catch (error) {
+      throw new Error(
+        getErrorMessage(error, t`Collection could not be archived.`),
+      );
+    }
   };
 
   return (
