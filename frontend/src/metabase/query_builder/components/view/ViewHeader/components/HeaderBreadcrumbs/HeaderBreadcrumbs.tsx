@@ -14,8 +14,8 @@ import type { DataSourcePart } from "../QuestionDataSource/utils";
 
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
 
-const HeaderBadge = (props: ComponentProps<typeof Breadcrumb>) => (
-  <Breadcrumb className={HeaderBreadcrumbsS.HeaderBadge} {...props} />
+const HeaderBreadcrumb = (props: ComponentProps<typeof Breadcrumb>) => (
+  <Breadcrumb className={HeaderBreadcrumbsS.HeaderBreadcrumb} {...props} />
 );
 
 function getBadgeInactiveColor({
@@ -64,13 +64,13 @@ export function HeadBreadcrumbs({
             {isDataSourceReactElement(part) ? (
               part
             ) : (
-              <HeaderBadge
+              <HeaderBreadcrumb
                 to={part.href}
                 color={badgeInactiveColor}
                 icon={part.icon}
               >
                 {part.name}
-              </HeaderBadge>
+              </HeaderBreadcrumb>
             )}
             {!isLast &&
               (isDividerReactElement(divider) ? (
@@ -103,4 +103,4 @@ function isDividerReactElement(
   return isValidElement(divider);
 }
 
-HeadBreadcrumbs.Badge = HeaderBadge;
+HeadBreadcrumbs.Breadcrumb = HeaderBreadcrumb;

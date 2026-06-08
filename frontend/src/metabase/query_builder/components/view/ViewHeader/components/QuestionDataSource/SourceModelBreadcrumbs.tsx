@@ -34,14 +34,14 @@ export function SourceModelBreadcrumbs({
     <HeadBreadcrumbs
       {...props}
       parts={[
-        <HeadBreadcrumbs.Badge
+        <HeadBreadcrumbs.Breadcrumb
           key="collection"
           to={Urls.collection(collection)}
           icon={getIcon({ model: "card", type: question.type() }).name}
           color="text-tertiary"
         >
           {collection?.name || t`Our analytics`}
-        </HeadBreadcrumbs.Badge>,
+        </HeadBreadcrumbs.Breadcrumb>,
         question.isArchived() ? (
           <Tooltip
             key="name"
@@ -51,19 +51,22 @@ export function SourceModelBreadcrumbs({
           >
             {/* We use span here for ref forwarding */}
             <span>
-              <HeadBreadcrumbs.Badge
+              <HeadBreadcrumbs.Breadcrumb
                 icon="warning"
                 iconColor="danger"
                 to={Urls.card(question.card())}
               >
                 {question.displayName()}
-              </HeadBreadcrumbs.Badge>
+              </HeadBreadcrumbs.Breadcrumb>
             </span>
           </Tooltip>
         ) : (
-          <HeadBreadcrumbs.Badge key="name" to={Urls.card(question.card())}>
+          <HeadBreadcrumbs.Breadcrumb
+            key="name"
+            to={Urls.card(question.card())}
+          >
             {question.displayName()}
-          </HeadBreadcrumbs.Badge>
+          </HeadBreadcrumbs.Breadcrumb>
         ),
       ]}
     />

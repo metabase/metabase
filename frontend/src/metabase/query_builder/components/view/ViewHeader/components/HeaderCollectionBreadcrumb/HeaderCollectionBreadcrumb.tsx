@@ -13,8 +13,8 @@ export function HeaderCollectionBreadcrumb({
   const { collection } = question.card();
   const icon = question.type();
   return (
-    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon={icon}>
+    <HeadBreadcrumbs.Breadcrumb to={Urls.collection(collection)} icon={icon}>
       {collection?.name || t`Our analytics`}
-    </HeadBreadcrumbs.Badge>
+    </HeadBreadcrumbs.Breadcrumb>
   );
 }

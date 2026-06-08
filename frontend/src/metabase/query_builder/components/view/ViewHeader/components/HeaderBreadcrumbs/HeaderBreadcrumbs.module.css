@@ -2,7 +2,7 @@
   max-width: 100%;
 
   &.headVariant {
-    .HeaderBadge {
+    .HeaderBreadcrumb {
       font-size: 1.25rem;
     }
   }

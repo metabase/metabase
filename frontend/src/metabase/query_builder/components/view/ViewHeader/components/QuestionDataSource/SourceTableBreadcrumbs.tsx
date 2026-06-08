@@ -59,14 +59,14 @@ export function SourceTableBreadcrumbs({
       variant={variant}
       divider={divider}
       parts={[
-        <HeadBreadcrumbs.Badge
+        <HeadBreadcrumbs.Breadcrumb
           key="collection"
           to={Urls.collection(collection)}
           icon="repository"
         >
           {collection.name}
-        </HeadBreadcrumbs.Badge>,
-        <HeadBreadcrumbs.Badge
+        </HeadBreadcrumbs.Breadcrumb>,
+        <HeadBreadcrumbs.Breadcrumb
           key="name"
           to={
             hasTableLink
@@ -89,7 +89,7 @@ export function SourceTableBreadcrumbs({
               </span>
             )}
           </span>
-        </HeadBreadcrumbs.Badge>,
+        </HeadBreadcrumbs.Breadcrumb>,
       ]}
     />
   );
