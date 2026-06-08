@@ -85,13 +85,8 @@
          (.setDaemon true))))))
 
 (defn start-heartbeat!
-  "Run `heartbeat-fn` every `interval-minutes` on a dedicated local daemon scheduler (its thread named
-  `thread-name`), starting immediately; return the `ScheduledExecutorService`. Exceptions from
-  `heartbeat-fn` are caught so the schedule survives."
+  "Run `heartbeat-fn` every `interval-minutes` on a dedicated local daemon scheduler, starting immediately."
   ^ScheduledExecutorService [thread-name heartbeat-fn interval-minutes]
-  ;; Local scheduler, not Quartz: a clustered Quartz trigger fires on only one node, but every node must
-  ;; refresh the liveness of the runs it is executing locally. `scheduleAtFixedRate` permanently stops a
-  ;; task that throws, hence the catch.
   (let [exec (daemon-scheduler thread-name)]
     (.scheduleAtFixedRate exec
                           (fn []
@@ -122,7 +117,8 @@
 (defmacro defrun-tracking-jobs
   "Define and schedule the heartbeat and orphan-reaper for a run model. The heartbeat runs per-node via
   [[start-heartbeat!]]; the reaper is a clustered Quartz job named `<base>Reaper`. `spec` keys:
-  `:heartbeat-fn`, `:reap-fn` (returns the reaped rows), `:reaper-key`, and `:interval-minutes`
+  `:heartbeat-fn` (optional — omit when the model heartbeats itself from its own work loop, scheduling
+  only the reaper), `:reap-fn` (returns the reaped rows), `:reaper-key`, and `:interval-minutes`
   (default 1)."
   [base {:keys [heartbeat-fn reap-fn reaper-key interval-minutes]
          :or   {interval-minutes 1}}]
@@ -133,10 +129,11 @@
         ;; "TransformJobRun" -> "transform job run", for the reaper's summary log line
         noun     (.replace ^String (u/->kebab-case-en (str base)) \- \space)]
     `(do
-       ;; Heartbeat: per-node local scheduler (see start-heartbeat!).
-       (defmethod task/init! ~hb-key [_#]
-         (log/infof "Starting %s heartbeat (per-node)." ~(str base))
-         (start-heartbeat! ~(str hb-key) ~heartbeat-fn ~interval-minutes))
+       ;; Heartbeat: per-node local scheduler
+       ~@(when heartbeat-fn
+           [`(defmethod task/init! ~hb-key [_#]
+               (log/infof "Starting %s heartbeat (per-node)." ~(str base))
+               (start-heartbeat! ~(str hb-key) ~heartbeat-fn ~interval-minutes))])
        ;; Reaper: single clustered Quartz job — global, idempotent sweep of orphaned runs.
        (task/defjob ~reap-sym [_ctx#]
          (when-let [reaped# (not-empty (~reap-fn))]

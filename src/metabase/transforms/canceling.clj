@@ -17,7 +17,7 @@
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
-   (java.util.concurrent Executors ScheduledExecutorService TimeUnit)))
+   (java.util.concurrent Executors Future ScheduledExecutorService TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -53,13 +53,43 @@
   []
   (transform-run/heartbeat-runs! (keys @connections)))
 
+(defn reconcile-local-runs!
+  "Signal cancel for any run this process is executing that another path (timeout sweeper, reaper,
+  force-cancel) has already moved to a terminal state, so the local work stops promptly instead of
+  running to its own deadline. Only the owning node holds the run's `cancel-chan`, so each node
+  reconciles its own runs."
+  []
+  (when-let [local-ids (seq (keys @connections))]
+    (let [active (t2/select-fn-set :id :model/TransformRun
+                                   {:where [:and [:in :id local-ids] [:= :is_active true]]})]
+      (doseq [run-id local-ids
+              :when  (not (contains? active run-id))]
+        (chan-signal-cancel! run-id)))))
+
+(defn heartbeat-and-reconcile-runs!
+  "Per-node tick: heartbeat the runs we're executing, then stop any that have been terminated elsewhere."
+  []
+  (send-heartbeat!)
+  (reconcile-local-runs!))
+
 (defn chan-start-timeout-vthread!
-  "Starts a thread that will signal a timeout after a given number of minutes."
+  "Start a vthread that times the run out after `timeout-minutes`. Returns a handle the caller cancels
+  via [[cancel-timeout!]] when the run finishes early, so it doesn't park for the full timeout."
   [run-id timeout-minutes]
   (u.jvm/in-virtual-thread*
-   (Thread/sleep (long (* timeout-minutes 60 1000))) ;; 4 hours
-   (chan-signal-cancel! run-id)
-   (transform-run/timeout-run! run-id)))
+   (try
+     (Thread/sleep (long (* timeout-minutes 60 1000)))
+     (chan-signal-cancel! run-id)
+     (transform-run/timeout-run! run-id)
+     (catch InterruptedException _
+       ;; the run finished before the deadline and cancelled us; nothing to time out
+       nil))))
+
+(defn cancel-timeout!
+  "Cancel the timeout vthread started by [[chan-start-timeout-vthread!]] (a no-op if already done)."
+  [timeout-handle]
+  (when timeout-handle
+    (.cancel ^Future timeout-handle true)))
 
 (defn- request-latency-ms
   "Milliseconds elapsed since `request-time`, or nil when `request-time` is nil.
@@ -154,7 +184,7 @@
 (def ^:private transform-heartbeat-stale-minutes 5)
 
 (rt/defrun-tracking-jobs TransformRun
-  {:heartbeat-fn send-heartbeat!
+  {:heartbeat-fn heartbeat-and-reconcile-runs!
    :reap-fn      #(transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes)
    :reaper-key   "metabase.transforms.reaper"})
 

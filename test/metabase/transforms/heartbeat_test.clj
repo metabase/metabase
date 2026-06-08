@@ -7,7 +7,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.canceling :as canceling]
-   [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.job-run :as job-run]
    [metabase.transforms.models.transform-run :as transform-run]
    [toucan2.core :as t2])
@@ -155,28 +154,6 @@
         (is (not (job-recently-beaten? done-id))))
       (testing "empty id list is a no-op"
         (is (nil? (job-run/heartbeat-runs! [])))))))
-
-(deftest job-send-heartbeat!-beats-registered-test
-  (testing "jobs/send-heartbeat! beats exactly the job runs registered as coordinated by this process"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/TransformJob    {job-id :id}          {:name "hb-job" :schedule "0 0 * * * ? *"}
-                     :model/TransformJobRun {registered-id :id}   {:job_id     job-id
-                                                                   :status     :started
-                                                                   :is_active  true
-                                                                   :run_method :manual
-                                                                   :updated_at (minutes-ago 10)}
-                     :model/TransformJobRun {unregistered-id :id} {:job_id     job-id
-                                                                   :status     :started
-                                                                   :is_active  true
-                                                                   :run_method :manual
-                                                                   :updated_at (minutes-ago 10)}]
-        (swap! @#'jobs/active-job-runs conj registered-id)
-        (try
-          (jobs/send-heartbeat!)
-          (is (job-recently-beaten? registered-id) "the registered (coordinated) run is heartbeated")
-          (is (not (job-recently-beaten? unregistered-id)) "a run not coordinated here is left to go stale")
-          (finally
-            (swap! @#'jobs/active-job-runs disj registered-id)))))))
 
 (deftest job-reap-orphaned-runs!-test
   (mt/with-premium-features #{:transforms-basic}

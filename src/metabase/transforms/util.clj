@@ -119,7 +119,8 @@
   - `:ex-message-fn` change how caught exceptions are presented to the user in run logs, by default the same as clojure.core/ex-message"
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
-  (let [cancel-chan (a/promise-chan)]
+  (let [cancel-chan    (a/promise-chan)
+        timeout-handle (volatile! nil)]
     ;; Register first so the run is heartbeated and cancelable for its whole is_active lifetime.
     (canceling/chan-start-run! run-id cancel-chan)
     (try
@@ -144,7 +145,7 @@
                                    (cond-> (transforms-base.u/checkpoint-span-attrs srp)
                                      (and reliable-row-count? rows-available)
                                      (assoc :transform/rows-available rows-available))))
-        (canceling/chan-start-timeout-vthread! run-id transform-timeout)
+        (vreset! timeout-handle (canceling/chan-start-timeout-vthread! run-id transform-timeout))
         (let [ret (driver.conn/with-transform-connection
                     ;; Route through the `:transform` JDBC pool, whose `unreturnedConnectionTimeout` will be set
                     ;; from the `*query-timeout-ms*` binding below at pool-creation time. This keeps the default
@@ -177,6 +178,8 @@
           (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
         (throw t))
       (finally
+        ;; Stop the timeout vthread so it doesn't park until the deadline after the run finished.
+        (canceling/cancel-timeout! @timeout-handle)
         (canceling/chan-end-run! run-id)))))
 
 (defn is-temp-transform-table?
