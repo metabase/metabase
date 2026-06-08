@@ -360,7 +360,7 @@ type TableQuery<TTable> = {
     : readonly unknown[];
   measures?: TTable extends TableSchema
     ? readonly MeasureReference<TableId<TTable>>[]
-    : readonly unknown[];
+    : readonly MeasureReference[];
   breakouts?: TTable extends TableSchema
     ? readonly MetabaseBreakout<TTable>[]
     : readonly MetabaseBreakout[];
@@ -383,7 +383,7 @@ type MetricQuery<TMetric> = {
     : readonly unknown[];
   measures?: TMetric extends MetricReference
     ? readonly MeasureForMetric<TMetric>[]
-    : readonly unknown[];
+    : readonly MeasureReference[];
   breakouts?: TMetric extends MetricReference
     ? readonly BreakoutForMetric<TMetric>[]
     : readonly MetabaseBreakout[];
@@ -395,7 +395,7 @@ type MetricQuery<TMetric> = {
  * @notExported TableQuery
  * @notExported MetricQuery
  */
-export type MetabaseQueryOptions<TEntity, _TSchema = unknown> =
+export type MetabaseQueryOptions<TEntity = unknown, _TSchema = unknown> =
   | QuestionQuery<TEntity>
   | TableQuery<TEntity>
   | MetricQuery<TEntity>;
@@ -461,8 +461,11 @@ export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
 };
 
 type UseMetabaseQuery = <
-  TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
-    undefined,
+  TEntity extends
+    | QuestionSchema
+    | TableSchema
+    | MetricReference
+    | undefined = undefined,
   TSchema = unknown,
   const TQuery = unknown,
 >(
@@ -525,8 +528,11 @@ export function breakout<TDimension>(
 }
 
 const useMetabaseQueryImpl = <
-  TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
-    undefined,
+  TEntity extends
+    | QuestionSchema
+    | TableSchema
+    | MetricReference
+    | undefined = undefined,
   TSchema = unknown,
   TQuery extends MetabaseQueryOptions<TEntity, TSchema> = MetabaseQueryOptions<
     TEntity,
@@ -944,6 +950,11 @@ function validateTableScopedInputs({
   });
 
   measures?.forEach((measure) => {
+    validateGeneratedMeasure({
+      measure,
+      context: `${context} measures`,
+    });
+
     if (isMeasureSchema(measure)) {
       validateGeneratedTableId({
         tableId: measure.tableId,
@@ -952,6 +963,22 @@ function validateTableScopedInputs({
       });
     }
   });
+}
+
+function validateGeneratedMeasure({
+  measure,
+  context,
+}: {
+  measure: unknown;
+  context: string;
+}) {
+  if (isMeasureSchema(measure)) {
+    return;
+  }
+
+  throw new Error(
+    `${context} must use generated semantic-layer measures from schema.tables.*.measures.*.`,
+  );
 }
 
 function validateGeneratedTableId({

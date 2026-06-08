@@ -182,6 +182,14 @@ const _validTableBreakoutBucketQuery = {
   ],
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
+const _invalidTableAdHocMeasureQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  measures: [
+    // @ts-expect-error table measures must use generated schema.tables.*.measures.* objects
+    { name: "count" },
+  ],
+} satisfies MetabaseQueryOptions;
+
 const _invalidTableBreakoutUnknownBucketQuery = {
   tableId: TEST_SCHEMA.tables.orders.id,
   breakouts: [
@@ -373,6 +381,14 @@ const _invalidMetricMeasureQuery = {
   measures: [TEST_SCHEMA.tables.products.measures.price],
 } satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
 
+const _invalidMetricAdHocMeasureQuery = {
+  metric: TEST_SCHEMA.metrics.orderCount,
+  measures: [
+    // @ts-expect-error metric measures must use generated schema.tables.*.measures.* objects
+    { name: "count" },
+  ],
+} satisfies MetabaseQueryOptions;
+
 describe("useMetabaseQuery", () => {
   it("raises a runtime error when metric segments are not from mapped tables", async () => {
     const queryMetric = jest.fn();
@@ -386,6 +402,24 @@ describe("useMetabaseQuery", () => {
     });
 
     expect(queryMetric).not.toHaveBeenCalled();
+  });
+
+  it("raises a runtime error when table measures are not generated schema measures", async () => {
+    const queryDataset = jest.fn();
+
+    setup({
+      queryMetric: jest.fn(),
+      queryDataset,
+      component: <InvalidTableMeasureComponent />,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("error")).toHaveTextContent(
+        "Table query measures must use generated semantic-layer measures from schema.tables.*.measures.*.",
+      );
+    });
+
+    expect(queryDataset).not.toHaveBeenCalled();
   });
 
   it("queries metrics with measures via the metric dataset endpoint", async () => {
@@ -425,6 +459,21 @@ const TestComponent = () => {
   );
 };
 
+const InvalidTableMeasureComponent = () => {
+  const query = {
+    tableId: TEST_SCHEMA.tables.orders.id,
+    measures: [{ name: "count" }],
+  } as unknown as MetabaseQueryOptions;
+
+  const result = useMetabaseQuery(query);
+
+  return (
+    <div data-testid="error">
+      {result.error instanceof Error ? result.error.message : ""}
+    </div>
+  );
+};
+
 const MetricMeasuresComponent = () => {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
@@ -436,9 +485,11 @@ const MetricMeasuresComponent = () => {
 
 function setup({
   queryMetric,
+  queryDataset,
   component = <TestComponent />,
 }: {
   queryMetric: jest.Mock;
+  queryDataset?: jest.Mock;
   component?: JSX.Element;
 }) {
   const { state } = setupSdkState();
@@ -447,6 +498,7 @@ function setup({
     metabaseEmbeddingSdkBundleExports: {
       getLoginStatus,
       queryMetric,
+      queryDataset,
     },
     storeInitialState: state,
     componentProviderProps: {
