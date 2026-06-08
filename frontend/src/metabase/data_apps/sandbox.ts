@@ -79,40 +79,50 @@ function MetabaseProvider(props: MetabaseProviderProps) {
   );
 }
 
-export function createDataAppSandbox(appId: number = 0) {
+export function createDataAppSandbox(
+  appId: number = 0,
+  targetWindow: Window = window,
+) {
   let captured: unknown;
 
-  const env = createVirtualEnvironment(window, {
-    distortionCallback: makeDistortionCallback(appId),
-    liveTargetCallback: isLiveTarget,
-    endowments: Object.getOwnPropertyDescriptors({
-      React,
-      // Data fetching
-      useQuestionQuery,
-      useMetabaseQuery,
-      // Provider
-      MetabaseProvider,
-      // Question components
-      InteractiveQuestion,
-      StaticQuestion,
-      SdkQuestion,
-      CreateQuestion,
-      MetabotQuestion,
-      // Dashboard components
-      EditableDashboard,
-      InteractiveDashboard,
-      StaticDashboard,
-      CreateDashboardModal,
-      // Collection
-      CollectionBrowser,
-      get __customVizPlugin__() {
-        return captured;
-      },
-      set __customVizPlugin__(value: unknown) {
-        captured = value;
-      },
-    }),
-  });
+  // near-membrane-dom narrows the first arg to `Window & typeof globalThis`
+  // (i.e., the global window). Foreign-realm windows from same-origin
+  // iframes match the shape at runtime — Near Membrane only reads
+  // standard DOM properties — but TS can't prove the assignability.
+  const env = createVirtualEnvironment(
+    targetWindow as Window & typeof globalThis,
+    {
+      distortionCallback: makeDistortionCallback(appId),
+      liveTargetCallback: isLiveTarget,
+      endowments: Object.getOwnPropertyDescriptors({
+        React,
+        // Data fetching
+        useQuestionQuery,
+        useMetabaseQuery,
+        // Provider
+        MetabaseProvider,
+        // Question components
+        InteractiveQuestion,
+        StaticQuestion,
+        SdkQuestion,
+        CreateQuestion,
+        MetabotQuestion,
+        // Dashboard components
+        EditableDashboard,
+        InteractiveDashboard,
+        StaticDashboard,
+        CreateDashboardModal,
+        // Collection
+        CollectionBrowser,
+        get __customVizPlugin__() {
+          return captured;
+        },
+        set __customVizPlugin__(value: unknown) {
+          captured = value;
+        },
+      }),
+    },
+  );
 
   return {
     evaluate(code: string): DataAppFactory {

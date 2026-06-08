@@ -170,6 +170,19 @@ export default defineConfig({
 
 ### `index.html`
 
+**Write this verbatim. Do not edit it.** Production data-apps render inside an isolated iframe whose document is hard-coded to the exact head/CSS-reset/`#root` shell below (charset, viewport, `lang`, the CSS reset, the font-family). Diverging here means the bundle looks one way in the Vite dev preview and a different way in production — the iframe doesn't read this file. The host serves a byte-for-byte equivalent template at runtime, so any baseline tweak (different font, different reset) has to land in the host side first, not here.
+
+Things you may NOT change in this file:
+- The `lang` attribute, `<meta charset>`, or `<meta name="viewport">`.
+- The CSS reset rules (`html, body, #root { height: 100%; margin: 0; }`).
+- The `body` font-family declaration.
+
+Things you may change:
+- The `<title>` (cosmetic — only shown in the dev preview's browser tab).
+- Adding more script tags is fine if you genuinely need them in dev (none should be needed for a normal data app).
+
+If you want bundle-specific styles, put them in a CSS module or `<style>`/`<link>` inside a component — not here.
+
 ```html
 <!doctype html>
 <html lang="en">

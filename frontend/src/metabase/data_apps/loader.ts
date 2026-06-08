@@ -10,28 +10,42 @@ export interface LoadedDataApp {
 }
 
 /**
- * Fetch a data-app bundle by name, evaluate it in a Near Membrane sandbox
- * with React + the SDK component set endowed, and return the host-renderable
- * React component the factory produces.
- *
- * `id` is used to scope the sandbox's DOM access — it's compared against the
- * `data-data-app=<id>` attribute on the container element AppView renders
- * around the returned component.
+ * Fetch a data-app bundle's raw JS source. Pulled out from
+ * [[loadDataAppBundle]] so the parent React tree can fetch the bundle in
+ * parallel with iframe bootstrap, then instantiate the sandbox once the
+ * iframe is ready and its `contentWindow` exists.
  */
-export async function loadDataAppBundle(
-  name: string,
-  id: DataAppId,
-): Promise<LoadedDataApp> {
+export async function fetchDataAppBundleCode(name: string): Promise<string> {
   const url = getSubpathSafeUrl(
     `/api/data-app/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
   );
+
   const res = await fetch(url, { cache: "no-store" });
+
   if (!res.ok) {
     throw new Error(`Failed to fetch data-app bundle: HTTP ${res.status}`);
   }
-  const code = await res.text();
 
-  const sandbox = createDataAppSandbox(id);
+  return res.text();
+}
+
+/**
+ * Build a Near Membrane sandbox bound to `targetWindow` (the iframe's
+ * `contentWindow`), evaluate the bundle inside it, and return the React
+ * component the factory produces. DOM mutations from the sandbox land in
+ * `targetWindow.document`.
+ *
+ * Endowments (React, SDK components, hooks) come from the parent's module
+ * graph — they're passed across by reference. `MetabaseProvider` and the
+ * Redux store stay singletons in the parent so auth, theming, and store
+ * state don't fragment per app instance.
+ */
+export function instantiateDataAppBundle(
+  code: string,
+  id: DataAppId,
+  targetWindow: Window,
+): LoadedDataApp {
+  const sandbox = createDataAppSandbox(id, targetWindow);
   const factory = sandbox.evaluate(code);
 
   const hostApi: DataAppHostApi = {};
@@ -42,4 +56,17 @@ export async function loadDataAppBundle(
     );
   }
   return { component: def.component };
+}
+
+/**
+ * Convenience wrapper for in-host (non-iframe) mounts: fetch the bundle and
+ * instantiate it in the current window. Used by anything that wants the
+ * old, pre-iframe rendering shape.
+ */
+export async function loadDataAppBundle(
+  name: string,
+  id: DataAppId,
+): Promise<LoadedDataApp> {
+  const code = await fetchDataAppBundleCode(name);
+  return instantiateDataAppBundle(code, id, window);
 }
