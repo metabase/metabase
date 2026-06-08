@@ -577,7 +577,7 @@ export class UnconnectedDataSelector extends Component {
       const enabledDatabases = databases.filter(
         (db) => !databaseIsDisabled?.(db),
       );
-      if (enabledDatabases.length >= 1) {
+      if (enabledDatabases.length === 1) {
         this.onChangeDatabase(enabledDatabases[0]);
       }
     }
