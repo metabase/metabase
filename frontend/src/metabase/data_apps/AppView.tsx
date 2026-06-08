@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Text } from "metabase/ui";
-import { useGetDataAppQuery } from "metabase-enterprise/api";
+import { useGetDataAppQuery } from "metabase/api";
 
 import { type LoadedDataApp, loadDataAppBundle } from "./loader";
 
