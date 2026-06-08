@@ -105,29 +105,18 @@
   prompts the agent with a hallucinated `source-table:` would otherwise receive a list of
   schemas / tables they cannot otherwise see.
 
+  For the same reason this single message covers BOTH a never-existed miss and a match that
+  exists only as an inactive (deleted / re-uploaded) row — see [[find-table]]. Branching the
+  wording on whether an inactive row exists would be an oracle: it would confirm to a sandboxed
+  caller that a given name was once a real table. The deletion hint is therefore worded
+  unconditionally (\"may have been deleted or replaced\") so it helps the common case without
+  leaking existence.
+
   The LLM can still self-correct in one turn by calling `entity_details` on the parent
   database; the message points it at that path."
   [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
-  (ex-info (tru "No table found matching portable FK {0}. Call `entity_details` with entity-type `database` and the database''s numeric id to list available tables and schemas, then retry with an exact portable FK from the response."
+  (ex-info (tru "No table found matching portable FK {0} — it may not exist, or may have been deleted or replaced (a re-uploaded CSV is recreated under a new name). Call `entity_details` with entity-type `database` and the database''s numeric id to list available tables and schemas, then retry with an exact portable FK from the response."
                 (pr-str path))
-           {:status-code  400
-            :error        :unknown-table
-            :agent-error? true
-            :path         path}))
-
-(defn- deleted-table-ex-info
-  "Build an agent-facing `:unknown-table` error for a portable FK whose only app-DB match is
-  inactive — the table was deleted or replaced. For a re-uploaded CSV the physical table is dropped
-  and recreated under a new timestamped name, so the old portable FK lingers in the conversation and
-  no longer points at anything live. Nudge the LLM to re-list the database's current tables rather
-  than re-using the stale name. Keeps `:error :unknown-table` so callers branching on the code treat
-  it identically to a never-existed miss; only the message differs.
-
-  Naming the requested `(schema, table-name)` is not an info leak: the caller supplied them, and an
-  inactive match confirms only a now-gone table, never a currently-visible one."
-  [[_path-db-name path-schema path-table-name :as path]]
-  (ex-info (tru "Table {0} (schema {1}) was deleted or replaced and no longer exists. If it was re-uploaded it now has a different name; call `entity_details` with entity-type `database` to list the current tables, then retry with an exact portable FK."
-                (pr-str path-table-name) (pr-str path-schema))
            {:status-code  400
             :error        :unknown-table
             :agent-error? true
@@ -146,9 +135,8 @@
   becomes authoritative, since the alternative is a confusing `:unknown-table` raised for a
   table the caller can plainly see via `entity_details`.
 
-  Returns raw matches including inactive (`:active false`) rows; [[find-table]] does the
-  active/inactive partition so it can tell a deleted/re-uploaded table apart from a never-existed
-  one."
+  Returns raw matches including inactive (`:active false`) rows; [[find-table]] drops the inactive
+  ones."
   [metadata-provider db-id schema table-name]
   (or (when (and db-id (app-db-backed-provider? metadata-provider))
         (seq (matching-tables-via-app-db db-id schema table-name)))
@@ -166,9 +154,10 @@
   its physical warehouse table dropped while its app-DB row lingers as `:active false` (sync doesn't
   retire inactive uploaded tables), and the metadata provider intentionally skips its active filter
   for by-name lookups (see `metadata-spec->honey-sql`). Resolving a stale portable FK to that dead
-  row would compile to SQL hitting a table that no longer exists. When the *only* matches are
-  inactive we surface a deleted/replaced-specific hint so the LLM re-lists instead of re-using the
-  stale name. `(not (false? :active))` keeps mock providers (which omit `:active`) resolving."
+  row would compile to SQL hitting a table that no longer exists, so an inactive-only match is
+  treated as a miss. The miss message (see [[unknown-table-ex-info]]) is the same whether the table
+  never existed or is merely inactive — deliberately, to avoid an existence oracle. `(:active %)` is
+  compared with `(not (false? …))` so mock providers (which omit `:active`) still resolve."
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
   (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)]
     (when-not (= path-db-name current-db)
@@ -180,13 +169,10 @@
                        :agent-error? true
                        :path         path
                        :expected-db  current-db})))
-    (let [matches    (table-candidates metadata-provider current-db-id path-schema path-table-name)
-          candidates (filterv #(not (false? (:active %))) matches)]
+    (let [candidates (filterv #(not (false? (:active %)))
+                              (table-candidates metadata-provider current-db-id path-schema path-table-name))]
       (case (count candidates)
-        0 (throw (if (seq matches)
-                   ;; matched only inactive row(s) → table was deleted or replaced
-                   (deleted-table-ex-info path)
-                   (unknown-table-ex-info metadata-provider path)))
+        0 (throw (unknown-table-ex-info metadata-provider path))
         1 (first candidates)
         ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
         ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller

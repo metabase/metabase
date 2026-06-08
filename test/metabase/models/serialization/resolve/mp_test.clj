@@ -6,6 +6,7 @@
 
   Phase-2 additions (step 11): `import-fk` for `Card` by entity_id."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -151,6 +152,10 @@
     ;; 'metabot2_…' not found"). The resolver must instead surface a clean :unknown-table
     ;; agent-error so the LLM re-lists the current tables. Resolving inactive rows is a real bug
     ;; regardless of whether it's what BOT-739 hit.
+    ;;
+    ;; The miss message is the SAME as a never-existed miss (asserted below): branching the wording
+    ;; on whether an inactive row exists would be an existence oracle against the un-sandboxed
+    ;; provider, so the deletion hint is worded unconditionally in [[unknown-table-ex-info]].
     (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
                    :model/Table    _gone {:name   "metabot2_38513168ae9131" :schema "PUBLIC"
                                           :db_id  (:id db)                   :active false}]
@@ -165,9 +170,13 @@
               (is (= :unknown-table (:error d)))
               (is (= 400 (:status-code d)))
               (is (true? (:agent-error? d)))
-              (testing "message tells the LLM the table was deleted/replaced and to re-list"
-                (is (re-find #"deleted or replaced" msg))
-                (is (re-find #"entity_details" msg))))))))))
+              (is (re-find #"entity_details" msg) "message points the LLM at entity_details to re-list")
+              (testing "inactive-row miss is indistinguishable from a never-existed miss (no oracle)"
+                (let [never-existed (try (resolve/import-table-fk r [(:name db) "PUBLIC" "never_existed_xyz"])
+                                         (catch clojure.lang.ExceptionInfo e2 (.getMessage e2)))]
+                  ;; same wording modulo the echoed portable FK (which the caller supplied either way)
+                  (is (= (str/replace msg #"\[.*?\]" "[FK]")
+                         (str/replace never-existed #"\[.*?\]" "[FK]"))))))))))))
 
 (deftest ^:parallel import-table-fk-error-test
   (testing "unknown table name → :unknown-table, agent-error?, 400, no info leak"
