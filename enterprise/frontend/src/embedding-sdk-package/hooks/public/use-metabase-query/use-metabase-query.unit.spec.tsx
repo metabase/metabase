@@ -95,6 +95,14 @@ const TEST_SCHEMA = {
           displayName: "Status",
           jsType: "string",
         },
+        amount: {
+          id: "metric-amount",
+          fieldId: 102,
+          tableId: 1,
+          name: "amount",
+          displayName: "Amount",
+          jsType: "number",
+        },
       },
       mappedTableIds: [1],
     },
@@ -143,7 +151,10 @@ const _validTableCustomFilterObjectQuery = {
 const _validTableBreakoutBucketQuery = {
   tableId: TEST_SCHEMA.tables.orders.id,
   breakouts: [
-    breakout(TEST_SCHEMA.tables.orders.fields.createdAt, "month"),
+    breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { bucket: "month" }),
+    breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+      binning: { strategy: "num-bins", "num-bins": 10 },
+    }),
     breakout(TEST_SCHEMA.tables.orders.fields.status),
     {
       dimension: TEST_SCHEMA.tables.orders.fields.createdAt,
@@ -155,6 +166,10 @@ const _validTableBreakoutBucketQuery = {
 const _invalidTableBreakoutUnknownBucketQuery = {
   tableId: TEST_SCHEMA.tables.orders.id,
   breakouts: [
+    breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
+      // @ts-expect-error temporal buckets must be valid Metabase temporal units
+      bucket: "aaaa",
+    }),
     {
       // @ts-expect-error temporal buckets must be valid Metabase temporal units
       dimension: TEST_SCHEMA.tables.orders.fields.createdAt,
@@ -168,7 +183,7 @@ const _invalidTableBreakoutNonDateBucketQuery = {
   tableId: TEST_SCHEMA.tables.orders.id,
   breakouts: [
     // @ts-expect-error non-date dimensions do not support temporal buckets
-    breakout(TEST_SCHEMA.tables.orders.fields.status, "month"),
+    breakout(TEST_SCHEMA.tables.orders.fields.status, { bucket: "month" }),
     // @ts-expect-error non-date dimensions do not support temporal buckets
     {
       dimension: TEST_SCHEMA.tables.orders.fields.status,
@@ -244,7 +259,12 @@ function useMetricBreakoutTypeFixtures() {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
     breakouts: [
-      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.createdAt, "month"),
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.createdAt, {
+        bucket: "month",
+      }),
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.amount, {
+        binning: { strategy: "num-bins", "num-bins": 10 },
+      }),
       breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status),
       {
         dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
@@ -257,7 +277,9 @@ function useMetricBreakoutTypeFixtures() {
     metric: TEST_SCHEMA.metrics.orderCount,
     breakouts: [
       // @ts-expect-error non-date metric dimensions do not support temporal buckets
-      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status, "month"),
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status, {
+        bucket: "month",
+      }),
       // @ts-expect-error non-date metric dimensions do not support temporal buckets
       {
         dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
