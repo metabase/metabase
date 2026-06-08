@@ -15,6 +15,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -228,6 +229,11 @@
 (defmethod sql.qp/date [:teradata :week]
   [driver _ expr]
   (sql.qp/adjust-start-of-week driver (partial trunc :day) expr))
+
+(defmethod sql.qp/date [:teradata :week-of-year-iso]
+  [_ _ expr]
+  (h2x/with-database-type-info [:weeknumber_of_year expr (h2x/literal "ISO")] "integer"))
+
 (defmethod sql.qp/date [:teradata :month] [_ _ expr] (trunc :month expr))
 (defmethod sql.qp/date [:teradata :month-of-year] [_ _ expr] [::h2x/extract :month expr])
 (defmethod sql.qp/date [:teradata :quarter] [_ _ expr] (trunc :q expr))
@@ -467,6 +473,22 @@
    "dataSourceName"               (format "db-%d-%s-%s" (u/the-id database) (name driver) (let [details (:details database)]
                                                                                             (or (first (str/split (:dbnames details) #","))
                                                                                                 (:user details))))})
+
+;; Teradata does not support boolean expressions (BETWEEN, AND, >=, etc.) in SELECT —
+;; only in WHERE / CASE WHEN context. When a predicate expression appears in :fields,
+;; wrap it in CASE WHEN expr THEN 1 ELSE 0 END.  Same pattern as SQL Server (#53805).
+(defmethod sql.qp/apply-top-level-clause [:teradata :fields]
+  [driver _ honeysql-form query]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :fields])
+        maybe-wrap    #(cond-> %
+                         (sql.qp.boolean-to-comparison/predicate-expression-clause? %)
+                         (driver-api/assoc-field-options ::sql.qp/wrap-in-case true))]
+    (->> (update query :fields (fn [fields] (mapv maybe-wrap fields)))
+         (parent-method driver :fields honeysql-form))))
+
+(defmethod sql.qp/->honeysql [:teradata ::sql.qp/wrap-in-case]
+  [driver [_tag expr]]
+  [:case (sql.qp/->honeysql driver expr) [:inline 1] :else [:inline 0]])
 
 (defmethod sql.qp/->honeysql [:teradata :log]
   [driver [_ field]]
