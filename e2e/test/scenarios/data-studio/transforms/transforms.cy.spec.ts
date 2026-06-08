@@ -362,10 +362,10 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
     it("should be possible to convert an MBQL transform to a SQL transform", () => {
       const EXPECTED_QUERY = `SELECT
-  "Schema Q"."Animals"."name" AS "name",
-  "Schema Q"."Animals"."score" AS "score"
+  "Schema A"."Animals"."name" AS "name",
+  "Schema A"."Animals"."score" AS "score"
 FROM
-  "Schema Q"."Animals"
+  "Schema A"."Animals"
 LIMIT
   5`;
 
