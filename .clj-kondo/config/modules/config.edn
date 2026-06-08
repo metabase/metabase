@@ -1580,10 +1580,12 @@
   {:team "UX West"
    :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
+           metabase.public-sharing.unlock
            metabase.public-sharing.validation}
    :uses #{api
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   public-sharing-rest
   {:team "UX West"

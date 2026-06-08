@@ -15,6 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
+   [metabase.public-sharing.unlock :as unlock]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
@@ -827,12 +828,46 @@
                 :format-rows?          format_rows
                 :pivot?                pivot_results}))
 
+;;; --------------------------------------------------- Unlock ------------------------------------------------------
+
+(defn- do-unlock
+  "Verify the password for a public entity and set the unlock cookie on success."
+  [request entity-type uuid password]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (let [throttle-key (unlock/throttle-key entity-type uuid)]
+    (throttle/check unlock/unlock-throttle throttle-key)
+    (let [model    (case entity-type :card :model/Card :dashboard :model/Dashboard)
+          stored   (api/check-404 (t2/select-one-fn :public_link_password model
+                                                    :public_uuid uuid :archived false))]
+      (if (and stored (unlock/verify-password password stored))
+        (unlock/add-unlock-entry request {:status 200 :body {:success true}} entity-type uuid stored)
+        {:status 403 :body {:error (tru "Incorrect password.")}}))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/card/:uuid/unlock"
+  "Verify the password for a public card and set the unlock cookie."
+  [{:keys [uuid]} :- [:map [:uuid ms/UUIDString]]
+   _query-params
+   {:keys [password]} :- [:map [:password ms/NonBlankString]]
+   request]
+  (do-unlock request :card uuid password))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/dashboard/:uuid/unlock"
+  "Verify the password for a public dashboard and set the unlock cookie."
+  [{:keys [uuid]} :- [:map [:uuid ms/UUIDString]]
+   _query-params
+   {:keys [password]} :- [:map [:password ms/NonBlankString]]
+   request]
+  (do-unlock request :dashboard uuid password))
+
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
 ;; TODO - a smart person would probably just parse the UUIDs automatically in middleware as appropriate for
 ;;`/dashboard` vs `/card`
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/public` routes. Enforces public-sharing-enabled check via middleware, in addition to
-  per-endpoint checks."
-  (api.macros/ns-handler *ns* public-sharing.validation/+public-sharing-enabled))
+  "`/api/public` routes. Enforces public-sharing-enabled and unlock check via middleware."
+  (api.macros/ns-handler *ns*
+                         public-sharing.validation/+public-sharing-enabled
+                         public-sharing.validation/+unlock-check))
