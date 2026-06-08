@@ -105,17 +105,14 @@
   prompts the agent with a hallucinated `source-table:` would otherwise receive a list of
   schemas / tables they cannot otherwise see.
 
-  For the same reason this single message covers BOTH a never-existed miss and a match that
-  exists only as an inactive (deleted / re-uploaded) row — see [[find-table]]. Branching the
-  wording on whether an inactive row exists would be an oracle: it would confirm to a sandboxed
-  caller that a given name was once a real table. The deletion hint is therefore worded
-  unconditionally (\"may have been deleted or replaced\") so it helps the common case without
-  leaking existence.
+  For the same reason this single message covers both a never-existed miss and an inactive
+  (deleted / re-uploaded) match — see [[find-table]]. Branching the wording on whether an inactive
+  row exists would be an existence oracle, so the deletion hint is unconditional.
 
   The LLM can still self-correct in one turn by calling `entity_details` on the parent
   database; the message points it at that path."
   [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
-  (ex-info (tru "No table found matching portable FK {0} — it may not exist, or may have been deleted or replaced (a re-uploaded CSV is recreated under a new name). Call `entity_details` with entity-type `database` and the database''s numeric id to list available tables and schemas, then retry with an exact portable FK from the response."
+  (ex-info (tru "No table found matching portable FK {0} — it may not exist, or may have been deleted. Call `entity_details` with entity-type `database` and the database''s numeric id to list available tables and schemas, then retry with an exact portable FK from the response."
                 (pr-str path))
            {:status-code  400
             :error        :unknown-table
@@ -150,14 +147,10 @@
   re-hallucinating the same bad path. All error branches are marked
   `:agent-error? true` so the outer tool wrapper relays the message verbatim.
 
-  Inactive (`:active false`) matches are excluded (BOT-739): a deleted or re-uploaded CSV table has
-  its physical warehouse table dropped while its app-DB row lingers as `:active false` (sync doesn't
-  retire inactive uploaded tables), and the metadata provider intentionally skips its active filter
-  for by-name lookups (see `metadata-spec->honey-sql`). Resolving a stale portable FK to that dead
-  row would compile to SQL hitting a table that no longer exists, so an inactive-only match is
-  treated as a miss. The miss message (see [[unknown-table-ex-info]]) is the same whether the table
-  never existed or is merely inactive — deliberately, to avoid an existence oracle. `(:active %)` is
-  compared with `(not (false? …))` so mock providers (which omit `:active`) still resolve."
+  Inactive (`:active false`) matches are excluded and treated as a miss (BOT-739): a deleted or
+  re-uploaded table keeps its app-DB row but loses its warehouse table, so resolving it would
+  compile to SQL on a table that's gone. `(not (false? …))` keeps mock providers (which omit
+  `:active`) resolving."
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
   (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)]
     (when-not (= path-db-name current-db)
