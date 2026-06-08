@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [java-time.api :as t]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.api :as explorations.api]
@@ -704,7 +705,9 @@
   (testing "Only a user with write access can restart an exploration"
     (mt/with-temp [:model/User owner {:email "rs-owner@example.com"}
                    :model/User other {:email "rs-other@example.com"}]
-      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration" {:name "private"})]
+      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration"
+                                            {:name "private"
+                                             :collection_id (:id (collection/user->personal-collection (:id owner)))})]
         (mt/user-http-request other :post 403 (format "exploration/%d/restart" eid))
         (let [resp (mt/user-http-request owner :post 200 (format "exploration/%d/restart" eid))]
           (is (= 1 (count (:threads resp))) "still a single thread after restart"))))))
@@ -713,7 +716,9 @@
   (testing "Only the creator (or a superuser) can GET an exploration"
     (mt/with-temp [:model/User owner {:email "p-owner@example.com"}
                    :model/User other {:email "p-other@example.com"}]
-      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration" {:name "private"})]
+      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration"
+                                            {:name "private"
+                                             :collection_id (:id (collection/user->personal-collection (:id owner)))})]
         (mt/user-http-request other :get 403 (format "exploration/%d" eid))
         (let [resp (mt/user-http-request owner :get 200 (format "exploration/%d" eid))]
           (is (= eid (:id resp))))))))
@@ -992,7 +997,9 @@
   (testing "GET /:id/queries enforces the same read-check as the parent exploration"
     (mt/with-temp [:model/User owner {:email "lq-owner@example.com"}
                    :model/User other {:email "lq-other@example.com"}]
-      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration" {:name "lq-private"})]
+      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration"
+                                            {:name "lq-private"
+                                             :collection_id (:id (collection/user->personal-collection (:id owner)))})]
         (mt/user-http-request other :get 403 (format "exploration/%d/queries" eid))))))
 
 (defn- store-fake-result!
@@ -1056,6 +1063,7 @@
                    :model/Card metric (valid-metric-card (:id owner))]
       (let [resp (create-exploration! owner
                                       {:name "qr-private"
+                                       :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                        :dimensions [{:dimension_id "d1"}]})
@@ -1232,6 +1240,7 @@
                    :model/Card metric (valid-metric-card (:id owner))]
       (let [resp (create-exploration! owner
                                       {:name "mark-private"
+                                       :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                        :dimensions [{:dimension_id "d1"}]})
@@ -1338,7 +1347,9 @@
   (testing "Other users can't list or add documents on someone else's exploration thread"
     (mt/with-temp [:model/User owner {:email "doc-owner@example.com"}
                    :model/User other {:email "doc-other@example.com"}]
-      (let [exp (mt/user-http-request owner :post 200 "exploration" {:name "private"})
+      (let [exp (mt/user-http-request owner :post 200 "exploration"
+                                      {:name "private"
+                                       :collection_id (:id (collection/user->personal-collection (:id owner)))})
             tid (-> exp :threads first :id)
             url (str "exploration/thread/" tid "/documents")]
         (mt/user-http-request other :get 403 url)
@@ -1770,6 +1781,27 @@
                                        {:name "new" :description "yo"})]
         (is (= "new" (:name resp)))
         (is (= "yo"  (:description resp)))))))
+
+(deftest exploration-create-in-collection-test
+  (testing "POST / places the exploration in the requested collection when the caller can write it"
+    (mt/with-temp [:model/Collection c {}]
+      (mt/with-non-admin-groups-no-collection-perms (:id c)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c)
+        (let [resp (mt/user-http-request :rasta :post 200 "exploration"
+                                         {:name "in-coll" :collection_id (:id c)})]
+          (is (= (:id c) (:collection_id resp))))))))
+
+(deftest exploration-create-defaults-to-root-test
+  (testing "POST / with no :collection_id leaves the exploration in the root collection"
+    (let [resp (mt/user-http-request :rasta :post 200 "exploration" {:name "rootish"})]
+      (is (nil? (:collection_id resp))))))
+
+(deftest exploration-create-requires-write-on-collection-test
+  (testing "POST / refuses when the caller lacks write on the destination collection"
+    (mt/with-temp [:model/Collection c {}]
+      (mt/with-non-admin-groups-no-collection-perms (:id c)
+        (mt/user-http-request :rasta :post 403 "exploration"
+                              {:name "denied" :collection_id (:id c)})))))
 
 (deftest exploration-put-move-to-collection-test
   (testing "PUT /:id can move an exploration into a collection the caller can write"

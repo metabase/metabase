@@ -1,13 +1,16 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   makeMockNavigation,
   makeMockSelection,
 } from "metabase/explorations/test-utils";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { MetricDimension, Timeline } from "metabase-types/api";
+import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockMetric,
   createMockMetricDimension,
@@ -51,10 +54,12 @@ function setup({
   metrics = [],
   dimensions = [],
   timelines = [],
+  personalCollectionId = 7,
 }: {
   metrics?: ExplorationMetric[];
   dimensions?: MetricDimension[];
   timelines?: Timeline[];
+  personalCollectionId?: number | null;
 } = {}) {
   jest.mocked(useMetabotAgent).mockReturnValue({
     messages: [],
@@ -65,10 +70,22 @@ function setup({
 
   renderWithProviders(
     <NewExplorationData selection={selection} navigation={navigation} />,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({
+          personal_collection_id: personalCollectionId ?? undefined,
+        }),
+      }),
+    },
   );
 
   return { selection, navigation };
 }
+
+afterEach(() => {
+  fetchMock.removeRoutes();
+  fetchMock.clearHistory();
+});
 
 describe("NewExplorationData", () => {
   describe("section accordion", () => {
@@ -224,6 +241,35 @@ describe("NewExplorationData", () => {
 
       expect(selection.toggleTimeline).toHaveBeenCalledTimes(1);
       expect(selection.toggleTimeline).toHaveBeenCalledWith(timeline);
+    });
+  });
+
+  describe("begin research", () => {
+    const revenueMetric = createMockMetric({
+      id: 1,
+      name: "Revenue",
+    }) as ExplorationMetric;
+
+    it("creates the exploration in the user's personal collection", async () => {
+      fetchMock.post("path:/api/exploration", { id: 42, threads: [] });
+      setup({
+        metrics: [revenueMetric],
+        dimensions: [plan],
+        personalCollectionId: 7,
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Begin research" }),
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("path:/api/exploration")).toBe(
+          true,
+        );
+      });
+      const call = fetchMock.callHistory.calls("path:/api/exploration")[0];
+      const body = JSON.parse(call.options.body as string);
+      expect(body.collection_id).toBe(7);
     });
   });
 });

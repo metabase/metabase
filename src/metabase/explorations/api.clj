@@ -325,12 +325,13 @@
 
 (def ^:private CreateExploration
   [:map
-   [:name         expl.model/ExplorationName]
-   [:description  {:optional true} [:maybe :string]]
-   [:prompt       {:optional true} [:maybe :string]]
-   [:metrics      {:optional true} [:maybe [:sequential MetricSelection]]]
-   [:dimensions   {:optional true} [:maybe [:sequential DimensionSelection]]]
-   [:timeline_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+   [:name          expl.model/ExplorationName]
+   [:description   {:optional true} [:maybe :string]]
+   [:prompt        {:optional true} [:maybe :string]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:metrics       {:optional true} [:maybe [:sequential MetricSelection]]]
+   [:dimensions    {:optional true} [:maybe [:sequential DimensionSelection]]]
+   [:timeline_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (def ^:private UpdateExploration
   "Body schema for `PUT /api/exploration/:id`. All fields are optional; only the keys the client
@@ -386,12 +387,14 @@
   with an empty queries list; clients should poll `GET /:id/queries` until rows appear."
   [_route-params
    _query-params
-   {:keys [name description prompt metrics dimensions timeline_ids]} :- CreateExploration]
+   {:keys [name description prompt collection_id metrics dimensions timeline_ids]} :- CreateExploration]
+  (api/create-check :model/Exploration {:collection_id collection_id})
   (t2/with-transaction [_]
     (let [exploration (first (t2/insert-returning-instances! :model/Exploration
-                                                             {:name        name
-                                                              :description description
-                                                              :creator_id  api/*current-user-id*}))
+                                                             {:name          name
+                                                              :description   description
+                                                              :collection_id collection_id
+                                                              :creator_id    api/*current-user-id*}))
           coll-id     (:collection_id exploration)
           thread      (first (t2/insert-returning-instances! :model/ExplorationThread
                                                              {:exploration_id (:id exploration)

@@ -47,6 +47,7 @@ export interface CreateExplorationRequest {
   name: string;
   description?: string | null;
   prompt?: string | null;
+  collection_id?: CollectionId | null;
   metrics: ExplorationMetricSelection[];
   dimensions: ExplorationDimensionSelection[];
   timeline_ids?: TimelineId[];

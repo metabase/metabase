@@ -25,12 +25,11 @@
       (is (some? (:created_at e)))
       (is (some? (:updated_at e))))))
 
-(deftest exploration-defaults-collection-id-to-personal-collection-test
-  (testing "before-insert hook defaults :collection_id to the creator's Personal Collection"
+(deftest exploration-collection-id-test
+  (testing "omitting :collection_id leaves the exploration in the root collection"
     (mt/with-temp [:model/User u {}
                    :model/Exploration e {:name "x" :creator_id (:id u)}]
-      (is (= (:id (collection/user->personal-collection (:id u)))
-             (:collection_id e)))))
+      (is (nil? (:collection_id e)))))
   (testing "explicit :collection_id is respected (including nil for root)"
     (mt/with-temp [:model/User       u {}
                    :model/Collection c {}
@@ -40,10 +39,12 @@
       (is (nil? (:collection_id root-expl))))))
 
 (deftest exploration-in-personal-collection-is-creator-only-test
-  (testing "default-placed exploration (creator's Personal Collection) is private to creator + admins"
+  (testing "an exploration in the creator's Personal Collection is private to creator + admins"
     (mt/with-temp [:model/User owner {}
                    :model/User other {}
-                   :model/Exploration e {:name "x" :creator_id (:id owner)}]
+                   :model/Exploration e {:name          "x"
+                                         :creator_id    (:id owner)
+                                         :collection_id (:id (collection/user->personal-collection (:id owner)))}]
       (testing "owner can read and write"
         (mt/with-current-user (:id owner)
           (is (true? (mi/can-read?  :model/Exploration (:id e))))
@@ -60,7 +61,9 @@
 (deftest exploration-thread-perms-delegate-to-exploration-test
   (mt/with-temp [:model/User owner {}
                  :model/User other {}
-                 :model/Exploration e {:name "x" :creator_id (:id owner)}
+                 :model/Exploration e {:name          "x"
+                                       :creator_id    (:id owner)
+                                       :collection_id (:id (collection/user->personal-collection (:id owner)))}
                  :model/ExplorationThread t {:exploration_id (:id e)}]
     (mt/with-current-user (:id owner)
       (is (true? (mi/can-read? :model/ExplorationThread (:id t)))))

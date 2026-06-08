@@ -14,7 +14,8 @@ import type {
 } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
 import {
   Accordion,
   ActionIcon,
@@ -31,6 +32,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
+  CollectionId,
   CreateExplorationRequest,
   MetricDimension,
   Timeline,
@@ -56,11 +58,13 @@ function buildCreateExplorationRequest(
   metrics: ExplorationMetric[],
   dimensions: MetricDimension[],
   timelines: Timeline[],
+  collectionId: CollectionId | null,
 ): CreateExplorationRequest {
   const trimmedPrompt = prompt.trim();
   return {
     name,
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
+    collection_id: collectionId,
     metrics: metrics.map((m) => ({
       card_id: m.id,
       dimension_mappings: m.dimension_mappings,
@@ -90,6 +94,11 @@ export function NewExplorationData({
   } = selection;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
+  // Default new explorations to the user's Personal Collection. The backend
+  // places an exploration with no collection_id in "Our Analytics" (root), so
+  // the FE passes the personal collection to keep new explorations private.
+  const personalCollectionId =
+    useSelector(getUser)?.personal_collection_id ?? null;
 
   const [createExploration, { isLoading: isStarting }] =
     useCreateExplorationMutation();
@@ -107,6 +116,7 @@ export function NewExplorationData({
       metrics,
       dimensions,
       timelines,
+      personalCollectionId,
     );
     try {
       const exploration = await createExploration(request).unwrap();
@@ -128,6 +138,7 @@ export function NewExplorationData({
     dimensions,
     timelines,
     name,
+    personalCollectionId,
     sendToast,
   ]);
 
