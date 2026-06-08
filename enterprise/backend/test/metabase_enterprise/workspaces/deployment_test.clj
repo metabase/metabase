@@ -121,6 +121,45 @@
         (testing "instance remains free"
           (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))))))
 
+(deftest provision-rolls-back-bind-when-a-later-step-fails-test
+  (testing "if a post-bind step (remote-sync) fails, the child is unbound and the instance freed — no zombie"
+    (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
+      (let [{:keys [ws-id]} (provisioned-workspace!)
+            inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
+                                             {:url "https://child.example.com" :api_key "k"})
+            calls   (atom [])]
+        ;; bind (advanced-config) succeeds; the first remote-sync call (create collection) fails.
+        (with-redefs [http/request (fn [req]
+                                     (swap! calls conj req)
+                                     (if (re-find #"/api/collection$" (:url req))
+                                       (throw (ex-info "remote-sync boom" {}))
+                                       {:status 200 :body {}}))]
+          (is (thrown? Exception
+                       (deployment/provision! ws-id inst-id
+                                              {:url "https://repo/x.git" :token "t" :branch "main"}))))
+        (testing "instance is rolled back to free"
+          (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))
+        (testing "the child was unbound during rollback"
+          (is (some #(and (= :delete (:method %))
+                          (re-find #"/workspace-instance/current" (:url %)))
+                    @calls)))))))
+
+(deftest deprovision-tolerates-dead-child-unbind-test
+  (testing "if the child unbind fails, the pool slot is still freed (no permanently-stuck instance)"
+    (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace]
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "bound"}]
+        (let [inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
+                                               {:url "https://dead.example.com" :api_key "k"
+                                                :workspace_id ws-id})]
+          ;; collection list returns empty (nothing to clean); the unbind DELETE throws.
+          (with-redefs [http/request (fn [req]
+                                       (if (re-find #"/workspace-instance/current" (:url req))
+                                         (throw (ex-info "child down" {}))
+                                         {:status 200 :body []}))]
+            (let [result (deployment/deprovision! ws-id)]
+              (is (nil? (:workspace_id result)))
+              (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))))))))
+
 (deftest deprovision-frees-instance-test
   (testing "deprovision! cleans the synced collection, unbinds the child, and frees the instance"
     (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace]
@@ -129,18 +168,22 @@
                                                {:url "https://child.example.com" :api_key "k"
                                                 :workspace_id ws-id})
               calls   (atom [])]
-          ;; GET /api/collection returns one "Robot DE" to delete.
+          ;; GET /api/collection returns the pinned synced collection (id 7) plus a user
+          ;; collection that merely shares the name (id 9, NOT remote-synced) — only 7 should
+          ;; be archived.
           (with-redefs [http/request (fn [req]
                                        (swap! calls conj req)
                                        {:status 200
                                         :body (if (re-find #"/api/collection$" (:url req))
-                                                [{:id 7 :name "Robot DE"} {:id 8 :name "Other"}]
+                                                [{:id 7 :name "Robot DE" :is_remote_synced true}
+                                                 {:id 8 :name "Other"    :is_remote_synced false}
+                                                 {:id 9 :name "Robot DE" :is_remote_synced false}]
                                                 "")})]
             (let [result (deployment/deprovision! ws-id)]
               (testing "instance is free again"
                 (is (nil? (:workspace_id result)))
                 (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))
-              (testing "child calls: list collections, archive the Robot DE collection, unbind"
+              (testing "child calls: list collections, archive ONLY the pinned synced collection (7), unbind"
                 (is (= [[:get "https://child.example.com/api/collection"]
                         [:put "https://child.example.com/api/collection/7"]
                         [:delete "https://child.example.com/api/ee/workspace-instance/current"]]

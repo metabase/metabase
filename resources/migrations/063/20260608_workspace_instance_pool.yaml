@@ -81,3 +81,15 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_instance_workspace_id
             onDelete: SET NULL
+
+  - changeSet:
+      id: v63.2026-06-08T12:00:03
+      author: bryan
+      comment: Index workspace_instance.workspace_id for the deprovision lookup (select by workspace_id)
+      changes:
+        - createIndex:
+            tableName: workspace_instance
+            indexName: idx_workspace_instance_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
