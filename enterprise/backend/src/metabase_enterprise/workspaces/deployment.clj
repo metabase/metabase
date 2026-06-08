@@ -50,9 +50,18 @@
    Multipart field `config` = the YAML, exactly like the manual `/config` download +
    upload flow, but driven server-to-server. Writable (does not lock the child)."
   [instance config-yaml]
-  (child-request! instance :post "/api/ee/advanced-config/"
-                  {:multipart [{:name "config" :content config-yaml}]
-                   :as        :string}))
+  ;; The child's advanced-config endpoint expects a *file* part ({:filename, :tempfile}).
+  ;; clj-http only encodes a multipart entry as a file part (with a filename) when its
+  ;; `:content` is a File — a String content is sent as a plain form field, which the
+  ;; endpoint's `:tempfile` schema then rejects. So write the YAML to a temp file.
+  (let [tmp (java.io.File/createTempFile "workspace-config" ".yml")]
+    (try
+      (spit tmp config-yaml)
+      (child-request! instance :post "/api/ee/advanced-config/"
+                      {:multipart [{:name "config" :content tmp}]
+                       :as        :string})
+      (finally
+        (.delete tmp)))))
 
 (defn provision!
   "Bind workspace `workspace-id` to the free pool instance `instance-id`.

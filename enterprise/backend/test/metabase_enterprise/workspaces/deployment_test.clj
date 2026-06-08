@@ -50,11 +50,16 @@
               (is (= ws-id (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))
             (testing "the child got one advanced-config bind call with the api_key header"
               (is (= 1 (count @calls)))
-              (let [req (first @calls)]
+              (let [req  (first @calls)
+                    part (-> req :multipart first)]
                 (is (= :post (:method req)))
                 (is (= "https://child.example.com/api/ee/advanced-config/" (:url req)))
                 (is (= "k" (get-in req [:headers "x-api-key"])))
-                (is (= "config" (-> req :multipart first :name)))))))))))
+                (is (= "config" (:name part)))
+                ;; Must be a File (not a String): clj-http only encodes a file part —
+                ;; with a filename, which Ring turns into the :tempfile the child's
+                ;; advanced-config endpoint requires — when :content is a File.
+                (is (instance? java.io.File (:content part)))))))))))
 
 (deftest provision-rejects-busy-instance-test
   (testing "provision! 409s when the target instance is already provisioned"
