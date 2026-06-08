@@ -968,36 +968,31 @@
   (let [schema-name   (:schema workspace)
         username      (-> workspace :database_details :user)
         quoted-user   (quote-field username)
-        quoted-schema (quote-schema schema-name)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        quoted-schema (quote-schema schema-name)
+        spec          (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; Foreign-grantor default-priv REVOKEs run first, each in its own autocommit
+    ;; statement. Redshift has no SAVEPOINT and aborts the entire transaction on
+    ;; the first error, so these cannot share a transaction with the main cleanup
+    ;; batch: one stale row (schema dropped between discovery and execution) would
+    ;; otherwise poison DROP USER. Autocommit + per-statement catch is what
+    ;; actually lets the rest proceed.
+    (when (user-exists? spec username)
+      (doseq [{:keys [grantor schema]} (default-acl-grants-for-user spec username)
+              :let [sql (format "ALTER DEFAULT PRIVILEGES FOR USER %s IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
+                                (quote-field grantor) (quote-schema schema) quoted-user)]]
+        (try
+          (jdbc/execute! spec [sql])
+          (catch Throwable t
+            (log/warnf t "Failed to revoke default-priv (%s, %s) referencing iso-user %s; continuing"
+                       grantor schema username)))))
+    ;; Main batch stays transactional: relation revokes, iso-schema bare REVOKE,
+    ;; DROP SCHEMA, DROP USER -- the cleanup we want atomic.
+    (jdbc/with-db-transaction [t-conn spec]
       (let [user-exists     (user-exists? t-conn username)
             schema-exists   (schema-exists? t-conn schema-name)
             granted-schemas (when user-exists
-                              (schemas-with-user-grants t-conn username))
-            ;; Default-priv entries are owned by their grantor, not the iso-user. They can
-            ;; survive even when no relation-level grant remains (e.g. when the source schema
-            ;; never produced a table after provisioning). Discover them directly from
-            ;; `pg_default_acl` so we can REVOKE each `(grantor, schema)` pair.
-            default-acls    (when user-exists
-                              (default-acl-grants-for-user t-conn username))]
+                              (schemas-with-user-grants t-conn username))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          ;; The default-priv REVOKEs run individually rather than as part of the main batch:
-          ;; if a `pg_default_acl` row points at a schema that was dropped between discovery
-          ;; and execution, the ALTER errors and would abort an unbroken executeBatch,
-          ;; leaving the iso-user undroppable. Catching per statement lets the rest proceed.
-          (when user-exists
-            (doseq [{:keys [grantor schema]} default-acls
-                    :let [qgrantor      (quote-field grantor)
-                          qacl-schema   (quote-schema schema)
-                          sql           (format "ALTER DEFAULT PRIVILEGES FOR USER %s IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
-                                                qgrantor qacl-schema quoted-user)]]
-              (try
-                (.execute ^Statement stmt ^String sql)
-                (catch Throwable t
-                  (log/warnf t "Failed to revoke default-priv (%s, %s) referencing iso-user %s; continuing"
-                             grantor schema username)))))
-          ;; Main batch: relation-level revokes, iso-namespace cleanup, DROP SCHEMA, DROP USER.
-          ;; These are either expected-to-succeed-or-noop or the cleanup we'd want atomic.
           (when user-exists
             (doseq [schema granted-schemas
                     :let [quoted-granted-schema (quote-schema schema)]]
@@ -1010,8 +1005,7 @@
             ;; Iso-namespace default-priv was issued by the connection user at init time, so a
             ;; no-FOR-USER REVOKE is correct here. Guarded on schema existence to avoid
             ;; erroring on a schema that was dropped manually. Coverage for foreign-grantor
-            ;; default-priv rows is handled above by the per-grantor REVOKE loop, so master's
-            ;; bare REVOKE in the granted-schemas loop is intentionally dropped here.
+            ;; default-priv rows is handled above by the per-grantor autocommit loop.
             (when schema-exists
               (.addBatch ^Statement stmt
                          ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
