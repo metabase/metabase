@@ -7,12 +7,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util.match :as lib.util.match]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.match :as match]))
 
 (def mock-temporal-fields-metadata-provider
   (let [date-field         (merge (meta/field-metadata :checkins :date)
@@ -171,7 +171,7 @@
 
 (defn- temporal-type-reconciliation-expected-value
   [{:keys [field temporal-type expected-value honeysql-filter-fn num-args], :as _test-case}]
-  (let [field-literal?      (lib.util.match/match-lite field [:field (_ :guard string?) _] true)
+  (let [field-literal?      (match/match-one field [:field (_ :guard string?) _] true)
         mock-field          (get mock-temporal-fields temporal-type)
         expected-identifier (cond-> (-> (h2x/identifier :field "ABC" (name temporal-type))
                                         (vary-meta assoc ::bigquery.qp/do-not-qualify? true))

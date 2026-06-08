@@ -83,6 +83,17 @@
        (mapcat :fields)
        distinct))
 
+(def legacy-input-excluded-keys
+  "Keys present on the ingestion document `m` that must NOT be encoded into `legacy_input`. These are
+   internal signals (ranking, filtering, ingestion bookkeeping) that the search API response should not
+   surface to clients. Consumers: `metabase.search.ingestion/->document`."
+  ;; `:collection_type` and `:collection_location` deliberately stay IN `legacy_input`:
+  ;; - `metabase.search.impl/serialize` reads `:collection_type` to build the response's `:collection.type`
+  ;; - `metabase.search.impl/add-dataset-collection-hierarchy` reads `:collection_location` to hydrate
+  ;;   `:collection_effective_ancestors`, and the collection-result hydration path reads `:location` from
+  ;;   the toucan instance (which the render-term keeps populated).
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer})
+
 (def attr-types
   "The abstract types of each attribute."
   {:archived                :boolean
@@ -108,7 +119,11 @@
    :temporal-info           nil
    :display-type            :text
    :is-published            :boolean
-   :source-type             :text})
+   :source-type             :text
+   :collection-type         :text
+   :collection-location     :text
+   :root-collection-type    :text
+   :data-layer              :text})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -132,7 +147,11 @@
          :updated-at
          :temporal-info
          :is-published
-         :source-type])
+         :source-type
+         :collection-type                                   ;;  surfaced for downstream consumers (metabase.search.impl/serialize)
+         :collection-location                               ;;  surfaced for downstream consumers (add-dataset-collection-hierarchy)
+         :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
+         :data-layer])                                      ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
        distinct
        vec))
 
@@ -225,49 +244,60 @@
     (keyword (str (name table) "." (name kw)))
     kw))
 
-(defn- find-fields-kw [kw]
+(defn- find-fields-kw [acc kw]
   ;; Filter out SQL functions
-  (when-not (or (str/starts-with? (name kw) "%")
-                (#{:else :integer :float} kw))
-    (let [table (get-table kw)]
-      [[(or table :this) (remove-table table kw)]])))
+  (if (or (str/starts-with? (name kw) "%")
+          (#{:else :integer :float} kw))
+    acc
+    (conj! acc
+           (if-let [table (get-table kw)]
+             [table (remove-table table kw)]
+             [:this kw]))))
 
-(defn- find-fields-expr [expr]
-  (cond
-    (keyword? expr)
-    (find-fields-kw expr)
+(defn- find-fields-expr
+  ([expr] (persistent! (find-fields-expr (transient []) expr)))
+  ([acc expr]
+   (cond
+     (keyword? expr)
+     (find-fields-kw acc expr)
 
-    (and (vector? expr) (> (count expr) 1))
-    (into [] (mapcat find-fields-expr) (subvec expr 1))
+     (and (vector? expr) (> (count expr) 1))
+     (reduce find-fields-expr acc (subvec expr 1))
 
-    (and (map? expr) (:fields expr))
-    (into [] (mapcat find-fields-expr) (:fields expr))))
+     (and (map? expr) (:fields expr))
+     (reduce-kv #(find-fields-expr %1 %3) acc (:fields expr))
 
-(defn- find-fields-attr [[k v]]
-  (when v
+     :else acc)))
+
+(defn- find-fields-attr [acc k v]
+  (if v
     (if (true? v)
-      [[:this (keyword (u/->snake_case_en (name k)))]]
-      (find-fields-expr v))))
+      (conj! acc [:this (keyword (u/->snake_case_en (name k)))])
+      (find-fields-expr acc v))
+    acc))
 
-(defn- find-fields-search [item]
+(defn- find-fields-search [acc item]
   (let [x (if (map-entry? item) (key item) item)]
     (cond
       (keyword? x)
-      (find-fields-kw x)
+      (find-fields-kw acc x)
 
       (vector? x)
-      (find-fields-expr (first x)))))
+      (find-fields-expr acc (first x))
+
+      :else acc)))
 
 (defn- find-fields
   "Search within a definition for all the fields referenced on the given table alias."
   [spec]
   (u/group-by #(nth % 0) #(nth % 1) conj #{}
-              (-> []
-                  ;; select fields that will influence content
-                  (into (mapcat find-fields-attr (:attrs spec)))
-                  (into (mapcat find-fields-search (:search-terms spec)))
-                  (into (mapcat find-fields-attr (:render-terms spec)))
-                  (into (find-fields-expr (:where spec))))))
+              (as-> (transient []) acc
+                ;; select fields that will influence content
+                (reduce-kv find-fields-attr acc (:attrs spec))
+                (reduce find-fields-search acc (:search-terms spec))
+                (reduce-kv find-fields-attr acc (:render-terms spec))
+                (find-fields-expr acc (:where spec))
+                (persistent! acc))))
 
 (defn- replace-qualification [expr from to]
   (cond
@@ -310,7 +340,6 @@
                 (assoc res model #{{:search-model s
                                     :fields       table-fields
                                     :where        (replace-qualification join-condition table-alias :updated)}})))
-
             {(:model spec) #{{:search-model s
                               :fields       (:this (find-fields spec))
                               :where        (construct-source-where (-> spec :attrs :id))}}}

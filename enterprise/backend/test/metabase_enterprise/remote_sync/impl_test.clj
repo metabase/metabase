@@ -1,8 +1,10 @@
 (ns metabase-enterprise.remote-sync.impl-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.impl-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
@@ -107,7 +109,6 @@
                       :error :metabase-enterprise.serialization.v2.load/not-found})]
       (is (= "Import failed: Database 'clickhouse' does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
              (impl/source-error-message e)))))
-
   (testing "source-error-message produces helpful message for FK database-not-found errors"
     (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
                          {:table-id ["clickhouse" nil "some_table"]})
@@ -224,23 +225,19 @@
               export-result (impl/export! (source.p/snapshot mock-main) (:id export-task) "Test export")]
           (remote-sync.task/complete-sync-task! (:id export-task))
           (is (= :success (:status export-result)))
-
           (let [files-after-export (get @(:files-atom mock-main) "test-branch")]
             (is (map? files-after-export))
             (is (not-empty files-after-export))
             (is (some #(str/includes? % "collection") (keys files-after-export)))
             (is (some #(str/includes? % "card") (keys files-after-export))))
-
           (t2/delete! :model/RemoteSyncTask :id (:id export-task))
           (let [import-task (t2/with-connection [_conn (app-db/app-db) (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})])
                 import-result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
             (remote-sync.task/complete-sync-task! (:id import-task))
             (is (= :success (:status import-result)))
             (is (= "Successfully reloaded from git repository" (:message import-result)))
-
             (is (t2/exists? :model/Collection :id coll-id))
             (is (t2/exists? :model/Card :id card-id))
-
             (let [collection (t2/select-one :model/Collection :id coll-id)
                   card (t2/select-one :model/Card :id card-id)]
               (is (= "Test Collection" (:name collection)))
@@ -264,7 +261,6 @@
               mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
               result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
           (is (= :success (:status result)))
-
           (is (t2/exists? :model/Card :id card1-id))
           (is (not (t2/exists? :model/Collection :id coll2-id)))
           (is (not (t2/exists? :model/Card :id card2-id))))))))
@@ -283,9 +279,9 @@
       (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
         (let [mock-source (test-helpers/create-mock-source)
               progress-calls (atom [])]
-          (with-redefs [remote-sync.task/update-progress!
-                        (fn [task-id progress]
-                          (swap! progress-calls conj {:task-id task-id :progress progress}))]
+          (mt/with-dynamic-fn-redefs [remote-sync.task/update-progress!
+                                      (fn [task-id progress]
+                                        (swap! progress-calls conj {:task-id task-id :progress progress}))]
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
               (is (= 5 (count @progress-calls)))
@@ -306,9 +302,9 @@
                          :model/Card _ {:collection_id coll-id}]
             (let [mock-source (test-helpers/create-mock-source)
                   progress-calls (atom [])]
-              (with-redefs [remote-sync.task/update-progress!
-                            (fn [task-id progress]
-                              (swap! progress-calls conj {:task-id task-id :progress progress}))]
+              (mt/with-dynamic-fn-redefs [remote-sync.task/update-progress!
+                                          (fn [task-id progress]
+                                            (swap! progress-calls conj {:task-id task-id :progress progress}))]
                 (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
                   (is (= :success (:status result)))
                   (is (pos? (count @progress-calls)))
@@ -487,8 +483,8 @@
         (mt/with-temporary-setting-values [remote-sync-enabled true
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-branch ""]
-          (with-redefs [source/source-from-settings (constantly mock-source)
-                        impl/async-import! (fn [& _args] (reset! import-started? true) 123)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                      impl/async-import! (fn [& _args] (reset! import-started? true) 123)]
             (impl/finish-remote-config!)
             (is (= "main" (setting/get :remote-sync-branch))
                 "Should set branch to default branch")))))))
@@ -503,8 +499,8 @@
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-branch "main"
                                              remote-sync-type :read-only]
-            (with-redefs [source/source-from-settings (constantly mock-source)
-                          impl/async-import! (fn [& _args] (reset! import-called? true) {:id 123})]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                        impl/async-import! (fn [& _args] (reset! import-called? true) {:id 123})]
               (let [task-id (impl/finish-remote-config!)]
                 (is (= 123 task-id)
                     "Should return task ID from async-import!")
@@ -521,8 +517,8 @@
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-branch "main"
                                              remote-sync-type :read-write]
-            (with-redefs [source/source-from-settings (constantly mock-source)
-                          impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                        impl/async-import! (fn [& _args] (reset! import-called? true) 123)]
               (let [result (impl/finish-remote-config!)]
                 (is (nil? result)
                     "Should return nil when nothing is done")
@@ -536,7 +532,7 @@
         (mt/with-temp [:model/Collection _ {:name "Remote Collection" :is_remote_synced true :location "/"}]
           (mt/with-temporary-setting-values [remote-sync-url     nil
                                              remote-sync-enabled false]
-            (with-redefs [collection/clear-remote-synced-collection! (fn [] (reset! clear-called? true))]
+            (mt/with-dynamic-fn-redefs [collection/clear-remote-synced-collection! (fn [] (reset! clear-called? true))]
               (let [result (impl/finish-remote-config!)]
                 (is (nil? result)
                     "Should return nil when remote sync is disabled")
@@ -720,6 +716,7 @@
                          {:name "Test Collection"
                           :is_remote_synced true
                           :entity_id "test-collection-1xxxx"
+                          :type      "library-data"
                           :location "/"}
                          ;; Table must have collection_id and is_published to be included as Collection descendant
                          :model/Table {table-id :id} {:name "test-table"
@@ -1246,7 +1243,7 @@ serdes/meta:
                                           :type "library"
                                           :entity_id collection/library-entity-id
                                           :location "/"}]
-        (with-redefs [remote-sync.task/last-version (constantly "previous-version")]
+        (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "previous-version")]
           (let [test-files {"main" {"collections/main/lib/lib.yaml"
                                     (test-helpers/generate-collection-yaml collection/library-entity-id "Remote Library")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
@@ -1433,3 +1430,161 @@ serdes/meta:
             "import should succeed with old-format paths")
         (is (t2/exists? :model/Collection :entity_id coll-eid)
             "collection should have been imported from old-format path")))))
+
+;; ---------- GHY-3505: captured-branch race ---------------------------------------------------------
+;;
+;; The original repros for GHY-3505 demonstrated the captured-branch race by writing the setting
+;; directly via `setting/set!`, simulating a path that bypassed all coordination. With the
+;; operation-level guards in place (see *-refuses-while-task-running-test below and the
+;; corresponding API-level tests in api_test.clj), the race is no longer reachable through any
+;; user-facing path: every code that mutates remote-sync state now calls `guards/ensure-no-active-task!`
+;; first and refuses with 400 if a RemoteSyncTask is in flight.
+;;
+;; Coverage of the fix is split across:
+;;   - guards-test (the predicate itself: catches stalled tasks too)
+;;   - operation-level guard tests in this file, core_test, settings_test
+;;   - API-level guard tests in api_test
+;;
+;; As a defense-in-depth measure for any future code path that bypasses the guards, async-import!
+;; and async-export! capture the setting at scheduling time and the work function aborts if it
+;; observes a different setting at start. This is not separately tested because the window in
+;; which the setting could change between scheduling and start is sub-millisecond.
+
+;; ---------- Guard contract: mutating operations must refuse while a task is running ----------------
+;;
+;; Every mutating remote-sync operation consults `guards/task-running?` and refuses if it returns
+;; true. The tests use `with-redefs` to flip it to `(constantly true)` so they don't depend on
+;; actually inserting a RemoteSyncTask row.
+
+(deftest async-import!-refuses-while-task-running-test
+  (testing "async-import! must refuse when guards/task-running? returns true,
+            without creating a RemoteSyncTask row"
+    (mt/with-temporary-setting-values [remote-sync-enabled true
+                                       remote-sync-url     "https://github.com/test/repo.git"
+                                       remote-sync-token   "token"
+                                       remote-sync-branch  "main"
+                                       remote-sync-type    :read-write]
+      (with-redefs [guards/task-running?        (constantly true)
+                    source/source-from-settings (fn [& _] (test-helpers/create-mock-source))]
+        (is (thrown-with-msg? Exception #"Remote sync task in progress"
+                              (impl/async-import! "main" true {})))
+        (is (zero? (t2/count :model/RemoteSyncTask))
+            "no RemoteSyncTask row should be created when the guard fires")))))
+
+(deftest async-export!-refuses-while-task-running-test
+  (testing "async-export! must refuse when guards/task-running? returns true,
+            without creating a RemoteSyncTask row"
+    (mt/with-temporary-setting-values [remote-sync-enabled true
+                                       remote-sync-url     "https://github.com/test/repo.git"
+                                       remote-sync-token   "token"
+                                       remote-sync-branch  "main"
+                                       remote-sync-type    :read-write]
+      (with-redefs [guards/task-running?        (constantly true)
+                    source/source-from-settings (fn [& _] (test-helpers/create-mock-source))]
+        (is (thrown-with-msg? Exception #"Remote sync task in progress"
+                              (impl/async-export! "main" true "msg")))
+        (is (zero? (t2/count :model/RemoteSyncTask))
+            "no RemoteSyncTask row should be created when the guard fires")))))
+
+(deftest create-branch!-refuses-while-task-running-test
+  (testing "create-branch! must refuse when guards/task-running? returns true,
+            without pushing a branch to the source or changing the setting"
+    (mt/with-temporary-setting-values [remote-sync-enabled true
+                                       remote-sync-url     "https://github.com/test/repo.git"
+                                       remote-sync-token   "token"
+                                       remote-sync-branch  "main"
+                                       remote-sync-type    :read-write]
+      (let [mock-source      (test-helpers/create-mock-source)
+            initial-branches @(:branches-atom mock-source)]
+        (with-redefs [guards/task-running?        (constantly true)
+                      source/source-from-settings (fn [& _] mock-source)]
+          (is (thrown-with-msg? Exception #"Remote sync task in progress"
+                                (impl/create-branch! "feature-x" "main")))
+          (is (= "main" (remote-sync.settings/remote-sync-branch))
+              "remote-sync-branch must remain unchanged when the guard fires")
+          (is (= initial-branches @(:branches-atom mock-source))
+              "no new branch should be pushed to the source when the guard fires"))))))
+
+(deftest stash!-refuses-while-task-running-test
+  (testing "stash! must refuse when guards/task-running? returns true,
+            without pushing a branch to the source, creating a task, or changing the setting"
+    (mt/with-temporary-setting-values [remote-sync-enabled true
+                                       remote-sync-url     "https://github.com/test/repo.git"
+                                       remote-sync-token   "token"
+                                       remote-sync-branch  "main"
+                                       remote-sync-type    :read-write]
+      (let [mock-source      (test-helpers/create-mock-source)
+            initial-branches @(:branches-atom mock-source)]
+        (with-redefs [guards/task-running?        (constantly true)
+                      source/source-from-settings (fn [& _] mock-source)]
+          (is (thrown-with-msg? Exception #"Remote sync task in progress"
+                                (impl/stash! "stash-branch" "stash message")))
+          (is (= "main" (remote-sync.settings/remote-sync-branch))
+              "remote-sync-branch must remain unchanged when the guard fires")
+          (is (= initial-branches @(:branches-atom mock-source))
+              "no new branch should be pushed to the source when the guard fires")
+          (is (zero? (t2/count :model/RemoteSyncTask))
+              "no RemoteSyncTask row should be created when the guard fires"))))))
+
+;; ---------- handle-task-result! is robust against double-handling -----------------------------
+;;
+;; If an admin cancels a task via POST /current-task/cancel while its virtual thread is still
+;; running, the thread will eventually reach handle-task-result!. Without protection, the :success
+;; path would write the captured branch (stomping any setting change since cancellation) and
+;; complete-sync-task! would overwrite the cancellation bookkeeping. The check at the top of
+;; handle-task-result! short-circuits when the task is already terminated.
+
+(deftest handle-task-result!-skips-already-terminated-task-test
+  (testing "handle-task-result! must not write the setting or update the task row when the task
+            is already terminated (e.g., cancelled by admin while the virtual thread was running)"
+    (mt/with-temporary-setting-values [remote-sync-branch "dev"]
+      (let [task-id (t2/insert-returning-pk!
+                     :model/RemoteSyncTask
+                     {:sync_task_type "import"
+                      :initiated_by   (mt/user->id :rasta)
+                      :started_at     (t/offset-date-time)
+                      :ended_at       (t/offset-date-time)
+                      :cancelled      true
+                      :error_message  "Cancelled by admin"
+                      :progress       0.5})]
+        (impl/handle-task-result! {:status :success :version "abc"} task-id "feature-x")
+        (is (= "dev" (remote-sync.settings/remote-sync-branch))
+            "setting must remain unchanged — already-terminated task must not write it")
+        (let [task-after (t2/select-one :model/RemoteSyncTask :id task-id)]
+          (is (true? (:cancelled task-after))
+              "cancellation bookkeeping must be preserved")
+          (is (= "Cancelled by admin" (:error_message task-after))
+              "error message must be preserved")
+          (is (= 0.5 (double (:progress task-after)))
+              "progress must not be overwritten to 1.0"))))))
+
+;; ---------- create-task-with-lock! integrates supersession ------------------------------------
+;;
+;; The auto-import path (task/import.clj) calls create-task-with-lock! directly, without going
+;; through the strict ensure-no-active-task! guard. So when an auto-import runs and finds the
+;; previous task to be stale, supersede-stale-tasks! cleans up the stale row before inserting
+;; the new one. This is the self-healing behavior we want for automatic operations.
+
+(deftest create-task-with-lock!-supersedes-stale-tasks-test
+  (testing "create-task-with-lock! marks stale tasks superseded before creating a new task,
+            so auto-imports recover after a JVM/thread death"
+    (let [old-time (t/minus (t/offset-date-time) (t/hours 1))
+          stale-task (t2/insert-returning-instance!
+                      :model/RemoteSyncTask
+                      {:sync_task_type          "import"
+                       :initiated_by            (mt/user->id :rasta)
+                       :started_at              old-time
+                       :last_progress_report_at old-time
+                       :progress                0.5})
+          new-task (impl/create-task-with-lock! "import")]
+      (let [stale-after (t2/select-one :model/RemoteSyncTask :id (:id stale-task))]
+        (is (true? (:cancelled stale-after))
+            "stale task must be marked cancelled")
+        (is (some? (:ended_at stale-after))
+            "stale task must be terminated"))
+      (is (some? (:id new-task))
+          "new task must be created")
+      (is (nil? (:ended_at new-task))
+          "new task must be active")
+      (is (not (:existing? new-task))
+          "new task must not be marked as existing"))))

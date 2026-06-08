@@ -16,7 +16,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import { slugify } from "metabase/utils/formatting";
+import { slugify } from "metabase/visualizations/lib/formatting";
 import type { DataSegregationStrategy, FieldId } from "metabase-types/api";
 
 import { useCreateTenantMutation } from "../../../api/tenants";

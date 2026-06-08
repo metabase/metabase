@@ -24,7 +24,14 @@ jest.mock("metabase-lib/v1/parameters/utils/cards", () => ({
 }));
 
 jest.mock("metabase/redux/metadata", () => ({
-  addFields: jest.fn((fields) => ({ type: "ADD_FIELDS", payload: fields })),
+  updateMetadata: jest.fn((data) => ({
+    type: "metabase/entities/UPDATE",
+    payload: data,
+  })),
+}));
+
+jest.mock("metabase/schema", () => ({
+  FieldSchema: {},
 }));
 
 jest.mock("metabase/selectors/metadata", () => ({
@@ -308,7 +315,7 @@ describe("useAvailableParameters", () => {
   });
 
   describe("param_fields handling", () => {
-    it("should dispatch addFields when resource has param_fields", () => {
+    it("should dispatch updateMetadata when resource has param_fields", () => {
       const dashboardWithParamFields = {
         ...mockDashboard,
         param_fields: {

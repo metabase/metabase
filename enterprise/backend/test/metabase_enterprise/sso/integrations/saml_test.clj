@@ -143,18 +143,15 @@
                                            saml-identity-provider-uri         nil
                                            saml-identity-provider-certificate nil]
           (is (some? (client/client :get 400 "/auth/sso")))))
-
       (testing "SSO requests fail if SAML has been configured but not enabled"
         (mt/with-temporary-setting-values [saml-enabled                       false
                                            saml-identity-provider-uri         default-idp-uri
                                            saml-identity-provider-certificate default-idp-cert]
           (is (some? (client/client :get 400 "/auth/sso")))))
-
       (testing "SSO requests fail if SAML is enabled but hasn't been configured"
         (mt/with-temporary-setting-values [saml-enabled               true
                                            saml-identity-provider-uri nil]
           (is (some? (client/client :get 400 "/auth/sso")))))
-
       (testing "The IDP provider certificate must also be included for SSO to be configured"
         (mt/with-temporary-setting-values [saml-enabled                       true
                                            saml-identity-provider-uri         default-idp-uri
@@ -284,6 +281,26 @@
                      :redirect-strategy :none
                      :form-params      {:SAMLResponse saml-response
                                         :RelayState   (u/encode-base64 relay-state)}}})
+
+(defn- extract-csp-script-nonce
+  "Pull the `'nonce-<value>'` out of the Content-Security-Policy `script-src` directive."
+  [csp-header]
+  (some->> csp-header
+           (re-find #"script-src[^;]*'nonce-([^']+)'")
+           second))
+
+(defn- extract-script-tag-nonce
+  "Pull the nonce attribute out of the first `<script nonce=\"...\">` tag in the popup body."
+  [body]
+  (some->> body
+           (re-find #"<script nonce=\"([^\"]+)\">")
+           second))
+
+(defn- token-relay-state
+  "Build a RelayState whose decoded continue URL carries a valid SDK token + origin."
+  [continue-base origin]
+  (let [token (token-utils/generate-token)]
+    (str continue-base "?token=" token "&origin=" (codec/url-encode origin))))
 
 (defn- some-saml-attributes [user-nickname]
   {"http://schemas.auth0.com/identities/default/provider"   "auth0"
@@ -578,6 +595,8 @@
              ;; deactivate the user again
              (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can't reactivate the user if user provisioning is disabled."
+               ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+               #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
                              appearance.settings/site-name (constantly "test")]
                  (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
@@ -728,6 +747,8 @@
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
+        ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
                       appearance.settings/site-name (constantly "test")]
           (let [req-options (saml-post-request-options (new-user-saml-test-response)
@@ -874,7 +895,9 @@
       (with-saml-default-setup!
         (do-with-some-validators-disabled!
          (fn []
-           ;; Mock the saml-response->attributes function to return mixed attribute types
+           ;; Mock the saml-response->attributes function to return mixed attribute types.
+           ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
            (with-redefs [saml.p/saml-response->attributes
                          (fn [_]
                            {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" "rasta@metabase.com"
@@ -890,7 +913,6 @@
                                                           default-redirect-uri)
                    response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                (is (successful-login? response))
-
                ;; Doesn't test the warning message because there are issues setting up log capture with client-real-response
                ;; and client-full-response doesn't work with the saml lib
 
@@ -995,6 +1017,8 @@
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                      (is (successful-login? response)))))
                (testing "an existing user also fails to log in"
+                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
                                  {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
@@ -1014,6 +1038,8 @@
                                                         :name "Tenant McTenantson"
                                                         :is_active false}
                          :model/User {existing-email :email} {:tenant_id tenant-id}]
+            ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
             (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)]
               (do-with-some-validators-disabled!
                (fn []
@@ -1024,6 +1050,8 @@
                            response    (client/client-real-response :post 401 "/auth/sso" req-options)]
                        (is (not (successful-login? response))))))
                  (testing "an existing user also fails to log in"
+                   ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                   #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                    (with-redefs [saml.p/saml-response->attributes
                                  (fn [_]
                                    {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
@@ -1047,6 +1075,8 @@
             (do-with-some-validators-disabled!
              (fn []
                (testing "tenant -> other tenant fails with correct error message"
+                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
                                  {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant
@@ -1068,7 +1098,9 @@
                            :model/User {email-with-tenant :email} {:tenant_id tenant-id}]
               (do-with-some-validators-disabled!
                (fn []
-                 ;; Use the regular new-user response which doesn't have tenant attribute
+                 ;; Use the regular new-user response which doesn't have tenant attribute.
+                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
                                  {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant})]
@@ -1089,6 +1121,8 @@
                            :model/User {email-without-tenant :email} {:tenant_id nil}]
               (do-with-some-validators-disabled!
                (fn []
+                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
                                  {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-without-tenant
@@ -1097,3 +1131,45 @@
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 401 "/auth/sso" req-options)]
                      (is (not (successful-login? response))))))))))))))
+
+(deftest popup-csp-nonce-matches-header-test
+  (testing "When `/auth/sso` returns the SAML popup HTML, the `<script nonce>` attribute must byte-equal the `'nonce-<X>'` in the response's Content-Security-Policy `script-src` directive."
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [relay-state  (token-relay-state default-redirect-uri (system/site-url))
+                 req-options  (saml-post-request-options (saml-test-response) relay-state)
+                 response     (client/client-real-response :post 200 "/auth/sso" req-options)
+                 header-nonce (extract-csp-script-nonce (get-in response [:headers "Content-Security-Policy"]))
+                 body-nonce   (extract-script-tag-nonce (:body response))]
+             (testing "CSP header contains a script-src nonce"
+               (is (seq header-nonce)))
+             (testing "Popup body contains a <script nonce=\"...\"> tag"
+               (is (seq body-nonce)))
+             (testing "Header nonce matches body script nonce"
+               (is (= header-nonce body-nonce))))))))))
+
+(deftest popup-csp-nonce-per-request-unique-test
+  (testing "Each `/auth/sso` popup response carries a freshly generated nonce (no static reuse)."
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [response-1 (client/client-real-response
+                             :post 200 "/auth/sso"
+                             (saml-post-request-options
+                              (saml-test-response)
+                              (token-relay-state default-redirect-uri (system/site-url))))
+                 response-2 (client/client-real-response
+                             :post 200 "/auth/sso"
+                             (saml-post-request-options
+                              (saml-test-response)
+                              (token-relay-state default-redirect-uri (system/site-url))))
+                 nonce-1    (extract-script-tag-nonce (:body response-1))
+                 nonce-2    (extract-script-tag-nonce (:body response-2))]
+             (testing "Both responses have nonces"
+               (is (seq nonce-1))
+               (is (seq nonce-2)))
+             (testing "Nonces differ between requests"
+               (is (not= nonce-1 nonce-2))))))))))

@@ -47,9 +47,10 @@
              [:like [:lower :collection_type]   "%foo%"] [:inline 0]
              [:like [:lower :display]           "%foo%"] [:inline 0]
              [:like [:lower :display_type]      "%foo%"] [:inline 0]
-             [:like [:lower :table_schema]      "%foo%"] [:inline 0]
-             [:like [:lower :table_name]        "%foo%"] [:inline 0]
-             [:like [:lower :table_description] "%foo%"] [:inline 0]
+             [:like [:lower :table_schema]        "%foo%"] [:inline 0]
+             [:like [:lower :table_name]          "%foo%"] [:inline 0]
+             [:like [:lower :table_display_name]  "%foo%"] [:inline 0]
+             [:like [:lower :table_description]   "%foo%"] [:inline 0]
              [:like [:lower :database_name]     "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
@@ -196,7 +197,6 @@
           (test-search "2021-05-05~2023-05-04" new-result)
           (test-search "~2023-05-03" old-result)
           (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
-
           ;; relative times
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)
@@ -277,7 +277,6 @@
           (test-search "2021-05-05~2023-05-04" new-result)
           (test-search "~2023-05-03" old-result)
           (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
-
           ;; relative times
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)

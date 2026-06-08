@@ -1,4 +1,5 @@
 (ns metabase.query-processor.preprocess-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.preprocess-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

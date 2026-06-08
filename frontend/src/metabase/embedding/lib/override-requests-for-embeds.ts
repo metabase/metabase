@@ -20,6 +20,9 @@ const getBaseUrlByEmbedType = (embedType: EmbedType): string =>
 const getIgnoreOverridePatterns = () => [
   sessionPropertiesPath,
   PLUGIN_CONTENT_TRANSLATION.getDictionaryBasePath,
+  // `/api/frontend-errors` only exists at the canonical path (see
+  // metabase.frontend-errors.api) — rewriting it would 404.
+  "/api/frontend-errors",
 ];
 
 /**
@@ -182,7 +185,7 @@ function replaceWithEmbedBase({
   return url;
 }
 
-const overrideRequests = async ({
+export const overrideRequests = async ({
   embedType,
   method,
   url,
@@ -205,11 +208,6 @@ const overrideRequests = async ({
   if (!options.headers) {
     options.headers = {};
   }
-
-  /**
-   * Set header to indicate that this request is for guest embed.
-   */
-  options.headers["x-metabase-guest-embed"] = "true";
 
   return {
     method: transformation.method,

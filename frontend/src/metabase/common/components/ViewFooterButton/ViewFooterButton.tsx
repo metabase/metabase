@@ -5,10 +5,9 @@ import {
   type ActionIconProps,
   Center,
   Icon,
-  type IconName,
   Tooltip,
 } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export type ViewFooterButtonProps = {
   icon: IconName;
   tooltipLabel?: string | null;

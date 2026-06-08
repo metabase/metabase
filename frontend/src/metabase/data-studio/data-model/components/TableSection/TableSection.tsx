@@ -35,9 +35,9 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
-import type { DataStudioTableMetadataTab } from "metabase/utils/urls/data-studio";
-import { dependencyGraph } from "metabase/utils/urls/dependencies";
+import * as Urls from "metabase/urls";
+import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
+import { dependencyGraph } from "metabase/urls/dependencies";
 import {
   type FieldId,
   type Table,
@@ -326,6 +326,24 @@ const TableSectionBase = ({
                   </Tooltip>
                 )}
 
+                <Tooltip label={t`Schema viewer`}>
+                  <Button
+                    component={ForwardRefLink}
+                    to={Urls.dataStudioSchemaViewer({
+                      databaseId: table.db_id,
+                      schema: table.schema,
+                      tableIds: [table.id],
+                    })}
+                    p="sm"
+                    leftSection={<Icon name="network" />}
+                    style={{
+                      flexGrow: 0,
+                      width: 40,
+                    }}
+                    aria-label={t`Schema viewer`}
+                  />
+                </Tooltip>
+
                 <Box style={{ flexGrow: 0, width: 40 }}>
                   <TableLink table={table} />
                 </Box>
@@ -444,6 +462,7 @@ const TableSectionBase = ({
       <PLUGIN_REPLACEMENT.SourceReplacementModal
         opened={modalType === "replace"}
         initialSource={{ id: Number(table.id), type: "table" }}
+        triggeredFrom="table_list"
         onClose={handleCloseModal}
       />
     </Stack>

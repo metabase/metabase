@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.public-sharing-rest.api-test
   "Tests for `api/public/` (public links) endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.public-sharing-rest.api-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -129,16 +130,13 @@
       (testing "should return 400 if Card doesn't exist"
         (is (= "Not found."
                (client/client :get 404 (str "public/card/" (random-uuid))))))
-
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
           (client/client :get 200 (str "public/card/" uuid)))
-
         (testing "Check that we cannot fetch a public Card if public sharing is disabled"
           (mt/with-temporary-setting-values [enable-public-sharing false]
             (is (= "An error occurred."
                    (client/client :get 400 (str "public/card/" uuid))))))
-
         (testing "Check that we cannot fetch a public Card that has been archived"
           (mt/with-temp-vals-in-db :model/Card card-id {:archived true}
             (is (= "Not found."
@@ -303,15 +301,12 @@
         (testing "Default :api response format"
           (is (= [[100]]
                  (mt/rows (client/client :get 202 (str "public/card/" uuid "/query"))))))
-
         (testing ":json download response format"
           (is (= [{:Count "100"}]
                  (client/client :get 200 (str "public/card/" uuid "/query/json?format_rows=true")))))
-
         (testing ":csv download response format"
           (is (= "Count\n100\n"
                  (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv))))
-
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
@@ -572,19 +567,16 @@
             (process-userland-query-test/with-query-execution! [qe query]
               (client/client :get 202 (str "public/card/" uuid "/query"))
               (is (= :public-question (:context (qe))))))))
-
       (let [query (mt/mbql-query venues)]
         (with-temp-public-card [{uuid :public_uuid} {:dataset_query query}]
           (testing ":json download response format"
             (process-userland-query-test/with-query-execution! [qe query]
               (client/client :get 200 (str "public/card/" uuid "/query/json"))
               (is (= :public-json-download (:context (qe))))))
-
           (testing ":xlsx download response format"
             (process-userland-query-test/with-query-execution! [qe query]
               (client/client :get 200 (str "public/card/" uuid "/query/xlsx"))
               (is (= :public-xlsx-download (:context (qe))))))
-
           (testing ":csv download response format"
             (process-userland-query-test/with-query-execution! [qe query]
               (client/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv)
@@ -636,7 +628,6 @@
         (with-temp-public-dashboard [{uuid :public_uuid}]
           (is (= "An error occurred."
                  (client/client :get 400 (str "public/dashboard/" uuid)))))))
-
     (testing "Should get a 400 if the Dashboard doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (is (= "Not found."
@@ -770,16 +761,13 @@
           (testing "if the Dashboard doesn't exist"
             (is (= "Not found."
                    (client/client :get 404 (dashcard-url {:public_uuid (random-uuid)} card dashcard)))))
-
           (testing "if the Card doesn't exist"
             (is (= "Not found."
                    (client/client :get 404 (dashcard-url dash Integer/MAX_VALUE dashcard)))))
-
           (testing "if the Card exists, but it's not part of this Dashboard"
             (mt/with-temp [:model/Card card]
               (is (= "Not found."
                      (client/client :get 404 (dashcard-url dash card dashcard))))))
-
           (testing "if the Card has been archived."
             (t2/update! :model/Card (u/the-id card) {:archived true})
             (is (= "Not found."
@@ -791,7 +779,6 @@
       (with-temp-public-dashboard-and-card [dash card dashcard]
         (is (= [[100]]
                (mt/rows (client/client :get 202 (dashcard-url dash card dashcard)))))
-
         (testing "with parameters"
           (is (=? {:json_query {:parameters [{:id     "_VENUE_ID_"
                                               :name   "Venue ID"
@@ -882,7 +869,6 @@
                                                                       :value  [10]
                                                                       :id     "_VENUE_ID_"}]))))
                 "This should pass because venue_id *is* one of the Dashboard's :parameters"))
-
           (testing "should fail if"
             (testing "a parameter is passed that is not one of the Dashboard's parameters"
               (is (= "An error occurred."
@@ -938,7 +924,6 @@
                                                                 :value  "50"
                                                                 :id     "_NUM_"}]))
                            mt/rows)))))))
-
         (testing "with MBQL queries"
           (testing "`:id` parameters"
             (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues
@@ -962,7 +947,6 @@
                                                                   :value  "50"
                                                                   :id     "_VENUE_ID_"}]))
                              mt/rows)))))))
-
           (testing "temporal parameters"
             (mt/with-temporary-setting-values [enable-public-sharing true]
               (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query checkins
@@ -1135,12 +1119,10 @@
                 (is (= {:values          [["African"] ["American"] ["Asian"]]
                         :has_more_values false}
                        (client/client :get 200 (param-values-url :dashboard uuid (:static-category param-keys))))))
-
               (testing "parameter with source is card"
                 (is (= {:values          [["African"] ["American"] ["Artisan"] ["Asian"] ["BBQ"]]
                         :has_more_values true}
                        (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys))))))
-
               (testing "parameter with source is chain filter"
                 (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                         :has_more_values false}
@@ -1151,24 +1133,20 @@
                           :has_more_values false}
                          (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys))
                                         (keyword (:id param-keys)) "7"))))))
-
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
               (testing "parameter with source is a static list"
                 (is (= {:values          [["African"]]
                         :has_more_values false}
                        (client/client :get 200 (param-values-url :dashboard uuid (:static-category param-keys) "af")))))
-
               (testing "parameter with source is card"
                 (is (= {:values          [["African"]]
                         :has_more_values false}
                        (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys) "afr")))))
-
               (testing "parameter with source is a chain filter"
                 (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
                         :has_more_values false}
                        (->> (client/client :get 200 (param-values-url :dashboard uuid (:category-name param-keys) "food"))
                             (chain-filter-test/take-n-values 3)))))))))
-
       (testing "with card"
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
           (let [card-uuid (str (random-uuid))
@@ -1184,13 +1162,11 @@
                 (is (= {:values          [["African"] ["American"] ["Asian"]]
                         :has_more_values false}
                        (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys))))))
-
               (testing "parameter with source is a card"
                 (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
                                           ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                         :has_more_values true}
                        (client/client :get 200 (param-values-url :card card-uuid (:card param-keys))))))
-
               (testing "parameter with source is a field filter"
                 (testing "parameter with source is a card"
                   (let [resp (client/client
@@ -1200,18 +1176,15 @@
                     (is (false? (:has_more_values resp)))
                     (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
                                      (-> resp :values set)))))))
-
             (testing "GET /api/public/card/:uuid/params/:param-key/search/:query"
               (testing "parameter with source is a static list"
                 (is (= {:values          [["African"]]
                         :has_more_values false}
                        (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys) "af")))))
-
               (testing "parameter with source is a card"
                 (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                         :has_more_values false}
                        (client/client :get 200 (param-values-url :card card-uuid (:card param-keys) "red")))))
-
               (testing "parameter with source is a field-filter"
                 (is (partial= {:values
                                [["Barney's Beanery"]
@@ -1280,7 +1253,6 @@
                             :has_more_values false}
                            (->> (mt/user-http-request :rasta :get 200 (param-values-url :dashboard uuid (:category-name param-keys) "food"))
                                 (chain-filter-test/take-n-values 3))))))))
-
             (testing "with card"
               (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
                 (let [uuid (str (random-uuid))]
@@ -1290,17 +1262,14 @@
                     (is (= {:values          [["African"] ["American"] ["Asian"]]
                             :has_more_values false}
                            (client/client :get 200 (param-values-url :card uuid (:static-list param-keys)))))
-
                     (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
                                               ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                             :has_more_values true}
                            (client/client :get 200 (param-values-url :card uuid (:card param-keys))))))
-
                   (testing "GET /api/public/card/:uuid/params/:param-key/search/:query"
                     (is (= {:values          [["African"]]
                             :has_more_values false}
                            (client/client :get 200 (param-values-url :card uuid (:static-list param-keys) "afr"))))
-
                     (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                             :has_more_values false}
                            (client/client :get 200 (param-values-url :card uuid (:card param-keys) "red"))))))))))))))
@@ -1442,7 +1411,6 @@
               (is (= "completed" (:status result)))
               (is (= 6 (count (get-in result [:data :cols]))))
               (is (= 1144 (count rows)))
-
               (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
               (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
               (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
@@ -1481,7 +1449,7 @@
                (let [result (results)]
                  (is (=? {:status "completed"}
                          result))
-                      ;; [[metabase.public-sharing-rest.api/transform-results]] should remove `row_count`
+                 ;; [[metabase.public-sharing-rest.api/transform-results]] should remove `row_count`
                  (testing "row_count isn't included in public endpoints"
                    (is (nil? (:row_count result))))
                  (is (= 6 (count (get-in result [:data :cols]))))
@@ -1522,16 +1490,13 @@
                (testing "if the Dashboard doesn't exist"
                  (is (= "Not found."
                         (client/client :get 404 (dashcard-url {:public_uuid (random-uuid)} card dashcard)))))
-
                (testing "if the Card doesn't exist"
                  (is (= "Not found."
                         (client/client :get 404 (dashcard-url dash Integer/MAX_VALUE dashcard)))))
-
                (testing "if the Card exists, but it's not part of this Dashboard"
                  (mt/with-temp [:model/Card card]
                    (is (= "Not found."
                           (client/client :get 404 (dashcard-url dash card dashcard))))))
-
                (testing "if the Card has been archived."
                  (t2/update! :model/Card (u/the-id card) {:archived true})
                  (is (= "Not found."
@@ -1729,7 +1694,6 @@
                          :rows
                          first
                          first))))
-
           (testing "XLSX export"
             (is (= "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                    (-> (client/client-full-response :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/xlsx"

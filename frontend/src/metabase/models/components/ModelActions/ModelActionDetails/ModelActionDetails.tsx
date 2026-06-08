@@ -2,22 +2,25 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Button } from "metabase/common/components/Button";
+import {
+  useDeleteActionMutation,
+  useListActionsQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
+import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Actions } from "metabase/entities/actions";
-import { Databases } from "metabase/entities/databases";
-import { connect } from "metabase/redux";
-import type { Dispatch, State } from "metabase/redux/store";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Button, Icon } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
-import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 import {
   canArchiveAction,
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -35,49 +38,32 @@ import {
   Root,
 } from "./ModelActionDetails.styled";
 import ModelActionListItem from "./ModelActionListItem";
+import { useEnableImplicitActionsForModel } from "./useEnableImplicitActionsForModel";
 
 interface OwnProps {
   model: Question;
 }
 
-interface DispatchProps {
-  onEnableImplicitActions: () => void;
-  onArchiveAction: (action: WritebackAction) => void;
-  onDeleteAction: (action: WritebackAction) => void;
-}
+type Props = OwnProps;
 
-interface ActionsLoaderProps {
-  actions: WritebackAction[];
-}
-
-interface DatabaseLoaderProps {
-  databases: Database[];
-}
-
-type Props = OwnProps &
-  DispatchProps &
-  ActionsLoaderProps &
-  DatabaseLoaderProps;
-
-function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
-  return {
-    onEnableImplicitActions: () =>
-      dispatch(Actions.actions.enableImplicitActionsForModel(model.id())),
-    onArchiveAction: (action: WritebackAction) =>
-      dispatch(Actions.objectActions.setArchived(action, true)),
-    onDeleteAction: (action: WritebackAction) =>
-      dispatch(Actions.actions.delete(action.id)),
-  };
-}
-
-function ModelActionDetails({
-  model,
-  actions,
-  databases,
-  onEnableImplicitActions,
-  onArchiveAction,
-  onDeleteAction,
-}: Props) {
+function ModelActionDetails({ model }: Props) {
+  useListDatabasesQuery();
+  const databases = useSelector((state) => getMetadata(state).databasesList());
+  const { data: actions = [] } = useListActionsQuery({
+    "model-id": model.id(),
+  });
+  const [deleteAction] = useDeleteActionMutation();
+  const onEnableImplicitActions = useEnableImplicitActionsForModel(model.id());
+  const onDeleteAction = useCallback(
+    (action: WritebackAction) => deleteAction(action.id),
+    [deleteAction],
+  );
+  const archive = useSetArchive();
+  const onArchiveAction = useCallback(
+    (action: WritebackAction) =>
+      archive({ id: action.id, model: "action" }, true),
+    [archive],
+  );
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
 
@@ -161,7 +147,7 @@ function ModelActionDetails({
     <Root data-testid="model-action-details">
       {canWrite && (
         <ActionsHeader data-testid="model-actions-header">
-          <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
+          <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
           {menuItems.length > 0 && (
             <ActionMenu
               triggerIcon="ellipsis"
@@ -205,7 +191,7 @@ function NoActionsState({
       {hasCreateButton && (
         <EmptyStateActionContainer>
           <Button
-            icon="bolt"
+            leftSection={<Icon name="bolt" />}
             onClick={onCreateClick}
           >{t`Create basic actions`}</Button>
         </EmptyStateActionContainer>
@@ -220,12 +206,4 @@ function mostRecentFirst(action: WritebackAction) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Actions.loadList({
-    query: (state: State, { model }: OwnProps) => ({
-      "model-id": model.id(),
-    }),
-  }),
-  Databases.loadList(),
-  connect(null, mapDispatchToProps),
-)(ModelActionDetails);
+export default ModelActionDetails;

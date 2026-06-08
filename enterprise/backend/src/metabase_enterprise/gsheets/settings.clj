@@ -19,7 +19,15 @@
     [:message ms/NonBlankString]]
    [:multi {:dispatch :status}
     ["not-connected" [:map]]
-
+    ["initializing"
+     [:map
+      [:url ms/NonBlankString]
+      ;; time in seconds from epoch:
+      [:created_at pos-int?]
+      ;; time in seconds from epoch:
+      [:sync_started_at pos-int?]
+      [:created_by_id pos-int?]
+      [:db_id pos-int?]]]
     ["syncing"
      [:map
       [:url ms/NonBlankString]
@@ -29,7 +37,6 @@
       [:sync_started_at pos-int?]
       [:created_by_id pos-int?]
       [:db_id pos-int?]]]
-
     ["active"
      [:map
       [:url ms/NonBlankString]
@@ -114,8 +121,8 @@
   :type :json
   :getter (mu/fn :- :gsheets/setting []
             (or
-              ;; This NEEDS to be up to date between instances on a cluster, so:
-              ;; we are going around the settings cache:
+             ;; This NEEDS to be up to date between instances on a cluster, so:
+             ;; we are going around the settings cache:
              (some-> (t2/select-one :model/Setting :key "gsheets") :value json/decode+kw migrate-gsheet-value)
              (u/prog1 gsheets.constants/not-connected
                (setting/set-value-of-type! :json :gsheets <>)))))

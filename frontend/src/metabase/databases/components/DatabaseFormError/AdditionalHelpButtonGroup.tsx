@@ -7,7 +7,7 @@ import { getDocsUrl } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Button, Divider, Icon } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { ContactSupportButtonSection } from "./ContactSupportButtonSection";
 

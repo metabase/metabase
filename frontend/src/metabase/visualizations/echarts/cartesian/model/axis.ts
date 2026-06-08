@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatValue } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";
 import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
 import { isNotNull, isNumber } from "metabase/utils/types";
@@ -39,6 +38,7 @@ import {
   normalizeDate,
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
 import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/settings";
 import type {

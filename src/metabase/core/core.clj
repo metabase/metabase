@@ -170,6 +170,9 @@
   (init-status/set-progress! 0.2)
   ;; Ensure the classloader is installed as soon as possible.
   (classloader/the-classloader)
+  ;; Set up Prometheus
+  (log/info "Setting up prometheus metrics")
+  (analytics.core/setup!)
   ;; Initialize OpenTelemetry tracing early (before plugins, no DB dependency)
   (tracing/init!)
   ;; load any plugins as needed
@@ -190,9 +193,7 @@
   (when (cloud-migration/read-only-mode)
     (cloud-migration/read-only-mode! false))
   (init-status/set-progress! 0.4)
-  ;; Set up Prometheus
-  (log/info "Setting up prometheus metrics")
-  (analytics.core/setup!)
+  (analytics.core/observe-initial-values)
   (init-status/set-progress! 0.5)
   (task/init-scheduler!)
   (analytics.core/add-listeners-to-scheduler!)

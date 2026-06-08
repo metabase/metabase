@@ -12,7 +12,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Flex, Icon, Modal, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
 import type { Database, DatabaseData } from "metabase-types/api";
 

@@ -5,7 +5,7 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card, Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { MetricPageShell } from "../../components/MetricPageShell";
 import type { MetricPageProps } from "../../types";

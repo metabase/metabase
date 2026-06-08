@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import type { NodeTableInfo } from "./types";

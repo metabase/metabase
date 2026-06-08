@@ -389,7 +389,7 @@
         tbl         (qualified-table-name data-schema table-name)
         booking-col (quote-ident report-merge-key)]
     (jdbc/execute! conn [(str "CREATE UNIQUE INDEX IF NOT EXISTS "
-                              (qualified-table-name data-schema index-name)
+                              (quote-ident index-name)
                               " ON " tbl " (" booking-col ")")])))
 
 (defn- ensure-cumulative-table! [conn table-name columns]

@@ -14,12 +14,19 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
+   [metabase.sync.sync :as sync]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.nio.charset StandardCharsets)
+   (java.nio.file Files OpenOption)
+   (java.util.jar JarEntry JarOutputStream)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
@@ -50,7 +57,6 @@
             "No cards created for Audit DB."))
       (t2/delete! :model/Database :is_audit true)
       (audit/last-analytics-checksum! 0))
-
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
       (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
@@ -58,7 +64,6 @@
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
-
     (testing "Cards in the audit collection have non-empty :result_metadata after installation"
       (let [audit-cards             (t2/select [:model/Card :id :name :result_metadata :card_schema]
                                                :database_id audit/audit-db-id)
@@ -67,17 +72,16 @@
         (is (empty? audit-cards-no-metadata)
             (str "Cards without :result_metadata: "
                  (pr-str (mapv :name audit-cards-no-metadata))))))
-
     (testing "Audit DB starts with no permissions for all users"
       (is (= {:perms/manage-database       :no
               :perms/download-results      :one-million-rows
               :perms/manage-table-metadata :no
               :perms/view-data             :unrestricted
               :perms/create-queries        :no
-              :perms/transforms            :no}
+              :perms/transforms            :no
+              :perms/workspaces            :no}
              (-> (data-perms.graph/data-permissions-graph :db-id audit/audit-db-id :audit? true)
                  (get-in [(u/the-id (perms-group/all-users)) audit/audit-db-id])))))
-
     (testing "Audit DB does not have scheduled syncs"
       (let [db-has-sync-job-trigger? (fn [db-id]
                                        (contains?
@@ -85,9 +89,8 @@
                                                   (task/job-info "metabase.task.sync-and-analyze.job")))
                                         db-id))]
         (is (not (db-has-sync-job-trigger? audit/audit-db-id)))))
-
     (testing "Audit DB doesn't get re-installed unless the engine changes"
-      (with-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
+      (mt/with-dynamic-fn-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
         (t2/update! :model/Database :is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
@@ -130,8 +133,7 @@
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync scheduled after installation")
-
-      (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
+      (mt/with-dynamic-fn-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot sync Database: It is the audit db."
@@ -165,7 +167,7 @@
     (t2/delete! :model/Database :is_audit true)
     (testing "If audit content loading throws an exception, the checksum should not be stored"
       (audit/last-analytics-checksum! 0)
-      (with-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
+      (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
         (is (thrown-with-msg? Exception
                               #"Audit loading failed"
                               (ee-audit/ensure-audit-db-installed!)))
@@ -182,6 +184,66 @@
     (is (not (#'ee-audit/should-load-audit? false 3 5))))
   (testing "load-analytics-content is false + checksums do not match  => do not load"
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
+
+(deftest views-checksum-works-for-jar-resources-test
+  (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar" (make-array java.nio.file.attribute.FileAttribute 0))
+        resource "migrations/instance_analytics_views"
+        entries  [["users/v1/postgres-users.sql"           "select 1;"]
+                  ["dashboards/v1/postgres-dashboards.sql" "select 2;"]]
+        jar-url  (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))
+        expected (hash (sort-by first (mapv (fn [[rel sql]] [rel sql]) entries)))]
+    (try
+      (with-open [out (-> jar-path
+                          (Files/newOutputStream (into-array OpenOption []))
+                          io/output-stream
+                          JarOutputStream.)]
+        (doseq [[rel sql] entries]
+          (.putNextEntry out (JarEntry. (str resource "/" rel)))
+          (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
+          (.closeEntry out)))
+      (mt/with-dynamic-fn-redefs [io/resource (fn [path]
+                                                (when (= path resource)
+                                                  jar-url))]
+        (is (= expected (#'ee-audit/views-checksum))))
+      (finally
+        (Files/deleteIfExists jar-path)))))
+
+(deftest views-checksum-detects-rename-test
+  (testing "renaming a file changes the checksum (path is part of the hash)"
+    (let [make-jar (fn [entries]
+                     (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar"
+                                                          (make-array java.nio.file.attribute.FileAttribute 0))
+                           resource "migrations/instance_analytics_views"]
+                       (with-open [out (-> jar-path
+                                           (Files/newOutputStream (into-array OpenOption []))
+                                           io/output-stream
+                                           JarOutputStream.)]
+                         (doseq [[rel sql] entries]
+                           (.putNextEntry out (JarEntry. (str resource "/" rel)))
+                           (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
+                           (.closeEntry out)))
+                       [jar-path (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]))
+          [jar-a url-a] (make-jar [["a.sql" "select 1;"]])
+          [jar-b url-b] (make-jar [["b.sql" "select 1;"]])]
+      (try
+        (let [checksum-a (mt/with-dynamic-fn-redefs [io/resource (constantly url-a)]
+                           (#'ee-audit/views-checksum))
+              checksum-b (mt/with-dynamic-fn-redefs [io/resource (constantly url-b)]
+                           (#'ee-audit/views-checksum))]
+          (is (not= checksum-a checksum-b)))
+        (finally
+          (Files/deleteIfExists jar-a)
+          (Files/deleteIfExists jar-b))))))
+
+(deftest views-checksum-not-recorded-when-sync-fails-test
+  (mt/with-temp [:model/Database audit-db {:engine "h2" :is_audit true}]
+    (let [checksum 12345]
+      (ee.audit.settings/last-analytics-views-checksum! 0)
+      (mt/with-dynamic-fn-redefs [ee-audit/views-checksum (constantly checksum)
+                                  sync/sync-database! (fn [& _]
+                                                        (throw (Exception. "sync failed")))]
+        (is (nil? (#'ee-audit/maybe-sync-audit-db! audit-db false)))
+        (is (= 0 (ee.audit.settings/last-analytics-views-checksum)))))))
 
 (deftest adjust-audit-db-to-source-test
   (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"
@@ -230,38 +292,30 @@
                    ;; Create another field that doesn't have a lowercase version
                    :model/Field {single-field-id :id} {:table_id single-table-id
                                                        :name "PRODUCT"}]
-
       ;; Call the function we're testing
       (#'ee-audit/adjust-audit-db-to-source! {:id audit-db-id})
-
       (testing "Database engine should be set to postgres"
         (is (= :postgres
                (t2/select-one-fn :engine :model/Database :id audit-db-id))))
-
       (testing "Tables with existing lowercase versions should not be modified"
         (is (= "USERS"
                (t2/select-one-fn :name :model/Table :id upper-table-id)))
         (is (= "users"
                (t2/select-one-fn :name :model/Table :id lower-table-id))))
-
       (testing "Tables without lowercase versions should be converted to lowercase"
         (is (= "orders"
                (t2/select-one-fn :name :model/Table :id single-table-id))))
-
       (testing "Tables with nil schemas should not be changed if a table with a schema exists"
         (is (= 2
                (t2/count :model/Table {:where [:= :name "accounts"]}))))
-
       (testing "Tables with nil schemas have their schema set to \"public\""
         (is (= "public"
                (t2/select-one-fn :schema :model/Table :id no-schema-table))))
-
       (testing "Fields with existing lowercase versions should not be modified"
         (is (= "EMAIL"
                (t2/select-one-fn :name :model/Field :id upper-field-id)))
         (is (= "email"
                (t2/select-one-fn :name :model/Field :id lower-field-id))))
-
       (testing "Fields without lowercase versions should be converted to lowercase"
         (is (= "product"
                (t2/select-one-fn :name :model/Field :id single-field-id)))))))

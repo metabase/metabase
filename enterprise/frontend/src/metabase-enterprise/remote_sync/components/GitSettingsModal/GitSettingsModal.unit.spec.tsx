@@ -5,6 +5,7 @@ import {
   setupPropertiesEndpoints,
   setupRootCollectionItemsEndpoint,
   setupSettingsEndpoints,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
@@ -19,6 +20,11 @@ const setup = ({ isOpen = true }: SetupOpts = {}) => {
   const onClose = jest.fn();
   setupPropertiesEndpoints(createMockSettings());
   setupSettingsEndpoints([]);
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-remote-sync-dev-instance",
+    value: false,
+  });
   fetchMock.get("express:/api/ee/library", { data: null });
   fetchMock.get("path:/api/ee/remote-sync/dirty", { dirty: [] });
   fetchMock.put("path:/api/ee/remote-sync/settings", { success: true });

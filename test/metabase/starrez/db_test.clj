@@ -160,7 +160,7 @@
                   (fn [_conn [sql]]
                     (swap! queries conj sql))]
       (#'starrez.db/ensure-booking-id-index! nil "table_59906")
-      (is (= ["CREATE UNIQUE INDEX IF NOT EXISTS \"starrez_data\".\"table_59906_booking_id_uniq\" ON \"starrez_data\".\"table_59906\" (\"booking_id\")"]
+      (is (= ["CREATE UNIQUE INDEX IF NOT EXISTS \"table_59906_booking_id_uniq\" ON \"starrez_data\".\"table_59906\" (\"booking_id\")"]
              @queries)))))
 
 (deftest sync-metabase-schema-syncs-matched-database

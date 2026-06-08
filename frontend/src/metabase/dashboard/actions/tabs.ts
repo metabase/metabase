@@ -3,8 +3,8 @@ import type { Draft } from "@reduxjs/toolkit";
 import { createAction, createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import { updateDashboard } from "metabase/api/dashboard";
 import { CANCEL_EDITING_DASHBOARD } from "metabase/dashboard/actions/core";
-import { Dashboards } from "metabase/entities/dashboards";
 import { INITIALIZE, selectTab } from "metabase/redux/dashboard";
 import type {
   DashboardState,
@@ -179,7 +179,6 @@ export const moveDashCardToTab =
     dispatch(
       addUndo({
         message: getDashCardMoveToTabUndoMessage(dashCard),
-        undo: true,
         action: () => {
           dispatch(
             undoMoveDashCardToTab({
@@ -539,44 +538,6 @@ export const tabsReducer = createReducer<DashboardState>(
       },
     );
 
-    builder.addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
-      if (!payload.dashboard) {
-        return;
-      }
-      const { dashcards: newDashcards, tabs: newTabs } = payload.dashboard;
-
-      const { prevDash, prevTabs } = getPrevDashAndTabs({
-        state,
-        filterRemovedTabs: true,
-      });
-
-      if (!prevDash) {
-        // If there's no previous version of the dashboard loaded we don't need to update
-        // the IDs of dashcards and tabs. The app can't be in a state where the dashcards
-        // and tabs have been updated.
-        return;
-      }
-
-      // 1. Replace temporary with real dashcard ids
-      const prevDashcardIds = prevDash.dashcards.filter(
-        (id) => !state.dashcards[id].isRemoved,
-      );
-
-      prevDashcardIds.forEach((prevId, index) => {
-        const prevDashcardData = state.dashcardData[prevId];
-
-        if (prevDashcardData && newDashcards[index]?.id) {
-          state.dashcardData[newDashcards[index].id] = prevDashcardData;
-        }
-      });
-
-      // 2. Re-select the currently selected tab with its real id
-      const selectedTabIndex = prevTabs.findIndex(
-        (tab) => tab.id === state.selectedTabId,
-      );
-      state.selectedTabId = (newTabs && newTabs[selectedTabIndex]?.id) ?? null;
-    });
-
     builder.addCase(CANCEL_EDITING_DASHBOARD, (state) => {
       const { editingDashboard, selectedTabId } = state;
       const tabs = editingDashboard?.tabs ?? [];
@@ -611,6 +572,52 @@ export const tabsReducer = createReducer<DashboardState>(
           : (prevTabs[0]?.id ?? null);
 
       state.selectedTabId = tabId;
+    });
+
+    builder.addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
+      if (payload.id !== state.dashboardId) {
+        // Only react to saves for the dashboard that is currently loaded — otherwise
+        // updating an unrelated dashboard (e.g. moving/pinning from a collection) would
+        // remap dashcardData and selectedTabId using the other dashboard's data.
+        return;
+      }
+
+      const { dashcards: newDashcards, tabs: newTabs } = payload;
+
+      if (!newDashcards && !newTabs) {
+        return;
+      }
+
+      const { prevDash, prevTabs } = getPrevDashAndTabs({
+        state,
+        filterRemovedTabs: true,
+      });
+
+      if (!prevDash) {
+        // If there's no previous version of the dashboard loaded we don't need to update
+        // the IDs of dashcards and tabs. The app can't be in a state where the dashcards
+        // and tabs have been updated.
+        return;
+      }
+
+      // 1. Replace temporary with real dashcard ids
+      const prevDashcardIds = prevDash.dashcards.filter(
+        (id) => !state.dashcards[id].isRemoved,
+      );
+
+      prevDashcardIds.forEach((prevId, index) => {
+        const prevDashcardData = state.dashcardData[prevId];
+
+        if (prevDashcardData && newDashcards[index]?.id) {
+          state.dashcardData[newDashcards[index].id] = prevDashcardData;
+        }
+      });
+
+      // 2. Re-select the currently selected tab with its real id
+      const selectedTabIndex = prevTabs.findIndex(
+        (tab) => tab.id === state.selectedTabId,
+      );
+      state.selectedTabId = (newTabs && newTabs[selectedTabIndex]?.id) ?? null;
     });
   },
 );

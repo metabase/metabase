@@ -34,6 +34,10 @@
   &[data-variant="default"] {
     border-color: var(--mb-color-border);
 
+    &:hover:not(:disabled) {
+      border-color: var(--mb-color-brand);
+    }
+
     &:focus {
       border-color: var(--mb-color-brand);
     }

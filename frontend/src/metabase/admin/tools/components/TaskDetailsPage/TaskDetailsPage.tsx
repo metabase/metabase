@@ -20,8 +20,8 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { openSaveDialog } from "metabase/utils/dom";
-import * as Urls from "metabase/utils/urls";
 import type { Database } from "metabase-types/api";
 
 import { SettingsSection } from "../../../components/SettingsSection";

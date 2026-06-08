@@ -174,7 +174,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible");
     });
 
-    it("should show Save button and save modal without entity picker when creating a new question", () => {
+    it("should show Save button and save modal with entity picker preselecting the current collection when creating a new question (EMB-1609)", () => {
       setupEmbed(
         '<metabase-browser initial-collection="root" read-only="false" />',
       );
@@ -190,11 +190,14 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible")
         .click();
 
-      cy.log("should show save modal without entity picker");
+      cy.log(
+        "save modal should show the collection picker pre-selected to the current collection",
+      );
       H.getSimpleEmbedIframeContent().within(() => {
         cy.findByRole("dialog").within(() => {
           cy.findByText("Save new question").should("be.visible");
-          cy.findByText("Where do you want to save this?").should("not.exist");
+          cy.findByText("Where do you want to save this?").should("be.visible");
+          cy.findByText("Our analytics").should("be.visible");
         });
       });
     });

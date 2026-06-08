@@ -1,6 +1,5 @@
 import * as LibMetric from "metabase-lib/metric";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Metric from "metabase-lib/v1/metadata/Metric";
 import {
   createMockMetric,
   createMockMetricDimension,
@@ -49,11 +48,8 @@ const ORDERS_METRIC = createMockMetric({
 
 function createMetadata(metrics: ReturnType<typeof createMockMetric>[]) {
   const metadata = new Metadata();
-  metadata.metrics = {};
   for (const metric of metrics) {
-    const instance = new Metric(metric as any);
-    instance.metadata = metadata;
-    metadata.metrics[metric.id] = instance;
+    metadata.metrics[metric.id] = metric;
   }
   return metadata;
 }

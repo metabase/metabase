@@ -104,6 +104,7 @@
         :else
         (recur (conj already-seen alias) (conj acc [col alias]) more)))))
 
+;;; TODO (Cam 2026-04-27) -- rename this to `escape-single-quotes` to make it clearer what we're escaping
 (defn escape-sql
   "Escape single quotes in a SQL string. `escape-style` is either `:ansi` (escape a single quote with two single quotes)
   or `:backslashes` (escape a single quote with a backslash).
@@ -161,6 +162,7 @@
    :n1ql        Dialect/N1ql
    :plsql       Dialect/PlSql
    :postgres    Dialect/PostgreSql
+   :postgres-mbql5 Dialect/PostgreSql
    :redshift    Dialect/Redshift
    :sparksql    Dialect/SparkSql
    :standardsql Dialect/StandardSql

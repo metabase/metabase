@@ -1,4 +1,5 @@
 (ns metabase.query-processor.pivot.test-util
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.pivot.test-util]}}}}}}
   (:require
    [metabase.lib.core :as lib]
    [metabase.test :as mt]))

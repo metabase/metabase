@@ -679,12 +679,10 @@
                                      (.init ^KeyStore (cast KeyStore nil)))]
     (doseq [cert certs]
       (.setCertificateEntry keystore (dn-for-cert cert) cert))
-
     (doseq [^X509TrustManager trust-mgr (.getTrustManagers base-trust-manager-factory)]
       (when (instance? X509TrustManager trust-mgr)
         (doseq [issuer (.getAcceptedIssuers trust-mgr)]
           (.setCertificateEntry keystore (dn-for-cert issuer) issuer))))
-
     keystore))
 
 (defn- key-managers [private-key password own-cert]
@@ -730,20 +728,33 @@
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
 
-(defn fields-hidden-for-write-data-connection
-  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
-   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
-   when the write-data-connection form marker is true."
-  [driver]
+(defn- fields-hidden-by-form-marker
+  "Returns the set of field names (strings) whose resolved `visible-if` includes `marker false`,
+   meaning they are hidden when the named form marker is set on the connection-edit form."
+  [driver marker]
   (when-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-props     (conn-prop-fn driver)
           resolved      (connection-props-server->client driver all-props)
           props-by-name (collect-all-props-by-name resolved)]
       (into #{}
             (keep (fn [[field-name {:keys [visible-if]}]]
-                    (when (false? (get visible-if "write-data-connection"))
+                    (when (false? (get visible-if marker))
                       field-name)))
             props-by-name))))
+
+(defn fields-hidden-for-write-data-connection
+  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
+   when the write-data-connection form marker is true."
+  [driver]
+  (fields-hidden-by-form-marker driver "write-data-connection"))
+
+(defn fields-hidden-for-admin-connection
+  "Returns the set of field names (strings) that should NOT appear in `admin_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"admin-connection\" false`, meaning they are hidden
+   when the admin-connection form marker is true."
+  [driver]
+  (fields-hidden-by-form-marker driver "admin-connection"))
 
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.
@@ -826,6 +837,33 @@
        (map rand-nth)
        shuffle
        (apply str)))
+
+(defn- redact-msg
+  "Replace all `secrets` in `msg` with `****`."
+  [msg secrets]
+  (reduce (fn [s secret] (str/replace s secret "****")) (or msg "") secrets))
+
+(defn scrub-exceptions
+  "Scrub `secrets` from the exception message and cause chain of `t`. Returns a new
+   exception with every occurrence of each secret replaced by `****`. Use this to prevent
+   credentials embedded in DDL SQL from leaking into logs via exception messages."
+  [^Throwable t secrets]
+  (let [msg   (redact-msg (ex-message t) secrets)
+        cause (some-> (.getCause t) (scrub-exceptions secrets))]
+    (cond
+      (instance? clojure.lang.ExceptionInfo t)
+      (ex-info msg (ex-data t) cause)
+
+      (instance? java.sql.SQLException t)
+      (let [^java.sql.SQLException sql-ex t
+            next-ex (some-> (.getNextException sql-ex) (scrub-exceptions secrets))]
+        (doto (java.sql.SQLException. msg (.getSQLState sql-ex) (.getErrorCode sql-ex) cause)
+          (.setStackTrace (.getStackTrace t))
+          (cond-> next-ex (.setNextException next-ex))))
+
+      :else
+      (doto (Exception. msg cause)
+        (.setStackTrace (.getStackTrace t))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Macaw parsing helpers                                                |

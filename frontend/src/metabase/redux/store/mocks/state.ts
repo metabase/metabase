@@ -3,6 +3,7 @@ import type { State } from "metabase/redux/store";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { createMockAdminState } from "./admin";
+import { createMockApiState } from "./api";
 import { createMockAppState } from "./app";
 import { createMockAuthState } from "./auth";
 import { createMockDashboardState } from "./dashboard";
@@ -12,7 +13,6 @@ import { createMockNormalizedEntitiesState } from "./entities";
 import { createMockModalState } from "./modal";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
-import { createMockRequestsState } from "./requests";
 import { createMockRoutingState } from "./routing";
 import { createMockSettingsState } from "./settings";
 import { createMockSetupState } from "./setup";
@@ -33,9 +33,9 @@ export function createMockState(opts: any) {
     embed: createMockEmbedState(),
     embeddingDataPicker: createMockEmbeddingDataPickerState(),
     entities: createMockNormalizedEntitiesState(),
+    "metabase-api": createMockApiState(),
     parameters: createMockParametersState(),
     qb: createMockQueryBuilderState(),
-    requests: createMockRequestsState(),
     routing: createMockRoutingState(),
     settings: createMockSettingsState(),
     setup: createMockSetupState(),

@@ -29,7 +29,43 @@
               {"62751" "starrez_report_62751_2026-05-28_12-08-38.csv"}]
              @recorded)))))
 
-(deftest run-export-refreshes-historical-reports-and-merges-public-results
+(deftest run-export-uses-configured-reports-by-default
+  (let [requested-report-ids (atom [])
+        merged              (atom nil)]
+    (with-redefs [metabase.starrez.settings/starrez-export-tables
+                  (constantly "")
+                  metabase.starrez.settings/starrez-export-reports
+                  (constantly "62751")
+                  starrez.db/report-ids-for-export
+                  (fn [_configured-report-ids]
+                    (throw (ex-info "manual exports should not pull historical reports" {})))
+                  starrez.export/export-report
+                  (fn [report-id]
+                    (swap! requested-report-ids conj report-id)
+                    {:kind      :report
+                     :name      report-id
+                     :blob_name (str "starrez_report_" report-id "_2026-05-28_12-07-38.csv")
+                     :csv_body  "Booking ID,Room\n123,A\n"
+                     :success   true})
+                  starrez.db/record-export-week!
+                  (constantly 42)
+                  starrez.db/merge-report-exports!
+                  (fn [report-ids results]
+                    (reset! merged {:report-ids report-ids :results results})
+                    {:destination_table "starrez_data.table_62751"})]
+      (is (= {:results
+              [{:kind      :report
+                :name      "62751"
+                :blob_name "starrez_report_62751_2026-05-28_12-07-38.csv"
+                :success   true}]
+              :snapshots [42]
+              :merge     {:destination_table "starrez_data.table_62751"}}
+             (starrez.export/run-export)))
+      (is (= ["62751"] @requested-report-ids))
+      (is (= ["62751"] (:report-ids @merged)))
+      (is (every? :csv_body (:results @merged))))))
+
+(deftest run-export-can-refresh-historical-reports-for-cron
   (let [requested-report-ids (atom [])
         merged              (atom nil)]
     (with-redefs [metabase.starrez.settings/starrez-export-tables
@@ -65,7 +101,7 @@
                 :success   true}]
               :snapshots [42 42]
               :merge     {:destination_table "starrez_data.table_59906"}}
-             (starrez.export/run-export)))
+             (starrez.export/run-export {:include-historical-reports? true})))
       (is (= ["59906" "62751"] @requested-report-ids))
       (is (= ["59906" "62751"] (:report-ids @merged)))
       (is (every? :csv_body (:results @merged))))))

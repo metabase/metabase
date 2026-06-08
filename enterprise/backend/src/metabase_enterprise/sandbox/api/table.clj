@@ -1,9 +1,9 @@
 (ns metabase-enterprise.sandbox.api.table
   (:require
+   [metabase-enterprise.sandbox.api.column-filter :as col-filter]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -12,45 +12,17 @@
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
-(mu/defn- find-sandbox-source-card :- [:maybe (ms/InstanceOf :model/Card)]
-  "Find the associated sandboxing card (if there is one) for the given `table-or-table-id` and `user-or-user-id`.
-  Returns nil if no question was found."
-  [table-or-table-id user-or-user-id]
-  (t2/select-one :model/Card
-                 {:select [:c.id :c.dataset_query :c.result_metadata :c.card_schema]
-                  :from   [[:sandboxes]]
-                  :join   [[:permissions_group_membership :pgm] [:= :sandboxes.group_id :pgm.group_id]
-                           [:report_card :c] [:= :c.id :sandboxes.card_id]]
-                  :where  [:and
-                           [:= :sandboxes.table_id (u/the-id table-or-table-id)]
-                           [:= :pgm.user_id (u/the-id user-or-user-id)]]}))
-
 (mu/defn only-sandboxed-perms? :- :boolean
   "Returns true if the user has sandboxed permissions for the given table. If a sandbox policy exists, it overrides
   existing permission on the table."
   [table :- (ms/InstanceOf :model/Table)]
   (boolean (seq (sandbox.api.util/enforced-sandboxes-for-tables #{(:id table)}))))
 
-(defn- filter-fields-by-name [names fields]
-  (filter #(contains? names (:name %))
-          fields))
-
-(defn- filter-fields-by-id [ids fields]
-  (filter #(contains? ids (:id %))
-          fields))
-
 (defn- filter-fields-for-sandboxing [table query-metadata-response]
-  ;; If we have sandboxed permissions and the associated sandbox limits the fields returned, we need to make sure
-  ;; the query_metadata endpoint also excludes any fields the sandbox query would exclude.
-  (if-let [{sandbox-query :dataset_query, :as sandbox-source-card} (find-sandbox-source-card table api/*current-user-id*)]
-    (update query-metadata-response :fields
-            (if (lib/native-only-query? sandbox-query)
-              (partial filter-fields-by-name
-                       (->> sandbox-source-card :result_metadata (map :name) set))
-              (partial filter-fields-by-id
-                       (->> sandbox-source-card :result_metadata (map u/id) set))))
-    ;; Sandboxed via user attribute, not a source question, so no column-level sandboxing is in place
-    query-metadata-response))
+  ;; Filter the fields list through the centralized column-filter helper. For tables sandboxed via user attribute
+  ;; only (no card_id) the helper is a pass-through, preserving the original behavior.
+  (update query-metadata-response :fields
+          #(col-filter/filter-fields-for-table (u/the-id table) %)))
 
 (defenterprise fetch-table-query-metadata
   "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
@@ -62,8 +34,8 @@
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
        table
-         ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
-         ;; fetch the metadata
+       ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
+       ;; fetch the metadata
        (perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
          (perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            (thunk))))
@@ -80,8 +52,8 @@
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
        table
-         ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
-         ;; fetch the metadata
+       ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
+       ;; fetch the metadata
        (perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
          (perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            table)))

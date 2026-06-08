@@ -1,4 +1,4 @@
-import { type FocusEvent, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -15,12 +15,22 @@ import {
   Text,
 } from "metabase/ui";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
-import type { Field as ApiField, Field, FieldId } from "metabase-types/api";
+import type { Field, FieldId } from "metabase-types/api";
 
 import S from "./FkTargetPicker.module.css";
 
+// Only the type-classification + FK target fields are read on the input
+// `field`; the rich `Field.table` shape is only needed on the candidate
+// `idFields`. Widening to this minimal shape lets callers pass
+// normalized/stub shapes without casting.
+export type FkTargetPickerField = {
+  effective_type?: Field["effective_type"];
+  semantic_type?: Field["semantic_type"];
+  fk_target_field_id?: Field["fk_target_field_id"];
+};
+
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  field: ApiField;
+  field: FkTargetPickerField;
   idFields: Field[];
   value: FieldId | null;
   onChange: (value: FieldId | null) => void;
@@ -32,7 +42,6 @@ export const FkTargetPicker = ({
   idFields,
   value,
   onChange,
-  onFocus,
   ...props
 }: Props) => {
   const { comparableIdFields, hasIdFields, data, optionsByFieldId } =
@@ -74,11 +83,6 @@ export const FkTargetPicker = ({
       const fieldId = getFieldIdFromValue(value);
       onChange(fieldId);
     }
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.target.select();
-    onFocus?.(event);
   };
 
   return (
@@ -148,7 +152,6 @@ export const FkTargetPicker = ({
       searchable
       value={stringifyValue(value)}
       onChange={handleChange}
-      onFocus={handleFocus}
       {...props}
     />
   );
@@ -174,7 +177,7 @@ function stringifyValue(value: FieldId | null): string | null {
   return value === null ? null : JSON.stringify(value);
 }
 
-function getFkFieldPlaceholder(field: ApiField, idFields: Field[]) {
+function getFkFieldPlaceholder(field: FkTargetPickerField, idFields: Field[]) {
   const hasIdFields = idFields?.length > 0;
   const isRestrictedFKTargetSelected =
     isFK(field) &&

@@ -25,6 +25,7 @@ import "metabase/utils/csp";
 
 import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
+import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
@@ -32,6 +33,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
+import api from "metabase/api/legacy-client";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
@@ -41,8 +43,8 @@ import { MetabaseReduxProvider } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
+import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-import api from "metabase/utils/api";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
@@ -90,6 +92,7 @@ function _init(reducers, getRoutes, callback) {
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
           <AppThemeProvider>
             <GlobalStyles />
+            {createPortal(<PortalContainer />, document.body)}
             <MetabotProvider>
               <HistoryProvider history={syncedHistory}>
                 <RouterProvider>{routes}</RouterProvider>

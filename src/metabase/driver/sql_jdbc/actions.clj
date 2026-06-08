@@ -57,8 +57,8 @@
                                  (dissoc (methods maybe-parse-sql-error) :default))]
     (try
       (some #(% database action-type (ex-message e)) parsers-for-driver)
-     ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
-     ;; We'll still get the original unparsed error message.
+      ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
+      ;; We'll still get the original unparsed error message.
       (catch Throwable new-e
         (log/errorf new-e "Error parsing SQL error message %s: %s" (pr-str (ex-message e)) (ex-message new-e))
         nil))))
@@ -70,9 +70,9 @@
     (catch SQLException e
       (throw (ex-info (or (ex-message e) "Error executing action.")
                       (merge (or (some-> (parse-sql-error driver database action e)
-                                        ;; the columns in error message should match with columns
-                                        ;; in the parameter. It's usually got from calling
-                                        ;; GET /api/action/:id/execute, and in there all column names are slugified
+                                         ;; the columns in error message should match with columns
+                                         ;; in the parameter. It's usually got from calling
+                                         ;; GET /api/action/:id/execute, and in there all column names are slugified
                                          (m/update-existing :errors perf/update-keys u/slugify))
                                  (assoc (ex-data e) :message (ex-message e)))
                              {:status-code 400}))))))
@@ -124,7 +124,7 @@
                        (if-let [sql-type (type->sql-type base-type)]
                          (h2x/cast sql-type value)
                          (try
-                           (sql.qp/->honeysql driver [:value value field])
+                           (sql.qp/->honeysql driver (sql.qp/mbql-clause-with-opts driver :value field value))
                            (catch Exception e
                              (throw (ex-info (str "column cast failed: " (pr-str col-name))
                                              {:column      col-name
@@ -603,14 +603,14 @@
                      :row            row})))
   (into [:and] (for [[field-name value] row
                      :let               [field-id (get field-name->id field-name)
-                                        ;; if the field isn't in `field-name->id` then it's an error in our code. Not
-                                        ;; i18n'ed because this is not something that should be User facing unless our
-                                        ;; backend code is broken.
-                                        ;;
-                                        ;; Unknown column names in user input WILL NOT trigger this error.
-                                        ;; [[row->mbql-filter-clause]] is only used for *known* PK columns that are
-                                        ;; used for the MBQL `:filter` clause. Unknown columns will trigger an error in
-                                        ;; the DW but not here.
+                                         ;; if the field isn't in `field-name->id` then it's an error in our code. Not
+                                         ;; i18n'ed because this is not something that should be User facing unless our
+                                         ;; backend code is broken.
+                                         ;;
+                                         ;; Unknown column names in user input WILL NOT trigger this error.
+                                         ;; [[row->mbql-filter-clause]] is only used for *known* PK columns that are
+                                         ;; used for the MBQL `:filter` clause. Unknown columns will trigger an error in
+                                         ;; the DW but not here.
                                          _ (assert field-id
                                                    (format "Field %s is not present in field-name->id map"
                                                            (pr-str field-name)))]]

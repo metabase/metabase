@@ -1,4 +1,5 @@
 (ns metabase.notification.api.notification-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.api.notification-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -95,7 +96,6 @@
                                                              :user_id (mt/user->id :crowberto)}]}]}]
           (is (=? (assoc notification :id (mt/malli=? int?))
                   (mt/user-http-request :crowberto :post 200 "notification" notification)))))
-
       (testing "card notification with no subscriptions and handler is ok"
         (let [notification {:payload_type  "notification/card"
                             :active        true
@@ -200,12 +200,10 @@
 (deftest create-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :post 401 "notification"))))
-
   (testing "card notification requires a card_id"
     (is (=? {:specific-errors {:payload {:card_id ["missing required key, received: nil"]}}}
             (mt/user-http-request :crowberto :post 400 "notification" {:payload      {}
                                                                        :payload_type "notification/card"}))))
-
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp [:model/Card {card-id :id}]
       (testing "creator id is not required"
@@ -240,13 +238,11 @@
                         (assoc :name "New Name")
                         (dissoc :updated_at :created_at))
                     (dissoc updated-template :updated_at :created_at)))))
-
         (testing "can delete the template"
           (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
                                 (update notification :handlers (fn [[handler]]
                                                                  [(dissoc handler :template)])))
           (is (false? (t2/exists? :model/ChannelTemplate (:id created-template)))))
-
         (testing "and re-create it again"
           (let [notification       (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
                                                          (update notification :handlers (fn [[handler]]
@@ -273,7 +269,6 @@
                                                          :template     resource-template
                                                          :recipients   [{:type    "notification-recipient/user"
                                                                          :user_id (mt/user->id :crowberto)}]}]}))))))
-
     (testing "POST /api/notification/send rejects handlebars-resource templates"
       (mt/with-temp [:model/Card {card-id :id} {}]
         (is (=? "invalid template"
@@ -285,7 +280,6 @@
                                                        :template     resource-template
                                                        :recipients   [{:type    "notification-recipient/user"
                                                                        :user_id (mt/user->id :crowberto)}]}]})))))
-
     (testing "PUT /api/notification/:id rejects handlebars-resource templates"
       (notification.tu/with-card-notification
         [notification {:handlers [{:channel_type "channel/email"
@@ -330,12 +324,10 @@
                     :cron_schedule "1 1 1 * * ?"
                     :ui_display_type "cron/builder"}]
                   (:subscriptions (update-notification (update-cron-subscription @notification "1 1 1 * * ?" "cron/builder"))))))
-
         (testing "can update payload info"
           (is (= "has_result" (get-in @notification [:payload :send_condition])))
           (is (=? {:send_condition "goal_above"}
                   (:payload (update-notification (assoc-in @notification [:payload :send_condition] "goal_above"))))))
-
         (testing "can add add a new recipient and modify the existing one"
           (let [existing-email-handler  (->> @notification :handlers (m/find-first #(= "channel/email" (:channel_type %))))
                 existing-user-recipient (m/find-first #(= "notification-recipient/user" (:type %))
@@ -355,7 +347,6 @@
               (is (= []
                      (->> (update-notification (assoc @notification :handlers [(assoc existing-email-handler :recipients [])]))
                           :handlers (m/find-first #(= "channel/email" (:channel_type %))) :recipients))))))
-
         (testing "can add new handler"
           (let [new-handler {:notification_id notification-id
                              :channel_type    :channel/slack
@@ -402,7 +393,6 @@
 (deftest update-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :put 401 "notification/1"))))
-
   (testing "404 on unknown notification"
     (is (= "Not found."
            (mt/user-http-request :crowberto :put (format "notification/%d" Integer/MAX_VALUE)
@@ -414,6 +404,26 @@
             (mt/user-http-request :crowberto :put 400 "notification/1" {:creator_id   (mt/user->id :crowberto)
                                                                         :payload      {}
                                                                         :payload_type "notification/card"})))))
+
+(deftest put-creator-id-permissions-test
+  (testing "PUT /api/notification/:id and creator_id"
+    (notification.tu/with-card-notification
+      [notification {:notification {:creator_id (mt/user->id :rasta)}}]
+      (let [notification-id (:id notification)
+            put!            (fn [user expected-status body]
+                              (mt/user-http-request user :put expected-status
+                                                    (format "notification/%d" notification-id)
+                                                    (merge notification body)))]
+        (testing "superuser can reassign owner"
+          (put! :crowberto 200 {:creator_id (mt/user->id :lucky)})
+          (is (= (mt/user->id :lucky)
+                 (t2/select-one-fn :creator_id :model/Notification notification-id))))
+        (testing "non-superuser cannot reassign owner — even the current owner (403 from mi/can-update?)"
+          (put! :lucky 403 {:creator_id (mt/user->id :rasta)})
+          (is (= (mt/user->id :lucky)
+                 (t2/select-one-fn :creator_id :model/Notification notification-id))))
+        (testing "echoing back the unchanged creator_id is fine for non-superusers"
+          (put! :lucky 200 {:creator_id (mt/user->id :lucky)}))))))
 
 (deftest send-notification-by-id-api-test
   (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
@@ -438,7 +448,6 @@
                    :channel/http [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification)))))))
-
         (testing "select handlers"
           (let [handler-ids (->> (:handlers notification)
                                  (filter (comp #{:channel/slack :channel/http} :channel_type))
@@ -477,7 +486,6 @@
                                                         :send_once false}
                                          :subscriptions [{:type          :notification-subscription/cron
                                                           :cron_schedule "0 0 0 * * ?"}]}))))))
-
     (testing "links disabled/enabled based on x-metabase-client header"
       (let [notification-body {:handlers [{:channel_type :channel/email
                                            :recipients   [{:type    :notification-recipient/user
@@ -519,13 +527,10 @@
                                (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
         (testing "admin can view"
           (get-notification :crowberto 200))
-
         (testing "creator can view"
           (get-notification :rasta 200))
-
         (testing "recipient can view"
           (get-notification :lucky 200))
-
         (testing "other than that no one can view"
           (get-notification third-user-id 403))))))
 
@@ -537,10 +542,8 @@
                              (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
       (testing "admin can view"
         (get-notification :crowberto 200))
-
       (testing "creator can view"
         (get-notification :rasta 200))
-
       (testing "other than that no one can view"
         (get-notification :lucky 403)))))
 
@@ -569,20 +572,16 @@
               (mt/with-premium-features #{}
                 (testing "admin can create"
                   (create-notification! :crowberto 200))
-
                 (testing "users who can view the card can create"
                   (create-notification! user 200))
-
                 (testing "normal users can't create"
                   (create-notification! :rasta 403))
-
                 (mt/when-ee-evailable
                  (mt/with-premium-features #{:advanced-permissions}
                    (testing "with advanced-permissions enabled"
                      (testing "cannot create if they don't have subscriptions permissions enabled"
                        (create-notification! user 403)
                        (create-notification! :rasta 403))
-
                      (testing "can create if they have subscriptions permissions enabled"
                        (perms/grant-application-permissions! group :subscription)
                        (create-notification! user 200)
@@ -596,8 +595,14 @@
         [notification {:card         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}
                        :notification {:creator_id (mt/user->id :rasta)}}]
         (let [update!                     (fn [user-or-id expected-status]
+                                            ;; This test exercises card-view + subscription permissions, not owner
+                                            ;; reassignment. Drop creator_id from the body — otherwise the stale value
+                                            ;; left over after change-notification-creator would read as a (forbidden,
+                                            ;; non-superuser) reassignment and 400 before the permission checks run.
                                             (mt/user-http-request user-or-id :put expected-status (format "notification/%d" (:id notification))
-                                                                  (assoc notification :updated_at (t/offset-date-time))))
+                                                                  (-> notification
+                                                                      (dissoc :creator_id)
+                                                                      (assoc :updated_at (t/offset-date-time)))))
               change-notification-creator (fn [user-id]
                                             ;; :model/Notification prevents updating creator_id, so we need to use table
                                             ;; name
@@ -608,10 +613,8 @@
           (mt/with-premium-features #{}
             (testing "admin can update"
               (update! :crowberto 200))
-
             (testing "owner can update"
               (update! :rasta 200))
-
             (testing "owner can't no longer update if they can't view the card"
               (try
                 ;; card is moved to crowberto's collection
@@ -620,10 +623,8 @@
                 (finally
                   ;; move it back
                   (move-card-collection (mt/user->id :rasta)))))
-
             (testing "other than that noone can update"
               (update! :lucky 403))
-
             (mt/when-ee-evailable
              ;; change notification's creator to user for easy of testing
              (with-disabled-subscriptions-permissions!
@@ -661,13 +662,10 @@
                                 (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
         (testing "admin can send"
           (send-notification :crowberto 200))
-
         (testing "creator can send"
           (send-notification :rasta 200))
-
         (testing "recipient can send"
           (send-notification :lucky 200))
-
         (testing "other than that no one can send"
           (send-notification third-user-id 403))))))
 
@@ -680,7 +678,7 @@
           [:model/Collection {collection-id :id} {:personal_owner_id (:id user)}
            :model/Card {card-id :id} {:collection_id collection-id}]
           (let [create-notification! (fn [user-or-id expected-status]
-                                       (with-redefs [notification/send-notification! (fn [& _args] :done)]
+                                       (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
                                          (mt/user-http-request user-or-id :post expected-status "notification/send"
                                                                {:payload_type  "notification/card"
                                                                 :creator_id    (mt/user->id :rasta)
@@ -690,13 +688,10 @@
             (mt/with-premium-features #{}
               (testing "admin can send"
                 (create-notification! :crowberto 200))
-
               (testing "users who can view the card can send"
                 (create-notification! (:id user) 200))
-
               (testing "normal users can't send"
                 (create-notification! :rasta 403))
-
               (mt/when-ee-evailable
                (with-disabled-subscriptions-permissions!
                  (mt/with-premium-features #{:advanced-permissions}
@@ -704,7 +699,6 @@
                      (testing "can't send if don't have subscription permissions"
                        (perms/revoke-application-permissions! group :subscription)
                        (create-notification! (:id user) 403))
-
                      (testing "can send if advanced-permissions is enabled"
                        (perms/grant-application-permissions! group :subscription)
                        (create-notification! (:id user) 200)))))))))))))
@@ -725,11 +719,9 @@
                            (map :id)
                            (filter #{rasta-noti-1 crowberto-noti-1 rasta-noti-2})
                            set))]
-
               (testing "returns all active notifications by default"
                 (is (= #{rasta-noti-1 crowberto-noti-1}
                        (get-notification-ids :crowberto))))
-
               (testing "include inactive notifications"
                 (is (= #{rasta-noti-1 crowberto-noti-1 rasta-noti-2}
                        (get-notification-ids :crowberto :include_inactive true)))))))))))
@@ -746,24 +738,19 @@
                        (map :id)
                        (filter #{rasta-noti})
                        set))]
-
           (testing "admin can view"
             (is (= #{rasta-noti}
                    (get-notification-ids :crowberto :creator_id (mt/user->id :rasta)))))
-
           (testing "creators can view notifications they created"
             (is (= #{rasta-noti}
                    (get-notification-ids :rasta :creator_id (mt/user->id :rasta)))))
-
           (testing "recipients can view"
             (is (= #{rasta-noti}
                    (get-notification-ids :lucky :creator_id (mt/user->id :rasta)))))
-
           (testing "other than that no one can view"
             (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
               (is (= #{}
                      (get-notification-ids third-user-id :creator_id (mt/user->id :rasta))))))
-
           (testing "non-existent creator id returns empty set"
             (is (= #{}
                    (get-notification-ids :crowberto :creator_id Integer/MAX_VALUE)))))))))
@@ -780,24 +767,19 @@
                        (map :id)
                        (filter #{rasta-noti})
                        set))]
-
           (testing "admin can view"
             (is (= #{rasta-noti}
                    (get-notification-ids :crowberto :recipient_id (mt/user->id :lucky)))))
-
           (testing "recipients can view notifications they receive"
             (is (= #{rasta-noti}
                    (get-notification-ids :lucky :recipient_id (mt/user->id :lucky)))))
-
           (testing "creators can view"
             (is (= #{rasta-noti}
                    (get-notification-ids :rasta :recipient_id (mt/user->id :lucky)))))
-
           (testing "other than that no one can view"
             (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
               (is (= #{}
                      (get-notification-ids third-user-id :recipient_id (mt/user->id :lucky))))))
-
           (testing "non-existent recipient id returns empty set"
             (is (= #{}
                    (get-notification-ids :crowberto :recipient_id Integer/MAX_VALUE)))))))))
@@ -815,13 +797,11 @@
                                                                    :handlers     [{:channel_type "channel/email"
                                                                                    :recipients   [{:type    :notification-recipient/user
                                                                                                    :user_id (mt/user->id :rasta)}]}]}]
-
           (letfn [(get-notification-ids [user & params]
                     (->> (apply mt/user-http-request user :get 200 "notification" params)
                          (map :id)
                          (filter #{rasta-noti lucky-noti})
                          sort))]
-
             (testing "return notifications where user is either creator or recipient"
               (is (= (sort [rasta-noti lucky-noti])
                      (get-notification-ids :crowberto :creator_or_recipient_id (mt/user->id :rasta)))))))))))
@@ -842,24 +822,19 @@
                          (map :id)
                          (filter #{rasta-noti})
                          set))]
-
             (testing "admin can view"
               (is (= #{rasta-noti}
                      (get-notification-ids :crowberto :card_id card-id))))
-
             (testing "creators can view notifications with their cards"
               (is (= #{rasta-noti}
                      (get-notification-ids :rasta :card_id card-id))))
-
             (testing "recipients can view"
               (is (= #{rasta-noti}
                      (get-notification-ids :lucky :card_id card-id))))
-
             (testing "other than that no one can view"
               (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
                 (is (= #{}
                        (get-notification-ids third-user-id :card_id card-id)))))
-
             (testing "non-existent card id returns empty set"
               (is (= #{}
                      (get-notification-ids :crowberto :card_id Integer/MAX_VALUE))))))))))
@@ -880,32 +855,27 @@
                          (map :id)
                          (filter #{rasta-noti})
                          set))]
-
             (testing "can filter by creator_id and recipient_id"
               (is (= #{rasta-noti}
                      (get-notification-ids :crowberto
                                            :creator_id (mt/user->id :rasta)
                                            :recipient_id (mt/user->id :lucky)))))
-
             (testing "can filter by creator_id and card_id"
               (is (= #{rasta-noti}
                      (get-notification-ids :crowberto
                                            :creator_id (mt/user->id :rasta)
                                            :card_id card-id))))
-
             (testing "can filter by recipient_id and card_id"
               (is (= #{rasta-noti}
                      (get-notification-ids :crowberto
                                            :recipient_id (mt/user->id :lucky)
                                            :card_id card-id))))
-
             (testing "can filter by all three"
               (is (= #{rasta-noti}
                      (get-notification-ids :crowberto
                                            :creator_id (mt/user->id :rasta)
                                            :recipient_id (mt/user->id :lucky)
                                            :card_id card-id))))
-
             (testing "returns empty set when any filter doesn't match"
               (is (= #{}
                      (get-notification-ids :crowberto
@@ -935,7 +905,6 @@
                 [{:type    :notification-recipient/user
                   :user_id (mt/user->id :lucky)}]
                 (email-recipients noti))))))
-
       (testing "recipient can unsubscribe themselves"
         (unsbuscribe
          :lucky 204
@@ -944,7 +913,6 @@
                 [{:type    :notification-recipient/user
                   :user_id (mt/user->id :crowberto)}]
                 (email-recipients noti))))))
-
       (testing "other than that no one can unsubscribe"
         (unsbuscribe
          :rasta 403
@@ -976,7 +944,6 @@
                                                                                                    :user_id (mt/user->id :lucky)}]}]}]
               ;; Unsubscribe from first notification
               (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))
-
               ;; Check first notification has no recipients
               ;; First notification should have no recipients
               (is (empty? (email-recipients noti-1)))
@@ -1051,7 +1018,6 @@
                                      :subject expected-subject
                                      :body    [{card-url-tag true}]}
                                     (mt/summarize-multipart-single-email email (re-pattern card-url-tag)))))]
-
           (testing "when notification is archived (active -> inactive)"
             (notification.tu/with-card-notification
               [{noti-id :id :as notification} base-notification]
@@ -1061,7 +1027,6 @@
                              :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
                              :expected-subject "You’ve been unsubscribed from an alert"
                              :card-url-tag card-url-tag))))
-
           (testing "when notification is archived (active -> inactive) with disable_links value:"
             (let [has-link? (fn [disable_links]
                               (notification.tu/with-card-notification
@@ -1076,7 +1041,6 @@
                 (is (true? (has-link? nil))))
               (testing "true will remove all links in the alert unsubscribe email"
                 (is (false? (has-link? true))))))
-
           (testing "when notification is unarchived (inactive -> active)"
             (notification.tu/with-card-notification
               [{noti-id :id :as notification} (assoc-in base-notification [:notification :active] false)]
@@ -1086,7 +1050,6 @@
                              :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
                              :expected-subject "Crowberto Corv added you to an alert"
                              :card-url-tag card-url-tag))))
-
           (testing "when recipients are modified"
             (notification.tu/with-card-notification
               [{noti-id :id :as notification} base-notification]
@@ -1100,19 +1063,16 @@
                     [removed-email added-email] (update-notification! noti-id notification
                                                                       (assoc-in notification [:handlers 0 :recipients] updated-recipients))
                     card-url-tag (make-card-url-tag notification)]
-
                 (testing "sends unsubscribe email to removed recipients"
                   (check-email :email removed-email
                                :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
                                :expected-subject "You’ve been unsubscribed from an alert"
                                :card-url-tag card-url-tag))
-
                 (testing "sends subscription email to new recipients"
                   (check-email :email added-email
                                :expected-bcc #{"lucky@metabase.com" "new@metabase.com"}
                                :expected-subject "Crowberto Corv added you to an alert"
                                :card-url-tag card-url-tag)))))
-
           (testing "no emails sent when recipients haven't changed"
             (notification.tu/with-card-notification
               [{noti-id :id :as notification} base-notification]
@@ -1142,21 +1102,17 @@
                (testing "fail if recipients does not match allowed domains"
                  (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
                         (mt/user-http-request :crowberto :post 403 "notification" (assoc notification :handlers failed-handlers)))))
-
                (testing "success if recipients matches allowed domains"
                  (mt/user-http-request :crowberto :post 200 "notification" (assoc notification :handlers success-handlers))))
-
              (testing "on update"
                (notification.tu/with-card-notification [notification {}]
                  (testing "fail if recipients does not match allowed domains"
                    (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
                           (mt/user-http-request :crowberto :put 403 (format "notification/%d" (:id notification))
                                                 (assoc notification :handlers failed-handlers)))))
-
                  (testing "success if recipients matches allowed domains"
                    (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
                                          (assoc notification :handlers success-handlers)))))
-
              (testing "on send test"
                (testing "fail if recipients does not match allowed domains"
                  (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"

@@ -102,18 +102,22 @@ export const cypressWaitAll = function (commands) {
  * Visit a question and wait for its query to load.
  *
  * @param {number|string} questionIdOrAlias
+ * @param {object} [options]
+ * @param {(window: Cypress.AUTWindow) => void} [options.onBeforeLoad]
  */
-export function visitQuestion(questionIdOrAlias) {
+export function visitQuestion(questionIdOrAlias, { onBeforeLoad } = {}) {
   if (typeof questionIdOrAlias === "number") {
-    return visitQuestionById(questionIdOrAlias);
+    return visitQuestionById(questionIdOrAlias, { onBeforeLoad });
   }
 
   if (typeof questionIdOrAlias === "string") {
-    return cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
+    return cy
+      .get(questionIdOrAlias)
+      .then((id) => visitQuestionById(id, { onBeforeLoad }));
   }
 }
 
-function visitQuestionById(id) {
+function visitQuestionById(id, { onBeforeLoad } = {}) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
   const metadataAlias = `${alias}-queryMetadata`;
@@ -122,7 +126,10 @@ function visitQuestionById(id) {
   cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
   cy.intercept("GET", `/api/card/**/${id}/query_metadata`).as(metadataAlias);
 
-  cy.visit(`/question/${id}`);
+  cy.visit({
+    url: `/question/${id}`,
+    onBeforeLoad,
+  });
 
   cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
@@ -304,6 +311,7 @@ export function saveQuestion(
       cy.findByLabelText(/Replace original question/i).should("be.checked");
       cy.button("Save").click();
     });
+    return;
   }
   if (shouldSaveAsNewQuestion) {
     modal().within(() => {

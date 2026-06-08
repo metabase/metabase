@@ -182,6 +182,7 @@ export const TRANSFORM_RUN_SORT_COLUMNS = [
   "status",
   "run-method",
   "transform-tags",
+  "duration",
 ] as const;
 export type TransformRunSortColumn =
   (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];
@@ -200,6 +201,7 @@ export type TransformJob = {
   description: string | null;
   schedule: string;
   ui_display_type: ScheduleDisplayType;
+  active: boolean;
   created_at: string;
   updated_at: string;
 
@@ -246,6 +248,7 @@ export type UpdateTransformJobRequest = {
   description?: string | null;
   schedule?: string;
   ui_display_type?: ScheduleDisplayType;
+  active?: boolean;
   tag_ids?: TransformTagId[];
 };
 

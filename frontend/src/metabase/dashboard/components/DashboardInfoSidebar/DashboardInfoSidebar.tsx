@@ -18,8 +18,8 @@ import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/componen
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
+import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/common/utils/dashboard";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
-import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import {
   type DashboardContextReturned,
   useDashboardContext,

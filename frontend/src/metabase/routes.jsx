@@ -64,7 +64,7 @@ import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldL
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
-import SearchApp from "metabase/search/containers/SearchApp";
+import { SearchApp } from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -323,6 +323,7 @@ export const getRoutes = (store) => {
           <Route path="explore" component={MetricsViewerPage} />
 
           <Route path="table">
+            <Route path=":slug" component={QueryBuilder} />
             <Route path=":tableId/detail/:rowId" component={TableDetailPage} />
           </Route>
 
@@ -394,6 +395,7 @@ export const getRoutes = (store) => {
             CanAccessDataStudio,
             CanAccessDataModel,
             CanAccessTransforms,
+            IsAdmin,
           )}
         </Route>
       </Route>

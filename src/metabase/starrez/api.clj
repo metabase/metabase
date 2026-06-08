@@ -37,9 +37,8 @@
   (starrez.client/test-connection))
 
 (api.macros/defendpoint :post "/export"
-  "Trigger a StarRez data export. Fetches all configured tables and all reports
-  that have previously been exported, uploads CSV files to Azure Blob Storage,
-  and cumulatively merges report rows. Old versions are pruned automatically.
+  "Trigger a StarRez data export. Fetches configured tables and reports, uploads
+  CSV files to Azure Blob Storage, and cumulatively merges report rows. Old versions are pruned automatically.
   Rejects with {:error ...} if another export is already running."
   []
   (perms/check-has-application-permission :setting)

@@ -1,8 +1,4 @@
 import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/public/lib/types";
-import type {
   BaseEntityId,
   CardDisplayType,
   ClickBehavior,
@@ -10,6 +6,8 @@ import type {
   CollectionAuthorityLevel,
   CollectionId,
   Database,
+  EmbeddingParameters,
+  EmbeddingType,
   Field,
   FieldId,
   Parameter,
@@ -137,6 +135,15 @@ export type DashboardCardLayoutAttrs = {
   size_x: number;
   size_y: number;
 };
+
+export type DashboardCardPosition = Pick<
+  DashboardCardLayoutAttrs,
+  "col" | "row"
+>;
+export type DashboardCardSize = Pick<
+  DashboardCardLayoutAttrs,
+  "size_x" | "size_y"
+>;
 
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
@@ -331,6 +338,19 @@ export type UpdateDashboardRequest = {
 
 export type GetDashboardQueryMetadataRequest = {
   id: DashboardId;
+  dashboard_load_id?: string;
+};
+
+export type DashboardCardQueryRequest = {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  cardId: CardId;
+  collection_preview?: boolean;
+  ignore_cache?: boolean;
+  parameters?: unknown[];
+  // Sent in the request body (in addition to the path params above) when
+  // querying a saved dashcard, for query provenance/telemetry.
+  dashboard_id?: DashboardId;
   dashboard_load_id?: string;
 };
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { metricApi } from "metabase/api";
+import { metricApi, useListSegmentsQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -272,6 +272,8 @@ export function useDefinitionQueries(
       ];
     });
   }, [formulaEntities, definitions]);
+
+  useListSegmentsQuery(); // FIXME segments don't have any filters yet. We should load only segments that are related to the formula
 
   useEffect(() => {
     const requestsToMake = [...datasetRequestsByEntityIndex.values()];

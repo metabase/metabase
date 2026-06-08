@@ -1,3 +1,5 @@
+import type { IconName } from "metabase-types/api";
+
 import ten_thousand_component from "./10k.svg?component";
 import ten_thousand_source from "./10k.svg?source";
 import one_million_component from "./1m.svg?component";
@@ -152,6 +154,8 @@ import database_routing_component from "./database_routing.svg?component";
 import database_routing_source from "./database_routing.svg?source";
 import dependencies_component from "./dependencies.svg?component";
 import dependencies_source from "./dependencies.svg?source";
+import dependent_component from "./dependent.svg?component";
+import dependent_source from "./dependent.svg?source";
 import document_component from "./document.svg?component";
 import document_source from "./document.svg?source";
 import download_component from "./download.svg?component";
@@ -316,6 +320,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import mcp_component from "./mcp.svg?component";
+import mcp_source from "./mcp.svg?source";
 import medallion_component from "./medallion.svg?component";
 import medallion_source from "./medallion.svg?source";
 import message_circle_component from "./message_circle.svg?component";
@@ -444,6 +450,8 @@ import shield_component from "./shield.svg?component";
 import shield_source from "./shield.svg?source";
 import shield_outline_component from "./shield_outline.svg?component";
 import shield_outline_source from "./shield_outline.svg?source";
+import shield_stroke_component from "./shield_stroke.svg?component";
+import shield_stroke_source from "./shield_stroke.svg?source";
 import sidebar_closed_component from "./sidebar_closed.svg?component";
 import sidebar_closed_source from "./sidebar_closed.svg?source";
 import sidebar_open_component from "./sidebar_open.svg?component";
@@ -556,6 +564,8 @@ import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
+import warning_round_component from "./warning_round.svg?component";
+import warning_round_source from "./warning_round.svg?source";
 import warning_round_filled_component from "./warning_round_filled.svg?component";
 import warning_round_filled_source from "./warning_round_filled.svg?source";
 import warning_triangle_filled_component from "./warning_triangle_filled.svg?component";
@@ -848,6 +858,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     dependencies: {
       component: dependencies_component,
       source: dependencies_source,
+    },
+    dependent: {
+      component: dependent_component,
+      source: dependent_source,
     },
     data_studio: {
       component: data_studio_component,
@@ -1185,6 +1199,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    mcp: {
+      component: mcp_component,
+      source: mcp_source,
+    },
     medallion: {
       component: medallion_component,
       source: medallion_source,
@@ -1481,6 +1499,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: shield_outline_component,
       source: shield_outline_source,
     },
+    shield_stroke: {
+      component: shield_stroke_component,
+      source: shield_stroke_source,
+    },
     sidebar_closed: {
       component: sidebar_closed_component,
       source: sidebar_closed_source,
@@ -1675,6 +1697,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: warning_component,
       source: warning_source,
     },
+    warning_round: {
+      component: warning_round_component,
+      source: warning_round_source,
+    },
     warning_round_filled: {
       component: warning_round_filled_component,
       source: warning_round_filled_source,
@@ -1726,303 +1752,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
   };
-
-/**
- * We need a standalone type to prevent adding the `Icons` object (as a type) into `index.d.ts` of Embedding SDK dist
- */
-export type IconName =
-  | "add"
-  | "add_collection"
-  | "add_column"
-  | "add_data"
-  | "add_folder"
-  | "add_list"
-  | "add_row"
-  | "add_to_dash"
-  | "add_comment"
-  | "ai"
-  | "alert"
-  | "alert_filled"
-  | "alert_confirm"
-  | "archive"
-  | "area"
-  | "attachment"
-  | "arrow_up"
-  | "arrow_down"
-  | "arrow_left"
-  | "arrow_left_to_line"
-  | "arrow_right"
-  | "arrow_split"
-  | "audit"
-  | "badge"
-  | "ban"
-  | "bar"
-  | "bell"
-  | "birthday"
-  | "book_open"
-  | "bookmark"
-  | "bookmark_filled"
-  | "bolt"
-  | "bolt_filled"
-  | "boxplot"
-  | "breakout"
-  | "bubble"
-  | "broken_link"
-  | "burger"
-  | "calendar"
-  | "camera"
-  | "chart_layout_default"
-  | "chart_layout_stack"
-  | "check"
-  | "check_filled"
-  | "code_block"
-  | "chevrondown"
-  | "chevronleft"
-  | "chevronright"
-  | "chevronup"
-  | "click"
-  | "clipboard"
-  | "clock"
-  | "clone"
-  | "close"
-  | "cloud"
-  | "cloud_filled"
-  | "collection2"
-  | "compare"
-  | "combine"
-  | "company"
-  | "comment"
-  | "currency"
-  | "connections"
-  | "contract"
-  | "copy"
-  | "corner_up_right"
-  | "curved"
-  | "database"
-  | "database_routing"
-  | "dependencies"
-  | "data_studio"
-  | "dash"
-  | "dashboard"
-  | "curve"
-  | "document"
-  | "download"
-  | "dyno"
-  | "edit_document"
-  | "edit_document_outlined"
-  | "ellipsis"
-  | "embed"
-  | "embed_interactive"
-  | "embed_modular"
-  | "embed_static"
-  | "empty"
-  | "enter_or_return"
-  | "exit"
-  | "expand"
-  | "expand_arrow"
-  | "extract"
-  | "eye"
-  | "eye_crossed_out"
-  | "eye_outline"
-  | "factory"
-  | "field"
-  | "fields"
-  | "filter"
-  | "filter_plus"
-  | "find_replace"
-  | "bug"
-  | "format_code"
-  | "formula"
-  | "function"
-  | "funnel"
-  | "funnel_outline"
-  | "folder"
-  | "folder_database"
-  | "folder_filled"
-  | "gauge"
-  | "gear"
-  | "gear_settings_filled"
-  | "gem"
-  | "ghost"
-  | "globe"
-  | "glossary"
-  | "git_branch"
-  | "grabber"
-  | "grid"
-  | "grid_2x2"
-  | "grid_bordered"
-  | "group"
-  | "google"
-  | "google_drive"
-  | "google_sheet"
-  | "history"
-  | "home"
-  | "horizontal_bar"
-  | "hourglass"
-  | "info"
-  | "info_outline"
-  | "insight"
-  | "int"
-  | "io"
-  | "join_full_outer"
-  | "join_inner"
-  | "join_left_outer"
-  | "join_right_outer"
-  | "index"
-  | "key"
-  | "label"
-  | "layout_grid"
-  | "ldap"
-  | "learn"
-  | "lightbulb"
-  | "link"
-  | "line"
-  | "lines"
-  | "lineandbar"
-  | "line_style_dashed"
-  | "line_style_dotted"
-  | "line_style_solid"
-  | "list"
-  | "location"
-  | "lock"
-  | "lock_filled"
-  | "mail"
-  | "mail_filled"
-  | "medallion"
-  | "message_circle"
-  | "metabot"
-  | "metabot_sad"
-  | "metric"
-  | "mode"
-  | "model"
-  | "model_with_badge"
-  | "moon"
-  | "move"
-  | "move_card"
-  | "network"
-  | "new_folder"
-  | "notebook"
-  | "number"
-  | "octagon_alert"
-  | "package"
-  | "palette"
-  | "pause"
-  | "pencil"
-  | "pencil_lines"
-  | "permissions_limited"
-  | "person"
-  | "pie"
-  | "pie_slice"
-  | "pin"
-  | "pinmap"
-  | "pivot_table"
-  | "play"
-  | "play_outlined"
-  | "popover"
-  | "popular"
-  | "progress"
-  | "publish"
-  | "published"
-  | "pulse"
-  | "receipt"
-  | "recents"
-  | "revert"
-  | "sankey"
-  | "share"
-  | "send"
-  | "settings"
-  | "smile"
-  | "split"
-  | "sql"
-  | "subscription"
-  | "straight"
-  | "stepped"
-  | "sticky_note"
-  | "sort"
-  | "sort_arrows"
-  | "sum"
-  | "sync"
-  | "synced_collection"
-  | "transform"
-  | "question"
-  | "quote"
-  | "redo"
-  | "return"
-  | "reference"
-  | "refresh"
-  | "refresh_downstream"
-  | "rename"
-  | "repository"
-  | "rocket"
-  | "ruler"
-  | "schema"
-  | "search"
-  | "search_check"
-  | "section"
-  | "segment"
-  | "shield"
-  | "shield_outline"
-  | "sidebar_closed"
-  | "sidebar_open"
-  | "slack"
-  | "slack_colorized"
-  | "smartscalar"
-  | "snail"
-  | "snippet"
-  | "sparkles"
-  | "star_filled"
-  | "star"
-  | "stop"
-  | "store"
-  | "string"
-  | "sun"
-  | "t-shirt"
-  | "tab"
-  | "table"
-  | "table2"
-  | "text_bold"
-  | "text_italic"
-  | "text_strike"
-  | "thumbs_down"
-  | "thumbs_up"
-  | "time_history"
-  | "trash"
-  | "trash_filled"
-  | "triangle_left"
-  | "triangle_right"
-  | "unarchive"
-  | "undo"
-  | "unknown"
-  | "unpin"
-  | "unpublish"
-  | "unreferenced"
-  | "unsubscribe"
-  | "upload"
-  | "variable"
-  | "verified"
-  | "official_collection"
-  | "open_folder"
-  | "ordered_list"
-  | "verified_filled"
-  | "verified_round"
-  | "view_archive"
-  | "warning"
-  | "warning_round_filled"
-  | "warning_triangle_filled"
-  | "waterfall"
-  | "webhook"
-  | "10k"
-  | "1m"
-  | "zap"
-  | "zoom_in"
-  | "zoom_out"
-  | "scalar"
-  | "cake"
-  | "external"
-  | "collection"
-  | "beaker"
-  | "test_tube"
-  | "eye_filled";
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];
 

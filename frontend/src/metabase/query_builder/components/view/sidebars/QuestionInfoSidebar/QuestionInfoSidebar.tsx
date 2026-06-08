@@ -21,7 +21,7 @@ import { QuestionActivityTimeline } from "metabase/query_builder/components/Ques
 import { useDispatch } from "metabase/redux";
 import { onCloseQuestionInfo } from "metabase/redux/query-builder";
 import { Flex, Icon, Stack, Tabs } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDetails } from "./QuestionDetails";

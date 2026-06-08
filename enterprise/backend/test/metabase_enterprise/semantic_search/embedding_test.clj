@@ -14,6 +14,8 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
@@ -32,7 +34,6 @@
               :model-name "Snowflake/snowflake-arctic-embed-l-v2.0"
               :vector-dimensions 1024}
              (embedding/get-configured-model))))
-
     (mt/with-temporary-setting-values [ee-embedding-provider "ollama"
                                        ee-embedding-model "mxbai-embed-large"
                                        ee-embedding-model-dimensions 1024]
@@ -40,7 +41,6 @@
               :model-name "mxbai-embed-large"
               :vector-dimensions 1024}
              (embedding/get-configured-model))))
-
     (mt/with-temporary-setting-values [ee-embedding-provider "openai"
                                        ee-embedding-model "text-embedding-3-small"
                                        ee-embedding-model-dimensions 1536]
@@ -53,7 +53,6 @@
   (testing "model-dimensions uses setting defaults when override is nil"
     (mt/with-temporary-setting-values [ee-embedding-model-dimensions nil]
       (is (= 1024 (:vector-dimensions (embedding/get-configured-model))))))
-
   (testing "model-dimensions uses override when specified"
     (mt/with-temporary-setting-values [ee-embedding-model-dimensions 768]
       (is (= 768 (:vector-dimensions (embedding/get-configured-model)))))))
@@ -84,20 +83,17 @@
   (testing "create-batches handles empty input"
     (is (empty? (#'embedding/create-batches 10 count [])))
     (is (empty? (#'embedding/create-batches 10 count nil))))
-
   (testing "create-batches with single short text"
     (let [texts ["Short text"]
           batches (#'embedding/create-batches 10 count texts)]
       (is (= 1 (count batches)))
       (is (= texts (first batches)))))
-
   (testing "create-batches splits texts appropriately with smaller token limit"
     ;; Use a smaller token limit to make testing more predictable
     (let [texts ["This is document 1" "This is document 2" "This is document 3"]
           batches (#'embedding/create-batches 10 #'embedding/count-tokens texts)]
       (is (= [["This is document 1" "This is document 2"] ["This is document 3"]]
              batches))))
-
   (testing "create-batches skips texts that exceed token limit"
     (let [texts ["Short" "This is a much longer text that exceeds the limit" "Also short"]
           batches (#'embedding/create-batches 5 #'embedding/count-tokens texts)]
@@ -131,7 +127,6 @@
             base64-str     (encode-floats-to-base64 test-embedding)]
         (is (=? [#(float-vectors-approx= test-embedding %)]
                 (decode [{:embedding base64-str}])))))
-
     (testing "extracts multiple embeddings correctly"
       (let [embedding1  [1.0 2.0 3.0]
             embedding2  [-1.0 -2.0 -3.0]
@@ -145,28 +140,22 @@
                 (decode [{:embedding base64-str1}
                          {:embedding base64-str2}
                          {:embedding base64-str3}])))))
-
     (testing "edge cases that return empty results"
       (testing "handles empty data array"
         (is (= [] (decode [])))
         (is (= [] (decode nil))))
-
       (testing "handles zero-length embedding"
         (is (= [[]] (decode [{:embedding (encode-floats-to-base64 [])}])))))
-
     (testing "handles large embedding vectors"
       (let [large-embedding (vec (map float (range 1536)))
             base64-str      (encode-floats-to-base64 large-embedding)]
         (is (=? [#(float-vectors-approx= large-embedding %)]
                 (decode [{:embedding base64-str}])))))
-
     (testing "error cases"
       (testing "invalid base64 string throws exception"
         (is (thrown? Exception (decode [{:embedding "not-valid-base64!@#$"}]))))
-
       (testing "non-string embedding value throws exception"
         (is (thrown? Exception (decode [{:embedding 123}]))))
-
       (testing "base64 string with invalid byte count (not multiple of 4) returns nil"
         ;; Create a base64 string that decodes to 3 bytes
         (let [encoder        (Base64/getEncoder)
@@ -195,9 +184,7 @@
                {:provider       "ollama"
                 :mock-response  {:embedding mock-embedding}
                 :counts-tokens? false}]]
-
         (t2/delete! :model/SemanticSearchTokenTracking)
-
         (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
                                                      (swap! analytics-calls conj [metric args]))
                                     http/post (fn post-mock [_url & _options]
@@ -209,11 +196,13 @@
             (is (= mock-embedding (vec (#'embedding/get-embedding {:provider          provider
                                                                    :model-name        "some-model"
                                                                    :vector-dimensions 4}
-                                                                  "hello"))))
+                                                                  "hello"
+                                                                  {:record-tokens? true}))))
             (is (= [mock-embedding] (mapv vec (#'embedding/get-embeddings-batch {:provider          provider
                                                                                  :model-name        "some-model"
                                                                                  :vector-dimensions 4}
-                                                                                ["hello"]))))
+                                                                                ["hello"]
+                                                                                {:record-tokens? true}))))
             (when counts-tokens?
               (let [tokens-calls (filter #(= :metabase-search/semantic-embedding-tokens (first %)) @analytics-calls)]
                 (is (= 2 (count tokens-calls)))
@@ -225,26 +214,74 @@
                 (is (= 2 (t2/count :model/SemanticSearchTokenTracking)))))))))))
 
 (deftest test-embedding-service-validation
-  (testing "ai-service throws when base URL not configured"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url nil
-                                       ee-embedding-service-api-key  "some-key"]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Embedding service base URL not configured"
-           (embedding/get-embedding {:provider "ai-service"
-                                     :model-name "test-model"
-                                     :vector-dimensions 4}
-                                    "test text")))))
-  (testing "ai-service throws when API key not configured"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://localhost:1234"
-                                       ee-embedding-service-api-key  nil]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Embedding service API key not configured"
-           (embedding/get-embedding {:provider "ai-service"
-                                     :model-name "test-model"
-                                     :vector-dimensions 4}
-                                    "test text"))))))
+  (let [mock-embedding [1.0 2.0 3.0 4.0]
+        mock-response  {:data  [{:object    "embedding"
+                                 :embedding (encode-floats-to-base64 mock-embedding)
+                                 :index     0}]
+                        :model "test-model"
+                        :usage {:prompt_tokens 1
+                                :total_tokens  1}}]
+    (testing "ai-service throws when both base URLs are not configured"
+      (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url                    (constantly nil)
+                                  semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                  semantic.settings/ee-embedding-service-api-key  (constantly "key")]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Embedding service and ai service base URLs are not configured"
+             (embedding/get-embedding {:provider "ai-service"
+                                       :model-name "test-model"
+                                       :vector-dimensions 4}
+                                      "test text")))))
+    (testing "ai-service falls back to ai-service-base-url when ee-embedding-service-base-url is not set"
+      (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                  llm.settings/ai-service-base-url                    (constantly "http://mock-ai-service")
+                                  premium-features/premium-embedding-token         (constantly "mock-token")]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
+                                                  (reset! captured {:url url :headers (:headers opts)})
+                                                  {:status  200
+                                                   :headers {"Content-Type" "application/json"}
+                                                   :body    (json/encode mock-response)})]
+            (testing "get-embedding uses ai-service URL with instance-token auth"
+              (is (= mock-embedding
+                     (vec (embedding/get-embedding {:provider          "ai-service"
+                                                    :model-name        "test-model"
+                                                    :vector-dimensions 4}
+                                                   "test text"
+                                                   {:record-tokens? false}))))
+              (is (= "http://mock-ai-service/v1/embeddings" (:url @captured)))
+              (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))
+              (is (nil? (get-in @captured [:headers "Authorization"]))))
+            (reset! captured nil)
+            (testing "get-embeddings-batch uses ai-service URL with instance-token auth"
+              (is (= [mock-embedding]
+                     (mapv vec (embedding/get-embeddings-batch {:provider          "ai-service"
+                                                                :model-name        "test-model"
+                                                                :vector-dimensions 4}
+                                                               ["test text"]
+                                                               {:record-tokens? false}))))
+              (is (= "http://mock-ai-service/v1/embeddings" (:url @captured)))
+              (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))
+              (is (nil? (get-in @captured [:headers "Authorization"]))))))))
+    (testing "ee-embedding-service-base-url wins when both are configured"
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
+                                         ee-embedding-service-api-key  "embedding-api-key"]
+        (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url (constantly "http://mock-ai-service")]
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
+                                                    (reset! captured {:url url :headers (:headers opts)})
+                                                    {:status  200
+                                                     :headers {"Content-Type" "application/json"}
+                                                     :body    (json/encode mock-response)})]
+              (is (= mock-embedding
+                     (vec (embedding/get-embedding {:provider          "ai-service"
+                                                    :model-name        "test-model"
+                                                    :vector-dimensions 4}
+                                                   "test text"
+                                                   {:record-tokens? false}))))
+              (is (= "http://mock-embedding-service/v1/embeddings" (:url @captured)))
+              (is (= "Bearer embedding-api-key" (get-in @captured [:headers "Authorization"])))
+              (is (nil? (get-in @captured [:headers "x-metabase-instance-token"]))))))))))
 
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
@@ -264,7 +301,8 @@
             (embedding/get-embeddings-batch {:provider         "ai-service"
                                              :model-name       "test-model"
                                              :vector-dimensions 3}
-                                            ["hello world"]))
+                                            ["hello world"]
+                                            {:record-tokens? true}))
           (let [events (->> (snowplow-test/pop-event-data-and-user-id!)
                             ;; Filter out unrelated setup events (e.g. new_instance_created
                             ;; triggered by instance-creation setting being read for the first time)
@@ -305,10 +343,8 @@
                     indexing-state (semantic.indexer/init-indexing-state metadata-row)
                     gate-docs (mapv #(semantic.gate/search-doc->gate-doc % (java.sql.Timestamp. 1000))
                                     (semantic.tu/mock-documents))]
-
                 (semantic.gate/gate-documents! pgvector index-metadata gate-docs)
                 (t2/delete! :model/SemanticSearchTokenTracking)
-
                 (testing "Indexing tokens are tracked"
                   (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
                   (is (= 1 (t2/count :model/SemanticSearchTokenTracking)))
@@ -316,7 +352,6 @@
                         (t2/select-one :model/SemanticSearchTokenTracking)]
                     (is (= :index request_type))
                     (is (= 13 total_tokens))))
-
                 (testing "Querying tokens are tracked"
                   (t2/delete! :model/SemanticSearchTokenTracking)
                   (semantic.index/query-index pgvector index {:search-string "elephant"})

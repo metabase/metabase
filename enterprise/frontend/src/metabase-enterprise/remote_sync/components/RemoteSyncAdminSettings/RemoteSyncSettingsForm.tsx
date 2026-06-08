@@ -70,7 +70,9 @@ import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
 import { SyncConflictModal } from "../SyncConflictModal";
 import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
+import { DevInstanceUpsell } from "./DevInstanceUpsell";
 import { PullChangesButton } from "./PullChangesButton";
+import { TestConnectionButton } from "./TestConnectionButton";
 
 export type RemoteSyncSettingsFormProps = {
   onCancel?: VoidFunction;
@@ -101,6 +103,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
 
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const useTenants = useSetting("use-tenants");
+  const isDevInstance = useSetting("development-mode?");
   const applicationName = useSelector(getApplicationName);
 
   // Fetch top-level collections to build initial sync state
@@ -404,6 +407,9 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     inputWrapperOrder: ["label", "description", "erorr"],
                   })}
                 />
+                <Box>
+                  <TestConnectionButton values={values} />
+                </Box>
               </RemoteSyncSettingsSection>
 
               {/* Section 2: Sync mode for this instance */}
@@ -463,6 +469,12 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     />
                   </Stack>
                 </FormRadioGroup>
+                {!isDevInstance && (
+                  <DevInstanceUpsell
+                    campaign="remote-sync-dev-instance"
+                    dismissible
+                  />
+                )}
               </RemoteSyncSettingsSection>
 
               {/* Section 3: Branch to sync with (read-only only) */}
@@ -483,6 +495,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     </Box>
                     <FormSwitch
                       label={t`Auto-sync with git`}
+                      description={t`Periodically import changes from the sync branch. When auto-sync is off, you'll need to pull changes from the sync branch manually.`}
                       mb="0.6125rem"
                       name={AUTO_IMPORT_KEY}
                       size="sm"

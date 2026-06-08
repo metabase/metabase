@@ -130,7 +130,7 @@ function ConfigSection() {
 
           {testResult && (
             <Alert
-              color={testResult.ok ? "green" : "red"}
+              color={testResult.ok ? "success" : "error"}
               py="xs"
               px="md"
               style={{ flex: 1 }}
@@ -154,7 +154,7 @@ function ExportSection() {
     <SettingsSection title={t`Export StarRez Data`}>
       <Stack gap="md">
         <Text c="text-secondary">
-          {t`Pull configured tables and every previously exported report from StarRez, upload CSV snapshots, and merge report updates into PostgreSQL.`}
+          {t`Pull configured tables and reports from StarRez, upload CSV snapshots, and merge report updates into PostgreSQL.`}
         </Text>
 
         <Flex gap="md" align="center">
@@ -170,7 +170,9 @@ function ExportSection() {
           )}
         </Flex>
 
-        {exportResult?.error && <Alert color="red">{exportResult.error}</Alert>}
+        {exportResult?.error && (
+          <Alert color="error">{exportResult.error}</Alert>
+        )}
 
         {exportResult?.results && (
           <Stack gap="sm">
@@ -184,7 +186,7 @@ function ExportSection() {
                         {r.kind === "report" ? t`Report` : t`Table`}
                       </Badge>
                       <Title order={5}>{r.name}</Title>
-                      <Badge color={r.success ? "green" : "red"}>
+                      <Badge color={r.success ? "success" : "error"}>
                         {r.success ? t`Success` : t`Failed`}
                       </Badge>
                     </Group>
@@ -217,7 +219,7 @@ function ExportSection() {
               </Text>
             )}
             {exportResult.merge.metadata_sync?.error && (
-              <Alert color="red">
+              <Alert color="error">
                 {exportResult.merge.metadata_sync.error}
               </Alert>
             )}
@@ -227,7 +229,7 @@ function ExportSection() {
                   <Group gap="sm">
                     <Badge variant="light">{t`Report`}</Badge>
                     <Title order={5}>{report.report_id}</Title>
-                    <Badge color={report.error ? "red" : "green"}>
+                    <Badge color={report.error ? "error" : "success"}>
                       {report.error ? t`Failed` : t`Merged`}
                     </Badge>
                   </Group>
@@ -276,7 +278,7 @@ function PastExportsSection() {
             <Loader />
           </Flex>
         ) : data?.error ? (
-          <Alert color="red">{data.error}</Alert>
+          <Alert color="error">{data.error}</Alert>
         ) : exports.length === 0 ? (
           <Text c="text-secondary">
             {t`No exports found. Run an export above to get started.`}
@@ -305,7 +307,7 @@ function PastExportsSection() {
                   </Stack>
                   <Button
                     variant="subtle"
-                    color="red"
+                    color="error"
                     size="xs"
                     loading={deleting}
                     onClick={() => deleteExport(file.name)}
@@ -388,7 +390,7 @@ function PostgresConfigSection() {
           </Button>
           {testResult && (
             <Alert
-              color={testResult.ok ? "green" : "red"}
+              color={testResult.ok ? "success" : "error"}
               py="xs"
               px="md"
               style={{ flex: 1 }}
@@ -431,21 +433,21 @@ function SnapshotsSection() {
         </Group>
 
         {refreshResult?.metadata_sync?.synced && (
-          <Alert color="green">
+          <Alert color="success">
             {t`Snapshots and PostgreSQL schema refreshed.`}
           </Alert>
         )}
         {refreshResult?.error && (
-          <Alert color="red">{refreshResult.error}</Alert>
+          <Alert color="error">{refreshResult.error}</Alert>
         )}
         {refreshResult?.metadata_sync?.error && (
-          <Alert color="red">{refreshResult.metadata_sync.error}</Alert>
+          <Alert color="error">{refreshResult.metadata_sync.error}</Alert>
         )}
         {activateResult?.error && (
-          <Alert color="red">{activateResult.error}</Alert>
+          <Alert color="error">{activateResult.error}</Alert>
         )}
         {activateResult?.results && (
-          <Alert color="green">
+          <Alert color="success">
             {t`Activated. Tables loaded: ${activateResult.results
               .map((r) => `${r.table} (${r.rows.toLocaleString()} rows)`)
               .join(", ")}`}
@@ -457,7 +459,7 @@ function SnapshotsSection() {
             <Loader />
           </Flex>
         ) : data?.error ? (
-          <Alert color="red">{data.error}</Alert>
+          <Alert color="error">{data.error}</Alert>
         ) : snapshots.length === 0 ? (
           <Text c="text-secondary">
             {t`No snapshots yet. Run an export to create one.`}
@@ -479,7 +481,9 @@ function SnapshotsSection() {
                   <Stack gap={4}>
                     <Group gap="sm">
                       <Title order={5}>{getSnapshotLabel(w.blob_files)}</Title>
-                      {w.is_active && <Badge color="green">{t`Active`}</Badge>}
+                      {w.is_active && (
+                        <Badge color="success">{t`Active`}</Badge>
+                      )}
                     </Group>
                     <Text size="xs" c="text-secondary">
                       {t`Exported: ${w.fetched_at}`} •{" "}
@@ -523,7 +527,7 @@ export function StarRezSettingsPage() {
       description={t`Connect to your StarRez housing management system and export data to Azure Blob Storage for reporting and archiving.`}
     >
       {status && !allConfigured && (
-        <Alert color="yellow" mb="lg">
+        <Alert color="warning" mb="lg">
           {t`Complete all configuration fields below before running an export.`}
         </Alert>
       )}

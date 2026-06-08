@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useEffect, useState } from "react";
@@ -8,22 +9,26 @@ import _ from "underscore";
 
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
+import { useSetting } from "metabase/common/hooks";
+import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useRouter } from "metabase/router";
+import { getSettingsLoading } from "metabase/selectors/settings";
 import {
+  ActionIcon,
   Box,
-  Button,
   Icon,
   Paper,
   Stack,
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
+import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -55,6 +60,15 @@ const responseHasNavigateTo = (action: SubmitInputResult) =>
   );
 
 const MetabotQueryBuilderInner = () => {
+  const { canUseNlq } = useUserMetabotPermissions();
+  const [
+    isAiProviderConfigurationModalOpen,
+    {
+      close: closeAiProviderConfigurationModal,
+      open: openAiProviderConfigurationModal,
+    },
+  ] = useDisclosure(false);
+
   const dispatch = useDispatch();
   const {
     setVisible,
@@ -70,6 +84,7 @@ const MetabotQueryBuilderInner = () => {
 
   const [title] = useState(getTitleText);
   const [hasError, setHasError] = useState(false);
+  const showIllustrations = useSetting("metabot-show-illustrations");
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
     metabot_id: metabotId,
@@ -169,7 +184,7 @@ const MetabotQueryBuilderInner = () => {
     <Box className={S.page}>
       <Box className={S.centeredContainer}>
         <Box className={S.greeting}>
-          <MetabotLogo className={S.greetingIcon} />
+          {showIllustrations && <MetabotLogo className={S.greetingIcon} />}
           <Text fz={{ base: "xl", sm: 32 }} fw={600} c="text-primary">
             {title}
           </Text>
@@ -183,19 +198,28 @@ const MetabotQueryBuilderInner = () => {
             )}
           >
             <Box className={S.editorWrapper}>
-              <MetabotPromptInput
-                ref={promptInputRef}
-                value={prompt}
-                autoFocus
-                disabled={isDoingScience}
-                placeholder={t`Ask about your data, and type @ to mention an item`}
-                onChange={setPrompt}
-                onSubmit={handleEditorSubmit}
-                onStop={cancelRequest}
-                suggestionConfig={{
-                  suggestionModels: [...defaultSuggestionModels],
-                }}
-              />
+              {!canUseNlq ? (
+                <AIProviderConfigurationNotice
+                  py="0.5rem"
+                  featureName={t`AI exploration`}
+                  inline
+                  onConfigureAi={openAiProviderConfigurationModal}
+                />
+              ) : (
+                <MetabotPromptInput
+                  ref={promptInputRef}
+                  value={prompt}
+                  autoFocus
+                  disabled={isDoingScience}
+                  placeholder={t`Ask about your data, and type @ to mention an item`}
+                  onChange={setPrompt}
+                  onSubmit={handleEditorSubmit}
+                  onStop={cancelRequest}
+                  suggestionConfig={{
+                    suggestionModels: [...defaultSuggestionModels],
+                  }}
+                />
+              )}
             </Box>
             <Box className={S.inputActions}>
               {hasError ? (
@@ -205,41 +229,49 @@ const MetabotQueryBuilderInner = () => {
               ) : (
                 <div />
               )}
-              <Button
+              <ActionIcon
                 className={S.sendButton}
                 variant="filled"
-                disabled={inputDisabled}
+                size="2rem"
+                disabled={!canUseNlq || inputDisabled}
                 loading={isDoingScience}
                 onClick={handleEditorSubmit}
                 data-testid="metabot-send-message"
+                aria-label={t`Send`}
               >
                 <Icon name="arrow_up" />
-              </Button>
+              </ActionIcon>
             </Box>
           </Paper>
 
           <Box className={S.promptSuggestionsContainer}>
-            {suggestedPrompts?.map(({ prompt: suggestedPrompt }, index) => (
-              <UnstyledButton
-                key={index}
-                className={cx(S.promptSuggestion, {
-                  [S.promptSuggestionShow]: !isDoingScience,
-                  [S.promptSuggestionHide]: isDoingScience,
-                })}
-                style={{
-                  animationDelay: isDoingScience
-                    ? `${(suggestedPromptCount - index - 1) * 50}ms`
-                    : `${index * 75}ms`,
-                }}
-                onClick={() => handleSubmitPrompt(suggestedPrompt)}
-                disabled={isDoingScience}
-              >
-                <Text>{suggestedPrompt}</Text>
-              </UnstyledButton>
-            ))}
+            {canUseNlq
+              ? suggestedPrompts?.map(({ prompt: suggestedPrompt }, index) => (
+                  <UnstyledButton
+                    key={index}
+                    className={cx(S.promptSuggestion, {
+                      [S.promptSuggestionShow]: !isDoingScience,
+                      [S.promptSuggestionHide]: isDoingScience,
+                    })}
+                    style={{
+                      animationDelay: isDoingScience
+                        ? `${(suggestedPromptCount - index - 1) * 50}ms`
+                        : `${index * 75}ms`,
+                    }}
+                    onClick={() => handleSubmitPrompt(suggestedPrompt)}
+                    disabled={isDoingScience}
+                  >
+                    <Text>{suggestedPrompt}</Text>
+                  </UnstyledButton>
+                ))
+              : null}
           </Box>
         </Stack>
       </Box>
+      <AIProviderConfigurationModal
+        opened={isAiProviderConfigurationModalOpen}
+        onClose={closeAiProviderConfigurationModal}
+      />
     </Box>
   );
 };
@@ -247,8 +279,15 @@ const MetabotQueryBuilderInner = () => {
 export const MetabotQueryBuilder = (
   props: React.ComponentProps<typeof QueryBuilder>,
 ) => {
-  const { canUseNlq } = useUserMetabotPermissions();
-  if (!canUseNlq) {
+  const { hasNlqAccess, isLoading } = useUserMetabotPermissions();
+  const areSettingsLoading = useSelector(getSettingsLoading);
+  // Wait until settings and metabot permissions are both resolved before
+  // deciding which view to render. Otherwise QueryBuilder may mount briefly
+  // and rewrite the URL away from /question/ask, racing the metabot view.
+  if (areSettingsLoading || isLoading) {
+    return null;
+  }
+  if (!hasNlqAccess) {
     return <QueryBuilder {...props} />;
   }
   return <MetabotQueryBuilderInner />;

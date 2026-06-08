@@ -86,16 +86,31 @@ Before you connect Metabase to your Git repository, create a new repository. Sup
 - [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository)
 - [GitLab](https://docs.gitlab.com/user/project/index.html#create-a-blank-project)
 - [Bitbucket](https://support.atlassian.com/bitbucket-cloud/docs/create-a-repository/)
+- [Local repo](#local-file-repositories): a bare git repo on your own filesystem.
 
 Initialize the repo with a README.md.
 
 ### 2. Create a token for your read-and-write Metabase
 
+> Skip this step if you're using a [local repo](#local-file-repositories).
+
 Create a personal access token with read and write repository access. Copy the token immediately; you won't be able to see the token again.
 
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read and write** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** and **write_repository** scopes. Tokens have an expiration date (your admin may set a maximum lifetime).
-- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket, search for "repos", and grant `read:repository:bitbucket` and `write:repository:bitbucket` (write does not include read). Tokens expire and can't be modified after creation.
+- **Bitbucket**: In your Bitbucket repository, go to **Repository settings** > **Security** > **Access tokens** and click **Create access token**. Give it a name and, under **Scopes**, select:
+
+  - **Repositories**: **Read** and **Write**
+  - **Pull requests**: **Read** and **Write**
+
+  Click **Create** and copy the token immediately, you can't view the token again after closing the dialog.
+
+  The created token must have these scopes (visible in the **View access token** dialog after creation):
+
+  - `repository`
+  - `repository:write`
+  - `pullrequest`
+  - `pullrequest:write`
 
 ### 3. Connect your development Metabase to your repository
 
@@ -149,7 +164,17 @@ Create a personal access token with read-only repository access. Copy the token 
 
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read-only** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** scope only.
-- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket and grant `read:repository:bitbucket` only.
+- **Bitbucket**: In your Bitbucket repository, go to **Repository settings** > **Security** > **Access tokens** and click **Create access token**. Under **Scopes**, select:
+
+  - **Repositories**: **Read**
+  - **Pull requests**: **Read**
+
+  Leave Write and all other scope groups unchecked. Click **Create** and copy the token immediately.
+
+  The created token must have these scopes (visible in the **View access token** dialog after creation):
+
+  - `repository`
+  - `pullrequest`
 
 ### 7. Connect your production Metabase to your repository
 
@@ -189,8 +214,52 @@ To version your data transformation logic, you can sync your [Transforms](../dat
 
 - **Transform syncing is all or nothing**: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
 - **This setting only determines whether Metabase pushes transforms from Read-write mode.** When you _pull_ from a repository, all content present in the repo is loaded—including any transforms—regardless of this setting. Think of it like pulling a repo that has a new collection you hadn't previously synced: the setting doesn't filter what comes in, only what goes out.
--**You can't edit transforms in read-only mode.**, even if you haven't explicitly turned on transform syncing. Keeping transforms read-only prevents unintended overwrites on subsequent pulls.
+- **You can't edit transforms in read-only mode**, even if you haven't explicitly turned on transform syncing. Keeping transforms read-only prevents unintended overwrites on subsequent pulls.
 - **Use different databases for dev and production**. If you use transforms with Remote Sync, your development and production Metabases should connect to separate databases that share _identical_ schemas. If you use the same database for both, dev transforms would also change production data.
+
+## Local file repositories
+
+Remote Sync can point at a bare git repo on the same filesystem as your Metabase process, via a `file://` URL. Local repos come in handy for local development, especially alongside the [file-based agent workflow](../ai/file-based-development.md).
+
+Create a bare git repo on the same filesystem as your Metabase process:
+
+```sh
+git init --bare /path/to/your-repo.git
+```
+
+A bare repo is required because Remote Sync pushes into it the same way it would push to a hosted remote. Non-bare repos refuse pushes to a checked-out branch.
+
+### Point Metabase to your local repo
+
+Use the `file://` scheme with an absolute path:
+
+```
+file:///absolute/path/to/your-repo
+```
+
+Note the three slashes: `file://` plus the leading `/` of the absolute path.
+
+Leave the access token field blank. Local `file://` repositories don't need one.
+
+If Metabase runs in Docker, you'll need to mount the directory as a volume and the **`file://` URL must use the container's path**, not the host path. Metabase's process runs inside the container and can only see paths visible from inside it.
+
+With `docker-compose.yml`:
+
+```yaml
+services:
+  metabase:
+    image: metabase/metabase
+    ports:
+      - "3000:3000"
+    volumes:
+      - /Users/you/local-repo:/Users/you/local-repo
+```
+
+Then in Metabase, you'd enter:
+
+```
+file:///Users/you/local-repo
+```
 
 ## An example dev-to-production workflow
 

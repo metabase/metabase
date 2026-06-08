@@ -47,40 +47,56 @@
     result))
 
 (defn generate-sample-prompts
-  "Generate suggested prompts for instance of Metabot."
+  "Generate suggested prompts for the Metabot with `metabot-id`. Returns one of:
+
+     {:status :generated :prompt_count N}        ; happy path
+     {:status :no-library-content}               ; metabot has no models/metrics to summarize
+     {:status :ai-produced-no-prompts}           ; LLM returned 0 questions for the inputs
+
+   Throws a 402 via [[metabot.usage/check-metabase-managed-free-limit!]] when the managed AI cap is hit.
+   Best-effort callers (e.g. PUT /:id) pre-guard with [[metabot.usage/managed-free-limit-reached?]]
+   and catch the 402 to handle the rare TOCTOU race where the limit flips between the two checks."
   [metabot-id & {:as opts}]
-  (if (metabot.usage/managed-free-limit-reached?)
-    (log/info "Skipping suggested prompt generation because the managed AI free limit has been reached."
-              {:metabot-id metabot-id})
-    (let [opts (merge default-opts opts)]
-      (lib-be/with-metadata-provider-cache
-        (let [{metrics :metric models :model} (->> (metabot.tools.u/get-metrics-and-models metabot-id opts)
-                                                   (sort-by :view_count >)
-                                                   (group-by :type))
-              ;; Limit to 5 metrics and 5 models
-              limited-cards (concat (take 5 metrics) (take 5 models))
-              {metrics :metric, models :model}
-              (->> (for [[[card-type database-id] group-cards] (group-by (juxt :type :database_id) limited-cards)
-                         detail (map (fn [detail card] (assoc detail ::origin card))
-                                     (metabot.tools.entity-details/cards-details card-type database-id group-cards nil)
-                                     group-cards)]
-                     detail)
-                   (group-by :type))
-              metric-inputs (map metric-input metrics)
-              model-inputs (map model-input models)
-              {:keys [table_questions metric_questions]}
-              (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs})
-              ->prompt (fn [{:keys [questions]} {::keys [origin]}]
-                         (let [base {:metabot_id metabot-id
-                                     :model      (:type origin)
-                                     :card_id    (:id origin)}]
-                           (map #(assoc base :prompt %) questions)))
-              metric-prompts (mapcat ->prompt metric_questions metrics)
-              model-prompts (mapcat ->prompt table_questions models)]
-          (when (seq metric-prompts)
-            (t2/insert! :model/MetabotPrompt metric-prompts))
-          (when (seq model-prompts)
-            (t2/insert! :model/MetabotPrompt model-prompts)))))))
+  (metabot.usage/check-metabase-managed-free-limit!)
+  (let [opts (merge default-opts opts)]
+    (lib-be/with-metadata-provider-cache
+      (let [{metrics :metric models :model} (->> (metabot.tools.u/get-metrics-and-models metabot-id opts)
+                                                 (sort-by :view_count >)
+                                                 (group-by :type))
+            ;; Limit to 5 metrics and 5 models
+            limited-cards (concat (take 5 metrics) (take 5 models))
+            {metrics :metric, models :model}
+            (->> (for [[[card-type database-id] group-cards] (group-by (juxt :type :database_id) limited-cards)
+                       detail (map (fn [detail card] (assoc detail ::origin card))
+                                   (metabot.tools.entity-details/cards-details card-type database-id group-cards nil)
+                                   group-cards)]
+                   detail)
+                 (group-by :type))
+            metric-inputs (map metric-input metrics)
+            model-inputs  (map model-input models)]
+        (if (and (empty? metric-inputs) (empty? model-inputs))
+          (do
+            (log/info "Skipping suggested prompt generation: metabot has no models or metrics to summarize."
+                      {:metabot-id metabot-id})
+            {:status :no-library-content})
+          (let [{:keys [table_questions metric_questions]}
+                (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs})
+                ->prompt (fn [{:keys [questions]} {::keys [origin]}]
+                           (let [base {:metabot_id metabot-id
+                                       :model      (:type origin)
+                                       :card_id    (:id origin)}]
+                             (map #(assoc base :prompt %) questions)))
+                ;; Realize into vectors so we don't redo `->prompt` work when counting and inserting.
+                metric-prompts (vec (mapcat ->prompt metric_questions metrics))
+                model-prompts  (vec (mapcat ->prompt table_questions models))
+                total          (+ (count metric-prompts) (count model-prompts))]
+            (when (seq metric-prompts)
+              (t2/insert! :model/MetabotPrompt metric-prompts))
+            (when (seq model-prompts)
+              (t2/insert! :model/MetabotPrompt model-prompts))
+            (if (zero? total)
+              {:status :ai-produced-no-prompts}
+              {:status :generated :prompt_count total})))))))
 
 (defn delete-all-metabot-prompts
   "Drop suggested prompts for instance of Metabot."

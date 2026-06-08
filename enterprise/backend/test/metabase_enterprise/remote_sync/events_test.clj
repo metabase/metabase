@@ -2,6 +2,7 @@
   "Tests for the remote-sync events system.
 
    Tests event publishing, handling, and model change tracking functionality."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.events-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -514,14 +515,12 @@
                                      :dataset_query (mt/mbql-query venues)
                                      :collection_id (:id remote-sync-collection)}]
       (#'impl/sync-objects! (t/instant) {:by-entity-id {"Card" #{(:entity_id card)}}})
-
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
         (is (= "synced" (:status initial-entry)))
         (events/publish-event! :event/card-update
                                {:object (assoc card :collection_id (:id normal-collection))
                                 :previous-object card
                                 :user-id (mt/user->id :rasta)})
-
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
           (is (= "removed" (:status update-entry)))
           (is (= (:id initial-entry) (:id update-entry))))))))
@@ -552,13 +551,11 @@
                    :model/Dashboard dashboard {:name "Test Dashboard"
                                                :collection_id (:id remote-sync-collection)}]
       (#'impl/sync-objects! (t/instant) {:by-entity-id {"Dashboard" #{(:entity_id dashboard)}}})
-
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
         (is (= "synced" (:status initial-entry)))
         (events/publish-event! :event/dashboard-update
                                {:object (assoc dashboard :collection_id (:id normal-collection))
                                 :user-id (mt/user->id :rasta)})
-
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
           (is (= "removed" (:status update-entry)))
           (is (= (:id initial-entry) (:id update-entry))))))))
@@ -586,13 +583,11 @@
                    :model/Collection normal-collection {:name "Normal"}
                    :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
       (#'impl/sync-objects! (t/instant) {:by-entity-id {"Document" #{(:entity_id document)}}})
-
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id document))]
         (is (= "synced" (:status initial-entry)))
         (events/publish-event! :event/document-update
                                {:object (assoc document :collection_id (:id normal-collection))
                                 :user-id (mt/user->id :rasta)})
-
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id document))]
           (is (= "removed" (:status update-entry)))
           (is (= (:id initial-entry) (:id update-entry))))))))
@@ -637,7 +632,6 @@
         (events/publish-event! :event/collection-update
                                {:object (assoc collection :is_remote_synced false)
                                 :user-id (mt/user->id :rasta)})
-
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
           (is (nil? update-entry)))))))
 
@@ -828,21 +822,17 @@
                    :model/Document doc {:name "Test Doc"
                                         :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       ;; Trash the doc
       (t2/update! :model/Document (:id doc) {:archived true})
       (events/publish-event! :event/document-update
                              {:object (assoc doc :archived true)
                               :user-id (mt/user->id :rasta)})
-
       (let [soft-delete-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id doc))]
         (is (= "delete" (:status soft-delete-entry))))
-
       ;; Permanently delete from trash
       (t2/delete! :model/Document (:id doc))
       (events/publish-event! :event/document-delete
                              {:object doc :user-id (mt/user->id :rasta)})
-
       ;; The remote sync object entry should still exist with delete status
       ;; so the collection remains dirty
       (let [hard-delete-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id doc))]

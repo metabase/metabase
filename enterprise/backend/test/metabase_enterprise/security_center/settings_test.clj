@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -21,6 +22,10 @@
   (testing "disabled on trial even with the feature flag"
     (mt/with-premium-features #{:admin-security-center}
       (mt/with-dynamic-fn-redefs [token-check/is-trial? (constantly true)]
+        (is (false? (premium-features/security-center-enabled?))))))
+  (testing "disabled when MB_SECURITY_CENTER_DISABLED escape hatch is set"
+    (mt/with-premium-features #{:admin-security-center}
+      (mt/with-dynamic-fn-redefs [premium-features.settings/security-center-disabled (constantly true)]
         (is (false? (premium-features/security-center-enabled?)))))))
 
 (deftest security-center-email-recipients-test
@@ -31,19 +36,15 @@
                               {:value [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]})
         (is (= [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]
                (mt/user-http-request :crowberto :get 200 "setting/security-center-email-recipients"))))
-
       (testing "rejects null"
         (mt/user-http-request :crowberto :put 400 "setting/security-center-email-recipients"
                               {:value nil}))
-
       (testing "rejects empty list"
         (mt/user-http-request :crowberto :put 400 "setting/security-center-email-recipients"
                               {:value []}))
-
       (testing "non-superuser gets 403"
         (mt/user-http-request :rasta :put 403 "setting/security-center-email-recipients"
                               {:value [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]}))))
-
   (testing "requires premium feature"
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :put 500 "setting/security-center-email-recipients"
@@ -56,24 +57,20 @@
         (mt/with-temporary-setting-values [slack-token-valid? false]
           (mt/user-http-request :crowberto :put 400 "setting/security-center-slack-channel"
                                 {:value "#security"})))
-
       (testing "superuser can set channel when Slack is configured"
         (mt/with-temporary-setting-values [slack-token-valid? true]
           (mt/user-http-request :crowberto :put 204 "setting/security-center-slack-channel"
                                 {:value "#security"})
           (is (= "#security"
                  (mt/user-http-request :crowberto :get 200 "setting/security-center-slack-channel")))))
-
       (testing "superuser can set to null (disable Slack)"
         (mt/user-http-request :crowberto :put 204 "setting/security-center-slack-channel"
                               {:value nil})
         (mt/user-http-request :crowberto :get 204 "setting/security-center-slack-channel"))
-
       (testing "non-superuser gets 403"
         (mt/with-temporary-setting-values [slack-token-valid? true]
           (mt/user-http-request :rasta :put 403 "setting/security-center-slack-channel"
                                 {:value "#security"})))))
-
   (testing "requires premium feature"
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :put 500 "setting/security-center-slack-channel"

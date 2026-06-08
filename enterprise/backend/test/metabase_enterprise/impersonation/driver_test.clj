@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.impersonation.driver-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.impersonation.driver-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.impersonation.driver-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -6,15 +8,19 @@
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
+   [metabase.actions.execution :as actions.execution]
+   [metabase.actions.models :as action]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.test :as qp]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -467,10 +473,12 @@
                                                            :filter [:= $id 2]}))))
                 (is (thrown?
                      clojure.lang.ExceptionInfo
-                     (mt/rows (mt/run-mbql-query venues {:fields [$id $name]}))))
+                     (mt/rows (mt/run-mbql-query venues {:fields [$id $name]})))
+                    "Should throw permission denied exception")
                 (is (thrown?
                      clojure.lang.ExceptionInfo
-                     (mt/rows (mt/run-mbql-query products)))))
+                     (mt/rows (mt/run-mbql-query products)))
+                    "Should throw permission denied exception"))
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-b}}
                 (is (= [[1 "Gizmo"]]
@@ -578,7 +586,6 @@
                     (testing "both see router DB, but crowberto sees all rows"
                       (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (u/the-id router-database) :attribute "impersonation_attr"}]
                                                                      :attributes     {"impersonation_attr" "impersonation.role"}}
-
                         (is (= [[1 "hello to user 1 in the router DB"]
                                 [2 "hello to user 2 in the router DB"]
                                 [1 "hello to user 1 in the router DB"]]
@@ -694,19 +701,17 @@
                #"Connection impersonation is enabled for this database, but no default role is found"
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]}))))
-
         ;; Update the test database with a default role that has full permissions
         (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
-
         (try
           ;; User with connection impersonation should not be able to query a table they don't have access to
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Cannot perform SELECT. This session does not have a current database. Call 'USE DATABASE', or use a qualified name."
+               ;; I've seen different error messages here, not 100% sure why but the important thing is that this fails
+               #"(?s)(?:SQL compilation error.*(?:(?:operation cannot be performed)|(?:Object.*does not exist or not authorized))|Cannot perform SELECT)"
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
-
           ;; Non-impersonated user should still be able to query the table
           (request/as-admin
             (is (= [100]
@@ -748,7 +753,6 @@
                       (is (not (str/includes? (-> impersonated-result :data :native_form :query)
                                               (:table_name persisted-info)))
                           "Erroneously used the persisted model cache"))
-
                     (testing "Query from admin hits the model cache"
                       (is (str/includes? (-> admin-result :data :native_form :query)
                                          (:table_name persisted-info))
@@ -758,6 +762,30 @@
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]
                       (jdbc/execute! spec [statement]))))))))))))
 
+(deftest native-model-persistence-works-when-impersonation-enabled-test
+  ;; Test explicitly with postgres since it supports persistence, impersonation, and impersonated native-query
+  ;; validation.
+  (mt/test-driver :postgres
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                         :attributes     {"impersonation_attr" "impersonation_role"}}
+            (request/as-admin
+              (mt/with-temp [:model/Card model {:type            :model
+                                                :database_id     (mt/id)
+                                                :query_type      :native
+                                                :dataset_query   (mt/native-query {:query "SELECT 1 AS id"})
+                                                :result_metadata [{:name      "id"
+                                                                   :base_type :type/Integer}]}]
+                (persist-models!)
+                (is (=? {:state  "persisted"
+                         :active true
+                         :error  nil}
+                        (t2/select-one [:model/PersistedInfo :state :active :error]
+                                       :database_id (mt/id)
+                                       :card_id (:id model))))))))))))
+
 (deftest resilient-connection-options-test
   (testing "resilient connections have the correct role set"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
@@ -765,38 +793,31 @@
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               role-a (u/lower-case-en (mt/random-name))]
-
           (tx/with-temp-roles! driver/*driver*
-
             (impersonation-granting-details driver/*driver* (mt/db))
             {role-a {venues-table {}}}
-
             (impersonation-default-user driver/*driver*)
             (impersonation-default-role driver/*driver*)
-
             (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                      :details (impersonation-details driver/*driver* (mt/db))}]
               (mt/with-db database
-
                 (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                   (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
-
                 (sync/sync-database! database {:scan :schema})
-
                 (let [tables-set #(->> (driver/describe-database
                                         driver/*driver*
                                         (t2/select-one :model/Database (mt/id)))
                                        :tables
                                        set)
                       default-table-set (tables-set)
-                      do-with-resolved-connection sql-jdbc.execute/do-with-resolved-connection]
-                  (with-redefs [sql-jdbc.execute/do-with-resolved-connection
-                                (fn [driver db options f]
-                                  (do-with-resolved-connection driver db options
-                                                               (fn [conn]
-                                                                 (when-not (:connection db)
-                                                                   (driver/set-role! driver/*driver* conn role-a))
-                                                                 (f conn))))]
+                      do-with-resolved-connection (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)]
+                  (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
+                                              (fn [driver db options f]
+                                                (do-with-resolved-connection driver db options
+                                                                             (fn [conn]
+                                                                               (when-not (:connection db)
+                                                                                 (driver/set-role! driver/*driver* conn role-a))
+                                                                               (f conn))))]
                     (is (= default-table-set (tables-set)))))))))))))
 
 (defn do-on-all-connection-in-pool [driver db-id options f]
@@ -971,3 +992,117 @@
                       "SET ROLE NONE; DROP TABLE table"
                       "SELECT set_config('role', 'none', false); DROP TABLE table"
                       "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;")))))))))))
+
+(deftest reject-non-select-statements-for-admin-on-impersonated-db-test
+  (testing "Admin users are also validated on impersonated databases"
+    (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a (u/lower-case-en (mt/random-name))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                     :details (impersonation-details driver/*driver* (mt/db))}]
+              (mt/with-db database
+                (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                  (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                (sync/sync-database! database {:scan :schema})
+                (impersonation.util-test/with-impersonations-for-user! :crowberto
+                  {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                   :attributes     {"impersonation_attr" role-a}}
+                  (testing "A single SELECT statement works for admin"
+                    (let [mp (mt/metadata-provider)
+                          run-native-query (fn [table] (->> (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                                                                (lib/aggregate (lib/count)))
+                                                            (qp.compile/compile-with-inline-parameters)
+                                                            :query
+                                                            (lib/native-query mp)
+                                                            (qp/process-query)
+                                                            (mt/rows)))]
+                      (is (= [[100]] (run-native-query :venues)))))
+                  (testing "Invalid queries are rejected for admin too"
+                    (are [sql] (thrown?
+                                java.lang.Exception
+                                (-> (lib/native-query (mt/metadata-provider) sql)
+                                    (qp/process-query)
+                                    (mt/rows)))
+                      "SELECT ("
+                      "SELECT 1; SELECT 2"
+                      "SET ROLE NONE"
+                      "DROP TABLE table"
+                      "SET ROLE NONE; DROP TABLE table"
+                      "SELECT set_config('role', 'none', false); DROP TABLE table"
+                      "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;")))))))))))
+
+(deftest reject-multiple-impersonated-action-write-statements-test
+  (testing "Impersonated custom actions with multiple statements are rejected"
+    (mt/test-drivers (mt/normal-driver-select {:+features [:connection-impersonation :actions/custom]})
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a (u/lower-case-en (mt/random-name))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (let [granting-details (impersonation-granting-details driver/*driver* (mt/db))
+                  spec            (sql-jdbc.conn/connection-details->spec driver/*driver* granting-details)
+                  role-quoted     (sql.tx/qualify-and-quote driver/*driver* role-a)]
+              ;; Grant write permissions (INSERT, UPDATE, DELETE) to the impersonation role
+              (jdbc/execute! spec [(format "GRANT INSERT, UPDATE, DELETE ON %s TO %s" venues-table role-quoted)]
+                             {:transaction? false})
+              (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                       :details (impersonation-details driver/*driver* (mt/db))}]
+                (mt/with-db database
+                  (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                    (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                  (sync/sync-database! database {:scan :schema})
+                  (mt/with-actions-enabled
+                    (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                                   :attributes     {"impersonation_attr" role-a}}
+                      (let [execute-action-with-sql
+                            (fn [sql]
+                              (mt/with-actions [{_card-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                                                {action-id :action-id} {:type          :query
+                                                                        :name          "Test action"
+                                                                        :dataset_query (update (mt/native-query {:query sql})
+                                                                                               :type name)
+                                                                        :database_id   (mt/id)
+                                                                        :parameters    []}]
+                                (actions.execution/execute-action! (action/select-action :id action-id) {})))]
+                        (testing "A single write statement is allowed"
+                          (is (= {:rows-affected 0}
+                                 (execute-action-with-sql
+                                  (format "UPDATE %s SET name = 'test' WHERE id = -1" venues-table)))))
+                        (testing "Multiple statements are rejected"
+                          (are [sql] (thrown?
+                                      java.lang.Exception
+                                      (execute-action-with-sql sql))
+                            (format "UPDATE %s SET name = 'a' WHERE id = -1; UPDATE %s SET name = 'b' WHERE id = -1" venues-table venues-table)
+                            (format "INSERT INTO %s (name) VALUES ('x'); SELECT 1;" venues-table)
+                            (format "SET ROLE NONE; DELETE FROM %s WHERE id = -1;" venues-table)))))))))))))))
+
+(deftest ^:parallel impersonated-query-parse-error-message-test
+  (testing "When a native query fails to parse, the validator reports a parse error -- not a misleading 'must be a single select' message (#73593)"
+    (let [validate (fn [sql]
+                     (try
+                       (driver.sql/validate-impersonated-query*
+                        :postgres
+                        {:stages [{:lib/type :mbql.stage/native :native sql}]})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e e)))]
+      (testing "syntax error in a CTE produces a parse-error message, not the single-select message"
+        (let [thrown (validate "with cte as (\n  select 1 as col\n), \nselect * from cte")]
+          (is (some? thrown) "expected validate-impersonated-query* to throw")
+          (is (= qp.error-type/invalid-query (:type (ex-data thrown))))
+          (is (re-find #"Unable to parse native query" (ex-message thrown)))
+          (is (not (re-find #"single select statement" (ex-message thrown)))
+              "should not surface the misleading single-select message for a parse failure")))
+      (testing "well-formed but multi-statement query still reports the single-select message"
+        (let [thrown (validate "SELECT 1; SELECT 2")]
+          (is (some? thrown) "expected validate-impersonated-query* to throw")
+          (is (= qp.error-type/invalid-query (:type (ex-data thrown))))
+          (is (re-find #"single select statement" (ex-message thrown))))))))

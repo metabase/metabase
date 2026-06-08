@@ -6,6 +6,7 @@ import {
   useListGlossaryQuery,
   useUpdateGlossaryMutation,
 } from "metabase/api";
+import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
 import {
   trackDataStudioGlossaryTermCreated,
   trackDataStudioGlossaryTermDeleted,
@@ -15,7 +16,6 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { GlossaryTable } from "metabase/reference/glossary/GlossaryTable";
 import { Box, Card } from "metabase/ui";
 
 import S from "./GlossaryPage.module.css";

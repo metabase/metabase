@@ -3,7 +3,6 @@ import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type {
   AdminPathKey,
   DraftDashboardSubscription,
@@ -48,13 +47,19 @@ export const PLUGIN_APP_INIT_FUNCTIONS = getDefaultAppInitFunctions();
 
 const getDefaultLandingPage = () => ({
   getLandingPage: () => "/",
-  LandingPageWidget: PluginPlaceholder,
 });
 
 export const PLUGIN_LANDING_PAGE: {
   getLandingPage: () => string | null | undefined;
-  LandingPageWidget: ComponentType;
 } = getDefaultLandingPage();
+
+const getDefaultHomepageSetting = () => ({
+  CustomUrlOption: null,
+});
+
+export const PLUGIN_HOMEPAGE_SETTING: {
+  CustomUrlOption: { label: string; Control: ComponentType } | null;
+} = getDefaultHomepageSetting();
 
 const getDefaultReduxMiddlewares = (): Middleware[] => [];
 
@@ -108,14 +113,12 @@ export const PLUGIN_FORM_WIDGETS = getDefaultFormWidgets();
 
 const getDefaultSnippetSidebarPlusMenuOptions = () => [];
 const getDefaultSnippetSidebarRowRenderers = () => ({});
-const getDefaultSnippetSidebarModals = () => [];
 const getDefaultSnippetSidebarHeaderButtons = () => [];
 
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS =
   getDefaultSnippetSidebarPlusMenuOptions();
 export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS =
   getDefaultSnippetSidebarRowRenderers();
-export const PLUGIN_SNIPPET_SIDEBAR_MODALS = getDefaultSnippetSidebarModals();
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS =
   getDefaultSnippetSidebarHeaderButtons();
 
@@ -157,6 +160,7 @@ export function reinitialize() {
   PLUGIN_APP_INIT_FUNCTIONS.push(...getDefaultAppInitFunctions());
 
   Object.assign(PLUGIN_LANDING_PAGE, getDefaultLandingPage());
+  Object.assign(PLUGIN_HOMEPAGE_SETTING, getDefaultHomepageSetting());
 
   PLUGIN_REDUX_MIDDLEWARES.length = 0;
   PLUGIN_REDUX_MIDDLEWARES.push(...getDefaultReduxMiddlewares());
@@ -182,9 +186,6 @@ export function reinitialize() {
     PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
     getDefaultSnippetSidebarRowRenderers(),
   );
-
-  PLUGIN_SNIPPET_SIDEBAR_MODALS.length = 0;
-  PLUGIN_SNIPPET_SIDEBAR_MODALS.push(...getDefaultSnippetSidebarModals());
 
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.length = 0;
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push(

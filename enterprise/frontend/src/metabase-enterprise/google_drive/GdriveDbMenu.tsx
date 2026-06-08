@@ -1,18 +1,21 @@
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { useDispatch } from "metabase/redux";
 import { Button, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
 import {
   useGetGsheetsFolderQuery,
   useSyncGsheetsFolderMutation,
 } from "metabase-enterprise/api";
+import { EnterpriseApi } from "metabase-enterprise/api/api";
 
 import { GdriveConnectionModal } from "./GdriveConnectionModal";
 import { GdriveErrorMenuItem } from "./GdriveErrorMenuItem";
 import { trackSheetConnectionClick } from "./analytics";
+import { SYNC_POLL_INTERVAL } from "./constants";
 import { getStatus, useShowGdrive } from "./utils";
 
 export function GdriveDbMenu() {
@@ -75,7 +78,9 @@ export function GdriveDbMenu() {
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          <SyncNowButton disabled={status === "syncing"} />
+          <SyncNowButton
+            disabled={status === "syncing" || status === "initializing"}
+          />
           <Menu.Item
             leftSection={<Icon name="close" />}
             fw="bold"
@@ -112,23 +117,36 @@ function SyncNowButton({ disabled }: { disabled: boolean }) {
         await doSync();
       }}
     >
-      {t`Sync now`}
+      {t`Sync`}
     </Menu.Item>
   );
 }
 
 function MenuSyncStatus() {
-  const { data: folderInfo, error: folderError } = useGetGsheetsFolderQuery(
-    undefined,
-    {
-      refetchOnMountOrArgChange: 5,
-    },
-  );
+  const dispatch = useDispatch();
+  const folderQuery = useGetGsheetsFolderQuery(undefined, {
+    refetchOnMountOrArgChange: 5,
+  });
+  const { data: folderInfo, error: folderError } = folderQuery;
 
   const folderStatus = getStatus({
     status: folderInfo?.status,
     error: folderError,
   });
+
+  const isInProgress =
+    folderStatus === "syncing" || folderStatus === "initializing";
+
+  useEffect(() => {
+    if (isInProgress) {
+      const timeout = setTimeout(() => {
+        dispatch(EnterpriseApi.util.invalidateTags(["gsheets-status"]));
+      }, SYNC_POLL_INTERVAL);
+      return () => {
+        clearTimeout(timeout);
+      };
+    }
+  }, [folderQuery, isInProgress, dispatch]); // need folderQuery so this runs on every refetch
 
   const lastSync = folderInfo?.last_sync_at;
   const nextSync = folderInfo?.next_sync_at;
@@ -143,12 +161,24 @@ function MenuSyncStatus() {
     : t`soon` + "™";
 
   if (folderStatus === "error") {
+    // transient error, will be automatically retried
+    if (!folderError && lastSync) {
+      const isDelayed = dayjs
+        .unix(lastSync)
+        .isBefore(dayjs().subtract(1, "hour"));
+      return (
+        <GdriveRecoveringMenuItem
+          lastSyncRelative={lastSyncRelative ?? ""}
+          isDelayed={isDelayed}
+        />
+      );
+    }
     return <GdriveErrorMenuItem error={folderError ?? folderInfo} />;
   }
 
   return (
     <>
-      {folderStatus === "syncing" ? (
+      {folderStatus === "syncing" || folderStatus === "initializing" ? (
         <SyncingText />
       ) : (
         <Text fw="bold">{t`Next sync ${nextSyncRelative}`}</Text>
@@ -166,3 +196,27 @@ const SyncingText = () => (
     <Loader size="xs" />
   </Flex>
 );
+
+function GdriveRecoveringMenuItem({
+  lastSyncRelative,
+  isDelayed,
+}: {
+  lastSyncRelative: string;
+  isDelayed: boolean;
+}) {
+  if (isDelayed) {
+    return (
+      <>
+        <Text fw="bold">{t`Sync delayed`}</Text>
+        <Text fz="sm">{t`Last synced ${lastSyncRelative}. Your data may be a bit behind. We're retrying the sync.`}</Text>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Text fw="bold">{t`Retrying shortly`}</Text>
+      <Text fz="sm">{t`Last synced ${lastSyncRelative}. Your data is up to date as of the last sync.`}</Text>
+    </>
+  );
+}

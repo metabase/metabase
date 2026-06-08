@@ -21,7 +21,7 @@
   StarRezWeeklyExport
   [_]
   (log/info "Starting scheduled StarRez weekly export")
-  (let [result        (starrez.export/run-export)
+  (let [result        (starrez.export/run-export {:include-historical-reports? true})
         export-errors (seq (filter (comp not :success) (:results result)))
         merge-errors  (seq (filter :error (get-in result [:merge :reports])))]
     (if (or (:error result) export-errors merge-errors)

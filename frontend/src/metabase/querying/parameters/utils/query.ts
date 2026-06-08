@@ -3,14 +3,19 @@ import { P, match } from "ts-pattern";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  ParameterDimensionTarget,
   ParameterTarget,
   ParameterType,
   ParameterValueOrArray,
   StructuredParameterDimensionTarget,
 } from "metabase-types/api";
-import { isStructuredDimensionTarget } from "metabase-types/guards";
+import {
+  isDimensionTarget,
+  isStructuredDimensionTarget,
+} from "metabase-types/guards";
 
 import {
   deserializeBooleanParameterValue,
@@ -242,4 +247,55 @@ function applyTemporalUnitParameter(
 
   const columnWithBucket = Lib.withTemporalBucket(column, bucket);
   return Lib.replaceClause(query, stageIndex, breakout, columnWithBucket);
+}
+
+export function convertParametersToMbql(
+  question: Question,
+  { isComposed }: { isComposed: boolean },
+): Question {
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+
+  if (isNative) {
+    return question;
+  }
+
+  // If the query is composed (models or metrics) we cannot add filters to the underlying query since that query is used for data source.
+  // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations.
+  const queryWithExtraStage =
+    !isComposed && question.display() !== "pivot"
+      ? Lib.ensureFilterStage(query)
+      : query;
+  const queryWithFilters = question
+    .parameters()
+    .reduce((newQuery, parameter) => {
+      const stageIndex =
+        isDimensionTarget(parameter.target) && !isComposed
+          ? getParameterDimensionTargetStageIndex(parameter.target)
+          : -1;
+      return applyParameter(
+        newQuery,
+        stageIndex,
+        parameter.type,
+        parameter.target ?? null,
+        parameter.value ?? null,
+      );
+    }, queryWithExtraStage);
+  const queryWithFiltersWithoutExtraStage =
+    Lib.dropEmptyStages(queryWithFilters);
+
+  const newQuestion = question
+    .setQuery(queryWithFiltersWithoutExtraStage)
+    .setParameters(undefined)
+    .setParameterValues(undefined);
+
+  const hasQueryBeenAltered = queryWithExtraStage !== queryWithFilters;
+  return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
+}
+
+function getParameterDimensionTargetStageIndex(
+  target: ParameterDimensionTarget,
+) {
+  const [_type, _variableTarget, options] = target;
+  return options?.["stage-number"] ?? -1;
 }

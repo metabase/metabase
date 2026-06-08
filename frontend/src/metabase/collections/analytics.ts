@@ -23,7 +23,8 @@ export const trackCollectionItemBookmarked = (
   if (
     item.model === "indexed-entity" ||
     item.model === "snippet" ||
-    item.model === "transform"
+    item.model === "transform" ||
+    item.model === "measure"
   ) {
     // can't bookmark these
     return;

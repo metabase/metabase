@@ -3,20 +3,28 @@ import { t } from "ttag";
 import {
   canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
-  getLibraryCollectionType,
 } from "metabase/data-studio/utils";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import type { IconProps } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 import {
   type CardType,
   type Collection,
+  type CollectionContentModel,
   type CollectionEssentials,
   type CollectionId,
   type CollectionItem,
   type CollectionItemModel,
   type CollectionType,
+  type IconName,
   type User,
   isBaseEntityID,
 } from "metabase-types/api";
+
+import { PERSONAL_COLLECTIONS, ROOT_COLLECTION } from "./constants";
 
 export type EntityType = CollectionItemModel;
 
@@ -128,7 +136,7 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
-  return getLibraryCollectionType(collection.type) != null;
+  return PLUGIN_LIBRARY.isLibraryCollectionType(collection.type);
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -181,6 +189,24 @@ export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
 }
 
+export function normalizedCollection<
+  CollectionType extends Pick<Collection, "id"> = Collection,
+>(collection: CollectionType | null | undefined) {
+  return !collection || isRootCollection(collection)
+    ? ROOT_COLLECTION
+    : collection;
+}
+
+export type ItemWithCollection<CollectionType = Collection> = {
+  collection?: CollectionType;
+};
+
+export function getCollection<
+  CollectionType extends Pick<Collection, "id"> = Collection,
+>(item: ItemWithCollection<CollectionType> | null | undefined) {
+  return normalizedCollection(item?.collection);
+}
+
 export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
 }
@@ -224,26 +250,12 @@ export function canBookmarkItem({ model, type, archived }: CollectionItem) {
   }
 }
 
-export function canPinItem(item: CollectionItem, collection?: Collection) {
-  return collection?.can_write && item.setPinned != null && !item.archived;
-}
-
 export function canPreviewItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
     isItemPinned(item) &&
     (isItemQuestion(item) || isItemMetric(item)) &&
     !item.archived
-  );
-}
-
-export function canMoveItem(item: CollectionItem, collection?: Collection) {
-  return (
-    (collection?.can_write || isRootTrashCollection(collection)) &&
-    !isReadOnlyCollection(item) &&
-    item.setCollection != null &&
-    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
-    !isLibraryCollection(item as Pick<Collection, "type">)
   );
 }
 
@@ -262,7 +274,9 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
 }
 
 export function canCopyItem(item: CollectionItem) {
-  return item.copy && !item.archived;
+  return (
+    (item.model === "dashboard" || item.model === "document") && !item.archived
+  );
 }
 
 export function canPlaceEntityInCollection(
@@ -368,3 +382,116 @@ export const getCollectionPathAsString = (collection: CollectionEssentials) => {
 };
 
 export const collectionPathSeparator = "/";
+
+export const getCollectionPathAsArray = (collection: Collection): string[] => {
+  const parentIds = (collection.location ?? "").split("/").filter(Boolean);
+  return [...parentIds, String(collection.id)];
+};
+
+export function getCollectionIcon(
+  collection: Partial<Collection>,
+  { tooltip = "default", isTenantUser = false } = {},
+): {
+  name: IconName;
+  color?: ColorName;
+  tooltip?: string;
+} {
+  if (collection.id === PERSONAL_COLLECTIONS.id) {
+    return { name: "group" };
+  }
+
+  if (collection.type === "trash") {
+    return { name: "trash" };
+  }
+
+  if (isRootPersonalCollection(collection)) {
+    return { name: "person" };
+  }
+
+  if (isSyncedCollection(collection) && !isTenantUser) {
+    // tenant users see the normal icon, they don't know what a synced collection is
+    return { name: "synced_collection" };
+  }
+
+  if (collection.is_library_root) {
+    switch (collection.type) {
+      case "library":
+        return { name: "repository" };
+      case "library-data":
+        return { name: "table" };
+      case "library-metrics":
+        return { name: "metric" };
+    }
+  }
+
+  const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
+  return type
+    ? {
+        name: type.icon as unknown as IconName,
+        color: type.color ? color(type.color) : undefined,
+        tooltip: type.tooltips?.[tooltip],
+      }
+    : { name: "folder" };
+}
+
+export function getCollectionType(
+  collectionId: Collection["id"] | undefined | null,
+  state: State,
+) {
+  if (collectionId === null || collectionId === "root") {
+    return "root";
+  }
+  if (collectionId === getUserPersonalCollectionId(state)) {
+    return "personal";
+  }
+  return collectionId !== undefined ? "other" : null;
+}
+
+export interface CollectionTreeItem extends Collection {
+  icon: IconName | IconProps;
+  children: CollectionTreeItem[];
+  schemaName?: string;
+  nonNavigable?: boolean;
+}
+
+export function buildCollectionTree(
+  collections: Collection[] = [],
+  {
+    modelFilter,
+    isTenantUser = false,
+  }: {
+    modelFilter?: (model: CollectionContentModel) => boolean;
+    isTenantUser?: boolean;
+  } = {},
+): CollectionTreeItem[] {
+  return collections.flatMap((collection) => {
+    const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
+
+    const isMatchedByFilter =
+      !modelFilter ||
+      collection.here?.some(modelFilter) ||
+      collection.below?.some(modelFilter);
+
+    if (!isPersonalRoot && !isMatchedByFilter) {
+      return [];
+    }
+
+    const children = !isRootTrashCollection(collection)
+      ? buildCollectionTree(
+          collection.children?.filter((child) => !child.archived) || [],
+          { modelFilter, isTenantUser },
+        )
+      : [];
+
+    if (isPersonalRoot && children.length === 0) {
+      return [];
+    }
+
+    return {
+      ...collection,
+      schemaName: collection.originalName || collection.name,
+      icon: getCollectionIcon(collection, { isTenantUser }),
+      children,
+    };
+  });
+}

@@ -3,6 +3,7 @@ import { Route } from "react-router";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
+  setupGetCurrentWorkspaceEndpoint,
   setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
@@ -16,6 +17,7 @@ import type {
   Collection,
   RemoteSyncEntity,
   TokenFeatures,
+  WorkspaceInstance,
 } from "metabase-types/api";
 import {
   createMockDirtyCardEntity,
@@ -98,12 +100,14 @@ const setupNavbarEndpoints = (isOpened = true) => {
 
 interface StoreStateOptions {
   isAdmin?: boolean;
+  canManageWorkspaces?: boolean;
   remoteSyncSettings?: Partial<RemoteSyncSettings>;
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
 const createStoreState = ({
   isAdmin = true,
+  canManageWorkspaces = false,
   remoteSyncSettings = {},
   tokenFeatures,
 }: StoreStateOptions = {}) => {
@@ -115,6 +119,7 @@ const createStoreState = ({
       permissions: {
         can_access_data_model: isAdmin,
         can_access_db_details: false,
+        can_manage_workspaces: canManageWorkspaces,
       },
     }),
     settings: mockSettings({
@@ -128,6 +133,8 @@ interface SetupOpts {
   remoteSyncEnabled?: boolean;
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
+  canManageWorkspaces?: boolean;
+  currentWorkspace?: WorkspaceInstance | null;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;
@@ -140,6 +147,8 @@ export const setup = ({
   remoteSyncEnabled = true,
   remoteSyncBranch = null,
   isAdmin = true,
+  canManageWorkspaces = false,
+  currentWorkspace = null,
   hasDirtyChanges = false,
   hasTransformDirtyChanges = false,
   remoteSyncTransforms = false,
@@ -177,9 +186,16 @@ export const setup = ({
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
+  setupGetCurrentWorkspaceEndpoint(currentWorkspace);
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-remote-sync-dev-instance",
+    value: false,
+  });
 
   const state = createStoreState({
     isAdmin,
+    canManageWorkspaces,
     remoteSyncSettings,
     tokenFeatures,
   });
@@ -188,34 +204,20 @@ export const setup = ({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  const hasUpsell = !remoteSyncEnabled;
-
-  if (hasUpsell) {
-    renderWithProviders(
-      <Route
-        path="/"
-        component={() => (
-          <DataStudioLayout>
-            <div data-testid="content">{"Content"}</div>
-          </DataStudioLayout>
-        )}
-      />,
-      {
-        storeInitialState: state,
-        withRouter: true,
-      },
-    );
-  } else {
-    renderWithProviders(
-      <DataStudioLayout>
-        <div data-testid="content">{"Content"}</div>
-      </DataStudioLayout>,
-      {
-        storeInitialState: state,
-        withRouter: false,
-      },
-    );
-  }
+  renderWithProviders(
+    <Route
+      path="/"
+      component={() => (
+        <DataStudioLayout>
+          <div data-testid="content">{"Content"}</div>
+        </DataStudioLayout>
+      )}
+    />,
+    {
+      storeInitialState: state,
+      withRouter: true,
+    },
+  );
 };
 
 export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
@@ -224,11 +226,14 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
     "remote_sync",
     "dependencies",
     "feature_level_permissions",
+    "workspaces",
   ],
   tokenFeatures: {
     remote_sync: true,
     advanced_permissions: true,
     library: true,
     dependencies: true,
+    "schema-viewer": true,
+    workspaces: true,
   },
 };

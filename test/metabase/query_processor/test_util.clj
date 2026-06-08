@@ -5,6 +5,7 @@
   The various QP Store functions & macros in this namespace are primarily meant to help write QP Middleware tests, so
   you can test a given piece of middleware without having to worry about putting things in the QP Store
   yourself (since this is usually done by other middleware in the first place)."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.test-util]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -292,7 +293,6 @@
    (when (= (:status response) :failed)
      (log/warnf "Error running query: %s" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
-
    (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]
      (-> response
          ((fn format-rows [rows]

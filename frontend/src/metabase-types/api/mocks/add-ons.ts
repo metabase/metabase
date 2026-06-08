@@ -1,6 +1,28 @@
 import type { ICloudAddOnProduct } from "metabase-types/api";
 
-export const mockAdvancedTransformsAddOn: ICloudAddOnProduct = {
+export const mockAdvancedTransformsSelfHostedAddOn: ICloudAddOnProduct = {
+  description: "Advanced Transforms Add-on (self-hosted) (Monthly)-  metered",
+  name: "Advanced Transforms Add-on (self-hosted) metered",
+  self_service: true,
+  trial_days: 0,
+  short_name: "Advanced Transforms (self-hosted) - metered",
+  is_metered: true,
+  product_type: "transforms-advanced-metered",
+  default_total_units: 1,
+  free_units: 1000,
+  billing_period_months: 1,
+  default_base_fee: 0,
+  active: true,
+  id: 110,
+  deployment: "selfhosted",
+  token_features: ["transforms-python", "transforms-basic"],
+  default_included_units: 0,
+  default_price_per_unit: 0.01,
+  product_tiers: [],
+  default_prepaid_units: 1,
+};
+
+export const mockAdvancedTransformsCloudAddOn: ICloudAddOnProduct = {
   active: true,
   billing_period_months: 1,
   default_base_fee: 0,
@@ -125,7 +147,11 @@ export function createMockCloudAddOns(
 
     // transforms
     {
-      ...mockAdvancedTransformsAddOn,
+      ...mockAdvancedTransformsSelfHostedAddOn,
+      billing_period_months,
+    },
+    {
+      ...mockAdvancedTransformsCloudAddOn,
       billing_period_months,
     },
   ];

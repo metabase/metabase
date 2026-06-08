@@ -116,7 +116,11 @@ export const CloudPanel = ({
         )}
 
         {migration && migrationState === "error" && (
-          <MigrationError migration={migration} />
+          <MigrationError
+            migration={migration}
+            restartMigration={handleCreateMigration}
+            isRestarting={createCloudMigrationResult.isLoading}
+          />
         )}
 
         {createCloudMigrationResult.isError && (

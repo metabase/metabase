@@ -89,7 +89,7 @@ describe("GsheetsSyncStatus", () => {
     expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
   });
 
-  it("should appear when status changes from not-connected to loading", async () => {
+  it("should appear when status changes from not-connected to initializing", async () => {
     setup({
       initialFolderPayload: { status: "not-connected" },
     });
@@ -98,7 +98,7 @@ describe("GsheetsSyncStatus", () => {
     expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
 
     setupGdriveGetFolderEndpoint({
-      status: "syncing",
+      status: "initializing",
       created_by_id: USER_ID,
     });
 
@@ -113,7 +113,8 @@ describe("GsheetsSyncStatus", () => {
 
   it("should not render anything for non-admins", () => {
     setup({
-      initialFolderPayload: { status: "syncing", created_by_id: USER_ID },
+      initialFolderPayload: { status: "initializing", created_by_id: USER_ID },
+      isAdmin: false,
     });
 
     expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
@@ -127,9 +128,9 @@ describe("GsheetsSyncStatus", () => {
     expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
   });
 
-  it("should render loading state", async () => {
+  it("should render initializing state on mount", async () => {
     setup({
-      initialFolderPayload: { status: "syncing" },
+      initialFolderPayload: { status: "initializing" },
     });
 
     expect(
@@ -137,9 +138,19 @@ describe("GsheetsSyncStatus", () => {
     ).toBeInTheDocument();
   });
 
-  it("should close when the X is clicked", async () => {
+  it("should not auto-show on mount when status is syncing (page reload mid-sync)", async () => {
     setup({
       initialFolderPayload: { status: "syncing" },
+    });
+
+    await screen.findByText("Test Settings Update");
+
+    expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
+  });
+
+  it("should close when the X is clicked", async () => {
+    setup({
+      initialFolderPayload: { status: "initializing" },
     });
 
     expect(
@@ -154,7 +165,7 @@ describe("GsheetsSyncStatus", () => {
 
   it("should render completed state after initial status is loading", async () => {
     setup({
-      initialFolderPayload: { status: "syncing" },
+      initialFolderPayload: { status: "initializing" },
     });
 
     // initial loading state
@@ -183,7 +194,7 @@ describe("GsheetsSyncStatus", () => {
 
   it("should refetch tables when sync completes (UXW-311)", async () => {
     setup({
-      initialFolderPayload: { status: "syncing" },
+      initialFolderPayload: { status: "initializing" },
     });
     fetchMock.get(`path:/api/database`, []);
     fetchMock.get(`path:/api/table`, []);
@@ -204,7 +215,7 @@ describe("GsheetsSyncStatus", () => {
 
   it("should show error from error response", async () => {
     setup({
-      initialFolderPayload: { status: "syncing" },
+      initialFolderPayload: { status: "initializing" },
     });
 
     // initial loading state
@@ -228,7 +239,7 @@ describe("GsheetsSyncStatus", () => {
 
   it("should show from error status", async () => {
     setup({
-      initialFolderPayload: { status: "syncing" },
+      initialFolderPayload: { status: "initializing" },
     });
 
     // initial loading state
@@ -253,7 +264,7 @@ describe("GsheetsSyncStatus", () => {
 
   it("should clear error if the user tries to connect again", async () => {
     setup({
-      initialFolderPayload: { status: "syncing" },
+      initialFolderPayload: { status: "initializing" },
     });
 
     // initial syncing state
@@ -275,22 +286,22 @@ describe("GsheetsSyncStatus", () => {
     ).toBeInTheDocument();
 
     setupGdriveGetFolderEndpoint({
-      status: "syncing",
+      status: "initializing",
       created_by_id: USER_ID,
     });
 
     // trigger settings update
     await userEvent.click(await screen.findByText("Test Settings Update"));
 
-    // syncing state
+    // initializing state
     expect(
       await screen.findByText("Importing Google Sheets..."),
     ).toBeInTheDocument();
   });
 
-  it("should disappear if state changes from syncing to not-connected without an error", async () => {
+  it("should disappear if state changes from initializing to not-connected without an error", async () => {
     setup({
-      initialFolderPayload: { status: "syncing" },
+      initialFolderPayload: { status: "initializing" },
     });
 
     // initial loading state
@@ -315,7 +326,7 @@ describe("GsheetsSyncStatus", () => {
 
   it("should not show the sync component if the user did not connect the folder", async () => {
     setup({
-      initialFolderPayload: { status: "syncing", created_by_id: 99 },
+      initialFolderPayload: { status: "initializing", created_by_id: 99 },
     });
 
     await screen.findByText("Test Settings Update");

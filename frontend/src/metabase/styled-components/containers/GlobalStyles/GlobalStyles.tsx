@@ -12,6 +12,7 @@ import {
 import { useSelector } from "metabase/redux";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
+import { getFontFamilyValue } from "metabase/ui/fonts";
 import { getSitePath } from "metabase/utils/dom";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
@@ -35,7 +36,7 @@ export const GlobalStyles = (): JSX.Element => {
     return css`
       ${cssVariables}
       :root {
-        --mb-default-font-family: "${font}";
+        --mb-default-font-family: ${getFontFamilyValue(font)};
       }
 
       ${defaultFontFiles({ baseUrl: sitePath })}

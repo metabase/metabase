@@ -328,6 +328,8 @@
 (derive :event/update-transform ::transform-event)
 (derive :event/transform-delete ::transform-event)
 (derive :event/transform-run-start ::transform-event)
+(derive :event/transform-run-canceled ::transform-event)
+(derive :event/transform-run-timeout ::transform-event)
 (derive :event/transform-inspect-discover ::transform-event)
 (derive :event/transform-inspect-lens ::transform-event)
 
@@ -341,6 +343,15 @@
 (derive :event/glossary-delete ::glossary-event)
 
 (methodical/defmethod events/publish-event! ::glossary-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::custom-viz-plugin-event ::event)
+(derive :event/custom-viz-plugin-create ::custom-viz-plugin-event)
+(derive :event/custom-viz-plugin-update ::custom-viz-plugin-event)
+(derive :event/custom-viz-plugin-delete ::custom-viz-plugin-event)
+
+(methodical/defmethod events/publish-event! ::custom-viz-plugin-event
   [topic event]
   (audit-log/record-event! topic event))
 

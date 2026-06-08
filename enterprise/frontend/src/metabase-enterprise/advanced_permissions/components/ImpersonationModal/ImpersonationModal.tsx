@@ -5,11 +5,7 @@ import { push } from "react-router-redux";
 import { useAsyncFn, useMount } from "react-use";
 
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
-import {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
+import { DataPermissionType } from "metabase/admin/permissions/types";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDatabaseQuery } from "metabase/common/hooks";
 import { getParentPath } from "metabase/hoc/ModalRoute";
@@ -25,7 +21,12 @@ import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import { ImpersonationApi } from "metabase-enterprise/services";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
-import type { Impersonation, UserAttributeKey } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Impersonation,
+  type UserAttributeKey,
+} from "metabase-types/api";
 
 import { ImpersonationModalView } from "./ImpersonationModalView";
 

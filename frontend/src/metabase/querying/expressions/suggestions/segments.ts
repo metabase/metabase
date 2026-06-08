@@ -1,6 +1,6 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
-import { modelIconMap } from "metabase/utils/icon";
+import { modelIconMap } from "metabase/common/utils/icon";
 import * as Lib from "metabase-lib";
 
 import { formatIdentifier } from "../identifier";

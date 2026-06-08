@@ -58,7 +58,7 @@ function EmbeddingThemeListingAppInner() {
       <Stack gap="xs">
         <Title order={1}>{t`Themes`}</Title>
         <Text c="text-secondary">
-          {t`Configure themes for Embedded Analytics JS and SDK for React`}
+          {t`Create and edit themes to reuse across multiple embeds.`}
         </Text>
       </Stack>
 

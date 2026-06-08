@@ -2,20 +2,21 @@ import { t } from "ttag";
 
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
-import type { WrappedResult } from "metabase/search/types";
 import { Box, Icon, Text } from "metabase/ui";
 import {
   browseDatabase,
   browseSchema,
   tableRowsQuery,
-} from "metabase/utils/urls";
+  table as tableUrl,
+} from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
+import { type SearchResult, isConcreteTableId } from "metabase-types/api";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
 
 type InfoTextAssetLinkProps = {
-  result: WrappedResult;
+  result: SearchResult;
   showLinks?: boolean;
 };
 
@@ -55,7 +56,9 @@ export const InfoTextTableLink = ({
     return <LoadingText />;
   }
 
-  const link = tableRowsQuery(result.database_id, result.table_id);
+  const link = isConcreteTableId(result.table_id)
+    ? tableUrl({ id: result.table_id, name: table?.display_name })
+    : tableRowsQuery(result.database_id, result.table_id);
   const label = table?.display_name ?? null;
 
   return (

@@ -1,15 +1,19 @@
 (ns metabase.collections.core
   "Main namespace for interacting with collections"
   (:require
+   [metabase.collections.create]
    [metabase.collections.models.collection]
    [metabase.collections.util]
    [potemkin :as p]))
 
 (comment
+  metabase.collections.create/keep-me
   metabase.collections.models.collection/keep-me
   metabase.collections.util/keep-me)
 
 (p/import-vars
+ [metabase.collections.create
+  create-collection!]
  [metabase.collections.models.collection
   has-remote-synced-collection?
   check-for-remote-sync-update

@@ -14,6 +14,9 @@
 
   If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries or
   their results."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.date-bucketing-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.date-bucketing-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.date-bucketing-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -1371,7 +1374,7 @@
 (deftest ^:parallel relative-time-interval-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
-   ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
+    ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
     (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
       (mt/dataset checkins:1-per-day:60
         (is (= 7
@@ -1810,7 +1813,7 @@
                      #t "2022-03-31T00:00:00"
                      #t "2022-03-31T00:00:00-00:00"]]
             (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-              (let [march-31 (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+              (let [march-31 (sql.qp/->honeysql driver/*driver* (sql.qp/mbql-clause driver/*driver* :absolute-datetime t :day))
                     june-31 (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins (mt/with-metadata-provider (mt/id)
                                (sql.qp/->honeysql driver/*driver* (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins))))

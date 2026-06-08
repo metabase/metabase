@@ -3,7 +3,7 @@ const createElement = ({
   name,
   pattern,
   mode,
-  enforceOutgoing = false,
+  enforceOutgoing = true,
 }) => ({
   type: `${type}/${name}`,
   pattern: pattern ?? `frontend/src/metabase/${name}/**`,
@@ -13,55 +13,132 @@ const createElement = ({
 
 const elements = [
   // lib
-  createElement({
-    type: "lib",
-    name: "types",
-    pattern: "frontend/src/metabase-types/*/**",
-  }),
-  createElement({
-    type: "lib",
-    name: "schema",
-    pattern: "frontend/src/metabase/schema.js",
-    mode: "full",
-  }),
-  createElement({ type: "lib", name: "utils" }),
-  createElement({ type: "lib", name: "analytics", enforceOutgoing: true }),
-  createElement({ type: "lib", name: "css", enforceOutgoing: true }),
+  createElement({ type: "lib", name: "analytics" }),
+  createElement({ type: "lib", name: "css" }),
   createElement({
     type: "lib",
     name: "env",
     pattern: "frontend/src/metabase/env.ts",
     mode: "full",
-    enforceOutgoing: true,
   }),
-  // basic
+  createElement({
+    type: "lib",
+    name: "types",
+    pattern: "frontend/src/metabase-types/*/**",
+    enforceOutgoing: false,
+  }),
+  createElement({ type: "lib", name: "utils" }),
+
+  // mlv1 (basic) and mlv2 (lib) must stay in this order: mlv1's pattern is a
+  // subset of mlv2's, and the first matching element wins. This precedence
+  // requirement crosses tiers, so the pair is kept together here rather than
+  // sorted into the lib/basic groups.
   createElement({
     type: "basic",
+    name: "mlv1",
+    pattern: "frontend/src/metabase-lib/v1/**",
+  }),
+  createElement({
+    type: "lib",
     name: "mlv2",
     pattern: "frontend/src/metabase-lib/**",
   }),
-  createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
-  createElement({ type: "shared", name: "api" }),
+
+  // basic
+  createElement({ type: "basic", name: "ui" }),
+
   // shared
-  createElement({ type: "shared", name: "common", enforceOutgoing: true }),
-  createElement({ type: "shared", name: "querying" }),
-  createElement({ type: "shared", name: "visualizations" }),
-  // feature
-  createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "shared", name: "account" }),
+  createElement({ type: "shared", name: "api" }),
+  createElement({ type: "shared", name: "archive" }),
+  createElement({ type: "shared", name: "auth" }),
+  createElement({ type: "shared", name: "browse" }),
+  createElement({ type: "shared", name: "collections" }),
+  createElement({ type: "shared", name: "comments" }),
+  createElement({ type: "shared", name: "common" }),
   createElement({
-    type: "feature",
-    name: "query_builder",
-    enforceOutgoing: true,
+    type: "shared",
+    name: "custom-viz",
+    pattern: "enterprise/frontend/src/custom-viz/**",
   }),
-  createElement({ type: "feature", name: "admin", enforceOutgoing: true }),
-  createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "data-grid" }),
+  createElement({ type: "shared", name: "data-studio" }),
+  createElement({ type: "shared", name: "databases" }),
+  createElement({ type: "shared", name: "detail-view" }),
+  createElement({ type: "shared", name: "documents" }),
+  createElement({ type: "shared", name: "embedding", enforceOutgoing: false }),
+  createElement({
+    type: "shared",
+    name: "embedding-ee",
+    pattern: "enterprise/frontend/src/embedding/**",
+  }),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk-package",
+    pattern: "enterprise/frontend/src/embedding-sdk-package/**",
+  }),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk-shared",
+    pattern: "frontend/src/embedding-sdk-shared/**",
+  }),
+  createElement({ type: "shared", name: "forms" }),
+  createElement({ type: "shared", name: "history" }),
+  createElement({ type: "shared", name: "hoc" }),
+  createElement({ type: "shared", name: "home" }),
+  createElement({ type: "shared", name: "hooks" }),
+  createElement({ type: "shared", name: "i18n" }),
+  createElement({
+    type: "shared",
+    name: "metabase-shared",
+    pattern: "frontend/src/metabase-shared/**",
+  }),
+  createElement({ type: "shared", name: "metadata" }),
+  createElement({ type: "shared", name: "metrics" }),
+  createElement({ type: "shared", name: "metrics-viewer" }),
+  createElement({ type: "shared", name: "models" }),
+  createElement({ type: "shared", name: "new" }),
+  createElement({ type: "shared", name: "palette" }),
+  createElement({ type: "shared", name: "parameters" }),
+  createElement({ type: "shared", name: "pulse" }),
+  createElement({ type: "shared", name: "querying", enforceOutgoing: false }),
+  createElement({ type: "shared", name: "questions" }),
+  createElement({ type: "shared", name: "router" }),
+  createElement({
+    type: "shared",
+    name: "schema",
+    pattern: "frontend/src/metabase/schema.js",
+    mode: "full",
+    enforceOutgoing: false,
+  }),
+  createElement({ type: "shared", name: "search" }),
+  createElement({ type: "shared", name: "setup" }),
+  createElement({ type: "shared", name: "status" }),
+  createElement({ type: "shared", name: "styled-components" }),
+  createElement({ type: "shared", name: "timelines" }),
+  createElement({ type: "shared", name: "transforms" }),
+  createElement({
+    type: "shared",
+    name: "types",
+    pattern: "frontend/src/types/**",
+  }),
+  createElement({ type: "shared", name: "urls" }),
+  createElement({ type: "shared", name: "visualizations" }),
+  createElement({ type: "shared", name: "visualizer" }),
+
+  // feature
+  createElement({ type: "feature", name: "admin" }),
+  createElement({ type: "feature", name: "dashboard" }),
   createElement({
     type: "feature",
     name: "enterprise",
     pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full",
-    enforceOutgoing: true,
   }),
+  createElement({ type: "feature", name: "public" }),
+  createElement({ type: "feature", name: "query_builder" }),
+  createElement({ type: "feature", name: "reference" }),
+
   // app
   ...[
     "frontend/src/metabase/app.js",
@@ -71,25 +148,41 @@ const elements = [
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/App.tsx",
     "frontend/src/metabase/App.styled.tsx",
+    "frontend/src/metabase/AppKBarProvider.tsx",
+    "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/routes.jsx",
     "frontend/src/metabase/routes-embed.tsx",
+    "frontend/src/metabase/route-guards.tsx",
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
+    // Entry point for the static-viz bundle (server-side chart rendering in
+    // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
+    "frontend/src/metabase/static-viz/index.tsx",
   ].map((path) =>
     createElement({
       type: "app",
       name: "misc",
       pattern: path,
       mode: "full",
-      enforceOutgoing: true,
     }),
   ),
+  createElement({
+    type: "app",
+    name: "nav",
+    pattern: "frontend/src/metabase/app/nav/**",
+    enforceOutgoing: true,
+  }),
+  // static-viz must come after the app entries rather than in the
+  // alphabetical shared list: its entry point (static-viz/index.tsx) is app
+  // tier, and the first matching element wins.
+  createElement({ type: "shared", name: "static-viz" }),
   // catch-all for unmoduled files - must be last
   createElement({
     type: "shared",
     name: "other",
     pattern: "frontend/src/*/**",
+    enforceOutgoing: false,
   }),
 ];
 
@@ -126,6 +219,11 @@ const rules = [
     from: ["feature/enterprise"],
     allow: ["feature/*"],
     message: "Enterprise module can import from all feature modules",
+  },
+  {
+    from: ["feature/public"],
+    allow: ["feature/*"],
+    message: "Public module can import from all feature modules",
   },
   {
     from: ["app/*"],

@@ -1,9 +1,8 @@
 import type { Component, ComponentType } from "react";
 
-import type { IconName } from "metabase/ui";
 import type {
-  Collection,
   CollectionId,
+  IconName,
   NativeQuerySnippet,
 } from "metabase-types/api";
 
@@ -17,7 +16,6 @@ export type SnippetSidebarMenuOption = {
 };
 
 export type SnippetSidebarState = {
-  modalSnippetCollection?: Partial<Collection> | null;
   permissionsModalCollectionId?: CollectionId | null;
 };
 
@@ -36,19 +34,6 @@ export type SnippetCollectionPickerModalProps = {
   onClose: () => void;
 };
 
-export type SnippetFormModalProps = {
-  collection: Partial<Collection>;
-  onClose: () => void;
-  onSaved?: () => void;
-  opened?: boolean;
-};
-
-export type SnippetCollectionMenuProps = {
-  collection: Collection;
-  onEditDetails?: (collection: Collection) => void;
-  onChangePermissions?: (collectionId: CollectionId) => void;
-};
-
 export type SnippetCollectionPermissionsModalProps = {
   collectionId: CollectionId;
   onClose: () => void;
@@ -62,8 +47,6 @@ export type MoveSnippetModalProps = {
 export type SnippetFoldersPlugin = {
   isEnabled: boolean;
   CollectionPickerModal: ComponentType<SnippetCollectionPickerModalProps>;
-  CollectionFormModal: ComponentType<SnippetFormModalProps>;
-  CollectionMenu: ComponentType<SnippetCollectionMenuProps>;
   CollectionPermissionsModal: ComponentType<SnippetCollectionPermissionsModalProps>;
   MoveSnippetModal: ComponentType<MoveSnippetModalProps>;
 };
@@ -72,10 +55,6 @@ export const getDefaultPluginSnippetFolders = () => ({
   isEnabled: false,
   CollectionPickerModal:
     PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
-  CollectionFormModal:
-    PluginPlaceholder as ComponentType<SnippetFormModalProps>,
-  CollectionMenu:
-    PluginPlaceholder as ComponentType<SnippetCollectionMenuProps>,
   CollectionPermissionsModal:
     PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
   MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,

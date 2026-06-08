@@ -162,6 +162,11 @@ const SdkIframeEmbedPreviewInner = () => {
       h="100%"
       ref={containerRef}
       pos="relative"
+      // `key` forces a remount when chart colors change. The embed runtime
+      // propagates other theme keys via CSS variables, but chart colors are
+      // applied through a module-level side effect on mount, so already-rendered
+      // charts don't pick up updates without a full remount.
+      key={JSON.stringify(theme?.colors?.charts)}
     >
       {match(settings)
         .with(

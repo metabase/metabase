@@ -55,7 +55,6 @@ export function useDashboardTabs() {
     dispatch(
       addUndo({
         message: t`Deleted "${tabName}"`,
-        undo: true,
         action: () => undoDeleteTab({ tabDeletionId: id }),
       }),
     );

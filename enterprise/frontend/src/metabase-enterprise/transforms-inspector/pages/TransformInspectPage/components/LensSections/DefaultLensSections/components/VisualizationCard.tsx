@@ -4,7 +4,7 @@ import { useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { useSnapshotSelector } from "metabase/common/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Card, Loader, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { defaultDisplay } from "metabase-lib/query/display";

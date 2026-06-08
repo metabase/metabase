@@ -6,14 +6,17 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Api, cardApi } from "metabase/api";
+import { listTag } from "metabase/api/tags";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { deletePermanently } from "metabase/archive/actions";
+import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Toaster } from "metabase/common/components/Toaster";
+import { useSetCollection } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Bookmarks } from "metabase/entities/bookmarks";
-import { Questions } from "metabase/entities/questions";
 import {
   rememberLastUsedDatabase,
   runOrCancelQuestionOrSelectedQuery,
@@ -21,7 +24,9 @@ import {
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
-import { connect } from "metabase/redux";
+import { connect, useDispatch } from "metabase/redux";
+import { updateQuestionCard } from "metabase/redux/cards";
+import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -37,7 +42,24 @@ import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
 import S from "./View.module.css";
 
-const ViewInner = forwardRef(function _ViewInner(props, ref) {
+const ViewInner = forwardRef(function ViewInnerImpl(propsIn, ref) {
+  const dispatch = useDispatch();
+  const setCollection = useSetCollection();
+  const props = {
+    ...propsIn,
+    onMove: async (question, newCollection) => {
+      const updated = await setCollection(
+        {
+          model: getEntityTypeFromCardType(question.type()),
+          id: question.id(),
+        },
+        newCollection,
+        { notify: false },
+      );
+      // keep the QB in sync with where the question now lives
+      dispatch({ type: API_UPDATE_QUESTION, payload: updated });
+    },
+  };
   const {
     question,
     result,
@@ -276,20 +298,13 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
 const mapDispatchToProps = (dispatch) => ({
   onSetDatabaseId: (id) => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: async (question) => {
-    await dispatch(
-      Questions.actions.update({ id: question.id() }, { archived: false }),
-    );
+    await dispatch(updateQuestionCard({ id: question.id(), archived: false }));
     await dispatch(setArchivedQuestion(question, false));
-    await dispatch(Bookmarks.actions.invalidateLists());
+    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
   },
-  onMove: (question, newCollection) =>
-    dispatch(
-      Questions.actions.setCollection({ id: question.id() }, newCollection, {
-        notify: { undo: false },
-      }),
-    ),
   onDeletePermanently: (id) => {
-    const deleteAction = Questions.actions.delete({ id });
+    const deleteAction = (dispatch) =>
+      runRtkEndpoint(id, dispatch, cardApi.endpoints.deleteCard);
     dispatch(deletePermanently(deleteAction));
   },
   runQuery: () => {

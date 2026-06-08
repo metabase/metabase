@@ -77,7 +77,9 @@
                 matches (filter #(and (= (nth % 0) "de")
                                       (= (nth % 1) "Sample translation"))
                                 data)]
-            (is (seq matches)))))))
+            (is (seq matches))))))))
+
+(deftest content-translation-api-test-2
   (testing "POST /api/ee/content-translation/upload-dictionary"
     (testing "nonadmin cannot use"
       (ct-utils/with-clean-translations!
@@ -97,7 +99,7 @@
     (testing "admin sees useful error when uploaded file has invalid csv"
       (ct-utils/with-clean-translations!
         (mt/with-premium-features #{:content-translation}
-          (is (=? {:errors ["Error Parsing CSV at Row 4: CSV error (unexpected character: !)"]}
+          (is (=? {:errors ["Error parsing CSV at row 4: CSV error (unexpected character: !)"]}
                   (mt/user-http-request :crowberto :post 422 "ee/content-translation/upload-dictionary"
                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                         {:file invalid-csv}))))))

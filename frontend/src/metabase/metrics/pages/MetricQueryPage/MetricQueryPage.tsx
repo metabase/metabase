@@ -16,7 +16,7 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card as CardApiType } from "metabase-types/api";

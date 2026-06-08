@@ -34,14 +34,25 @@ export const DIMENSION_PREDICATES: Record<DimensionType, DimensionPredicate> = {
   time: LibMetric.isDateOrDateTime,
   geo: isGeoDimension,
   category: (dimension) =>
-    LibMetric.isCategory(dimension) &&
+    (LibMetric.isCategory(dimension) ||
+      LibMetric.isStringOrStringLike(dimension)) &&
     !isGeoDimension(dimension) &&
-    !LibMetric.isBoolean(dimension),
+    !LibMetric.isBoolean(dimension) &&
+    !LibMetric.isID(dimension),
   boolean: LibMetric.isBoolean,
   numeric: (dimension) =>
     LibMetric.isNumeric(dimension) &&
     !LibMetric.isID(dimension) &&
     !LibMetric.isCoordinate(dimension),
+};
+
+export const PREFERRED_DIMENSION_PREDICATES: Partial<
+  Record<DimensionType, DimensionPredicate>
+> = {
+  category: (dimension) =>
+    LibMetric.isCategory(dimension) &&
+    !isGeoDimension(dimension) &&
+    !LibMetric.isBoolean(dimension),
 };
 
 export interface DimensionTypeEntry {
