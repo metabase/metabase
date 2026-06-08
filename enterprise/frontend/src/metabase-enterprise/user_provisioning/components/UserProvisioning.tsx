@@ -9,7 +9,6 @@ import {
 import {
   AdminSettingInput,
   BasicAdminSettingInput,
-  SetByEnvVar,
 } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import {
   useGetAdminSettingsDetailsQuery,
@@ -18,6 +17,7 @@ import {
 } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import {
   Alert,
