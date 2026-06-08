@@ -42,7 +42,11 @@ import schema from "../metabase.data";
 Prefer generated schema objects over raw IDs or strings. Extract local constants for the top-level semantic objects used by a component.
 
 ```ts
-import { filter, useMetabaseQuery } from "@metabase/embedding-sdk-react";
+import {
+  breakout,
+  filter,
+  useMetabaseQuery,
+} from "@metabase/embedding-sdk-react";
 import schema from "../metabase.data";
 
 const lifetimeValueMetric = schema.metrics.customerLifetimeValue;
@@ -50,18 +54,14 @@ const lifetimeValueTable = schema.tables.customerLifetimeValue;
 ```
 
 Use `filter(...)` for field and dimension filters. It gives better autocomplete and operator validation than inline objects.
+Use `breakout(...)` for breakouts. It gives clearer bucket autocomplete and shorter errors when a non-date dimension is accidentally bucketed.
 
 ```ts
 const { data } = useMetabaseQuery({
   metric: lifetimeValueMetric,
   filters: [filter(lifetimeValueMetric.dimensions.orders, ">", 0)],
   measures: [lifetimeValueTable.measures.totalLtv],
-  breakouts: [
-    {
-      dimension: lifetimeValueMetric.dimensions.lastOrderedAt,
-      bucket: "month",
-    },
-  ],
+  breakouts: [breakout(lifetimeValueMetric.dimensions.lastOrderedAt, "month")],
 });
 ```
 
@@ -112,12 +112,7 @@ const { data } = useMetabaseQuery<OrdersTable>({
     filter(ordersTable.fields.total, ">", 100),
   ],
   measures: [ordersTable.measures.revenue],
-  breakouts: [
-    {
-      dimension: ordersTable.fields.createdAt,
-      bucket: "month",
-    },
-  ],
+  breakouts: [breakout(ordersTable.fields.createdAt, "month")],
 });
 ```
 
@@ -131,12 +126,7 @@ const revenueMetric = schema.metrics.revenue;
 const { data } = useMetabaseQuery({
   metric: revenueMetric,
   filters: [filter(revenueMetric.dimensions.state, "=", "CA")],
-  breakouts: [
-    {
-      dimension: revenueMetric.dimensions.createdAt,
-      bucket: "month",
-    },
-  ],
+  breakouts: [breakout(revenueMetric.dimensions.createdAt, "month")],
 });
 ```
 
@@ -153,12 +143,7 @@ const lifetimeValueTable = schema.tables.customerLifetimeValue;
 const { data } = useMetabaseQuery({
   metric: lifetimeValueMetric,
   measures: [lifetimeValueTable.measures.totalLtv],
-  breakouts: [
-    {
-      dimension: lifetimeValueMetric.dimensions.lastOrderedAt,
-      bucket: "month",
-    },
-  ],
+  breakouts: [breakout(lifetimeValueMetric.dimensions.lastOrderedAt, "month")],
 });
 ```
 
@@ -195,22 +180,23 @@ filters: [
 
 ## Breakouts
 
-Breakouts still use object form because they can include `bucket` or `binning`.
+Use the positional helper for breakouts:
 
 ```ts
-breakouts: [
-  {
-    dimension: schema.metrics.revenue.dimensions.createdAt,
-    bucket: "month",
-  },
-];
+breakout(schema.metrics.revenue.dimensions.createdAt, "month");
+breakout(schema.metrics.revenue.dimensions.state);
 ```
 
 Only date dimensions can use `bucket`. Non-date dimensions can be used as breakouts without `bucket`.
 
 ```ts
-breakouts: [{ dimension: schema.metrics.revenue.dimensions.state }];
+breakouts: [
+  breakout(schema.metrics.revenue.dimensions.createdAt, "month"),
+  breakout(schema.metrics.revenue.dimensions.state),
+];
 ```
+
+The older object form still works, but TypeScript can produce long and misleading union errors for invalid buckets. Prefer `breakout(...)` unless object form makes a specific advanced case clearer.
 
 ## TypeScript Debugging Loop
 
@@ -248,9 +234,11 @@ Typical meaning: a non-date dimension is using a temporal bucket, or the dimensi
 Fix: remove `bucket` for non-date dimensions, or use a date dimension.
 
 ```ts
-breakouts: [{ dimension: metric.dimensions.segment }];
-breakouts: [{ dimension: metric.dimensions.createdAt, bucket: "month" }];
+breakouts: [breakout(metric.dimensions.segment)];
+breakouts: [breakout(metric.dimensions.createdAt, "month")];
 ```
+
+If the error is very long and mentions `dimension.name`, rewrite the breakout with `breakout(...)` first. Invalid bucket usage then points directly at the second argument, for example `"week-of-year"` not assignable to `never`.
 
 **`dimension.id` or `dimension.name` is incompatible**
 
@@ -324,6 +312,7 @@ If no curated schema entry supports the intended UI, leave an empty/error state 
 - Mixing fields, dimensions, segments, or measures from the wrong table or metric.
 - Assuming `filter(...)` is required. Object-form filters still work, but `filter(...)` is better for autocomplete.
 - Assuming `filter(...)` validates value types. It primarily validates operator and dimension shape.
+- Using object-form breakouts by default. `breakout(...)` gives shorter bucket errors and better autocomplete.
 - Letting a `null` breakout bucket become the last point in a time-series chart.
 - Plotting different-unit series on one shared scale when the intended comparison needs separate axes or normalized series.
 - Showing raw floating point values in user-facing UI. Format numbers according to their domain.

@@ -7,7 +7,7 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 
 import type { MetabaseQueryOptions } from "./use-metabase-query";
-import { filter, useMetabaseQuery } from "./use-metabase-query";
+import { breakout, filter, useMetabaseQuery } from "./use-metabase-query";
 
 const TEST_SCHEMA = {
   tables: {
@@ -143,6 +143,8 @@ const _validTableCustomFilterObjectQuery = {
 const _validTableBreakoutBucketQuery = {
   tableId: TEST_SCHEMA.tables.orders.id,
   breakouts: [
+    breakout(TEST_SCHEMA.tables.orders.fields.createdAt, "month"),
+    breakout(TEST_SCHEMA.tables.orders.fields.status),
     {
       dimension: TEST_SCHEMA.tables.orders.fields.createdAt,
       bucket: "month",
@@ -165,6 +167,8 @@ const _invalidTableBreakoutUnknownBucketQuery = {
 const _invalidTableBreakoutNonDateBucketQuery = {
   tableId: TEST_SCHEMA.tables.orders.id,
   breakouts: [
+    // @ts-expect-error non-date dimensions do not support temporal buckets
+    breakout(TEST_SCHEMA.tables.orders.fields.status, "month"),
     // @ts-expect-error non-date dimensions do not support temporal buckets
     {
       dimension: TEST_SCHEMA.tables.orders.fields.status,
@@ -240,6 +244,8 @@ function useMetricBreakoutTypeFixtures() {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
     breakouts: [
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.createdAt, "month"),
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status),
       {
         dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
         bucket: "month",
@@ -250,6 +256,8 @@ function useMetricBreakoutTypeFixtures() {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
     breakouts: [
+      // @ts-expect-error non-date metric dimensions do not support temporal buckets
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status, "month"),
       // @ts-expect-error non-date metric dimensions do not support temporal buckets
       {
         dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
