@@ -12,7 +12,7 @@ import S from "./DimensionPillBar.module.css";
 
 export interface MetricDimensionItem {
   type: "metric";
-  id: number;
+  slotIndex: number;
   label?: string;
   icon?: IconName;
   colors?: string[];
@@ -36,8 +36,7 @@ export interface ExpressionMetricSource {
 
 export interface ExpressionDimensionItem {
   type: "expression";
-  /** Expression entity index — used as the React key. */
-  id: number;
+  entityIndex: number;
   colors?: string[];
   icon?: IconName;
   /** Aggregate label derived from selected dimensions. */
@@ -76,7 +75,11 @@ export function DimensionPillBar({
     >
       {items.map((item) => (
         <DimensionLabel
-          key={item.type === "expression" ? `expr-${item.id}` : item.id}
+          key={
+            item.type === "expression"
+              ? `expr-${item.entityIndex}`
+              : item.slotIndex
+          }
           label={item.label}
           icon={item.icon}
           colors={item.colors}

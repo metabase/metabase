@@ -50,14 +50,14 @@ describe("MetricsViewerVisualization", () => {
   it("renders column labels below each split map chart", () => {
     const firstLabel: DimensionPillBarItem = {
       type: "metric",
-      id: 0,
+      slotIndex: 0,
       label: "Customer State",
       icon: "pinmap",
       availableOptions: [],
     };
     const secondLabel: DimensionPillBarItem = {
       type: "metric",
-      id: 1,
+      slotIndex: 1,
       label: "Delivery State",
       icon: "pinmap",
       availableOptions: [],

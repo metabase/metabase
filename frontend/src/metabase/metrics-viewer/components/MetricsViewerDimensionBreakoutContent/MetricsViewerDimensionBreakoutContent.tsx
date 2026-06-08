@@ -196,11 +196,11 @@ function getDimensionItemsByEntityIndex(
 
   for (const item of dimensionItems) {
     if (item.type === "expression") {
-      itemsByEntityIndex.set(item.id, item);
+      itemsByEntityIndex.set(item.entityIndex, item);
       continue;
     }
 
-    const slot = metricSlots.find((slot) => slot.slotIndex === item.id);
+    const slot = metricSlots.find((slot) => slot.slotIndex === item.slotIndex);
     if (slot) {
       itemsByEntityIndex.set(slot.entityIndex, item);
     }
