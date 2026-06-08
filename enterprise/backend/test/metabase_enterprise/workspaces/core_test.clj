@@ -136,7 +136,7 @@
                                     (grant!   [_ _ _ _ _] nil)
                                     (destroy! [_ _ _ _]   nil))]
           (with-redefs [provisioning/dispatching-provisioner failing-provisioner]
-            (is (thrown-with-msg? ExceptionInfo #"boom"
+            (is (thrown-with-msg? ExceptionInfo #"failure"
                                   (ws/update-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"]))))
           (let [wsd (first (:databases (ws/get-workspace (:id ws))))]
             (is (= ["PUBLIC"] (:input_schemas wsd))
