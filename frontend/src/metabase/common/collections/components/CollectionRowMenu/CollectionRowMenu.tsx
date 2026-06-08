@@ -123,7 +123,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
 
     const label =
       collection.namespace === "snippets"
-        ? t`Unarchive snippet folder`
+        ? t`Unarchive snippet collection`
         : t`Unarchive collection`;
 
     return (
@@ -144,7 +144,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
 
   const optionsLabel =
     collection.namespace === "snippets"
-      ? t`Snippet folder options`
+      ? t`Snippet collection options`
       : t`Collection options`;
 
   return (
@@ -167,9 +167,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
               leftSection={<Icon name="pencil" />}
               onClick={toggleEditModal}
             >
-              {collection.namespace === "snippets"
-                ? t`Edit folder details`
-                : t`Edit collection details`}
+              {t`Edit collection details`}
             </Menu.Item>
           )}
           {showPermissionsOption && (
