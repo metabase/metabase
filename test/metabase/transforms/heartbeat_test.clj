@@ -1,8 +1,5 @@
 (ns metabase.transforms.heartbeat-test
-  "Tests for transform-run heartbeats: stamping liveness on actively-executing runs
-  ([[metabase.transforms.models.transform-run/heartbeat-runs!]] /
-  [[metabase.transforms.canceling/send-heartbeat!]]) and reaping orphans whose owning process has died
-  ([[metabase.transforms.models.transform-run/reap-orphaned-runs!]])."
+  "Tests for transform-run and job-run heartbeats and orphan reaping."
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]

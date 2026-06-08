@@ -1,7 +1,5 @@
 (ns metabase.run-tracking.core-test
-  "Tests for the shared heartbeat + orphan-reaping primitives. The per-model wiring is covered by
-  metabase.transforms.heartbeat-test / timeout-test and the task-run heartbeat tests; here we exercise
-  the generic primitives directly across both 'active' styles (is_active flag vs status keyword)."
+  "Tests for the shared heartbeat + orphan-reaping primitives in [[metabase.run-tracking.core]]."
   (:require
    [clojure.test :refer :all]
    [metabase.run-tracking.core :as rt]

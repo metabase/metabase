@@ -20,7 +20,7 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
-   (java.time Instant OffsetDateTime ZoneOffset)))
+   (java.time OffsetDateTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -156,38 +156,34 @@
        (when-let [run (t2/select-one :model/TransformRun :id run-id)]
          (publish-timeout-event! run))))))
 
+(defn- reap-transform-runs!
+  "Reap active transform runs by `stale-column` into a timeout carrying `message`, publishing a timeout
+  event per run. See [[metabase.run-tracking.core/reap-orphaned!]]."
+  [stale-column age unit message]
+  (let [end-time (OffsetDateTime/now ZoneOffset/UTC)]
+    (rt/reap-orphaned!
+     {:model          :model/TransformRun
+      :active         [:is_active true]
+      :stale-column   stale-column
+      :age            age
+      :unit           unit
+      :terminal       {:status :timeout :end_time :%now :is_active nil :message message}
+      :total-metric   :metabase-transforms/timeouts-total
+      :latency-metric :metabase-transforms/timeout-detection-latency-ms
+      :metric-tags    {:type "transform"}
+      :on-reaped      (fn [run]
+                        (publish-timeout-event! (assoc run
+                                                       :status    :timeout
+                                                       :is_active nil
+                                                       :end_time  end-time
+                                                       :message   message)))
+      :after          cancel/delete-old-canceling-runs!})))
+
 (defn timeout-old-runs!
-  "Time out all active runs older than the specified age. Returns the rows that were timed out.
-  See [[metabase.run-tracking.core/reap-rows!]] for atomicity rationale."
+  "Time out all active runs whose `start_time` is older than the specified age. Returns the rows that were
+  timed out."
   [age unit]
-  (let [timeout-dur (rt/unit->duration age unit)
-        detected-at (Instant/now)
-        end-time    (OffsetDateTime/ofInstant detected-at ZoneOffset/UTC)
-        timed-out   (rt/reap-rows! {:model        :model/TransformRun
-                                    :active       [:is_active true]
-                                    :stale-column :start_time
-                                    :age          age
-                                    :unit         unit
-                                    :terminal     {:status    :timeout
-                                                   :end_time  :%now
-                                                   :is_active nil
-                                                   :message   "Timed out by metabase"}})]
-    (when (seq timed-out)
-      (analytics/inc! :metabase-transforms/timeouts-total
-                      {:type "transform"}
-                      (count timed-out))
-      (doseq [run timed-out]
-        (when-let [start (:start_time run)]
-          (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
-                              {:type "transform"}
-                              (rt/detection-latency-ms start timeout-dur detected-at)))
-        (publish-timeout-event! (assoc run
-                                       :status    :timeout
-                                       :is_active nil
-                                       :end_time  end-time
-                                       :message   "Timed out by metabase"))))
-    (cancel/delete-old-canceling-runs!)
-    timed-out))
+  (reap-transform-runs! :start_time age unit "Timed out by metabase"))
 
 (defn heartbeat-runs!
   "Stamp `last_heartbeat = now` on the given still-active `run-ids`."
@@ -198,34 +194,7 @@
   "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is
   presumed dead). Returns the rows that were timed out."
   [stale-minutes]
-  (let [timeout-dur (rt/unit->duration stale-minutes :minute)
-        detected-at (Instant/now)
-        end-time    (OffsetDateTime/ofInstant detected-at ZoneOffset/UTC)
-        reaped      (rt/reap-rows! {:model        :model/TransformRun
-                                    :active       [:is_active true]
-                                    :stale-column :last_heartbeat
-                                    :age          stale-minutes
-                                    :unit         :minute
-                                    :terminal     {:status    :timeout
-                                                   :end_time  :%now
-                                                   :is_active nil
-                                                   :message   "Timed out: no heartbeat"}})]
-    (when (seq reaped)
-      (analytics/inc! :metabase-transforms/timeouts-total
-                      {:type "transform"}
-                      (count reaped))
-      (doseq [run reaped]
-        (when-let [hb (:last_heartbeat run)]
-          (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
-                              {:type "transform"}
-                              (rt/detection-latency-ms hb timeout-dur detected-at)))
-        (publish-timeout-event! (assoc run
-                                       :status    :timeout
-                                       :is_active nil
-                                       :end_time  end-time
-                                       :message   "Timed out: no heartbeat"))))
-    (cancel/delete-old-canceling-runs!)
-    reaped))
+  (reap-transform-runs! :last_heartbeat stale-minutes :minute "Timed out: no heartbeat"))
 
 (defn cancel-old-canceling-runs!
   "Atomically force-cancels active runs whose cancelation requests are older than `age` `unit`. Returns the

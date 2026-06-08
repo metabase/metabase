@@ -1876,7 +1876,9 @@
   run-tracking
   {:team "Gadget"
    :api  #{metabase.run-tracking.core}
-   :uses #{app-db
+   :uses #{analytics-interface
+           app-db
+           task
            util}}
 
   sample-data

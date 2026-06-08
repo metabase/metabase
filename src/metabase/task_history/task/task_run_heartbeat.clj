@@ -4,13 +4,9 @@
    2. Mark orphaned task runs (no heartbeat for threshold hours) as :abandoned
    3. Mark orphaned tasks (in :started status with no heartbeat) as :unknown"
   (:require
-   [clojurewerkz.quartzite.jobs :as jobs]
-   [clojurewerkz.quartzite.schedule.cron :as cron]
-   [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.run-tracking.core :as rt]
-   [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -43,18 +39,15 @@
    2. started_at is older than max run duration (stuck run)
    Returns the set of run IDs that were marked as orphaned."
   []
-  (let [orphaned         (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs" {}
-                           (rt/reap-rows! {:model        :model/TaskRun
-                                           :active       [:status :started]
-                                           :stale-column :updated_at
-                                           :age          orphan-threshold-hours
-                                           :unit         :hour
-                                           :terminal     {:status :abandoned :ended_at (mi/now)}
-                                           :also-stale   [:< :started_at (rt/cutoff max-run-duration-hours :hour)]}))
-        orphaned-run-ids (into #{} (map :id) orphaned)]
-    (when (seq orphaned-run-ids)
-      (log/infof "Marked %d abandoned task runs" (count orphaned-run-ids)))
-    orphaned-run-ids))
+  (let [orphaned (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs" {}
+                   (rt/reap-rows! {:model        :model/TaskRun
+                                   :active       [:status :started]
+                                   :stale-column :updated_at
+                                   :age          orphan-threshold-hours
+                                   :unit         :hour
+                                   :terminal     {:status :abandoned :ended_at (mi/now)}
+                                   :also-stale   [:< :started_at (rt/cutoff max-run-duration-hours :hour)]}))]
+    (into #{} (map :id) orphaned)))
 
 (defn mark-orphaned-tasks!
   "Mark tasks as :unknown if they belong to the given orphaned runs."
@@ -70,30 +63,15 @@
           (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
         orphaned))))
 
-(defn- task-run-heartbeat!
-  "Send heartbeat for running tasks and mark orphaned runs/tasks."
+(defn- reap-orphans!
+  "Mark orphaned task runs as :abandoned and their tasks as :unknown; return the reaped run ids."
   []
-  (log/debug "Running task run heartbeat")
-  (send-heartbeat!)
   (let [orphaned-run-ids (mark-orphaned-runs!)]
-    (mark-orphaned-tasks! orphaned-run-ids)))
+    (mark-orphaned-tasks! orphaned-run-ids)
+    orphaned-run-ids))
 
-(task/defjob
-  ^{:doc "Send heartbeat for running task runs and mark orphaned runs as :unknown"}
-  TaskRunHeartbeat [_]
-  (task-run-heartbeat!))
-
-(def ^:private job-key     "metabase.task.task-run-heartbeat.job")
-(def ^:private trigger-key "metabase.task.task-run-heartbeat.trigger")
-
-(defmethod task/init! ::TaskRunHeartbeat [_]
-  (let [job     (jobs/build
-                 (jobs/of-type TaskRunHeartbeat)
-                 (jobs/with-identity (jobs/key job-key)))
-        trigger (triggers/build
-                 (triggers/with-identity (triggers/key trigger-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule
-                  ;; run every 10 minutes
-                  (cron/cron-schedule "0 */10 * * * ? *")))]
-    (task/schedule-task! job trigger)))
+(rt/defrun-tracking-jobs TaskRun
+  {:heartbeat-fn     send-heartbeat!
+   :reap-fn          reap-orphans!
+   :reaper-key       "metabase.task.task-run-reaper.job"
+   :interval-minutes 10})

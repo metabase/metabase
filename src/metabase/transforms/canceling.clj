@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
    [metabase.events.core :as events]
+   [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.transforms.models.transform-run :as transform-run]
@@ -21,8 +22,6 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private job-key "metabase.transforms.canceling")
-
-(def ^:private heartbeat-job-key "metabase.transforms.heartbeat")
 
 (defonce ^:private ^ScheduledExecutorService scheduler
   (Executors/newScheduledThreadPool 1))
@@ -154,35 +153,10 @@
 
 (def ^:private transform-heartbeat-stale-minutes 5)
 
-(defn- transform-run-heartbeat! [_ctx]
-  ;; Heartbeat the runs this process is executing, then reap any whose heartbeat has gone stale.
-  (tracing/with-span :tasks "task.transform.heartbeat" {}
-    (send-heartbeat!)
-    (when-let [reaped (not-empty (transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes))]
-      (log/infof "Reaped %d orphaned transform run(s) with stale heartbeats." (count reaped)))))
-
-(task/defjob  ^{:doc "Heartbeat active transform runs owned by this process and reap orphaned ones"
-                org.quartz.DisallowConcurrentExecution true}
-  TransformRunHeartbeat [ctx]
-  (transform-run-heartbeat! ctx))
-
-(defn- start-heartbeat-job! []
-  (when (not (task/job-exists? heartbeat-job-key))
-    (let [job (jobs/build
-               (jobs/of-type TransformRunHeartbeat)
-               (jobs/with-identity (jobs/key heartbeat-job-key)))
-          trigger (triggers/build
-                   (triggers/with-identity (triggers/key heartbeat-job-key))
-                   (triggers/start-now)
-                   (triggers/with-schedule
-                    (calendar-interval/schedule
-                     (calendar-interval/with-interval-in-minutes 1)
-                     (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
-      (task/schedule-task! job trigger))))
-
-(defmethod task/init! ::TransformRunHeartbeat [_]
-  (log/info "Scheduling transform run heartbeat task.")
-  (start-heartbeat-job!))
+(rt/defrun-tracking-jobs TransformRun
+  {:heartbeat-fn send-heartbeat!
+   :reap-fn      #(transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes)
+   :reaper-key   "metabase.transforms.reaper"})
 
 (defmethod task/init! ::CancelRuns [_]
   (log/info "Scheduling the cancelation background task.")

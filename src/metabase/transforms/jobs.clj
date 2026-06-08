@@ -1,14 +1,11 @@
 (ns metabase.transforms.jobs
   (:require
    [clojure.string :as str]
-   [clojurewerkz.quartzite.jobs :as jobs]
-   [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
-   [clojurewerkz.quartzite.triggers :as triggers]
    [flatland.ordered.set :as ordered-set]
    [metabase.channel.urls :as urls]
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
-   [metabase.task.core :as task]
+   [metabase.run-tracking.core :as rt]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -420,90 +417,24 @@
                   (throw t)))))
           run-id)))))
 
-(def ^:private job-key "metabase.transforms.jobs.timeout-job")
-
-(defn- timeout-and-notify-old-runs!
-  "Time out stale job runs and notify admins for each cron-scheduled run that was
-  timed out. Manual runs are left alone to mirror `run-job!`'s cron-only
-  notification behavior."
-  []
-  (let [timed-out (transforms.job-run/timeout-old-runs!
-                   (transforms.settings/transform-timeout) :minute)]
-    (when (seq timed-out)
-      (log/infof "Timed out %d transform job run(s)." (count timed-out)))
-    (doseq [{:keys [job_id run_method message]} timed-out
-            :when (= run_method :cron)]
-      (try
-        (notify-job-failure job_id (or message "Timed out by metabase"))
-        (catch Throwable t
-          (log/error t "Error notifying of timed-out transform job run" (pr-str job_id)))))))
-
-(task/defjob  ^{:doc "Times out transform jobs when necessary."
-                org.quartz.DisallowConcurrentExecution true}
-  TimeoutOldRuns [_ctx]
-  (tracing/with-span :tasks "task.transform.timeout-check" {:transform.timeout/type "job"}
-    (timeout-and-notify-old-runs!)))
-
-(defn- start-job! []
-  (when (not (task/job-exists? job-key))
-    (let [job     (jobs/build
-                   (jobs/of-type TimeoutOldRuns)
-                   (jobs/with-identity (jobs/key job-key)))
-          trigger (triggers/build
-                   (triggers/with-identity (triggers/key job-key))
-                   (triggers/start-now)
-                   (triggers/with-schedule
-                    (calendar-interval/schedule
-                     (calendar-interval/with-interval-in-minutes 10)
-                     (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
-      (task/schedule-task! job trigger))))
-
-(defmethod task/init! ::TimeoutJob [_]
-  (log/info "Scheduling transform job timeout.")
-  (start-job!))
-
-(def ^:private heartbeat-job-key "metabase.transforms.jobs.heartbeat-job")
-
+;; Job runs have no separate max-duration timeout: a job's only failure mode beyond its constituent
+;; transforms (which time out individually) is its coordinator dying, which the heartbeat reaper detects.
 (def ^:private transform-job-heartbeat-stale-minutes 5)
 
 (defn- reap-and-notify-orphaned-runs!
-  "Reap job runs whose coordinator process died (stale heartbeat) and notify admins for each reaped cron run."
+  "Reap job runs whose coordinator process died (stale heartbeat), notify admins for each reaped cron run,
+  and return the reaped rows."
   []
   (let [reaped (transforms.job-run/reap-orphaned-runs! transform-job-heartbeat-stale-minutes)]
-    (when (seq reaped)
-      (log/infof "Reaped %d orphaned transform job run(s) with stale heartbeats." (count reaped)))
     (doseq [{:keys [job_id run_method message]} reaped
             :when (= run_method :cron)]
       (try
         (notify-job-failure job_id (or message "Timed out: no heartbeat"))
         (catch Throwable t
-          (log/error t "Error notifying of reaped transform job run" (pr-str job_id)))))))
+          (log/error t "Error notifying of reaped transform job run" (pr-str job_id)))))
+    reaped))
 
-(defn- transform-job-run-heartbeat! []
-  ;; Heartbeat the job runs this process is coordinating, then reap any whose heartbeat has gone stale.
-  (tracing/with-span :tasks "task.transform.job-heartbeat" {}
-    (send-heartbeat!)
-    (reap-and-notify-orphaned-runs!)))
-
-(task/defjob  ^{:doc "Heartbeat active transform job runs owned by this process and reap orphaned ones"
-                org.quartz.DisallowConcurrentExecution true}
-  TransformJobRunHeartbeat [_ctx]
-  (transform-job-run-heartbeat!))
-
-(defn- start-heartbeat-job! []
-  (when (not (task/job-exists? heartbeat-job-key))
-    (let [job     (jobs/build
-                   (jobs/of-type TransformJobRunHeartbeat)
-                   (jobs/with-identity (jobs/key heartbeat-job-key)))
-          trigger (triggers/build
-                   (triggers/with-identity (triggers/key heartbeat-job-key))
-                   (triggers/start-now)
-                   (triggers/with-schedule
-                    (calendar-interval/schedule
-                     (calendar-interval/with-interval-in-minutes 1)
-                     (calendar-interval/with-misfire-handling-instruction-do-nothing))))]
-      (task/schedule-task! job trigger))))
-
-(defmethod task/init! ::TransformJobRunHeartbeat [_]
-  (log/info "Scheduling transform job run heartbeat task.")
-  (start-heartbeat-job!))
+(rt/defrun-tracking-jobs TransformJobRun
+  {:heartbeat-fn send-heartbeat!
+   :reap-fn      reap-and-notify-orphaned-runs!
+   :reaper-key   "metabase.transforms.jobs.reaper-job"})

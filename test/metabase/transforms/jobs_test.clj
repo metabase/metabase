@@ -335,7 +335,7 @@
                               (t2/select-one :model/TransformJobRun :id @run-id-atom)))
                       (is (zero? (count @mt/inbox))))))))))))))
 
-(deftest timeout-old-runs-notifies-admins-for-cron-runs-test
+(deftest reap-orphaned-runs-notifies-admins-for-cron-runs-test
   (mt/with-premium-features #{:transforms-basic}
     (mt/with-model-cleanup [:model/Notification
                             :model/TransformJobRun]
@@ -349,20 +349,20 @@
                                                     :run_method :cron
                                                     :status     :started
                                                     :is_active  true})]
-            ;; push updated_at well past the 4h default timeout so the watchdog fires
+            ;; push updated_at past the heartbeat-staleness threshold so the reaper fires
             (t2/update! :model/TransformJobRun
                         :id (:id run)
                         {:updated_at #t "2000-01-01T00:00:00Z"})
-            (#'jobs/timeout-and-notify-old-runs!)
+            (#'jobs/reap-and-notify-orphaned-runs!)
             (is (=? {:status    :timeout
                      :is_active nil
-                     :message   "Timed out by metabase"}
+                     :message   "Timed out: no heartbeat"}
                     (t2/select-one :model/TransformJobRun :id (:id run))))
             ;; crowberto is a superuser and receives the admin notification
             (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
-            (is (mt/received-email-body? :crowberto #"Timed out by metabase"))))))))
+            (is (mt/received-email-body? :crowberto #"Timed out: no heartbeat"))))))))
 
-(deftest timeout-old-runs-notifies-every-admin-test
+(deftest reap-orphaned-runs-notifies-every-admin-test
   (testing "a job failure notifies all admins (via the admin group) as a single consolidated BCC message"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-model-cleanup [:model/Notification]
@@ -377,9 +377,9 @@
                                                         :run_method :cron
                                                         :status     :started
                                                         :is_active  true
-                                                        ;; backdate past the 4h timeout so the watchdog fires
+                                                        ;; backdate past the heartbeat-staleness threshold so the reaper fires
                                                         :updated_at #t "2000-01-01T00:00:00Z"}]
-              (#'jobs/timeout-and-notify-old-runs!)
+              (#'jobs/reap-and-notify-orphaned-runs!)
               (testing "every admin receives the failure email"
                 (is (contains? @mt/inbox "owl@metabase.test"))
                 (is (contains? @mt/inbox "robin@metabase.test")))
@@ -393,7 +393,7 @@
                   (is (contains? (set admin-bcc) "owl@metabase.test"))
                   (is (contains? (set admin-bcc) "robin@metabase.test")))))))))))
 
-(deftest timeout-old-runs-does-not-notify-for-manual-runs-test
+(deftest reap-orphaned-runs-does-not-notify-for-manual-runs-test
   (mt/with-premium-features #{:transforms-basic}
     (mt/with-model-cleanup [:model/Notification
                             :model/TransformJobRun]
@@ -410,10 +410,10 @@
             (t2/update! :model/TransformJobRun
                         :id (:id run)
                         {:updated_at #t "2000-01-01T00:00:00Z"})
-            (#'jobs/timeout-and-notify-old-runs!)
+            (#'jobs/reap-and-notify-orphaned-runs!)
             (is (=? {:status :timeout}
                     (t2/select-one :model/TransformJobRun :id (:id run)))
-                "run is still timed out by the watchdog")
+                "run is still reaped")
             (is (zero? (count @mt/inbox))
                 "manual runs do not trigger admin notifications")))))))
 

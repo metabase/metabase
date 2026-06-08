@@ -1,7 +1,5 @@
 (ns metabase.transforms.timeout-test
-  "Tests for observability of the transform timeout sweepers
-  ([[metabase.transforms.models.transform-run/timeout-old-runs!]] and
-  [[metabase.transforms.models.job-run/timeout-old-runs!]])."
+  "Tests for observability of the transform-run timeout sweeper and the job-run reaper."
   (:require
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
@@ -95,7 +93,7 @@
             (is (some? entry))
             (is (= run-id (:model_id entry)))
             (is (= "timeout" (some-> entry :details :status))))))
-      (testing "job-run sweeper bumps {type=job} counter and observes histogram per timed-out job run"
+      (testing "job-run reaper bumps {type=job} counter and observes histogram per reaped job run"
         (prometheus/clear! :metabase-transforms/timeouts-total)
         (prometheus/clear! :metabase-transforms/timeout-detection-latency-ms)
         (mt/with-temp [:model/TransformJob    {job-id :id}        {:name     "timeout-test-job"
@@ -110,7 +108,7 @@
                                                                    :is_active  true
                                                                    :run_method :manual
                                                                    :updated_at (minutes-ago 1)}]
-          (let [timed-out (transforms.job-run/timeout-old-runs! 5 :minute)]
+          (let [timed-out (transforms.job-run/reap-orphaned-runs! 5)]
             (is (= 1 (count timed-out)))
             (is (= :timeout (t2/select-one-fn :status :model/TransformJobRun :id old-run-id)))
             (is (= :started (t2/select-one-fn :status :model/TransformJobRun :id fresh-run-id))))
