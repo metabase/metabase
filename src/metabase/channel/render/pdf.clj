@@ -29,8 +29,9 @@
   Note on size: all faces are TrueType (glyf), which PDFBox subsets at save -- so PDFs only carry
   the glyphs actually used and stay small even when CJK text is present.
 
-  Prototype limitations: link/iframe/placeholder virtual cards are skipped; a card taller than a
-  full page is scaled down to fit."
+  Link and iframe virtual cards render as clickable links; placeholder (empty section slots) and
+  action cards are skipped, as the email pipeline does. A card taller than a full page is scaled
+  down to fit."
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
@@ -38,6 +39,7 @@
    [medley.core :as m]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.render.util :as render.util]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.parameters.shared :as shared.params]
@@ -906,15 +908,25 @@
             raw
             (str "https://" (str/replace raw #"^//" ""))))))))
 
+(defn- resolve-inline-params
+  "The full parameter definitions (carrying values) for a dashcard's inline parameters, matching
+  how email subscriptions resolve them. Returns only those with a value, in `parameters` order."
+  [dc parameters]
+  (let [ids (set (:inline_parameters dc))]
+    (when (seq ids)
+      (not-empty (filterv #(and (ids (:id %)) (some? (:value %))) parameters)))))
+
 (defn- dashcard->cell
   "Build a renderable cell from a dashcard, preserving its grid geometry. Returns nil for
   dashcard kinds we don't render (placeholder/action) or cards that fail/are empty."
   [dc parameters]
-  (let [geom (select-keys dc [:row :col :size_x :size_y])]
+  (let [inline (resolve-inline-params dc parameters)
+        geom   (cond-> (select-keys dc [:row :col :size_x :size_y])
+                 (seq inline) (assoc :inline-params inline))]
     (cond
       (:card_id dc)
       (when-let [part (notification.execute/execute-dashboard-subscription-card dc parameters)]
-        (assoc geom :kind :card :part part))
+        (assoc geom :kind :card :part (cond-> part (seq inline) (assoc :inline-params inline))))
 
       (notification.execute/virtual-card-of-type? dc "heading")
       (assoc geom :kind :heading
@@ -1022,6 +1034,15 @@
 (defn- card-description [card dashcard]
   (or (get-in dashcard [:visualization_settings :card.description]) (:description card)))
 
+(defn- effective-display
+  "The display type the card actually renders as. A visualizer dashcard overrides the underlying
+  card's `:display` (e.g. a smartscalar card shown as a `bar`), so prefer the visualizer display
+  when present -- matching `render.card/visualizer-display-type`."
+  [card dashcard]
+  (or (when (render.util/is-visualizer-dashcard? dashcard)
+        (some-> (get-in dashcard [:visualization_settings :visualization :display]) keyword))
+      (keyword (:display card))))
+
 (defn- cards-with-data
   "Replicate the multi-series data shape `body/render :javascript_visualization` feeds to
   static-viz (sans timeline events, which static-viz never officially used)."
@@ -1053,13 +1074,15 @@
           fit   (long (Math/floor (/ (double max-h) lh)))]
       (* (min lines (max 0 fit)) lh))))
 
+(declare inline-param-lines inline-params-height draw-param-lines!)
+
 (defn- render-card-cell!
   "Render a chart/query card into its cell rectangle. The title and description are always drawn
   natively at the PDF level (crisp text), and the space they consume is reserved before the body
   is rendered. Rectangular (ECharts/visx) charts are then rendered to exactly fill the remaining
   body area (matching the frontend); other types render their body title-less and fit preserving
   aspect into the body area."
-  [^PDDocument doc ^PDPageContentStream cs timezone {:keys [card dashcard] :as part} x top-y cell-w cell-h]
+  [^PDDocument doc ^PDPageContentStream cs timezone {:keys [card dashcard inline-params] :as part} x top-y cell-w cell-h]
   (let [data       (get-in part [:result :data])
         title      (card-title card dashcard)
         desc       (card-description card dashcard)
@@ -1070,10 +1093,14 @@
         desc-lines (when-not (str/blank? (str desc))
                      (wrap-clamped (regular-font) chart-desc-pt desc cell-w desc-max))
         dh         (* (count desc-lines) desc-lh)
-        header     (+ th dh (if (or (pos? th) (pos? dh)) 4.0 0.0))
+        ;; Inline parameters (filters attached to this card) render between the header and the
+        ;; chart body, like the email subscription does.
+        ip-lines   (inline-param-lines inline-params cell-w)
+        iph        (inline-params-height ip-lines)
+        header     (+ th dh iph (if (or (pos? th) (pos? dh) (pos? iph)) 4.0 0.0))
         body-top   (- (double top-y) header)
         body-h     (- cell-h header)
-        display    (keyword (:display card))
+        display    (effective-display card dashcard)
         ;; Rectangular charts always fill their box; pies fill (and move their legend to the
         ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
         fill?      (or (contains? rectangular-displays display)
@@ -1082,6 +1109,8 @@
     (draw-text-block! cs (bold-font) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
     (when (seq desc-lines)
       (draw-lines! cs (regular-font) chart-desc-pt desc-color x (- (double top-y) th) desc-lines))
+    (when (seq ip-lines)
+      (draw-param-lines! cs ip-lines (- (double top-y) th dh) x))
     (when (> body-h 12.0)
       (if-let [png (when fill?
                      (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
@@ -1098,16 +1127,15 @@
 ;; dashboards with many parameters take however many rows they need.
 ;; --------------------------------------------------------------------------------------------
 
-(defn- dashboard-param-chips
-  "Build the parameter chips to show at the top of the dashboard: top-level (non-inline) parameters
-  that have a value, formatted like the email filter bar via `value-string`. Each chip carries its
-  measured widths for layout. Requires `*fonts*` bound."
-  [params inline-ids]
+(defn- param-chips
+  "Build parameter chips for the given parameters: those carrying a non-blank formatted value
+  (via `value-string`, like the email filter bar). Each chip carries its measured widths for
+  layout. Requires `*fonts*` bound."
+  [params]
   (let [locale (system/site-locale)
         sep-w  (text-width (regular-font) param-pt ": ")]
     (vec (for [p     params
-               ;; only top-level (non-inline) parameters that actually have a value
-               :when (and (not (contains? inline-ids (:id p))) (some? (:value p)))
+               :when (some? (:value p))
                :let  [v (some-> (shared.params/value-string p locale) str str/trim)]
                :when (not (str/blank? v))
                :let  [nm (str (:name p))]]
@@ -1115,6 +1143,12 @@
             :name-w (text-width (bold-font) param-pt nm)
             :sep-w  sep-w
             :width  (+ (text-width (bold-font) param-pt nm) sep-w (text-width (regular-font) param-pt v))}))))
+
+(defn- dashboard-param-chips
+  "Chips for the dashboard-wide filter bar at the very top: only top-level (non-inline)
+  parameters. Inline parameters are rendered on their own card instead."
+  [params inline-ids]
+  (param-chips (remove #(contains? inline-ids (:id %)) params)))
 
 (defn- layout-param-chips
   "Greedily pack chips into lines fitting `content-w`, giving each an `:x` offset within the content
@@ -1129,6 +1163,18 @@
         (if (and (seq line) (> (+ line-w adv) content-w))
           (recur chips [] 0.0 (conj lines line))
           (recur (rest chips) (conj line (assoc c :x (+ line-w gap))) (+ line-w adv) lines))))))
+
+(defn- inline-param-lines
+  "Lay out a card's inline parameter chips, wrapping to `cell-w`. Returns layout lines."
+  [inline-params cell-w]
+  (layout-param-chips (param-chips inline-params) cell-w))
+
+(defn- inline-params-height
+  "Vertical points a card's inline parameter lines consume (0 when there are none)."
+  [param-lines]
+  (if (seq param-lines)
+    (+ (* (count param-lines) (* param-pt line-height-factor)) 4.0)
+    0.0))
 
 (defn- param-lines-rows
   "Whole grid rows the parameter bar consumes (0 when there are no params)."
@@ -1146,15 +1192,18 @@
   (.setNonStrokingColor cs Color/BLACK))
 
 (defn- draw-param-lines!
-  "Draw the parameter bar from `top-y`, returning the y below it."
-  [^PDPageContentStream cs param-lines top-y]
-  (loop [lines param-lines, y (double top-y)]
-    (if (empty? lines)
-      (- y 4.0)
-      (do
-        (doseq [chip (first lines)]
-          (draw-param-chip! cs (+ margin (:x chip)) (- y param-pt) chip))
-        (recur (rest lines) (- y (* param-pt line-height-factor)))))))
+  "Draw parameter chip lines from `top-y` (chips' `:x` offsets are relative to `base-x`, which
+  defaults to the page margin for the top filter bar). Returns the y below the block."
+  ([^PDPageContentStream cs param-lines top-y]
+   (draw-param-lines! cs param-lines top-y margin))
+  ([^PDPageContentStream cs param-lines top-y base-x]
+   (loop [lines param-lines, y (double top-y)]
+     (if (empty? lines)
+       (- y 4.0)
+       (do
+         (doseq [chip (first lines)]
+           (draw-param-chip! cs (+ (double base-x) (:x chip)) (- y param-pt) chip))
+         (recur (rest lines) (- y (* param-pt line-height-factor))))))))
 
 (defn- draw-header!
   [^PDPageContentStream cs page-height {:keys [dashboard-title tab-title param-lines]}]
@@ -1190,6 +1239,17 @@
       ;; re-attach the list so the /Annots array is written when the page has none yet
       (.setAnnotations pg annots))))
 
+(defn- with-cell-inline-params!
+  "Draw a virtual cell's content via `draw-content!` (a fn of the available content height),
+  reserving space at the bottom of the cell for its inline parameter chips and drawing them
+  there afterward -- mirroring how email renders a heading/text card's filters below it."
+  [^PDPageContentStream cs x top-y cell-w cell-h inline-params draw-content!]
+  (let [ip-lines (inline-param-lines inline-params cell-w)
+        iph      (inline-params-height ip-lines)]
+    (draw-content! (- (double cell-h) iph))
+    (when (seq ip-lines)
+      (draw-param-lines! cs ip-lines (- (double top-y) (- (double cell-h) iph)) x))))
+
 (defn- render-page!
   [^PDDocument doc {:keys [^PDRectangle rect unit]} timezone page]
   (let [pg            (PDPage. rect)
@@ -1209,8 +1269,10 @@
             (try
               (case (:kind cell)
                 :card    (render-card-cell! doc cs timezone (:part cell) x top-y cell-w cell-h)
-                :heading (draw-text-in-cell! cs (bold-font) heading-card-pt x top-y cell-w cell-h (:text cell))
-                :text    (draw-markdown-in-cell! doc cs x top-y cell-w cell-h (:text cell))
+                :heading (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
+                           #(draw-text-in-cell! cs (bold-font) heading-card-pt x top-y cell-w % (:text cell)))
+                :text    (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
+                           #(draw-markdown-in-cell! doc cs x top-y cell-w % (:text cell)))
                 nil)
               (catch Throwable e
                 (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
