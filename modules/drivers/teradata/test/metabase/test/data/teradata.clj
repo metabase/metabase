@@ -259,3 +259,7 @@
     ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)))
 
 (defmethod sql.tx/default-column-sql :teradata [_ _expr] nil)
+
+(defmethod tx/make-alias :teradata
+  [_driver alias]
+  (str "\"" alias "\""))

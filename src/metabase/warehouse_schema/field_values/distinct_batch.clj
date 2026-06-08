@@ -27,6 +27,7 @@
   chain-filter → params.field-values → field → field-values) would form a cycle if these
   requires lived in `metabase.warehouse-schema.models.field-values`."
   (:require
+   [clojure.string :as str]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
@@ -61,8 +62,11 @@
     ;; `:type/Decimal` derives from `:type/Float`, so it has to come first.
     (isa? base-type :type/Decimal) (try (bigdec s)
                                         (catch NumberFormatException _ s))
-    (isa? base-type :type/Float)   (try (Double/parseDouble s)
-                                        (catch NumberFormatException _ s))
+    ;; Weird  drivers like teradata return floats with spaces (e.g. "3.50000000000000E 000")
+    ;; so we need to remove those spaces before we attempt to parse it.
+    (isa? base-type :type/Float)   (let [flt (str/replace s #"\s+" "")]
+                                     (try (Double/parseDouble flt)
+                                          (catch NumberFormatException _ s)))
     :else                          s))
 
 (defn- table-honeysql
@@ -76,17 +80,20 @@
                        (h2x/identifier :table name))))
 
 (defn- cast-to-text-honeysql
-  "Driver-correct HoneySQL fragment for `CAST(col AS <driver's text type>)`."
-  [driver col-name]
+  "Driver-correct HoneySQL fragment for `CAST(<expr> AS <driver's text type>)`."
+  [driver expr]
   (sql.qp/->honeysql driver
                      (sql.qp/mbql-clause driver ::sql.qp/cast-to-text
-                                         (h2x/identifier :field col-name))))
+                                         expr)))
 
 (defn- build-arm
   "HoneySQL for one UNION arm."
   [driver table field]
-  (let [cast-expr (cast-to-text-honeysql driver (:name field))
-        inner     {:select   [[[:inline (:name field)] :field_name]
+  (let [cast-expr (cast-to-text-honeysql driver (h2x/identifier :field (:name field)))
+        ;; Weird drivers like teradata truncate to the length of the shortest literal
+        ;; with UNION ALL. A cast to an explicit type prevents this.
+        field-name (cast-to-text-honeysql driver (sql.qp/compiled (h2x/literal (:name field))))
+        inner     {:select   [[field-name :field_name]
                               [cast-expr :value_out]]
                    ;; `:from` wraps the identifier expression in an extra vector — `[[expr]]` so HoneySQL
                    ;; treats it as a single table expression rather than `[table alias …]`.
