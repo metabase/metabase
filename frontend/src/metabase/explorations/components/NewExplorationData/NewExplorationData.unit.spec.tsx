@@ -8,9 +8,8 @@ import {
   mockDimensionBlock,
   mockMetricBlock,
 } from "metabase/explorations/test-utils";
-import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import type { Timeline } from "metabase-types/api";
+import type { ExplorationMetric, Timeline } from "metabase-types/api";
 import { createMockTimeline } from "metabase-types/api/mocks";
 import {
   createMockMetric,
@@ -109,6 +108,24 @@ describe("NewExplorationData (Research plan)", () => {
         screen.queryByRole("button", { name: "Created At" }),
       ).not.toBeInTheDocument();
       expect(screen.getByText("Created At")).toBeInTheDocument();
+    });
+
+    it("expands a collapsed block when its (read-only) body is clicked", async () => {
+      setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+      });
+
+      // Collapsed: the dimension is a plain pill, not a toggle button.
+      expect(
+        screen.queryByRole("button", { name: "Created At" }),
+      ).not.toBeInTheDocument();
+
+      // Clicking the collapsed body expands the block.
+      await userEvent.click(screen.getByText("Created At"));
+
+      expect(
+        screen.getByRole("button", { name: "Created At" }),
+      ).toHaveAttribute("aria-pressed", "true");
     });
 
     it("expanding groups dimensions into source sections of toggle pills", async () => {

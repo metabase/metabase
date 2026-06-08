@@ -1,6 +1,7 @@
 import type {
   Exploration,
   ExplorationDocument,
+  ExplorationMetric,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryStatus,
@@ -20,13 +21,13 @@ import {
   dimensionBlockId,
   metricBlockId,
 } from "./hooks/useExplorationSelection";
-import type { ExplorationMetric } from "./types";
 
 export const METRIC_HEADING_ID = "metric:1";
 
 export interface MockSelectionOpts {
   blocks?: ExplorationBlock[];
   timelines?: Timeline[];
+  allTimelines?: Timeline[];
 }
 
 export function mockMetricBlock(
@@ -65,6 +66,7 @@ export function makeMockSelection(
 ): ExplorationSelection {
   const blocks = opts.blocks ?? [];
   const timelines = opts.timelines ?? [];
+  const allTimelines = opts.allTimelines ?? [];
 
   const metricBlockIds = new Set<ExplorationMetric["id"]>();
   const dimensionBlockIds = new Set<MetricDimension["id"]>();
@@ -107,10 +109,8 @@ export function makeMockSelection(
     blocks,
     metricBlockIds,
     dimensionBlockIds,
-    metrics,
-    dimensions,
     timelines,
-    allTimelines: [],
+    allTimelines,
     timelinesLoading: false,
     timelinesError: null,
     name: "",
@@ -121,8 +121,6 @@ export function makeMockSelection(
     setTimelines: jest.fn(),
     addMetric: jest.fn(),
     addDimension: jest.fn(),
-    toggleMetric: jest.fn(),
-    toggleDimension: jest.fn(),
     toggleTimeline: jest.fn(),
     addTimelinesById: jest.fn(),
     removeBlock: jest.fn(),

@@ -5,12 +5,12 @@ import { useGetExplorationDataQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
-import type { ExplorationMetric } from "metabase/explorations/types";
 import { Tabs } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   DimensionId,
   ExplorationDimensionGroup,
+  ExplorationMetric,
 } from "metabase-types/api";
 
 import {
@@ -42,7 +42,7 @@ export function AddDimensionsModal({
   onClose,
   selection,
 }: AddDimensionsModalProps) {
-  const { addDimension } = selection;
+  const { addDimension, dimensionBlockIds } = selection;
 
   const [tab, setTab] = useState<string>(ALL_TAB);
   const [search, setSearch] = useState("");
@@ -61,8 +61,8 @@ export function AddDimensionsModal({
       filterDimensionGroupsBySearch(
         response?.dimension_groups ?? [],
         debouncedSearch,
-      ),
-    [response, debouncedSearch],
+      ).filter((group) => !dimensionBlockIds.has(group.dimensions[0].id)),
+    [response, debouncedSearch, dimensionBlockIds],
   );
 
   const groupByHeadId = useMemo(() => {
@@ -88,7 +88,6 @@ export function AddDimensionsModal({
     return map;
   }, [response]);
 
-  // Type tabs are only worth showing when more than one type is present.
   const presentTypes = useMemo(() => {
     const present = new Set(groups.map(groupTypeKey));
     return DIMENSION_TYPE_ORDER.filter((key) => present.has(key));

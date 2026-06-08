@@ -19,13 +19,13 @@ export type ExplorationDimensionGroup = {
   dimensions: MetricDimension[];
 };
 
-type MetricWithDimensionIds = Metric & {
+export type ExplorationMetric = Metric & {
   dimension_ids: DimensionId[];
   in_library?: boolean;
 };
 
 export type GetExplorationDataResponse = {
-  metrics: MetricWithDimensionIds[];
+  metrics: ExplorationMetric[];
   dimension_groups: ExplorationDimensionGroup[];
 };
 

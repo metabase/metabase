@@ -1,8 +1,4 @@
-import type { CollectionId, DimensionId, Metric } from "metabase-types/api";
-
-export type ExplorationMetric = Metric & {
-  dimension_ids: DimensionId[]; // dimension_ids are required for explorations`
-};
+import type { CollectionId } from "metabase-types/api";
 
 export interface ExplorationCollection {
   id?: CollectionId;

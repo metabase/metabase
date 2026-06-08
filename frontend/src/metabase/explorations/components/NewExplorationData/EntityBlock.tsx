@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { getDimensionIcon } from "metabase/common/utils/columns";
 import type { DimensionBlock, MetricBlock } from "metabase/explorations/hooks";
-import type { ExplorationMetric } from "metabase/explorations/types";
 import {
   ActionIcon,
   Box,
@@ -16,6 +15,7 @@ import {
 import * as LibMetric from "metabase-lib/metric/core";
 import type {
   DimensionId,
+  ExplorationMetric,
   IconName,
   MetricDimension,
 } from "metabase-types/api";
@@ -89,7 +89,12 @@ export function EntityBlock({
           </ActionIcon>
         </Group>
       </Group>
-      <Box className={S.blockBody}>{children}</Box>
+      <Box
+        className={S.blockBody}
+        onClick={expanded ? undefined : onToggleExpand}
+      >
+        {children}
+      </Box>
     </Box>
   );
 }

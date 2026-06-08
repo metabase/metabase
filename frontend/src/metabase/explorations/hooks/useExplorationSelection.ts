@@ -12,15 +12,13 @@ import {
   getDefaultExplorationName,
   isInterestingDimension,
 } from "metabase/explorations/constants";
-import type {
-  ExplorationCollection,
-  ExplorationMetric,
-} from "metabase/explorations/types";
+import type { ExplorationCollection } from "metabase/explorations/types";
 import { useSelector } from "metabase/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   DimensionId,
   ExplorationDimensionGroup,
+  ExplorationMetric,
   MetricDimension,
   Timeline,
 } from "metabase-types/api";
@@ -79,8 +77,6 @@ export interface ExplorationSelection {
   metricBlockIds: Set<ExplorationMetric["id"]>;
   dimensionBlockIds: Set<DimensionId>;
 
-  metrics: ExplorationMetric[];
-  dimensions: MetricDimension[];
   timelines: Timeline[];
 
   allTimelines: Timeline[];
@@ -97,16 +93,6 @@ export interface ExplorationSelection {
 
   addMetric: (metric: ExplorationMetric, context: ToggleMetricContext) => void;
   addDimension: (
-    dimension: MetricDimension,
-    context: ToggleDimensionContext,
-  ) => void;
-
-  toggleMetric: (
-    metric: ExplorationMetric,
-    context: ToggleMetricContext,
-  ) => void;
-
-  toggleDimension: (
     dimension: MetricDimension,
     context: ToggleDimensionContext,
   ) => void;
@@ -224,32 +210,6 @@ export function useExplorationSelection(): ExplorationSelection {
     [],
   );
 
-  const toggleMetric = useCallback(
-    (metric: ExplorationMetric, { dimensionsById }: ToggleMetricContext) => {
-      const id = metricBlockId(metric.id);
-      setBlocks((prevBlocks) => {
-        if (prevBlocks.some((b) => b.id === id)) {
-          return prevBlocks.filter((b) => b.id !== id);
-        }
-        return [...prevBlocks, buildMetricBlock(metric, dimensionsById)];
-      });
-    },
-    [],
-  );
-
-  const toggleDimension = useCallback(
-    (dimension: MetricDimension, context: ToggleDimensionContext) => {
-      const id = dimensionBlockId(dimension.id);
-      setBlocks((prevBlocks) => {
-        if (prevBlocks.some((b) => b.id === id)) {
-          return prevBlocks.filter((b) => b.id !== id);
-        }
-        return [...prevBlocks, buildDimensionBlock(dimension, context)];
-      });
-    },
-    [],
-  );
-
   const toggleTimeline = useCallback((timeline: Timeline) => {
     setTimelines((prev) => {
       const isSelected = prev.some((t) => t.id === timeline.id);
@@ -345,50 +305,10 @@ export function useExplorationSelection(): ExplorationSelection {
     return ids;
   }, [blocks]);
 
-  const metrics = useMemo(() => {
-    const seen = new Set<ExplorationMetric["id"]>();
-    const out: ExplorationMetric[] = [];
-    for (const block of blocks) {
-      if (isMetricBlock(block)) {
-        if (!seen.has(block.metric.id)) {
-          seen.add(block.metric.id);
-          out.push(block.metric);
-        }
-      } else {
-        for (const metric of block.metrics) {
-          if (block.selectedMetricIds.has(metric.id) && !seen.has(metric.id)) {
-            seen.add(metric.id);
-            out.push(metric);
-          }
-        }
-      }
-    }
-    return out;
-  }, [blocks]);
-
-  const dimensions = useMemo(() => {
-    const seen = new Set<DimensionId>();
-    const out: MetricDimension[] = [];
-    for (const block of blocks) {
-      const fromBlock = isMetricBlock(block)
-        ? block.dimensions.filter((d) => block.selectedDimensionIds.has(d.id))
-        : block.groupDimensions;
-      for (const d of fromBlock) {
-        if (!seen.has(d.id)) {
-          seen.add(d.id);
-          out.push(d);
-        }
-      }
-    }
-    return out;
-  }, [blocks]);
-
   return {
     blocks,
     metricBlockIds,
     dimensionBlockIds,
-    metrics,
-    dimensions,
     timelines,
     allTimelines,
     timelinesLoading,
@@ -401,8 +321,6 @@ export function useExplorationSelection(): ExplorationSelection {
     setCollection,
     addMetric,
     addDimension,
-    toggleMetric,
-    toggleDimension,
     toggleTimeline,
     addTimelinesById,
     removeBlock,

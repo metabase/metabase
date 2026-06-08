@@ -1,5 +1,13 @@
+import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { Fragment, type ReactNode, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -21,7 +29,6 @@ export interface AddEntitiesModalItem {
   key: string;
   label: string;
   description?: string | null;
-  /** Section heading; a new header renders whenever this changes. */
   groupLabel?: string;
   interestingness?: number | null;
 }
@@ -38,6 +45,32 @@ export interface AddEntitiesModalProps {
   error?: unknown;
   onAdd: (keys: string[]) => void;
   tabs?: ReactNode;
+  selectedKeys?: Set<string>;
+  emptyState?: ReactNode;
+}
+
+type Row =
+  | { type: "header"; key: string; label: string }
+  | { type: "item"; key: string; item: AddEntitiesModalItem };
+
+const ROW_GAP = 8;
+const ESTIMATED_ROW_HEIGHT = 64;
+
+function toRows(items: AddEntitiesModalItem[]): Row[] {
+  const rows: Row[] = [];
+  let prevGroup: string | undefined;
+  for (const item of items) {
+    if (item.groupLabel != null && item.groupLabel !== prevGroup) {
+      rows.push({
+        type: "header",
+        key: `header:${item.groupLabel}`,
+        label: item.groupLabel,
+      });
+    }
+    prevGroup = item.groupLabel;
+    rows.push({ type: "item", key: item.key, item });
+  }
+  return rows;
 }
 
 export function AddEntitiesModal({
@@ -52,15 +85,18 @@ export function AddEntitiesModal({
   error,
   onAdd,
   tabs,
+  selectedKeys,
+  emptyState,
 }: AddEntitiesModalProps) {
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
-  // Every open starts with a clean slate.
+  const wasOpen = useRef(false);
   useEffect(() => {
-    if (opened) {
-      setChecked(new Set());
+    if (opened && !wasOpen.current) {
+      setChecked(new Set(selectedKeys));
     }
-  }, [opened]);
+    wasOpen.current = opened;
+  }, [opened, selectedKeys]);
 
   const toggle = (key: string) => {
     setChecked((prev) => {
@@ -79,6 +115,21 @@ export function AddEntitiesModal({
     onClose();
   };
 
+  const rows = useMemo(() => toRows(items), [items]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: useCallback(() => scrollRef.current, []),
+    estimateSize: useCallback(() => ESTIMATED_ROW_HEIGHT, []),
+    measureElement: useCallback(
+      (el: Element | null) =>
+        (el?.getBoundingClientRect().height ?? ESTIMATED_ROW_HEIGHT) + ROW_GAP,
+      [],
+    ),
+    overscan: 8,
+  });
+
   return (
     <Modal
       opened={opened}
@@ -95,59 +146,88 @@ export function AddEntitiesModal({
           leftSection={<Icon name="search" />}
         />
         {tabs}
-        <Box mih="20rem" mah="24rem" style={{ overflowY: "auto" }}>
+        <Box
+          ref={scrollRef}
+          mih="20rem"
+          mah="24rem"
+          style={{ overflowY: "auto" }}
+        >
           <LoadingAndErrorWrapper loading={Boolean(isLoading)} error={error}>
             {items.length === 0 ? (
-              <Text
-                c="text-secondary"
-                ta="center"
-                py="lg"
-              >{t`No results`}</Text>
+              (emptyState ?? (
+                <Text
+                  c="text-secondary"
+                  ta="center"
+                  py="lg"
+                >{t`No results`}</Text>
+              ))
             ) : (
-              <Stack gap="sm">
-                {items.map((item, index) => {
-                  const showHeader =
-                    item.groupLabel != null &&
-                    item.groupLabel !== items[index - 1]?.groupLabel;
-                  return (
-                    <Fragment key={item.key}>
-                      {showHeader && (
-                        <Text
-                          size="sm"
-                          fw="bold"
-                          c="text-secondary"
-                          mt={index === 0 ? 0 : "xs"}
-                        >
-                          {item.groupLabel}
-                        </Text>
-                      )}
-                      <Box
-                        component="label"
-                        className={cx(S.card, {
-                          [S.cardSelected]: checked.has(item.key),
-                        })}
-                        data-interestingness={item.interestingness || "null"}
+              <Box
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  height: virtualizer.getTotalSize(),
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = rows[virtualRow.index];
+                  const positioning = {
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                  } as const;
+
+                  if (row.type === "header") {
+                    return (
+                      <Text
+                        key={virtualRow.key}
+                        ref={virtualizer.measureElement}
+                        data-index={virtualRow.index}
+                        size="sm"
+                        fw="bold"
+                        c="text-secondary"
+                        pt="xs"
+                        style={positioning}
                       >
-                        <Checkbox
-                          checked={checked.has(item.key)}
-                          onChange={() => toggle(item.key)}
-                          aria-label={item.label}
-                        />
-                        <Stack gap={2} flex={1} miw={0}>
-                          <Text fw="bold" lh="1.25rem">
-                            {item.label}
+                        {row.label}
+                      </Text>
+                    );
+                  }
+
+                  const { item } = row;
+                  return (
+                    <Box
+                      key={virtualRow.key}
+                      ref={virtualizer.measureElement}
+                      data-index={virtualRow.index}
+                      component="label"
+                      className={cx(S.card, {
+                        [S.cardSelected]: checked.has(item.key),
+                      })}
+                      data-interestingness={item.interestingness || "null"}
+                      style={positioning}
+                    >
+                      <Checkbox
+                        checked={checked.has(item.key)}
+                        onChange={() => toggle(item.key)}
+                        aria-label={item.label}
+                      />
+                      <Stack gap={2} flex={1} miw={0}>
+                        <Text fw="bold" lh="1.25rem">
+                          {item.label}
+                        </Text>
+                        {item.description && (
+                          <Text size="sm" c="text-secondary">
+                            {item.description}
                           </Text>
-                          {item.description && (
-                            <Text size="sm" c="text-secondary">
-                              {item.description}
-                            </Text>
-                          )}
-                        </Stack>
-                      </Box>
-                    </Fragment>
+                        )}
+                      </Stack>
+                    </Box>
                   );
                 })}
-              </Stack>
+              </Box>
             )}
           </LoadingAndErrorWrapper>
         </Box>

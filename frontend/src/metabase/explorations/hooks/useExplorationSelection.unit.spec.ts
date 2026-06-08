@@ -2,9 +2,9 @@ import { act } from "@testing-library/react";
 
 import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import type { ExplorationMetric } from "metabase/explorations/types";
 import type {
   DimensionId,
+  ExplorationMetric,
   MetricDimension,
   Timeline,
 } from "metabase-types/api";
@@ -15,6 +15,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
+  type DimensionBlock,
   isMetricBlock,
   useExplorationSelection,
 } from "./useExplorationSelection";
@@ -79,8 +80,6 @@ describe("useExplorationSelection", () => {
         "dim-low",
       ]);
       expect([...block.selectedDimensionIds]).toEqual(["dim-high"]);
-      // Derived `dimensions` only exposes the selected subset.
-      expect(result.current.dimensions.map((d) => d.id)).toEqual(["dim-high"]);
     });
 
     it("selects all referenced dimensions when none are interesting", () => {
@@ -138,26 +137,6 @@ describe("useExplorationSelection", () => {
       });
 
       expect(result.current.blocks).toBe(blocksAfterFirst);
-    });
-  });
-
-  describe("toggleMetric", () => {
-    it("adds a metric block when absent and removes it when present", () => {
-      const dim = makeDim("dim-a", 0.9);
-      const metric = makeMetric(1, ["dim-a"]);
-      const dimensionsById = makeDimensionsById([dim]);
-
-      const { result } = renderSelection();
-
-      act(() => {
-        result.current.toggleMetric(metric, { dimensionsById });
-      });
-      expect(result.current.metricBlockIds.has(1)).toBe(true);
-
-      act(() => {
-        result.current.toggleMetric(metric, { dimensionsById });
-      });
-      expect(result.current.blocks).toEqual([]);
     });
   });
 
@@ -251,7 +230,9 @@ describe("useExplorationSelection", () => {
         result.current.toggleMetricSelected("dim:dim-a", 1);
       });
 
-      expect(result.current.metrics.map((m) => m.id)).toEqual([2]);
+      expect([
+        ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
+      ]).toEqual([2]);
     });
   });
 

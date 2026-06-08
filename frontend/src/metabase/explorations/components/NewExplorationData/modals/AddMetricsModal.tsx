@@ -25,7 +25,7 @@ export function AddMetricsModal({
   onClose,
   selection,
 }: AddMetricsModalProps) {
-  const { addMetric } = selection;
+  const { addMetric, metricBlockIds } = selection;
 
   const libraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const [tab, setTab] = useState<MetricsTab>(
@@ -53,7 +53,10 @@ export function AddMetricsModal({
     return map;
   }, [response]);
 
-  const metrics = useMemo(() => response?.metrics ?? [], [response]);
+  const metrics = useMemo(
+    () => (response?.metrics ?? []).filter((m) => !metricBlockIds.has(m.id)),
+    [response, metricBlockIds],
+  );
   const metricsById = useMemo(
     () => new Map(metrics.map((metric) => [metric.id, metric])),
     [metrics],

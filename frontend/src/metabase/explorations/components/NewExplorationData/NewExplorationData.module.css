@@ -25,7 +25,10 @@
   padding: 0.25rem 1rem 0.75rem;
 }
 
-/* Reveal the header controls only while hovering (or keyboard-focusing) the block. */
+.block:not([data-expanded]) .blockBody {
+  cursor: pointer;
+}
+
 .blockActions {
   opacity: 0;
   transition: opacity 0.1s ease-in-out;
@@ -36,7 +39,6 @@
   opacity: 1;
 }
 
-/* Match the expanded toggle-pill font size so pills don't shrink when collapsed. */
 .pill {
   padding: 0.5rem 0.75rem !important;
   font-size: 0.75rem;

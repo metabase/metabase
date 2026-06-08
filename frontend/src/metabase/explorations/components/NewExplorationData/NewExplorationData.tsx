@@ -10,7 +10,6 @@ import type {
   ExplorationSelection,
 } from "metabase/explorations/hooks";
 import { isMetricBlock } from "metabase/explorations/hooks";
-import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -29,6 +28,7 @@ import * as Urls from "metabase/urls";
 import type {
   CollectionId,
   CreateExplorationRequest,
+  ExplorationMetric,
   MetricDimension,
   Timeline,
 } from "metabase-types/api";
