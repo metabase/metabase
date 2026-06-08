@@ -6,7 +6,7 @@ import {
   isValidElement,
 } from "react";
 
-import { Breadcrumb } from "metabase/nav/components/CollectionBreadcrumbs/Breadcrumb";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { Box, Flex } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 

@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
@@ -13,7 +14,6 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 
-import { Breadcrumb } from "./Breadcrumb";
 import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
