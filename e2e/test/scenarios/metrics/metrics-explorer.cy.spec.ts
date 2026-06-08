@@ -1483,6 +1483,7 @@ describe("scenarios > metrics > explorer", () => {
     it("should only show shared dimensions by default for multiple metric sources", () => {
       addMetric("Count of feedback");
       cy.wait("@dataset");
+      verifyMetricCount(2);
 
       H.MetricsViewer.openDimensionPickerSidebar()
         .should("contain.text", "Shared dimensions")
@@ -1883,7 +1884,7 @@ describe("scenarios > metrics > explorer", () => {
 
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
-        73,
+        85,
       );
       H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /by month/i })
@@ -1891,7 +1892,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().findByText("Year").click();
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
-        8,
+        9,
       );
       H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /by year/i })
@@ -1942,7 +1943,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().findByRole("button", { name: "Clear" }).click();
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
-        73,
+        85,
       );
 
       H.expectUnstructuredSnowplowEvent({
