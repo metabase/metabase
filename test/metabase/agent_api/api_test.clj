@@ -8,6 +8,7 @@
    [java-time.api :as t]
    [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
@@ -447,8 +448,8 @@
 
 (deftest create-question-test
   (testing "Omitting collection_id saves to the caller's personal collection, not root"
-    (let [personal-id    (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
-          personal-name  (t2/select-one-fn :name :model/Collection :id personal-id)
+    (let [personal-id    (:id (collection/user->personal-collection (mt/user->id :rasta)))
+          personal-name  (collection/user->personal-collection-name (mt/user->id :rasta) :user)
           construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                {:query (orders-query :limit 10)})
           create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
@@ -519,8 +520,8 @@
         (is (= "Our analytics / Parent Coll / Child Coll" (:collection_path create-resp)))
         (t2/delete! :model/Card :id (:id create-resp)))))
   (testing "Personal-collection subtrees breadcrumb under the owner's personal collection, not Our analytics"
-    (let [personal-id    (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
-          personal-name  (t2/select-one-fn :name :model/Collection :id personal-id)
+    (let [personal-id    (:id (collection/user->personal-collection (mt/user->id :rasta)))
+          personal-name  (collection/user->personal-collection-name (mt/user->id :rasta) :user)
           construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                {:query (orders-query :limit 10)})
           create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
@@ -552,8 +553,8 @@
 
 (deftest create-dashboard-test
   (testing "Creates an empty dashboard, defaulting to the caller's personal collection"
-    (let [personal-id   (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
-          personal-name (t2/select-one-fn :name :model/Collection :id personal-id)
+    (let [personal-id   (:id (collection/user->personal-collection (mt/user->id :rasta)))
+          personal-name (collection/user->personal-collection-name (mt/user->id :rasta) :user)
           resp          (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
                                               {:name "Agent Test Dashboard"})]
       (is (=? {:id              pos?
