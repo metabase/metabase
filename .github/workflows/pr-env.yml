@@ -206,30 +206,6 @@ jobs:
           PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
           PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
           PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
-      - name: Disable notifications in restored app database
-        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
-        run: |
-          export PGPASSWORD="${PR_ENV_DB_PASSWORD}"
-          PSQL="psql -h ${PR_ENV_DB_HOST} -U ${PR_ENV_DB_USER} -d hosting_pr${{ github.event.number }} -v ON_ERROR_STOP=0 -c"
-          # Wipe each table independently so a missing table in an older dump doesn't abort the rest.
-          for table in \
-            pulse_channel_recipient \
-            pulse_channel \
-            pulse_card \
-            pulse \
-            notification_recipient \
-            notification_handler \
-            notification_card \
-            notification_subscription \
-            notification \
-            channel_template \
-            channel; do
-            $PSQL "TRUNCATE TABLE ${table} CASCADE;" || echo "Skipped ${table} (likely absent in this dump)."
-          done
-        env:
-          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
-          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
-          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
       - name: Mark database as stats-dump loaded
         if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
         run: |
@@ -262,7 +238,10 @@ jobs:
         env:
           MB_ENCRYPTION_SECRET_KEY: ${{ secrets.PR_ENV_STATS_DUMP_ENCRYPTION_KEY }}
         run: |
-          yq -i 'select(.kind == "Metabase").spec.configuration.envVars += [{"name": "MB_ENCRYPTION_SECRET_KEY", "value": strenv(MB_ENCRYPTION_SECRET_KEY)}]' ./metabase.yml
+          yq -i 'select(.kind == "Metabase").spec.configuration.envVars += [
+                   {"name": "MB_ENCRYPTION_SECRET_KEY", "value": strenv(MB_ENCRYPTION_SECRET_KEY)},
+                   {"name": "MB_DISABLE_SCHEDULER",    "value": "true"}
+                 ]' ./metabase.yml
       - name: Create OIDC Token
         id: create-oidc-token
         shell: bash
