@@ -1272,6 +1272,13 @@
       -- c3"
       "(SELECT ';')")))
 
+(deftest ^:parallel make-nestable-sql-no-superlinear-backtracking-test
+  (testing "Stripping trailing comments/semicolons completes in linear time, without catastrophic backtracking"
+    (let [sql (str "SELECT 1;\n"
+                   (apply str (repeat 20000 "-- a comment line\n"))
+                   "SELECT 2")]
+      (is (= (str "(" sql ")") (sql.qp/make-nestable-sql sql))))))
+
 (deftest ^:parallel string-inline-value-test
   (testing `String
     (let [honeysql {:select [[:%count.*]]
