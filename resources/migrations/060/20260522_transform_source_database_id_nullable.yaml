@@ -5,7 +5,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v60.2026-05-22T11:00:00
+      id: v60.5vvn7090z6
       author: bronsa
       comment: Make transform.source_database_id nullable
       changes:
@@ -15,7 +15,7 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
-      id: v60.2026-05-22T11:00:01
+      id: v60.sobugdkwux
       author: bronsa
       comment: Drop fk_tranform_source_database_id (recreated next with ON DELETE SET NULL)
       changes:
@@ -31,7 +31,7 @@ databaseChangeLog:
             constraintName: fk_tranform_source_database_id
 
   - changeSet:
-      id: v60.2026-05-22T11:00:02
+      id: v60.n6ngozcd0c
       author: bronsa
       comment: Recreate fk_tranform_source_database_id with ON DELETE SET NULL
       changes:
