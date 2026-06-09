@@ -30,7 +30,7 @@
 
 (deftest compute-emits-exactly-the-registry-metrics-test
   (testing "metrics/compute's output keys are exactly the registry vocabulary"
-    (let [out (metrics/compute {:sets        {:Q {} :D {} :I {} :H {}}
+    (let [out (metrics/compute {:sets        {:authored {} :discovered {} :inspected {} :hallucinated {}}
                                 :tool-events []
                                 :temporal    {:terminal-state :final_response}}
                                {})]

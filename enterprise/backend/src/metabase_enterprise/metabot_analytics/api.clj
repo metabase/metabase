@@ -190,8 +190,8 @@
   return each message's raw `data` part stream.
 
   Temporary diagnostic surface for the conversation-quality-score work
-  (BOT-1515); mirrors `scripts/quality_score_dump.py` for instances without
-  direct appdb access."
+  (BOT-1515); mirrors the `dump_quality_score.py` pretty-printer attached to
+  PR #74920 for instances without direct appdb access."
   [{:keys [id]} :- ConversationIdParams
    {:keys [include_data]} :- QualityQueryParams]
   (api/check-superuser)

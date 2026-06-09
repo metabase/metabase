@@ -3,8 +3,8 @@
   [[metabase.metabot.quality.extract/normalize]]. Pure — given the
   normalized struct it returns the same struct enriched with:
 
-  - `:t-first-used` populated on each CONV_Q atom record (`extract.clj`
-    leaves it `nil`).
+  - `:t-first-used` populated on each authored-set atom record
+    (`extract.clj` leaves it `nil`).
   - A top-level `:temporal` block with `:iterations` and `:terminal-state`.
 
   Message-row `:data` parts come back through `mi/transform-json`, so part
@@ -22,28 +22,28 @@
 ;;; t-first-used population
 ;;; ---------------------------------------------------------------------------
 
-(defn- min-q-iteration
-  "Min iteration across the atom's `:Q`-tagged provenance entries.
-  Returns `nil` if the atom isn't a CONV_Q member or none of its Q
-  provenance entries carry an iteration."
+(defn- min-authored-iteration
+  "Min iteration across the atom's `:authored`-tagged provenance entries.
+  Returns `nil` if the atom isn't an authored-set member or none of its
+  authored provenance entries carry an iteration."
   [atom-rec]
   (let [iters (for [{prov-set :set :keys [iteration]} (:provenance atom-rec)
-                    :when (= :Q prov-set)
+                    :when (= :authored prov-set)
                     :when (some? iteration)]
                 iteration)]
     (when (seq iters) (apply min iters))))
 
 (defn- populate-t-first-used
-  "Walk CONV_Q atoms and set each one's `:t-first-used`. Non-Q sets are
-  left untouched — by contract `:t-first-used` is only meaningful for
-  atoms that the agent actually authored against."
+  "Walk the authored-set atoms and set each one's `:t-first-used`. Other
+  sets are left untouched — by contract `:t-first-used` is only
+  meaningful for atoms that the agent actually authored against."
   [sets]
-  (update sets :Q
-          (fn [q-map]
+  (update sets :authored
+          (fn [authored-map]
             (reduce-kv (fn [acc k atom-rec]
-                         (assoc acc k (assoc atom-rec :t-first-used (min-q-iteration atom-rec))))
+                         (assoc acc k (assoc atom-rec :t-first-used (min-authored-iteration atom-rec))))
                        {}
-                       q-map))))
+                       authored-map))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Iteration count
@@ -51,7 +51,7 @@
 
 (defn- compute-iterations
   "Total iteration count for the conversation: `(inc (max iteration-index))`.
-  Defaults to `0` for an empty tool-events stream so pre-foundation
+  Defaults to `0` for an empty tool-events stream so pre-instrumentation
   conversations don't crash here."
   [tool-events]
   (let [iters (keep :iteration-index tool-events)]
@@ -136,8 +136,8 @@
 
 (defn derive
   "Given a normalized struct from `extract/normalize`, return the same
-  struct with `:t-first-used` populated on each CONV_Q atom record and a
-  new `:temporal` block:
+  struct with `:t-first-used` populated on each authored-set atom record
+  and a new `:temporal` block:
 
   ```clojure
   {:iterations     Long
@@ -155,7 +155,7 @@
 
 (comment
   ;; Round-trip an extract output through derive — verify the :temporal block
-  ;; lands and Q-atom :t-first-used is populated.
+  ;; lands and authored-atom :t-first-used is populated.
   (require '[metabase.metabot.quality.extract :as extract])
   (-> (extract/normalize [])
       derive

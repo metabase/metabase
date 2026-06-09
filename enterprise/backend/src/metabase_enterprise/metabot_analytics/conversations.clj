@@ -257,8 +257,8 @@
   part stream (the `--timeline` source). 404s if no conversation matches.
 
   Temporary diagnostic surface for the conversation-quality-score work
-  (BOT-1515); mirrors `scripts/quality_score_dump.py` for instances
-  without direct appdb access. The JSON columns are decoded by the model
+  (BOT-1515); mirrors the `dump_quality_score.py` pretty-printer attached
+  to PR #74920 for instances without direct appdb access. The JSON columns are decoded by the model
   `deftransforms`, so the values returned here are already parsed."
   [conversation-id {:keys [include-data?]}]
   (let [conversation (t2/select-one [:model/MetabotConversation

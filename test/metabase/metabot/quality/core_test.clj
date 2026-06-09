@@ -21,7 +21,7 @@
   body and no `:context` kwarg, so the resulting conversation carries no
   prompt-context block, no entity-usage, and no `terminal_state` part —
   none of the three foundation signals. Scoring it routes through the
-  `pre-foundation` sentinel."
+  `pre-instrumentation` sentinel."
   []
   (let [conversation-id (str (random-uuid))]
     (mt/with-current-user (mt/user->id :rasta)
@@ -119,24 +119,24 @@
 ;;; Sentinel paths
 ;;; ---------------------------------------------------------------------------
 
-(deftest score-conversation-pre-foundation-writes-sentinel-test
+(deftest score-conversation-pre-instrumentation-writes-sentinel-test
   (testing "a conversation with no entity-usage and no prompt-context routes to
-            the pre-foundation sentinel — quality_score stays NULL"
+            the pre-instrumentation sentinel — quality_score stays NULL"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
       (let [{:keys [conversation-id]} (finalize-once!)
             conversation              (t2/select-one :model/MetabotConversation
                                                      :id conversation-id)
             breakdown                 (:quality_breakdown conversation)]
         (is (nil? (:quality_score conversation))
-            "pre-foundation leaves the composite NULL — there's nothing to score against")
+            "pre-instrumentation leaves the composite NULL — there's nothing to score against")
         (is (= quality.constants/quality-score-version (:version breakdown)))
-        (is (= "pre-foundation" (:unscoreable breakdown))
+        (is (= "pre-instrumentation" (:unscoreable breakdown))
             "sentinel reason marks the row 'tried; do not retry tomorrow' for the backfill task")
         (is (nil? (mr/explain ::quality.schema/breakdown breakdown))
             "the persisted sentinel conforms to the breakdown schema")))))
 
-(deftest score-conversation-pre-foundation-encoded-as-valid-json-test
-  (testing "pre-foundation sentinel is JSON-encoded at the DB layer and decodes back into a Clojure map"
+(deftest score-conversation-pre-instrumentation-encoded-as-valid-json-test
+  (testing "pre-instrumentation sentinel is JSON-encoded at the DB layer and decodes back into a Clojure map"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
       (let [{:keys [conversation-id]} (finalize-once!)
             raw-row                   (first (t2/query {:select [:quality_breakdown]
@@ -145,7 +145,7 @@
         (is (string? (:quality_breakdown raw-row))
             "column holds a JSON-encoded string at the DB layer")
         (is (= {:version     quality.constants/quality-score-version
-                :unscoreable "pre-foundation"}
+                :unscoreable "pre-instrumentation"}
                (json/decode+kw (:quality_breakdown raw-row))))))))
 
 (deftest score-conversation-instrumented-pure-chat-is-scoreable-test
@@ -161,7 +161,7 @@
         (is (= 1.0 score))
         (is (= 1.0 (:quality_score row)))
         (is (nil? (:unscoreable breakdown))
-            "a real breakdown is written, not a pre-foundation sentinel")
+            "a real breakdown is written, not a pre-instrumentation sentinel")
         (is (= 1.0 (:quality_score breakdown))
             "composite surfaces as the headline quality_score inside the breakdown")
         (is (= 1.0 (get-in breakdown [:subscores :execution_health :value])))
@@ -212,6 +212,92 @@
                   "message data UPDATE committed despite scoring throw")
               (is (true? (:finished row))
                   "finished flag flipped from NULL placeholder to true"))))))))
+
+(deftest score-conversation-ignores-soft-deleted-messages-test
+  (testing "soft-deleted messages contribute no evidence to the score — an
+            errored tool call stops counting once its message is deleted"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (seed-scoreable-conversation!)
+            errored-msg-id  (t2/insert-returning-pk!
+                             :model/MetabotMessage
+                             {:conversation_id conversation-id
+                              :role            :assistant
+                              :profile_id      "internal"
+                              :external_id     (str (random-uuid))
+                              :total_tokens    0
+                              :ai_proxied      false
+                              :finished        true
+                              :data            [{:type "tool-input" :id "c2"
+                                                 :function "search" :arguments {}}
+                                                {:type     "tool-output" :id "c2"
+                                                 :function "search"
+                                                 :error    "simulated tool failure"
+                                                 :result   {:structured-output
+                                                            {:entity-usage {:input [] :output []}}}}]})
+            failure-rate    (fn []
+                              (quality.core/score-conversation! conversation-id)
+                              (-> (t2/select-one :model/MetabotConversation :id conversation-id)
+                                  :quality_breakdown
+                                  (get-in [:subscores :execution_health :metrics :tool_call_failure_rate])))]
+        (is (= 0.5 (failure-rate))
+            "one of two tool calls errored — failure rate counts the errored call")
+        (t2/update! :model/MetabotMessage errored-msg-id {:deleted_at :%now})
+        (is (= 0.0 (failure-rate))
+            "after soft-deleting the errored message, the failure no longer counts")))))
+
+(deftest scoring-sql-failure-does-not-roll-back-message-update-test
+  (testing "a SQL-level failure inside the scoring UPDATEs cannot take the
+            user-visible message UPDATE with it — scoring runs after the
+            finalize transaction commits"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            orig-update!    t2/update!]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [assistant-msg-id]}
+                (metabot.persistence/start-turn!
+                 conversation-id "metabot-1"
+                 {:role "user" :content "go"})]
+            (mt/with-log-level [metabase.metabot.quality.core :fatal]
+              (with-redefs [t2/update! (fn [& args]
+                                         ;; fail only the scoring writes — the
+                                         ;; conversation-row update is the only one
+                                         ;; whose changes carry :quality_breakdown
+                                         (let [changes (last args)]
+                                           (if (and (map? changes) (contains? changes :quality_breakdown))
+                                             (throw (java.sql.SQLException. "simulated scoring SQL failure"))
+                                             (apply orig-update! args))))]
+                (metabot.persistence/finalize-assistant-turn!
+                 conversation-id assistant-msg-id
+                 [{:type :text :text "Hello"}])))
+            (let [row (t2/select-one :model/MetabotMessage assistant-msg-id)]
+              (is (= [{:type "text" :text "Hello"}] (:data row))
+                  "message data UPDATE committed despite the scoring SQL failure")
+              (is (true? (:finished row))
+                  "finished flag flipped from NULL placeholder to true"))
+            (is (nil? (:quality_breakdown (t2/select-one :model/MetabotConversation :id conversation-id)))
+                "the failed scoring write left no partial breakdown behind")))))))
+
+(deftest sentinel-clears-stale-attribution-test
+  (testing "when a re-score routes to a sentinel, attribution written by an
+            earlier clean score is nulled out — an unscoreable conversation's
+            messages must not carry stale scores"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (seed-scoreable-conversation!)]
+        (quality.core/score-conversation! conversation-id)
+        (is (some? (t2/select-one-fn :quality_attribution :model/MetabotMessage
+                                     :conversation_id conversation-id
+                                     :role :assistant))
+            "clean score writes attribution on the assistant row")
+        (mt/with-log-level [metabase.metabot.quality.core :fatal]
+          (with-redefs [quality.extract/normalize (fn [_] (throw (ex-info "boom" {})))]
+            (is (= :sentinel (quality.core/score-conversation! conversation-id)))))
+        (is (every? nil? (t2/select-fn-vec :quality_attribution :model/MetabotMessage
+                                           :conversation_id conversation-id))
+            "sentinel write nulls attribution on every message row")
+        (is (= "extract-error"
+               (-> (t2/select-one :model/MetabotConversation :id conversation-id)
+                   :quality_breakdown
+                   :unscoreable)))))))
 
 (deftest score-conversation-inner-guard-swallows-throw-returns-nil-test
   (testing "inner try/catch in score-conversation! returns nil rather than

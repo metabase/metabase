@@ -81,5 +81,5 @@
   "Legal `:unscoreable` sentinel reasons, by purpose. A conversation the
   pipeline declines to score writes one of these and leaves `quality_score`
   NULL."
-  {:pre-foundation "pre-foundation"
-   :extract-error  "extract-error"})
+  {:pre-instrumentation "pre-instrumentation"
+   :extract-error       "extract-error"})

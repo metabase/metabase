@@ -132,15 +132,16 @@
   entities inherit authored-set provenance by extract's set arithmetic, so
   the lookup is straightforward."
   [normalized call-id->msg]
-  (for [y       (vals (get-in normalized [:sets :H]))
-        :let    [q-prov (first-provenance-in-set y :Q)
-                 msg-id (when q-prov (get call-id->msg (:call-id q-prov)))]
-        :when   msg-id]
+  (for [atom-rec (vals (get-in normalized [:sets :hallucinated]))
+        :let     [authored-prov (first-provenance-in-set atom-rec :authored)
+                  msg-id        (when authored-prov
+                                  (get call-id->msg (:call-id authored-prov)))]
+        :when    msg-id]
     [msg-id
      (observable
       "hallucinated_ref"
-      {:entity  (entity-ref-of y)
-       :context {:tool_call (:call-id q-prov)}})]))
+      {:entity  (entity-ref-of atom-rec)
+       :context {:tool_call (:call-id authored-prov)}})]))
 
 (defn- tool-error-observables
   "For each errored tool-event, emit `tool-error` on the turn where the
@@ -276,6 +277,8 @@
 
 (comment
   ;; Pure exercise — empty conversation, no observables, no assistant rows.
-  (project {:messages [] :tool-events [] :sets {:P {} :D {} :Q {} :I {} :H {}}
+  (project {:messages [] :tool-events []
+            :sets {:prompt-context {} :discovered {} :authored {}
+                   :inspected {} :hallucinated {}}
             :temporal {:terminal-state :final_response}}
            {}))

@@ -25,13 +25,18 @@
   (into {} (map (fn [a] [(entity-key (:type a) (:id a)) a])) atoms))
 
 (defn- normalized
-  "Minimal normalized struct. `metrics/compute` reads the discovered
-  (`:D`), authored (`:Q`), inspected (`:I`), and hallucinated (`:H`) sets,
-  `:tool-events`, and the temporal terminal-state. Defaults to a clean
-  exit so grounding / failure-rate tests don't have to set it."
-  [& {:keys [D Q I H tool-events terminal-state]
-      :or   {D [] Q [] I [] H [] tool-events [] terminal-state :model_signaled_done}}]
-  {:sets        {:P {} :D (set-of D) :Q (set-of Q) :I (set-of I) :H (set-of H)}
+  "Minimal normalized struct. `metrics/compute` reads the `:discovered`,
+  `:authored`, `:inspected`, and `:hallucinated` sets, `:tool-events`,
+  and the temporal terminal-state. Defaults to a clean exit so
+  grounding / failure-rate tests don't have to set it."
+  [& {:keys [discovered authored inspected hallucinated tool-events terminal-state]
+      :or   {discovered [] authored [] inspected [] hallucinated []
+             tool-events [] terminal-state :model_signaled_done}}]
+  {:sets        {:prompt-context {}
+                 :discovered     (set-of discovered)
+                 :authored       (set-of authored)
+                 :inspected      (set-of inspected)
+                 :hallucinated   (set-of hallucinated)}
    :tool-events tool-events
    :temporal    {:terminal-state terminal-state}})
 
@@ -64,19 +69,19 @@
 (deftest grounding-zero-when-sole-authored-entity-ungrounded-test
   (testing "a single authored entity that was never surfaced → grounding 0.0"
     (let [a (atom-rec "card" 1)]
-      (is (= 0.0 (:grounded-source-share (metrics/compute (normalized :Q [a] :H [a]) {})))))))
+      (is (= 0.0 (:grounded-source-share (metrics/compute (normalized :authored [a] :hallucinated [a]) {})))))))
 
 (deftest grounding-is-one-minus-ungrounded-fraction-test
   (testing "grounding = 1 - |never-surfaced| / |authored|"
     ;; 1 of 20 authored entities ungrounded → 1 - 1/20 = 0.95
     (let [qs (for [i (range 20)] (atom-rec "card" i))
           h  [(atom-rec "card" 0)]]
-      (is (= 0.95 (:grounded-source-share (metrics/compute (normalized :Q qs :H h) {})))))))
+      (is (= 0.95 (:grounded-source-share (metrics/compute (normalized :authored qs :hallucinated h) {})))))))
 
 (deftest grounding-one-when-everything-surfaced-test
   (testing "every authored entity was surfaced → grounding 1.0"
     (let [qs (for [i (range 5)] (atom-rec "card" i))]
-      (is (= 1.0 (:grounded-source-share (metrics/compute (normalized :Q qs :H []) {})))))))
+      (is (= 1.0 (:grounded-source-share (metrics/compute (normalized :authored qs :hallucinated []) {})))))))
 
 (deftest grounding-keeps-fields-in-denominator-test
   (testing "field-type authored entities count in the grounding denominator —
@@ -84,7 +89,7 @@
     ;; authored {field 1, card 2}; ungrounded {field 1} → 1 - 1/2 = 0.5
     (let [f (atom-rec "field" 1)
           c (atom-rec "card" 2)]
-      (is (= 0.5 (:grounded-source-share (metrics/compute (normalized :Q [f c] :H [f]) {})))))))
+      (is (= 0.5 (:grounded-source-share (metrics/compute (normalized :authored [f c] :hallucinated [f]) {})))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Tool-call failure rate
@@ -144,20 +149,20 @@
   (testing "every authored data source is canonical → share 1.0"
     (let [g (gov {["card" 1] canonical-facts ["card" 2] canonical-facts})]
       (is (= 1.0 (:canonical-source-share
-                  (metrics/compute (normalized :Q [(atom-rec "card" 1) (atom-rec "card" 2)]) g)))))))
+                  (metrics/compute (normalized :authored [(atom-rec "card" 1) (atom-rec "card" 2)]) g)))))))
 
 (deftest canonical-source-share-zero-when-none-canonical-test
   (testing "no authored data source is canonical → share 0.0"
     (let [g (gov {["card" 1] uncanonical-facts})]
       (is (= 0.0 (:canonical-source-share
-                  (metrics/compute (normalized :Q [(atom-rec "card" 1)]) g)))))))
+                  (metrics/compute (normalized :authored [(atom-rec "card" 1)]) g)))))))
 
 (deftest canonical-source-share-absent-from-governance-counts-non-canonical-test
   (testing "an authored card the appdb can't resolve counts as non-canonical"
     ;; one canonical, one absent from governance → 1 of 2 → 0.5
     (let [g (gov {["card" 1] canonical-facts})]
       (is (= 0.5 (:canonical-source-share
-                  (metrics/compute (normalized :Q [(atom-rec "card" 1) (atom-rec "card" 2)]) g)))))))
+                  (metrics/compute (normalized :authored [(atom-rec "card" 1) (atom-rec "card" 2)]) g)))))))
 
 (deftest canonical-source-share-na-on-empty-authored-set-test
   (testing "nothing authored → share is N/A"
@@ -168,7 +173,7 @@
             field) has an empty data-source denominator → N/A, never a
             divide-by-zero"
     (is (= :na (:canonical-source-share
-                (metrics/compute (normalized :Q [(atom-rec "field" 1)]) {}))))))
+                (metrics/compute (normalized :authored [(atom-rec "field" 1)]) {}))))))
 
 (deftest canonical-source-share-excludes-fields-from-denominator-test
   (testing "field-type authored entities are excluded from both sides — a
@@ -177,7 +182,7 @@
     ;; authored {field 1, card 2 (canonical)}; field excluded → 1 of 1 → 1.0
     (let [g (gov {["card" 2] canonical-facts})]
       (is (= 1.0 (:canonical-source-share
-                  (metrics/compute (normalized :Q [(atom-rec "field" 1) (atom-rec "card" 2)]) g)))))))
+                  (metrics/compute (normalized :authored [(atom-rec "field" 1) (atom-rec "card" 2)]) g)))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Search Efficiency

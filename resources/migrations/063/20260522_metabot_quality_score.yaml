@@ -2,7 +2,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v62.2026-05-22T10:00:00
+      id: v63.2026-05-22T10:00:00
       author: tylerplude
       comment: Add quality_score column to metabot_conversation
       changes:
@@ -17,7 +17,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.2026-05-22T10:00:01
+      id: v63.2026-05-22T10:00:01
       author: tylerplude
       comment: Add quality_breakdown JSON column to metabot_conversation
       changes:
@@ -27,12 +27,12 @@ databaseChangeLog:
               - column:
                   name: quality_breakdown
                   type: ${text.type}
-                  remarks: JSON-encoded breakdown of the composite — version, subscore vector (incl. N/A markers), per-concern-signal magnitudes, set cardinalities, termination, context.
+                  remarks: JSON-encoded breakdown of the composite — version, quality_score, per-subscore metric values (null = not applicable), and diagnostics (counts, termination, entity counts). Unscoreable conversations get a sentinel {version, unscoreable} payload.
                   constraints:
                     nullable: true
 
   - changeSet:
-      id: v62.2026-05-22T10:00:02
+      id: v63.2026-05-22T10:00:02
       author: tylerplude
       comment: Add quality_attribution JSON column to metabot_message
       changes:

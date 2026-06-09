@@ -1,8 +1,8 @@
 (ns metabase.metabot.quality.extract
-  "Layer 1 of the conversation-quality pipeline. Pure: given the
-  `MetabotMessage` rows for a conversation, produces the normalized struct
-  every later layer (governance / temporal / metrics / subscores /
-  attribution) consumes.
+  "Normalization — the first stage of the conversation-quality pipeline.
+  Pure: given the `MetabotMessage` rows for a conversation, produces the
+  normalized struct every later stage (governance / temporal / metrics /
+  subscores / attribution) consumes.
 
   The high-level shape returned by [[normalize]]:
 
@@ -14,8 +14,9 @@
    :tool-events     [{:call-id :function :tool-type :arguments
                       :iteration-index :input :output :error :artifact-valid
                       :duration-ms} ...]
-   :prompt-context  {:P [<entity-ref>...]}
-   :sets            {:P {[type id-str] <atom>} :D ... :Q ... :I ... :H ...}}
+   :prompt-context  {:entries [<entity-ref>...]}
+   :sets            {:prompt-context {[type id-str] <atom>}
+                     :discovered ... :authored ... :inspected ... :hallucinated ...}}
   ```
 
   Two conventions to keep in mind when reading this namespace:
@@ -281,8 +282,8 @@
   "Walk assistant rows in order, threading iteration state through each
   one's `:data`. Returns `[{row :annotated-parts :first-iter} ...]`.
   `:first-iter` is the iteration assigned to the first LLM-emitted part
-  of that row — what CONV_P entities from the *preceding* user row
-  should claim as their iteration-index.
+  of that row — what prompt-context entities from the *preceding* user
+  row should claim as their iteration-index.
 
   Cross-row boundary: every new assistant row is itself a new LLM call,
   so the second row onward starts with `:start-phase :output`. That way
@@ -350,11 +351,12 @@
 
 (defn- build-prompt-context
   "Union the three sub-channels across all user rows in the conversation
-  into a single `:P` list. Each entry carries `::channel` and
+  into a single entry list. Each entry carries `::channel` and
   `::iteration` (the *following* assistant row's first iteration — the
   LLM saw the prompt-context at the start of that row's first LLM
   call); both are stripped from the public `:prompt-context` projection
-  but the set-construction reducer reads them when populating CONV_P."
+  but the set-construction reducer reads them when populating the
+  prompt-context set."
   [user-rows->next-iter]
   (vec
    (for [[user-row next-iter] user-rows->next-iter
@@ -399,62 +401,64 @@
 
 (defn- accumulate-tool-events
   "Reduce over tool-events, inserting their entity refs into the
-  appropriate sets. Returns `{:D <map> :Q <map> :I <map>}`. `:hybrid`
-  inputs go into `:I` (the agent fetching details about a known entity);
-  `:hybrid` outputs go into `:D` (the listing is a discovery surface).
-  `:authoring` outputs are empty by construction (`entity-usage`
-  guarantees this for the authoring tool-type)."
+  appropriate sets. Returns `{:discovered <map> :authored <map>
+  :inspected <map>}`. `:hybrid` inputs go into `:inspected` (the agent
+  fetching details about a known entity); `:hybrid` outputs go into
+  `:discovered` (the listing is a discovery surface). `:authoring`
+  outputs are empty by construction (`entity-usage` guarantees this for
+  the authoring tool-type)."
   [tool-events]
   (reduce
    (fn [sets {:keys [call-id tool-type iteration-index input output]}]
      (let [base    {:call-id call-id :iteration iteration-index}
-           push    (fn [set-key entries set-tag]
+           push    (fn [set-key entries]
                      (reduce (fn [s entry]
                                (conj-entity s entry
                                             (-> base
-                                                (assoc :set set-tag
+                                                (assoc :set set-key
                                                        :metadata (entity-usage-meta entry)))))
                              (get sets set-key)
                              entries))]
        (cond-> sets
          (#{:discovery :hybrid} tool-type)
-         (assoc :D (push :D output :D))
+         (assoc :discovered (push :discovered output))
 
          (= :authoring tool-type)
-         (assoc :Q (push :Q
-                         (remove #(= "database" (:type %)) input)
-                         :Q))
+         (assoc :authored (push :authored
+                                (remove #(= "database" (:type %)) input)))
 
          (#{:inspection :hybrid} tool-type)
-         (assoc :I (push :I input :I)))))
-   {:D {} :Q {} :I {}}
+         (assoc :inspected (push :inspected input)))))
+   {:discovered {} :authored {} :inspected {}}
    tool-events))
 
 (defn- accumulate-prompt-context
-  "Reduce CONV_P union entries into the `:P` set, with provenance entries
-  capturing which sub-channel sourced each ref."
+  "Reduce the prompt-context union entries into the `:prompt-context`
+  set, with provenance entries capturing which sub-channel sourced each
+  ref."
   [prompt-context-entries]
   (reduce
    (fn [p {::keys [channel iteration] :as entry}]
      (conj-entity p
                   (dissoc entry ::channel ::iteration)
-                  {:set       :P
+                  {:set       :prompt-context
                    :call-id   nil
                    :iteration iteration
                    :metadata  {:channel channel}}))
    {}
    prompt-context-entries))
 
-(defn- derive-conv-H
-  "CONV_H = CONV_Q \\ (CONV_P U CONV_D) by entity-key set arithmetic. The
-  H atoms inherit their provenance from the Q atoms — when a Q ref is
-  later proven grounded (e.g. by free-form prompt-text extraction
-  moving it into P), the same provenance carries forward."
-  [{:keys [P D Q]}]
-  (let [grounded-keys (set/union (set (keys P)) (set (keys D)))]
+(defn- derive-hallucinated
+  "hallucinated = authored \\ (prompt-context U discovered) by entity-key
+  set arithmetic. The hallucinated atoms inherit their provenance from
+  the authored atoms — when an authored ref is later proven grounded
+  (e.g. by free-form prompt-text extraction moving it into the
+  prompt-context set), the same provenance carries forward."
+  [{:keys [prompt-context discovered authored]}]
+  (let [grounded-keys (set/union (set (keys prompt-context)) (set (keys discovered)))]
     (into {}
           (remove (fn [[k _]] (contains? grounded-keys k)))
-          Q)))
+          authored)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public surface
@@ -486,12 +490,12 @@
         tool-events            (pair-events annotated-parts)
         user-rows->next-iter   (pair-user-rows-with-next-iter ordered assistant-rows)
         prompt-context-entries (build-prompt-context user-rows->next-iter)
-        sets-without-H         (-> (accumulate-tool-events tool-events)
-                                   (assoc :P (accumulate-prompt-context prompt-context-entries)))
-        sets                   (assoc sets-without-H :H (derive-conv-H sets-without-H))]
+        grounding-sets         (-> (accumulate-tool-events tool-events)
+                                   (assoc :prompt-context (accumulate-prompt-context prompt-context-entries)))
+        sets                   (assoc grounding-sets :hallucinated (derive-hallucinated grounding-sets))]
     (merge (conversation-metadata ordered)
            {:messages       ordered
             :tool-events    tool-events
-            :prompt-context {:P (mapv #(dissoc % ::channel ::iteration)
-                                      prompt-context-entries)}
+            :prompt-context {:entries (mapv #(dissoc % ::channel ::iteration)
+                                            prompt-context-entries)}
             :sets           sets})))

@@ -7,7 +7,7 @@
   subscores) that produces the per-conversation breakdown.
 
   Conversations that carry neither prompt context nor any tool
-  entity-usage get a `pre-foundation` sentinel; conversations that throw
+  entity-usage get a `pre-instrumentation` sentinel; conversations that throw
   inside extract get an `extract-error` sentinel."
   (:require
    [metabase.metabot.quality.attribution :as attribution]
@@ -40,7 +40,7 @@
    :unscoreable reason})
 
 ;;; ---------------------------------------------------------------------------
-;;; Pre-foundation detection
+;;; Pre-instrumentation detection
 ;;; ---------------------------------------------------------------------------
 
 (defn- has-entity-usage?
@@ -55,10 +55,10 @@
 (defn- has-prompt-context?
   "True iff any user row contributed prompt-context entries."
   [normalized]
-  (boolean (seq (get-in normalized [:prompt-context :P]))))
+  (boolean (seq (get-in normalized [:prompt-context :entries]))))
 
-(defn- pre-foundation?
-  "A conversation is pre-foundation iff it shows no sign of having run the
+(defn- pre-instrumentation?
+  "A conversation is pre-instrumentation iff it shows no sign of having run the
   instrumented agent loop — no `:entity-usage` populated by any tool call,
   no `prompt-context` block on any user row, and no `terminal_state` data
   part on any assistant row."
@@ -74,7 +74,7 @@
 (defn- all-entity-refs
   "Project every atom across every set down to the `{:type :id}` shape
   governance/resolve expects. Dedup by `[type id]` so a card that lives
-  in both P and Q only contributes one ref."
+  in both the prompt-context and authored sets only contributes one ref."
   [normalized]
   (->> (vals (:sets normalized))
        (mapcat vals)
@@ -103,11 +103,11 @@
      :n_tool_calls  (count (:tool-events normalized))
      :n_errors      (count (filter :error (:tool-events normalized)))
      :termination   (some-> (get-in normalized [:temporal :terminal-state]) name)
-     :entity_counts {:prompt_context (count (get-in normalized [:sets :P]))
-                     :discovered     (count (get-in normalized [:sets :D]))
-                     :authored       (count (get-in normalized [:sets :Q]))
-                     :inspected      (count (get-in normalized [:sets :I]))
-                     :hallucinated   (count (get-in normalized [:sets :H]))}}}))
+     :entity_counts {:prompt_context (count (get-in normalized [:sets :prompt-context]))
+                     :discovered     (count (get-in normalized [:sets :discovered]))
+                     :authored       (count (get-in normalized [:sets :authored]))
+                     :inspected      (count (get-in normalized [:sets :inspected]))
+                     :hallucinated   (count (get-in normalized [:sets :hallucinated]))}}}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Pipeline composition
@@ -115,7 +115,7 @@
 
 (defn- run-pipeline
   "Run the pure pipeline — extract has already succeeded by the time we
-  get here, and `pre-foundation?` has already returned false. Returns a
+  get here, and `pre-instrumentation?` has already returned false. Returns a
   map carrying the conversation-level fields to persist plus a
   per-assistant-message `:quality_attribution` map keyed by message id."
   [normalized]
@@ -133,7 +133,7 @@
   "Pure entry point: given a seq of `MetabotMessage` rows, return the
   values to persist. Three result shapes:
 
-  - **Pre-foundation** — sentinel breakdown, `quality_score = nil`,
+  - **Pre-instrumentation** — sentinel breakdown, `quality_score = nil`,
     no `:quality_attribution` (assistant rows stay NULL).
   - **Extract error** — sentinel breakdown, `quality_score = nil`,
     no `:quality_attribution`.
@@ -150,9 +150,9 @@
       {:quality_score     nil
        :quality_breakdown (sentinel-breakdown (:extract-error quality.constants/unscoreable-reasons))}
 
-      (pre-foundation? normalized)
+      (pre-instrumentation? normalized)
       {:quality_score     nil
-       :quality_breakdown (sentinel-breakdown (:pre-foundation quality.constants/unscoreable-reasons))}
+       :quality_breakdown (sentinel-breakdown (:pre-instrumentation quality.constants/unscoreable-reasons))}
 
       :else
       (run-pipeline normalized))))
@@ -162,22 +162,39 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- conversation-messages
+  "All non-deleted rows for the conversation. Soft-deleted messages are
+  invisible to every other reader, so they must not contribute evidence
+  to the score either."
   [conversation-id]
-  (t2/select :model/MetabotMessage :conversation_id conversation-id))
+  (t2/select :model/MetabotMessage
+             :conversation_id conversation-id
+             :deleted_at nil))
 
 (defn- write-result!
   "Persist a pipeline result. Always updates the conversation row;
-  per-assistant-row attribution is updated separately (and only on the
-  real-score path — sentinel paths leave `quality_attribution` NULL).
+  per-assistant-row attribution is updated separately, one UPDATE per
+  assistant row. Sentinel results carry no `:quality_attribution`, so on
+  that path any attribution left over from an earlier clean score is
+  nulled out — readers must never see an unscoreable conversation whose
+  messages still carry scores.
 
-  One UPDATE per assistant row."
+  Runs in its own transaction so the conversation row and the message
+  rows can't drift if one UPDATE fails. The caller
+  (`finalize-assistant-turn!`) invokes this after its own transaction
+  commits, so a failure here can never roll back the user-visible turn."
   [conversation-id result]
-  (t2/update! :model/MetabotConversation conversation-id
-              {:quality_score     (:quality_score result)
-               :quality_breakdown (:quality_breakdown result)})
-  (doseq [[msg-id payload] (:quality_attribution result)]
-    (t2/update! :model/MetabotMessage msg-id
-                {:quality_attribution payload})))
+  (t2/with-transaction [_conn]
+    (t2/update! :model/MetabotConversation conversation-id
+                {:quality_score     (:quality_score result)
+                 :quality_breakdown (:quality_breakdown result)})
+    (if-let [attribution (not-empty (:quality_attribution result))]
+      (doseq [[msg-id payload] attribution]
+        (t2/update! :model/MetabotMessage msg-id
+                    {:quality_attribution payload}))
+      (t2/update! :model/MetabotMessage
+                  :conversation_id conversation-id
+                  :quality_attribution [:not= nil]
+                  {:quality_attribution nil}))))
 
 (defn score-conversation!
   "Compute and persist the quality score for `conversation-id`.

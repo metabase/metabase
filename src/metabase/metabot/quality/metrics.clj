@@ -31,10 +31,10 @@
   authored entities absent from both the prompt context and every tool
   result, so the ratio is in `[0, 1]`. `:na` when nothing was authored."
   [normalized]
-  (let [q (count (get-in normalized [:sets :Q]))]
+  (let [q (count (get-in normalized [:sets :authored]))]
     (if (zero? q)
       :na
-      (- 1.0 (/ (double (count (get-in normalized [:sets :H])))
+      (- 1.0 (/ (double (count (get-in normalized [:sets :hallucinated])))
                 (double q))))))
 
 (defn- tool-call-failure-rate
@@ -92,7 +92,7 @@
   absent from `governance` counts as non-canonical. `:na` when nothing
   authorable against a data source was authored."
   [normalized governance]
-  (let [ks (filter data-source-key? (keys (get-in normalized [:sets :Q])))]
+  (let [ks (filter data-source-key? (keys (get-in normalized [:sets :authored])))]
     (if (empty? ks)
       :na
       (/ (double (count (filter #(canonical-key? governance %) ks)))
@@ -176,13 +176,13 @@
 
 (comment
   ;; Healthy: a canonical authored source, grounded, no errors, clean exit.
-  (compute {:sets        {:Q {["card" "1"] {}} :D {} :I {} :H {}}
+  (compute {:sets        {:authored {["card" "1"] {}} :discovered {} :inspected {} :hallucinated {}}
             :tool-events []
             :temporal    {:terminal-state :final_response}}
            {["card" "1"] {:kind :card :moderation-status "verified"}})
 
   ;; Repeated identical searches drag search efficiency; forced exit.
-  (compute {:sets        {:Q {} :D {["card" "1"] {}} :I {} :H {}}
+  (compute {:sets        {:authored {} :discovered {["card" "1"] {}} :inspected {} :hallucinated {}}
             :tool-events [{:function "search" :output [{:type "card" :id 1}]}
                           {:function "search" :output [{:type "card" :id 1}]}]
             :temporal    {:terminal-state :iter_cap}}

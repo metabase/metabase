@@ -1,5 +1,5 @@
 (ns metabase.metabot.quality.extract-test
-  "Phase 2 unit tests — pure: every test builds a synthetic message
+  "Unit tests for extract/normalize — pure: every test builds a synthetic message
   fixture and asserts on the normalized struct shape. No DB hits."
   (:require
    [clojure.test :refer [deftest is testing]]
@@ -162,11 +162,11 @@
       (is (= 0 (count events))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; CONV_P union
+;;; Prompt-context union
 ;;; ---------------------------------------------------------------------------
 
 (deftest normalize-unions-prompt-context-channels-test
-  (testing "user_is_viewing + user_recently_viewed + mentioned_refs all land in :P"
+  (testing "user_is_viewing + user_recently_viewed + mentioned_refs all land in :prompt-context"
     (let [{:keys [sets prompt-context]}
           (extract/normalize
            [(user-row 1 "show me"
@@ -175,21 +175,21 @@
                        :mentioned_refs       [{:type "table"     :id 9}]})
             (assistant-row 2 [(text-part "ack")])])]
       (is (= #{["dashboard" "7"] ["card" "8"] ["table" "9"]}
-             (set (keys (:P sets)))))
+             (set (keys (:prompt-context sets)))))
       (is (= [{:type "dashboard" :id 7}
               {:type "card"      :id 8}
               {:type "table"     :id 9}]
-             (:P prompt-context))
+             (:entries prompt-context))
           "prompt-context surfaces the raw refs in channel order for downstream debugging")))
-  (testing "channel provenance is recorded on each :P atom"
+  (testing "channel provenance is recorded on each :prompt-context atom"
     (let [{:keys [sets]} (extract/normalize
                           [(user-row 1 "x"
                                      {:user_is_viewing [{:type "card" :id 7}]
                                       :user_recently_viewed [{:type "card" :id 7}]})
                            (assistant-row 2 [(text-part "ok")])])
-          atom-rec       (get-in sets [:P ["card" "7"]])]
-      (is (= [{:set :P :call-id nil :iteration 0 :metadata {:channel :user_is_viewing}}
-              {:set :P :call-id nil :iteration 0 :metadata {:channel :user_recently_viewed}}]
+          atom-rec       (get-in sets [:prompt-context ["card" "7"]])]
+      (is (= [{:set :prompt-context :call-id nil :iteration 0 :metadata {:channel :user_is_viewing}}
+              {:set :prompt-context :call-id nil :iteration 0 :metadata {:channel :user_recently_viewed}}]
              (:provenance atom-rec))
           "two channels surfaced the same card → two provenance entries on one atom"))))
 
@@ -200,7 +200,7 @@
                                      {:user_is_viewing [{:type "adhoc" :id "draft-1"}
                                                         {:type "table" :id 5}]})
                            (assistant-row 2 [(text-part "ok")])])]
-      (is (= #{["table" "5"]} (set (keys (:P sets))))
+      (is (= #{["table" "5"]} (set (keys (:prompt-context sets))))
           "'adhoc' isn't an entity-types/closed-enum type — dropped"))))
 
 ;;; ---------------------------------------------------------------------------
@@ -216,7 +216,7 @@
                                                       {:input  []
                                                        :output [{:type "table" :id 10 :metadata {:rank 0}}
                                                                 {:type "model" :id 20 :metadata {:rank 1}}]})])])]
-    (is (= #{["table" "10"] ["card" "20"]} (set (keys (:D sets))))
+    (is (= #{["table" "10"] ["card" "20"]} (set (keys (:discovered sets))))
         "a discovered model keys under the collapsed \"card\" type")))
 
 (deftest normalize-collapses-card-family-subtypes-to-one-atom-test
@@ -233,13 +233,13 @@
                                            (output-part "c2" "construct_notebook_query"
                                                         {:input  [{:type "card" :id 4523}]
                                                          :output []})])])]
-      (is (= #{["card" "4523"]} (set (keys (:D sets)))))
-      (is (= #{["card" "4523"]} (set (keys (:Q sets)))))
-      (is (= #{} (set (keys (:H sets))))
+      (is (= #{["card" "4523"]} (set (keys (:discovered sets)))))
+      (is (= #{["card" "4523"]} (set (keys (:authored sets)))))
+      (is (= #{} (set (keys (:hallucinated sets))))
           "authored card is grounded by the discovered model — same report_card row"))))
 
 (deftest normalize-authoring-inputs-go-to-Q-and-filter-databases-test
-  (testing "authoring tool's :input refs land in :Q with database refs filtered out"
+  (testing "authoring tool's :input refs land in :authored with database refs filtered out"
     (let [{:keys [sets]} (extract/normalize
                           [(user-row 1 "go")
                            (assistant-row 2
@@ -248,7 +248,7 @@
                                                         {:input  [{:type "database" :id 1}
                                                                   {:type "table"    :id 10}]
                                                          :output []})])])]
-      (is (= #{["table" "10"]} (set (keys (:Q sets))))
+      (is (= #{["table" "10"]} (set (keys (:authored sets))))
           "database ref dropped; table ref kept"))))
 
 (deftest normalize-inspection-inputs-go-to-I-test
@@ -260,15 +260,15 @@
                                          (output-part "c1" "list_available_fields"
                                                       {:input  [{:type "table" :id 10}]
                                                        :output [{:type "field" :id 100}]})])])]
-    (is (= #{["table" "10"]} (set (keys (:I sets))))
-        ":inspection input lands in :I (and not in :Q or :D)")
-    (is (= #{} (set (keys (:Q sets))))
-        "inspection inputs do not pollute :Q")
-    (is (= #{} (set (keys (:D sets))))
+    (is (= #{["table" "10"]} (set (keys (:inspected sets))))
+        ":inspection input lands in :inspected (and not in :authored or :discovered)")
+    (is (= #{} (set (keys (:authored sets))))
+        "inspection inputs do not pollute :authored")
+    (is (= #{} (set (keys (:discovered sets))))
         "inspection outputs are not discovery surfacings")))
 
 (deftest normalize-hybrid-inputs-to-I-outputs-to-D-test
-  (testing "read_resource is :hybrid — its :input goes to :I, :output to :D"
+  (testing "read_resource is :hybrid — its :input goes to :inspected, :output to :discovered"
     (let [{:keys [sets]} (extract/normalize
                           [(user-row 1 "go")
                            (assistant-row 2
@@ -276,8 +276,8 @@
                                            (output-part "c1" "read_resource"
                                                         {:input  [{:type "table" :id 10}]
                                                          :output [{:type "field" :id 100}]})])])]
-      (is (= #{["table" "10"]}  (set (keys (:I sets)))))
-      (is (= #{["field" "100"]} (set (keys (:D sets))))))))
+      (is (= #{["table" "10"]}  (set (keys (:inspected sets)))))
+      (is (= #{["field" "100"]} (set (keys (:discovered sets))))))))
 
 (deftest normalize-utility-tools-do-not-populate-sets-test
   (testing ":utility tools (e.g. todo_write) emit no entity-usage and contribute nothing"
@@ -291,14 +291,14 @@
           "we still record the call, but with empty :input/:output")
       (is (= [] (:input  (first tool-events))))
       (is (= [] (:output (first tool-events))))
-      (is (every? empty? (vals (select-keys sets [:D :Q :I :H])))))))
+      (is (every? empty? (vals (select-keys sets [:discovered :authored :inspected :hallucinated])))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; CONV_H derivation
+;;; Hallucinated-set derivation
 ;;; ---------------------------------------------------------------------------
 
-(deftest normalize-derives-CONV_H-from-Q-minus-P-union-D-test
-  (testing "an authoring ref not in P and not in D → CONV_H"
+(deftest normalize-derives-hallucinated-set-test
+  (testing "an authoring ref neither in prompt-context nor discovered lands in the hallucinated set"
     (let [{:keys [sets]} (extract/normalize
                           [(user-row 1 "x")
                            (assistant-row 2
@@ -307,9 +307,9 @@
                                                         {:input  [{:type "database" :id 1}
                                                                   {:type "table"    :id 999}]
                                                          :output []})])])]
-      (is (= #{["table" "999"]} (set (keys (:H sets)))))
-      (is (= "table" (:type (get-in sets [:H ["table" "999"]]))))
-      (is (= 999     (:id   (get-in sets [:H ["table" "999"]]))))))
+      (is (= #{["table" "999"]} (set (keys (:hallucinated sets)))))
+      (is (= "table" (:type (get-in sets [:hallucinated ["table" "999"]]))))
+      (is (= 999     (:id   (get-in sets [:hallucinated ["table" "999"]]))))))
   (testing "a Q ref that's also in D is grounded → not in H"
     (let [{:keys [sets]} (extract/normalize
                           [(user-row 1 "x")
@@ -324,9 +324,9 @@
                                                         {:input  [{:type "database" :id 1}
                                                                   {:type "table"    :id 7}]
                                                          :output []})])])]
-      (is (= #{["table" "7"]} (set (keys (:Q sets)))))
-      (is (= #{}              (set (keys (:H sets))))
-          "ground-via-D removes the ref from CONV_H")))
+      (is (= #{["table" "7"]} (set (keys (:authored sets)))))
+      (is (= #{}              (set (keys (:hallucinated sets))))
+          "grounding via discovery removes the ref from the hallucinated set")))
   (testing "a Q ref that's also in P is grounded → not in H"
     (let [{:keys [sets]} (extract/normalize
                           [(user-row 1 "look at this"
@@ -337,9 +337,9 @@
                                                         {:input  [{:type "database" :id 1}
                                                                   {:type "table"    :id 5}]
                                                          :output []})])])]
-      (is (= #{["table" "5"]} (set (keys (:Q sets)))))
-      (is (= #{}              (set (keys (:H sets))))
-          "ground-via-P removes the ref from CONV_H"))))
+      (is (= #{["table" "5"]} (set (keys (:authored sets)))))
+      (is (= #{}              (set (keys (:hallucinated sets))))
+          "grounding via prompt-context removes the ref from the hallucinated set"))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Atom record structure
@@ -359,7 +359,7 @@
                                            (output-part "c2" "search"
                                                         {:input  []
                                                          :output [{:type "table" :id 10 :metadata {:rank 2}}]})])])
-          atom-rec       (get-in sets [:D ["table" "10"]])]
+          atom-rec       (get-in sets [:discovered ["table" "10"]])]
       (is (= "table" (:type atom-rec)))
       (is (= 10 (:id atom-rec)))
       (is (= "10" (:id-str atom-rec)))
@@ -379,15 +379,15 @@
                                                         {:input  [{:type "database" :id 1}
                                                                   {:type "table"    :id "5"}]
                                                          :output []})])])]
-      (is (= #{["table" "5"]} (set (keys (:P sets)))))
-      (is (= #{["table" "5"]} (set (keys (:Q sets)))))
-      (is (= #{}              (set (keys (:H sets))))))))
+      (is (= #{["table" "5"]} (set (keys (:prompt-context sets)))))
+      (is (= #{["table" "5"]} (set (keys (:authored sets)))))
+      (is (= #{}              (set (keys (:hallucinated sets))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Pre-foundation (no entity-usage anywhere) — still safe to normalize
 ;;; ---------------------------------------------------------------------------
 
-(deftest normalize-pre-foundation-conversation-test
+(deftest normalize-pre-instrumentation-conversation-test
   (testing "rows missing entity-usage and prompt-context still normalize to empty sets"
     (let [{:keys [sets tool-events]}
           (extract/normalize
@@ -426,10 +426,10 @@
                                           :output []})])])]
       (is (= [:discovery :authoring :authoring]
              (mapv :tool-type tool-events)))
-      (is (= #{["dashboard" "1"]} (set (keys (:P sets)))))
-      (is (= #{["table" "100"]}   (set (keys (:D sets)))))
-      (is (= #{["table" "100"]}   (set (keys (:Q sets)))))
-      (is (= #{}                  (set (keys (:H sets))))
+      (is (= #{["dashboard" "1"]} (set (keys (:prompt-context sets)))))
+      (is (= #{["table" "100"]}   (set (keys (:discovered sets)))))
+      (is (= #{["table" "100"]}   (set (keys (:authored sets)))))
+      (is (= #{}                  (set (keys (:hallucinated sets))))
           "no hallucinated refs in this flow"))))
 
 (deftest normalize-sql-profile-with-clarification-flow-test
@@ -456,8 +456,8 @@
                             (output-part "c4" "ask_for_sql_clarification" {:input [] :output []})])])]
       (is (= [:discovery :authoring :authoring :utility]
              (mapv :tool-type tool-events)))
-      (is (= #{["table" "33"]} (set (keys (:Q sets)))))
-      (is (= #{} (set (keys (:H sets)))) "table-33 was grounded via D"))))
+      (is (= #{["table" "33"]} (set (keys (:authored sets)))))
+      (is (= #{} (set (keys (:hallucinated sets)))) "table-33 was grounded via D"))))
 
 (deftest normalize-transforms-codegen-flow-test
   (testing "transforms_codegen-profile shape — transform_search → details → fields → write"
@@ -483,14 +483,14 @@
                                           :output []})])])]
       (is (= [:discovery :inspection :inspection :authoring]
              (mapv :tool-type tool-events)))
-      (is (= #{["transform" "5"]}              (set (keys (:D sets)))))
-      (is (= #{["transform" "5"] ["table" "10"]} (set (keys (:I sets)))))
-      (is (= #{["transform" "5"]}              (set (keys (:Q sets))))
+      (is (= #{["transform" "5"]}              (set (keys (:discovered sets)))))
+      (is (= #{["transform" "5"] ["table" "10"]} (set (keys (:inspected sets)))))
+      (is (= #{["transform" "5"]}              (set (keys (:authored sets))))
           "the write_transform_python input is the transform itself")
-      (is (= #{} (set (keys (:H sets))))))))
+      (is (= #{} (set (keys (:hallucinated sets))))))))
 
 (deftest normalize-structural-overlap-field-in-Q-table-in-D-test
-  (testing "field in CONV_Q is not grounded by its parent table in CONV_D (entities are independent)"
+  (testing "an authored field is not grounded by its discovered parent table (entities are independent)"
     (let [{:keys [sets]}
           (extract/normalize
            [(user-row 1 "use that field")
@@ -503,7 +503,7 @@
                             (output-part "c2" "construct_notebook_query"
                                          {:input  [{:type "field" :id 100}]
                                           :output []})])])]
-      (is (= #{["table" "10"]}  (set (keys (:D sets)))))
-      (is (= #{["field" "100"]} (set (keys (:Q sets)))))
-      (is (= #{["field" "100"]} (set (keys (:H sets))))
+      (is (= #{["table" "10"]}  (set (keys (:discovered sets)))))
+      (is (= #{["field" "100"]} (set (keys (:authored sets)))))
+      (is (= #{["field" "100"]} (set (keys (:hallucinated sets))))
           "the field wasn't surfaced — only its parent table was. Field lands in H."))))

@@ -66,7 +66,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest derive-populates-t-first-used-on-Q-atoms-test
-  (testing ":t-first-used is set to the min iteration across the atom's :Q provenance entries"
+  (testing ":t-first-used is set to the min iteration across the atom's :authored provenance entries"
     (let [normalized
           (extract/normalize
            [(user-row 1 "go")
@@ -83,11 +83,11 @@
                                          {:input  [{:type "table" :id 99}]
                                           :output []})])])
           enriched   (temporal/derive normalized)]
-      (is (= 0 (get-in enriched [:sets :Q ["table" "99"] :t-first-used]))
+      (is (= 0 (get-in enriched [:sets :authored ["table" "99"] :t-first-used]))
           "first authoring touch was iteration 0, so :t-first-used = 0"))))
 
 (deftest derive-leaves-non-Q-sets-untouched-test
-  (testing "atoms in :P/:D/:I do not get :t-first-used set"
+  (testing "atoms in :prompt-context/:discovered/:inspected do not get :t-first-used set"
     (let [enriched (temporal/derive
                     (extract/normalize
                      [(user-row 1 "x")
@@ -96,8 +96,8 @@
                                       (output-part "c1" "search"
                                                    {:input  []
                                                     :output [{:type "table" :id 50}]})])]))]
-      (is (nil? (get-in enriched [:sets :D ["table" "50"] :t-first-used]))
-          ":D atoms keep :t-first-used = nil — they were surfaced, not authored against"))))
+      (is (nil? (get-in enriched [:sets :discovered ["table" "50"] :t-first-used]))
+          ":discovered atoms keep :t-first-used = nil — they were surfaced, not authored against"))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; :iterations
@@ -275,5 +275,5 @@
           temporal-block (:temporal enriched)]
       (is (= 3                  (:iterations temporal-block)))
       (is (= :final_response    (:terminal-state temporal-block)))
-      (is (= 1 (get-in enriched [:sets :Q ["table" "100"] :t-first-used]))
+      (is (= 1 (get-in enriched [:sets :authored ["table" "100"] :t-first-used]))
           "first authoring touch on table 100 was iteration 1"))))

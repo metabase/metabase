@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: v62.2026-05-28T10:00:00
+      id: v63.2026-05-28T10:00:00
       author: tylerplude
       runOnChange: true
       comment: Add quality_score + quality_breakdown to v_metabot_conversations (v4)
@@ -32,7 +32,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v62.2026-05-28T10:00:01
+      id: v63.2026-05-28T10:00:01
       author: tylerplude
       runOnChange: true
       comment: Add quality_attribution to v_metabot_messages (v2)

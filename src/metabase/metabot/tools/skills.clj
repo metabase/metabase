@@ -29,7 +29,8 @@
       :else
       (format "<skill id=\"%s\">\n%s\n</skill>" (name (:id skill)) (:body skill)))))
 
-(mu/defn ^{:tool-name "load_skill"}
+(mu/defn ^{:tool-name "load_skill"
+           :tool-type :utility}
   load-skill-tool
   "Load the full instructions for one or more skills listed under \"Available
   skills\". Call this immediately before doing the related work; you may load

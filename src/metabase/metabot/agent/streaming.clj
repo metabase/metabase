@@ -148,7 +148,7 @@
   terminal-state categorical consumed by the quality-score temporal layer.
 
   `:empty-response` represents the rare degenerate case where the LLM call
-  returned zero AISDK parts; treated as `:error` for concern-signal
+  returned zero AISDK parts; treated as `:error` for termination-health
   purposes."
   {:max-iterations :iter_cap
    :final-response :final_response

@@ -399,18 +399,20 @@
                            :finished     (boolean finished?)
                            :error        (safe-encode-error error)}
                     slack-msg-id (assoc :slack_msg_id slack-msg-id)
-                    channel-id   (assoc :channel_id channel-id)))
-      ;; Quality-score pipeline. Runs in the same transaction so
-      ;; a scoring UPDATE failure rolls back atomically with the message
-      ;; UPDATE rather than leaving the conversation row half-updated; the
-      ;; outer try/catch is defense-in-depth for any throw that escapes the
-      ;; inner guard in `score-conversation!` (e.g. a Throwable raised
-      ;; before the guard's try block is entered).
-      (try
-        (quality.core/score-conversation! conversation-id)
-        (catch Throwable t
-          (log/error t "score-conversation! escaped the inner guard"
-                     {:conversation-id conversation-id}))))
+                    channel-id   (assoc :channel_id channel-id))))
+    ;; Quality-score pipeline. Runs after the message UPDATE commits: on
+    ;; Postgres a SQL-level failure inside the scoring UPDATEs would abort
+    ;; the enclosing transaction even with the exception caught, rolling
+    ;; back the user-visible message UPDATE. Outside the transaction a
+    ;; scoring failure can only lose the score, never the turn. The outer
+    ;; try/catch is defense-in-depth for any throw that escapes the inner
+    ;; guard in `score-conversation!` (e.g. a Throwable raised before the
+    ;; guard's try block is entered).
+    (try
+      (quality.core/score-conversation! conversation-id)
+      (catch Throwable t
+        (log/error t "score-conversation! escaped the inner guard"
+                   {:conversation-id conversation-id})))
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE transaction commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
