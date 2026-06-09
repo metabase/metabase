@@ -33,8 +33,10 @@
 
 (defn- regenerate!
   "Rebuild `metabot-id`'s suggested prompts from its current scope, atomically.
-  Skips when the managed-AI limit is reached, and — being a background job — logs and swallows any
-  failure; the delete+generate transaction rolls back so existing prompts are preserved."
+  Skips when the managed-AI limit is reached. Runs delete+generate in one transaction and rolls it back
+  unless new prompts were actually generated — so a Metabot's existing prompts are never wiped to empty
+  (e.g. when the curated filter currently excludes its only content). Being a background job, it logs
+  and swallows everything."
   [metabot-id]
   ;; System task: run as admin so all in-scope content is considered (per-user reads stay filtered).
   (request/as-admin
@@ -42,7 +44,15 @@
       (when-not (metabot.usage/managed-free-limit-reached?)
         (t2/with-transaction [_conn]
           (metabot.suggested-prompts/delete-all-metabot-prompts metabot-id)
-          (metabot.suggested-prompts/generate-sample-prompts metabot-id)))
+          (let [{:keys [status]} (metabot.suggested-prompts/generate-sample-prompts metabot-id)]
+            (when (not= status :generated)
+              ;; Better to keep stale prompts than to leave the Metabot with none.
+              (throw (ex-info "no new prompts generated" {::preserve true :status status}))))))
+      (catch clojure.lang.ExceptionInfo e
+        (if (::preserve (ex-data e))
+          (log/infof "Kept existing suggested prompts for Metabot %s (regeneration produced %s)"
+                     metabot-id (:status (ex-data e)))
+          (log/warnf e "Failed to regenerate suggested prompts for Metabot %s" metabot-id)))
       (catch Throwable e
         (log/warnf e "Failed to regenerate suggested prompts for Metabot %s" metabot-id)))))
 

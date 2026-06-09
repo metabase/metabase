@@ -152,7 +152,14 @@
   [tx index-metadata]
   ;; The index has no is_published column, so resolve that signal to false and lean on
   ;; root_collection_type to cover library/published tables. Backfilling keeps the filter working
-  ;; before the next reindex; data_authority is added empty and populated for real on the next update.
+  ;; before the next reindex.
+  ;;
+  ;; Known limitation: data_authority is added empty here and only populated on the next index update,
+  ;; so a table that is curated *solely* by `data_authority = authoritative` (not verified/official, not
+  ;; in the library) reads as curated=false until it is re-indexed. This self-heals on reindex and the
+  ;; common cases (library/published tables, verified/official cards) are backfilled correctly via the
+  ;; existing columns. Backfilling data_authority would need an appdb sweep by model_id (cf. the
+  ;; root_collection_type backfill in migration 4); deferred until it's worth the migration cost.
   (let [curated-expr (collections.curation/curated-honeysql
                       (fn [signal] (if (= signal :is_published) [:inline false] signal)))]
     (alter-index-tables!

@@ -41,10 +41,23 @@
                                                       :model :model :card_id card-id}]
       (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
                                   metabot.suggested-prompts/generate-sample-prompts
-                                  (fn [mid] (t2/insert! :model/MetabotPrompt {:metabot_id mid :prompt "new"
-                                                                              :model :model :card_id card-id}))]
+                                  (fn [mid]
+                                    (t2/insert! :model/MetabotPrompt {:metabot_id mid :prompt "new"
+                                                                      :model :model :card_id card-id})
+                                    {:status :generated :prompt_count 1})]
         (regenerate! metabot-id)
         (let [prompts (t2/select :model/MetabotPrompt :metabot_id metabot-id)]
           (is (= 1 (count prompts)))
           (is (= "new" (:prompt (first prompts))))
-          (is (not= old-id (:id (first prompts)))))))))
+          (is (not= old-id (:id (first prompts))))))))
+  (testing "when regeneration produces nothing, existing prompts are preserved (not wiped to empty)"
+    (doseq [status [:no-library-content :ai-produced-no-prompts]]
+      (mt/with-temp [:model/Metabot {metabot-id :id} {:name "mb"}
+                     :model/Card {card-id :id} {:name "c" :type :model}
+                     :model/MetabotPrompt {prompt-id :id} {:metabot_id metabot-id :prompt "keep"
+                                                           :model :model :card_id card-id}]
+        (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
+                                    metabot.suggested-prompts/generate-sample-prompts (constantly {:status status})]
+          (regenerate! metabot-id)
+          (is (= #{prompt-id} (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id))
+              (str "prompts preserved when generation returns " status)))))))
