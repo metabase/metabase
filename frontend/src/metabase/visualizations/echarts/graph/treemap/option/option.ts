@@ -382,21 +382,25 @@ function getLeafLabelRich(renderingContext: RenderingContext) {
       ...shadow,
       fontSize: leafBlock.name.fontSize,
       fontWeight: leafBlock.name.fontWeight,
-      lineHeight: leafBlock.name.lineHeight,
+      height: leafBlock.name.height,
+      verticalAlign: "middle",
     },
     value: {
       ...shadow,
       fontSize: leafBlock.value.fontSize,
       fontWeight: leafBlock.value.fontWeight,
-      lineHeight: leafBlock.value.lineHeight,
       padding: [leafBlock.valueGap, 0, 0, 0],
+      height: leafBlock.value.height,
+      verticalAlign: "middle",
     },
     pct: {
       ...shadow,
       fontSize: leafBlock.percent.fontSize,
       fontWeight: leafBlock.percent.fontWeight,
-      lineHeight: leafBlock.percent.lineHeight,
+      height: leafBlock.percent.height,
+      lineHeight: leafBlock.percent.height,
       padding: [leafBlock.percentGap, 0, 0, 0],
+      verticalAlign: "middle",
     },
   };
 }

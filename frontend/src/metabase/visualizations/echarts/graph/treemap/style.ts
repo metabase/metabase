@@ -37,10 +37,10 @@ export const groupHeader = {
  * `position` insets add up to `MIN_FULL_LABEL_TILE_HEIGHT` in `model/labels.ts`.
  */
 export const leafBlock = {
-  name: { fontSize: 12, fontWeight: 700, lineHeight: 16 },
-  value: { fontSize: 20, fontWeight: 700, lineHeight: 24 },
-  percent: { fontSize: 12, fontWeight: 400, lineHeight: 16 },
-  valueGap: 12,
+  name: { fontSize: 12, fontWeight: 700, height: 16 },
+  value: { fontSize: 20, fontWeight: 700, height: 24 },
+  percent: { fontSize: 12, fontWeight: 400, height: 16 },
+  valueGap: 16,
   percentGap: 8,
 } as const;
 
