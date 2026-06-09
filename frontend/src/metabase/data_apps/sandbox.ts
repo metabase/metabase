@@ -14,7 +14,9 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
+// eslint-disable-next-line no-restricted-imports
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
+// eslint-disable-next-line no-restricted-imports
 import { useQuestionQuery } from "embedding-sdk-package/hooks/public/use-question-query";
 import {
   DataAppLink,
